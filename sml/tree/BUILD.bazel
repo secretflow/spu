@@ -21,7 +21,3 @@ py_library(
     srcs = ["tree.py"],
 )
 
-py_library(
-    name = "tree_w",
-    srcs = ["tree_w.py"],
-)

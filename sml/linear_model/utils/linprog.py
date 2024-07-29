@@ -70,14 +70,7 @@ def _pivot_col(T, tol=1e-9, bland=False):
     return valid, result
 
 def _pivot_row(T, basis, pivcol, phase, tol=1e-9, bland=False):  
-    # pivcol = lax.cond(jnp.isnan(pivcol), lambda _: jnp.nan, lambda _: jnp.float32(pivcol), operand=None)
-    # pivcol = jnp.floor(pivcol).astype(jnp.int32)
-    # if jnp.isnan(pivcol):
-    #     pivcol = jnp.nan
-    # else:
-    #     pivcol = pivcol.astype(jnp.int32)
-    # k = lax.cond(phase == 1, lambda _: 2, lambda _: 1, operand=None)
-    # k = 1
+
     def true_mask_func():
         mask = T[:-2, pivcol] <= tol
         ma = jnp.where(mask, jnp.inf, T[:-2, pivcol])
@@ -109,13 +102,11 @@ def _pivot_row(T, basis, pivcol, phase, tol=1e-9, bland=False):
     # 定义选择最小比值行的函数
     def bland_func(_):
         return min_rows
-        # return min_rows[jnp.argmin(jnp.take(basis, min_rows))]
     
     def min_row_func(_):
         return min_rows
 
     # 检查掩码数组是否全被掩盖
-    # all_masked = jnp.all(mask)
     has_valid_row = min_rows.size > 0
     
     row = lax.cond(bland, bland_func, min_row_func, operand=None)
@@ -139,7 +130,7 @@ def _apply_pivot(T, basis, pivrow, pivcol, tol=1e-9):
     def update_row(irow, T, pivrow, pivcol):
         pivrow_vector = T[pivrow]  # shape (n,)
         scalar = T[irow, pivcol]   # shape ()
-        # print(f"pivrow_vector shape: {pivrow_vector.shape}, scalar shape: {scalar.shape}")
+
         updated_row = T[irow] - pivrow_vector * scalar
         T = T.at[irow].set(updated_row)
         return T
@@ -279,40 +270,6 @@ def _solve_simplex(T, n, basis,
                                                                                                  body_ifnot_complete,
                                                                                                  (T, basis, 0, 0, phase, tol, bland, status, complete, nit, maxiter))
     return T, basis, nit, status
-    # while not complete:
-    #     pivcol_found, pivcol = _pivot_col(T, tol, bland)
-    #     print(pivcol_found)
-    #     pivrow_found = False
-    #     def cal_pivcol_found_True(T, basis, pivcol, phase, tol, bland, status, complete):
-    #         pivrow_found, pivrow = _pivot_row(T, basis, pivcol, phase, tol, bland)
-    #         status, complete = lax.cond(pivrow_found==False,
-    #                                     lambda _: (3, True),
-    #                                     lambda _: (status, complete),
-    #                                     None)
-    #         return pivrow_found, pivrow, status, complete
-        
-    #     pivcol, pivrow, status, complete = lax.cond(pivcol_found==False,
-    #                                             lambda _: (0, 0, 0, True),
-    #                                             lambda _: (pivcol, pivrow, status, complete),
-    #                                             None)
-    #     pivrow_found, pivrow, status, complete = lax.cond(pivcol_found==True,
-    #                                                       lambda _: cal_pivcol_found_True(T, basis, pivcol, phase, tol, bland, status, complete),
-    #                                                       lambda _: (pivrow_found, pivrow, status, complete),
-    #                                                       None)
-    #     def cal_ifnot_complete(T, basis, nit, status, complete, maxiter):
-    #         status, complete = lax.cond(nit >= maxiter, lambda _: (1, True), lambda _: (status, complete), None)
-    #         T, basis = lax.cond(nit < maxiter, lambda _: _apply_pivot(T, basis, pivrow, pivcol, tol), lambda _: (T, basis), None)
-    #         nit = lax.cond(nit < maxiter, lambda _: nit+1, lambda _: nit, None)
-    #         return T, basis, nit, status, complete
-    #     print(T)
-    #     print("---------------------------------------------------")
-    #     T, basis, nit, status, complete = lax.cond(complete==False,
-    #                                               lambda _: cal_ifnot_complete(T, basis, nit, status, complete, maxiter),
-    #                                               lambda _: (T, basis, nit, status, complete),
-    #                                               None)
-    
-    # return T, basis, nit, status
-
 
 def _linprog_simplex(c, A, b, c0=0, 
                      maxiter=1000, tol=1, disp=False, bland=False,
@@ -342,12 +299,10 @@ def _linprog_simplex(c, A, b, c0=0,
     row_pseudo_objective = -row_constraints.sum(axis=0)
     row_pseudo_objective = row_pseudo_objective.at[av].set(0)
     T = jnp.vstack((row_constraints, row_objective, row_pseudo_objective))
-    # print(T)
-    # print(n)
-    # print(basis)
+
     # phase 1
     T, basis, nit1, status = _solve_simplex(T, n, basis, maxiter=maxiter, tol=tol, phase=1, bland=bland)
-    # print(T)
+
     nit2 = nit1
 
     def if_abs_true(status):
@@ -356,71 +311,20 @@ def _linprog_simplex(c, A, b, c0=0,
         status = 2
         return status
     status = lax.cond(jnp.abs(T[-1, -1]) < tol,if_abs_true,if_abs_false,(status))
-    # messages[2] = (
-    #     "Phase 1 of the simplex method failed to find a feasible "
-    #     "solution. The pseudo-objective function evaluates to {0:.1e} "
-    #     "which exceeds the required tolerance of {1} for a solution to be "
-    #     "considered 'close enough' to zero to be a basic solution. "
-    #     "Consider increasing the tolerance to be greater than {0:.1e}. "
-    #     "If this tolerance is unacceptably  large the problem may be "
-    #     "infeasible.".format(abs(T[-1, -1]), tol)
-    # )
-    # def modify_tensor(T, av, tol):
-    #     if (abs(T[-1, -1]) < tol):
-    #         T = T[:-1, :]
-    #         T = jnp.delete(T, av, 1)
-    #     return T
-    
-    # jit_modify_tensor = jit(modify_tensor, static_argnums=(0,))
-    # print(jnp.any(T>0))
-    # av = tuple(av.tolist())
-    # print(av)
-    # T = jit_modify_tensor(T, av, tol)
-    
-    # av = av.item()
-    # print(av) 
-    # print("av",av.shape)
 
     original_shape = T.shape
     # print(original_shape)
     T_new = T[:-1, :]
     jit_delete = jit(jnp.delete, static_argnames=['assume_unique_indices'])
     T = jnp.delete(T_new, av, 1, assume_unique_indices=True)
-    # ndicator = jnp.ones(T.shape[1], dtype=int)
-    # print("avdsa",av)
-    # def true_fn(T):
-    #     T_new = T[:-1, :]
-    #     jit_delete = jit(jnp.delete, static_argnames=['assume_unique_indices'])
-    #     T_new = jnp.delete(T_new, av, 1, assume_unique_indices=True)
-    #     # 保存有效部分的形状信息
-    #     # T_new_shape = jnp.array(T_new.shape)
-    #     T_new_shape = jnp.array([original_shape[0]-1, original_shape[1]-len(av)])
-    #     padding = [(0, original_shape[0] - T_new.shape[0]), (0, original_shape[1] - T_new.shape[1])]
-    #     T_padded = jnp.pad(T_new, padding, mode='constant')
-    #     return T_padded, jnp.array(original_shape), T_new_shape
-    #     # indicator = indicator.at[av].set(0)
 
-    # def false_fn(T):
-    #     return T, jnp.array(original_shape), jnp.array(original_shape)
-
-    # T, T_shape, T_new_shape = lax.cond(abs(T[-1, -1]) < tol, true_fn, false_fn, T)
-    
-    # return T_modified, T_shape, T_new_shape
-    # print(T_new_shape)
     def recover_tensor(T_recovered, T_shape, T_new_shape):
         # 根据保存的形状信息恢复原形状
-        # rows_to_keep = abs(T_new_shape[0] - T_shape[0])
-        # cols_to_keep = abs(T_new_shape[1] - T_shape[1])
 
-        # 使用lax.dynamic_slice来保留左上角部分
-        # print(T_recovered)
         T_recovered = lax.dynamic_slice(T_recovered, (0, 0), (T_new_shape[0], T_new_shape[1]))
         # print("T_recovered",T_recovered.shape)
         return T_recovered
   
-    # T, T_shape, T_new_shape = modify_tensor(T, av, tol)
-    # print(T_new_shape)
-    # T = recover_tensor(T, T_shape, T_new_shape)
     # # phase 2
     T, basis, nit2, status = lax.cond(status == 0,
                                     lambda _: _solve_simplex(T, n, basis, maxiter, tol, 2, bland, nit1),
@@ -432,61 +336,3 @@ def _linprog_simplex(c, A, b, c0=0,
     # status = status.astype(int)
     x = solution[:m]
     return x, status, nit2
-
-
-
-# if __name__ == "__main__":
-    # T = jnp.array([ 
-    #     [ 1.,  1.,  0.,  1.,  0.,  0.,  4.],
-    #     [ 2.,  1., -1.,  0.,  1.,  0.,  3.],
-    #     [-1.,  2.,  1.,  0.,  0.,  1.,  2.],
-    #     [-2., -1.,  2.,  0.,  0.,  0.,  0.],
-    #     [-2., -4., -0.,  0.,  0.,  0., -9.],
-    # ])
-    # n = 3
-    # basis = jnp.array([3,4,5])  # 假设初始的基变量索引
-    
-    # # pivcol_found, pivcol = _pivot_col(T)
-    # # print(pivcol_found)
-    # # print(pivcol)
-    # pivcol = 1
-    # phase = 1
-    # pivrow = 2
-    
-    # # pivrow_found, pivrow = _pivot_row(T, basis, pivcol, phase)    
-    # # print(pivrow_found)
-    # # print(pivrow)
-    
-    # # T, basis = _apply_pivot(T, basis, pivrow, pivcol)
-    # # print(T)
-    # # print(basis)
-    
-    
-    
-    # T, basis, nit1, status = _solve_simplex(T, n, basis,phase=1)
-    # print(T)
-    # print(nit1)
-
-#     # 处理结果
-#     print("Final T matrix:")
-#     print(T_final)
-#     print("Final basis:", basis_final)
-#     print("Number of iterations:", nit_final)
-#     print("Status:", status_final)
-    
-    # T, basis = _apply_pivot(T, basis, 1, 0)
-    # print(T)
-    # print(basis)
-
-    # A_eq = jnp.eye(3)
-    # b_eq = jnp.ones(3)
-    # c = jnp.array([1, 2, 3])
-    # # n,m = A_eq.shape
-    # result = _linprog_simplex(c, A_eq, b_eq)
-    
-    # print(result)
-    # print(result[0]@c)
-
-    # from scipy.optimize import linprog
-    # result = linprog(c, A_eq=A_eq, b_eq=b_eq, method='simplex')
-    # print(result)

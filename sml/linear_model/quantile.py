@@ -1,10 +1,17 @@
-'''
-Author: Li Zhihang
-Date: 2024-07-03 11:29:34
-LastEditTime: 2024-07-29 13:33:22
-FilePath: /klaus/spu/sml/linear_model/quantile.py
-Description: 报错status=1，原因是b矩阵有负值，需要将其转为非负值
-'''
+# Copyright 2023 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import jax.numpy as jnp
 from jax import grad
 import jax
@@ -141,20 +148,12 @@ class QuantileRegressor:
         n_samples, n_features = X.shape
         n_params = n_features
         
-        # sample_weight = _check_sample_weight(sample_weight, X)
         sample_weight = jnp.ones((self.n_samples,))
         
         if self.fit_intercept:
             n_params += 1
         
         alpha = jnp.sum(sample_weight) * self.alpha
-        
-        # indices = jnp.nonzero(sample_weight)[0]
-        # n_indices = len(indices)
-        # if n_indices < len(sample_weight):
-        #     sample_weight = sample_weight[indices]
-        #     X = _safe_indexing(X, indices)
-        #     y = _safe_indexing(y, indices)
         
         c = jnp.concatenate(
             [
@@ -183,12 +182,7 @@ class QuantileRegressor:
         av = jnp.arange(n) + m
 
         result = _linprog_simplex(c, A, b, maxiter=self.max_iter,tol=1e-3)
-        
-        # result = linprog(c,A_eq=A,b_eq=b,method='simplex')
-        # print("result",result)
-        # print("Optimal solution:", result['x'])
-        # print("Optimal solution:", result[0])
-        # print("Optimal value:", result[0]@c)
+
         solution = result[0]
         # solution = result['x']
         # 取消了1: "Iteration limit reached."因为这个方法就是达到迭代次数停止的
@@ -227,16 +221,14 @@ class QuantileRegressor:
     def predict(self, X):
         if self.fit_intercept:
             X = jnp.column_stack((jnp.ones(X.shape[0]), X))
-            # print("X:", X)
-            # print("intercept_:", self.intercept_)
-            # print("coef_:", self.coef_)
+
             return jnp.dot(X, jnp.hstack([self.intercept_, self.coef_]))
         else:
             return jnp.dot(X, self.coef_)
-        # return jnp.dot(X, jnp.hstack([self.intercept_, self.coef_]))
 
 from jax import random
 from sklearn.linear_model import QuantileRegressor as SklearnQuantileRegressor
+
 # @jax.jit
 def compare_quantile_regressors(X, y, quantile=0.2, alpha=0.1, lr=0.01, max_iter=1000):
     # 训练和预测自定义模型
@@ -256,44 +248,3 @@ if __name__ == "__main__":
     y = 5 * X[:, 0] + 2 * X[:, 1] + random.normal(key, (100,)) * 0.1
     
     compare_quantile_regressors(X,y)
-
-
-
-
-
-# # 设置随机种子
-# key = random.PRNGKey(42)
-# # 生成 X 数据
-# key, subkey = random.split(key)
-# X = random.normal(subkey, (100, 2)) 
-# # 生成 y 数据
-# y = 5 * X[:, 0] + 2 * X[:, 1] + random.normal(key, (100,)) * 0.1  # 高相关性，带有小噪声
-
-# # print
-
-# custom_model = QuantileRegressor(quantile=0.2, alpha=0.1, fit_intercept=True, lr=0.01, max_iter=1000)
-# custom_model.fit(X, y)
-# custom_y_pred = custom_model.predict(X)
-
-# print(jnp.mean(y <= custom_model.predict(X)))
-# print("Custom Coefficients:", custom_model.coef_)
-# print("Custom Intercept:", custom_model.intercept_)
-
-
-# from sklearn.linear_model import QuantileRegressor as SklearnQuantileRegressor
-
-# sklearn_model = SklearnQuantileRegressor(quantile=0.2, alpha=0.1, fit_intercept=True, solver='highs')
-# sklearn_model.fit(X, y)
-# sklearn_y_pred = sklearn_model.predict(X)
-
-# print(jnp.mean(y <= sklearn_model.predict(X)))
-# print("Sklearn Coefficients:", sklearn_model.coef_)
-# print("Sklearn Intercept:", sklearn_model.intercept_)
-
-
-
-
-# # Print first 10 predictions
-# print("Sklearn Predictions:", sklearn_y_pred[:10])
-# print("Custom Predictions:", custom_y_pred[:10])
-
