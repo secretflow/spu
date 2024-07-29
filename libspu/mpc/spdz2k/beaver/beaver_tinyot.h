@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "yacl/kernel/algorithms/ot_store.h"
+#include "yacl/kernel/type/ot_store.h"
 #include "yacl/link/context.h"
 
 #include "libspu/mpc/common/prg_state.h"

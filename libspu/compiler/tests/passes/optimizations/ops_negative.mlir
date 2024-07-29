@@ -24,7 +24,7 @@ func.func @main() -> tensor<i32> {
 
 func.func @main() -> tensor<i32> {
   %0 = pphlo.constant dense<[0.000000e+00, -3.40282347E+38]> : tensor<2xf32>
-  // expected-error @+1 {{op broadcast_dimensions contains invalid value -6 for result with rank 1}}
+  // expected-error @+1 {{broadcast_dimensions contains invalid value -6 for result with rank 1}}
   %1 = pphlo.broadcast %0, dims = [-6] : (tensor<2xf32>) -> tensor<2xf32>
   %2 = pphlo.constant dense<5> : tensor<i32>
   pphlo.return %2 : tensor<i32>
@@ -33,7 +33,7 @@ func.func @main() -> tensor<i32> {
 // -----
 
 func.func @main() -> tensor<i32> {
-  // expected-error @+1 {{op iota dimension cannot go beyond the output rank or be negative}}
+  // expected-error @+1 {{iota dimension cannot go beyond the output rank}}
   %0 = pphlo.iota dim = 1000 : tensor<1xi32>
   %1 = pphlo.constant dense<5> : tensor<i32>
   pphlo.return %1 : tensor<i32>
