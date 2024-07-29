@@ -17,6 +17,7 @@ from jax import lax
 import jax
 import math
 import random
+random.seed(20)
 
 from sml.tree.tree import DecisionTreeClassifier as sml_dtc
 
@@ -133,20 +134,20 @@ class RandomForestClassifier:
             assert (
                 0 < self.max_features <= self.n_features
             ), "0 < max_features <= n_features when it's an integer"
-            # self.max_features = jnp.array(self.max_features, dtype=int)
+
         elif isinstance(self.max_features, float):
             assert (
                 0 < self.max_features <= 1
             ), "max_features should be in the range (0, 1] when it's a float"
             self.max_features = (int)(self.max_features * self.n_features)
-            # self.max_features = jnp.array((self.max_features * n_features), dtype=int)
+
         elif isinstance(self.max_features, str):
             if self.max_features == 'sqrt':
                 self.max_features = (int)(math.sqrt(self.n_features))
-                # self.max_features = jnp.array(jnp.sqrt(n_features), dtype=int)
+
             elif self.max_features == 'log2':
                 self.max_features = (int)(math.log2(self.n_features))
-                # self.max_features = jnp.array(jnp.log2(n_features), dtype=int)
+
             else:
                 self.max_features = self.n_features
         else:
@@ -175,20 +176,6 @@ class RandomForestClassifier:
         
         tree_predictions = jnp.array(predictions_list).T
             
-            
-        # 目前jit函数single_tree_predict的时候，会将features_indices当成tracer导致报错
-        # features_indices = jnp.array(self.features_indices)
-        # features_indices = self.features_indices
-        # print(features_indices[3])
-        # # Define a function that predicts using a single tree and the corresponding features
-        # def single_tree_predict(i, X):
-        #     features = self.features_indices[i]
-        #     print(features)
-        #     return self.trees[i].predict(X[:, features])
-        
-        # # Vectorize the single_tree_predict function
-        # tree_predictions = jax.vmap(single_tree_predict, in_axes=(0, None))(jnp.arange(self.n_estimators), X)
-        
         y_pred, _ = jax_mode_row(tree_predictions)
 
         return y_pred.ravel()
@@ -197,14 +184,11 @@ class RandomForestClassifier:
 def jax_mode_row(data):
     # 获取每行的众数
 
-    # 获取数据的形状
     num_rows, num_cols = data.shape
 
-    # 初始化众数和计数的数组
     modes_list = []
     counts_list = []
 
-    # 计算每行的众数及其计数
     for row in range(num_rows):
         row_data = data[row, :]
         unique_values, value_counts = jnp.unique(
@@ -214,7 +198,6 @@ def jax_mode_row(data):
         modes_list.append(unique_values[max_count_idx])
         counts_list.append(value_counts[max_count_idx])
 
-    # 将列表转换为 jnp.array
     modes = jnp.array(modes_list, dtype=data.dtype)
     counts = jnp.array(counts_list, dtype=jnp.int32)
 
