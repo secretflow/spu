@@ -26,3 +26,14 @@ py_test(
         "//spu/utils:simulation",
     ],
 )
+
+py_test(
+    name = "adaboost_test",
+    srcs = ["adaboost_test.py"],
+    deps = [
+        "//sml/ensemble:adaboost",
+        "//sml/tree:tree_w",
+        "//spu:init",
+        "//spu/utils:simulation",
+    ],
+)

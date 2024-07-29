@@ -25,3 +25,13 @@ py_binary(
         "//sml/utils:emulation",
     ],
 )
+
+py_binary(
+    name = "adaboost_emul",
+    srcs = ["adaboost_emul.py"],
+    deps = [
+        "//sml/ensemble:adaboost",
+        "//sml/tree:tree_w",
+        "//sml/utils:emulation",
+    ],
+)
