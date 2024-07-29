@@ -219,3 +219,4 @@ def jax_mode_row(data):
     counts = jnp.array(counts_list, dtype=jnp.int32)
 
     return modes, counts
+
