@@ -40,10 +40,10 @@ def _yacl():
         http_archive,
         name = "yacl",
         urls = [
-            "https://github.com/secretflow/yacl/archive/refs/tags/0.4.5b3.tar.gz",
+            "https://github.com/secretflow/yacl/archive/refs/tags/0.4.5b3_nightly_20240722.tar.gz",
         ],
-        strip_prefix = "yacl-0.4.5b3",
-        sha256 = "bd89d63312e5e83eff5e001e2cf2135baff321c4b72a309f7d00cc53ce02e1a1",
+        strip_prefix = "yacl-0.4.5b3_nightly_20240722",
+        sha256 = "ccca599e6ded6089c5afbb87c8f5e09383195af256caacd50089f0c7443e8604",
     )
 
 def _libpsi():
@@ -51,10 +51,10 @@ def _libpsi():
         http_archive,
         name = "psi",
         urls = [
-            "https://github.com/secretflow/psi/archive/refs/tags/v0.4.0beta.tar.gz",
+            "https://github.com/secretflow/psi/archive/refs/tags/v0.4.1.dev240722.tar.gz",
         ],
-        strip_prefix = "psi-0.4.0beta",
-        sha256 = "c2fbf486a66eca9d3ec1725a81d93a7c6e80a9206ef1c9263a1608e0bef95e1a",
+        strip_prefix = "psi-0.4.1.dev240722",
+        sha256 = "878cd8af2c7b9850944a27adf91f21dd4937d09d38e8365baad3b5165db8b39a",
     )
 
 def _rules_proto_grpc():
@@ -136,8 +136,8 @@ def _bazel_skylib():
     )
 
 def _com_github_openxla_xla():
-    OPENXLA_COMMIT = "8533a6869ae02fb3b15a8a12739a982fc3c9f6e7"
-    OPENXLA_SHA256 = "d5b076825c992f59542f6b94e5480c7e7c6c627cd18c80ec60b6d5b295c160d4"
+    OPENXLA_COMMIT = "04f2bfe797408c9efe742b89e2e4db6cf526ebb7"
+    OPENXLA_SHA256 = "7e1d24737815be7607eed5f02fe7f81d97ffe358dfb7b4876f97bce8f48b3b3e"
 
     # We need openxla to handle xla/mhlo/stablehlo
     maybe(

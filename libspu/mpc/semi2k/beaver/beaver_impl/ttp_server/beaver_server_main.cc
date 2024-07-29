@@ -91,8 +91,7 @@ int main(int argc, char* argv[]) {
     std::string key;
     SPU_ENFORCE(
         butil::Base64Decode(ttp_server_config::FLAGS_server_private_key, &key));
-    decode_private_key =
-        yacl::Buffer(decode_private_key.data(), decode_private_key.size());
+    decode_private_key = yacl::Buffer(key.data(), key.size());
   }
 
   spu::mpc::semi2k::beaver::ttp_server::ServerOptions ops{

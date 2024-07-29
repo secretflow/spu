@@ -23,7 +23,7 @@
 #include "yacl/crypto/rand/rand.h"
 #include "yacl/crypto/tools/prg.h"
 #include "yacl/kernel/algorithms/base_ot.h"
-#include "yacl/kernel/algorithms/ot_store.h"
+#include "yacl/kernel/type/ot_store.h"
 #include "yacl/utils/serialize.h"
 
 #include "libspu/mpc/common/prg_tensor.h"

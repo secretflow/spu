@@ -348,9 +348,9 @@ NdArrayRef LShiftB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
 
   // TODO: the hal dtype should tell us about the max number of possible bits.
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
-  const size_t out_nbits =
-      std::min<size_t>(in_ty->nbits() + *std::max_element(bits.begin(), bits.end()),
-               SizeOf(field) * 8);
+  const size_t out_nbits = std::min<size_t>(
+      in_ty->nbits() + *std::max_element(bits.begin(), bits.end()),
+      SizeOf(field) * 8);
   const PtType out_btype = calcBShareBacktype(out_nbits);
   bool is_splat = bits.size() == 1;
 
