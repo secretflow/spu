@@ -45,7 +45,7 @@ TEST_P(EqualProtTest, Basic) {
   inp[0] = ring_rand(field, shape);
   inp[1] = ring_rand(field, shape);
 
-  DISPATCH_ALL_FIELDS(field, "", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     auto xinp0 = NdArrayView<ring2k_t>(inp[0]);
     auto xinp1 = NdArrayView<ring2k_t>(inp[1]);
     std::copy_n(&xinp1[0], 5, &xinp0[0]);
@@ -64,7 +64,7 @@ TEST_P(EqualProtTest, Basic) {
   SPU_ENFORCE_EQ(eq_oup[0].shape(), shape);
   SPU_ENFORCE_EQ(eq_oup[1].shape(), shape);
 
-  DISPATCH_ALL_FIELDS(field, "", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     auto xeq0 = NdArrayView<ring2k_t>(eq_oup[0]);
     auto xeq1 = NdArrayView<ring2k_t>(eq_oup[1]);
     auto xinp0 = NdArrayView<ring2k_t>(inp[0]);

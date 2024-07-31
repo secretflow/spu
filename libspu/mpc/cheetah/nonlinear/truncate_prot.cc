@@ -16,7 +16,6 @@
 #include "libspu/core/type.h"
 #include "libspu/mpc/cheetah/nonlinear/compare_prot.h"
 #include "libspu/mpc/cheetah/ot/basic_ot_prot.h"
-#include "libspu/mpc/cheetah/ot/ot_util.h"
 #include "libspu/mpc/cheetah/type.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
@@ -66,7 +65,7 @@ NdArrayRef TruncateProtocol::ComputeWrap(const NdArrayRef& inp,
         wrap_bool = compare_prot.Compute(inp, true);
       } else {
         auto adjusted = ring_neg(inp);
-        DISPATCH_ALL_FIELDS(field, "wrap_adjust", [&]() {
+        DISPATCH_ALL_FIELDS(field, [&]() {
           NdArrayView<ring2k_t> xadj(adjusted);
           pforeach(0, inp.numel(), [&](int64_t i) { xadj[i] -= 1; });
         });
@@ -93,7 +92,7 @@ NdArrayRef TruncateProtocol::MSB1ToWrap(const NdArrayRef& inp,
   const size_t bw = SizeOf(field) * 8;
 
   NdArrayRef cot_output = ring_zeros(field, inp.shape());
-  DISPATCH_ALL_FIELDS(field, "MSB1ToWrap", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using u2k = std::make_unsigned<ring2k_t>::type;
     NdArrayView<const u2k> xinp(inp);
     auto xout = absl::MakeSpan(&cot_output.at<u2k>(0), cot_output.numel());
@@ -148,7 +147,7 @@ NdArrayRef TruncateProtocol::MSB0ToWrap(const NdArrayRef& inp,
     outp = ring_randbit(field, inp.shape());
     std::vector<uint8_t> send(numel * N);
 
-    DISPATCH_ALL_FIELDS(field, "MSB0_adjust", [&]() {
+    DISPATCH_ALL_FIELDS(field, [&]() {
       using u2k = std::make_unsigned<ring2k_t>::type;
       NdArrayView<const u2k> xinp(inp);
       NdArrayView<const u2k> xrnd(outp);
@@ -166,7 +165,7 @@ NdArrayRef TruncateProtocol::MSB0ToWrap(const NdArrayRef& inp,
     sender->Flush();
   } else {
     std::vector<uint8_t> choices(numel, 0);
-    DISPATCH_ALL_FIELDS(field, "MSB0_adjust", [&]() {
+    DISPATCH_ALL_FIELDS(field, [&]() {
       using u2k = std::make_unsigned<ring2k_t>::type;
       NdArrayView<const u2k> xinp(inp);
       for (int64_t i = 0; i < numel; ++i) {
@@ -179,7 +178,7 @@ NdArrayRef TruncateProtocol::MSB0ToWrap(const NdArrayRef& inp,
                                                absl::MakeSpan(recv), nbits);
 
     outp = ring_zeros(field, inp.shape());
-    DISPATCH_ALL_FIELDS(field, "MSB0_finalize", [&]() {
+    DISPATCH_ALL_FIELDS(field, [&]() {
       NdArrayView<ring2k_t> xoup(outp);
       pforeach(0, numel, [&](int64_t i) {
         xoup[i] = static_cast<ring2k_t>(recv[i] & 1);
@@ -220,7 +219,7 @@ NdArrayRef TruncateProtocol::Compute(const NdArrayRef& inp, Meta meta) {
 
     if (rank == 0) {
       NdArrayRef tmp = inp.clone();
-      DISPATCH_ALL_FIELDS(field, "trunc_with_heuristic", [&] {
+      DISPATCH_ALL_FIELDS(field, [&] {
         NdArrayView<ring2k_t> _inp(tmp);
         ring2k_t big_value = static_cast<ring2k_t>(1)
                              << (bit_width - kHeuristicBound);
@@ -230,7 +229,7 @@ NdArrayRef TruncateProtocol::Compute(const NdArrayRef& inp, Meta meta) {
 
       tmp = Compute(tmp, meta);
 
-      DISPATCH_ALL_FIELDS(field, "trunc_with_heuristic", [&] {
+      DISPATCH_ALL_FIELDS(field, [&] {
         NdArrayView<ring2k_t> _outp(tmp);
         ring2k_t big_value = static_cast<ring2k_t>(1)
                              << (bit_width - kHeuristicBound - shift);
@@ -246,7 +245,7 @@ NdArrayRef TruncateProtocol::Compute(const NdArrayRef& inp, Meta meta) {
   NdArrayRef wrap_ashr;
   NdArrayRef out = ring_zeros(field, inp.shape());
 
-  return DISPATCH_ALL_FIELDS(field, "Truncate", [&]() {
+  return DISPATCH_ALL_FIELDS(field, [&]() {
     const ring2k_t component = (static_cast<ring2k_t>(1) << (bit_width - 1));
     NdArrayView<const ring2k_t> xinp(inp);
 

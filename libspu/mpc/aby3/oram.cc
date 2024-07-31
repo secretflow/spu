@@ -37,7 +37,7 @@ NdArrayRef OramOneHotAA::proc(KernelEvalContext *ctx, const NdArrayRef &in,
   const auto field = eltype.as<AShrTy>()->field();
   NdArrayRef out(makeType<OShrTy>(field), {s});
 
-  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using el_t = ring2k_t;
     using shr_t = std::array<el_t, 2>;
     NdArrayView<shr_t> out_(out);
@@ -91,7 +91,7 @@ NdArrayRef OramOneHotAP::proc(KernelEvalContext *ctx, const NdArrayRef &in,
   const auto numel = in.numel();
   NdArrayRef out(makeType<OPShrTy>(field), {s});
 
-  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using el_t = ring2k_t;
     using shr_t = std::array<el_t, 2>;
     NdArrayView<el_t> out_(out);
@@ -150,7 +150,7 @@ NdArrayRef OramReadOA::proc(KernelEvalContext *ctx, const NdArrayRef &onehot,
 
   NdArrayRef out(makeType<AShrTy>(field), {1, index_times});
 
-  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using el_t = ring2k_t;
     using shr_t = std::array<el_t, 2>;
 
@@ -208,7 +208,7 @@ NdArrayRef OramReadOP::proc(KernelEvalContext *ctx, const NdArrayRef &onehot,
   auto o2 = getSecondShare(out);
   int64_t db_numel = onehot.numel();
 
-  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using el_t = ring2k_t;
     using shr_t = std::array<el_t, 2>;
 
@@ -286,15 +286,11 @@ Triple<std::vector<T>> genOramBeaverPrim(KernelEvalContext *ctx, int64_t num,
   std::vector<T> beaver_triple(num * 3);
 
   if (comm->getRank() == adjust_rank) {
-    prg->fillPrssPair<T>(nullptr, nullptr, num * 3,
-                         PrgState::GenPrssCtrl::None);
     prg->fillPrssPair<T>(nullptr, beaver_triple.data(), num * 3,
                          PrgState::GenPrssCtrl::Second);
   } else {
     prg->fillPrssPair<T>(beaver_triple.data(), nullptr, num * 3,
                          PrgState::GenPrssCtrl::First);
-    prg->fillPrssPair<T>(nullptr, nullptr, num * 3,
-                         PrgState::GenPrssCtrl::None);
   }
 
   std::vector<T> a(beaver_triple.begin(), beaver_triple.begin() + num);

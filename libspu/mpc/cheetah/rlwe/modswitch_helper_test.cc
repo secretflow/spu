@@ -120,9 +120,10 @@ TEST_P(RLWE2LWETest, ModulusSwitch_UpDown) {
     }
     // e = round(r'/Delta) mod t \in R_t
     auto src = absl::MakeSpan(pt.data(), pt.coeff_count());
-    auto cmp = ms_helper_->ModulusDownRNS(field_, {(int64_t)poly_deg}, src);
+    auto cmp = ms_helper_->ModulusDownRNS(
+        field_, {static_cast<int64_t>(poly_deg)}, src);
     // check r =? e
-    DISPATCH_ALL_FIELDS(field_, "", [&]() {
+    DISPATCH_ALL_FIELDS(field_, [&]() {
       auto expected = NdArrayView<ring2k_t>(_vec);
       auto computed = NdArrayView<ring2k_t>(cmp);
       for (int64_t i = 0; i < expected.numel(); ++i) {
@@ -145,7 +146,7 @@ TEST_P(RLWE2LWETest, ModulusSwitch_DownUp) {
   // r <- R_q
   RLWEPt rnd;
   UniformPoly(*context_, &rnd);
-  auto &modulus = context_->first_context_data()->parms().coeff_modulus();
+  const auto &modulus = context_->first_context_data()->parms().coeff_modulus();
   // b = a' - r
   RLWEPt poly1;
   {
@@ -158,8 +159,8 @@ TEST_P(RLWE2LWETest, ModulusSwitch_DownUp) {
 
   // r' = round(r/Delta) mod t \in R_t
   // b' = round(b/Delta) mod t \in R_t
-  auto shr0 = ring_zeros(field_, {(int64_t)poly_deg});
-  auto shr1 = ring_zeros(field_, {(int64_t)poly_deg});
+  auto shr0 = ring_zeros(field_, {static_cast<int64_t>(poly_deg)});
+  auto shr1 = ring_zeros(field_, {static_cast<int64_t>(poly_deg)});
   {
     auto src = absl::MakeSpan(rnd.data(), rnd.coeff_count());
     ms_helper_->ModulusDownRNS(src, shr0);
@@ -168,7 +169,7 @@ TEST_P(RLWE2LWETest, ModulusSwitch_DownUp) {
     ms_helper_->ModulusDownRNS(src, shr1);
   }
 
-  DISPATCH_ALL_FIELDS(field_, "", [&]() {
+  DISPATCH_ALL_FIELDS(field_, [&]() {
     auto expected = NdArrayView<ring2k_t>(vec_a);
     auto computed0 = NdArrayView<ring2k_t>(shr0);
     auto computed1 = NdArrayView<ring2k_t>(shr1);

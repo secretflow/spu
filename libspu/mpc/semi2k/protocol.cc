@@ -50,21 +50,23 @@ void regSemi2kProtocol(SPUContext* ctx,
   ctx->prot()->addState<Semi2kState>(ctx->config(), lctx);
   ctx->prot()
       ->regKernel<
-          semi2k::P2A, semi2k::A2P, semi2k::A2V, semi2k::V2A,  //
-          semi2k::NotA,                                        //
-          semi2k::AddAP, semi2k::AddAA,                        //
-          semi2k::MulAP, semi2k::MulAA, semi2k::SquareA,       //
-          semi2k::MatMulAP, semi2k::MatMulAA,                  //
-          semi2k::LShiftA, semi2k::LShiftB, semi2k::RShiftB,
-          semi2k::ARShiftB,                                             //
-          semi2k::CommonTypeB, semi2k::CommonTypeV, semi2k::CastTypeB,  //
-          semi2k::B2P, semi2k::P2B, semi2k::A2B, semi2k::B2A_Randbit,   //
-          semi2k::AndBP, semi2k::AndBB, semi2k::XorBP, semi2k::XorBB,
-          semi2k::BitrevB,                       //
-          semi2k::BitIntlB, semi2k::BitDeintlB,  //
-          semi2k::RandA, semi2k::RandPermM, semi2k::PermAM, semi2k::PermAP,
-          semi2k::InvPermAM, semi2k::InvPermAP, semi2k::InvPermAV,  //
-          semi2k::EqualAA, semi2k::EqualAP, semi2k::BeaverCacheKernel>();
+          semi2k::P2A, semi2k::A2P, semi2k::A2V, semi2k::V2A,                //
+          semi2k::NotA,                                                      //
+          semi2k::AddAP, semi2k::AddAA,                                      //
+          semi2k::MulAP, semi2k::MulAA, semi2k::SquareA,                     //
+          semi2k::MatMulAP, semi2k::MatMulAA,                                //
+          semi2k::LShiftA, semi2k::LShiftB, semi2k::RShiftB,                 //
+          semi2k::ARShiftB,                                                  //
+          semi2k::CommonTypeB, semi2k::CommonTypeV, semi2k::CastTypeB,       //
+          semi2k::B2P, semi2k::P2B,                                          //
+          semi2k::A2B, semi2k::B2A_Randbit, semi2k::B2A_Disassemble,         //
+          semi2k::AndBP, semi2k::AndBB, semi2k::XorBP, semi2k::XorBB,        //
+          semi2k::BitrevB,                                                   //
+          semi2k::BitIntlB, semi2k::BitDeintlB,                              //
+          semi2k::RandA, semi2k::RandPermM, semi2k::PermAM, semi2k::PermAP,  //
+          semi2k::InvPermAM, semi2k::InvPermAP, semi2k::InvPermAV,           //
+          semi2k::EqualAA, semi2k::EqualAP,                                  //
+          semi2k::BeaverCacheKernel>();
 
   if (ctx->config().trunc_allow_msb_error()) {
     ctx->prot()->regKernel<semi2k::TruncA>();

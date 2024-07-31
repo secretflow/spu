@@ -115,7 +115,7 @@ NdArrayRef TrustedParty::adjustTrunc(absl::Span<const Operand> ops,
 
   auto rs = reconstruct(RecOp::ADD, ops);
   // adjust = (rs[0] >> bits) - rs[1];
-  return ring_sub(ring_arshift(rs[0], bits), rs[1]);
+  return ring_sub(ring_arshift(rs[0], {static_cast<int64_t>(bits)}), rs[1]);
 }
 
 std::pair<NdArrayRef, NdArrayRef> TrustedParty::adjustTruncPr(
@@ -127,11 +127,14 @@ std::pair<NdArrayRef, NdArrayRef> TrustedParty::adjustTruncPr(
   auto rs = reconstruct(RecOp::ADD, ops);
 
   // adjust1 = ((rs[0] << 1) >> (bits + 1)) - rs[1];
-  auto adjust1 = ring_sub(ring_rshift(ring_lshift(rs[0], 1), bits + 1), rs[1]);
+  auto adjust1 = ring_sub(
+      ring_rshift(ring_lshift(rs[0], {1}), {static_cast<int64_t>(bits + 1)}),
+      rs[1]);
 
   // adjust2 = (rs[0] >> (k - 1)) - rs[2];
   const size_t k = SizeOf(ops[0].desc.field) * 8;
-  auto adjust2 = ring_sub(ring_rshift(rs[0], k - 1), rs[2]);
+  auto adjust2 =
+      ring_sub(ring_rshift(rs[0], {static_cast<int64_t>(k - 1)}), rs[2]);
 
   return {adjust1, adjust2};
 }

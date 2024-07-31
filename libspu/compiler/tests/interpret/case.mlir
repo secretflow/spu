@@ -1,6 +1,8 @@
 // RUN: spu-translate --protocol_kind=1 --interpret -split-input-file %s
 // RUN: spu-translate --protocol_kind=2 --interpret -split-input-file %s
 // RUN: spu-translate --protocol_kind=3 --interpret -split-input-file %s
+// RUN: spu-translate --protocol_kind=4 --interpret -split-input-file %s
+// RUN: spu-translate --protocol_kind=5 --interpret -split-input-file %s
 
 func.func @case_negative_index_default() {
   %index = pphlo.constant dense<-1> : tensor<i32>

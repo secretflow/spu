@@ -22,6 +22,7 @@
 #include "yacl/base/int128.h"
 
 #include "libspu/core/bit_utils.h"
+#include "libspu/core/shape.h"
 #include "libspu/core/vectorize.h"
 
 namespace spu::mpc {
@@ -35,10 +36,10 @@ struct CircuitBasicBlock {
   using And = std::function<T(T const&, T const&)>;
 
   // (logical) left shift
-  using LShift = std::function<T(T const&, size_t)>;
+  using LShift = std::function<T(T const&, const Sizes&)>;
 
   // (logical) right shift
-  using RShift = std::function<T(T const&, size_t)>;
+  using RShift = std::function<T(T const&, const Sizes&)>;
 
   // Init a constant.
   using InitLike = std::function<T(T const&, uint128_t)>;
@@ -72,9 +73,9 @@ T kogge_stone(const CircuitBasicBlock<T>& ctx, T const& lhs, T const& rhs,
   auto G = ctx._and(lhs, rhs);
 
   for (int idx = 0; idx < Log2Ceil(nbits); ++idx) {
-    const size_t offset = 1UL << idx;
-    auto G1 = ctx.lshift(G, offset);
-    auto P1 = ctx.lshift(P, offset);
+    const int64_t offset = 1L << idx;
+    auto G1 = ctx.lshift(G, {offset});
+    auto P1 = ctx.lshift(P, {offset});
 
     // P1 = P & P1
     // G1 = G ^ (P & G1)
@@ -90,7 +91,7 @@ T kogge_stone(const CircuitBasicBlock<T>& ctx, T const& lhs, T const& rhs,
   }
 
   // out = (G << 1) ^ p0
-  auto C = ctx.lshift(G, 1);
+  auto C = ctx.lshift(G, {1});
   return ctx._xor(ctx._xor(lhs, rhs), C);
 }
 
@@ -122,12 +123,12 @@ T sklansky(const CircuitBasicBlock<T>& ctx, T const& lhs, T const& rhs,
   auto G = ctx._and(lhs, rhs);
   for (int idx = 0; idx < Log2Ceil(nbits); ++idx) {
     const auto s_mask = ctx.init_like(G, kSelMask[idx]);
-    auto G1 = ctx.lshift(ctx._and(G, s_mask), 1);
-    auto P1 = ctx.lshift(ctx._and(P, s_mask), 1);
+    auto G1 = ctx.lshift(ctx._and(G, s_mask), {1});
+    auto P1 = ctx.lshift(ctx._and(P, s_mask), {1});
 
     for (int j = 0; j < idx; j++) {
-      G1 = ctx._xor(G1, ctx.lshift(G1, 1 << j));
-      P1 = ctx._xor(P1, ctx.lshift(P1, 1 << j));
+      G1 = ctx._xor(G1, ctx.lshift(G1, {1 << j}));
+      P1 = ctx._xor(P1, ctx.lshift(P1, {1 << j}));
     }
 
     const auto k_mask = ctx.init_like(G, kKeepMasks[idx]);
@@ -147,7 +148,7 @@ T sklansky(const CircuitBasicBlock<T>& ctx, T const& lhs, T const& rhs,
   }
 
   // out = (G0 << 1) ^ p0
-  auto C = ctx.lshift(G, 1);
+  auto C = ctx.lshift(G, {1});
   return ctx._xor(ctx._xor(lhs, rhs), C);
 }
 
@@ -181,21 +182,22 @@ T odd_even_split(const CircuitBasicBlock<T>& ctx, const T& v, size_t nbits) {
   }};
 
   // let r = v
-  T r = ctx.lshift(v, 0);
+  T r = ctx.lshift(v, {0});
   for (int idx = 0; idx + 1 < Log2Ceil(nbits); ++idx) {
     // r = (r & keep) ^ ((r >> i) & move) ^ ((r & move) << i)
     const auto keep = ctx.init_like(r, kKeepMasks[idx]);
     const auto move = ctx.init_like(r, kSwapMasks[idx]);
 
     r = ctx._xor(ctx._and(r, keep),
-                 ctx._xor(ctx._and(ctx.rshift(r, 1 << idx), move),
-                          ctx.lshift(ctx._and(r, move), 1 << idx)));
+                 ctx._xor(ctx._and(ctx.rshift(r, {1 << idx}), move),
+                          ctx.lshift(ctx._and(r, move), {1 << idx})));
   }
 
   if (!absl::has_single_bit(nbits)) {
     // handle non 2^k bits case.
     T mask = ctx.init_like(r, (1ULL << (nbits / 2)) - 1);
-    r = ctx._xor(ctx.lshift(ctx.rshift(r, 1 << Log2Floor(nbits)), nbits / 2),
+    r = ctx._xor(ctx.lshift(ctx.rshift(r, {1 << Log2Floor(nbits)}),
+                            {static_cast<int64_t>(nbits / 2)}),
                  ctx._and(r, mask));
   }
 
@@ -228,7 +230,7 @@ T carry_out(const CircuitBasicBlock<T>& ctx, const T& x, const T& y,
     auto perm = odd_even_split(ctx, in, kk);
     T mask = ctx.init_like(perm, (static_cast<uint128_t>(1) << hk) - 1);
     T t0 = ctx._and(perm, mask);
-    T t1 = ctx._and(ctx.rshift(perm, hk), mask);
+    T t1 = ctx._and(ctx.rshift(perm, {static_cast<int64_t>(hk)}), mask);
     ctx.set_nbits(t0, hk);
     ctx.set_nbits(t1, hk);
     return std::make_tuple(t0, t1);
@@ -247,8 +249,8 @@ T carry_out(const CircuitBasicBlock<T>& ctx, const T& x, const T& y,
   while (k > 1) {
     if (k % 2 != 0) {
       k += 1;
-      P = ctx.lshift(P, 1);
-      G = ctx.lshift(G, 1);
+      P = ctx.lshift(P, {1});
+      G = ctx.lshift(G, {1});
     }
     auto [P0, P1] = bit_split(P, k);
     auto [G0, G1] = bit_split(G, k);

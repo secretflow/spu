@@ -18,20 +18,11 @@
 #include "llvm/Support/FormatVariadic.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/TypeUtilities.h"
+#include "stablehlo/dialect/TypeInference.h"
 
 #include "libspu/dialect/pphlo/IR/ops.h.inc"
 
 namespace mlir::spu::pphlo {
-
-namespace {
-
-// Checks if the vector `nums` has duplicates.
-bool hasDuplicates(const ArrayRef<int64_t> nums) {
-  llvm::SmallDenseSet<int64_t> set(nums.begin(), nums.end());
-  return set.size() != nums.size();
-}
-
-}  // namespace
 
 template <typename T>
 static LogicalResult Verify(T /*op*/) {
@@ -386,75 +377,12 @@ LogicalResult ConcatenateOp::verify() {
 }
 
 LogicalResult BroadcastOp::verify() {
-  auto operandType = mlir::dyn_cast<RankedTensorType>(getOperand().getType());
-
-  auto operandRank = operandType.getRank();
-
-  if (getBroadcastDimensions().empty()) {
-    if (operandRank == 0) {
-      return success();
-    }
-    return emitOpError(
-        llvm::formatv("broadcast_dimensions is absent, but required because "
-                      "operand has non-zero rank ({0})",
-                      operandRank));
-  }
-
-  auto dimensionsSize = getBroadcastDimensions().size();
-  if (static_cast<int64_t>(dimensionsSize) != operandRank) {
-    return emitOpError(llvm::formatv(
-        "broadcast_dimensions size ({0}) does not match operand rank ({1})",
-        dimensionsSize, operandRank));
-  }
-
-  auto dimensions = getBroadcastDimensions();
-  if (hasDuplicates(dimensions)) {
-    return emitOpError("broadcast_dimensions should not have duplicates");
-  }
-
-  auto resultType = mlir::dyn_cast<RankedTensorType>(getResult().getType());
-  auto resultRank = resultType.getRank();
-
-  for (size_t i = 0; i != dimensionsSize; ++i) {
-    auto dimIndex = dimensions[i];
-    if ((dimIndex >= resultRank) || (dimIndex < 0)) {
-      return emitOpError(
-          llvm::formatv("broadcast_dimensions contains invalid value {0} for "
-                        "result with rank {1}",
-                        dimIndex, resultRank));
-    }
-
-    if (!operandType.isDynamicDim(i)) {
-      auto dimSize = operandType.getDimSize(i);
-      auto resultDimSize = resultType.getDimSize(dimIndex);
-      if (dimSize != 1 && dimSize != resultDimSize) {
-        return emitOpError(
-            llvm::formatv("size of operand dimension {0} ({1}) is not equal to "
-                          "1 or size of result dimension {2} ({3})",
-                          i, dimSize, dimIndex, resultDimSize));
-      }
-    }
-  }
-
-  return success();
+  return hlo::verifyBroadcastInDimOp(getLoc(), getOperand(),
+                                     getBroadcastDimensions(), getResult());
 }
 
 LogicalResult IotaOp::verify() {
-  auto shape = mlir::dyn_cast<ShapedType>(getType());
-  if (!shape.hasRank()) {
-    return success();
-  }
-
-  if (shape.getRank() == 0) {
-    return emitOpError() << "does not support scalars.";
-  }
-
-  auto iotaDimension = static_cast<int64_t>(this->getIotaDimension());
-  if (iotaDimension >= shape.getRank() || iotaDimension < 0) {
-    return emitOpError()
-           << "iota dimension cannot go beyond the output rank or be negative.";
-  }
-  return success();
+  return hlo::verifyIotaOp(getLoc(), getIotaDimension(), getResult());
 }
 
 LogicalResult SliceOp::verify() {

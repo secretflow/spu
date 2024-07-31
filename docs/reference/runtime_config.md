@@ -179,8 +179,9 @@ The SPU runtime configuration.
 | Field | Type | Description |
 | ----- | ---- | ----------- |
 | server_host | [ string](#string) | TrustedThirdParty beaver server's remote ip:port or load-balance uri. |
-| session_id | [ string](#string) | if empty, use link id as session id. |
 | adjust_rank | [ int32](#int32) | which rank do adjust rpc call, usually choose the rank closer to the server. |
+| asym_crypto_schema | [ string](#string) | asym_crypto_schema: support ["SM2"] Will support 25519 in the future, after yacl supported it. |
+| server_public_key | [ bytes](#bytes) | server's public key |
  <!-- end Fields -->
  <!-- end HasFields -->
 

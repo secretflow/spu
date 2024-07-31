@@ -143,17 +143,17 @@ Value xor_vv(SPUContext* ctx, const Value& x, const Value& y);
 Value xor_vp(SPUContext* ctx, const Value& x, const Value& y);
 Value xor_pp(SPUContext* ctx, const Value& x, const Value& y);
 
-Value lshift_s(SPUContext* ctx, const Value& x, size_t nbits);
-Value lshift_v(SPUContext* ctx, const Value& x, size_t nbits);
-Value lshift_p(SPUContext* ctx, const Value& x, size_t nbits);
+Value lshift_s(SPUContext* ctx, const Value& x, const Sizes& nbits);
+Value lshift_v(SPUContext* ctx, const Value& x, const Sizes& nbits);
+Value lshift_p(SPUContext* ctx, const Value& x, const Sizes& nbits);
 
-Value rshift_s(SPUContext* ctx, const Value& x, size_t nbits);
-Value rshift_v(SPUContext* ctx, const Value& x, size_t nbits);
-Value rshift_p(SPUContext* ctx, const Value& x, size_t nbits);
+Value rshift_s(SPUContext* ctx, const Value& x, const Sizes& nbits);
+Value rshift_v(SPUContext* ctx, const Value& x, const Sizes& nbits);
+Value rshift_p(SPUContext* ctx, const Value& x, const Sizes& nbits);
 
-Value arshift_s(SPUContext* ctx, const Value& x, size_t nbits);
-Value arshift_v(SPUContext* ctx, const Value& x, size_t nbits);
-Value arshift_p(SPUContext* ctx, const Value& x, size_t nbits);
+Value arshift_s(SPUContext* ctx, const Value& x, const Sizes& nbits);
+Value arshift_v(SPUContext* ctx, const Value& x, const Sizes& nbits);
+Value arshift_p(SPUContext* ctx, const Value& x, const Sizes& nbits);
 
 Value trunc_s(SPUContext* ctx, const Value& x, size_t nbits, SignType sign);
 Value trunc_v(SPUContext* ctx, const Value& x, size_t nbits, SignType sign);

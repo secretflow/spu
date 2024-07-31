@@ -84,18 +84,18 @@ IMPL_UNARY_OP(_square)
 
 #undef IMPL_UNARY_OP
 
-#define IMPL_SHIFT_OP(Name)                                   \
-  Value Name(SPUContext* ctx, const Value& in, size_t bits) { \
-    SPU_TRACE_HAL_LEAF(ctx, in, bits);                        \
-    if (in.isPublic()) {                                      \
-      return Name##_p(ctx, in, bits);                         \
-    } else if (in.isSecret()) {                               \
-      return Name##_s(ctx, in, bits);                         \
-    } else if (in.isPrivate()) {                              \
-      return Name##_v(ctx, in, bits);                         \
-    } else {                                                  \
-      SPU_THROW("unsupport unary op={} for {}", #Name, in);   \
-    }                                                         \
+#define IMPL_SHIFT_OP(Name)                                         \
+  Value Name(SPUContext* ctx, const Value& in, const Sizes& bits) { \
+    SPU_TRACE_HAL_LEAF(ctx, in, bits);                              \
+    if (in.isPublic()) {                                            \
+      return Name##_p(ctx, in, bits);                               \
+    } else if (in.isSecret()) {                                     \
+      return Name##_s(ctx, in, bits);                               \
+    } else if (in.isPrivate()) {                                    \
+      return Name##_v(ctx, in, bits);                               \
+    } else {                                                        \
+      SPU_THROW("unsupport unary op={} for {}", #Name, in);         \
+    }                                                               \
   }
 
 IMPL_SHIFT_OP(_lshift)
@@ -497,7 +497,7 @@ Value _bit_parity(SPUContext* ctx, const Value& x, size_t bits) {
   SPU_ENFORCE(absl::has_single_bit(bits), "currently only support power of 2");
   auto ret = _prefer_b(ctx, x);
   while (bits > 1) {
-    ret = _xor(ctx, ret, _rshift(ctx, ret, bits / 2));
+    ret = _xor(ctx, ret, _rshift(ctx, ret, {static_cast<int64_t>(bits / 2)}));
     bits /= 2;
   }
 
@@ -518,7 +518,7 @@ Value _popcount(SPUContext* ctx, const Value& x, size_t bits) {
   std::vector<Value> vs;
   vs.reserve(bits);
   for (size_t idx = 0; idx < bits; idx++) {
-    auto x_ = _rshift(ctx, xb, idx);
+    auto x_ = _rshift(ctx, xb, {static_cast<int64_t>(idx)});
     x_ = _and(ctx, x_, _constant(ctx, 1U, x.shape()));
 
     if (x_.storage_type().isa<BShare>()) {
@@ -547,8 +547,8 @@ Value _prefix_or(SPUContext* ctx, const Value& x) {
   auto b0 = _prefer_b(ctx, x);
   const size_t bit_width = SizeOf(ctx->getField()) * 8;
   for (int idx = 0; idx < absl::bit_width(bit_width) - 1; idx++) {
-    const size_t offset = 1UL << idx;
-    auto b1 = _rshift(ctx, b0, offset);
+    const int64_t offset = 1L << idx;
+    auto b1 = _rshift(ctx, b0, {offset});
     b0 = _or(ctx, b0, b1);
   }
   return b0;
@@ -574,8 +574,8 @@ Value _bitdeintl(SPUContext* ctx, const Value& in) {
     // out = (out & keep) ^ ((out >> shift) & move) ^ ((out & move) << shift);
     out = _xor(ctx,
                _xor(ctx, _and(ctx, out, keep),
-                    _and(ctx, _rshift(ctx, out, shift), move)),
-               _lshift(ctx, _and(ctx, out, move), shift));
+                    _and(ctx, _rshift(ctx, out, {shift}), move)),
+               _lshift(ctx, _and(ctx, out, move), {shift}));
   }
   return out;
 }

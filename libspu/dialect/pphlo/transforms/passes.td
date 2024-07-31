@@ -122,3 +122,9 @@ def InlineSecretControlFlow: Pass<"inline-secret-control-flow", "func::FuncOp"> 
   let constructor = "createInlineSecretControlFlow()";
   let dependentDialects = ["pphlo::PPHloDialect"];
 }
+
+def RegionAccessFixture: Pass<"region-access-fixture", "func::FuncOp"> {
+  let summary = "Fix region access mismatched shape";
+  let constructor = "createRegionAccessFixture()";
+  let dependentDialects = ["pphlo::PPHloDialect"];
+}

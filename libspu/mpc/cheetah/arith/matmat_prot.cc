@@ -113,7 +113,7 @@ NdArrayRef ConcatSubMatrix(const NdArrayRef& mat, const Shape2D& mat_shape,
   // NOTE: zero padding via initialization
   NdArrayRef flatten = ring_zeros(field, {num_coeff});
 
-  DISPATCH_ALL_FIELDS(field, "ConcatSubMat", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using uT = std::make_unsigned<ring2k_t>::type;
 
     for (int64_t r = 0, rr = starts[0]; r < extents[0]; ++r, ++rr) {
@@ -183,7 +183,7 @@ Shape3D MatMatProtocol::GetSubMatShape(const Meta& meta, int64_t poly_deg,
   const double cpu_price = 1.0;
   const double bandwidth_price = 1000.0;
 
-  Shape3D subshape;
+  Shape3D subshape = {0, 0, 0};
   Shape3D blk;
 
   const int64_t n = poly_deg;
@@ -423,7 +423,7 @@ NdArrayRef MatMatProtocol::ParseResult(FieldType field, const Meta& meta,
       for (int64_t r = 0; r < row_ext; ++r) {
         for (int64_t c = 0; c < col_ext; ++c) {
           int64_t dst_idx = (r + row_start) * meta.dims[2] + col_start + c;
-          DISPATCH_ALL_FIELDS(field, "ParseResult", [&]() {
+          DISPATCH_ALL_FIELDS(field, [&]() {
             matmat.at<ring2k_t>(dst_idx) =
                 result_poly.at<ring2k_t>(r * subdims[2] + c);
           });
@@ -532,13 +532,13 @@ NdArrayRef MatMatProtocol::ParsePackLWEsResult(
   std::vector<NdArrayRef> decoded_vectors(ans_poly.size());
   for (size_t i = 0; i < ans_poly.size(); ++i) {
     decoded_vectors[i] =
-        msh.ModulusDownRNS(field, {(int64_t)packing_width},
+        msh.ModulusDownRNS(field, {static_cast<int64_t>(packing_width)},
                            {ans_poly[i].data(), ans_poly[i].coeff_count()});
   }
 
   NdArrayRef matmat = ring_zeros(field, {meta.dims[0] * meta.dims[2]});
 
-  DISPATCH_ALL_FIELDS(field, "pack_lwes_results", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> xmatmat(matmat);
 
     for (size_t i = 0; i < ans_poly.size(); ++i) {

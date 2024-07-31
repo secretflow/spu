@@ -29,11 +29,24 @@ Code under this folder is purely for research demonstration and it's **NOT desig
   * On one terminal
 
     ```sh
-    bazel-bin/experimental/squirrel/squirrel_demo_main --rank0_nfeatures=85 --rank1_nfeatures=85 --standalone --train=BinaryClassification_Aps_Test_60000_171.csv --test=BinaryClassification_Aps_Test_16000_171.csv --standalone=true --rank=0 --has_label=0 --lr=1.0 --subsample=0.8
+    bazel-bin/experimental/squirrel/squirrel_demo_main --rank0_nfeatures=85 --rank1_nfeatures=85 --standalone=true --train=BinaryClassification_Aps_Test_60000_171.csv --test=BinaryClassification_Aps_Test_16000_171.csv --rank=0 --has_label=0 --lr=1.0 --subsample=0.8
     ```
 
   * On another terminal
 
     ```sh
-    bazel-bin/experimental/squirrel/squirrel_demo_main --rank0_nfeatures=85 --rank1_nfeatures=85 --standalone --train=BinaryClassification_Aps_Test_60000_171.csv --test=BinaryClassification_Aps_Test_16000_171.csv --standalone=true --rank=1 --has_label=1 --lr=1.0 --subsample=0.8
+    bazel-bin/experimental/squirrel/squirrel_demo_main --rank0_nfeatures=85 --rank1_nfeatures=85 --standalone=true --train=BinaryClassification_Aps_Test_60000_171.csv --test=BinaryClassification_Aps_Test_16000_171.csv --rank=1 --has_label=1 --lr=1.0 --subsample=0.8
     ```
+* Run on distributed dataset, e.g., using the `breast_cancer` dataset from the SPU repo. 
+  * On one terminal
+
+    ```sh
+    bazel-bin/experimental/squirrel/squirrel_demo_main --rank0_nfeatures=15 --rank1_nfeatures=15 --standalone=false --train=examples/data/breast_cancer_a.csv --rank=0 --has_label=0 --lr=1.0 --subsample=0.8
+    ```
+
+  * On another terminal
+
+    ```sh
+    bazel-bin/experimental/squirrel/squirrel_demo_main --rank0_nfeatures=15 --rank1_nfeatures=15 --standalone=false --train=examples/data/breast_cancer_b.csv --rank=1 --has_label=1 --lr=1.0 --subsample=0.8
+    ```
+

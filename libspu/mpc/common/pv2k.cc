@@ -73,7 +73,7 @@ class V2P : public UnaryKernel {
 
     auto numel = in.numel();
 
-    DISPATCH_ALL_FIELDS(field, "v2p", [&]() {
+    DISPATCH_ALL_FIELDS(field, [&]() {
       std::vector<ring2k_t> priv(numel);
       NdArrayView<ring2k_t> _in(in);
 
@@ -113,7 +113,7 @@ class MakeP : public Kernel {
                    Strides(shape.size(), 0),  // strides
                    0);
 
-    DISPATCH_ALL_FIELDS(field, "pub2k.make_p", [&]() {
+    DISPATCH_ALL_FIELDS(field, [&]() {
       arr.at<ring2k_t>(Index(shape.size(), 0)) = static_cast<ring2k_t>(init);
     });
     return Value(arr, DT_INVALID);
@@ -176,7 +176,8 @@ class MsbP : public UnaryKernel {
   ce::CExpr comm() const override { return ce::Const(0); }
 
   NdArrayRef proc(KernelEvalContext*, const NdArrayRef& in) const override {
-    return ring_rshift(in, in.elsize() * 8 - 1).as(in.eltype());
+    return ring_rshift(in, {static_cast<int64_t>(in.elsize() * 8 - 1)})
+        .as(in.eltype());
   }
 };
 
@@ -190,7 +191,8 @@ class MsbV : public UnaryKernel {
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override {
     if (isOwner(ctx, in.eltype())) {
-      return ring_rshift(in, in.elsize() * 8 - 1).as(in.eltype());
+      return ring_rshift(in, {static_cast<int64_t>(in.elsize() * 8 - 1)})
+          .as(in.eltype());
     } else {
       return in;
     }
@@ -512,7 +514,7 @@ class LShiftP : public ShiftKernel {
   ce::CExpr comm() const override { return ce::Const(0); }
 
   NdArrayRef proc(KernelEvalContext*, const NdArrayRef& in,
-                  size_t bits) const override {
+                  const Sizes& bits) const override {
     return ring_lshift(in, bits).as(in.eltype());
   }
 };
@@ -526,7 +528,7 @@ class LShiftV : public ShiftKernel {
   ce::CExpr comm() const override { return ce::Const(0); }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
-                  size_t bits) const override {
+                  const Sizes& bits) const override {
     if (isOwner(ctx, in.eltype())) {
       return ring_lshift(in, bits).as(in.eltype());
     } else {
@@ -544,7 +546,7 @@ class RShiftP : public ShiftKernel {
   ce::CExpr comm() const override { return ce::Const(0); }
 
   NdArrayRef proc(KernelEvalContext*, const NdArrayRef& in,
-                  size_t bits) const override {
+                  const Sizes& bits) const override {
     return ring_rshift(in, bits).as(in.eltype());
   }
 };
@@ -558,7 +560,7 @@ class RShiftV : public ShiftKernel {
   ce::CExpr comm() const override { return ce::Const(0); }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
-                  size_t bits) const override {
+                  const Sizes& bits) const override {
     if (isOwner(ctx, in.eltype())) {
       return ring_rshift(in, bits).as(in.eltype());
     } else {
@@ -576,7 +578,7 @@ class ARShiftP : public ShiftKernel {
   ce::CExpr comm() const override { return ce::Const(0); }
 
   NdArrayRef proc(KernelEvalContext*, const NdArrayRef& in,
-                  size_t bits) const override {
+                  const Sizes& bits) const override {
     return ring_arshift(in, bits).as(in.eltype());
   }
 };
@@ -590,7 +592,7 @@ class ARShiftV : public ShiftKernel {
   ce::CExpr comm() const override { return ce::Const(0); }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
-                  size_t bits) const override {
+                  const Sizes& bits) const override {
     if (isOwner(ctx, in.eltype())) {
       return ring_arshift(in, bits).as(in.eltype());
     } else {
@@ -607,8 +609,8 @@ NdArrayRef rounded_arshift(const NdArrayRef& in, size_t bits) {
   // https://stackoverflow.com/questions/14008330/how-do-you-multiply-two-fixed-point-numbers
   // Under certain pattern, like sum(mul(A, B)), error can accumulate in a
   // fairly significant way
-  auto v1 = ring_arshift(in, bits);
-  auto v2 = ring_arshift(in, bits - 1);
+  auto v1 = ring_arshift(in, {static_cast<int64_t>(bits)});
+  auto v2 = ring_arshift(in, {static_cast<int64_t>(bits - 1)});
   ring_and_(v2, ring_ones(in.eltype().as<Ring2k>()->field(), in.shape()));
   ring_add_(v1, v2);
   return v1;
@@ -623,8 +625,9 @@ class TruncP : public ShiftKernel {
   ce::CExpr comm() const override { return ce::Const(0); }
 
   NdArrayRef proc(KernelEvalContext*, const NdArrayRef& in,
-                  size_t bits) const override {
-    return rounded_arshift(in, bits).as(in.eltype());
+                  const Sizes& bits) const override {
+    SPU_ENFORCE(bits.size() == 1, "truncation bits should be splat");
+    return rounded_arshift(in, bits[0]).as(in.eltype());
   }
 };
 
@@ -637,9 +640,10 @@ class TruncV : public ShiftKernel {
   ce::CExpr comm() const override { return ce::Const(0); }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
-                  size_t bits) const override {
+                  const Sizes& bits) const override {
     if (isOwner(ctx, in.eltype())) {
-      return rounded_arshift(in, bits).as(in.eltype());
+      SPU_ENFORCE(bits.size() == 1, "truncation bits should be splat");
+      return rounded_arshift(in, bits[0]).as(in.eltype());
     } else {
       return in;
     }
@@ -701,7 +705,7 @@ class GenInvPermP : public GenInvPermKernel {
 
     auto numel = in.numel();
 
-    DISPATCH_ALL_FIELDS(field, "gen_inv_perm_p", [&]() {
+    DISPATCH_ALL_FIELDS(field, [&]() {
       using T = std::make_signed_t<ring2k_t>;
       std::vector<T> perm(numel);
       std::iota(perm.begin(), perm.end(), 0);
@@ -735,7 +739,7 @@ class GenInvPermV : public GenInvPermKernel {
       auto numel = in.numel();
       const auto field = in.eltype().as<Ring2k>()->field();
 
-      DISPATCH_ALL_FIELDS(field, "gen_inv_perm_v", [&]() {
+      DISPATCH_ALL_FIELDS(field, [&]() {
         using T = std::make_signed_t<ring2k_t>;
         std::vector<T> perm(numel);
         std::iota(perm.begin(), perm.end(), 0);
@@ -769,7 +773,7 @@ class InvPermPP : public PermKernel {
     SPU_ENFORCE_EQ(x.eltype(), y.eltype());
     NdArrayRef z(x.eltype(), x.shape());
     const auto field = x.eltype().as<Ring2k>()->field();
-    DISPATCH_ALL_FIELDS(field, "_", [&]() {
+    DISPATCH_ALL_FIELDS(field, [&]() {
       using T = std::make_signed_t<ring2k_t>;
       NdArrayView<T> _x(x);
       NdArrayView<T> _y(y);
@@ -795,7 +799,7 @@ class InvPermVV : public PermKernel {
     if (isOwner(ctx, x.eltype())) {
       NdArrayRef z(x.eltype(), x.shape());
       const auto field = x.eltype().as<Ring2k>()->field();
-      DISPATCH_ALL_FIELDS(field, "_", [&]() {
+      DISPATCH_ALL_FIELDS(field, [&]() {
         using T = std::make_signed_t<ring2k_t>;
         NdArrayView<T> _x(x);
         NdArrayView<T> _y(y);
@@ -823,7 +827,7 @@ class PermPP : public PermKernel {
     SPU_ENFORCE_EQ(x.eltype(), y.eltype());
     NdArrayRef z(x.eltype(), x.shape());
     const auto field = x.eltype().as<Ring2k>()->field();
-    DISPATCH_ALL_FIELDS(field, "_", [&]() {
+    DISPATCH_ALL_FIELDS(field, [&]() {
       using T = std::make_signed_t<ring2k_t>;
       NdArrayView<T> _x(x);
       NdArrayView<T> _y(y);
@@ -849,7 +853,7 @@ class PermVV : public PermKernel {
     if (isOwner(ctx, x.eltype())) {
       NdArrayRef z(x.eltype(), x.shape());
       const auto field = x.eltype().as<Ring2k>()->field();
-      DISPATCH_ALL_FIELDS(field, "_", [&]() {
+      DISPATCH_ALL_FIELDS(field, [&]() {
         using T = std::make_signed_t<ring2k_t>;
         NdArrayView<T> _x(x);
         NdArrayView<T> _y(y);
@@ -878,7 +882,7 @@ class MergeKeysP : public MergeKeysKernel {
     NdArrayRef out(inputs[0].eltype(), inputs[0].shape());
     const auto field = inputs[0].eltype().as<Ring2k>()->field();
     const auto numel = inputs[0].numel();
-    DISPATCH_ALL_FIELDS(field, "_", [&]() {
+    DISPATCH_ALL_FIELDS(field, [&]() {
       using T = std::make_signed_t<ring2k_t>;
       NdArrayView<T> _out(out);
       _out[0] = 0;
@@ -917,7 +921,7 @@ class MergeKeysV : public MergeKeysKernel {
       NdArrayRef out(inputs[0].eltype(), inputs[0].shape());
       const auto field = inputs[0].eltype().as<Ring2k>()->field();
       const auto numel = inputs[0].numel();
-      DISPATCH_ALL_FIELDS(field, "_", [&]() {
+      DISPATCH_ALL_FIELDS(field, [&]() {
         using T = std::make_signed_t<ring2k_t>;
         NdArrayView<T> _out(out);
         _out[0] = 0;

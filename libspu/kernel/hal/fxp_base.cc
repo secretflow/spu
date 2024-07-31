@@ -72,7 +72,7 @@ Value polynomial(SPUContext* ctx, const Value& x,
 
 Value highestOneBit(SPUContext* ctx, const Value& x) {
   auto y = _prefix_or(ctx, x);
-  auto y1 = _rshift(ctx, y, 1);
+  auto y1 = _rshift(ctx, y, {1});
   return _xor(ctx, y, y1);
 }
 
@@ -83,6 +83,13 @@ void hintNumberOfBits(const Value& a, size_t nbits) {
   if (a.storage_type().isa<BShare>()) {
     const_cast<Type&>(a.storage_type()).as<BShare>()->setNbits(nbits);
   }
+}
+
+Value maskNumberOfBits(SPUContext* ctx, const Value& in, size_t nbits) {
+  auto k1 = constant(ctx, static_cast<int64_t>(1), spu::DT_I64, in.shape());
+  auto mask = _sub(ctx, _lshift(ctx, k1, {static_cast<int64_t>(nbits)}), k1);
+  auto out = _and(ctx, in, mask).setDtype(in.dtype());
+  return out;
 }
 
 namespace {
@@ -178,7 +185,8 @@ Value div_goldschmidt_general(SPUContext* ctx, const Value& a, const Value& b,
   // factor = 2^{f-m} = 2^{-m} * 2^f, the fixed point repr of 2^{-m}
   const size_t num_fxp_bits = ctx->getFxpBits();
   auto factor = _bitrev(ctx, b_msb, 0, 2 * num_fxp_bits).setDtype(b.dtype());
-  detail::hintNumberOfBits(factor, 2 * num_fxp_bits);
+
+  factor = maskNumberOfBits(ctx, factor, 2 * num_fxp_bits);
   // also, we use factor twice
   factor = _prefer_a(ctx, factor);
 
@@ -209,7 +217,7 @@ Value reciprocal_goldschmidt_positive(SPUContext* ctx, const Value& b_abs) {
   const size_t num_fxp_bits = ctx->getFxpBits();
   auto factor =
       _bitrev(ctx, b_msb, 0, 2 * num_fxp_bits).setDtype(b_abs.dtype());
-  detail::hintNumberOfBits(factor, 2 * num_fxp_bits);
+  factor = maskNumberOfBits(ctx, factor, 2 * num_fxp_bits);
   // also, we use factor twice
   factor = _prefer_a(ctx, factor);
 
@@ -237,13 +245,12 @@ Value reciprocal_goldschmidt(SPUContext* ctx, const Value& b) {
   // factor = 2^{f-m} = 2^{-m} * 2^f, the fixed point repr of 2^{-m}
   const size_t num_fxp_bits = ctx->getFxpBits();
   auto factor = _bitrev(ctx, b_msb, 0, 2 * num_fxp_bits).setDtype(b.dtype());
-  detail::hintNumberOfBits(factor, 2 * num_fxp_bits);
+  factor = maskNumberOfBits(ctx, factor, 2 * num_fxp_bits);
   // also, we use factor twice
   factor = _prefer_a(ctx, factor);
 
   // compute approximation of normalize b_abs
   auto r = reciprocal_goldschmidt_normalized_approx(ctx, b_abs, factor);
-
   r = f_mul(ctx, r, factor, SignType::Positive);
 
   return _mux(ctx, is_negative, _negate(ctx, r), r).setDtype(b.dtype());
@@ -370,8 +377,8 @@ Value f_floor(SPUContext* ctx, const Value& x) {
 
   SPU_ENFORCE(x.isFxp());
 
-  const size_t fbits = ctx->getFxpBits();
-  return _lshift(ctx, _arshift(ctx, x, fbits), fbits).setDtype(x.dtype());
+  const int64_t fbits = ctx->getFxpBits();
+  return _lshift(ctx, _arshift(ctx, x, {fbits}), {fbits}).setDtype(x.dtype());
 }
 
 Value f_ceil(SPUContext* ctx, const Value& x) {

@@ -61,7 +61,7 @@ NdArrayRef OpenShare(const NdArrayRef &shr, ReduceOp op, size_t nbits,
   size_t compact_numel = CeilDiv(numel * nbits, fwidth);
 
   NdArrayRef out(shr.eltype(), {(int64_t)numel});
-  DISPATCH_ALL_FIELDS(field, "zip", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     auto inp = absl::MakeConstSpan(&shr.at<ring2k_t>(0), numel);
     auto oup = absl::MakeSpan(&out.at<ring2k_t>(0), compact_numel);
 
@@ -94,8 +94,10 @@ NdArrayRef OpenShare(const NdArrayRef &shr, ReduceOp op, size_t nbits,
 __attribute__((target("sse2")))
 #endif
 void SseTranspose(uint8_t *out, uint8_t const *inp, uint64_t nrows, uint64_t ncols) {
-  uint64_t rr, cc;
-  int i, h;
+  uint64_t rr;
+  uint64_t cc;
+  int i;
+  int h;
   union {
     __m128i x;
     uint8_t b[16];
@@ -116,7 +118,9 @@ void SseTranspose(uint8_t *out, uint8_t const *inp, uint64_t nrows, uint64_t nco
         *(uint16_t *)&OUT(rr, cc + i) = _mm_movemask_epi8(vec);
     }
   }
-  if (rr == nrows) return;
+  if (rr == nrows) {
+    return;
+  }
 
   // The remainder is a block of 8x(16n+8) bits (n may be 0).
   //  Do a PAIR of 8x8 blocks in each step:
@@ -153,9 +157,12 @@ void SseTranspose(uint8_t *out, uint8_t const *inp, uint64_t nrows, uint64_t nco
   if (cc == ncols) return;
 
   //  Do the remaining 8x8 block:
-  for (i = 0; i < 8; ++i) tmp.b[i] = INP(rr + i, cc);
-  for (i = 8; --i >= 0; tmp.x = _mm_slli_epi64(tmp.x, 1))
+  for (i = 0; i < 8; ++i) {
+    tmp.b[i] = INP(rr + i, cc);
+  }
+  for (i = 8; --i >= 0; tmp.x = _mm_slli_epi64(tmp.x, 1)) {
     OUT(rr, cc + i) = _mm_movemask_epi8(tmp.x);
+  }
 }
 
 }  // namespace spu::mpc::cheetah

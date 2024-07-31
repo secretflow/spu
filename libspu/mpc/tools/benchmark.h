@@ -172,10 +172,14 @@ class OpData {
     }
     for (auto& b1 : b1s) {
       b1 = p2b(obj_, rand_p(obj_, Shape{state.range(1)}));
-      b1 = lshift_b(obj_, b1,
-                    SizeOf(static_cast<FieldType>(state.range(0))) * 8 - 1);
-      b1 = rshift_b(obj_, b1,
-                    SizeOf(static_cast<FieldType>(state.range(0))) * 8 - 1);
+      b1 = lshift_b(
+          obj_, b1,
+          {static_cast<int64_t>(
+              SizeOf(static_cast<FieldType>(state.range(0))) * 8 - 1)});
+      b1 = rshift_b(
+          obj_, b1,
+          {static_cast<int64_t>(
+              SizeOf(static_cast<FieldType>(state.range(0))) * 8 - 1)});
     }
   }
   virtual ~OpData() = default;
@@ -218,12 +222,12 @@ MPC_BENCH_DEFINE(BenchAndSP, OpData1S1P, and_sp, ss[0], ps[0])
 MPC_BENCH_DEFINE(BenchXorSP, OpData1S1P, xor_sp, ss[0], ps[0])
 MPC_BENCH_DEFINE(BenchNotS, OpData1S, not_s, ss[0])
 MPC_BENCH_DEFINE(BenchNotP, OpData1P, not_p, ps[0])
-MPC_BENCH_DEFINE(BenchLShiftS, OpData1S, lshift_s, ss[0], state.range(2))
-MPC_BENCH_DEFINE(BenchLShiftP, OpData1P, lshift_p, ps[0], state.range(2))
-MPC_BENCH_DEFINE(BenchRShiftS, OpData1S, rshift_s, ss[0], state.range(2))
-MPC_BENCH_DEFINE(BenchRShiftP, OpData1P, rshift_p, ps[0], state.range(2))
-MPC_BENCH_DEFINE(BenchARShiftS, OpData1S, arshift_s, ss[0], state.range(2))
-MPC_BENCH_DEFINE(BenchARShiftP, OpData1P, arshift_p, ps[0], state.range(2))
+MPC_BENCH_DEFINE(BenchLShiftS, OpData1S, lshift_s, ss[0], {state.range(2)})
+MPC_BENCH_DEFINE(BenchLShiftP, OpData1P, lshift_p, ps[0], {state.range(2)})
+MPC_BENCH_DEFINE(BenchRShiftS, OpData1S, rshift_s, ss[0], {state.range(2)})
+MPC_BENCH_DEFINE(BenchRShiftP, OpData1P, rshift_p, ps[0], {state.range(2)})
+MPC_BENCH_DEFINE(BenchARShiftS, OpData1S, arshift_s, ss[0], {state.range(2)})
+MPC_BENCH_DEFINE(BenchARShiftP, OpData1P, arshift_p, ps[0], {state.range(2)})
 MPC_BENCH_DEFINE(BenchTruncS, OpData1S, trunc_s_wrapper, ss[0], state.range(2))
 MPC_BENCH_DEFINE(BenchS2P, OpData1S, s2p, ss[0])
 MPC_BENCH_DEFINE(BenchP2S, OpData1P, p2s, ps[0])
@@ -243,7 +247,7 @@ MPC_BENCH_DEFINE(BenchMulAP, OpData1A1P, mul_ap, as[0], ps[0])
 MPC_BENCH_DEFINE(BenchAddAA, OpData2A, add_aa, as[0], as[1])
 MPC_BENCH_DEFINE(BenchMulAA, OpData2A, mul_aa, as[0], as[1])
 MPC_BENCH_DEFINE(BenchMulA1B, OpData1A1B1, mul_a1b, as[0], b1s[0])
-MPC_BENCH_DEFINE(BenchLShiftA, OpData1A, lshift_a, as[0], state.range(2))
+MPC_BENCH_DEFINE(BenchLShiftA, OpData1A, lshift_a, as[0], {state.range(2)})
 MPC_BENCH_DEFINE(BenchTruncA, OpData1A, trunc_a_wrapper, as[0], state.range(2))
 // MPC_BENCH_DEFINE(BenchMMulAP, OpData1MA1MP, mmul_ap, mas[0], mps[0],
 //  state.range(1), state.range(1), state.range(1))
@@ -257,9 +261,9 @@ MPC_BENCH_DEFINE(BenchAndBP, OpData1B1P, and_bp, bs[0], ps[0])
 MPC_BENCH_DEFINE(BenchAndBB, OpData2B, and_bb, bs[0], bs[1])
 MPC_BENCH_DEFINE(BenchXorBP, OpData1B1P, xor_bp, bs[0], ps[0])
 MPC_BENCH_DEFINE(BenchXorBB, OpData2B, xor_bb, bs[0], bs[1])
-MPC_BENCH_DEFINE(BenchLShiftB, OpData1B, lshift_b, bs[0], state.range(2))
-MPC_BENCH_DEFINE(BenchRShiftB, OpData1B, rshift_b, bs[0], state.range(2))
-MPC_BENCH_DEFINE(BenchARShiftB, OpData1B, arshift_b, bs[0], state.range(2))
+MPC_BENCH_DEFINE(BenchLShiftB, OpData1B, lshift_b, bs[0], {state.range(2)})
+MPC_BENCH_DEFINE(BenchRShiftB, OpData1B, rshift_b, bs[0], {state.range(2)})
+MPC_BENCH_DEFINE(BenchARShiftB, OpData1B, arshift_b, bs[0], {state.range(2)})
 MPC_BENCH_DEFINE(BenchBitRevB, OpData1B, bitrev_b, bs[0], 0,
                  SizeOf(static_cast<FieldType>(state.range(0))))
 MPC_BENCH_DEFINE(BenchBitIntlB, OpData1B, bitintl_b, bs[0], 0)

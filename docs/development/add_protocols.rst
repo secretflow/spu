@@ -248,7 +248,7 @@ When kernels are implemented and registered, a new protocol is finally added.
     auto* prg_state = ctx->getState<PrgState>();
 
     // dispatch the real implementation to different fields
-    return DISPATCH_ALL_FIELDS(field, "aby3.mulAA", [&]() {
+    return DISPATCH_ALL_FIELDS(field, [&]() {
       // the real protocol implementation
       ...
     });
