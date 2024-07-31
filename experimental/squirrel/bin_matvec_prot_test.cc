@@ -172,4 +172,100 @@ TEST_P(BinMatVecProtTest, WithIndicator) {
     }
   });
 }
+
+TEST_P(BinMatVecProtTest, EmptyMat) {
+  using namespace spu;
+  using namespace spu::mpc;
+  constexpr size_t kWorldSize = 2;
+
+  FieldType field = std::get<0>(GetParam());
+  int64_t dim_in = std::get<0>(std::get<1>(GetParam()));
+  int64_t dim_out = std::get<1>(std::get<1>(GetParam()));
+
+  StlSparseMatrix mat;
+  mat.rows_data_.resize(dim_out);
+  mat.cols_ = dim_in;
+
+  NdArrayRef vec_shr[2];
+  vec_shr[0] = ring_rand(field, {dim_in})
+                   .as(spu::makeType<spu::mpc::cheetah::AShrTy>(field));
+  vec_shr[1] = ring_rand(field, {dim_in})
+                   .as(spu::makeType<spu::mpc::cheetah::AShrTy>(field));
+
+  NdArrayRef vec = ring_add(vec_shr[0], vec_shr[1]);
+
+  NdArrayRef out_shr[2];
+  utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> lctx) {
+    BinMatVecProtocol binmat_prot(SizeOf(field) * 8, lctx);
+    if (0 == lctx->Rank()) {
+      out_shr[0] = binmat_prot.Send(vec_shr[0], dim_out, dim_in);
+    } else {
+      out_shr[1] = binmat_prot.Recv(vec_shr[1], dim_out, dim_in, mat);
+    }
+  });
+  NdArrayRef reveal = ring_add(out_shr[0], out_shr[1]);
+
+  DISPATCH_ALL_FIELDS(field, "", [&]() {
+    using sT = std::make_signed<ring2k_t>::type;
+    NdArrayView<sT> _vec(vec);
+    auto expected = BinAccumuate<sT>(_vec, mat);
+    NdArrayView<sT> got(reveal);
+
+    EXPECT_EQ(expected.size(), (size_t)got.numel());
+    for (int64_t i = 0; i < dim_out; ++i) {
+      EXPECT_NEAR(expected[i], got[i], 1);
+    }
+  });
+}
+
+TEST_P(BinMatVecProtTest, WithEmptyIndicator) {
+  using namespace spu;
+  using namespace spu::mpc;
+  constexpr size_t kWorldSize = 2;
+
+  FieldType field = std::get<0>(GetParam());
+  int64_t dim_in = std::get<0>(std::get<1>(GetParam()));
+  int64_t dim_out = std::get<1>(std::get<1>(GetParam()));
+
+  StlSparseMatrix mat;
+  PrepareBinaryMat(mat, dim_out, dim_in, 0);
+
+  NdArrayRef vec_shr[2];
+  vec_shr[0] = ring_rand(field, {dim_in})
+                   .as(spu::makeType<spu::mpc::cheetah::AShrTy>(field));
+  vec_shr[1] = ring_rand(field, {dim_in})
+                   .as(spu::makeType<spu::mpc::cheetah::AShrTy>(field));
+  std::vector<uint8_t> indicator(dim_in);
+  std::default_random_engine rdv;
+  std::uniform_int_distribution<uint8_t> dist(0, 10);
+  // empty indicator
+  std::fill_n(indicator.data(), indicator.size(), 0);
+
+  NdArrayRef vec = ring_add(vec_shr[0], vec_shr[1]);
+
+  NdArrayRef out_shr[2];
+  utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> lctx) {
+    BinMatVecProtocol binmat_prot(SizeOf(field) * 8, lctx);
+    if (0 == lctx->Rank()) {
+      out_shr[0] = binmat_prot.Send(vec_shr[0], dim_out, dim_in);
+    } else {
+      out_shr[1] = binmat_prot.Recv(vec_shr[1], dim_out, dim_in, mat,
+                                    absl::MakeConstSpan(indicator));
+    }
+  });
+  NdArrayRef reveal = ring_add(out_shr[0], out_shr[1]);
+
+  DISPATCH_ALL_FIELDS(field, "", [&]() {
+    using sT = std::make_signed<ring2k_t>::type;
+    NdArrayView<sT> _vec(vec);
+    NdArrayView<sT> got(reveal);
+    auto expected = BinAccumuate<sT>(_vec, mat, absl::MakeConstSpan(indicator));
+
+    EXPECT_EQ(expected.size(), (size_t)got.numel());
+    for (int64_t i = 0; i < dim_out; ++i) {
+      EXPECT_NEAR(expected[i], got[i], 1);
+    }
+  });
+}
+
 }  // namespace squirrel::test
