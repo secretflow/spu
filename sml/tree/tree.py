@@ -53,9 +53,8 @@ class DecisionTreeClassifier:
         self.max_depth = max_depth
         self.n_labels = n_labels
 
-
-    def fit(self, X, y, sample_weight=None):
-        self.T, self.F = odtt(X, y, self.max_depth, self.n_labels, sample_weight)
+    def fit(self, X, y):
+        self.T, self.F = odtt(X, y, self.max_depth, self.n_labels)
         return self
 
     def predict(self, X):
@@ -116,7 +115,7 @@ def oaa_elementwise(array, index_array):
 
 
 # def oblivious_learning(X, y, T, F, M, Cn, h):
-def oblivious_learning(X, y, T, F, M, h, Cn, n_labels, sample_weight=None):
+def oblivious_learning(X, y, T, F, M, h, Cn, n_labels):
     '''partition the data and count the number of data samples.
 
     params:
@@ -136,54 +135,27 @@ def oblivious_learning(X, y, T, F, M, h, Cn, n_labels, sample_weight=None):
         Dval = oaae(X, Tval)
         M = 2 * M + Dval + 1
 
+    # (n_leaves)
     LCidx = jnp.arange(0, n_h)
     isLeaf = jnp.equal(F[n_h - 1 : 2 * n_h - 1], jnp.ones(n_h))
+    # (n_samples, n_leaves)
     LCF = jnp.equal(M[:, jnp.newaxis] - n_h + 1, LCidx)
     LCF = LCF * isLeaf
-
+    # (n_samples, n_leaves, n_labels, 2 * n_features)
     Cd = jnp.zeros((n_d, n_h, n_labels + 1, 2 * n_f))
-    if sample_weight is not None:
-        Cd = Cd.at[:, :, 0, 0::2].set(
-            jnp.tile((1 - X)[:, jnp.newaxis, :] * sample_weight[:, jnp.newaxis, jnp.newaxis], (1, n_h, 1))
-        )
-        Cd = Cd.at[:, :, 0, 1::2].set(
-            jnp.tile((X)[:, jnp.newaxis, :] * sample_weight[:, jnp.newaxis, jnp.newaxis], (1, n_h, 1))
-        )
-    else:
-        Cd = Cd.at[:, :, 0, 0::2].set(jnp.tile((1 - X)[:, jnp.newaxis, :], (1, n_h, 1)))
-        Cd = Cd.at[:, :, 0, 1::2].set(jnp.tile((X)[:, jnp.newaxis, :], (1, n_h, 1)))
-
+    Cd = Cd.at[:, :, 0, 0::2].set(jnp.tile((1 - X)[:, jnp.newaxis, :], (1, n_h, 1)))
+    Cd = Cd.at[:, :, 0, 1::2].set(jnp.tile((X)[:, jnp.newaxis, :], (1, n_h, 1)))
     for i in range(n_labels):
-        if sample_weight is not None:
-            # sample_weight = sample_weight.reshape(-1, 1, 1)
-            Cd = Cd.at[:, :, i + 1, 0::2].set(
-                jnp.tile(
-                    ((1 - X)[:, jnp.newaxis, :] * (i == y)[:, jnp.newaxis, jnp.newaxis] * sample_weight[:, jnp.newaxis, jnp.newaxis]),
-                    (1, n_h, 1)
-                )
+        Cd = Cd.at[:, :, i + 1, 0::2].set(
+            jnp.tile(
+                ((1 - X) * (i == y)[:, jnp.newaxis])[:, jnp.newaxis, :], (1, n_h, 1)
             )
-            Cd = Cd.at[:, :, i + 1, 1::2].set(
-                jnp.tile(
-                    ((X)[:, jnp.newaxis, :] * (i == y)[:, jnp.newaxis, jnp.newaxis] * sample_weight[:, jnp.newaxis, jnp.newaxis]),
-                    (1, n_h, 1)
-                )
-            )
-        else:
-            Cd = Cd.at[:, :, i + 1, 0::2].set(
-                jnp.tile(
-                    ((1 - X) * (i == y)[:, jnp.newaxis])[:, jnp.newaxis, :],
-                    (1, n_h, 1)
-                )
-            )
-            Cd = Cd.at[:, :, i + 1, 1::2].set(
-                jnp.tile(
-                    ((X) * (i == y)[:, jnp.newaxis])[:, jnp.newaxis, :],
-                    (1, n_h, 1)
-                )
-            )
-
+        )
+        Cd = Cd.at[:, :, i + 1, 1::2].set(
+            jnp.tile(((X) * (i == y)[:, jnp.newaxis])[:, jnp.newaxis, :], (1, n_h, 1))
+        )
     Cd = Cd * LCF[:, :, jnp.newaxis, jnp.newaxis]
-
+    # (n_leaves, n_labels+1, 2*n_features)
     new_Cn = jnp.sum(Cd, axis=0)
 
     if h != 0:
@@ -191,7 +163,6 @@ def oblivious_learning(X, y, T, F, M, h, Cn, n_labels, sample_weight=None):
     new_Cn = new_Cn[:, :, :] + Cn[:, :, :] * (1 - isLeaf[:, jnp.newaxis, jnp.newaxis])
 
     return new_Cn, M
-
 
 
 def oblivious_heuristic_computation(Cn, gamma, F, h, n_labels):
@@ -250,7 +221,7 @@ def oblivious_node_split(SD, T, F, Cn, h, max_depth):
     return T, Cn
 
 
-def oblivious_DT_training(X, y, max_depth, n_labels, sample_weight=None):
+def oblivious_DT_training(X, y, max_depth, n_labels):
     n_samples, n_features = X.shape
     T = jnp.zeros((2 ** (max_depth + 1) - 1))
     F = jnp.ones((2**max_depth - 1))
@@ -260,10 +231,7 @@ def oblivious_DT_training(X, y, max_depth, n_labels, sample_weight=None):
 
     h = 0
     while h < max_depth:
-        if sample_weight is not None:
-            Cn, M = ol(X, y, T, F, M, h, Cn, n_labels, sample_weight)
-        else:
-            Cn, M = ol(X, y, T, F, M, h, Cn, n_labels)
+        Cn, M = ol(X, y, T, F, M, h, Cn, n_labels)
 
         SD, gamma, F = ohc(Cn, gamma, F, h, n_labels)
 

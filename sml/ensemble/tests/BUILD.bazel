@@ -1,4 +1,4 @@
-# Copyright 2023 Ant Group Co., Ltd.
+# Copyright 2024 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@ py_test(
     srcs = ["forest_test.py"],
     deps = [
         "//sml/ensemble:forest",
-        "//sml/tree:tree",
         "//spu:init",
         "//spu/utils:simulation",
     ],

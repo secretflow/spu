@@ -1,4 +1,4 @@
-# Copyright 2023 Ant Group Co., Ltd.
+# Copyright 2024 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,14 +26,15 @@ CONFIG_FILE = emulation.CLUSTER_ABY3_3PC
 
 def emul_forest(mode=emulation.Mode.MULTIPROCESS):
     def proc_wrapper(
-        n_estimators=100,
-        max_features=None,
-        criterion='gini',
-        splitter='best',
-        max_depth=3,
-        bootstrap=True,
-        max_samples=None,
-        n_labels=3,
+        n_estimators,
+        max_features,
+        criterion,
+        splitter,
+        max_depth,
+        bootstrap,
+        max_samples,
+        n_labels,
+        label_list,
     ):
         rf_custom = sml_rfc(
             n_estimators,
@@ -44,6 +45,7 @@ def emul_forest(mode=emulation.Mode.MULTIPROCESS):
             bootstrap,
             max_samples,
             n_labels,
+            label_list,
         )
 
         def proc(X, y):
@@ -76,8 +78,8 @@ def emul_forest(mode=emulation.Mode.MULTIPROCESS):
 
         # load mock data
         X, y = load_data()
-        # n_samples, n_features = X.shape
-        n_labels = jnp.unique(y).shape[0]
+        label_list = jnp.unique(y)
+        n_labels = label_list.shape[0]
 
         # compare with sklearn
         rf = RandomForestClassifier(
@@ -107,9 +109,9 @@ def emul_forest(mode=emulation.Mode.MULTIPROCESS):
             bootstrap=False,
             max_samples=None,
             n_labels=n_labels,
+            label_list=label_list,
         )
         start = time.time()
-        # 不可以使用bootstrap，否则在spu运行的正确率很低
         result = emulator.run(proc)(X_spu, y_spu)
         end = time.time()
         score_encrpted = jnp.mean((result == y))
@@ -125,4 +127,3 @@ def emul_forest(mode=emulation.Mode.MULTIPROCESS):
 
 if __name__ == "__main__":
     emul_forest(emulation.Mode.MULTIPROCESS)
-
