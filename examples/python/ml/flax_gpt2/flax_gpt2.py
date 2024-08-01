@@ -42,7 +42,7 @@ pretrained_model = FlaxGPT2LMHeadModel.from_pretrained("gpt2")
 
 # greedy search
 # ref: https://huggingface.co/blog/how-to-generate
-def text_generation(input_ids, params, token_num=10):
+def text_generation(input_ids, params, token_num=3):
     config = GPT2Config()
     model = FlaxGPT2LMHeadModel(config=config)
 
@@ -80,8 +80,8 @@ def run_on_spu():
 
 if __name__ == '__main__':
     print('\n------\nRun on CPU')
-    outputs_ids = run_on_cpu()
-    print(tokenizer.decode(outputs_ids[0], skip_special_tokens=True))
+    # outputs_ids = run_on_cpu()
+    # print(tokenizer.decode(outputs_ids[0], skip_special_tokens=True))
     print('\n------\nRun on SPU')
     outputs_ids = run_on_spu()
     print(tokenizer.decode(outputs_ids[0], skip_special_tokens=True))

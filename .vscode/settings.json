@@ -142,6 +142,16 @@
         "stack": "cpp",
         "__config": "cpp",
         "__node_handle": "cpp",
-        "syncstream": "cpp"
+        "syncstream": "cpp",
+        "any": "cpp",
+        "strstream": "cpp",
+        "barrier": "cpp",
+        "coroutine": "cpp",
+        "csetjmp": "cpp",
+        "csignal": "cpp",
+        "cuchar": "cpp",
+        "source_location": "cpp",
+        "latch": "cpp",
+        "scoped_allocator": "cpp"
     }
 }

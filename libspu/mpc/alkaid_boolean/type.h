@@ -16,14 +16,14 @@
 
 #include "libspu/core/type.h"
 
-namespace spu::mpc::alkaid {
+namespace spu::mpc::alkaid_boolean {
 
 class AShrTy : public TypeImpl<AShrTy, RingTy, Secret, AShare> {
   using Base = TypeImpl<AShrTy, RingTy, Secret, AShare>;
 
  public:
   using Base::Base;
-  static std::string_view getStaticId() { return "alkaid.AShr"; }
+  static std::string_view getStaticId() { return "alkaid_boolean.AShr"; }
 
   explicit AShrTy(FieldType field) { field_ = field; }
 
@@ -35,7 +35,7 @@ class AShrTyMss : public TypeImpl<AShrTy, RingTy, Secret, AShare> {
 
  public:
   using Base::Base;
-  static std::string_view getStaticId() { return "alkaid.AShrMss"; }
+  static std::string_view getStaticId() { return "alkaid_boolean.AShr"; }
 
   explicit AShrTyMss(FieldType field) { field_ = field; }
 
@@ -76,7 +76,7 @@ class BShrTy : public TypeImpl<BShrTy, TypeObject, Secret, BShare> {
 
   PtType getBacktype() const { return back_type_; }
 
-  static std::string_view getStaticId() { return "alkaid.BShr"; }
+  static std::string_view getStaticId() { return "alkaid_boolean.BShr"; }
 
   void fromString(std::string_view detail) override {
     auto comma = detail.find_first_of(',');
@@ -116,7 +116,7 @@ class BShrTyMss : public TypeImpl<BShrTyMss, TypeObject, Secret, BShare> {
 
   PtType getBacktype() const { return back_type_; }
 
-  static std::string_view getStaticId() { return "alkaid.BShrMss"; }
+  static std::string_view getStaticId() { return "alkaid_boolean.BShrMss"; }
 
   void fromString(std::string_view detail) override {
     auto comma = detail.find_first_of(',');
@@ -147,7 +147,7 @@ class PShrTy : public TypeImpl<PShrTy, RingTy, Secret, PShare> {
 
  public:
   using Base::Base;
-  static std::string_view getStaticId() { return "alkaid.PShr"; }
+  static std::string_view getStaticId() { return "alkaid_boolean.PShr"; }
 
   explicit PShrTy() { field_ = FieldType::FM64; }
 
@@ -156,4 +156,4 @@ class PShrTy : public TypeImpl<PShrTy, RingTy, Secret, PShare> {
 
 void registerTypes();
 
-}  // namespace spu::mpc::alkaid
+}  // namespace spu::mpc::alkaid_boolean

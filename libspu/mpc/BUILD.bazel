@@ -52,6 +52,7 @@ spu_cc_library(
         "//libspu/mpc/securenn",
         "//libspu/mpc/semi2k",
         "//libspu/mpc/alkaid",
+        "//libspu/mpc/alkaid_boolean",
     ],
 )
 
@@ -135,6 +136,7 @@ spu_cc_binary(
         "//libspu/core:context",
         "//libspu/mpc/aby3:aby3",
         "//libspu/mpc/alkaid:alkaid",
+        "//libspu/mpc/alkaid_boolean:alkaid_boolean",
         "//libspu/mpc:api",
         "//libspu/mpc:ab_api",
         "//libspu/mpc/utils:simulate",

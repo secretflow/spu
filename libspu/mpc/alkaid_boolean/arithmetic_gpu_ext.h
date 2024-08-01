@@ -1,4 +1,4 @@
-// Copyright 2021 Ant Group Co., Ltd.
+// Copyright 2023 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,22 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/mpc/alkaid/type.h"
+#pragma once
 
-#include <mutex>
-
-#include "libspu/mpc/common/pv2k.h"
+#include "libspu/core/ndarray_ref.h"
 
 namespace spu::mpc::alkaid {
 
-void registerTypes() {
-  regPV2kTypes();
-
-  static std::once_flag flag;
-  std::call_once(flag, []() {
-    TypeContext::getTypeContext()->addTypes<AShrTy, AShrTyMss, BShrTy, BShrTyMss, PShrTy>();
-    // TypeContext::getTypeContext()->addTypes<AShrTy, BShrTy, PShrTy>();
-  });
+void matmul_aa_gpu(const NdArrayRef& x, const NdArrayRef& y, NdArrayRef& ret);
 }
-
-}  // namespace spu::mpc::alkaid

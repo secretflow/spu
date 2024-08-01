@@ -28,6 +28,8 @@
 #include "libspu/mpc/semi2k/protocol.h"
 #include "libspu/mpc/alkaid/io.h"
 #include "libspu/mpc/alkaid/protocol.h"
+#include "libspu/mpc/alkaid_boolean/io.h"
+#include "libspu/mpc/alkaid_boolean/protocol.h"
 
 namespace spu::mpc {
 
@@ -52,6 +54,9 @@ void Factory::RegisterProtocol(
     }
     case ProtocolKind::ALKAID: {
       return regAlkaidProtocol(ctx, lctx);
+    }
+    case ProtocolKind::ALKAID_BOOLEAN: {
+      return regAlkaidBooleanProtocol(ctx, lctx);
     }
     default: {
       SPU_THROW("Invalid protocol kind {}", ctx->config().protocol());
@@ -79,6 +84,9 @@ std::unique_ptr<IoInterface> Factory::CreateIO(const RuntimeConfig& conf,
     }
     case ProtocolKind::ALKAID: {
       return alkaid::makeAlkaidIo(conf.field(), npc);
+    }
+    case ProtocolKind::ALKAID_BOOLEAN: {
+      return alkaid_boolean::makeAlkaidBooleanIo(conf.field(), npc);
     }
     default: {
       SPU_THROW("Invalid protocol kind {}", conf.protocol());

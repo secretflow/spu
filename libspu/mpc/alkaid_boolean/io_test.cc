@@ -12,22 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/mpc/alkaid/type.h"
+#include "libspu/mpc/io_test.h"
 
-#include <mutex>
+#include "libspu/mpc/alkaid_boolean/io.h"
 
-#include "libspu/mpc/common/pv2k.h"
+namespace spu::mpc::alkaid_boolean {
 
-namespace spu::mpc::alkaid {
-
-void registerTypes() {
-  regPV2kTypes();
-
-  static std::once_flag flag;
-  std::call_once(flag, []() {
-    TypeContext::getTypeContext()->addTypes<AShrTy, AShrTyMss, BShrTy, BShrTyMss, PShrTy>();
-    // TypeContext::getTypeContext()->addTypes<AShrTy, BShrTy, PShrTy>();
-  });
-}
+INSTANTIATE_TEST_SUITE_P(
+    AlkaidBooleanIoTest, IoTest,
+    testing::Combine(testing::Values(makeAlkaidBooleanIo),  //
+                     testing::Values(3),           //
+                     testing::Values(FieldType::FM32, FieldType::FM64,
+                                     FieldType::FM128)),
+    [](const testing::TestParamInfo<IoTest::ParamType>& p) {
+      return fmt::format("{}x{}", std::get<1>(p.param), std::get<2>(p.param));
+    });
 
 }  // namespace spu::mpc::alkaid

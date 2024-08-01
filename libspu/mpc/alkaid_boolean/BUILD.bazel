@@ -1,0 +1,213 @@
+# Copyright 2021 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//bazel:spu.bzl", "spu_cc_library", "spu_cc_test", "spu_cc_binary")
+
+package(default_visibility = ["//visibility:public"])
+
+spu_cc_library(
+    name = "alkaid_boolean",
+    deps = [
+        ":io",
+        ":protocol",
+    ],
+)
+
+spu_cc_library(
+    name = "protocol",
+    srcs = ["protocol.cc"],
+    hdrs = ["protocol.h"],
+    deps = [
+        ":arithmetic",
+        ":boolean",
+        ":conversion",
+        ":permute",
+        ":value",
+        "//libspu/mpc/standard_shape:protocol",
+    ],
+)
+
+spu_cc_test(
+    name = "protocol_test",
+    srcs = ["protocol_test.cc"],
+    deps = [
+        ":protocol",
+        "//libspu/mpc:ab_api_test",
+        "//libspu/mpc:api_test",
+    ],
+)
+
+spu_cc_library(
+    name = "arithmetic",
+    srcs = ["arithmetic.cc"],
+    hdrs = ["arithmetic.h"],
+    defines = select({
+        "@rules_cuda//cuda:is_enabled": ["CUDA_ENABLED"],
+        "//conditions:default": ["CUDA_DISABLED"],
+    }),
+    deps = [
+        ":ot",
+        ":type",
+        ":value",
+        "//libspu/core:trace",
+        "//libspu/mpc/common:communicator",
+        "//libspu/mpc/common:prg_state",
+        "//libspu/mpc/utils:circuits",
+    ] + select({
+        "@rules_cuda//cuda:is_enabled": [":arithmetic_gpu_ext"],
+        "//conditions:default": [],
+    }),
+)
+
+spu_cc_library(
+    name = "arithmetic_gpu_ext",
+    srcs = ["arithmetic_gpu_ext.cc"],
+    hdrs = ["arithmetic_gpu_ext.h"],
+    tags = [
+        "manual",  # Exclude this target from :all expansion
+    ],
+    target_compatible_with = select({
+        "@rules_cuda//cuda:is_enabled": [],
+        "//conditions:default": ["@platforms//:incompatible"],
+    }),
+    deps = [
+        ":type",
+        "//libspu/core:ndarray_ref",
+        "//libspu/cuda_support:kernels",
+        "//libspu/cuda_support:utils",
+    ],
+)
+
+spu_cc_library(
+    name = "boolean",
+    srcs = ["boolean.cc"],
+    hdrs = ["boolean.h"],
+    deps = [
+        ":type",
+        ":value",
+        "//libspu/mpc/common:communicator",
+        "//libspu/mpc/common:prg_state",
+    ],
+)
+
+spu_cc_library(
+    name = "conversion",
+    srcs = ["conversion.cc"],
+    hdrs = ["conversion.h"],
+    deps = [
+        ":value",
+        "//libspu/mpc:ab_api",
+        "//libspu/mpc/common:communicator",
+        "//libspu/mpc/common:prg_state",
+        "//libspu/mpc/utils:circuits",
+        "@yacl//yacl/utils:platform_utils",
+    ],
+)
+
+spu_cc_library(
+    name = "value",
+    srcs = ["value.cc"],
+    hdrs = ["value.h"],
+    deps = [
+        ":type",
+        "//libspu/core:ndarray_ref",
+        "//libspu/mpc/utils:ring_ops",
+    ],
+)
+
+spu_cc_library(
+    name = "ot",
+    srcs = ["ot.cc"],
+    hdrs = ["ot.h"],
+    deps = [
+        "//libspu/core:ndarray_ref",
+        "//libspu/mpc/common:communicator",
+        "//libspu/mpc/common:prg_state",
+        "//libspu/mpc/utils:ring_ops",
+    ],
+)
+
+spu_cc_test(
+    name = "ot_test",
+    srcs = ["ot_test.cc"],
+    deps = [
+        ":ot",
+        "//libspu/mpc/utils:simulate",
+    ],
+)
+
+spu_cc_library(
+    name = "io",
+    srcs = ["io.cc"],
+    hdrs = ["io.h"],
+    deps = [
+        ":type",
+        ":value",
+        "//libspu/mpc:io_interface",
+    ],
+)
+
+spu_cc_test(
+    name = "io_test",
+    srcs = ["io_test.cc"],
+    deps = [
+        ":io",
+        "//libspu/mpc:io_test",
+    ],
+)
+
+spu_cc_library(
+    name = "type",
+    srcs = ["type.cc"],
+    hdrs = ["type.h"],
+    deps = [
+        "//libspu/core:type",
+        "//libspu/mpc/common:pv2k",
+    ],
+)
+
+spu_cc_test(
+    name = "type_test",
+    srcs = ["type_test.cc"],
+    deps = [
+        ":type",
+    ],
+)
+
+spu_cc_library(
+    name = "permute",
+    srcs = ["permute.cc"],
+    hdrs = ["permute.h"],
+    deps = [
+        ":type",
+        ":value",
+        "//libspu/mpc:kernel",
+        "//libspu/mpc/common:communicator",
+        "//libspu/mpc/utils:permute",
+        "//libspu/mpc/utils:ring_ops",
+    ],
+)
+
+spu_cc_binary(
+    name = "mfippa_test",
+    srcs = ["mfippa_test.cc"],
+    deps = [
+        "//libspu/core:context",
+        ":alkaid_boolean",
+        "//libspu/mpc:api",
+        "//libspu/mpc:ab_api",
+        "//libspu/mpc/utils:simulate",
+        "//libspu/core:ndarray_ref",
+    ],
+)

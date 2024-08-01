@@ -9,14 +9,14 @@ bazel build //libspu/mpc/alkaid:mfippa_test --jobs 32
 ./bazel-out/k8-fastbuild/bin/libspu/mpc/alkaid/mfippa_test
 
 # 添加新安全计算框架后重新编译。其他时候无需编译。
-bazel build //examples/python/utils:nodectl --jobs 2
+bazel build //examples/python/utils:nodectl --jobs 32
 # or: ./bazel-bin/examples/python/utils/nodectl up
 ./app/nodectl-app/nodectl up
 
-bazel build //examples/python/ml/flax_mlp:flax_mlp --jobs 2
+bazel build //examples/python/ml/flax_mlp:flax_mlp --jobs 32
 ./bazel-out/k8-fastbuild/bin/examples/python/ml/flax_mlp/flax_mlp
 
-bazel build //examples/python/ml/flax_gpt2:flax_gpt2 --jobs 2
+bazel build //examples/python/ml/flax_gpt2:flax_gpt2 --jobs 32
 ./bazel-out/k8-fastbuild/bin/examples/python/ml/flax_gpt2/flax_gpt2
 
 bazel build //libspu/mpc:mfippa_test --jobs 32
@@ -24,6 +24,15 @@ bazel build //libspu/mpc:mfippa_test --jobs 32
 
 export http_proxy=http://192.168.109.37:7890
 export https_proxy=http://192.168.109.37:7890
+
+unset http_proxy 
+unset https_proxy
+
+./bazel-bin/examples/python/utils/nodectl -c examples/python/ml/flax_gpt2/3pc.json up
+./bazel-bin/examples/python/utils/nodectl -c examples/python/ml/flax_gpt2/alkaid.json up
+
+./bazel-out/k8-fastbuild/bin/examples/python/ml/flax_gpt2/flax_gpt2 -c examples/python/ml/flax_gpt2/3pc.json
+./bazel-out/k8-fastbuild/bin/examples/python/ml/flax_gpt2/flax_gpt2 -c examples/python/ml/flax_gpt2/alkaid.json
 ```
 
 0. my view: 动态比特向量容器

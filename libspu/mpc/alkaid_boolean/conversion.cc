@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/mpc/alkaid/conversion.h"
+#include "libspu/mpc/alkaid_boolean/conversion.h"
 
 #include <functional>
 #include <iostream>
@@ -25,8 +25,8 @@
 #include "libspu/core/prelude.h"
 #include "libspu/core/trace.h"
 #include "libspu/mpc/ab_api.h"
-#include "libspu/mpc/alkaid/type.h"
-#include "libspu/mpc/alkaid/value.h"
+#include "libspu/mpc/alkaid_boolean/type.h"
+#include "libspu/mpc/alkaid_boolean/value.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pv2k.h"
@@ -36,7 +36,7 @@
 // #define EQ_USE_PRG_STATE
 #define EQ_PACK_SINGLE_BIT
 
-namespace spu::mpc::alkaid {
+namespace spu::mpc::alkaid_boolean {
 
 static NdArrayRef wrap_add_bb(SPUContext* ctx, const NdArrayRef& x,
                               const NdArrayRef& y) {
@@ -1720,52 +1720,40 @@ std::pair<NdArrayRef, NdArrayRef> unpack_2_bitvec_mss(const NdArrayRef& in) {
 }
 
 NdArrayRef MsbA2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in, size_t start_rank) {
-  const auto field = in.eltype().as<AShrTy>()->field();
+  const auto field = in.eltype().as<AShrTyMss>()->field();
   const auto numel = in.numel();
   auto* comm = ctx->getState<Communicator>();
   auto* prg_state = ctx->getState<PrgState>();
 
   const size_t start_rank_next = (start_rank + 1) % 3;
 
-  #define EQ_U64(x) static_cast<uint64_t>(x)
-
-  // First construct 2 boolean shares.
-  // Let
-  //   X = [(x0, x1), (x1, x2), (x2, x0)] as input.
-  //   Z = (z0, z1, z2) as boolean zero share.
-  //
-  // Construct edabitsB = [(ebb0, ebb1), (ebb1, ebb2), (ebb2, ebb0)] as boolean shares,
-  //   edabitsA = [(eba0, eba1), (eba1, eba2), (eba2, eba0)] as arithmetic shares,
-  //   where edabitsA = edabitsB.
-  //
-  // Open mask = x - edabitsA.
-  //
-  // That
-  //  mask + edabitsB = x0 + x1 + x2 = X
   const Type rss_ashr_type =
       makeType<AShrTy>(field);
   const Type rss_bshr_type =
+      makeType<BShrTy>(GetStorageType(field), SizeOf(field) * 8);
+  const Type rss_bshr_type_u8 =
       makeType<BShrTy>(PtType::PT_U8, 1);
   const Type mss_bshr_type =
       makeType<BShrTyMss>(GetStorageType(field), SizeOf(field) * 8);
-  // const Type out_rss_bshr_type =
-  //     makeType<BShrTy>(PtType::PT_U8, 1);
+  const Type mss_bshr_type_u8 =
+      makeType<BShrTyMss>(PtType::PT_U8, 1);
 
   NdArrayRef m(mss_bshr_type, in.shape());
   NdArrayRef n(mss_bshr_type, in.shape());
   NdArrayRef p(mss_bshr_type, in.shape());
   NdArrayRef g(mss_bshr_type, in.shape());
-  NdArrayRef out(rss_bshr_type, in.shape());
+  NdArrayRef out(mss_bshr_type, in.shape());
+  auto in_rss = ResharingMss2Rss(ctx, in);
 
-  return DISPATCH_ALL_FIELDS(field, "alkaid.msb.split", [&]() {
+  return DISPATCH_ALL_FIELDS(field, "alkaid_boolean.msb.split", [&]() {
     using el_t = ring2k_t;
     using rss_shr_t = std::array<el_t, 2>;
     using mss_shr_t = std::array<el_t, 3>;
 
-    NdArrayView<rss_shr_t> _in(in);           // rss
+    NdArrayView<rss_shr_t> _in(in_rss);           // rss
     NdArrayView<mss_shr_t> _m(m);
     NdArrayView<mss_shr_t> _n(n);
-    NdArrayView<typename std::array<uint8_t, 2>> _out(out);
+    NdArrayView<typename std::array<uint8_t, 3>> _out(out);
 
     /**
      * 1. Convert RSS-shared x into MSS-shared m (Dm, RSS(dm)) and n (Dn, RSS(dn)).
@@ -1873,8 +1861,9 @@ NdArrayRef MsbA2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in, size_t
     size_t k = nbits;
     
     pforeach(0, numel, [&](int64_t idx) {
-      _out[idx][0]  = (_p[idx][0] ^ _p[idx][1]) >> nbits;
-      _out[idx][1]  = (_p[idx][0] ^ _p[idx][2]) >> nbits;
+      _out[idx][0]  = (_p[idx][0]) >> nbits;
+      _out[idx][1]  = (_p[idx][1]) >> nbits;
+      _out[idx][2]  = (_p[idx][2]) >> nbits;
       _p[idx][0]    = ( 1ull << nbits     ) | _p[idx][0];    
       _p[idx][1]    = ((1ull << nbits) - 1) & _p[idx][1];
       _p[idx][2]    = ((1ull << nbits) - 1) & _p[idx][2];
@@ -1915,8 +1904,8 @@ NdArrayRef MsbA2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in, size_t
       } else {
         #ifndef EQ_PACK_SINGLE_BIT
         auto pg = pack_2_bitvec_ass(p_res, g_combined);
-        pg = ResharingAss2Rss(ctx, pg);
-        std::tie(g, p) = unpack_2_bitvec_rss(pg);
+        pg = ResharingAss2Mss(ctx, pg);
+        std::tie(g, p) = unpack_2_bitvec_mss(pg);
         #else
         // pack 8 element's bit into 1 uint8_t
         size_t packed_numel = numel / 8 + ((numel && 0b111) > 0);
@@ -1939,17 +1928,19 @@ NdArrayRef MsbA2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in, size_t
           }
         });
         // if (comm->getRank() == 0) std::cout << "MSB: packed c." << (int)_pc[0][0] << std::endl;
-        auto packed_c_rss = ResharingAss2Rss(ctx, packed_c);
-        NdArrayView<std::array<uint8_t, 2>> _pcr(packed_c_rss);
+        auto packed_c_rss = ResharingAss2Mss(ctx, packed_c);
+        NdArrayView<std::array<uint8_t, 3>> _pcr(packed_c_rss);
         pforeach(0, packed_numel, [&](int64_t idx) {
           size_t loc = idx * 8;
           uint8_t op_pcr0 = _pcr[idx][0];
           uint8_t op_pcr1 = _pcr[idx][1];
+          uint8_t op_pcr2 = _pcr[idx][2];
           for (size_t i = 0; i < 8; i++)
           {
             if (loc + i >= static_cast<size_t>(numel)) break;
             _c[loc + i][0] = (op_pcr0 >> (7 - i)) & 1;
             _c[loc + i][1] = (op_pcr1 >> (7 - i)) & 1;
+            _c[loc + i][2] = (op_pcr2 >> (7 - i)) & 1;
           }
         });
         g = g_combined;
@@ -1957,10 +1948,10 @@ NdArrayRef MsbA2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in, size_t
       }
     }
 
-    NdArrayView<std::array<uint8_t, 2>> _g_rss(g);
     pforeach(0, numel, [&](size_t idx) {
-      _out[idx][0] ^= (static_cast<uint8_t>(_g_rss[idx][0]));
-      _out[idx][1] ^= (static_cast<uint8_t>(_g_rss[idx][1]));
+      _out[idx][0] ^= (static_cast<uint8_t>(_g_mss[idx][0]));
+      _out[idx][1] ^= (static_cast<uint8_t>(_g_mss[idx][1]));
+      _out[idx][2] ^= (static_cast<uint8_t>(_g_mss[idx][2]));
     });
     // if (comm->getRank() == 0) std::cout << "MSB: out." << (int)_out[0][0] << " " << (int)_out[1][0] << " " << (int)_out[2][0] << std::endl;
 
@@ -2135,7 +2126,7 @@ std::pair<NdArrayRef, NdArrayRef> PGCell_4FanIn1Out(KernelEvalContext* ctx,
 }
 
 NdArrayRef A2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in) {
-  const auto field = in.eltype().as<AShrTy>()->field();
+  const auto field = in.eltype().as<AShrTyMss>()->field();
   const auto numel = in.numel();
   auto* comm = ctx->getState<Communicator>();
   auto* prg_state = ctx->getState<PrgState>();
@@ -2163,17 +2154,18 @@ NdArrayRef A2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in) {
 
   NdArrayRef m(mss_bshr_type, in.shape());
   NdArrayRef n(mss_bshr_type, in.shape());
-
   NdArrayRef p(mss_bshr_type, in.shape());
   NdArrayRef g(mss_bshr_type, in.shape());
   NdArrayRef c(rss_bshr_type, in.shape());
-  NdArrayRef out(rss_bshr_type, in.shape());
-  return DISPATCH_ALL_FIELDS(field, "alkaid.msb.split", [&]() {
+  NdArrayRef out(mss_bshr_type, in.shape());
+  auto in_rss = ResharingMss2Rss(ctx, in);
+
+  return DISPATCH_ALL_FIELDS(field, "alkaid_boolean.msb.split", [&]() {
     using el_t = ring2k_t;
     using rss_shr_t = std::array<el_t, 2>;
     using mss_shr_t = std::array<el_t, 3>;
 
-    NdArrayView<rss_shr_t> _in(in);           // rss
+    NdArrayView<rss_shr_t> _in(in_rss);           // rss
     NdArrayView<mss_shr_t> _m(m);
     NdArrayView<mss_shr_t> _n(n);
     NdArrayView<rss_shr_t> _out(out);
@@ -2284,8 +2276,9 @@ NdArrayRef A2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in) {
     // we dont use the carryout circuit from aby 2.0. By limitting p's msb to be 1 and g's msb to be 0,
     // we could build a simpler carryout circuit.    
     pforeach(0, numel, [&](int64_t idx) {
-      _out[idx][0] = _p[idx][0] ^ _p[idx][1];
-      _out[idx][1] = _p[idx][0] ^ _p[idx][2];
+      _out[idx][0] = _p[idx][0];
+      _out[idx][1] = _p[idx][1];
+      _out[idx][2] = _p[idx][2];
     });
 
     // Construnction from aby 2.0. See https://eprint.iacr.org/2020/1225
@@ -2482,7 +2475,7 @@ NdArrayRef A2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in) {
         _pops[idx][2]  =  SelectAndRotate(_p[idx][2], 0x7777777777777777ull, 0);
       });
 
-      c = RssXor2(ctx, ResharingMss2Rss(ctx, gops1), MssAnd2NoComm(ctx, gops0, pops));      
+      c = MssXor2(ctx, gops1, ResharingRss2Mss(ctx, MssAnd2NoComm(ctx, gops0, pops)));      
     }
 
     NdArrayView<rss_shr_t> _c(c);
@@ -2491,6 +2484,7 @@ NdArrayRef A2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in) {
     pforeach(0, numel, [&](int64_t idx) {
       _out[idx][0] ^= lshift(_c[idx][0], 1);
       _out[idx][1] ^= lshift(_c[idx][1], 1);
+      _out[idx][2] ^= lshift(_c[idx][2], 1);
     });
 
     return out;
@@ -2526,7 +2520,7 @@ NdArrayRef B2AMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in) {
   NdArrayRef p(mss_bshr_type, in.shape());
   NdArrayRef g(mss_bshr_type, in.shape());
   NdArrayRef z(rss_bshr_type, in.shape());
-  NdArrayRef out(rss_ashr_type, in.shape());
+  NdArrayRef out(mss_ashr_type, in.shape());
 
   auto numel = in.numel();
   auto* comm = ctx->getState<Communicator>();
@@ -2539,12 +2533,13 @@ NdArrayRef B2AMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in) {
       pforeach(0, numel, [&](int64_t idx) {
         _out[idx][0] = 0;
         _out[idx][1] = 0;
+        _out[idx][2] = 0;
       });
     });
     return out;
   }
 
-  return DISPATCH_ALL_FIELDS(field, "alkaid.msb.split", [&]() {
+  return DISPATCH_ALL_FIELDS(field, "alkaid_boolean.msb.split", [&]() {
     using ashr_el_t = ring2k_t;
     using rss_shr_t = std::array<ashr_el_t, 2>;
 
@@ -2930,4 +2925,4 @@ NdArrayRef B2AMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in) {
   });
 }
 
-}  // namespace spu::mpc::alkaid
+}  // namespace spu::mpc::alkaid_boolean

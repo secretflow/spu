@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/mpc/alkaid/type.h"
+#include "libspu/mpc/alkaid_boolean/type.h"
 
 #include <mutex>
 
 #include "libspu/mpc/common/pv2k.h"
 
-namespace spu::mpc::alkaid {
+namespace spu::mpc::alkaid_boolean {
 
 void registerTypes() {
   regPV2kTypes();
@@ -30,4 +30,4 @@ void registerTypes() {
   });
 }
 
-}  // namespace spu::mpc::alkaid
+}  // namespace spu::mpc::alkaid_boolean

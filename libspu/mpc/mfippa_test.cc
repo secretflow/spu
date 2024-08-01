@@ -15,6 +15,8 @@
 #include "libspu/mpc/alkaid/type.h"
 #include "libspu/mpc/aby3/protocol.h"
 #include "libspu/mpc/aby3/conversion.h"
+#include "libspu/mpc/aby3/value.h"
+#include "libspu/mpc/aby3/type.h"
 #include "libspu/mpc/utils/simulate.h"
 
 #include "libspu/mpc/common/communicator.h"
@@ -24,8 +26,8 @@
 #define MyUnwrapValue(x) x.data()
 #define NumOutputs 3
 #define OpenRef(ndref, tag) b2p(sctx_##tag.get(), MyWrapValue(ndref))
-#define N 32
-#define M 32
+#define N 24
+#define M 24
 #define GetComm(tag) sctx_##tag.get()->getState<Communicator>()->getStats()
 #define RANDOM_INPUT 1
 
@@ -73,7 +75,7 @@ int main()
         [&](const std::shared_ptr<yacl::link::Context>& lctx) 
         { 
             /**
-             * ----------------------------------------------
+             * ----------------------------------------------a
              *                Syetem setup.
              * ----------------------------------------------
              */
@@ -94,7 +96,8 @@ int main()
             auto x_p = rand_p(sctx_aby.get(), kShape);
             auto y_p = rand_p(sctx_aby.get(), kShape);
             #else
-            auto x_p = make_p(sctx_al.get(), static_cast<uint128_t>(16813041318660192066ull), kShape);
+            // auto x_p = make_p(sctx_al.get(), static_cast<uint128_t>(16813041318660192066ull), kShape);
+            auto x_p = make_p(sctx_al.get(), static_cast<uint128_t>(0ull), kShape);
             auto y_p = make_p(sctx_al.get(), static_cast<uint128_t>(4), kShape);
             #endif
             auto x_s = p2b(sctx_aby.get(), x_p);
@@ -110,8 +113,8 @@ int main()
             {
 
               auto x_ari = b2a(sctx_aby.get(), x_s);
-              auto x_ari_al = x_ari.data().clone();
-              x_ari_al.eltype() = spu::makeType<alkaid::AShrTy>(field);
+              auto x_ari_al = x_ari;
+              MyUnwrapValue(x_ari_al).eltype() = spu::makeType<alkaid::AShrTy>(field);
 
               size_t comm = GetComm(aby).comm;
               size_t latency = GetComm(aby).latency;
@@ -131,7 +134,11 @@ int main()
               comm = GetComm(al).comm;
               latency = GetComm(al).latency;
 
-              auto msbx_ours_s = alkaid::MsbA2BMultiFanIn(&kectx_al, x_ari_al);
+              // auto x_ari_test = x_ari_al;
+              // MyUnwrapValue(x_ari_test).eltype() = spu::makeType<aby3::AShrTy>(field);
+              // auto msbx_ours_s = MyUnwrapValue(msb_a2b(sctx_aby.get(), x_ari));
+
+              auto msbx_ours_s = alkaid::MsbA2BMultiFanIn(&kectx_al, MyUnwrapValue(x_ari_al));
 
               auto msb_ours = std::chrono::high_resolution_clock::now();
               auto duration_ours = std::chrono::duration_cast<std::chrono::microseconds>(msb_ours - msb_spu);
@@ -146,51 +153,6 @@ int main()
               if (lctx.get()->Rank() == 0) printResult(msb_p_spu.data(), "msb, spu");
               if (lctx.get()->Rank() == 0) printResult(msb_p_ours.data(), "msb, ours");
               if (lctx.get()->Rank() == 0) checkOutput(msb_p_spu.data(), msb_p_ours.data(), "msb");
-            }
-
-            /**
-             * ----------------------------------------------
-             *                Test: A2B.
-             * ----------------------------------------------
-             */
-            {
-              auto x_ari = p2a(sctx_aby.get(), x_p);
-              auto x_ari_al = x_ari;
-              x_ari_al.storage_type() = spu::makeType<alkaid::AShrTy>(field);
-
-              size_t comm = GetComm(aby).comm;
-              size_t latency = GetComm(aby).latency;
-              auto a2b_start = std::chrono::high_resolution_clock::now();
-
-              auto x_b = a2b(sctx_aby.get(), x_ari);
-
-              auto a2b_spu = std::chrono::high_resolution_clock::now();
-              auto duration_spu = std::chrono::duration_cast<std::chrono::microseconds>(a2b_spu - a2b_start);
-              if (lctx.get()->Rank() == 0) std::cout << "------------------------ A2B, spu" << std::endl;
-              if (lctx.get()->Rank() == 0) std::cout << "a2b micro seconds: " << duration_spu.count() << std::endl;
-              if (lctx.get()->Rank() == 0) std::cout << "a2b sent: " << GetComm(aby).comm - comm << std::endl;
-              if (lctx.get()->Rank() == 0) std::cout << "a2b latency: " << GetComm(aby).latency - latency << std::endl;
-
-              // ---------------------------------------------------------------          
-
-              comm = GetComm(al).comm;
-              latency = GetComm(al).latency;
-
-              auto x_b_ours = alkaid::A2BMultiFanIn(&kectx_al, MyUnwrapValue(x_ari_al));
-
-              auto a2b_ours = std::chrono::high_resolution_clock::now();
-              auto duration_ours = std::chrono::duration_cast<std::chrono::microseconds>(a2b_ours - a2b_spu);
-              if (lctx.get()->Rank() == 0) std::cout << "------------------------ A2B, ours" << std::endl;
-              if (lctx.get()->Rank() == 0) std::cout << "a2b micro seconds: " << duration_ours.count() << std::endl;
-              if (lctx.get()->Rank() == 0) std::cout << "a2b sent: " << GetComm(al).comm - comm << std::endl;
-              if (lctx.get()->Rank() == 0) std::cout << "a2b latency: " << GetComm(al).latency - latency << std::endl;
-
-              // Check output.
-              auto x_p_spu = OpenRef(MyUnwrapValue(x_b), aby);
-              auto x_p_ours = OpenRef(x_b_ours, al);
-              // if (lctx.get()->Rank() == 0) printResult(msbx_p.data(), "msb, spu");
-              // if (lctx.get()->Rank() == 0) printResult(msbx_ours_p.data(), "msb, ours");
-              if (lctx.get()->Rank() == 0) checkOutput(x_p_spu.data(), x_p_ours.data(), "a2b");
             }
 
             /**
@@ -236,6 +198,96 @@ int main()
               // if (lctx.get()->Rank() == 0) printResult(msbx_p.data(), "msb, spu");
               // if (lctx.get()->Rank() == 0) printResult(msbx_ours_p.data(), "msb, ours");
               if (lctx.get()->Rank() == 0) checkOutput(x_p_spu.data(), x_p_ours.data(), "eqz");
+            }
+
+            /**
+             * ----------------------------------------------
+             *                Test: B2A.
+             * ----------------------------------------------
+             */
+            {
+              auto x_s_al = x_s;
+              auto* xs_type = MyUnwrapValue(x_s).eltype().as<aby3::BShrTy>();
+              x_s_al.storage_type() = spu::makeType<alkaid::BShrTy>(xs_type->getBacktype(), xs_type->nbits());
+
+              size_t comm = GetComm(aby).comm;
+              size_t latency = GetComm(aby).latency;
+              auto b2a_start = std::chrono::high_resolution_clock::now();
+
+              auto x_a = b2a(sctx_aby.get(), x_s);
+
+              auto b2a_spu = std::chrono::high_resolution_clock::now();
+              auto duration_spu = std::chrono::duration_cast<std::chrono::microseconds>(b2a_spu - b2a_start);
+              if (lctx.get()->Rank() == 0) std::cout << "------------------------ B2A, spu" << std::endl;
+              if (lctx.get()->Rank() == 0) std::cout << "b2a micro seconds: " << duration_spu.count() << std::endl;
+              if (lctx.get()->Rank() == 0) std::cout << "b2a sent: " << GetComm(aby).comm - comm << std::endl;
+              if (lctx.get()->Rank() == 0) std::cout << "b2a latency: " << GetComm(aby).latency - latency << std::endl;
+
+              // ---------------------------------------------------------------          
+
+              comm = GetComm(al).comm;
+              latency = GetComm(al).latency;
+
+              auto x_a_ours = alkaid::B2AMultiFanIn(&kectx_al, MyUnwrapValue(x_s_al));
+
+              auto b2a_ours = std::chrono::high_resolution_clock::now();
+              auto duration_ours = std::chrono::duration_cast<std::chrono::microseconds>(b2a_ours - b2a_spu);
+              if (lctx.get()->Rank() == 0) std::cout << "------------------------ B2A, ours" << std::endl;
+              if (lctx.get()->Rank() == 0) std::cout << "b2a micro seconds: " << duration_ours.count() << std::endl;
+              if (lctx.get()->Rank() == 0) std::cout << "b2a sent: " << GetComm(al).comm - comm << std::endl;
+              if (lctx.get()->Rank() == 0) std::cout << "b2a latency: " << GetComm(al).latency - latency << std::endl;
+
+              // Check output.
+              auto x_p_spu = OpenRef(MyUnwrapValue(a2b(sctx_aby.get(), x_a)), aby);
+              auto x_p_ours = OpenRef(alkaid::A2BMultiFanIn(&kectx_al, x_a_ours), al);
+              // if (lctx.get()->Rank() == 0) printResult(msbx_p.data(), "msb, spu");
+              // if (lctx.get()->Rank() == 0) printResult(msbx_ours_p.data(), "msb, ours");
+              if (lctx.get()->Rank() == 0) checkOutput(x_p_spu.data(), x_p_ours.data(), "b2a");
+            }
+
+            /**
+             * ----------------------------------------------
+             *                Test: A2B.
+             * ----------------------------------------------
+             */
+            {
+              auto x_ari = p2a(sctx_aby.get(), x_p);
+              auto x_ari_al = x_ari;
+              x_ari_al.storage_type() = spu::makeType<alkaid::AShrTy>(field);
+
+              size_t comm = GetComm(aby).comm;
+              size_t latency = GetComm(aby).latency;
+              auto a2b_start = std::chrono::high_resolution_clock::now();
+
+              auto x_b = a2b(sctx_aby.get(), x_ari);
+
+              auto a2b_spu = std::chrono::high_resolution_clock::now();
+              auto duration_spu = std::chrono::duration_cast<std::chrono::microseconds>(a2b_spu - a2b_start);
+              if (lctx.get()->Rank() == 0) std::cout << "------------------------ A2B, spu" << std::endl;
+              if (lctx.get()->Rank() == 0) std::cout << "a2b micro seconds: " << duration_spu.count() << std::endl;
+              if (lctx.get()->Rank() == 0) std::cout << "a2b sent: " << GetComm(aby).comm - comm << std::endl;
+              if (lctx.get()->Rank() == 0) std::cout << "a2b latency: " << GetComm(aby).latency - latency << std::endl;
+
+              // ---------------------------------------------------------------          
+
+              comm = GetComm(al).comm;
+              latency = GetComm(al).latency;
+
+              auto x_b_ours = alkaid::A2BMultiFanIn(&kectx_al, MyUnwrapValue(x_ari_al));
+
+              auto a2b_ours = std::chrono::high_resolution_clock::now();
+              auto duration_ours = std::chrono::duration_cast<std::chrono::microseconds>(a2b_ours - a2b_spu);
+              if (lctx.get()->Rank() == 0) std::cout << "------------------------ A2B, ours" << std::endl;
+              if (lctx.get()->Rank() == 0) std::cout << "a2b micro seconds: " << duration_ours.count() << std::endl;
+              if (lctx.get()->Rank() == 0) std::cout << "a2b sent: " << GetComm(al).comm - comm << std::endl;
+              if (lctx.get()->Rank() == 0) std::cout << "a2b latency: " << GetComm(al).latency - latency << std::endl;
+
+              // Check output.
+              auto x_p_spu = OpenRef(MyUnwrapValue(x_b), aby);
+              auto x_p_ours = OpenRef(x_b_ours, al);
+              // if (lctx.get()->Rank() == 0) printResult(msbx_p.data(), "msb, spu");
+              // if (lctx.get()->Rank() == 0) printResult(msbx_ours_p.data(), "msb, ours");
+              if (lctx.get()->Rank() == 0) checkOutput(x_p_spu.data(), x_p_ours.data(), "a2b");
             }
 
             // // 64-fan-in

@@ -17,7 +17,7 @@
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/mpc/kernel.h"
 
-namespace spu::mpc::alkaid {
+namespace spu::mpc::alkaid_boolean {
 
 // Reference:
 // ALKAID: A Mixed Protocol Framework for Machine Learning
@@ -173,4 +173,4 @@ NdArrayRef MsbA2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in, size_t
 NdArrayRef A2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in);
 NdArrayRef B2AMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in);
 
-}  // namespace spu::mpc::alkaid
+}  // namespace spu::mpc::alkaid_boolean

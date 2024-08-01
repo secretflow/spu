@@ -12,22 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/mpc/alkaid/type.h"
+#pragma once
 
-#include <mutex>
+#include "yacl/link/link.h"
 
-#include "libspu/mpc/common/pv2k.h"
+#include "libspu/core/context.h"
 
-namespace spu::mpc::alkaid {
+namespace spu::mpc {
 
-void registerTypes() {
-  regPV2kTypes();
+std::unique_ptr<SPUContext> makeAlkaidBooleanProtocol(
+    const RuntimeConfig& conf,
+    const std::shared_ptr<yacl::link::Context>& lctx);
 
-  static std::once_flag flag;
-  std::call_once(flag, []() {
-    TypeContext::getTypeContext()->addTypes<AShrTy, AShrTyMss, BShrTy, BShrTyMss, PShrTy>();
-    // TypeContext::getTypeContext()->addTypes<AShrTy, BShrTy, PShrTy>();
-  });
-}
+void regAlkaidBooleanProtocol(SPUContext* ctx,
+                     const std::shared_ptr<yacl::link::Context>& lctx);
 
-}  // namespace spu::mpc::alkaid
+}  // namespace spu::mpc
