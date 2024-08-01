@@ -31,7 +31,7 @@ from sml.metrics.regression.regression import (
     mean_squared_error,
     mean_poisson_deviance,
     mean_gamma_deviance,
-    d2_tweedie_score
+    d2_tweedie_score,
 )
 
 

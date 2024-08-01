@@ -26,15 +26,14 @@ from .distributed_impl import (  # type: ignore
     SAMPLE_DEVICES_DEF,
     dtype_spu_to_np,
     shape_spu_to_np,
-    load,
     save,
+    load,
 )
 
 
 def main():
     import argparse
     import json
-
     from spu.utils.polyfill import Process
 
     parser = argparse.ArgumentParser(description='SPU node service.')
