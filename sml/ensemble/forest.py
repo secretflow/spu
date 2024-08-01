@@ -174,7 +174,6 @@ class RandomForestClassifier:
         return self
 
     def jax_mode_row_vectorized(self, data):
-        num_rows, num_cols = data.shape
         label_list = jnp.array(self.label_list)
 
         data_expanded = jnp.expand_dims(data, axis=-1)
