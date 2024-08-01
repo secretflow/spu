@@ -58,9 +58,6 @@ class RandomForestClassifier:
     n_labels: int
         The max number of labels.
 
-    label_list: jnp.array or list
-        The list of labels.
-
     """
 
     def __init__(
@@ -73,7 +70,6 @@ class RandomForestClassifier:
         bootstrap,
         max_samples,
         n_labels,
-        label_list,
     ):
         assert criterion == "gini", "criteria other than gini is not supported."
         assert splitter == "best", "splitter other than best is not supported."
@@ -95,7 +91,6 @@ class RandomForestClassifier:
         self.bootstrap = bootstrap
         self.max_samples = max_samples
         self.n_labels = n_labels
-        self.label_list = label_list
 
         self.trees = []
         self.features_indices = []
@@ -162,6 +157,7 @@ class RandomForestClassifier:
         self.max_features = self._calculate_max_features(
             self.max_features, self.n_features
         )
+        self.label_list = jnp.arange(self.n_labels)
 
         self.trees = []
         self.features_indices = []
@@ -202,5 +198,5 @@ class RandomForestClassifier:
         tree_predictions = jnp.array(predictions_list).T
 
         y_pred = self.jax_mode_row_vectorized(tree_predictions)
-        print(y_pred)
+
         return y_pred.ravel()

@@ -34,7 +34,6 @@ def emul_forest(mode=emulation.Mode.MULTIPROCESS):
         bootstrap,
         max_samples,
         n_labels,
-        label_list,
     ):
         rf_custom = sml_rfc(
             n_estimators,
@@ -45,7 +44,6 @@ def emul_forest(mode=emulation.Mode.MULTIPROCESS):
             bootstrap,
             max_samples,
             n_labels,
-            label_list,
         )
 
         def proc(X, y):
@@ -78,8 +76,7 @@ def emul_forest(mode=emulation.Mode.MULTIPROCESS):
 
         # load mock data
         X, y = load_data()
-        label_list = jnp.unique(y)
-        n_labels = label_list.shape[0]
+        n_labels = jnp.unique(y).shape[0]
 
         # compare with sklearn
         rf = RandomForestClassifier(
@@ -109,7 +106,6 @@ def emul_forest(mode=emulation.Mode.MULTIPROCESS):
             bootstrap=False,
             max_samples=None,
             n_labels=n_labels,
-            label_list=label_list,
         )
         start = time.time()
         result = emulator.run(proc)(X_spu, y_spu)

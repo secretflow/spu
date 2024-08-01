@@ -35,7 +35,6 @@ class UnitTests(unittest.TestCase):
             bootstrap,
             max_samples,
             n_labels,
-            label_list,
         ):
             rf_custom = sml_rfc(
                 n_estimators,
@@ -46,7 +45,6 @@ class UnitTests(unittest.TestCase):
                 bootstrap,
                 max_samples,
                 n_labels,
-                label_list,
             )
 
             def proc(X, y):
@@ -79,8 +77,7 @@ class UnitTests(unittest.TestCase):
 
         # load mock data
         X, y = load_data()
-        label_list = jnp.unique(y)
-        n_labels = label_list.shape[0]
+        n_labels = jnp.unique(y).shape[0]
 
         # compare with sklearn
         rf = RandomForestClassifier(
@@ -93,7 +90,6 @@ class UnitTests(unittest.TestCase):
         )
         rf = rf.fit(X, y)
         score_plain = rf.score(X, y)
-        # 获取每棵树的预测值
         tree_predictions = jnp.array([tree.predict(X) for tree in rf.estimators_])
 
         # run
@@ -106,7 +102,6 @@ class UnitTests(unittest.TestCase):
             bootstrap=True,
             max_samples=0.7,
             n_labels=n_labels,
-            label_list=label_list,
         )
 
         result = spsim.sim_jax(sim, proc)(X, y)
