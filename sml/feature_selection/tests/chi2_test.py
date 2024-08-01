@@ -17,11 +17,10 @@ import sys
 import unittest
 
 import numpy as np
-from sklearn.datasets import load_iris
-from sklearn.feature_selection import chi2 as chi2_sklearn
-
 import spu.spu_pb2 as spu_pb2
 import spu.utils.simulation as spsim
+from sklearn.datasets import load_iris
+from sklearn.feature_selection import chi2 as chi2_sklearn
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../../'))
 from sml.feature_selection.univariate_selection import chi2
