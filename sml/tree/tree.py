@@ -52,7 +52,6 @@ class DecisionTreeClassifier:
         ), "max_depth should not be None and must > 0."
         self.max_depth = max_depth
         self.n_labels = n_labels
-        # self.sample_weight = sample_weight
 
     def fit(self, X, y, sample_weight=None):
         self.T, self.F = odtt(X, y, self.max_depth, self.n_labels, sample_weight)

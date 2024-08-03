@@ -1,4 +1,4 @@
-# Copyright 2023 Ant Group Co., Ltd.
+# Copyright 2024 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ from sklearn.tree import DecisionTreeClassifier
 
 import spu.spu_pb2 as spu_pb2  # type: ignore
 import spu.utils.simulation as spsim
+from sml.tree.tree import DecisionTreeClassifier as sml_dtc
 from sml.ensemble.adaboost import AdaBoostClassifier as sml_Adaboost
 
 MAX_DEPTH = 3
@@ -28,18 +29,16 @@ MAX_DEPTH = 3
 class UnitTests(unittest.TestCase):
     def test_Ada(self):
         def proc_wrapper(
-            estimator = "dtc",
-            n_estimators = 10,
-            max_depth = MAX_DEPTH,
-            learning_rate = 1.0,
-            n_classes = 3,
-        ):
+            estimator,
+            n_estimators,
+            learning_rate,
+            algorithm,
+        ):  
             ada_custom = sml_Adaboost(
-                estimator = "dtc",
-                n_estimators = 10,
-                max_depth = MAX_DEPTH,
-                learning_rate = 1.0,
-                n_classes = 3,
+                estimator = estimator,
+                n_estimators = n_estimators,
+                learning_rate = learning_rate,
+                algorithm=algorithm,
             )
 
             def proc(X, y):
@@ -81,12 +80,12 @@ class UnitTests(unittest.TestCase):
         score_plain = ada.score(X, y)
         
         #run
+        dtc = sml_dtc("gini", "best", 3, 3)
         proc = proc_wrapper(
-            estimator = "dtc",
+            estimator = dtc,
             n_estimators = 3,
-            max_depth = 3,
             learning_rate = 1.0,
-            n_classes = 3,
+            algorithm="discrete",
         )
         
         result = spsim.sim_jax(sim, proc)(X, y)
