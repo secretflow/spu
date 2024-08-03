@@ -42,7 +42,7 @@ class ShiftKernel : public Kernel {
  public:
   void evaluate(KernelEvalContext* ctx) const override;
   virtual NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
-                          size_t bits) const = 0;
+                          const Sizes& bits) const = 0;
 };
 
 class BinaryKernel : public Kernel {
@@ -215,6 +215,14 @@ class ConcateKernel : public Kernel {
   virtual NdArrayRef proc(KernelEvalContext* ctx,
                           const std::vector<NdArrayRef>& values,
                           int64_t axis) const = 0;
+};
+
+class DisassembleKernel : public Kernel {
+ public:
+  void evaluate(KernelEvalContext* ctx) const override;
+
+  virtual std::vector<NdArrayRef> proc(KernelEvalContext* ctx,
+                                       const NdArrayRef& in) const = 0;
 };
 
 }  // namespace spu::mpc

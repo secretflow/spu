@@ -133,7 +133,7 @@ OptionalAPI<Value> mul_a1bv(SPUContext* ctx, const Value& x, const Value& y) {
   return NotAvailable;
 }
 
-Value lshift_a(SPUContext* ctx, const Value& x, size_t nbits) {
+Value lshift_a(SPUContext* ctx, const Value& x, const Sizes& nbits) {
   FORCE_DISPATCH(ctx, x, nbits);
 }
 
@@ -201,15 +201,15 @@ OptionalAPI<Value> xor_bv(SPUContext* ctx, const Value& x, const Value& y) {
   return NotAvailable;
 }
 
-Value lshift_b(SPUContext* ctx, const Value& x, size_t nbits) {
+Value lshift_b(SPUContext* ctx, const Value& x, const Sizes& nbits) {
   FORCE_DISPATCH(ctx, x, nbits);
 }
 
-Value rshift_b(SPUContext* ctx, const Value& x, size_t nbits) {
+Value rshift_b(SPUContext* ctx, const Value& x, const Sizes& nbits) {
   FORCE_DISPATCH(ctx, x, nbits);
 }
 
-Value arshift_b(SPUContext* ctx, const Value& x, size_t nbits) {
+Value arshift_b(SPUContext* ctx, const Value& x, const Sizes& nbits) {
   FORCE_DISPATCH(ctx, x, nbits);
 }
 
@@ -252,12 +252,12 @@ Value bitintl_b(SPUContext* ctx, const Value& x, size_t stride) {
        idx--) {
     auto K = hack_make_p(ctx, spu::detail::kBitIntlKeepMasks[idx], x.shape());
     auto M = hack_make_p(ctx, spu::detail::kBitIntlSwapMasks[idx], x.shape());
-    int64_t S = 1 << idx;
+    int64_t S = static_cast<uint64_t>(1) << idx;
     // out = (out & K) ^ ((out >> S) & M) ^ ((out & M) << S);
-    out = xor_bb(
-        ctx,
-        xor_bb(ctx, and_bp(ctx, out, K), and_bp(ctx, rshift_b(ctx, out, S), M)),
-        lshift_b(ctx, and_bp(ctx, out, M), S));
+    out = xor_bb(ctx,
+                 xor_bb(ctx, and_bp(ctx, out, K),
+                        and_bp(ctx, rshift_b(ctx, out, {S}), M)),
+                 lshift_b(ctx, and_bp(ctx, out, M), {S}));
   }
   out = setNumBits(out, numBits(x));
   return out;
@@ -281,12 +281,12 @@ Value bitdeintl_b(SPUContext* ctx, const Value& x, size_t stride) {
   for (int64_t idx = stride; idx + 1 < Log2Ceil(nbits); idx++) {
     auto K = hack_make_p(ctx, spu::detail::kBitIntlKeepMasks[idx], x.shape());
     auto M = hack_make_p(ctx, spu::detail::kBitIntlSwapMasks[idx], x.shape());
-    int64_t S = 1 << idx;
+    int64_t S = static_cast<uint64_t>(1) << idx;
     // out = (out & K) ^ ((out >> S) & M) ^ ((out & M) << S);
-    out = xor_bb(
-        ctx,
-        xor_bb(ctx, and_bp(ctx, out, K), and_bp(ctx, rshift_b(ctx, out, S), M)),
-        lshift_b(ctx, and_bp(ctx, out, M), S));
+    out = xor_bb(ctx,
+                 xor_bb(ctx, and_bp(ctx, out, K),
+                        and_bp(ctx, rshift_b(ctx, out, {S}), M)),
+                 lshift_b(ctx, and_bp(ctx, out, M), {S}));
   }
   out = setNumBits(out, numBits(x));
   return out;
@@ -318,9 +318,9 @@ Value ppa_kogge_stone(SPUContext* ctx, const Value& lhs, const Value& rhs,
   auto G = and_bb(ctx, lhs, rhs);
 
   for (int idx = 0; idx < Log2Ceil(nbits); ++idx) {
-    const size_t offset = 1UL << idx;
-    auto G1 = lshift_b(ctx, G, offset);
-    auto P1 = lshift_b(ctx, P, offset);
+    const int64_t offset = static_cast<uint64_t>(1) << idx;
+    auto G1 = lshift_b(ctx, G, {offset});
+    auto P1 = lshift_b(ctx, P, {offset});
 
     // P1 = P & P1
     // G1 = G ^ (P & G1)
@@ -332,7 +332,7 @@ Value ppa_kogge_stone(SPUContext* ctx, const Value& lhs, const Value& rhs,
   }
 
   // out = (G << 1) ^ p0
-  auto C = lshift_b(ctx, G, 1);
+  auto C = lshift_b(ctx, G, {1});
   return xor_bb(ctx, xor_bb(ctx, lhs, rhs), C);
 }
 
@@ -343,7 +343,7 @@ std::pair<Value, Value> bit_scatter(SPUContext* ctx, const Value& in,
   SPU_ENFORCE(absl::has_single_bit(nbits), "unsupported {}", nbits);
   auto out = bitdeintl_b(ctx, in, stride);
 
-  auto hi = rshift_b(ctx, out, nbits / 2);
+  auto hi = rshift_b(ctx, out, {static_cast<int64_t>(nbits / 2)});
   auto mask = hack_make_p(ctx, (static_cast<uint128_t>(1) << (nbits / 2)) - 1,
                           in.shape());
   auto lo = and_bp(ctx, out, mask);
@@ -357,7 +357,7 @@ Value bit_gather(SPUContext* ctx, const Value& hi, const Value& lo,
   SPU_ENFORCE(nbits == numBits(lo), "nbits mismatch {}, {}", nbits,
               numBits(lo));
 
-  auto out = xor_bb(ctx, lshift_b(ctx, hi, nbits), lo);
+  auto out = xor_bb(ctx, lshift_b(ctx, hi, {static_cast<int64_t>(nbits)}), lo);
   return bitintl_b(ctx, out, stride);
 }
 
@@ -395,8 +395,8 @@ Value ppa_sklansky(SPUContext* ctx, Value const& lhs, Value const& rhs,
     auto Gs = and_bp(ctx, Gl, s_mask);
     auto Ps = and_bp(ctx, Pl, s_mask);
     for (int j = 0; j < idx; j++) {
-      Gs = xor_bb(ctx, Gs, rshift_b(ctx, Gs, 1 << j));
-      Ps = xor_bb(ctx, Ps, rshift_b(ctx, Ps, 1 << j));
+      Gs = xor_bb(ctx, Gs, rshift_b(ctx, Gs, {1 << j}));
+      Ps = xor_bb(ctx, Ps, rshift_b(ctx, Ps, {1 << j}));
     }
     // SPU_ENFORCE(numBits(Ps) == bit_width / 2);
     // SPU_ENFORCE(numBits(Gs) == bit_width / 2);
@@ -416,7 +416,7 @@ Value ppa_sklansky(SPUContext* ctx, Value const& lhs, Value const& rhs,
   }
 
   // out = (G0 << 1) ^ p0
-  auto C = lshift_b(ctx, G, 1);
+  auto C = lshift_b(ctx, G, {1});
   return xor_bb(ctx, xor_bb(ctx, lhs, rhs), C);
 }
 
@@ -460,8 +460,8 @@ Value carry_a2b(SPUContext* ctx, const Value& x, const Value& y, size_t k) {
   while (k > 1) {
     if (k % 2 != 0) {
       k += 1;
-      P = lshift_b(ctx, P, 1);
-      G = lshift_b(ctx, G, 1);
+      P = lshift_b(ctx, P, {1});
+      G = lshift_b(ctx, G, {1});
     }
     auto [P1, P0] = bit_scatter(ctx, P, 0);
     auto [G1, G0] = bit_scatter(ctx, G, 0);

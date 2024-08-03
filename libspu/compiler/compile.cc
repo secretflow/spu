@@ -14,8 +14,6 @@
 
 #include "libspu/compiler/compile.h"
 
-#include "mlir/IR/BuiltinOps.h"
-
 #include "libspu/compiler/codegen/codegen.h"
 #include "libspu/compiler/common/compilation_context.h"
 #include "libspu/compiler/core/core.h"

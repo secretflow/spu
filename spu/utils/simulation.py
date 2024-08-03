@@ -17,7 +17,11 @@ import threading
 from typing import Callable
 
 import jax
-import jax.extend.linear_util as jax_lu  # Moved in jax 0.4.16
+
+try:
+    import jax.extend.linear_util as jax_lu
+except ImportError:
+    import jax.linear_util as jax_lu  # fallback
 import jax.numpy as jnp
 import numpy as np
 from jax._src import api_util as japi_util

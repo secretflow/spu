@@ -134,7 +134,7 @@ void PackingHelper::doPackingRLWEs(absl::Span<RLWECt> rlwes,
   seal::Evaluator evaluator(context_);
   const int64_t logn = absl::bit_width(gap_) - 1;
   for (int64_t k = logn; k >= 1; --k) {
-    int64_t h = 1 << (k - 1);
+    int64_t h = static_cast<uint64_t>(1) << (k - 1);
     yacl::parallel_for(0, h, [&](int64_t bgn, int64_t end) {
       RLWECt dummy;  // zero-padding with zero RLWE
       for (int64_t i = bgn; i < end; ++i) {
@@ -188,7 +188,7 @@ void GenerateGaloisKeyForPacking(const seal::SEALContext &context,
   size_t logN = absl::bit_width(N) - 1;
   std::vector<uint32_t> galois_elt;
   for (uint32_t i = 1; i <= logN; i++) {
-    galois_elt.push_back((1u << i) + 1);
+    galois_elt.push_back((static_cast<uint32_t>(1) << i) + 1);
   }
 
   seal::KeyGenerator keygen(context, key);

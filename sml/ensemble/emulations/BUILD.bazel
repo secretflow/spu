@@ -17,10 +17,18 @@ load("@rules_python//python:defs.bzl", "py_binary")
 package(default_visibility = ["//visibility:public"])
 
 py_binary(
+<<<<<<< HEAD
     name = "adaboost_emul",
     srcs = ["adaboost_emul.py"],
     deps = [
         "//sml/ensemble:adaboost",
+    ]
+=======
+    name = "forest_emul",
+    srcs = ["forest_emul.py"],
+    deps = [
+        "//sml/ensemble:forest",
+>>>>>>> 854f3ef0925bc419ae804ae77a4a9843ec15db7f
         "//sml/utils:emulation",
     ],
 )

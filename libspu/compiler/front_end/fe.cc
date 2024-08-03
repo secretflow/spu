@@ -21,7 +21,6 @@
 #include "mlir/Pass/Pass.h"
 #include "mlir/Pass/PassManager.h"
 #include "mlir/Transforms/Passes.h"
-#include "spdlog/spdlog.h"
 #include "stablehlo/dialect/StablehloOps.h"
 #include "xla/mlir_hlo/mhlo/IR/hlo_ops.h"
 #include "xla/mlir_hlo/mhlo/transforms/passes.h"
@@ -53,6 +52,8 @@ mlir::OwningOpRef<mlir::ModuleOp> FE::doit(const CompilationSource &source) {
   if (source.ir_type() == spu::SourceIRType::STABLEHLO) {
     module = mlir::parseSourceString<mlir::ModuleOp>(source.ir_txt(),
                                                      ctx_->getMLIRContext());
+
+    SPU_ENFORCE(module, "MLIR parser failure");
 
     // Convert stablehlo to mhlo first
     mlir::PassManager pm(ctx_->getMLIRContext());

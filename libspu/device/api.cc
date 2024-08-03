@@ -71,12 +71,14 @@ struct CommunicationStats {
   size_t send_bytes = 0;
   size_t recv_bytes = 0;
   size_t send_actions = 0;
+  size_t recv_actions = 0;
 
   void reset(const std::shared_ptr<yacl::link::Context> &lctx) {
     if (!lctx) {
       return;
     }
     send_actions = lctx->GetStats()->sent_actions;
+    recv_actions = lctx->GetStats()->recv_actions;
     send_bytes = lctx->GetStats()->sent_bytes;
     recv_bytes = lctx->GetStats()->recv_bytes;
   }
@@ -88,6 +90,7 @@ struct CommunicationStats {
     send_bytes = lctx->GetStats()->sent_bytes - send_bytes;
     recv_bytes = lctx->GetStats()->recv_bytes - recv_bytes;
     send_actions = lctx->GetStats()->sent_actions - send_actions;
+    recv_actions = lctx->GetStats()->recv_actions - recv_actions;
   }
 };
 
@@ -108,6 +111,10 @@ struct ActionStats {
   size_t send_bytes = 0;
   // total recv bytes.
   size_t recv_bytes = 0;
+  // total send actions.
+  size_t send_actions = 0;
+  // total recv actions.
+  size_t recv_actions = 0;
 
   inline double getTotalTimeInSecond() const {
     return std::chrono::duration_cast<std::chrono::duration<double>>(total_time)
@@ -183,6 +190,8 @@ void printProfilingData(spu::SPUContext *sctx, const std::string &name,
           std::chrono::duration_cast<Duration>(rec.end - rec.start);
       stat.send_bytes += (rec.send_bytes_end - rec.send_bytes_start);
       stat.recv_bytes += (rec.recv_bytes_end - rec.recv_bytes_start);
+      stat.send_actions += (rec.send_actions_end - rec.send_actions_start);
+      stat.recv_actions += (rec.recv_actions_end - rec.recv_actions_start);
     }
 
     static std::map<int64_t, std::string> kModules = {
@@ -213,23 +222,25 @@ void printProfilingData(spu::SPUContext *sctx, const std::string &name,
         const auto &stat = stats.find(key)->second;
         SPDLOG_INFO(
             "- {}, executed {} times, duration {}s, send bytes {} recv "
-            "bytes {}",
+            "bytes {}, send actions {}, recv actions {}",
             key.name, stat.count, stat.getTotalTimeInSecond(), stat.send_bytes,
-            stat.recv_bytes);
+            stat.recv_bytes, stat.send_actions, stat.recv_actions);
       }
     }
   }
 
   // print link statistics
   SPDLOG_INFO(
-      "Link details: total send bytes {}, recv bytes {}, send actions {}",
-      comm_stats.send_bytes, comm_stats.recv_bytes, comm_stats.send_actions);
+      "Link details: total send bytes {}, recv bytes {}, send actions {}, recv "
+      "actions {}",
+      comm_stats.send_bytes, comm_stats.recv_bytes, comm_stats.send_actions,
+      comm_stats.recv_actions);
 }
 
 void SPUErrorHandler(void *use_data, const char *reason, bool gen_crash_diag) {
   (void)use_data;
   (void)gen_crash_diag;
-  SPU_THROW(reason);
+  SPU_THROW("{}", reason);
 }
 
 std::mutex ErrorHandlerMutex;

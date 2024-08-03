@@ -1,6 +1,8 @@
 // RUN: spu-translate --protocol_kind=1 --interpret -split-input-file %s
 // RUN: spu-translate --protocol_kind=2 --interpret -split-input-file %s
 // RUN: spu-translate --protocol_kind=3 --interpret -split-input-file %s
+// RUN: spu-translate --protocol_kind=4 --interpret -split-input-file %s
+// RUN: spu-translate --protocol_kind=5 --interpret -split-input-file %s
 // AUTO GENERATED, DO NOT EDIT
 
 func.func @power_op_test_i64_i64_pp() {
@@ -58,7 +60,7 @@ func.func @power_op_test_f64_f64_pp() {
    %1 = pphlo.constant dense<[2.0, 2.0, 2.0, -1.0, 1.0]> : tensor<5xf64>
    %2 = pphlo.power %0,%1 : (tensor<5xf64>,tensor<5xf64>)->tensor<5xf64>
    %3 = pphlo.constant dense<[4.000000e+00, 0.000000e+00, 2.500000e+01, 0.33333333333333331, 10000.0]> : tensor<5xf64>
-   pphlo.custom_call @expect_almost_eq(%2, %3) { tol = 0.5 }: (tensor<5xf64>, tensor<5xf64>)->()
+   pphlo.custom_call @expect_almost_eq(%2, %3) { tol = 0.6 }: (tensor<5xf64>, tensor<5xf64>)->()
    func.return
 }
 
@@ -72,6 +74,6 @@ func.func @power_op_test_f64_f64_ss() {
    %4 = pphlo.power %2, %3 : (tensor<5x!pphlo.secret<f64>>,tensor<5x!pphlo.secret<f64>>)->tensor<5x!pphlo.secret<f64>>
    %5 = pphlo.constant dense<[4.000000e+00, 0.000000e+00, 2.500000e+01, 0.33333333333333331, 10000.0]> : tensor<5xf64>
    %6 = pphlo.convert %4 : (tensor<5x!pphlo.secret<f64>>)->tensor<5xf64>
-   pphlo.custom_call @expect_almost_eq(%5, %6) { tol = 0.5 }: (tensor<5xf64>, tensor<5xf64>)->()
+   pphlo.custom_call @expect_almost_eq(%5, %6) { tol = 0.6 }: (tensor<5xf64>, tensor<5xf64>)->()
    func.return
 }

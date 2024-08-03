@@ -51,6 +51,7 @@ void IRPrinterConfig::printBeforeIfEnabled(Pass *pass, Operation *,
   if (ec.value() != 0) {
     spdlog::error("Open file {} failed, error = {}", file_name.c_str(),
                   ec.message());
+    return;
   }
   print_callback(f);
 }
@@ -64,6 +65,7 @@ void IRPrinterConfig::printAfterIfEnabled(Pass *pass, Operation *,
   if (ec.value() != 0) {
     spdlog::error("Open file {} failed, error = {}", file_name.c_str(),
                   ec.message());
+    return;
   }
   print_callback(f);
 }

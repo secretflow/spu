@@ -272,9 +272,9 @@ namespace {
     res = NdArrayRef(makeType<mpc::cheetah::AShrTy>(ftype), in.shape());
   }
 
-  return DISPATCH_ALL_FIELDS(field, "cheetah.ring_cast", [&]() {
+  return DISPATCH_ALL_FIELDS(field, [&]() {
     using from_ring2k_t = ring2k_t;
-    return DISPATCH_ALL_FIELDS(ftype, "cheetah.ring_cast", [&]() {
+    return DISPATCH_ALL_FIELDS(ftype, [&]() {
       using to_ring2k_t = ring2k_t;
       NdArrayView<const from_ring2k_t> _in(in);
       NdArrayView<to_ring2k_t> _res(res);
@@ -383,7 +383,7 @@ spu::Value Logistic(spu::SPUContext* ctx, const spu::Value& x) {
 spu::Value Sigmoid(spu::SPUContext* ctx, const spu::Value& x) {
   namespace sk = spu::kernel;
   auto c05 = sk::hlo::Constant(ctx, 0.5F, x.shape());
-  auto half = sk::hal::right_shift_arithmetic(ctx, x, 1);
+  auto half = sk::hal::right_shift_arithmetic(ctx, x, {1});
   auto divisor = sk::hlo::Add(ctx, sk::hlo::Constant(ctx, 1, x.shape()),
                               sk::hal::f_square(ctx, x));
   return sk::hlo::Add(ctx, c05,

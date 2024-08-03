@@ -42,6 +42,26 @@ static NdArrayRef wrap_and_bb(SPUContext* ctx, const NdArrayRef& x,
   return UnwrapValue(and_bb(ctx, WrapValue(x), WrapValue(y)));
 }
 
+// TODO: Move to some common place
+PtType getBacktype(size_t nbits) {
+  if (nbits <= 8) {
+    return PT_U8;
+  }
+  if (nbits <= 16) {
+    return PT_U16;
+  }
+  if (nbits <= 32) {
+    return PT_U32;
+  }
+  if (nbits <= 64) {
+    return PT_U64;
+  }
+  if (nbits <= 128) {
+    return PT_U128;
+  }
+  SPU_THROW("invalid number of bits={}", nbits);
+}
+
 NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& x) const {
   const auto field = x.eltype().as<Ring2k>()->field();
   auto* comm = ctx->getState<Communicator>();
@@ -90,6 +110,9 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& x) const {
   return r_a;
 }
 
+// TODO(jimi): pack {numel * nbits} to fully make use of undelying storage to
+// save communications. If implemented, B2A_Disassemble kernel is also no longer
+// needed
 NdArrayRef B2A_Randbit::proc(KernelEvalContext* ctx,
                              const NdArrayRef& x) const {
   const auto field = x.eltype().as<Ring2k>()->field();
@@ -105,13 +128,14 @@ NdArrayRef B2A_Randbit::proc(KernelEvalContext* ctx,
 
   const auto numel = x.numel();
   const auto rand_numel = numel * static_cast<int64_t>(nbits);
+  const PtType backtype = getBacktype(nbits);
 
   auto randbits = beaver->RandBit(field, rand_numel);
   SPU_ENFORCE(static_cast<size_t>(randbits.size()) ==
               rand_numel * SizeOf(field));
   auto res = NdArrayRef(makeType<AShrTy>(field), x.shape());
 
-  DISPATCH_ALL_FIELDS(field, kBindName, [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using U = ring2k_t;
 
     absl::Span<const U> _randbits(randbits.data<U>(), rand_numel);
@@ -119,32 +143,125 @@ NdArrayRef B2A_Randbit::proc(KernelEvalContext* ctx,
 
     // algorithm begins.
     // Ref: III.D @ https://eprint.iacr.org/2019/599.pdf (SPDZ-2K primitives)
-    std::vector<U> x_xor_r(numel);
+    DISPATCH_UINT_PT_TYPES(backtype, [&]() {
+      using V = ScalarT;
+      std::vector<V> x_xor_r(numel);
 
-    pforeach(0, numel, [&](int64_t idx) {
-      // use _r[i*nbits, (i+1)*nbits) to construct rb[i]
-      U mask = 0;
-      for (int64_t bit = 0; bit < nbits; ++bit) {
-        mask += (_randbits[idx * nbits + bit] & 0x1) << bit;
-      }
-      x_xor_r[idx] = _x[idx] ^ mask;
-    });
-
-    // open c = x ^ r
-    x_xor_r = comm->allReduce<U, std::bit_xor>(x_xor_r, "open(x^r)");
-
-    NdArrayView<U> _res(res);
-    pforeach(0, numel, [&](int64_t idx) {
-      _res[idx] = 0;
-      for (int64_t bit = 0; bit < nbits; bit++) {
-        auto c_i = (x_xor_r[idx] >> bit) & 0x1;
-        if (comm->getRank() == 0) {
-          _res[idx] += (c_i + (1 - c_i * 2) * _randbits[idx * nbits + bit])
-                       << bit;
-        } else {
-          _res[idx] += ((1 - c_i * 2) * _randbits[idx * nbits + bit]) << bit;
+      pforeach(0, numel, [&](int64_t idx) {
+        // use _r[i*nbits, (i+1)*nbits) to construct rb[i]
+        V mask = 0;
+        for (int64_t bit = 0; bit < nbits; ++bit) {
+          mask += (static_cast<V>(_randbits[idx * nbits + bit]) & 0x1) << bit;
         }
-      }
+        x_xor_r[idx] = _x[idx] ^ mask;
+      });
+
+      // open c = x ^ r
+      x_xor_r = comm->allReduce<V, std::bit_xor>(x_xor_r, "open(x^r)");
+
+      NdArrayView<U> _res(res);
+      pforeach(0, numel, [&](int64_t idx) {
+        _res[idx] = 0;
+        for (int64_t bit = 0; bit < nbits; bit++) {
+          auto c_i = static_cast<U>(x_xor_r[idx] >> bit) & 0x1;
+          if (comm->getRank() == 0) {
+            _res[idx] += (c_i + (1 - c_i * 2) * _randbits[idx * nbits + bit])
+                         << bit;
+          } else {
+            _res[idx] += ((1 - c_i * 2) * _randbits[idx * nbits + bit]) << bit;
+          }
+        }
+      });
+    });
+  });
+
+  return res;
+}
+
+// Reference:
+//  III.D @ https://eprint.iacr.org/2019/599.pdf (SPDZ-2K primitives)
+//
+// Analysis:
+//  Online Latency: 1 (x_xor_r reveal)
+//  Communication: one element bits for one element
+//  Vectorization: yes
+//
+// HighLevel Intuition:
+//  Since: X = sum: Xi * 2^i
+// If we have <Xi>A, then we can construct <X>A = sum: <Xi>A * 2^i.
+//
+// The problem is that we only have <Xi>B in hand. Details for how to
+// construct <Xi>A from <Xi>B:
+// - trusted third party choose a random bit r, where r == 0 or r == 1.
+// - trusted third party send <r>A to parties
+// - parties compute <r>B from <r>A
+// - parties xor_open c = Xi ^ r = open(<Xi>B ^ <r>B), Xi is still safe due
+// to protection from r.
+// - parties compute: <x> = c + (1-2c)*<r>
+//    <Xi>A = 1 - <r>A if c == 1, i.e. Xi != r
+//    <Xi>A = <r>A if c == 0, i.e. Xi == r
+//    i.e. <Xi>A = c + (1-2c) * <r>A
+//
+//  Online Communication:
+//    = 1 (xor open)
+
+// Disassemble BShr to AShr bit-by-bit
+//  Input: BShr
+//  Return: a vector of k AShr, k is the valid bits of BShr
+std::vector<NdArrayRef> B2A_Disassemble::proc(KernelEvalContext* ctx,
+                                              const NdArrayRef& x) const {
+  const auto field = x.eltype().as<Ring2k>()->field();
+  auto* comm = ctx->getState<Communicator>();
+  auto* beaver = ctx->getState<Semi2kState>()->beaver();
+
+  const int64_t nbits = x.eltype().as<BShare>()->nbits();
+  SPU_ENFORCE((size_t)nbits > 0 && (size_t)nbits <= SizeOf(field) * 8,
+              "invalid nbits={}", nbits);
+
+  const auto numel = x.numel();
+  const auto rand_numel = numel * static_cast<int64_t>(nbits);
+  const PtType backtype = getBacktype(nbits);
+
+  auto randbits = beaver->RandBit(field, rand_numel);
+
+  std::vector<NdArrayRef> res;
+  res.reserve(nbits);
+  for (int64_t idx = 0; idx < nbits; ++idx) {
+    res.emplace_back(makeType<AShrTy>(field), x.shape());
+  }
+  DISPATCH_ALL_FIELDS(field, [&]() {
+    using U = ring2k_t;
+
+    absl::Span<const U> _randbits(randbits.data<U>(), rand_numel);
+    NdArrayView<U> _x(x);
+
+    DISPATCH_UINT_PT_TYPES(backtype, [&]() {
+      using V = ScalarT;
+      std::vector<V> x_xor_r(numel);
+
+      pforeach(0, numel, [&](int64_t idx) {
+        // use _r[i*nbits, (i+1)*nbits) to construct rb[i]
+        V mask = 0;
+        for (int64_t bit = 0; bit < nbits; ++bit) {
+          mask += (static_cast<V>(_randbits[idx * nbits + bit]) & 0x1) << bit;
+        }
+        x_xor_r[idx] = _x[idx] ^ mask;
+      });
+
+      // open c = x ^ r
+      x_xor_r = comm->allReduce<V, std::bit_xor>(x_xor_r, "open(x^r)");
+
+      pforeach(0, numel, [&](int64_t idx) {
+        pforeach(0, nbits, [&](int64_t bit) {
+          NdArrayView<U> _res(res[bit]);
+          auto c_i = static_cast<U>(x_xor_r[idx] >> bit) & 0x1;
+          if (comm->getRank() == 0) {
+            _res[idx] = (c_i + (1 - c_i * 2) * _randbits[idx * nbits + bit]);
+          } else {
+            _res[idx] = ((1 - c_i * 2) * _randbits[idx * nbits + bit]);
+          }
+        });
+      });
     });
   });
 
@@ -188,7 +305,9 @@ NdArrayRef MsbA2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
     // Compute the k'th bit.
     //   (m^n)[k] ^ carry
-    auto msb = xor_bb(sctx, rshift_b(sctx, xor_bb(sctx, m, n), k), carry);
+    auto msb = xor_bb(
+        sctx, rshift_b(sctx, xor_bb(sctx, m, n), {static_cast<int64_t>(k)}),
+        carry);
 
     return UnwrapValue(msb);
   }
@@ -210,7 +329,7 @@ NdArrayRef eqz(KernelEvalContext* ctx, const NdArrayRef& in) {
   // beaver samples r and deals [r]a and [r]b
   //  receal c = a+r
   // check a == 0  <=> c == r
-  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using el_t = ring2k_t;
     auto [ra_buf, rb_buf] = beaver->Eqz(field, numel);
 
@@ -238,11 +357,11 @@ NdArrayRef eqz(KernelEvalContext* ctx, const NdArrayRef& in) {
     // TODO: fix AND triple
     // in beaver->AND(field, shape), min FM32, need min 1byte to reduce comm
     NdArrayRef round_out = rb.as(makeType<BShrTy>(field));
-    size_t cur_bits = round_out.eltype().as<BShare>()->nbits();
+    int64_t cur_bits = round_out.eltype().as<BShare>()->nbits();
     while (cur_bits != 1) {
       cur_bits /= 2;
-      round_out =
-          wrap_and_bb(ctx->sctx(), round_out, ring_rshift(round_out, cur_bits));
+      round_out = wrap_and_bb(ctx->sctx(), round_out,
+                              ring_rshift(round_out, {cur_bits}));
     }
 
     // 1 bit info in lsb

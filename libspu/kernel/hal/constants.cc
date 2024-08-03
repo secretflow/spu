@@ -103,7 +103,7 @@ spu::Value zeros(SPUContext* ctx, DataType dtype, const Shape& shape) {
 }
 
 Value iota(SPUContext* ctx, DataType dtype, int64_t numel) {
-  return DISPATCH_ALL_NONE_BOOL_PT_TYPES(getDecodeType(dtype), "iota", [&]() {
+  return DISPATCH_ALL_NONE_BOOL_PT_TYPES(getDecodeType(dtype), [&]() {
     std::vector<ScalarT> arr(numel);
     std::iota(arr.begin(), arr.end(), 0);
     return constant(ctx, arr, dtype, {numel});

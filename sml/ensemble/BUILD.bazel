@@ -21,5 +21,11 @@ py_library(
     srcs = ["adaboost.py"],
     deps = [
         "//sml/tree:tree",
+    ]
+    
+    name = "forest",
+    srcs = ["forest.py"],
+    deps = [
+        "//sml/tree",
     ],
 )

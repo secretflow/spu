@@ -721,6 +721,17 @@ void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
 }
 
 void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
+             mlir::spu::pphlo::BroadcastShapeAsOp &op,
+             const ExecutionOptions &opts) {
+  // Start indices
+  const auto &lhs = lookupValue(sscope, op.getLhs(), opts);
+  const auto &rhs = lookupValue(sscope, op.getRhs(), opts);
+
+  addValue(sscope, op.getResult(),
+           kernel::hlo::Broadcast(sctx, lhs, rhs.shape(), {}), opts);
+}
+
+void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,
              mlir::spu::pphlo::RemOp &op, const ExecutionOptions &opts) {
   // FIXME: When hal has a remainder, use that
   auto lhs = lookupValue(sscope, op.getLhs(), opts);

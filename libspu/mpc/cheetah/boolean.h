@@ -116,7 +116,7 @@ class LShiftB : public ShiftKernel {
   ce::CExpr comm() const override { return ce::Const(0); }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
-                  size_t shift) const override;
+                  const Sizes& shift) const override;
 };
 
 class RShiftB : public ShiftKernel {
@@ -128,7 +128,7 @@ class RShiftB : public ShiftKernel {
   ce::CExpr comm() const override { return ce::Const(0); }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
-                  size_t shift) const override;
+                  const Sizes& shift) const override;
 };
 
 class ARShiftB : public ShiftKernel {
@@ -140,7 +140,7 @@ class ARShiftB : public ShiftKernel {
   ce::CExpr comm() const override { return ce::Const(0); }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
-                  size_t shift) const override;
+                  const Sizes& shift) const override;
 };
 
 class BitrevB : public BitrevKernel {

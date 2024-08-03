@@ -187,11 +187,12 @@ Value clamp(SPUContext* ctx, const Value& x, const Value& min,
 // @param dtype, second input value
 Value bitcast(SPUContext* ctx, const Value& x, DataType dtype);
 
-Value left_shift(SPUContext* ctx, const Value& x, size_t bits);
+Value left_shift(SPUContext* ctx, const Value& x, const Sizes& bits);
 
-Value right_shift_logical(SPUContext* ctx, const Value& x, size_t bits);
+Value right_shift_logical(SPUContext* ctx, const Value& x, const Sizes& bits);
 
-Value right_shift_arithmetic(SPUContext* ctx, const Value& x, size_t bits);
+Value right_shift_arithmetic(SPUContext* ctx, const Value& x,
+                             const Sizes& bits);
 
 /// the element-wise base-2 logarithm of x
 // @param in, should be positive, or the result is implementation defined.

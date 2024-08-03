@@ -82,6 +82,9 @@ std::unique_ptr<OperationPass<func::FuncOp>> createInlineSecretControlFlow();
 // Convert signbit pattern to SignOp
 std::unique_ptr<OperationPass<func::FuncOp>> createRewriteSignbitPatterns();
 
+// Fix region access shape mismatch
+std::unique_ptr<OperationPass<func::FuncOp>> createRegionAccessFixture();
+
 }  // namespace spu::pphlo
 
 }  // namespace mlir

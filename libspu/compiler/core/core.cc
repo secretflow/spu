@@ -16,7 +16,6 @@
 
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/IR/BuiltinOps.h"
-#include "mlir/Pass/Pass.h"
 #include "mlir/Pass/PassManager.h"
 #include "mlir/Transforms/Passes.h"
 
@@ -95,6 +94,7 @@ void Core::buildPipeline(mlir::PassManager *pm) {
   }
 
   optPM.addPass(mlir::createLoopInvariantCodeMotionPass());
+  optPM.addPass(mlir::spu::pphlo::createRegionAccessFixture());
   optPM.addPass(mlir::createCSEPass());
 
   if (!options.disable_deallocation_insertion()) {

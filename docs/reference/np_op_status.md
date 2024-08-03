@@ -293,6 +293,20 @@ Please check *Supported Dtypes* as well.
 - uint16
 - uint32
 
+## bitwise_count
+
+JAX NumPy Document link: https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.bitwise_count.html
+### Status
+
+**PASS**
+Please check *Supported Dtypes* as well.
+### Supported Dtypes
+
+- int16
+- int32
+- uint16
+- uint32
+
 ## bitwise_not
 
 JAX NumPy Document link: https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.bitwise_not.html

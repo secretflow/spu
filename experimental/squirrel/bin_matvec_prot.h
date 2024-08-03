@@ -70,7 +70,10 @@ struct StlSparseMatrix {
 // Outputs:
 //   Sender: z0 \in Zk^{m}
 //     Recv: z1 \in Zk^{m}
-// such that z0 + z1 = M * (v0 + v1) mod Zk
+// such that z0 + z1 = M * (v0 + v1) + e mod Zk
+//
+// Note that we might introduce 1-bit error `e` due to the coefficient-based
+// resharing HE ciphertexts to additive shares.
 class BinMatVecProtocol {
  public:
   BinMatVecProtocol(size_t ring_bitwidth,

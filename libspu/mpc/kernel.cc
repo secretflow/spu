@@ -43,7 +43,11 @@ void RevealToKernel::evaluate(KernelEvalContext* ctx) const {
 
 void ShiftKernel::evaluate(KernelEvalContext* ctx) const {
   const auto& in = ctx->getParam<Value>(0);
-  size_t bits = ctx->getParam<size_t>(1);
+  const auto& bits = ctx->getParam<Sizes>(1);
+
+  SPU_ENFORCE(
+      bits.size() == 1 || in.numel() == static_cast<int64_t>(bits.size()),
+      "numel mismatch {} {}", in.numel(), bits.size());
 
   auto res = proc(ctx, UnwrapValue(in), bits);
 
@@ -232,6 +236,17 @@ void ConcateKernel::evaluate(KernelEvalContext* ctx) const {
 
   ctx->pushOutput(WrapValue(z));
 }
+
+void DisassembleKernel::evaluate(KernelEvalContext* ctx) const {
+  const auto& in = ctx->getParam<Value>(0);
+  auto z = proc(ctx, UnwrapValue(in));
+
+  std::vector<Value> wrapped(z.size());
+  for (size_t idx = 0; idx < z.size(); ++idx) {
+    wrapped[idx] = WrapValue(z[idx]);
+  }
+  ctx->pushOutput(wrapped);
+};
 
 void OramOneHotKernel::evaluate(KernelEvalContext* ctx) const {
   auto target = ctx->getParam<Value>(0);

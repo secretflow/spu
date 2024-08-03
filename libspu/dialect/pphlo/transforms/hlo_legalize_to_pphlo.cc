@@ -133,24 +133,20 @@ class FuncOpConverter : public OpConversionPattern<::mlir::func::FuncOp> {
     auto &region = op.getBody();
 
     // Convert non-entry blocks
-    SmallVector<TypeConverter::SignatureConversion, 2> conversions;
-    for (Block &block : llvm::drop_begin(region, 1)) {
-      conversions.emplace_back(block.getNumArguments());
-      TypeConverter::SignatureConversion &back = conversions.back();
+    for (Block &block :
+         llvm::make_early_inc_range(llvm::drop_begin(region, 1))) {
+      TypeConverter::SignatureConversion conversion(
+          /*numOrigInputs=*/block.getNumArguments());
       for (BlockArgument blockArgument : block.getArguments()) {
         auto idx = blockArgument.getArgNumber();
         auto vis_v = vis_.getValueVisibility(blockArgument);
         auto convertedType = tools_.getType(
             typeConverter->convertType(blockArgument.getType()), vis_v);
 
-        back.addInputs(idx, convertedType);
+        conversion.addInputs(idx, convertedType);
       }
-    }
 
-    if (failed(rewriter.convertNonEntryRegionTypes(&region, *typeConverter,
-                                                   conversions))) {
-      rewriter.cancelOpModification(op);
-      return failure();
+      rewriter.applySignatureConversion(&block, conversion, getTypeConverter());
     }
 
     // Convert function arguments using the provided TypeConverter.

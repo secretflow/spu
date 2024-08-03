@@ -74,7 +74,7 @@ NdArrayRef MsbA2B::proc(KernelEvalContext* ctx, const NdArrayRef& x) const {
 
   const int rank = ctx->getState<Communicator>()->getRank();
 
-  return DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  return DISPATCH_ALL_FIELDS(field, [&]() {
     using u2k = std::make_unsigned<ring2k_t>::type;
     const u2k mask = (static_cast<u2k>(1) << shft) - 1;
     NdArrayRef adjusted = ring_zeros(field, x.shape());
