@@ -66,7 +66,7 @@ class AdaBoostClassifier:
         self.estimator_weight = jnp.zeros(self.n_estimators, dtype=jnp.float32)
         self.estimator_errors = jnp.ones(self.n_estimators, dtype=jnp.float32)
         self.estimator_flags_ = []
-        self.early_stop = False  # 添加 early_stop 标志
+        # self.early_stop = False  # 添加 early_stop 标志
     
     def _num_samples(self, x):
         """返回x中的样本数量."""
@@ -172,12 +172,12 @@ class AdaBoostClassifier:
         # 判断是否需要提前停止
         # if estimator_error > 0.0:
         #     self.early_stop = True
-        self.early_stop = lax.cond(
-            estimator_error > 0.0,
-            lambda _: jnp.array(True, dtype=jnp.bool_),
-            lambda _: jnp.array(False, dtype=jnp.bool_),
-            operand=None
-        )
+        # self.early_stop = lax.cond(
+        #     estimator_error > 0.0,
+        #     lambda _: jnp.array(True, dtype=jnp.bool_),
+        #     lambda _: jnp.array(False, dtype=jnp.bool_),
+        #     operand=None
+        # )
 
         def true_0_fun(sample_weight):
             return sample_weight, 1.0, 0.0, jnp.array(False, dtype=jnp.bool_)
@@ -198,12 +198,12 @@ class AdaBoostClassifier:
                                      not_last_iboost, last_iboost, sample_weight)
             
             flag = estimator_error < 1.0 - (1.0 / n_classes)
-            flag = lax.cond(
-                self.early_stop,
-                lambda _: jnp.array(False, dtype=jnp.bool_),
-                lambda _: flag,
-                operand=None
-            )
+            # flag = lax.cond(
+            #     self.early_stop,
+            #     lambda _: jnp.array(False, dtype=jnp.bool_),
+            #     lambda _: flag,
+            #     operand=None
+            # )
 
             return sample_weight, estimator_weight, estimator_error, flag
             
