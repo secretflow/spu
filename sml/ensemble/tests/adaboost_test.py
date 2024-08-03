@@ -18,13 +18,13 @@ from sklearn.datasets import load_iris
 from sklearn.ensemble import AdaBoostClassifier
 from sklearn.tree import DecisionTreeClassifier
 
-
 import spu.spu_pb2 as spu_pb2  # type: ignore
 import spu.utils.simulation as spsim
-from sml.tree.tree import DecisionTreeClassifier as sml_dtc
 from sml.ensemble.adaboost import AdaBoostClassifier as sml_Adaboost
+from sml.tree.tree import DecisionTreeClassifier as sml_dtc
 
 MAX_DEPTH = 3
+
 
 class UnitTests(unittest.TestCase):
     def test_Ada(self):
@@ -34,11 +34,11 @@ class UnitTests(unittest.TestCase):
             learning_rate,
             algorithm,
             epsilon,
-        ):  
+        ):
             ada_custom = sml_Adaboost(
-                estimator = estimator,
-                n_estimators = n_estimators,
-                learning_rate = learning_rate,
+                estimator=estimator,
+                n_estimators=n_estimators,
+                learning_rate=learning_rate,
                 algorithm=algorithm,
                 epsilon=epsilon,
             )
@@ -69,38 +69,40 @@ class UnitTests(unittest.TestCase):
         sim = spsim.Simulator.simple(
             3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
-        
-        
+
         X, y = load_data()
         n_samples, n_features = X.shape
         n_labels = jnp.unique(y).shape[0]
-        
+
         # compare with sklearn
         base_estimator = DecisionTreeClassifier(max_depth=3)  # 基分类器
-        ada = AdaBoostClassifier(estimator=base_estimator, n_estimators=3, learning_rate=1.0, algorithm="SAMME")
+        ada = AdaBoostClassifier(
+            estimator=base_estimator,
+            n_estimators=3,
+            learning_rate=1.0,
+            algorithm="SAMME",
+        )
         ada = ada.fit(X, y)
         score_plain = ada.score(X, y)
-        
-        #run
+
+        # run
         dtc = sml_dtc("gini", "best", 3, 3)
         proc = proc_wrapper(
-            estimator = dtc,
-            n_estimators = 3,
-            learning_rate = 1.0,
+            estimator=dtc,
+            n_estimators=3,
+            learning_rate=1.0,
             algorithm="discrete",
-            epsilon = 1e-5,
+            epsilon=1e-5,
         )
-        
+
         result = spsim.sim_jax(sim, proc)(X, y)
         print(result)
         score_encrypted = jnp.mean(result == y)
-        
+
         # print acc
         print(f"Accuracy in SKlearn: {score_plain}")
         print(f"Accuracy in SPU: {score_encrypted}")
 
+
 if __name__ == '__main__':
     unittest.main()
-
-
-        

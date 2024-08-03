@@ -19,11 +19,12 @@ from sklearn.ensemble import AdaBoostClassifier
 from sklearn.tree import DecisionTreeClassifier
 
 import sml.utils.emulation as emulation
-from sml.tree.tree import DecisionTreeClassifier as sml_dtc
 from sml.ensemble.adaboost import AdaBoostClassifier as sml_Adaboost
+from sml.tree.tree import DecisionTreeClassifier as sml_dtc
 
 MAX_DEPTH = 3
 CONFIG_FILE = emulation.CLUSTER_ABY3_3PC
+
 
 def emul_ada(mode=emulation.Mode.MULTIPROCESS):
     def proc_wrapper(
@@ -32,22 +33,22 @@ def emul_ada(mode=emulation.Mode.MULTIPROCESS):
         learning_rate,
         algorithm,
         epsilon,
-    ):  
+    ):
         ada_custom = sml_Adaboost(
-            estimator = estimator,
-            n_estimators = n_estimators,
-            learning_rate = learning_rate,
+            estimator=estimator,
+            n_estimators=n_estimators,
+            learning_rate=learning_rate,
             algorithm=algorithm,
             epsilon=epsilon,
         )
-        
+
         def proc(X, y):
             ada_custom_fit = ada_custom.fit(X, y, sample_weight=None)
             result = ada_custom_fit.predict(X)
             return result
-        
+
         return proc
-    
+
     def load_data():
         iris = load_iris()
         iris_data, iris_label = jnp.array(iris.data), jnp.array(iris.target)
@@ -63,7 +64,7 @@ def emul_ada(mode=emulation.Mode.MULTIPROCESS):
 
         X, y = new_features[:, ::3], iris_label[:]
         return X, y
-    
+
     try:
         # bandwidth and latency only work for docker mode
         emulator = emulation.Emulator(CONFIG_FILE, mode, bandwidth=300, latency=20)
@@ -75,7 +76,12 @@ def emul_ada(mode=emulation.Mode.MULTIPROCESS):
 
         # compare with sklearn
         base_estimator = DecisionTreeClassifier(max_depth=3)  # 基分类器
-        ada = AdaBoostClassifier(estimator=base_estimator, n_estimators=3, learning_rate=1.0, algorithm="SAMME")
+        ada = AdaBoostClassifier(
+            estimator=base_estimator,
+            n_estimators=3,
+            learning_rate=1.0,
+            algorithm="SAMME",
+        )
 
         start = time.time()
         ada = ada.fit(X, y)
@@ -89,11 +95,11 @@ def emul_ada(mode=emulation.Mode.MULTIPROCESS):
         # run
         dtc = sml_dtc("gini", "best", 3, 3)
         proc = proc_wrapper(
-            estimator = dtc,
-            n_estimators = 3,
-            learning_rate = 1.0,
+            estimator=dtc,
+            n_estimators=3,
+            learning_rate=1.0,
             algorithm="discrete",
-            epsilon = 1e-5,
+            epsilon=1e-5,
         )
         start = time.time()
 

@@ -15,27 +15,30 @@
 # 不支持early_stop
 
 import copy
+import warnings
+
 import jax.numpy as jnp
 from jax import lax
-import warnings
+
 from sml.tree.tree import DecisionTreeClassifier as sml_dtc
+
 
 class AdaBoostClassifier:
     """A adaboost classifier based on DecisionTreeClassifier.
-    
+
     Parameters
     ----------
     estimator : {"dtc"}, default="dtc"
         Specifies the type of model or algorithm to be used for training.
         Supported estimators are "dtc".
-    
+
     n_estimators : int
         The number of estimators. Must specify an integer > 0.
-        
-    learning_rate : float 
+
+    learning_rate : float
         The step size used to update the model weights during training.
         It's an float, must learning_rate > 0.
-        
+
     algorithm : str (default='discrete')
         The boosting algorithm to use. Only the SAMME discrete algorithm is used in this implementation.
         In scikit-learn, the Real Boosting Algorithm (SAMME.R) will be deprecated.
@@ -43,17 +46,20 @@ class AdaBoostClassifier:
     epsilon : float (default=1e-5)
         A small positive value used in calculations to avoid division by zero and other numerical issues.
         Must be greater than 0 and less than 0.1.
-    
+
     """
+
     def __init__(
         self,
         estimator,
         n_estimators,
         learning_rate,
         algorithm,
-        epsilon = 1e-5,
+        epsilon=1e-5,
     ):
-        assert isinstance(estimator, sml_dtc), "Estimator other than sml_dtc is not supported."
+        assert isinstance(
+            estimator, sml_dtc
+        ), "Estimator other than sml_dtc is not supported."
         assert (
             n_estimators is not None and n_estimators > 0
         ), "n_estimators should not be None and must > 0."
@@ -63,39 +69,43 @@ class AdaBoostClassifier:
             "You can refer to the official documentation for more details: "
             "https://github.com/scikit-learn/scikit-learn/issues/26784"
         )
-        assert (
-            epsilon > 0 and epsilon < 0.1
-        ), "epsilon must be > 0 and < 0.1."
-        
+        assert epsilon > 0 and epsilon < 0.1, "epsilon must be > 0 and < 0.1."
+
         self.estimator = estimator
         self.n_estimators = n_estimators
         self.learning_rate = learning_rate
         self.algorithm = algorithm
         self.epsilon = epsilon
-        
+
         self.n_classes = estimator.n_labels
-        
+
         self.estimators_ = []
         self.estimator_weight_ = jnp.zeros(self.n_estimators, dtype=jnp.float32)
         self.estimator_errors_ = jnp.ones(self.n_estimators, dtype=jnp.float32)
         self.estimator_flags_ = jnp.zeros(self.n_estimators, dtype=jnp.bool_)
         self.early_stop = False  # 添加 early_stop 标志
-    
+
     def _num_samples(self, x):
         """返回x中的样本数量."""
         if hasattr(x, 'fit'):
             # 检查是否是一个estimator
             raise TypeError('Expected sequence or array-like, got estimator')
-        if not hasattr(x, '__len__') and not hasattr(x, 'shape') and not hasattr(x, '__array__'):
+        if (
+            not hasattr(x, '__len__')
+            and not hasattr(x, 'shape')
+            and not hasattr(x, '__array__')
+        ):
             raise TypeError("Expected sequence or array-like, got %s" % type(x))
-        
+
         if hasattr(x, 'shape'):
             if len(x.shape) == 0:  # scalar
-                raise TypeError("Singleton array %r cannot be considered a valid collection." % x)
+                raise TypeError(
+                    "Singleton array %r cannot be considered a valid collection." % x
+                )
             return x.shape[0]
         else:
             return len(x)
-    
+
     def _check_sample_weight(self, sample_weight, X):
         '''
         Description: Validate and process sample weights.
@@ -118,9 +128,9 @@ class AdaBoostClassifier:
            - If sample_weight is an array or array-like, it will be converted to a JAX array.
            - The array must be 1D and its length must match the number of samples.
            - If these conditions are not met, an error will be raised.
-        ''' 
+        '''
         n_samples = self._num_samples(X)
-            
+
         if sample_weight is None:
             sample_weight = jnp.ones(n_samples, dtype=jnp.float32)
         elif isinstance(sample_weight, (jnp.int32, jnp.float32)):
@@ -129,86 +139,100 @@ class AdaBoostClassifier:
             sample_weight = jnp.asarray(sample_weight, dtype=jnp.float32)
             if sample_weight.ndim != 1:
                 raise ValueError("Sample weight must be 1D array or scalar")
-            
+
             if sample_weight.shape[0] != n_samples:
                 raise ValueError(
                     "sample_weight.shape == {}, expected {}!".format(
                         sample_weight.shape, (n_samples,)
                     )
                 )
-        
+
         return sample_weight
-    
+
     def fit(self, X, y, sample_weight=None):
         sample_weight = self._check_sample_weight(
-            sample_weight, X,
+            sample_weight,
+            X,
         )
         sample_weight /= sample_weight.sum()
 
         self.classes = y
 
-        epsilon = self.epsilon    
-        
+        epsilon = self.epsilon
+
         for iboost in range(self.n_estimators):
             sample_weight = jnp.clip(sample_weight, a_min=epsilon, a_max=None)
 
             estimator = copy.deepcopy(self.estimator)
-            sample_weight, estimator_weight, estimator_error, flag = self._boost_discrete(
-                iboost, X, y, sample_weight, estimator,
+            sample_weight, estimator_weight, estimator_error, flag = (
+                self._boost_discrete(
+                    iboost,
+                    X,
+                    y,
+                    sample_weight,
+                    estimator,
+                )
             )
 
-            self.estimator_weight_ = self.estimator_weight_.at[iboost].set(estimator_weight)
-            self.estimator_errors_ = self.estimator_errors_.at[iboost].set(estimator_error)
+            self.estimator_weight_ = self.estimator_weight_.at[iboost].set(
+                estimator_weight
+            )
+            self.estimator_errors_ = self.estimator_errors_.at[iboost].set(
+                estimator_error
+            )
             self.estimator_flags_ = self.estimator_flags_.at[iboost].set(flag)
 
             sample_weight_sum = jnp.sum(sample_weight)
             if iboost < self.n_estimators - 1:
                 sample_weight /= sample_weight_sum
- 
+
         return self
-    
+
     def _boost_discrete(self, iboost, X, y, sample_weight, estimator):
         """Implement a single boost using the SAMME discrete algorithm."""
         self.estimators_.append(estimator)
-         
+
         n_classes = self.n_classes
         epsilon = self.epsilon
-        
+
         estimator.fit(X, y, sample_weight=sample_weight)
-        
+
         y_predict = estimator.predict(X)
-        
+
         incorrect = y_predict != y
-        estimator_error = jnp.mean(jnp.average(incorrect, weights=sample_weight, axis=0))
+        estimator_error = jnp.mean(
+            jnp.average(incorrect, weights=sample_weight, axis=0)
+        )
 
         self.early_stop = lax.cond(
             estimator_error <= epsilon,
             lambda _: jnp.array(True, dtype=jnp.bool_),
             lambda _: self.early_stop,
-            operand=None
+            operand=None,
         )
 
         def true_0_fun(sample_weight):
             return sample_weight, 1.0, 0.0, jnp.array(False, dtype=jnp.bool_)
-        
+
         def false_0_fun(sample_weight):
             flag = estimator_error < 1.0 - (1.0 / n_classes)
             flag = lax.cond(
                 self.early_stop,
                 lambda _: jnp.array(False, dtype=jnp.bool_),
                 lambda _: flag,
-                operand=None
+                operand=None,
             )
-            
+
             # Update weights only if flag is True
             def update_weights(params):
                 estimator_error, incorrect, sample_weight = params
                 estimator_weight = self.learning_rate * (
-                    jnp.log((1.0 - estimator_error) / estimator_error) + jnp.log(n_classes - 1.0)
+                    jnp.log((1.0 - estimator_error) / estimator_error)
+                    + jnp.log(n_classes - 1.0)
                 )
                 sample_weight *= jnp.exp(estimator_weight * incorrect)
                 return sample_weight, estimator_weight
-            
+
             def skip_update(params):
                 estimator_error, incorrect, sample_weight = params
                 return sample_weight, 0.0  # Return zero for estimator_weight
@@ -217,52 +241,54 @@ class AdaBoostClassifier:
                 flag,
                 update_weights,
                 skip_update,
-                operand=(estimator_error, incorrect, sample_weight)
+                operand=(estimator_error, incorrect, sample_weight),
             )
 
             return sample_weight, estimator_weight, estimator_error, flag
-            
+
         sample_weight, estimator_weight, estimator_error, flag = lax.cond(
             estimator_error <= epsilon, true_0_fun, false_0_fun, sample_weight
         )
-        
+
         return sample_weight, estimator_weight, estimator_error, flag
-        
-            
+
     def predict(self, X):
         pred = self.decision_function(X)
         print(self.early_stop)
-        
+
         if self.n_classes == 2:
             return self.classes.take(pred > 0, axis=0)
-        
+
         return self.classes.take(jnp.argmax(pred, axis=1), axis=0)
-        
-    
+
     def decision_function(self, X):
         n_classes = self.n_classes
         classes = self.classes[:, jnp.newaxis]
-        
+
         print(self.estimators_)
         print(self.estimator_weight_)
         print('--------')
         print(self.estimator_flags_)
-        
+
         pred = sum(
             jnp.where(
                 (estimator.predict(X) == classes).T,
                 w,
                 -1 / (n_classes - 1) * w,
-            ) * flag
-            for estimator, w, flag in zip(self.estimators_, self.estimator_weight_, self.estimator_flags_)
+            )
+            * flag
+            for estimator, w, flag in zip(
+                self.estimators_, self.estimator_weight_, self.estimator_flags_
+            )
         )
-        
+
         # 将列表转换为 JAX 数组，并进行求和
-        weights_flags = jnp.array([w * flag for w, flag in zip(self.estimator_weight_, self.estimator_flags_)])
+        weights_flags = jnp.array(
+            [w * flag for w, flag in zip(self.estimator_weight_, self.estimator_flags_)]
+        )
         pred /= jnp.sum(weights_flags)
-        
+
         if n_classes == 2:
             pred[:, 0] *= -1
             return pred.sum(axis=1)
         return pred
-        

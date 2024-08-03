@@ -20,8 +20,8 @@ py_library(
     name = "adaboost",
     srcs = ["adaboost.py"],
     deps = [
-        "//sml/tree:tree",
-    ]
+        "//sml/tree",
+    ],
 )
 
 py_library(

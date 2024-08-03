@@ -22,7 +22,7 @@ py_binary(
     deps = [
         "//sml/ensemble:adaboost",
         "//sml/utils:emulation",
-    ]
+    ],
 )
 
 py_binary(
