@@ -33,12 +33,14 @@ class UnitTests(unittest.TestCase):
             n_estimators,
             learning_rate,
             algorithm,
+            epsilon,
         ):  
             ada_custom = sml_Adaboost(
                 estimator = estimator,
                 n_estimators = n_estimators,
                 learning_rate = learning_rate,
                 algorithm=algorithm,
+                epsilon=epsilon,
             )
 
             def proc(X, y):
@@ -86,6 +88,7 @@ class UnitTests(unittest.TestCase):
             n_estimators = 3,
             learning_rate = 1.0,
             algorithm="discrete",
+            epsilon = 1e-5,
         )
         
         result = spsim.sim_jax(sim, proc)(X, y)

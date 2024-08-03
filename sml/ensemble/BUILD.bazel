@@ -22,7 +22,9 @@ py_library(
     deps = [
         "//sml/tree:tree",
     ]
-    
+)
+
+py_library(
     name = "forest",
     srcs = ["forest.py"],
     deps = [

@@ -19,6 +19,7 @@ from sklearn.ensemble import AdaBoostClassifier
 from sklearn.tree import DecisionTreeClassifier
 
 import sml.utils.emulation as emulation
+from sml.tree.tree import DecisionTreeClassifier as sml_dtc
 from sml.ensemble.adaboost import AdaBoostClassifier as sml_Adaboost
 
 MAX_DEPTH = 3
@@ -26,18 +27,18 @@ CONFIG_FILE = emulation.CLUSTER_ABY3_3PC
 
 def emul_ada(mode=emulation.Mode.MULTIPROCESS):
     def proc_wrapper(
-        estimator = "dtc",
-        n_estimators = 50,
-        max_depth = MAX_DEPTH,
-        learning_rate = 1.0,
-        n_classes = 3,
-    ):
+        estimator,
+        n_estimators,
+        learning_rate,
+        algorithm,
+        epsilon,
+    ):  
         ada_custom = sml_Adaboost(
-            estimator = "dtc",
-            n_estimators = 50,
-            max_depth = MAX_DEPTH,
-            learning_rate = 1.0,
-            n_classes = 3,
+            estimator = estimator,
+            n_estimators = n_estimators,
+            learning_rate = learning_rate,
+            algorithm=algorithm,
+            epsilon=epsilon,
         )
         
         def proc(X, y):
@@ -86,12 +87,13 @@ def emul_ada(mode=emulation.Mode.MULTIPROCESS):
         X_spu, y_spu = emulator.seal(X, y)
 
         # run
+        dtc = sml_dtc("gini", "best", 3, 3)
         proc = proc_wrapper(
-            estimator = "dtc",
+            estimator = dtc,
             n_estimators = 3,
-            max_depth = MAX_DEPTH,
             learning_rate = 1.0,
-            n_classes = 3,
+            algorithm="discrete",
+            epsilon = 1e-5,
         )
         start = time.time()
 

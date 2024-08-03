@@ -24,6 +24,9 @@ py_test(
         "//spu:init",
         "//spu/utils:simulation",
     ],
+)
+
+py_test(
     name = "forest_test",
     srcs = ["forest_test.py"],
     deps = [
