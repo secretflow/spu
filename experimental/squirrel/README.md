@@ -37,7 +37,8 @@ Code under this folder is purely for research demonstration and it's **NOT desig
     ```sh
     bazel-bin/experimental/squirrel/squirrel_demo_main --rank0_nfeatures=85 --rank1_nfeatures=85 --standalone=true --train=BinaryClassification_Aps_Test_60000_171.csv --test=BinaryClassification_Aps_Test_16000_171.csv --rank=1 --has_label=1 --lr=1.0 --subsample=0.8
     ```
-* Run on distributed dataset, e.g., using the `breast_cancer` dataset from the SPU repo. 
+
+* Run on distributed dataset, e.g., using the `breast_cancer` dataset from the SPU repo.
   * On one terminal
 
     ```sh
@@ -49,4 +50,3 @@ Code under this folder is purely for research demonstration and it's **NOT desig
     ```sh
     bazel-bin/experimental/squirrel/squirrel_demo_main --rank0_nfeatures=15 --rank1_nfeatures=15 --standalone=false --train=examples/data/breast_cancer_b.csv --rank=1 --has_label=1 --lr=1.0 --subsample=0.8
     ```
-

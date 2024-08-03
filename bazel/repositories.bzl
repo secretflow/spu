@@ -29,7 +29,6 @@ def spu_deps():
     _com_github_emptoolkit_emp_tool()
     _com_github_emptoolkit_emp_ot()
     _com_github_facebook_zstd()
-    _com_github_microsoft_seal()
     _com_github_eigenteam_eigen()
     _com_github_nvidia_cutlass()
     _yacl()
@@ -40,10 +39,10 @@ def _yacl():
         http_archive,
         name = "yacl",
         urls = [
-            "https://github.com/secretflow/yacl/archive/refs/tags/0.4.5b3_nightly_20240722.tar.gz",
+            "https://github.com/secretflow/yacl/archive/refs/tags/0.4.5b4_nightly_20240731.tar.gz",
         ],
-        strip_prefix = "yacl-0.4.5b3_nightly_20240722",
-        sha256 = "ccca599e6ded6089c5afbb87c8f5e09383195af256caacd50089f0c7443e8604",
+        strip_prefix = "yacl-0.4.5b4_nightly_20240731",
+        sha256 = "952715bd56f6d9386984e9963426a1399bd2bd3702cf3efede9c82591cfab99b",
     )
 
 def _libpsi():
@@ -51,10 +50,10 @@ def _libpsi():
         http_archive,
         name = "psi",
         urls = [
-            "https://github.com/secretflow/psi/archive/refs/tags/v0.4.1.dev240722.tar.gz",
+            "https://github.com/secretflow/psi/archive/refs/tags/v0.4.0.dev240801.tar.gz",
         ],
-        strip_prefix = "psi-0.4.1.dev240722",
-        sha256 = "878cd8af2c7b9850944a27adf91f21dd4937d09d38e8365baad3b5165db8b39a",
+        strip_prefix = "psi-0.4.0.dev240801",
+        sha256 = "541ad74de0cd9e6bffe348c3bc97e659fccb1f1811e612f9d8e6b1debdd7c2a0",
     )
 
 def _rules_proto_grpc():
@@ -223,21 +222,6 @@ def _com_github_emptoolkit_emp_ot():
             "https://github.com/emp-toolkit/emp-ot/archive/refs/tags/0.2.4.tar.gz",
         ],
         build_file = "@spulib//bazel:emp-ot.BUILD",
-    )
-
-def _com_github_microsoft_seal():
-    maybe(
-        http_archive,
-        name = "com_github_microsoft_seal",
-        sha256 = "acc2a1a127a85d1e1ffcca3ffd148f736e665df6d6b072df0e42fff64795a13c",
-        strip_prefix = "SEAL-4.1.2",
-        type = "tar.gz",
-        patch_args = ["-p1"],
-        patches = ["@spulib//bazel:patches/seal.patch"],
-        urls = [
-            "https://github.com/microsoft/SEAL/archive/refs/tags/v4.1.2.tar.gz",
-        ],
-        build_file = "@spulib//bazel:seal.BUILD",
     )
 
 def _com_github_eigenteam_eigen():

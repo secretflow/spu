@@ -205,7 +205,7 @@ TEST_P(BinMatVecProtTest, EmptyMat) {
   });
   NdArrayRef reveal = ring_add(out_shr[0], out_shr[1]);
 
-  DISPATCH_ALL_FIELDS(field, "", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using sT = std::make_signed<ring2k_t>::type;
     NdArrayView<sT> _vec(vec);
     auto expected = BinAccumuate<sT>(_vec, mat);
@@ -255,7 +255,7 @@ TEST_P(BinMatVecProtTest, WithEmptyIndicator) {
   });
   NdArrayRef reveal = ring_add(out_shr[0], out_shr[1]);
 
-  DISPATCH_ALL_FIELDS(field, "", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using sT = std::make_signed<ring2k_t>::type;
     NdArrayView<sT> _vec(vec);
     NdArrayView<sT> got(reveal);
