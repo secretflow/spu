@@ -27,10 +27,12 @@ import spu.utils.simulation as spsim
 # add ops dir to the path
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../'))
 
+from sklearn.metrics import average_precision_score as sk_average_precision_score
 from sklearn.metrics import roc_auc_score as sk_roc_auc_score
 
 from sml.metrics.classification.classification import (
     accuracy_score,
+    average_precision_score,
     bin_counts,
     equal_obs,
     f1_score,
@@ -154,6 +156,53 @@ class UnitTests(unittest.TestCase):
         )
         sk_result = sklearn_proc(y_true, y_pred, average=None, labels=[0, 1, 2])
         check(spu_result, sk_result)
+
+    def test_average_precision_score(self):
+        sim = spsim.Simulator.simple(
+            2, spu_pb2.ProtocolKind.SEMI2K, spu_pb2.FieldType.FM64
+        )
+
+        def check(res1, res2):
+            return np.testing.assert_allclose(res1, res2, rtol=1, atol=1e-5)
+
+        # --- Test binary classification ---
+        # with 0-1 labels
+        y_true = jnp.array([0, 0, 1, 1], dtype=jnp.int32)
+        y_score = jnp.array([0.1, 0.4, 0.35, 0.8], dtype=jnp.float32)
+        sk_res = sk_average_precision_score(y_true, y_score)
+        spu_res = spsim.sim_jax(sim, average_precision_score)(y_true, y_score)
+        check(sk_res, spu_res)
+        # with customized labels
+        y_true = jnp.array([2, 2, 3, 3], dtype=jnp.int32)
+        y_score = jnp.array([0.05, 0.25, 0.85, 0.8], dtype=jnp.float32)
+        sk_res = sk_average_precision_score(y_true, y_score, pos_label=3)
+        spu_res = spsim.sim_jax(sim, average_precision_score)(
+            y_true, y_score, pos_label=3
+        )
+        check(sk_res, spu_res)
+
+        # --- Test multiclass classification ---
+        y_true = np.array([0, 0, 1, 1, 2, 2], dtype=jnp.int32)
+        y_score = np.array(
+            [
+                [0.7, 0.2, 0.1],
+                [0.4, 0.3, 0.3],
+                [0.1, 0.8, 0.1],
+                [0.2, 0.3, 0.5],
+                [0.4, 0.4, 0.2],
+                [0.1, 0.2, 0.7],
+            ],
+            dtype=jnp.float32,
+        )
+        classes = jnp.unique(y_true)
+        n_classes = len(classes)
+        # test over three supported average options
+        for average in ["macro", "micro", None]:
+            sk_res = sk_average_precision_score(y_true, y_score, average=average)
+            spu_res = spsim.sim_jax(
+                sim, average_precision_score, static_argnums=[3, 4]
+            )(y_true, y_score, classes, n_classes, average)
+            check(sk_res, spu_res)
 
 
 if __name__ == "__main__":
