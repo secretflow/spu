@@ -104,16 +104,30 @@ void BindLibs(py::module& m) {
       "Run UB PSI with v2 API.", NO_GIL);
 
   m.def(
-      "pir",
+      "apsi_send",
       [](const std::string& config_pb,
          const std::shared_ptr<yacl::link::Context>& lctx) -> py::bytes {
-        psi::PirConfig config;
+        psi::ApsiSenderConfig config;
         YACL_ENFORCE(config.ParseFromString(config_pb));
 
         auto r = psi::RunPir(config, lctx);
         return r.SerializeAsString();
       },
-      py::arg("pir_config"), py::arg("link_context") = nullptr, "Run PIR.");
+      py::arg("pir_config"), py::arg("link_context") = nullptr,
+      "Run APSI sender operations.");
+
+  m.def(
+      "apsi_receive",
+      [](const std::string& config_pb,
+         const std::shared_ptr<yacl::link::Context>& lctx) -> py::bytes {
+        psi::ApsiReceiverConfig config;
+        YACL_ENFORCE(config.ParseFromString(config_pb));
+
+        auto r = psi::RunPir(config, lctx);
+        return r.SerializeAsString();
+      },
+      py::arg("pir_config"), py::arg("link_context") = nullptr,
+      "Run APSI receiver operations.");
 }
 
 PYBIND11_MODULE(libpsi, m) {
