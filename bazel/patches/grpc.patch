@@ -1,0 +1,32 @@
+diff --git a/bazel/grpc_deps.bzl b/bazel/grpc_deps.bzl
+index 5e65a65df4..03bbd2361e 100644
+--- a/bazel/grpc_deps.bzl
++++ b/bazel/grpc_deps.bzl
+@@ -57,12 +57,12 @@ def grpc_deps():
+
+     native.bind(
+         name = "libssl",
+-        actual = "@boringssl//:ssl",
++        actual = "@com_github_openssl_openssl//:openssl",
+     )
+
+     native.bind(
+         name = "libcrypto",
+-        actual = "@boringssl//:crypto",
++        actual = "@com_github_openssl_openssl//:openssl",
+     )
+
+     native.bind(
+diff --git a/bazel/grpc_extra_deps.bzl b/bazel/grpc_extra_deps.bzl
+index 4d8afa3131..6aa977a08d 100644
+--- a/bazel/grpc_extra_deps.bzl
++++ b/bazel/grpc_extra_deps.bzl
+@@ -53,7 +53,7 @@ def grpc_extra_deps(ignore_version_differences = False):
+     api_dependencies()
+
+     go_rules_dependencies()
+-    go_register_toolchains(version = "1.18")
++    go_register_toolchains(version = "host")
+     gazelle_dependencies()
+
+     # Pull-in the go 3rd party dependencies for protoc_gen_validate, which is

@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xl="http://www.w3.org/1999/xlink" xmlns:dc="http://purl.org/dc/elements/1.1/" version="1.1" viewBox="-62.5 519.8835 368.754 128.50001" width="368.754" height="128.50001">
+  <defs>
+    <marker orient="auto" overflow="visible" markerUnits="strokeWidth" id="FilledArrow_Marker" stroke-linejoin="miter" stroke-miterlimit="10" viewBox="-1 -4 10 8" markerWidth="10" markerHeight="8" color="black">
+      <g>
+        <path d="M 8 0 L 0 -3 L 0 3 Z" fill="currentColor" stroke="currentColor" stroke-width="1"/>
+      </g>
+    </marker>
+  </defs>
+  <g id="VM_Layout" stroke="none" fill-opacity="1" fill="none" stroke-opacity="1" stroke-dasharray="none">
+    <title>VM Layout</title>
+    <rect fill="white" x="-62.5" y="519.8835" width="368.754" height="128.50001"/>
+    <g id="VM_Layout_Layer_1">
+      <title>Layer 1</title>
+      <g id="Graphic_158">
+        <path d="M 25 539.4653 L 36.75 520.3835 L 48.5 539.4653 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Graphic_157">
+        <path d="M -16.959094 613.8953 L -4.9590937 593.8953 L 7.040906 613.8953 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Graphic_156">
+        <path d="M 71 613.8953 L 82.75 594.8135 L 94.5 613.8953 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Graphic_155">
+        <circle cx="36.75" cy="532.3835" r="8.00001278321522" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Graphic_154">
+        <circle cx="-54" cy="528.3835" r="8.00001278321519" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Line_153">
+        <line x1="79.80712" y1="599.5927" x2="42.64657" y2="539.4653" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="4.0,4.0" stroke-width="1"/>
+      </g>
+      <g id="Line_152">
+        <line x1="31.370283" y1="539.4653" x2="-2.0522543" y2="598.74005" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="4.0,4.0" stroke-width="1"/>
+      </g>
+      <g id="Line_151">
+        <line x1="76.893875" y1="604.32376" x2="1.0598091" y2="603.9268" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="4.0,4.0" stroke-width="1"/>
+      </g>
+      <g id="Line_150">
+        <line x1="-46.00114" y1="528.5193" x2="30.93579" y2="529.8257" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="4.0,4.0" stroke-width="1"/>
+      </g>
+      <g id="Line_149">
+        <line x1="-47.004916" y1="532.2696" x2="78.37249" y2="601.9225" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="4.0,4.0" stroke-width="1"/>
+      </g>
+      <g id="Line_148">
+        <line x1="-49.64181" y1="535.0941" x2="-8.077819" y2="599.0932" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="4.0,4.0" stroke-width="1"/>
+      </g>
+      <g id="Graphic_60">
+        <text transform="translate(-30.622 629.0475)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="12" fill="black" x="0" y="11">Node Layout</tspan>
+        </text>
+      </g>
+      <g id="Graphic_59">
+        <text transform="translate(208.264 629.0475)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="12" fill="black" x="39790393e-20" y="11">Device Layout</tspan>
+        </text>
+      </g>
+      <g id="Graphic_58">
+        <circle cx="247.636" cy="538.2353" r="8.0000127832152" fill="#941100"/>
+        <circle cx="247.636" cy="538.2353" r="8.0000127832152" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Graphic_57">
+        <circle cx="200.254" cy="607.2621" r="8.0000127832152" fill="#ffd579"/>
+        <circle cx="200.254" cy="607.2621" r="8.0000127832152" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Graphic_56">
+        <path d="M 282.254 617.8912 L 294.004 598.8094 L 305.754 617.8912 Z" fill="#00fa00"/>
+        <path d="M 282.254 617.8912 L 294.004 598.8094 L 305.754 617.8912 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Line_55">
+        <line x1="243.10777" y1="544.8321" x2="204.78223" y2="600.6653" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="4.0,4.0" stroke-width="1"/>
+      </g>
+      <g id="Line_54">
+        <line x1="208.25347" y1="607.355" x2="278.27136" y2="608.1677" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="4.0,4.0" stroke-width="1"/>
+      </g>
+      <g id="Line_53">
+        <line x1="252.0497" y1="544.90945" x2="285.50085" y2="595.49234" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="4.0,4.0" stroke-width="1"/>
+      </g>
+    </g>
+  </g>
+</svg>

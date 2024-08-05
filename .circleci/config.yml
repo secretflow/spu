@@ -1,0 +1,98 @@
+# Copyright 2023 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+version: 2.1
+
+setup: true
+
+orbs:
+  path-filtering: circleci/path-filtering@0.1.4
+  continuation: circleci/continuation@0.3.1
+
+parameters:
+  GHA_Actor:
+    type: string
+    default: ""
+  GHA_Action:
+    type: string
+    default: ""
+  GHA_Event:
+    type: string
+    default: ""
+  GHA_Meta:
+    type: string
+    default: ""
+  run-schedule:
+    type: boolean
+    default: false
+
+# Define a job to be invoked later in a workflow.
+# See: https://circleci.com/docs/2.0/configuration-reference/#jobs
+jobs:
+  lint:
+    # Use machine executor for convenient data sharing between the host and docker-compose cluster
+    docker:
+      - image: secretflow/lint-ci:latest
+    resource_class: medium
+    shell: /bin/bash --login -eo pipefail
+    steps:
+      - checkout
+      - run:
+          name: Checkout devtools
+          command: git clone https://github.com/secretflow/devtools.git ../devtools
+      - run:
+          name: Whitespace check
+          command: bash ../devtools/lint-whitespace.sh
+
+workflows:
+  unittest-workflow:
+    when:
+      and:
+        - not: << pipeline.parameters.run-schedule >>
+        - not: << pipeline.parameters.GHA_Action >>
+        - not: << pipeline.parameters.GHA_Meta >>
+    jobs:
+      - path-filtering/filter:
+          base-revision: main
+          config-path: .circleci/continue-config.yml
+          mapping: |
+            spu/.* build-and-run true
+            libspu/.* build-and-run true
+            exmaples/.* build-and-run true
+            .bazelrc build-and-run true
+            requirements.txt build-and-run true
+            requirements-dev.txt build-and-run true
+            .circleci/continue-config.yml build-and-run true
+      - lint
+  benchmark-workflow:
+    when: << pipeline.parameters.run-schedule >>
+    jobs:
+      - continuation/continue:
+          configuration_path: .circleci/benchmark-config.yml
+  publish-workflow:
+    when:
+      equal: [ "release", << pipeline.parameters.GHA_Event >> ]
+    jobs:
+      - continuation/continue:
+          configuration_path: .circleci/release-config.yml
+          # This is mandatory to trigger a pipeline when pushing a tag
+          filters:
+            tags:
+              only: /.*(?<!dev\d)$/
+      - continuation/continue:
+          configuration_path: .circleci/dev-release-config.yml
+          # This is mandatory to trigger a pipeline when pushing a tag
+          filters:
+            tags:
+              only: /.*(?<=dev\d)$/

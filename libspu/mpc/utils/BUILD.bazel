@@ -1,0 +1,114 @@
+# Copyright 2021 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//bazel:spu.bzl", "spu_cc_binary", "spu_cc_library", "spu_cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+spu_cc_library(
+    name = "circuits",
+    hdrs = ["circuits.h"],
+    deps = [
+        "//libspu/core:bit_utils",
+        "//libspu/core:vectorize",
+    ],
+)
+
+spu_cc_test(
+    name = "circuits_test",
+    srcs = ["circuits_test.cc"],
+    deps = [
+        ":circuits",
+        "@yacl//yacl/base:int128",
+    ],
+)
+
+spu_cc_library(
+    name = "simulate",
+    hdrs = ["simulate.h"],
+    deps = [
+        "@yacl//yacl/link",
+    ],
+)
+
+spu_cc_test(
+    name = "simulate_test",
+    srcs = ["simulate_test.cc"],
+    deps = [
+        ":simulate",
+        "//libspu/core:prelude",
+    ],
+)
+
+spu_cc_library(
+    name = "ring_ops",
+    srcs = ["ring_ops.cc"],
+    hdrs = ["ring_ops.h"],
+    deps = [
+        ":linalg",
+        "//libspu/core",
+        "@yacl//yacl/crypto/tools:prg",
+        "@yacl//yacl/crypto/utils:rand",
+        "@yacl//yacl/utils:parallel",
+    ],
+)
+
+spu_cc_test(
+    name = "ring_ops_test",
+    srcs = ["ring_ops_test.cc"],
+    deps = [
+        ":ring_ops",
+    ],
+)
+
+spu_cc_binary(
+    name = "ring_ops_bench",
+    srcs = ["ring_ops_bench.cc"],
+    deps = [
+        ":ring_ops",
+        "@com_github_google_benchmark//:benchmark",
+    ],
+)
+
+spu_cc_library(
+    name = "linalg",
+    srcs = ["linalg.cc"],
+    hdrs = ["linalg.h"],
+    deps = [
+        "//libspu/core:parallel_utils",
+        "//libspu/core:prelude",
+        "@com_github_eigenteam_eigen//:eigen3",
+    ] + select({
+        "@bazel_tools//src/conditions:darwin_x86_64": ["@local_homebrew_x64//:openmp"],
+        "@bazel_tools//src/conditions:darwin_arm64": ["@local_homebrew_arm64//:openmp"],
+        "//conditions:default": [],
+    }),
+)
+
+spu_cc_test(
+    name = "linalg_test",
+    srcs = ["linalg_test.cc"],
+    deps = [
+        ":linalg",
+    ],
+)
+
+spu_cc_library(
+    name = "tiling_util",
+    hdrs = ["tiling_util.h"],
+    deps = [
+        "//libspu/core:context",
+        "//libspu/core:parallel_utils",
+    ],
+)

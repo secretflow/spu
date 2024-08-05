@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xl="http://www.w3.org/1999/xlink" xmlns:dc="http://purl.org/dc/elements/1.1/" version="1.1" viewBox="441 406.32 414.80734 275.542" width="414.80734" height="275.542">
+  <defs>
+    <marker orient="auto" overflow="visible" markerUnits="strokeWidth" id="FilledArrow_Marker" stroke-linejoin="miter" stroke-miterlimit="10" viewBox="-1 -4 10 8" markerWidth="10" markerHeight="8" color="black">
+      <g>
+        <path d="M 8 0 L 0 -3 L 0 3 Z" fill="currentColor" stroke="currentColor" stroke-width="1"/>
+      </g>
+    </marker>
+    <marker orient="auto" overflow="visible" markerUnits="strokeWidth" id="FilledArrow_Marker_2" stroke-linejoin="miter" stroke-miterlimit="10" viewBox="-9 -4 10 8" markerWidth="10" markerHeight="8" color="black">
+      <g>
+        <path d="M -8 0 L 0 3 L 0 -3 Z" fill="currentColor" stroke="currentColor" stroke-width="1"/>
+      </g>
+    </marker>
+  </defs>
+  <g id="VM_Model" stroke="none" fill-opacity="1" fill="none" stroke-opacity="1" stroke-dasharray="none">
+    <title>VM Model</title>
+    <rect fill="white" x="441" y="406.32" width="414.80734" height="275.542"/>
+    <g id="VM_Model_SPU_inside">
+      <title>SPU inside</title>
+      <g id="Group_101">
+        <g id="Graphic_85">
+          <rect x="562" y="508.5" width="183" height="170.862" fill="white"/>
+          <rect x="562" y="508.5" width="183" height="170.862" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="5"/>
+          <text transform="translate(567 513.5)" fill="black">
+            <tspan font-family="Helvetica Neue" font-size="16" fill="black" x="0" y="15">SPU</tspan>
+          </text>
+        </g>
+        <g id="Group_122">
+          <g id="Graphic_113">
+            <rect x="628.0553" y="517.362" width="48.8" height="48" fill="white"/>
+          </g>
+          <g id="Graphic_89">
+            <title>Person Outline</title>
+            <path d="M 652.4553 529.162 C 654.7753 529.162 656.6553 531.042 656.6553 533.362 C 656.6553 535.682 654.7753 537.562 652.4553 537.562 C 650.1353 537.562 648.2553 535.682 648.2553 533.362 C 648.2553 531.042 650.1353 529.162 652.4553 529.162 M 652.4553 547.162 C 658.3953 547.162 664.6553 550.082 664.6553 551.362 L 664.6553 553.562 L 640.2553 553.562 L 640.2553 551.362 C 640.2553 550.082 646.5153 547.162 652.4553 547.162 M 652.4553 525.362 C 648.0353 525.362 644.4553 528.942 644.4553 533.362 C 644.4553 537.782 648.0353 541.362 652.4553 541.362 C 656.8753 541.362 660.4553 537.782 660.4553 533.362 C 660.4553 528.942 656.8753 525.362 652.4553 525.362 Z M 652.4553 543.362 C 647.1153 543.362 636.4553 546.042 636.4553 551.362 L 636.4553 557.362 L 668.4553 557.362 L 668.4553 551.362 C 668.4553 546.042 657.7953 543.362 652.4553 543.362 Z" fill="blue"/>
+          </g>
+        </g>
+        <g id="Group_121">
+          <g id="Graphic_115">
+            <rect x="567.4" y="615.962" width="48.8" height="48" fill="white"/>
+          </g>
+          <g id="Graphic_103">
+            <title>Person Outline</title>
+            <path d="M 591.8 626.162 C 594.12 626.162 596 628.042 596 630.362 C 596 632.682 594.12 634.562 591.8 634.562 C 589.48 634.562 587.6 632.682 587.6 630.362 C 587.6 628.042 589.48 626.162 591.8 626.162 M 591.8 644.162 C 597.74 644.162 604 647.082 604 648.362 L 604 650.562 L 579.6 650.562 L 579.6 648.362 C 579.6 647.082 585.86 644.162 591.8 644.162 M 591.8 622.362 C 587.38 622.362 583.8 625.942 583.8 630.362 C 583.8 634.782 587.38 638.362 591.8 638.362 C 596.22 638.362 599.8 634.782 599.8 630.362 C 599.8 625.942 596.22 622.362 591.8 622.362 Z M 591.8 640.362 C 586.46 640.362 575.8 643.042 575.8 648.362 L 575.8 654.362 L 607.8 654.362 L 607.8 648.362 C 607.8 643.042 597.14 640.362 591.8 640.362 Z" fill="red"/>
+          </g>
+        </g>
+        <g id="Group_120">
+          <g id="Graphic_114">
+            <rect x="690.8" y="617.162" width="48.8" height="45.6" fill="white"/>
+          </g>
+          <g id="Graphic_104">
+            <title>Person Outline</title>
+            <path d="M 715.5 624.962 C 717.82 624.962 719.7 626.842 719.7 629.162 C 719.7 631.482 717.82 633.362 715.5 633.362 C 713.18 633.362 711.3 631.482 711.3 629.162 C 711.3 626.842 713.18 624.962 715.5 624.962 M 715.5 642.962 C 721.44 642.962 727.7 645.882 727.7 647.162 L 727.7 649.362 L 703.3 649.362 L 703.3 647.162 C 703.3 645.882 709.56 642.962 715.5 642.962 M 715.5 621.162 C 711.08 621.162 707.5 624.742 707.5 629.162 C 707.5 633.582 711.08 637.162 715.5 637.162 C 719.92 637.162 723.5 633.582 723.5 629.162 C 723.5 624.742 719.92 621.162 715.5 621.162 Z M 715.5 639.162 C 710.16 639.162 699.5 641.842 699.5 647.162 L 699.5 653.162 L 731.5 653.162 L 731.5 647.162 C 731.5 641.842 720.84 639.162 715.5 639.162 Z" fill="lime"/>
+          </g>
+        </g>
+      </g>
+      <g id="Graphic_84">
+        <title>Person Outline</title>
+        <path d="M 457 533.12 C 459.32 533.12 461.2 535 461.2 537.32 C 461.2 539.64 459.32 541.52 457 541.52 C 454.68 541.52 452.8 539.64 452.8 537.32 C 452.8 535 454.68 533.12 457 533.12 M 457 551.12 C 462.94 551.12 469.2 554.04 469.2 555.32 L 469.2 557.52 L 444.8 557.52 L 444.8 555.32 C 444.8 554.04 451.06 551.12 457 551.12 M 457 529.32 C 452.58 529.32 449 532.9 449 537.32 C 449 541.74 452.58 545.32 457 545.32 C 461.42 545.32 465 541.74 465 537.32 C 465 532.9 461.42 529.32 457 529.32 Z M 457 547.32 C 451.66 547.32 441 550 441 555.32 L 441 561.32 L 473 561.32 L 473 555.32 C 473 550 462.34 547.32 457 547.32 Z" fill="black"/>
+      </g>
+      <g id="Line_83">
+        <line x1="477" y1="547.096" x2="544.1" y2="547.096" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Graphic_82">
+        <rect x="491.4091" y="532.872" width="41.712" height="28.447998" fill="white"/>
+        <text transform="translate(496.4091 537.872)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="16" fill="black" x="0" y="15">data</tspan>
+        </text>
+      </g>
+      <g id="Line_81">
+        <line x1="652.25" y1="453.1411" x2="652.6314" y2="496.1004" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Graphic_80">
+        <rect x="629.52744" y="462.05613" width="45.856" height="28.447998" fill="white"/>
+        <text transform="translate(634.52744 467.05613)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="16" fill="black" x="0" y="15">code</tspan>
+        </text>
+      </g>
+      <g id="Graphic_79">
+        <title>Person Outline</title>
+        <path d="M 457 636.12 C 459.32 636.12 461.2 638 461.2 640.32 C 461.2 642.64 459.32 644.52 457 644.52 C 454.68 644.52 452.8 642.64 452.8 640.32 C 452.8 638 454.68 636.12 457 636.12 M 457 654.12 C 462.94 654.12 469.2 657.04 469.2 658.32 L 469.2 660.52 L 444.8 660.52 L 444.8 658.32 C 444.8 657.04 451.06 654.12 457 654.12 M 457 632.32 C 452.58 632.32 449 635.9 449 640.32 C 449 644.74 452.58 648.32 457 648.32 C 461.42 648.32 465 644.74 465 640.32 C 465 635.9 461.42 632.32 457 632.32 Z M 457 650.32 C 451.66 650.32 441 653 441 658.32 L 441 664.32 L 473 664.32 L 473 658.32 C 473 653 462.34 650.32 457 650.32 Z" fill="black"/>
+      </g>
+      <g id="Line_78">
+        <line x1="477" y1="650.096" x2="544.1" y2="650.096" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Graphic_77">
+        <rect x="491.4091" y="635.872" width="41.712" height="28.447998" fill="white"/>
+        <text transform="translate(496.4091 640.872)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="16" fill="black" x="0" y="15">data</tspan>
+        </text>
+      </g>
+      <g id="Graphic_76">
+        <title>Person Outline</title>
+        <path d="M 652.4553 410.12 C 654.7753 410.12 656.6553 412 656.6553 414.32 C 656.6553 416.64 654.7753 418.52 652.4553 418.52 C 650.1353 418.52 648.2553 416.64 648.2553 414.32 C 648.2553 412 650.1353 410.12 652.4553 410.12 M 652.4553 428.12 C 658.3953 428.12 664.6553 431.04 664.6553 432.32 L 664.6553 434.52 L 640.2553 434.52 L 640.2553 432.32 C 640.2553 431.04 646.5153 428.12 652.4553 428.12 M 652.4553 406.32 C 648.0353 406.32 644.4553 409.9 644.4553 414.32 C 644.4553 418.74 648.0353 422.32 652.4553 422.32 C 656.8753 422.32 660.4553 418.74 660.4553 414.32 C 660.4553 409.9 656.8753 406.32 652.4553 406.32 Z M 652.4553 424.32 C 647.1153 424.32 636.4553 427 636.4553 432.32 L 636.4553 438.32 L 668.4553 438.32 L 668.4553 432.32 C 668.4553 427 657.7953 424.32 652.4553 424.32 Z" fill="black"/>
+      </g>
+      <g id="Line_75">
+        <line x1="753" y1="593.431" x2="809.90845" y2="594.2828" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Graphic_74">
+        <rect x="762.741" y="579.665" width="41.712" height="28.447998" fill="white"/>
+        <text transform="translate(767.741 584.665)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="16" fill="black" x="0" y="15">data</tspan>
+        </text>
+      </g>
+      <g id="Graphic_73">
+        <title>Person Outline</title>
+        <path d="M 839.8073 581.689 C 842.1273 581.689 844.0073 583.569 844.0073 585.889 C 844.0073 588.209 842.1273 590.089 839.8073 590.089 C 837.4873 590.089 835.6073 588.209 835.6073 585.889 C 835.6073 583.569 837.4873 581.689 839.8073 581.689 M 839.8073 599.689 C 845.7473 599.689 852.0073 602.609 852.0073 603.889 L 852.0073 606.089 L 827.6073 606.089 L 827.6073 603.889 C 827.6073 602.609 833.8673 599.689 839.8073 599.689 M 839.8073 577.889 C 835.3873 577.889 831.8073 581.469 831.8073 585.889 C 831.8073 590.309 835.3873 593.889 839.8073 593.889 C 844.2273 593.889 847.8073 590.309 847.8073 585.889 C 847.8073 581.469 844.2273 577.889 839.8073 577.889 Z M 839.8073 595.889 C 834.4673 595.889 823.8073 598.569 823.8073 603.889 L 823.8073 609.889 L 855.8073 609.889 L 855.8073 603.889 C 855.8073 598.569 845.1473 595.889 839.8073 595.889 Z" fill="black"/>
+      </g>
+      <g id="Line_116">
+        <line x1="632.5041" y1="573.79424" x2="611.7512" y2="607.5298" marker-end="url(#FilledArrow_Marker)" marker-start="url(#FilledArrow_Marker_2)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Line_118">
+        <line x1="626.1" y1="639.962" x2="680.9" y2="639.962" marker-end="url(#FilledArrow_Marker)" marker-start="url(#FilledArrow_Marker_2)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Line_119">
+        <line x1="695.3761" y1="608.8097" x2="673.0429" y2="573.7143" marker-end="url(#FilledArrow_Marker)" marker-start="url(#FilledArrow_Marker_2)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Graphic_123">
+        <text transform="translate(635.572 598.431)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="16" fill="black" x="0" y="15">MPC</tspan>
+        </text>
+      </g>
+    </g>
+  </g>
+</svg>

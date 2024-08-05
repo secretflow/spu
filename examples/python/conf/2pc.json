@@ -1,0 +1,46 @@
+{
+    "id": "colocated.2pc",
+    "nodes": {
+        "node:0": "127.0.0.1:9320",
+        "node:1": "127.0.0.1:9321"
+    },
+    "devices": {
+        "SPU": {
+            "kind": "SPU",
+            "config": {
+                "node_ids": [
+                    "node:0",
+                    "node:1"
+                ],
+                "experimental_data_folder": [
+                    "/tmp/spu_data_0/",
+                    "/tmp/spu_data_1/"
+                ],
+                "spu_internal_addrs": [
+                    "127.0.0.1:9330",
+                    "127.0.0.1:9331"
+                ],
+                "runtime_config": {
+                    "protocol": "CHEETAH",
+                    "field": "FM64",
+                    "enable_pphlo_profile": true,
+                    "enable_hal_profile": true,
+                    "enable_pphlo_trace": false,
+                    "enable_action_trace": false
+                }
+            }
+        },
+        "P1": {
+            "kind": "PYU",
+            "config": {
+                "node_id": "node:0"
+            }
+        },
+        "P2": {
+            "kind": "PYU",
+            "config": {
+                "node_id": "node:1"
+            }
+        }
+    }
+}

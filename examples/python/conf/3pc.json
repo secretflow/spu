@@ -1,0 +1,51 @@
+{
+    "id": "outsourcing.3pc",
+    "nodes": {
+        "node:0": "127.0.0.1:9920",
+        "node:1": "127.0.0.1:9921",
+        "node:2": "127.0.0.1:9922",
+        "node:3": "127.0.0.1:9923",
+        "node:4": "127.0.0.1:9924"
+    },
+    "devices": {
+        "SPU": {
+            "kind": "SPU",
+            "config": {
+                "node_ids": [
+                    "node:0",
+                    "node:1",
+                    "node:2"
+                ],
+                "spu_internal_addrs": [
+                    "127.0.0.1:9930",
+                    "127.0.0.1:9931",
+                    "127.0.0.1:9932"
+                ],
+                "experimental_data_folder": [
+                    "/tmp/spu_data_0/",
+                    "/tmp/spu_data_1/",
+                    "/tmp/spu_data_2/"
+                ],
+                "runtime_config": {
+                    "protocol": "ABY3",
+                    "field": "FM64",
+                    "enable_pphlo_profile": true,
+                    "enable_hal_profile": true,
+                    "enable_pphlo_trace": false
+                }
+            }
+        },
+        "P1": {
+            "kind": "PYU",
+            "config": {
+                "node_id": "node:3"
+            }
+        },
+        "P2": {
+            "kind": "PYU",
+            "config": {
+                "node_id": "node:4"
+            }
+        }
+    }
+}

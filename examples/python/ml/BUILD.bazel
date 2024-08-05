@@ -1,0 +1,46 @@
+# Copyright 2023 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("@rules_python//python:defs.bzl", "py_test")
+
+package(default_visibility = ["//visibility:public"])
+
+py_test(
+    name = "ml_test",
+    timeout = "long",
+    srcs = ["ml_test.py"],
+    data = [
+        "//examples/python/conf",
+    ],
+    tags = [
+        "manual",
+        "no-sandbox",
+    ],
+    deps = [
+        "//examples/python/ml/flax_mlp",
+        "//examples/python/ml/flax_vae",
+        "//examples/python/ml/haiku_lstm",
+        "//examples/python/ml/jax_kmeans",
+        "//examples/python/ml/jax_lr",
+        "//examples/python/ml/jax_svm",
+        "//examples/python/ml/jraph_gnn",
+        "//examples/python/ml/ss_lr",
+        "//examples/python/ml/ss_xgb",
+        "//examples/python/ml/stax_mnist_classifier",
+        "//examples/python/ml/stax_nn",
+        "//examples/python/ml/tf_experiment",
+        "//examples/python/ml/torch_experiment",
+        "//spu/utils:distributed",
+    ],
+)

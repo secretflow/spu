@@ -1,0 +1,20 @@
+[tool.black]
+skip-string-normalization = true
+
+[tool.isort]
+profile = "black"
+
+[tool.rstcheck]
+report_level = "ERROR"
+ignore_directives = [
+    "include",
+    "mermaid",
+    "autoclass",
+    "autofunction",
+]
+ignore_roles = [
+    "spu_code_host",
+]
+ignore_languages = [
+    "cpp"
+]

@@ -1,0 +1,87 @@
+# Copyright 2023 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+networks:
+  nn-benchmark:
+    ipam:
+      config:
+        - subnet: 172.16.238.0/24
+      driver: default
+    name: nn-benchmark
+services:
+  node_0:
+    command:
+      - /bin/sh
+      - -c
+      - |
+        cd /home/admin/dev
+        bazel-bin/examples/python/utils/nodectl -c .circleci/benchmark.json start --node_id node:0
+    image: spu-build:v1
+    networks:
+      nn-benchmark:
+        ipv4_address: 172.16.238.2
+    volumes:
+      - ${PWD}:/home/admin/dev/
+  node_1:
+    command:
+      - /bin/sh
+      - -c
+      - |
+        cd /home/admin/dev
+        bazel-bin/examples/python/utils/nodectl -c .circleci/benchmark.json start --node_id node:1
+    image: spu-build:v1
+    networks:
+      nn-benchmark:
+        ipv4_address: 172.16.238.3
+    volumes:
+      - ${PWD}:/home/admin/dev/
+  node_2:
+    command:
+      - /bin/sh
+      - -c
+      - |
+        cd /home/admin/dev
+        bazel-bin/examples/python/utils/nodectl -c .circleci/benchmark.json start --node_id node:2
+    image: spu-build:v1
+    networks:
+      nn-benchmark:
+        ipv4_address: 172.16.238.4
+    volumes:
+      - ${PWD}:/home/admin/dev/
+  node_3:
+    command:
+      - /bin/sh
+      - -c
+      - |
+        cd /home/admin/dev
+        bazel-bin/examples/python/utils/nodectl -c .circleci/benchmark.json start --node_id node:3
+    image: spu-build:v1
+    networks:
+      nn-benchmark:
+        ipv4_address: 172.16.238.5
+    volumes:
+      - ${PWD}:/home/admin/dev/
+  node_4:
+    command:
+      - /bin/sh
+      - -c
+      - |
+        cd /home/admin/dev
+        bazel-bin/examples/python/utils/nodectl -c .circleci/benchmark.json start --node_id node:4
+    image: spu-build:v1
+    networks:
+      nn-benchmark:
+        ipv4_address: 172.16.238.6
+    volumes:
+      - ${PWD}:/home/admin/dev/

@@ -1,0 +1,110 @@
+# Copyright 2021 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//bazel:spu.bzl", "spu_cc_binary", "spu_cc_library", "spu_cc_test")
+load("@yacl//bazel:yacl.bzl", "AES_COPT_FLAGS")
+
+package(default_visibility = ["//visibility:public"])
+
+spu_cc_library(
+    name = "bc22_psi",
+    srcs = ["bc22_psi.cc"],
+    hdrs = ["bc22_psi.h"],
+    copts = AES_COPT_FLAGS,
+    deps = [
+        ":emp_vole",
+        ":generalized_cuckoo_hash",
+        "//libspu/core:prelude",
+        "//libspu/psi/core:communication",
+        "//libspu/psi/utils:serialize",
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/strings",
+        "@yacl//yacl/base:int128",
+        "@yacl//yacl/crypto/utils:rand",
+        "@yacl//yacl/link",
+        "@yacl//yacl/utils:parallel",
+    ],
+)
+
+spu_cc_test(
+    name = "bc22_psi_test",
+    srcs = ["bc22_psi_test.cc"],
+    deps = [
+        ":bc22_psi",
+    ],
+)
+
+spu_cc_library(
+    name = "emp_vole",
+    srcs = ["emp_vole.cc"],
+    hdrs = ["emp_vole.h"],
+    copts = AES_COPT_FLAGS,
+    deps = [
+        "//libspu/core:prelude",
+        "//libspu/psi/core:communication",
+        "//libspu/psi/utils:emp_io_adapter",
+        "//libspu/psi/utils:serialize",
+        "@com_github_emptoolkit_emp_zk//:emp-zk",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:span",
+        "@yacl//yacl/crypto/utils:rand",
+        "@yacl//yacl/link",
+    ],
+)
+
+spu_cc_test(
+    name = "emp_vole_test",
+    srcs = ["emp_vole_test.cc"],
+    copts = AES_COPT_FLAGS,
+    deps = [
+        ":emp_vole",
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@yacl//yacl/link",
+    ],
+)
+
+spu_cc_library(
+    name = "generalized_cuckoo_hash",
+    srcs = ["generalized_cuckoo_hash.cc"],
+    hdrs = ["generalized_cuckoo_hash.h"],
+    deps = [
+        "//libspu/core:prelude",
+        "//libspu/psi/core:cuckoo_index",
+        "@com_google_absl//absl/strings",
+        "@yacl//yacl/base:byte_container_view",
+        "@yacl//yacl/base:int128",
+        "@yacl//yacl/crypto/base/hash:hash_utils",
+        "@yacl//yacl/crypto/tools:prg",
+        "@yacl//yacl/crypto/utils:rand",
+        "@yacl//yacl/link",
+        "@yacl//yacl/utils:parallel",
+    ],
+)
+
+spu_cc_test(
+    name = "generalized_cuckoo_hash_test",
+    srcs = ["generalized_cuckoo_hash_test.cc"],
+    deps = [
+        ":generalized_cuckoo_hash",
+    ],
+)
+
+spu_cc_binary(
+    name = "bc22_psi_bench",
+    srcs = ["bc22_psi_bench.cc"],
+    deps = [
+        ":bc22_psi",
+        "@com_github_google_benchmark//:benchmark_main",
+    ],
+)

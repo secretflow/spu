@@ -1,0 +1,211 @@
+//
+// Copyright 2022 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
+syntax = "proto3";
+
+package spu.psi;
+
+// The algorithm type of psi.
+enum PsiType {
+  INVALID_PSI_TYPE = 0;
+
+  // DDH based PSI
+  ECDH_PSI_2PC = 1;
+  // Efficient Batched Oblivious PRF with Applications to Private Set
+  // Intersection https://eprint.iacr.org/2016/799.pdf
+  KKRT_PSI_2PC = 2;
+  // PSI from Pseudorandom Correlation Generators
+  // https://eprint.iacr.org/2022/334
+  BC22_PSI_2PC = 3;
+  // Multi-party PSI based on ECDH (Say A, B, C (receiver))
+  // notice: two-party intersection cardinarlity leak (|A intersect B|)
+  ECDH_PSI_3PC = 4;
+
+  // Iterative running 2-party ecdh psi to get n-party PSI.
+  // Notice: two-party intersection leak
+  ECDH_PSI_NPC = 5;
+  // Iterative running 2-party kkrt psi to get n-party PSI.
+  // Notice: two-party intersection leak
+  KKRT_PSI_NPC = 6;
+
+  // ecdh-oprf 2-party Unbalanced-PSI Generate CACHE.
+  ECDH_OPRF_UB_PSI_2PC_GEN_CACHE = 7;
+
+  // ecdh-oprf 2-party Unbalanced-PSI transfer CACHE.
+  ECDH_OPRF_UB_PSI_2PC_TRANSFER_CACHE = 8;
+
+  // ecdh-oprf 2-party Unbalanced-PSI offline phase.
+  ECDH_OPRF_UB_PSI_2PC_OFFLINE = 9;
+
+  // ecdh-oprf 2-party Unbalanced-PSI online phase.
+  ECDH_OPRF_UB_PSI_2PC_ONLINE = 10;
+
+  // ecdh-oprf 2-party Unbalanced-PSI with shuffling online phase.
+  // large set party get intersection result
+  ECDH_OPRF_UB_PSI_2PC_SHUFFLE_ONLINE = 11;
+
+  // Differentially-Private PSI https://arxiv.org/pdf/2208.13249.pdf
+  // bases on ECDH-PSI, and provides: Differentially private PSI results.
+  DP_PSI_2PC = 12;
+}
+
+// The specified elliptic curve cryptography used in psi.
+enum CurveType {
+  CURVE_INVALID_TYPE = 0;
+
+  // Daniel J. Bernstein. Curve25519: new diffie-hellman speed records
+  CURVE_25519 = 1;
+  // FourQ: four-dimensional decompositions on a Q-curve over the Mersenne prime
+  CURVE_FOURQ = 2;
+  // SM2 is an elliptic curve based cryptosystem (ECC)
+  // published as a Chinese National Standard as GBT.32918.1-2016
+  // and published in ISO/IEC 14888-3:2018
+  CURVE_SM2 = 3;
+  // parameters of the elliptic curve defined in Standards for Efficient
+  // Cryptography (SEC) http://www.secg.org/sec2-v2.pdf
+  CURVE_SECP256K1 = 4;
+
+  // TODO: @changjun.zl support ristretto255
+  // Ristretto255 implements abstract prime-order group interface of Curve25519
+  // CURVE_RISTRETTO255 = 5;
+}
+
+// The input parameters of psi.
+message InputParams {
+  // The path of input csv file.
+  string path = 1;
+  // The select fields of input data.
+  repeated string select_fields = 2;
+  // Whether to check select fields duplicate.
+  bool precheck = 3;
+}
+
+// The output parameters of psi.
+message OutputParams {
+  // The path of output csv file.
+  string path = 1;
+  // Whether to sort output file by select fields.
+  bool need_sort = 2;
+}
+
+// The report of psi result.
+message PsiResultReport {
+  // The data count of input.
+  int64 original_count = 1;
+  // The count of intersection. Get `-1` when self party can not get result.
+  int64 intersection_count = 2;
+}
+
+// The input parameters of dp-psi.
+message DpPsiParams {
+  // bob sub-sampling bernoulli_distribution probability.
+  double bob_sub_sampling = 1;
+  // dp epsilon
+  double epsilon = 2;
+}
+
+// The Bucket-psi configuration.
+//
+// ```python
+//   config = psi.BucketPsiConfig(  # prepare config
+//       psi_type=PsiType.ECDH_PSI_2PC,
+//       broadcast_result=True,
+//       receiver_rank=0,
+//       input_params=psi.InputParams(path='/xxx/ccc.csv', select_fields=['c1', 'c2']),
+//       output_params=psi.OutputParams(path='/yyyy/oooo.csv', need_sort=True),
+//   )
+//   report = psi.bucket_psi(lctx, config)  # run psi and get report
+// ```
+message BucketPsiConfig {
+  //
+
+  ///////////////////////////////////////
+  // Basic
+  ///////////////////////////////////////
+
+  // The psi type.
+  PsiType psi_type = 1;
+
+  // Specified the receiver rank. Receiver can get psi result.
+  uint32 receiver_rank = 2;
+
+  // Whether to broadcast psi result to all parties.
+  bool broadcast_result = 3;
+
+  // The input parameters of psi.
+  InputParams input_params = 4;
+
+  // The output parameters of psi.
+  OutputParams output_params = 5;
+
+  ///////////////////////////////////////
+  // Advanced
+  ///////////////////////////////////////
+
+  // Optional, specified elliptic curve cryptography used in psi when needed.
+  CurveType curve_type = 6;
+
+  // Optional, specified the hash bucket size used in psi.
+  uint32 bucket_size = 7;
+
+  // Optional，The path of offline preprocess file.
+  string preprocess_path = 8;
+
+  // Optional，secret key path of ecdh_oprf, 256bit/32bytes binary file.
+  string ecdh_secret_key_path = 9;
+
+  // Optional，Params for dp-psi
+  DpPsiParams dppsi_params = 10;
+}
+
+// The In-memory psi configuration.
+//
+// ```python
+//   config = psi.MemoryPsiConfig(  # prepare config
+//       psi_type=PsiType.ECDH_PSI_2PC,
+//       broadcast_result=True,
+//       receiver_rank=0,
+//   )
+//   joined_list = psi.mem_psi(
+//       lctx, config, ['a1', 'v2', 'b3', 'v4']
+//   )  # run psi and get joined list
+// ```
+message MemoryPsiConfig {
+  //
+
+  ///////////////////////////////////////
+  // Basic
+  ///////////////////////////////////////
+
+  // The psi type.
+  PsiType psi_type = 1;
+
+  // Specified the receiver rank. Receiver can get psi result.
+  uint32 receiver_rank = 2;
+
+  // Whether to broadcast psi result to all parties.
+  bool broadcast_result = 3;
+
+  ///////////////////////////////////////
+  // Advanced
+  ///////////////////////////////////////
+
+  // Optional, specified elliptic curve cryptography used in psi when needed.
+  CurveType curve_type = 4;
+
+  // Optional，Params for dp-psi
+  DpPsiParams dppsi_params = 5;
+}
