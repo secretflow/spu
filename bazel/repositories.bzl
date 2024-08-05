@@ -16,11 +16,9 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
-
 SECRETFLOW_GIT = "https://github.com/secretflow"
 
-YACL_COMMIT_ID  = "58bbbebd500054c71394db29bbeac2f73f35ffd1"
-
+YACL_COMMIT_ID = "ff20dff1476071ca885c69bee94d2b3bdf85034c"
 
 def spu_deps():
     _bazel_platform()

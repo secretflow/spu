@@ -5,11 +5,11 @@ index bb36ef2..51c32c0 100644
 @@ -1192,24 +1192,25 @@ namespace apsi {
              // The loaded label size must match the label size for this BinBundle
              size_t label_size = get_label_size();
-
+ 
 -            for (size_t bin_idx = 0; !stripped_ && (bin_idx < num_bins); bin_idx++) {
 -                auto &item_bin = *item_bins[static_cast<flatbuffers::uoffset_t>(bin_idx)]->felts();
 +            std::vector<std::future<void>> futures;
-
+ 
 -                // Check that the sizes of the bins are at most max_bin_size_
 -                if (item_bin.size() > max_bin_size_) {
 -                    APSI_LOG_ERROR(
@@ -60,12 +60,12 @@ index bb36ef2..51c32c0 100644
 +	    for (auto &f : futures) {
 +                f.get();
              }
-
+ 
              // We are now done with the item data; next check that the label size is correct
 @@ -1259,8 +1270,10 @@ namespace apsi {
                      throw runtime_error("failed to load BinBundle");
                  }
-
+ 
 -                // Check that each bin has the same size as the corresponding items bin
 -                for (size_t bin_idx = 0; bin_idx < num_bins; bin_idx++) {
 +		futures.clear();
@@ -91,3 +91,4 @@ index bb36ef2..51c32c0 100644
 +                    f.get();
                  }
              }
+ 
