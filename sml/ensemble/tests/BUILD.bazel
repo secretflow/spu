@@ -17,6 +17,16 @@ load("@rules_python//python:defs.bzl", "py_test")
 package(default_visibility = ["//visibility:public"])
 
 py_test(
+    name = "adaboost_test",
+    srcs = ["adaboost_test.py"],
+    deps = [
+        "//sml/ensemble:adaboost",
+        "//spu:init",
+        "//spu/utils:simulation",
+    ],
+)
+
+py_test(
     name = "forest_test",
     srcs = ["forest_test.py"],
     deps = [

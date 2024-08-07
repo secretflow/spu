@@ -17,6 +17,14 @@ load("@rules_python//python:defs.bzl", "py_library")
 package(default_visibility = ["//visibility:public"])
 
 py_library(
+    name = "adaboost",
+    srcs = ["adaboost.py"],
+    deps = [
+        "//sml/tree",
+    ],
+)
+
+py_library(
     name = "forest",
     srcs = ["forest.py"],
     deps = [
