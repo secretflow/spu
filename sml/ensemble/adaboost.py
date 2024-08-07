@@ -203,58 +203,55 @@ class AdaBoostClassifier:
         estimator_error = jnp.mean(
             jnp.average(incorrect, weights=sample_weight, axis=0)
         )
+        is_small_error = estimator_error <= epsilon
 
-        self.early_stop = lax.cond(
-            estimator_error <= epsilon,
-            lambda _: jnp.array(True, dtype=jnp.bool_),
-            lambda _: self.early_stop,
-            operand=None,
-        )
+        self.early_stop = jnp.logical_or(self.early_stop, is_small_error)
 
         def true_0_fun(sample_weight):
             return sample_weight, 1.0, 0.0, jnp.array(False, dtype=jnp.bool_)
 
-        def false_0_fun(sample_weight):
+        def false_0_fun(sample_weight, estimator_error, incorrect, n_classes):
             flag = estimator_error < 1.0 - (1.0 / n_classes)
-            flag = lax.cond(
-                self.early_stop,
-                lambda _: jnp.array(False, dtype=jnp.bool_),
-                lambda _: flag,
-                operand=None,
+            flag = jnp.where(self.early_stop, jnp.array(False, dtype=jnp.bool_), flag)
+
+            estimator_weight = self.learning_rate * (
+                jnp.log((1.0 - estimator_error) / estimator_error)
+                + jnp.log(n_classes - 1.0)
+            )
+            sample_weight_updated = sample_weight * jnp.exp(
+                estimator_weight * incorrect
             )
 
-            # Update weights only if flag is True
-            def update_weights(params):
-                estimator_error, incorrect, sample_weight = params
-                estimator_weight = self.learning_rate * (
-                    jnp.log((1.0 - estimator_error) / estimator_error)
-                    + jnp.log(n_classes - 1.0)
-                )
-                sample_weight *= jnp.exp(estimator_weight * incorrect)
-                return sample_weight, estimator_weight
-
-            def skip_update(params):
-                estimator_error, incorrect, sample_weight = params
-                return sample_weight, 0.0  # Return zero for estimator_weight
-
-            sample_weight, estimator_weight = lax.cond(
-                flag,
-                update_weights,
-                skip_update,
-                operand=(estimator_error, incorrect, sample_weight),
-            )
+            sample_weight = jnp.where(flag, sample_weight_updated, sample_weight)
+            estimator_weight = jnp.where(flag, estimator_weight, 0.0)
 
             return sample_weight, estimator_weight, estimator_error, flag
 
-        sample_weight, estimator_weight, estimator_error, flag = lax.cond(
-            estimator_error <= epsilon, true_0_fun, false_0_fun, sample_weight
+        sample_weight_true, estimator_weight_true, estimator_error_true, flag_true = (
+            true_0_fun(sample_weight)
         )
+        (
+            sample_weight_false,
+            estimator_weight_false,
+            estimator_error_false,
+            flag_false,
+        ) = false_0_fun(sample_weight, estimator_error, incorrect, n_classes)
+
+        sample_weight = jnp.where(
+            is_small_error, sample_weight_true, sample_weight_false
+        )
+        estimator_weight = jnp.where(
+            is_small_error, estimator_weight_true, estimator_weight_false
+        )
+        estimator_error = jnp.where(
+            is_small_error, estimator_error_true, estimator_error_false
+        )
+        flag = jnp.where(is_small_error, flag_true, flag_false)
 
         return sample_weight, estimator_weight, estimator_error, flag
 
     def predict(self, X):
         pred = self.decision_function(X)
-        print(self.early_stop)
 
         if self.n_classes == 2:
             return self.classes.take(pred > 0, axis=0)
@@ -264,11 +261,6 @@ class AdaBoostClassifier:
     def decision_function(self, X):
         n_classes = self.n_classes
         classes = self.classes[:, jnp.newaxis]
-
-        print(self.estimators_)
-        print(self.estimator_weight_)
-        print('--------')
-        print(self.estimator_flags_)
 
         pred = sum(
             jnp.where(
@@ -282,10 +274,7 @@ class AdaBoostClassifier:
             )
         )
 
-        # 将列表转换为 JAX 数组，并进行求和
-        weights_flags = jnp.array(
-            [w * flag for w, flag in zip(self.estimator_weight_, self.estimator_flags_)]
-        )
+        weights_flags = self.estimator_weight_ * self.estimator_flags_
         pred /= jnp.sum(weights_flags)
 
         if n_classes == 2:
