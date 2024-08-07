@@ -143,10 +143,16 @@ def oblivious_learning(X, y, T, F, M, h, Cn, n_labels, sample_weight=None):
     Cd = jnp.zeros((n_d, n_h, n_labels + 1, 2 * n_f))
     if sample_weight is not None:
         Cd = Cd.at[:, :, 0, 0::2].set(
-            jnp.tile((1 - X)[:, jnp.newaxis, :] * sample_weight[:, jnp.newaxis, jnp.newaxis], (1, n_h, 1))
+            jnp.tile(
+                (1 - X)[:, jnp.newaxis, :] * sample_weight[:, jnp.newaxis, jnp.newaxis],
+                (1, n_h, 1),
+            )
         )
         Cd = Cd.at[:, :, 0, 1::2].set(
-            jnp.tile((X)[:, jnp.newaxis, :] * sample_weight[:, jnp.newaxis, jnp.newaxis], (1, n_h, 1))
+            jnp.tile(
+                (X)[:, jnp.newaxis, :] * sample_weight[:, jnp.newaxis, jnp.newaxis],
+                (1, n_h, 1),
+            )
         )
     else:
         Cd = Cd.at[:, :, 0, 0::2].set(jnp.tile((1 - X)[:, jnp.newaxis, :], (1, n_h, 1)))
@@ -156,27 +162,33 @@ def oblivious_learning(X, y, T, F, M, h, Cn, n_labels, sample_weight=None):
         if sample_weight is not None:
             Cd = Cd.at[:, :, i + 1, 0::2].set(
                 jnp.tile(
-                    ((1 - X)[:, jnp.newaxis, :] * (i == y)[:, jnp.newaxis, jnp.newaxis] * sample_weight[:, jnp.newaxis, jnp.newaxis]),
-                    (1, n_h, 1)
+                    (
+                        (1 - X)[:, jnp.newaxis, :]
+                        * (i == y)[:, jnp.newaxis, jnp.newaxis]
+                        * sample_weight[:, jnp.newaxis, jnp.newaxis]
+                    ),
+                    (1, n_h, 1),
                 )
             )
             Cd = Cd.at[:, :, i + 1, 1::2].set(
                 jnp.tile(
-                    ((X)[:, jnp.newaxis, :] * (i == y)[:, jnp.newaxis, jnp.newaxis] * sample_weight[:, jnp.newaxis, jnp.newaxis]),
-                    (1, n_h, 1)
+                    (
+                        (X)[:, jnp.newaxis, :]
+                        * (i == y)[:, jnp.newaxis, jnp.newaxis]
+                        * sample_weight[:, jnp.newaxis, jnp.newaxis]
+                    ),
+                    (1, n_h, 1),
                 )
             )
         else:
             Cd = Cd.at[:, :, i + 1, 0::2].set(
                 jnp.tile(
-                    ((1 - X) * (i == y)[:, jnp.newaxis])[:, jnp.newaxis, :],
-                    (1, n_h, 1)
+                    ((1 - X) * (i == y)[:, jnp.newaxis])[:, jnp.newaxis, :], (1, n_h, 1)
                 )
             )
             Cd = Cd.at[:, :, i + 1, 1::2].set(
                 jnp.tile(
-                    ((X) * (i == y)[:, jnp.newaxis])[:, jnp.newaxis, :],
-                    (1, n_h, 1)
+                    ((X) * (i == y)[:, jnp.newaxis])[:, jnp.newaxis, :], (1, n_h, 1)
                 )
             )
 
@@ -189,7 +201,6 @@ def oblivious_learning(X, y, T, F, M, h, Cn, n_labels, sample_weight=None):
     new_Cn = new_Cn[:, :, :] + Cn[:, :, :] * (1 - isLeaf[:, jnp.newaxis, jnp.newaxis])
 
     return new_Cn, M
-
 
 
 def oblivious_heuristic_computation(Cn, gamma, F, h, n_labels):
