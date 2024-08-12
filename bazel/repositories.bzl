@@ -69,9 +69,9 @@ def _rules_proto_grpc():
 def _rules_cuda():
     http_archive(
         name = "rules_cuda",
-        sha256 = "2f8c8c8c85f727bec4423efecec12d3b751cb0a98bda99f0f9d351608a23b858",
-        strip_prefix = "rules_cuda-v0.2.1",
-        urls = ["https://github.com/bazel-contrib/rules_cuda/releases/download/v0.2.1/rules_cuda-v0.2.1.tar.gz"],
+        sha256 = "b066750579f33e93e9dc55b8ee2067b525d863c1ddcf09b47a6332c39f0701fb",
+        strip_prefix = "rules_cuda-v0.2.2",
+        urls = ["https://github.com/bazel-contrib/rules_cuda/releases/download/v0.2.2/rules_cuda-v0.2.2.tar.gz"],
     )
 
 def _bazel_platform():
