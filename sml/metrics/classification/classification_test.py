@@ -172,6 +172,7 @@ class UnitTests(unittest.TestCase):
         sk_res = sk_average_precision_score(y_true, y_score)
         spu_res = spsim.sim_jax(sim, average_precision_score)(y_true, y_score)
         check(sk_res, spu_res)
+
         # with customized labels
         y_true = jnp.array([2, 2, 3, 3], dtype=jnp.int32)
         y_score = jnp.array([0.05, 0.25, 0.85, 0.8], dtype=jnp.float32)
@@ -195,13 +196,12 @@ class UnitTests(unittest.TestCase):
             dtype=jnp.float32,
         )
         classes = jnp.unique(y_true)
-        n_classes = len(classes)
         # test over three supported average options
         for average in ["macro", "micro", None]:
             sk_res = sk_average_precision_score(y_true, y_score, average=average)
             spu_res = spsim.sim_jax(
-                sim, average_precision_score, static_argnums=[3, 4]
-            )(y_true, y_score, classes, n_classes, average)
+                sim, average_precision_score, static_argnums=(3,)
+            )(y_true, y_score, classes, average)
             check(sk_res, spu_res)
 
 

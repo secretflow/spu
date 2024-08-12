@@ -253,35 +253,28 @@ def precision_recall_curve(y_true: jnp.ndarray, y_score: jnp.ndarray, pos_label=
         Increasing thresholds used to compute precision and recall.
     """
     # normalize the labels
-    POS, NEG = 1, 0
-    y_true = jnp.where(y_true == pos_label, POS, NEG)
+    y_true = jnp.where(y_true == pos_label, 1, 0)
 
-    # determine the thresholds
+    # compute TP, FP
     pairs = jnp.stack([y_true, y_score], axis=1)
     sorted_pairs = pairs[jnp.argsort(pairs[:, 1], descending=True, stable=True)]
-    _, _, thresholds = binary_clf_curve(sorted_pairs)
-    len_ = len(thresholds)
+    fp, tp, thresholds = binary_clf_curve(sorted_pairs)
 
-    precisions = jnp.ones((len_ + 1))  # the last precision is always 1
-    recalls = jnp.zeros((len_ + 1))  # the last recall is always 0
+    # compute precision and recalls
+    precisions = tp / (tp + fp + 1e-10)
+    recalls = jnp.where(tp[-1] == 0, jnp.ones_like(tp), tp / tp[-1])
 
-    # compute the precision and recall for each threshold
-    for i, threshold in enumerate(thresholds):
-        y_pred = jnp.where(y_score >= threshold, POS, NEG)
-        precision = precision_score(y_true, y_pred, pos_label=POS)
-        recall = recall_score(y_true, y_pred, pos_label=POS)
-        # fill in recall decreasing order
-        precisions = precisions.at[len_ - 1 - i].set(precision)
-        recalls = recalls.at[len_ - 1 - i].set(recall)
-
-    return precisions, recalls, thresholds
+    return (
+        jnp.hstack((precisions[::-1], 1)),  # the last precision is always 1
+        jnp.hstack((recalls[::-1], 0)),  # the last recall is always 0
+        thresholds[::-1],
+    )
 
 
 def average_precision_score(
     y_true: jnp.ndarray,
     y_score: jnp.ndarray,
     classes=(0, 1),
-    n_classes=2,
     average="macro",
     pos_label=1,
 ):
@@ -298,12 +291,9 @@ def average_precision_score(
     y_score : array-like of shape (n_samples,) or (n_samples, n_classes)
               Estimated target scores as returned by a classifier.
 
-    classes : 1d array-like, shape (n_classes,), default=(0, 1) as for binary classification
+    classes : 1d array-like, shape (n_classes,), default=(0,1) as for binary classification
               Uniquely holds the label for each class.
               SPU cannot support dynamic shape, so this parameter needs to be designated.
-
-    n_classes : Number of classes, default=2 as for binary classification.
-                SPU cannot support dynamic shape, so this parameter needs to be designated.
 
     average : {'macro', 'micro', None}, default='macro'
         This parameter is required for multiclass/multilabel targets and
@@ -337,9 +327,10 @@ def average_precision_score(
         precisions, recalls, _ = precision_recall_curve(
             y_true, y_score, pos_label=pos_label
         )
-        # compute the AUC of the precision-recall curve
+
         return jnp.sum(-jnp.diff(recalls) * precisions[:-1])
 
+    n_classes = len(classes)
     if n_classes <= 2:
         # binary classification
         # given y_true all the same is a special case considered as binary classification
@@ -348,12 +339,14 @@ def average_precision_score(
         # multi-class classification
         # binarize labels using one-vs-all scheme into multilabel-indicator
         y_true = label_binarize(y_true, classes=classes, n_classes=n_classes)
+
         if average == "micro":
             y_true = y_true.ravel()
             y_score = y_score.ravel()
         elif average == "macro":
             pass
 
+        # extend the classes dimension if needed
         if y_true.ndim == 1:
             y_true = y_true[:, jnp.newaxis]
         if y_score.ndim == 1:
@@ -361,7 +354,7 @@ def average_precision_score(
 
         # compute score for each class
         n_classes = y_score.shape[1]
-        score = jnp.zeros((n_classes))
+        score = jnp.zeros((n_classes,))
         for c in range(n_classes):
             binary_ap = binary_average_precision(
                 y_true[:, c].ravel(), y_score[:, c].ravel(), pos_label=pos_label
