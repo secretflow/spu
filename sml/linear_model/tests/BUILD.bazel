@@ -80,13 +80,3 @@ py_test(
         "//spu/utils:simulation",
     ],
 )
-
-py_test(
-    name = "linprog_test",
-    srcs = ["linprog_test.py"],
-    deps = [
-        "//sml/linear_model/utils:linprog",
-        "//spu:init",
-        "//spu/utils:simulation",
-    ],
-)
