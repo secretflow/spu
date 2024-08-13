@@ -168,10 +168,10 @@ def _com_github_pybind11():
         http_archive,
         name = "pybind11",
         build_file = "@pybind11_bazel//:pybind11.BUILD",
-        sha256 = "51631e88960a8856f9c497027f55c9f2f9115cafb08c0005439838a05ba17bfc",
-        strip_prefix = "pybind11-2.13.1",
+        sha256 = "6e7a84ec241544f2f5e30c7a82c09c81f0541dd14e9d9ef61051e07105f9c445",
+        strip_prefix = "pybind11-2.13.3",
         urls = [
-            "https://github.com/pybind/pybind11/archive/refs/tags/v2.13.1.tar.gz",
+            "https://github.com/pybind/pybind11/archive/refs/tags/v2.13.3.tar.gz",
         ],
     )
 
