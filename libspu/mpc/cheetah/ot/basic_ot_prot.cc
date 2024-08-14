@@ -85,7 +85,7 @@ NdArrayRef BasicOTProtocols::PackedB2A(const NdArrayRef &inp) {
 
   NdArrayRef cot_oup = ring_zeros(field, {numel});
   NdArrayRef arith_oup = ring_zeros(field, inp.shape());
-  DISPATCH_ALL_FIELDS(field, "single_b2a", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using u2k = std::make_unsigned<ring2k_t>::type;
     auto input = NdArrayView<const u2k>(inp);
     auto cot_output = absl::MakeSpan(&cot_oup.at<u2k>(0), cot_oup.numel());

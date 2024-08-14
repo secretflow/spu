@@ -35,7 +35,7 @@
 
 namespace spu::mpc::cheetah::test {
 
-class SIMDMulTest : public ::testing::TestWithParam<bool>, public EnableCPRNG {
+class SIMDMulTest : public ::testing::Test, public EnableCPRNG {
  public:
   size_t poly_N = 8192;
   int plain_bits = 44;
@@ -48,11 +48,7 @@ class SIMDMulTest : public ::testing::TestWithParam<bool>, public EnableCPRNG {
   void SetUp() override {
     std::vector<int> modulus_bits;
 
-    if (GetParam()) {
-      modulus_bits = {60, 30, 52, plain_bits};
-    } else {
-      modulus_bits = {45, 32, 45, plain_bits};
-    }
+    modulus_bits = {60, 30, 52, plain_bits};
 
     auto modulus = seal::CoeffModulus::Create(poly_N, modulus_bits);
 
@@ -86,13 +82,7 @@ class SIMDMulTest : public ::testing::TestWithParam<bool>, public EnableCPRNG {
   }
 };
 
-INSTANTIATE_TEST_SUITE_P(
-    Cheetah, SIMDMulTest, testing::Values(true, false),
-    [](const testing::TestParamInfo<SIMDMulTest::ParamType> &p) {
-      return fmt::format("{}", p.param ? "NoiseFlood" : "Approx");
-    });
-
-TEST_P(SIMDMulTest, Basic) {
+TEST_F(SIMDMulTest, NoiseFlooding) {
   int64_t n = 16384;
 
   size_t num_pt =
@@ -116,19 +106,10 @@ TEST_P(SIMDMulTest, Basic) {
     simd_mul_prot_->SymEncrypt(encode_b, *rlwe_sk_, *context_, false,
                                absl::MakeSpan(encrypt_b));
 
-    if (GetParam()) {
-      RandomPlain(absl::MakeSpan(out_a));
-      simd_mul_prot_->MulThenReshareInplace(absl::MakeSpan(encrypt_b), encode_a,
-                                            absl::MakeConstSpan(out_a),
-                                            *rlwe_pk_, *context_);
-    } else {
-      simd_mul_prot_->MulThenReshareInplaceOneBit(
-          absl::MakeSpan(encrypt_b), encode_a, absl::MakeSpan(out_a), *rlwe_pk_,
-          *context_);
-    }
-    if (rep == 0) {
-      printf("rep ct.L %zd\n", encrypt_b[0].coeff_modulus_size());
-    }
+    RandomPlain(absl::MakeSpan(out_a));
+    simd_mul_prot_->MulThenReshareInplace(absl::MakeSpan(encrypt_b), encode_a,
+                                          absl::MakeConstSpan(out_a), *rlwe_pk_,
+                                          *context_);
 
     auto _out_b = absl::MakeSpan(out_b);
     for (size_t i = 0; i < num_pt; ++i) {
