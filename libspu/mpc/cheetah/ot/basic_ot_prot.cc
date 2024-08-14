@@ -83,12 +83,12 @@ NdArrayRef BasicOTProtocols::PackedB2A(const NdArrayRef &inp) {
   const int64_t nbits = share_t->nbits() == 0 ? 1 : share_t->nbits();
   const int64_t numel = n * nbits;
 
-  NdArrayRef oup = ring_zeros(field, {numel});
-  NdArrayRef final = ring_zeros(field, inp.shape());
+  NdArrayRef cot_oup = ring_zeros(field, {numel});
+  NdArrayRef arith_oup = ring_zeros(field, inp.shape());
   DISPATCH_ALL_FIELDS(field, "single_b2a", [&]() {
     using u2k = std::make_unsigned<ring2k_t>::type;
     auto input = NdArrayView<const u2k>(inp);
-    auto output = absl::MakeSpan(&oup.at<u2k>(0), oup.numel());
+    auto cot_output = absl::MakeSpan(&cot_oup.at<u2k>(0), cot_oup.numel());
 
     if (Rank() == 0) {
       std::vector<u2k> corr_data(numel);
@@ -103,11 +103,11 @@ NdArrayRef BasicOTProtocols::PackedB2A(const NdArrayRef &inp) {
         }
       }
       // Run the multiple COT in the collapse mode.
-      // That is, the k-th COT returns output of `nbits - k` bits.
+      // That is, the k-th COT returns output of `ring_width - k` bits.
       //
       // The k-th COT gives the arithmetic share of the k-th bit of the input
       // according to x_0 ^ x_1 = x_0 + x_1 - 2 * x_0 * x_1
-      ferret_sender_->SendCAMCC_Collapse(absl::MakeSpan(corr_data), output,
+      ferret_sender_->SendCAMCC_Collapse(absl::MakeSpan(corr_data), cot_output,
                                          /*bw*/ ring_width,
                                          /*num_level*/ nbits);
 
@@ -115,7 +115,7 @@ NdArrayRef BasicOTProtocols::PackedB2A(const NdArrayRef &inp) {
       for (int64_t k = 0; k < nbits; ++k) {
         int64_t i = k * n;
         for (int64_t j = 0; j < n; ++j) {
-          output[i + j] = ((input[j] >> k) & 1) - output[i + j];
+          cot_output[i + j] = ((input[j] >> k) & 1) - cot_output[i + j];
         }
       }
     } else {
@@ -128,29 +128,29 @@ NdArrayRef BasicOTProtocols::PackedB2A(const NdArrayRef &inp) {
         }
       }
 
-      ferret_receiver_->RecvCAMCC_Collapse(absl::MakeSpan(choices), output,
+      ferret_receiver_->RecvCAMCC_Collapse(absl::MakeSpan(choices), cot_output,
                                            ring_width, nbits);
 
       for (int64_t k = 0; k < nbits; ++k) {
         int64_t i = k * n;
         for (int64_t j = 0; j < n; ++j) {
-          output[i + j] = ((input[j] >> k) & 1) + output[i + j];
+          cot_output[i + j] = ((input[j] >> k) & 1) + cot_output[i + j];
         }
       }
     }
 
     // <x> = \sum_k 2^k * <x_k>
     // where <x_k> is the arithmetic share of the k-th bit
-    NdArrayView<u2k> _final(final);
+    NdArrayView<u2k> arith(arith_oup);
     for (int64_t k = 0; k < nbits; ++k) {
       int64_t i = k * n;
       for (int64_t j = 0; j < n; ++j) {
-        _final[j] += (output[i + j] << k);
+        arith[j] += (cot_output[i + j] << k);
       }
     }
   });
 
-  return final;
+  return arith_oup;
 }
 
 // Math:
