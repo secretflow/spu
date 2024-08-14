@@ -243,8 +243,6 @@ class EqualVP : public BinaryKernel {
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x,
                   const NdArrayRef& y) const override {
-    SPU_ENFORCE_EQ(x.eltype(), y.eltype());
-
     if (isOwner(ctx, x.eltype())) {
       return ring_equal(x, y).as(x.eltype());
     } else {
