@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#define PFOR_GRAIN_SIZE 4096
-
 #include "libspu/mpc/utils/ring_ops.h"
 
 #include <cstring>
