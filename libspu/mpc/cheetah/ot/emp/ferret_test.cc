@@ -205,6 +205,14 @@ TEST_P(FerretCOTTest, ChosenMsgChosenChoice) {
   });
 }
 
+template <typename T>
+T makeMask(int bw) {
+  if (bw == sizeof(T) * 8) {
+    return static_cast<T>(-1);
+  }
+  return (static_cast<T>(1) << bw) - 1;
+}
+
 TEST_P(FerretCOTTest, COT_Collapse) {
   size_t kWorldSize = 2;
   int64_t n = 8;
