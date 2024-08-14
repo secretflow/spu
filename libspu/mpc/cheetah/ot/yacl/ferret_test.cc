@@ -236,7 +236,7 @@ TEST_P(FerretCOTTest, COT_Collapse) {
 
   std::vector<uint8_t> choices(N, 1);
 
-  DISPATCH_ALL_FIELDS(field, "", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using u2k = std::make_unsigned<ring2k_t>::type;
 
     auto out1_span = absl::MakeSpan(&oup1.at<u2k>(0), N);
