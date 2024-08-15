@@ -50,10 +50,10 @@ def _libpsi():
         http_archive,
         name = "psi",
         urls = [
-            "https://github.com/secretflow/psi/archive/refs/tags/v0.4.0.dev240801.tar.gz",
+            "https://github.com/secretflow/psi/archive/refs/tags/v0.4.0.dev240814.tar.gz",
         ],
-        strip_prefix = "psi-0.4.0.dev240801",
-        sha256 = "541ad74de0cd9e6bffe348c3bc97e659fccb1f1811e612f9d8e6b1debdd7c2a0",
+        strip_prefix = "psi-0.4.0.dev240814",
+        sha256 = "2a16a5751d1b7051f01edd11f1fcf01b67ff4d67ec136e7bc6d1d729d7f22634",
     )
 
 def _rules_proto_grpc():
@@ -135,8 +135,8 @@ def _bazel_skylib():
     )
 
 def _com_github_openxla_xla():
-    OPENXLA_COMMIT = "04f2bfe797408c9efe742b89e2e4db6cf526ebb7"
-    OPENXLA_SHA256 = "7e1d24737815be7607eed5f02fe7f81d97ffe358dfb7b4876f97bce8f48b3b3e"
+    OPENXLA_COMMIT = "64bdcc53a1b24abf19b1fe598e6f9b0fe6454470"
+    OPENXLA_SHA256 = "60918b3a0391fe9e0bd506c9b90170b7b5fa64d06de7ec1f4f0e351a303a88fa"
 
     # We need openxla to handle xla/mhlo/stablehlo
     maybe(
