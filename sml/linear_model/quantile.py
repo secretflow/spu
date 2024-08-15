@@ -21,129 +21,7 @@ import jax.numpy as jnp
 import pandas as pd
 from jax import grad
 
-# from _linprog import _linprog_simplex
 from sml.linear_model.utils.linprog import _linprog_simplex
-
-# from scipy.optimize import linprog
-
-
-def _num_samples(x):
-    """返回x中的样本数量."""
-    if hasattr(x, 'fit'):
-        # 检查是否是一个estimator
-        raise TypeError('Expected sequence or array-like, got estimator')
-    if (
-        not hasattr(x, '__len__')
-        and not hasattr(x, 'shape')
-        and not hasattr(x, '__array__')
-    ):
-        raise TypeError("Expected sequence or array-like, got %s" % type(x))
-
-    if hasattr(x, 'shape'):
-        if len(x.shape) == 0:  # scalar
-            raise TypeError(
-                "Singleton array %r cannot be considered a valid collection." % x
-            )
-        return x.shape[0]
-    else:
-        return len(x)
-
-
-def _check_sample_weight(
-    sample_weight, X, dtype=None, copy=False, only_non_negative=False
-):
-    '''
-    description: 验证样本权重.
-    return {*}
-    '''
-    # jax默认只支持float32，
-    # 如果需要启用 float64 类型，可以设置 jax_enable_x64 配置选项或 JAX_ENABLE_X64 环境变量。
-    n_samples = _num_samples(X)
-    if dtype is not None and dtype not in [jnp.float32, jnp.float64]:
-        dtype = jnp.float32
-
-    if sample_weight is None:
-        sample_weight = jnp.ones(n_samples, dtype=dtype)
-    elif isinstance(sample_weight, numbers.Number):
-        sample_weight = jnp.full(n_samples, sample_weight, dtype=dtype)
-    else:
-        sample_weight = jnp.asarray(sample_weight, dtype=dtype)
-        if sample_weight.ndim != 1:
-            raise ValueError("Sample weights must be 1D array or scalar")
-
-        if sample_weight.shape[0] != n_samples:
-            raise ValueError(
-                "sample_weight.shape == {}, expected {}!".format(
-                    sample_weight.shape, (n_samples,)
-                )
-            )
-
-    if only_non_negative and not jnp.all(sample_weight >= 0):
-        raise ValueError("`sample_weight` cannot contain negative weights")
-
-    if copy:
-        sample_weight = jnp.copy(sample_weight)
-
-    return sample_weight
-
-
-def _safe_indexing(X, indices, *, axis=0):
-    if indices is None:
-        return X
-
-    if axis not in (0, 1):
-        raise ValueError(
-            "'axis' should be either 0 (to index rows) or 1 (to index "
-            " column). Got {} instead.".format(axis)
-        )
-
-    if axis == 0 and isinstance(indices, str):
-        raise ValueError("String indexing is not supported with 'axis=0'")
-
-    if axis == 1 and isinstance(X, list):
-        raise ValueError("axis=1 is not supported for lists")
-
-    if axis == 1 and hasattr(X, "shape") and len(X.shape) != 2:
-        raise ValueError(
-            "'X' should be a 2D JAXNumPy array,  "
-            "dataframe when indexing the columns (i.e. 'axis=1'). "
-            "Got {} instead with {} dimension(s).".format(type(X), len(X.shape))
-        )
-
-    if axis == 1 and isinstance(indices, str) and not isinstance(X, pd.DataFrame):
-        raise ValueError(
-            "Specifying the columns using strings is only supported for dataframes."
-        )
-
-    if isinstance(X, pd.DataFrame):
-        return pandas_indexing(X, indices, axis=axis)
-    elif isinstance(X, jnp.ndarray):
-        return numpy_indexing(X, indices, axis=axis)
-    elif isinstance(X, list):
-        return list_indexing(X, indices, axis=axis)
-    else:
-        raise ValueError("Unsupported input type for X: {}".format(type(X)))
-
-
-def pandas_indexing(X, indices, axis=0):
-    if axis == 0:
-        return X.iloc[indices]
-    elif axis == 1:
-        return X[indices]
-
-
-def numpy_indexing(X, indices, axis=0):
-    if axis == 0:
-        return X[indices]
-    elif axis == 1:
-        return X[:, indices]
-
-
-def list_indexing(X, indices, axis=0):
-    if axis == 0:
-        return [X[idx] for idx in indices]
-    else:
-        raise ValueError("axis=1 is not supported for lists")
 
 
 class QuantileRegressor:
@@ -171,6 +49,23 @@ class QuantileRegressor:
 
         alpha = jnp.sum(sample_weight) * self.alpha
 
+        # After rescaling alpha, the minimization problem is
+        #     min sum(pinball loss) + alpha * L1
+        # Use linear programming formulation of quantile regression
+        #     min_x c x
+        #           A_eq x = b_eq
+        #                0 <= x
+        # x = (s0, s, t0, t, u, v) = slack variables >= 0
+        # intercept = s0 - t0
+        # coef = s - t
+        # c = (0, alpha * 1_p, 0, alpha * 1_p, quantile * 1_n, (1-quantile) * 1_n)
+        # residual = y - X@coef - intercept = u - v
+        # A_eq = (1_n, X, -1_n, -X, diag(1_n), -diag(1_n))
+        # b_eq = y
+        # p = n_features
+        # n = n_samples
+        # 1_n = vector of length n with entries equal one
+        # see https://stats.stackexchange.com/questions/384909/
         c = jnp.concatenate(
             [
                 jnp.full(2 * n_params, fill_value=alpha),

@@ -342,14 +342,14 @@ def _linprog_simplex(
     jit_delete = jit(jnp.delete, static_argnames=['assume_unique_indices'])
     T = jnp.delete(T_new, av, 1, assume_unique_indices=True)
 
-    def recover_tensor(T_recovered, T_shape, T_new_shape):
-        # 根据保存的形状信息恢复原形状
+    # def recover_tensor(T_recovered, T_shape, T_new_shape):
+    #     # 根据保存的形状信息恢复原形状
 
-        T_recovered = lax.dynamic_slice(
-            T_recovered, (0, 0), (T_new_shape[0], T_new_shape[1])
-        )
+    #     T_recovered = lax.dynamic_slice(
+    #         T_recovered, (0, 0), (T_new_shape[0], T_new_shape[1])
+    #     )
 
-        return T_recovered
+    #     return T_recovered
 
     # # phase 2
     (

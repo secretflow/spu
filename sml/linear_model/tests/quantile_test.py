@@ -1,11 +1,3 @@
-'''
-Author: Li Zhihang
-Date: 2024-08-07 10:54:21
-LastEditTime: 2024-08-13 18:28:51
-FilePath: /klaus/spu/sml/linear_model/tests/quantile_test.py
-Description: 
-'''
-
 # Copyright 2024 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -95,7 +87,6 @@ class UnitTests(unittest.TestCase):
             quantile=0.7, alpha=0.1, fit_intercept=True, lr=0.01, max_iter=1000
         )
         result, coef, intercept = spsim.sim_jax(sim, proc)(X, y)
-        print(y <= result)
         acc_custom = jnp.mean(y <= result)
 
         # print acc
