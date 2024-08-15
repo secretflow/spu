@@ -58,7 +58,7 @@ spu_cc_library(
         "@xla//xla/service:while_loop_constant_sinking",
         "@xla//xla/service:while_loop_simplifier",
         "@xla//xla/service:zero_sized_hlo_elimination",
-        "@xla//xla/service/gpu:dot_dimension_sorter",
+        "@xla//xla/service/gpu/transforms:dot_dimension_sorter",
         "@xla//xla/translate/hlo_to_mhlo:hlo_module_importer",
     ],
 )
