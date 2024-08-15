@@ -246,28 +246,35 @@ def precision_recall_curve(y_true: jnp.ndarray, y_score: jnp.ndarray, pos_label=
         score >= thresholds[i] and the last element is 1.
 
     recalls : ndarray of shape (n + 1,).
-        Decreasing recall values where element i is the recall s.t.
+        Increasing recall values where element i is the recall s.t.
         score >= thresholds[i] and the last element is 0.
 
     thresholds : ndarray of shape (n,).
-        Increasing thresholds used to compute precision and recall.
+        Decreasing thresholds used to compute precision and recall.
+        Results might include trailing zeros.
     """
     # normalize the labels
     y_true = jnp.where(y_true == pos_label, 1, 0)
 
-    # compute TP, FP
+    # compute TP and FP
     pairs = jnp.stack([y_true, y_score], axis=1)
     sorted_pairs = pairs[jnp.argsort(pairs[:, 1], descending=True, stable=True)]
-    fp, tp, thresholds = binary_clf_curve(sorted_pairs)
+    fp, tp, thresholds, marks = binary_clf_curve(
+        sorted_pairs, return_seg_end_marks=True
+    )
 
     # compute precision and recalls
     precisions = tp / (tp + fp + 1e-10)
-    recalls = jnp.where(tp[-1] == 0, jnp.ones_like(tp), tp / tp[-1])
+    # determine the last index where from that on holds trailing zeros in TP because of tied values
+    last_index = jnp.max(
+        jnp.where(marks == 0, size=len(marks), fill_value=-1)[0]
+    )  # jnp.argwhere(marks == 0)[-1]
+    recalls = jnp.where(tp[last_index] == 0, jnp.ones_like(tp), tp / tp[last_index])
 
     return (
-        jnp.hstack((precisions[::-1], 1)),  # the last precision is always 1
-        jnp.hstack((recalls[::-1], 0)),  # the last recall is always 0
-        thresholds[::-1],
+        jnp.hstack((1, precisions)),
+        jnp.hstack((0, recalls)),
+        thresholds,
     )
 
 
@@ -328,7 +335,7 @@ def average_precision_score(
             y_true, y_score, pos_label=pos_label
         )
 
-        return jnp.sum(-jnp.diff(recalls) * precisions[:-1])
+        return jnp.sum(jnp.diff(recalls) * precisions[1:])
 
     n_classes = len(classes)
     if n_classes <= 2:

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Tuple
+from typing import Tuple, Union
 
 import jax
 import jax.numpy as jnp
@@ -20,13 +20,18 @@ import jax.numpy as jnp
 from spu.ops.groupby import groupby_sorted
 
 
-def binary_clf_curve(sorted_pairs: jnp.array) -> Tuple[jnp.array, jnp.array, jnp.array]:
+def binary_clf_curve(sorted_pairs: jnp.ndarray, return_seg_end_marks=False) -> Union[
+    Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray],
+    Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray, jnp.ndarray],
+]:
     """Calculate true and false positives per binary classification
     threshold (can be used for roc curve or precision/recall curve).
     Results may include trailing zeros.
     Args:
-        sorted_pairs: jnp.array
+        sorted_pairs: jnp.ndarray
             y_true y_score pairs sorted by y_score in decreasing order
+        return_seg_end_marks: bool
+            If true, the seg_end_marks array will be returned at the end
     Returns:
         fps: 1d ndarray
             False positives counts, index i records the number
@@ -42,6 +47,8 @@ def binary_clf_curve(sorted_pairs: jnp.array) -> Tuple[jnp.array, jnp.array, jnp
             tps[-1] (thus false negatives are given by tps[-1] - tps)
         thresholds : 1d ndarray
             predicted score sorted in decreasing order
+        seg_end_marks: 1d ndarray
+            marking the end of segment in result arrays
     References:
         Github: scikit-learn _binary_clf_curve.
     """
@@ -57,6 +64,9 @@ def binary_clf_curve(sorted_pairs: jnp.array) -> Tuple[jnp.array, jnp.array, jnp
     fps = seg_end_marks * fps
     thresholds = seg_end_marks * thresholds
     thresholds, fps, tps = jax.lax.sort([-thresholds] + [fps, tps], num_keys=1)
+
+    if return_seg_end_marks:
+        return fps, tps, -thresholds, seg_end_marks
     return fps, tps, -thresholds
 
 
