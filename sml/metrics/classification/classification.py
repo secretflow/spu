@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import warnings
 from typing import Tuple
 
 import jax
@@ -226,7 +227,9 @@ def fun_score(
     return fun_result
 
 
-def precision_recall_curve(y_true: jnp.ndarray, y_score: jnp.ndarray, pos_label=1):
+def precision_recall_curve(
+    y_true: jnp.ndarray, y_score: jnp.ndarray, pos_label=1, score_eps=1e-3
+):
     """Compute precision-recall pairs for different probability thresholds.
 
     Note: this implementation is restricted to the binary classification task.
@@ -235,9 +238,11 @@ def precision_recall_curve(y_true: jnp.ndarray, y_score: jnp.ndarray, pos_label=
     ----------
     y_true : 1d array-like of shape (n,). True binary labels.
 
-    y_score : 1d array-like of shape (n,). Target scores.
+    y_score : 1d array-like of shape (n,). Target scores, non-negative.
 
     pos_label : int, default=1. The label of the positive class.
+
+    score_eps : float, default=1e-3. The lower bound for y_score.
 
     Returns
     -------
@@ -253,23 +258,23 @@ def precision_recall_curve(y_true: jnp.ndarray, y_score: jnp.ndarray, pos_label=
         Decreasing thresholds used to compute precision and recall.
         Results might include trailing zeros.
     """
-    # normalize the labels
+
+    # normalize the input
     y_true = jnp.where(y_true == pos_label, 1, 0)
+    y_score = jnp.where(y_score < score_eps, score_eps, y_score) # to avoid wrong mask extraction
 
     # compute TP and FP
     pairs = jnp.stack([y_true, y_score], axis=1)
     sorted_pairs = pairs[jnp.argsort(pairs[:, 1], descending=True, stable=True)]
-    fp, tp, thresholds, marks = binary_clf_curve(
-        sorted_pairs, return_seg_end_marks=True
-    )
+    fp, tp, thresholds = binary_clf_curve(sorted_pairs)
 
     # compute precision and recalls
-    precisions = tp / (tp + fp + 1e-10)
-    # determine the last index where from that on holds trailing zeros in TP because of tied values
-    last_index = jnp.max(
-        jnp.where(marks == 0, size=len(marks), fill_value=-1)[0]
-    )  # jnp.argwhere(marks == 0)[-1]
-    recalls = jnp.where(tp[last_index] == 0, jnp.ones_like(tp), tp / tp[last_index])
+    mask = jnp.where(thresholds > 0, 1, 0)  # tied value entries have mask=0
+    last = jnp.max(
+        jnp.where(mask, size=len(mask), fill_value=-1)[0]
+    )  # equivalent of jnp.argwhere(mask)[-1], last index before tied value section
+    precisions = jnp.where(mask, tp / (tp + fp + 1e-5), 0)
+    recalls = jnp.where(tp[last] == 0, jnp.ones_like(tp), tp / tp[last])
 
     return (
         jnp.hstack((1, precisions)),
@@ -284,6 +289,7 @@ def average_precision_score(
     classes=(0, 1),
     average="macro",
     pos_label=1,
+    score_eps=1e-3,
 ):
     """Compute average precision (AP) from prediction scores.
 
@@ -296,7 +302,7 @@ def average_precision_score(
              True labels.
 
     y_score : array-like of shape (n_samples,) or (n_samples, n_classes)
-              Estimated target scores as returned by a classifier.
+              Estimated target scores as returned by a classifier, non-negative.
 
     classes : 1d array-like, shape (n_classes,), default=(0,1) as for binary classification
               Uniquely holds the label for each class.
@@ -317,6 +323,8 @@ def average_precision_score(
     pos_label : int, default=1
         The label of the positive class. Only applied to binary y_true.
 
+    score_eps : float, default=1e-3. The lower bound for y_score.
+
     Returns
     -------
     average_precision : float
@@ -332,7 +340,7 @@ def average_precision_score(
     def binary_average_precision(y_true, y_score, pos_label=1):
         """Compute the average precision for binary classification."""
         precisions, recalls, _ = precision_recall_curve(
-            y_true, y_score, pos_label=pos_label
+            y_true, y_score, pos_label=pos_label, score_eps=score_eps
         )
 
         return jnp.sum(jnp.diff(recalls) * precisions[1:])

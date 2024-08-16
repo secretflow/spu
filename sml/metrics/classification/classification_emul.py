@@ -121,7 +121,7 @@ def emul_average_precision_score(mode: emulation.Mode.MULTIPROCESS):
         return sk_res, spu_res
 
     def check(res1, res2):
-        return np.testing.assert_allclose(res1, res2, rtol=1, atol=1e-5)
+        return np.testing.assert_allclose(res1, res2, rtol=1e-3, atol=1e-3)
 
     # --- Test binary classification ---
     # 0-1 labels, no tied value
@@ -144,12 +144,20 @@ def emul_average_precision_score(mode: emulation.Mode.MULTIPROCESS):
     y_true = jnp.array(np.random.randint(0, 2, 100), dtype=jnp.int32)
     y_score = jnp.array(np.hstack((0, 1, np.random.random(98))), dtype=jnp.float32)
     check(*proc(y_true, y_score))
-    # single label edge case, with tied value
+    # single label edge case
     y_true = jnp.array([0, 0, 0, 0], dtype=jnp.int32)
     y_score = jnp.array([0.4, 0.25, 0.4, 0.25], dtype=jnp.float32)
     check(*proc(y_true, y_score))
     y_true = jnp.array([1, 1, 1, 1], dtype=jnp.int32)
     y_score = jnp.array([0.4, 0.25, 0.4, 0.25], dtype=jnp.float32)
+    check(*proc(y_true, y_score))
+    # zero score edge case
+    y_true = jnp.array([0, 0, 1, 1, 1], dtype=jnp.int32)
+    y_score = jnp.array([0, 0, 0, 0.25, 0.25], dtype=jnp.float32)
+    check(*proc(y_true, y_score))
+    # score > 1 edge case
+    y_true = jnp.array([0, 0, 1, 1, 1], dtype=jnp.int32)
+    y_score = jnp.array([1.5, 1.5, 1.5, 0.25, 0.25], dtype=jnp.float32)
     check(*proc(y_true, y_score))
 
     # --- Test multiclass classification ---
