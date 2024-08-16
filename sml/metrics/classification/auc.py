@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Tuple, Union
+from typing import Tuple
 
 import jax
 import jax.numpy as jnp
@@ -21,7 +21,7 @@ from spu.ops.groupby import groupby_sorted
 
 
 def binary_clf_curve(
-    sorted_pairs: jnp.ndarray, return_seg_end_marks=False
+    sorted_pairs: jnp.ndarray,
 ) -> Tuple[jnp.ndarray, jnp.ndarray, jnp.ndarray]:
     """Calculate true and false positives per binary classification
     threshold (can be used for roc curve or precision/recall curve).
