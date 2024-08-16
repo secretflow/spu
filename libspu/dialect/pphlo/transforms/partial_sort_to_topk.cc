@@ -172,8 +172,7 @@ struct SortConversion : public OpRewritePattern<SimpleSortOp> {
     }
 
     // rewrite all slices
-    for (const auto &use : uses) {
-      auto slice = mlir::dyn_cast<SliceOp>(use.getOwner());
+    for (auto &slice : slices_to_rewrite) {
       auto offset = slice.getStartIndices()[sort_dim] - start;
       llvm::SmallVector<int64_t> new_start(slice.getStartIndices().begin(),
                                            slice.getStartIndices().end());
