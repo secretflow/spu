@@ -227,7 +227,7 @@ def fun_score(
 
 
 def precision_recall_curve(
-    y_true: jnp.ndarray, y_score: jnp.ndarray, pos_label=1, score_eps=1e-3
+    y_true: jnp.ndarray, y_score: jnp.ndarray, pos_label=1, score_eps=1e-5
 ):
     """Compute precision-recall pairs for different probability thresholds.
 
@@ -241,7 +241,7 @@ def precision_recall_curve(
 
     pos_label : int, default=1. The label of the positive class.
 
-    score_eps : float, default=1e-3. The lower bound for y_score.
+    score_eps : float, default=1e-5. The lower bound for y_score.
 
     Returns
     -------
@@ -260,20 +260,19 @@ def precision_recall_curve(
 
     # normalize the input
     y_true = jnp.where(y_true == pos_label, 1, 0)
-    y_score = jnp.where(y_score < score_eps, score_eps, y_score) # to avoid wrong mask extraction
+    y_score = jnp.where(
+        y_score < score_eps, score_eps, y_score
+    )  # to avoid messing up trailing zero and score zero
 
     # compute TP and FP
-    pairs = jnp.stack([y_true, y_score], axis=1)
-    sorted_pairs = pairs[jnp.argsort(pairs[:, 1], descending=True, stable=True)]
+    sorted_pairs = create_sorted_label_score_pair(y_true, y_score)
     fp, tp, thresholds = binary_clf_curve(sorted_pairs)
 
     # compute precision and recalls
     mask = jnp.where(thresholds > 0, 1, 0)  # tied value entries have mask=0
-    last = jnp.max(
-        jnp.where(mask, size=len(mask), fill_value=-1)[0]
-    )  # equivalent of jnp.argwhere(mask)[-1], last index before tied value section
     precisions = jnp.where(mask, tp / (tp + fp + 1e-5), 0)
-    recalls = jnp.where(tp[last] == 0, jnp.ones_like(tp), tp / tp[last])
+    max_tp = jnp.max(tp)
+    recalls = jnp.where(max_tp == 0, jnp.ones_like(tp), tp / max_tp)
 
     return (
         jnp.hstack((1, precisions)),
@@ -288,7 +287,7 @@ def average_precision_score(
     classes=(0, 1),
     average="macro",
     pos_label=1,
-    score_eps=1e-3,
+    score_eps=1e-5,
 ):
     """Compute average precision (AP) from prediction scores.
 
@@ -322,7 +321,7 @@ def average_precision_score(
     pos_label : int, default=1
         The label of the positive class. Only applied to binary y_true.
 
-    score_eps : float, default=1e-3. The lower bound for y_score.
+    score_eps : float, default=1e-5. The lower bound for y_score.
 
     Returns
     -------
