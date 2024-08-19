@@ -80,7 +80,7 @@ spu_cc_library(
         "//libspu/mpc/spdz2k/ot:tiny_ot",
         "//libspu/mpc/utils:ring_ops",
         "@yacl//yacl/crypto/tools:prg",
-        "@yacl//yacl/kernel/algorithms:ot_store",
+        "@yacl//yacl/kernel/type:ot_store",
         "@yacl//yacl/link",
         "@yacl//yacl/utils:matrix_utils",
         "@yacl//yacl/utils:serialize",

@@ -36,9 +36,8 @@ class CaseConverter : public OpRewritePattern<CaseOp> {
     if (target_type.getNumElements() == in_type.getNumElements()) {
       return rewriter.create<ReshapeOp>(loc, broadcasted_mask_type, in);
     } else {
-      return rewriter.create<BroadcastOp>(
-          loc, broadcasted_mask_type, in,
-          llvm::SmallVector<int64_t>(target_type.getRank(), 0));
+      return rewriter.create<BroadcastOp>(loc, broadcasted_mask_type, in,
+                                          llvm::SmallVector<int64_t>{0});
     }
   }
 
