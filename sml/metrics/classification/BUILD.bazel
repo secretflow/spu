@@ -21,8 +21,8 @@ py_library(
     srcs = ["classification.py"],
     deps = [
         ":auc",
-        "//spu/ops/groupby",
         "//sml/preprocessing",
+        "//spu/ops/groupby",
     ],
 )
 
