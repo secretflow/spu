@@ -136,9 +136,9 @@ class RandP : public RandKernel {
   }
 };
 
-class NotP : public UnaryKernel {
+class NegateP : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "not_p";
+  static constexpr char kBindName[] = "negate_p";
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -146,13 +146,13 @@ class NotP : public UnaryKernel {
 
   NdArrayRef proc(KernelEvalContext*, const NdArrayRef& in) const override {
     const auto field = in.eltype().as<Ring2k>()->field();
-    return ring_not(in).as(makeType<Pub2kTy>(field));
+    return ring_neg(in).as(makeType<Pub2kTy>(field));
   }
 };
 
-class NotV : public UnaryKernel {
+class NegateV : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "not_v";
+  static constexpr char kBindName[] = "negate_v";
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -160,7 +160,7 @@ class NotV : public UnaryKernel {
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override {
     if (isOwner(ctx, in.eltype())) {
-      return ring_not(in).as(in.eltype());
+      return ring_neg(in).as(in.eltype());
     } else {
       return in;
     }
@@ -954,7 +954,7 @@ void regPV2kTypes() {
 void regPV2kKernels(Object* obj) {
   obj->regKernel<V2P, P2V,                               //
                  MakeP, RandP,                           //
-                 NotV, NotP,                             //
+                 NegateV, NegateP,                       //
                  EqualVVV, EqualVP, EqualPP,             //
                  AddVVV, AddVP, AddPP,                   //
                  MulVVV, MulVP, MulPP,                   //

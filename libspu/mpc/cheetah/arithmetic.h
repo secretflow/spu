@@ -63,9 +63,9 @@ class V2A : public UnaryKernel {
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
 
-class NotA : public UnaryKernel {
+class NegateA : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "not_a";
+  static constexpr char kBindName[] = "negate_a";
 
   ce::CExpr latency() const override { return ce::Const(0); }
 

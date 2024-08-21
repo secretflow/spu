@@ -29,7 +29,7 @@ Value msb_a2b(SPUContext* ctx, const Value& x);
 Value rand_a(SPUContext* ctx, const Shape& shape);
 Value rand_b(SPUContext* ctx, const Shape& shape);
 
-Value not_a(SPUContext* ctx, const Value& x);
+Value negate_a(SPUContext* ctx, const Value& x);
 
 Value equal_ap(SPUContext* ctx, const Value& x, const Value& y);
 Value equal_aa(SPUContext* ctx, const Value& x, const Value& y);

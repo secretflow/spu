@@ -86,7 +86,7 @@ Value rand_b(SPUContext* ctx, const Shape& shape) {
   FORCE_DISPATCH(ctx, shape);
 }
 
-Value not_a(SPUContext* ctx, const Value& x) { FORCE_DISPATCH(ctx, x); }
+Value negate_a(SPUContext* ctx, const Value& x) { FORCE_DISPATCH(ctx, x); }
 
 Value add_ap(SPUContext* ctx, const Value& x, const Value& y) {
   FORCE_DISPATCH(ctx, x, y);

@@ -91,10 +91,15 @@ Value make_p(SPUContext* ctx, uint128_t init, const Shape& shape);
 Value rand_p(SPUContext* ctx, const Shape& shape);
 Value rand_s(SPUContext* ctx, const Shape& shape);
 
-// Compute bitwise_not(invert) of a value in ring 2k space.
+// Compute bitwise not of a value.
 Value not_p(SPUContext* ctx, const Value& x);
 Value not_s(SPUContext* ctx, const Value& x);
 Value not_v(SPUContext* ctx, const Value& x);
+
+// Compute negate of a value.
+Value negate_p(SPUContext* ctx, const Value& x);
+Value negate_s(SPUContext* ctx, const Value& x);
+Value negate_v(SPUContext* ctx, const Value& x);
 
 Value msb_p(SPUContext* ctx, const Value& x);
 Value msb_s(SPUContext* ctx, const Value& x);

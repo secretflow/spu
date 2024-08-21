@@ -101,13 +101,8 @@ NdArrayRef V2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   return x.as(makeType<AShrTy>(field));
 }
 
-NdArrayRef NotA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
-  auto* comm = ctx->getState<Communicator>();
+NdArrayRef NegateA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   auto res = ring_neg(in);
-  if (comm->getRank() == 0) {
-    const auto field = in.eltype().as<Ring2k>()->field();
-    ring_add_(res, ring_not(ring_zeros(field, in.shape())));
-  }
 
   return res.as(in.eltype());
 }

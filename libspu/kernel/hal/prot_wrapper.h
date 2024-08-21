@@ -44,6 +44,10 @@ Value _not_p(SPUContext* ctx, const Value& in);
 Value _not_s(SPUContext* ctx, const Value& in);
 Value _not_v(SPUContext* ctx, const Value& in);
 
+Value _negate_p(SPUContext* ctx, const Value& in);
+Value _negate_s(SPUContext* ctx, const Value& in);
+Value _negate_v(SPUContext* ctx, const Value& in);
+
 Value _msb_p(SPUContext* ctx, const Value& in);
 Value _msb_s(SPUContext* ctx, const Value& in);
 Value _msb_v(SPUContext* ctx, const Value& in);
