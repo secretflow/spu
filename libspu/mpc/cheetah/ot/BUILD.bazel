@@ -72,8 +72,8 @@ spu_cc_test(
     srcs = ["ot_util_test.cc"],
     deps = [
         ":ot_util",
-        "//libspu/mpc/utils:ring_ops",
         "//libspu/mpc/common:communicator",
+        "//libspu/mpc/utils:ring_ops",
         "//libspu/mpc/utils:simulate",
     ],
 )

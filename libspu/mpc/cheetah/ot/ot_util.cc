@@ -126,8 +126,8 @@ NdArrayRef OpenShare(const NdArrayRef &shr, ReduceOp op, size_t nbits,
 #include "sse2neon.h"
 #endif
 
-#define INP(x, y) inp[(x)*ncols / 8 + (y) / 8]
-#define OUT(x, y) out[(y)*nrows / 8 + (x) / 8]
+#define INP(x, y) inp[(x) * ncols / 8 + (y) / 8]
+#define OUT(x, y) out[(y) * nrows / 8 + (x) / 8]
 
 #ifdef __x86_64__
 __attribute__((target("sse2")))
