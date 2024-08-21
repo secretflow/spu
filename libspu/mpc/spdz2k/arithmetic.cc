@@ -212,10 +212,8 @@ NdArrayRef V2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   return res;
 }
 
-NdArrayRef NotA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
+NdArrayRef NegateA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const auto field = in.eltype().as<Ring2k>()->field();
-  const auto key = ctx->getState<Spdz2kState>()->key();
-  auto* comm = ctx->getState<Communicator>();
 
   // in
   const auto& x = getValueShare(in);
@@ -224,14 +222,6 @@ NdArrayRef NotA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   // compute neg_x, neg_x_mac
   auto neg_x = ring_neg(x);
   auto neg_x_mac = ring_neg(x_mac);
-
-  // add public M-1
-  const auto& neg_ones = ring_not(ring_zeros(field, in.shape()));
-  if (comm->getRank() == 0) {
-    ring_add_(neg_x, neg_ones);
-  }
-  const auto& ones = ring_ones(field, in.shape());
-  ring_sub_(neg_x_mac, ring_mul(ones, key));
 
   return makeAShare(neg_x, neg_x_mac, field);
 }

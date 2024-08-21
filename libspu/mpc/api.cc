@@ -273,22 +273,42 @@ Value rand_s(SPUContext* ctx, const Shape& shape) {
   return rand_a(ctx, shape);
 }
 
-Value not_s(SPUContext* ctx, const Value& x) {
+// only works for Z2k.
+// Neg(x) = Not(x) + 1
+// Not(x) = Neg(x) - 1
+Value not_v(SPUContext* ctx, const Value& x) {
   SPU_TRACE_MPC_DISP(ctx, x);
-  TRY_DISPATCH(ctx, x);
-  // TODO: Both A&B could handle not(invert).
-  // if (x.eltype().isa<BShare>()) {
-  //  return not_b(ctx, x);
-  //} else {
-  //  SPU_ENFORCE(x.eltype().isa<AShare>());
-  //  return not_a(ctx, x);
-  //}
-  return not_a(ctx, _2a(ctx, x));
+  auto k1 = make_p(ctx, 1, x.shape());
+  return add_vp(ctx, negate_v(ctx, x), negate_p(ctx, k1));
 }
 
-Value not_v(SPUContext* ctx, const Value& x) { FORCE_DISPATCH(ctx, x); }
+Value not_p(SPUContext* ctx, const Value& x) {
+  SPU_TRACE_MPC_DISP(ctx, x);
+  auto k1 = make_p(ctx, 1, x.shape());
+  return add_pp(ctx, negate_p(ctx, x), negate_p(ctx, k1));
+}
 
-Value not_p(SPUContext* ctx, const Value& x) { FORCE_DISPATCH(ctx, x); }
+Value not_s(SPUContext* ctx, const Value& x) {
+  SPU_TRACE_MPC_DISP(ctx, x);
+  if (x.storage_type().isa<BShare>()) {
+    auto ones = make_p(ctx, -1, x.shape());
+    return xor_bp(ctx, x, ones);
+  } else {
+    SPU_ENFORCE(x.storage_type().isa<Secret>());
+    auto k1 = make_p(ctx, 1, x.shape());
+    return add_sp(ctx, negate_s(ctx, x), negate_p(ctx, k1));
+  }
+}
+
+Value negate_s(SPUContext* ctx, const Value& x) {
+  SPU_TRACE_MPC_DISP(ctx, x);
+  TRY_DISPATCH(ctx, x);
+  return negate_a(ctx, _2a(ctx, x));
+}
+
+Value negate_v(SPUContext* ctx, const Value& x) { FORCE_DISPATCH(ctx, x); }
+
+Value negate_p(SPUContext* ctx, const Value& x) { FORCE_DISPATCH(ctx, x); }
 
 //////////////////////////////////////////////////////////////////////////////
 

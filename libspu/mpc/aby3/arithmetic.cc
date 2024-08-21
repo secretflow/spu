@@ -300,12 +300,9 @@ NdArrayRef V2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   });
 }
 
-NdArrayRef NotA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
-  auto* comm = ctx->getState<Communicator>();
+NdArrayRef NegateA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const auto* in_ty = in.eltype().as<AShrTy>();
   const auto field = in_ty->field();
-
-  auto rank = comm->getRank();
 
   return DISPATCH_ALL_FIELDS(field, [&]() {
     using el_t = std::make_unsigned_t<ring2k_t>;
@@ -315,16 +312,9 @@ NdArrayRef NotA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
     NdArrayView<shr_t> _out(out);
     NdArrayView<shr_t> _in(in);
 
-    // neg(x) = not(x) + 1
-    // not(x) = neg(x) - 1
     pforeach(0, in.numel(), [&](int64_t idx) {
       _out[idx][0] = -_in[idx][0];
       _out[idx][1] = -_in[idx][1];
-      if (rank == 0) {
-        _out[idx][1] -= 1;
-      } else if (rank == 1) {
-        _out[idx][0] -= 1;
-      }
     });
 
     return out;

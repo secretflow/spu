@@ -77,8 +77,8 @@ Value _cast_type(SPUContext* ctx, const Value& x, const Type& to) {
       SPU_THROW("unsupport unary op={} for {}", #Name, in); \
     }                                                       \
   }
-
 IMPL_UNARY_OP(_not)
+IMPL_UNARY_OP(_negate)
 IMPL_UNARY_OP(_msb)
 IMPL_UNARY_OP(_square)
 
@@ -436,13 +436,6 @@ Value _equal(SPUContext* ctx, const Value& x, const Value& y) {
   const auto _k1 = _constant(ctx, 1, x.shape());
   return _and(ctx, _xor(ctx, _less(ctx, x, y), _k1),
               _xor(ctx, _less(ctx, y, x), _k1));
-}
-
-Value _negate(SPUContext* ctx, const Value& x) {
-  SPU_TRACE_HAL_LEAF(ctx, x);
-
-  // negate(x) = not(x) + 1
-  return _add(ctx, _not(ctx, x), _constant(ctx, 1, x.shape()));
 }
 
 Value _sign(SPUContext* ctx, const Value& x) {

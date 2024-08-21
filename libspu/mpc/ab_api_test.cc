@@ -436,7 +436,7 @@ TEST_P(ArithmeticTest, MatMulAV) {
   });
 }
 
-TEST_P(ArithmeticTest, NotA) {
+TEST_P(ArithmeticTest, NegateA) {
   const auto factory = std::get<0>(GetParam());
   const RuntimeConfig& conf = std::get<1>(GetParam());
   const size_t npc = std::get<2>(GetParam());
@@ -450,15 +450,15 @@ TEST_P(ArithmeticTest, NotA) {
 
     /* WHEN */
     auto prev = obj->prot()->getState<Communicator>()->getStats();
-    auto r_a = not_a(obj.get(), a0);
+    auto r_a = negate_a(obj.get(), a0);
     auto cost = obj->prot()->getState<Communicator>()->getStats() - prev;
 
     auto r_p = a2p(obj.get(), r_a);
-    auto r_pp = a2p(obj.get(), not_a(obj.get(), a0));
+    auto r_pp = a2p(obj.get(), negate_a(obj.get(), a0));
 
     /* THEN */
     EXPECT_VALUE_EQ(r_p, r_pp);
-    EXPECT_TRUE(verifyCost(obj->prot()->getKernel("not_a"), "not_a",
+    EXPECT_TRUE(verifyCost(obj->prot()->getKernel("negate_a"), "negate_a",
                            conf.field(), kShape, npc, cost));
   });
 }

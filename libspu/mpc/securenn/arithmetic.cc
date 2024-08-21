@@ -132,30 +132,8 @@ NdArrayRef A2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   return out.as(makeType<Pub2kTy>(field));
 }
 
-NdArrayRef NotA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
-  auto* comm = ctx->getState<Communicator>();
-
-  // First, let's show negate could be locally processed.
-  //   let X = sum(Xi)     % M
-  //   let Yi = neg(Xi) = M-Xi
-  //
-  // we get
-  //   Y = sum(Yi)         % M
-  //     = n*M - sum(Xi)   % M
-  //     = -sum(Xi)        % M
-  //     = -X              % M
-  //
-  // 'not' could be processed accordingly.
-  //   not(X)
-  //     = M-1-X           # by definition, not is the complement of 2^k
-  //     = neg(X) + M-1
-  //
+NdArrayRef NegateA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   auto res = ring_neg(in);
-  if (comm->getRank() == 0) {
-    const auto field = in.eltype().as<Ring2k>()->field();
-    ring_add_(res, ring_not(ring_zeros(field, in.shape())));
-  }
-
   return res.as(in.eltype());
 }
 

@@ -200,9 +200,9 @@ class Ref2kRandS : public RandKernel {
   }
 };
 
-class Ref2kNotS : public UnaryKernel {
+class Ref2kNegateS : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "not_s";
+  static constexpr char kBindName[] = "negate_s";
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -210,7 +210,7 @@ class Ref2kNotS : public UnaryKernel {
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override {
     const auto field = in.eltype().as<Ring2k>()->field();
-    return ring_not(in).as(makeType<Ref2kSecrTy>(field));
+    return ring_neg(in).as(makeType<Ref2kSecrTy>(field));
   }
 };
 
@@ -488,7 +488,7 @@ void regRef2kProtocol(SPUContext* ctx,
   ctx->prot()
       ->regKernel<Ref2kCommonTypeS, Ref2kCommonTypeV, Ref2kCastTypeS,  //
                   Ref2kP2S, Ref2kS2P, Ref2kV2S, Ref2kS2V,              //
-                  Ref2kNotS,                                           //
+                  Ref2kNegateS,                                        //
                   Ref2kAddSS, Ref2kAddSP,                              //
                   Ref2kMulSS, Ref2kMulSP,                              //
                   Ref2kMatMulSS, Ref2kMatMulSP,                        //

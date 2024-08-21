@@ -51,7 +51,7 @@ void regSemi2kProtocol(SPUContext* ctx,
   ctx->prot()
       ->regKernel<
           semi2k::P2A, semi2k::A2P, semi2k::A2V, semi2k::V2A,                //
-          semi2k::NotA,                                                      //
+          semi2k::NegateA,                                                   //
           semi2k::AddAP, semi2k::AddAA,                                      //
           semi2k::MulAP, semi2k::MulAA, semi2k::SquareA,                     //
           semi2k::MatMulAP, semi2k::MatMulAA,                                //

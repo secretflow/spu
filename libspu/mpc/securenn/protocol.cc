@@ -50,7 +50,7 @@ void regSecurennProtocol(SPUContext* ctx,
   ctx->prot()
       ->regKernel<
           securenn::P2A, securenn::A2P, securenn::A2V, securenn::V2A,         //
-          securenn::NotA,                                                     //
+          securenn::NegateA,                                                  //
           securenn::AddAP, securenn::AddAA,                                   //
           securenn::MulAP, securenn::MulAA,                                   //
           securenn::MatMulAP, securenn::MatMulAA, securenn::MatMulAA_simple,  //

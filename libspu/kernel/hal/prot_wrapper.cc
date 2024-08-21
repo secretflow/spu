@@ -163,6 +163,10 @@ Value _s2v(SPUContext* ctx, const Value& in, int owner) {
 MAP_UNARY_OP(not_p)
 MAP_UNARY_OP(not_s)
 MAP_UNARY_OP(not_v)
+// Negate family
+MAP_UNARY_OP(negate_p)
+MAP_UNARY_OP(negate_s)
+MAP_UNARY_OP(negate_v)
 // Msb family
 MAP_UNARY_OP(msb_p)
 MAP_UNARY_OP(msb_s)
