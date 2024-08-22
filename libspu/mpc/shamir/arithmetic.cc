@@ -277,7 +277,9 @@ NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
   const auto field = lhs.eltype().as<Ring2k>()->field();
   auto numel = lhs.numel();
 
-  const auto& [r_t, r_2t] = gen_double_shares(ctx, numel);
+  NdArrayRef r_t;
+  NdArrayRef r_2t;
+  std::tie(r_t, r_2t) = gen_double_shares(ctx, numel);
 
   DISPATCH_ALL_FIELDS(field, [&]() {
     // generate double shares
@@ -316,7 +318,9 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
     NdArrayView<ring2k_t> _tmp_2t(tmp_2t);
     // degree reduction
     NdArrayRef out(tmp_2t.eltype(), tmp_2t.shape());
-    const auto& [r_t, r_2t] = gen_double_shares(ctx, tmp_2t.numel());
+    NdArrayRef r_t;
+    NdArrayRef r_2t;
+    std::tie(r_t, r_2t) = gen_double_shares(ctx, tmp_2t.numel());
     NdArrayView<ring2k_t> _r_t(r_t);
     NdArrayView<ring2k_t> _r_2t(r_2t);
     NdArrayView<ring2k_t> _out(out);
