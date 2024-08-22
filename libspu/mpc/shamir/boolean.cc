@@ -94,60 +94,60 @@ NdArrayRef CastTypeB::proc(KernelEvalContext*, const NdArrayRef& in,
 
 NdArrayRef B2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const auto* in_ty = in.eltype().as<BShrTy>();
-  const auto out_fd = ctx->getState<Z2kState>()->getDefaultField();
   const auto nbits = in_ty->nbits();
-  const auto in_fd = in_ty->field();
+  const auto field = in_ty->field();
 
-  return DISPATCH_ALL_FIELDS(in_fd, [&]() {
-    using InT = ring2k_t;
-    const auto out_ty = makeType<PubGfmpTy>(out_fd);
-    NdArrayRef out = ring_zeros(out_fd, in.shape()).as(out_ty);
-    NdArrayView<InT> _in(in);
+  std::vector<NdArrayRef> bits;
+  for (size_t i = 0; i < nbits; ++i) {
+    bits.push_back(getBitShare(in, i));
+  }
+  std::vector<NdArrayRef> tmp;
+  vmap(bits.begin(), bits.end(), std::back_inserter(tmp),
+       [ctx](const NdArrayRef& a) { return wrap_a2p(ctx->sctx(), a); });
 
-    DISPATCH_ALL_FIELDS(out_fd, [&]() {
-      using OutT = ring2k_t;
-      // FIXME: make a2p vectorize
-      for (size_t i = 0; i < nbits; ++i) {
-        NdArrayView<OutT> _out(out);
-        NdArrayRef bit_i_b = getBitShare(in, i);
-        auto bit_i_p = wrap_a2p(ctx->sctx(), bit_i_b);
-        NdArrayView<InT> _bit_i_p(bit_i_p);
-        pforeach(0, in.numel(), [&](int64_t idx) {
-          _out[idx] += (static_cast<OutT>(_bit_i_p[idx]) << i);
-        });
-      }
-      gfmp_mod_(out);
-    });
+  return DISPATCH_ALL_FIELDS(field, [&]() {
+    const auto out_ty = makeType<PubGfmpTy>(field);
+    NdArrayRef out = ring_zeros(field, in.shape()).as(out_ty);
+    NdArrayView<ring2k_t> _in(in);
+
+    for (size_t i = 0; i < nbits; ++i) {
+      NdArrayView<ring2k_t> _out(out);
+      NdArrayView<ring2k_t> _bit_i_p(tmp[i]);
+      pforeach(0, in.numel(), [&](int64_t idx) {
+        _out[idx] += (static_cast<ring2k_t>(_bit_i_p[idx]) << i);
+      });
+    }
+    gfmp_mod_(out);
     return out;
   });
 }
 
 NdArrayRef P2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const auto* in_ty = in.eltype().as<PubGfmpTy>();
-  const auto in_fd = in_ty->field();
-  const auto out_fd = in_fd;
+  const auto field = in_ty->field();
 
-  return DISPATCH_ALL_FIELDS(in_fd, [&]() {
-    using InT = ring2k_t;
-    const size_t nbits = maxBitWidth<InT>(in);
-    const auto out_ty = makeType<BShrTy>(out_fd, nbits);
+  return DISPATCH_ALL_FIELDS(field, [&]() {
+    const size_t nbits = maxBitWidth<ring2k_t>(in);
+    const auto out_ty = makeType<BShrTy>(field, nbits);
     NdArrayRef out(out_ty, in.shape());
-    NdArrayView<InT> _in(in);
+    NdArrayView<ring2k_t> _in(in);
 
-    DISPATCH_ALL_FIELDS(out_fd, [&]() {
-      using OutT = ring2k_t;
-      // FIXME: make p2a vectorize
-      for (size_t i = 0; i < nbits; ++i) {
-        NdArrayRef bit_i_p(makeType<AShrTy>(out_fd), in.shape());
-        NdArrayView<InT> _bit_i_p(bit_i_p);
-        pforeach(0, in.numel(), [&](int64_t idx) {
-          _bit_i_p[idx] = static_cast<OutT>(_in[idx] >> i) & 1U;
-        });
-        auto bit_i_a = wrap_p2a(ctx->sctx(), bit_i_p);
-        NdArrayRef bit_i_b = getBitShare(out, i);
-        ring_assign(bit_i_b, bit_i_a);
-      }
-    });
+    std::vector<NdArrayRef> bits;
+    for (size_t i = 0; i < nbits; ++i) {
+      NdArrayRef bit_i_p(makeType<AShrTy>(field), in.shape());
+      NdArrayView<ring2k_t> _bit_i_p(bit_i_p);
+      pforeach(0, in.numel(), [&](int64_t idx) {
+        _bit_i_p[idx] = static_cast<ring2k_t>(_in[idx] >> i) & 1U;
+      });
+      bits.push_back(std::move(bit_i_p));
+    }
+    std::vector<NdArrayRef> bits_a;
+    vmap(bits.begin(), bits.end(), std::back_inserter(bits_a),
+         [ctx](const NdArrayRef& a) { return wrap_p2a(ctx->sctx(), a); });
+    for (size_t i = 0; i < nbits; ++i) {
+      NdArrayRef bit_i_b = getBitShare(out, i);
+      ring_assign(bit_i_b, bits_a[i]);
+    }
     return out;
   });
 }
@@ -156,37 +156,35 @@ NdArrayRef B2V::proc(KernelEvalContext* ctx, const NdArrayRef& in,
                      size_t rank) const {
   auto* comm = ctx->getState<Communicator>();
   const auto* in_ty = in.eltype().as<BShrTy>();
-  const auto out_fd = ctx->getState<Z2kState>()->getDefaultField();
   const auto nbits = in_ty->nbits();
-  const auto in_fd = in_ty->field();
+  const auto field = in_ty->field();
 
-  return DISPATCH_ALL_FIELDS(in_fd, [&]() {
-    using InT = ring2k_t;
-    const auto out_ty = makeType<PrivGfmpTy>(out_fd, rank);
+  std::vector<NdArrayRef> bits;
+  for (size_t i = 0; i < nbits; ++i) {
+    bits.push_back(getBitShare(in, i));
+  }
+  std::vector<NdArrayRef> tmp;
+  vmap(bits.begin(), bits.end(), std::back_inserter(tmp),
+       [ctx, rank](const NdArrayRef& a) {
+         return wrap_a2v(ctx->sctx(), a, rank);
+       });
+
+  return DISPATCH_ALL_FIELDS(field, [&]() {
+    const auto out_ty = makeType<PrivGfmpTy>(field, rank);
     NdArrayRef out;
     if (comm->getRank() == rank) {
-      out = ring_zeros(out_fd, in.shape()).as(out_ty);
+      out = ring_zeros(field, in.shape()).as(out_ty);
+      for (size_t i = 0; i < nbits; ++i) {
+        NdArrayView<ring2k_t> _out(out);
+        NdArrayView<ring2k_t> _bit_i_v(tmp[i]);
+        pforeach(0, in.numel(), [&](int64_t idx) {
+          _out[idx] += (static_cast<ring2k_t>(_bit_i_v[idx]) << i);
+        });
+      }
+      gfmp_mod_(out);
     } else {
       out = makeConstantArrayRef(out_ty, in.shape());
     }
-    NdArrayView<InT> _in(in);
-
-    DISPATCH_ALL_FIELDS(out_fd, [&]() {
-      using OutT = ring2k_t;
-      // FIXME: make a2p vectorize
-      for (size_t i = 0; i < nbits; ++i) {
-        NdArrayView<OutT> _out(out);
-        NdArrayRef bit_i_b = getBitShare(in, i);
-        auto bit_i_v = wrap_a2v(ctx->sctx(), bit_i_b, rank);
-        if (comm->getRank() == rank) {
-          NdArrayView<InT> _bit_i_v(bit_i_v);
-          pforeach(0, in.numel(), [&](int64_t idx) {
-            _out[idx] += (static_cast<OutT>(_bit_i_v[idx]) << i);
-          });
-        }
-      }
-      gfmp_mod_(out);
-    });
     return out;
   });
 }
@@ -228,16 +226,24 @@ NdArrayRef AndBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
   const size_t out_nbits = std::min(lhs_ty->nbits(), rhs_ty->nbits());
   auto out_ty = makeType<BShrTy>(b_field, out_nbits);
   NdArrayRef out(out_ty, lhs.shape());
-  DISPATCH_ALL_FIELDS(b_field, [&]() {
-    // FIXME: optimize me, make mul_aa vectorized
-    for (size_t i = 0; i < out_nbits; ++i) {
-      auto lhs_i = getBitShare(lhs, i);
-      auto rhs_i = getBitShare(rhs, i);
-      auto out_i = getBitShare(out, i);
-      auto ret = wrap_mul_aa(ctx->sctx(), lhs_i, rhs_i);
-      ring_assign(out_i, ret);
-    }
-  });
+
+  auto and_lambda = [ctx](const NdArrayRef& a, const NdArrayRef& b) {
+    return wrap_mul_aa(ctx->sctx(), a, b);
+  };
+
+  std::vector<NdArrayRef> lhs_bits;
+  std::vector<NdArrayRef> rhs_bits;
+  for (size_t i = 0; i < out_nbits; ++i) {
+    lhs_bits.push_back(getBitShare(lhs, i));
+    rhs_bits.push_back(getBitShare(rhs, i));
+  }
+  std::vector<NdArrayRef> tmp_out;
+  vmap(lhs_bits.begin(), lhs_bits.end(), rhs_bits.begin(), rhs_bits.end(),
+       std::back_inserter(tmp_out), and_lambda);
+  for (size_t i = 0; i < out_nbits; ++i) {
+    auto out_i = getBitShare(out, i);
+    ring_assign(out_i, tmp_out[i]);
+  }
   return out;
 }
 
@@ -306,23 +312,34 @@ NdArrayRef XorBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
   NdArrayRef out(out_ty, lhs.shape());
   DISPATCH_ALL_FIELDS(b_field, [&]() {
     // calculate common bits
-    for (size_t i = 0; i < common_nbits; ++i) {
-      auto lhs_i = getBitShare(lhs, i);
-      auto rhs_i = getBitShare(rhs, i);
-      auto out_i = getBitShare(out, i);
-      // FIXME: optimize me, make mul_aa vectorized
-      auto ret = wrap_mul_aa(ctx->sctx(), lhs_i, rhs_i);
-
-      NdArrayView<ring2k_t> _ret(ret);
-      NdArrayView<ring2k_t> _lhs_i(lhs_i);
-      NdArrayView<ring2k_t> _rhs_i(rhs_i);
-      NdArrayView<ring2k_t> _out_i(out_i);
+    auto xor_lambda = [ctx](const NdArrayRef& a, const NdArrayRef& b) {
+      auto tmp = wrap_mul_aa(ctx->sctx(), a, b);
+      NdArrayRef xor_ret(a.eltype(), a.shape());
+      NdArrayView<ring2k_t> _xor_ret(xor_ret);
+      NdArrayView<ring2k_t> _a(a);
+      NdArrayView<ring2k_t> _b(b);
+      NdArrayView<ring2k_t> _tmp(tmp);
       // x ^ y = (x + y) - 2 * (x * y) for x,y in [0,1]
-      pforeach(0, lhs.numel(), [&](int64_t idx) {
-        _out_i[idx] =
-            add_mod(add_mod(_lhs_i[idx], _rhs_i[idx]),
-                    add_inv(mul_mod(static_cast<ring2k_t>(2), _ret[idx])));
+      pforeach(0, a.numel(), [&](int64_t idx) {
+        _xor_ret[idx] =
+            add_mod(add_mod(_a[idx], _b[idx]),
+                    add_inv(mul_mod(static_cast<ring2k_t>(2), _tmp[idx])));
       });
+      return xor_ret;
+    };
+
+    std::vector<NdArrayRef> lhs_bits;
+    std::vector<NdArrayRef> rhs_bits;
+    for (size_t i = 0; i < common_nbits; ++i) {
+      lhs_bits.push_back(getBitShare(lhs, i));
+      rhs_bits.push_back(getBitShare(rhs, i));
+    }
+    std::vector<NdArrayRef> tmp_out;
+    vmap(lhs_bits.begin(), lhs_bits.end(), rhs_bits.begin(), rhs_bits.end(),
+         std::back_inserter(tmp_out), xor_lambda);
+    for (size_t i = 0; i < common_nbits; ++i) {
+      auto out_i = getBitShare(out, i);
+      ring_assign(out_i, tmp_out[i]);
     }
     // calculate the rest bits
     for (size_t i = common_nbits; i < out_nbits; ++i) {
