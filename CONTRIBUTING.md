@@ -39,7 +39,6 @@ The compiler portion of the project follows [MLIR style](https://mlir.llvm.org/g
 
 ### Prerequisite
 
-
 #### Docker
 
 ```sh
@@ -50,6 +49,7 @@ docker run -d -it --name spu-dev-$(whoami) \
          --cap-add=SYS_PTRACE --security-opt seccomp=unconfined \
          --cap-add=NET_ADMIN \
          --privileged=true \
+         --entrypoint="bash" \
          secretflow/ubuntu-base-ci:latest
 
 # attach to build container
@@ -60,7 +60,11 @@ docker exec -it spu-dev-$(whoami) bash
 
 ```sh
 Install gcc>=11.2, cmake>=3.26, ninja, nasm>=2.15, python>=3.9, bazelisk, xxd, lld
+```
 
+About the commands used to install the above dependencies, you can follow [Ubuntu docker file](https://github.com/secretflow/devtools/blob/main/dockerfiles/ubuntu-base-ci.DockerFile).
+
+```sh
 python3 -m pip install -r requirements.txt
 python3 -m pip install -r requirements-dev.txt
 ```
@@ -93,9 +97,6 @@ pip install -r requirements-dev.txt
 ```
 
 ### Build & UnitTest
-
-
-
 
 ``` sh
 # build as debug
