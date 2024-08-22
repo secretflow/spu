@@ -25,6 +25,7 @@ Value a2v(SPUContext* ctx, const Value& x, size_t owner);
 Value v2a(SPUContext* ctx, const Value& x);
 
 Value msb_a2b(SPUContext* ctx, const Value& x);
+Value msb_a(SPUContext* ctx, const Value& x);
 
 Value rand_a(SPUContext* ctx, const Shape& shape);
 Value rand_b(SPUContext* ctx, const Shape& shape);

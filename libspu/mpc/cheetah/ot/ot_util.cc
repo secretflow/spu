@@ -40,30 +40,6 @@ void U8ToBool(absl::Span<uint8_t> bits, uint8_t u8) {
   }
 }
 
-template <typename T>
-static T _makeBitsMask(size_t nbits) {
-  size_t max = sizeof(T) * 8;
-  if (nbits == 0) {
-    nbits = max;
-  }
-  SPU_ENFORCE(nbits <= max);
-  T mask = static_cast<T>(-1);
-  if (nbits < max) {
-    mask = (static_cast<T>(1) << nbits) - 1;
-  }
-  return mask;
-}
-
-static void maskArray(NdArrayRef array, FieldType field, size_t bw) {
-  DISPATCH_ALL_FIELDS(field, [&]() {
-    NdArrayView<ring2k_t> view(array);
-    auto msk = _makeBitsMask<ring2k_t>(bw);
-    for (int64_t i = 0; i < view.numel(); ++i) {
-      view[i] &= msk;
-    }
-  });
-}
-
 NdArrayRef OpenShare(const NdArrayRef &shr, ReduceOp op, size_t nbits,
                      std::shared_ptr<Communicator> conn) {
   SPU_ENFORCE(conn != nullptr);
@@ -76,27 +52,20 @@ NdArrayRef OpenShare(const NdArrayRef &shr, ReduceOp op, size_t nbits,
     nbits = fwidth;
   }
   SPU_ENFORCE(nbits <= fwidth, "nbits out-of-bound");
-
-  size_t space_bits = op == ReduceOp::ADD ? nbits + 1 : nbits;
-  size_t numel = shr.numel();
-  size_t compact_numel = CeilDiv(numel * space_bits, fwidth);
-
-  if (space_bits > nbits and 0 != (fwidth % space_bits)) {
-    // FIXME(lwj): for Add, we can have a better ZipArray to handle a ring
-    // element that placed in two different blocks.
-    // For now, we use ZipArray for Add only when one element is just fit in one
-    // block.
-    auto out = conn->allReduce(op, shr, "open");
-    maskArray(out, field, nbits);
-    return out;
+  bool packable = fwidth > nbits;
+  if (not packable) {
+    return conn->allReduce(op, shr, "open");
   }
+
+  size_t numel = shr.numel();
+  size_t compact_numel = CeilDiv(numel * nbits, fwidth);
 
   NdArrayRef out(shr.eltype(), {(int64_t)numel});
   DISPATCH_ALL_FIELDS(field, [&]() {
     auto inp = absl::MakeConstSpan(&shr.at<ring2k_t>(0), numel);
     auto oup = absl::MakeSpan(&out.at<ring2k_t>(0), compact_numel);
 
-    size_t used = ZipArray(inp, space_bits, oup);
+    size_t used = ZipArray(inp, nbits, oup);
     SPU_ENFORCE_EQ(used, compact_numel);
 
     std::vector<ring2k_t> opened;
@@ -107,16 +76,8 @@ NdArrayRef OpenShare(const NdArrayRef &shr, ReduceOp op, size_t nbits,
     }
 
     oup = absl::MakeSpan(&out.at<ring2k_t>(0), numel);
-    UnzipArray(absl::MakeConstSpan(opened), space_bits, oup);
-
-    if (space_bits > nbits and nbits < fwidth) {
-      auto msk = (static_cast<ring2k_t>(1) << nbits) - 1;
-      for (size_t i = 0; i < numel; ++i) {
-        oup[i] &= msk;
-      }
-    }
+    UnzipArray(absl::MakeConstSpan(opened), nbits, oup);
   });
-
   return out.reshape(shr.shape());
 }
 
