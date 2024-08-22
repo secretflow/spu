@@ -35,10 +35,6 @@ inline bool isOwner(KernelEvalContext* ctx, const Type& type) {
          static_cast<int64_t>(comm->getRank());
 }
 
-inline int64_t getOwner(const NdArrayRef& x) {
-  return x.eltype().as<PrivGfmpTy>()->owner();
-}
-
 class P2V : public RevealToKernel {
  public:
   static constexpr char kBindName[] = "p2v";
