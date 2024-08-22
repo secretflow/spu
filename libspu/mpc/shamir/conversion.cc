@@ -225,7 +225,9 @@ NdArrayRef unbounded_mul(SPUContext* ctx,
   SPU_ENFORCE(!inputs.empty());
   int64_t l = inputs.size();
   auto numel = inputs[0].numel();
-  const auto& [b, b_inv] = rand_bits_pair(ctx, (l + 1) * numel);
+  NdArrayRef b;
+  NdArrayRef b_inv;
+  std::tie(b, b_inv) = rand_bits_pair(ctx, (l + 1) * numel);
   auto shape = inputs[0].shape();
 
   auto mul_lambda = [ctx](const NdArrayRef& a, const NdArrayRef& b) {
@@ -270,7 +272,9 @@ std::vector<NdArrayRef> prefix_mul(SPUContext* ctx,
   SPU_ENFORCE(!inputs.empty());
   int64_t l = inputs.size();
   auto numel = inputs[0].numel();
-  const auto& [b, b_inv] = rand_bits_pair(ctx, (l + 1) * numel);
+  NdArrayRef b;
+  NdArrayRef b_inv;
+  std::tie(b, b_inv) = rand_bits_pair(ctx, (l + 1) * numel);
   auto shape = inputs[0].shape();
 
   auto mul_lambda = [ctx](const NdArrayRef& a, const NdArrayRef& b) {
@@ -671,7 +675,9 @@ std::vector<NdArrayRef> bit_decompose(SPUContext* ctx, const NdArrayRef& in) {
 NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& x) const {
   const auto field = x.eltype().as<Ring2k>()->field();
   auto* sctx = ctx->sctx();
-  const auto& [b_bits, b] = solved_bits(sctx, x.shape());
+  std::vector<NdArrayRef> b_bits;
+  NdArrayRef b;
+  std::tie(b_bits, b) = solved_bits(sctx, x.shape());
   auto a_minus_b = wrap_sub(sctx, x, b);
   auto c = wrap_a2p(sctx, a_minus_b);
   auto c_bits = bit_decompose(sctx, c);
@@ -731,7 +737,9 @@ NdArrayRef TruncA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
 
   const auto field = x.eltype().as<GfmpTy>()->field();
   auto* sctx = ctx->sctx();
-  const auto& [r_bits, r] = solved_bits(sctx, x.shape());
+  std::vector<NdArrayRef> r_bits;
+  NdArrayRef r;
+  std::tie(r_bits, r) = solved_bits(sctx, x.shape());
   auto r_msb = r_bits.back();
   return DISPATCH_ALL_FIELDS(field, [&]() {
     auto l = ScalarTypeToPrime<ring2k_t>::exp;
@@ -775,7 +783,9 @@ NdArrayRef TruncA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
 
 NdArrayRef MsbA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   auto* sctx = ctx->sctx();
-  const auto& [r_bits, r] = solved_bits(sctx, in.shape());
+  std::vector<NdArrayRef> r_bits;
+  NdArrayRef r;
+  std::tie(r_bits, r) = solved_bits(sctx, in.shape());
   const auto k2 = hack_make_p(sctx, 2, in.shape());
   auto y = wrap_add(sctx, wrap_mul(sctx, in, k2), r);
   auto y_p = wrap_a2p(sctx, y);
