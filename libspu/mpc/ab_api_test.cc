@@ -470,7 +470,9 @@ TEST_P(ArithmeticTest, LShiftA) {
 
   utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
     auto obj = factory(conf, lctx);
-
+    if (!obj->prot()->hasKernel("lshift_a")) {
+      return;
+    }
     /* GIVEN */
     auto p0 = rand_p(obj.get(), kShape);
     auto a0 = p2a(obj.get(), p0);
@@ -670,6 +672,10 @@ TEST_BOOLEAN_BINARY_OP(xor)
           auto b0 = p2b(obj.get(), p0);                                        \
                                                                                \
           for (auto bits : kShiftBits) {                                       \
+            if (conf.protocol() == ProtocolKind::SHAMIR &&                     \
+                bits >= GetMersennePrimeExp(conf.field())) {                   \
+              continue;                                                        \
+            }                                                                  \
             if (bits >= p0.elsize() * 8) {                                     \
               continue;                                                        \
             }                                                                  \

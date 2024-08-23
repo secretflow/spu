@@ -77,6 +77,7 @@ Value v2a(SPUContext* ctx, const Value& x) {
 }
 
 Value msb_a2b(SPUContext* ctx, const Value& x) { TILED_DISPATCH(ctx, x); }
+Value msb_a(SPUContext* ctx, const Value& x) { TILED_DISPATCH(ctx, x); }
 
 Value rand_a(SPUContext* ctx, const Shape& shape) {
   FORCE_DISPATCH(ctx, shape);
