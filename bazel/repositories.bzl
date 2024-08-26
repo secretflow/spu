@@ -59,10 +59,10 @@ def _libpsi():
 def _rules_proto_grpc():
     http_archive(
         name = "rules_proto_grpc",
-        sha256 = "2a0860a336ae836b54671cbbe0710eec17c64ef70c4c5a88ccfd47ea6e3739bd",
-        strip_prefix = "rules_proto_grpc-4.6.0",
+        sha256 = "9fc53af99fa84c0fb5986ccd39cf2a4d24fa380718efcb407a779d108c4da228",
+        strip_prefix = "rules_proto_grpc-5.0.0",
         urls = [
-            "https://github.com/rules-proto-grpc/rules_proto_grpc/releases/download/4.6.0/rules_proto_grpc-4.6.0.tar.gz",
+            "https://github.com/rules-proto-grpc/rules_proto_grpc/releases/download/5.0.0/rules_proto_grpc-5.0.0.tar.gz",
         ],
     )
 
