@@ -62,3 +62,12 @@ py_binary(
         "//sml/utils:emulation",
     ],
 )
+
+py_binary(
+    name = "quantile_emul",
+    srcs = ["quantile_emul.py"],
+    deps = [
+        "//sml/linear_model:quantile",
+        "//sml/utils:emulation",
+    ],
+)

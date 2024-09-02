@@ -14,10 +14,27 @@
 
 import jax.numpy as jnp
 import numpy as np
+from jax.scipy.linalg import cho_factor, cho_solve
 
 import spu.intrinsic as si
 import spu.spu_pb2 as spu_pb2
 import spu.utils.simulation as ppsim
+
+
+def test_delete(a):
+    a = jnp.delete(a, jnp.arange(3), axis=0, assume_unique_indices=True)
+
+    return a
+
+
+def solve(a, b):
+    tmp = jnp.linalg.inv(jnp.dot(a.T, a))
+    return jnp.dot(tmp, jnp.dot(a.T, b))
+
+
+def cho_solve_wrapper(a, b):
+    return cho_solve(cho_factor(a), b)
+
 
 if __name__ == "__main__":
     """
@@ -30,14 +47,19 @@ if __name__ == "__main__":
     # Tweak compiler options
     copts.disable_div_sqrt_rewrite = True
 
-    x = np.random.randn(3, 4)
-    y = np.random.randn(5, 6)
-    fn = lambda x, y: si.example_binary(x, y)
+    # x = np.random.randn(3, 4)
+    y = np.random.randn(100, 3)
+    y = np.dot(y, y.T)
+    r = np.random.randn(100, 1)
+    # fn = lambda x, y: si.example_binary(x, y)
     # fn = lambda x, y: jnp.matmul(x, y)
-    spu_fn = ppsim.sim_jax(sim, fn, copts=copts)
-    z = spu_fn(x, y)
+    # fn = solve
+    fn = cho_solve_wrapper
 
-    print(spu_fn.pphlo)
+    spu_fn = ppsim.sim_jax(sim, fn, copts=copts)
+    z = spu_fn(y, r)
+
+    # print(spu_fn.pphlo)
 
     print(f"spu out = {z}")
-    print(f"cpu out = {fn(x, y)}")
+    print(f"cpu out = {fn(y, r)}")
