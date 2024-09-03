@@ -17,15 +17,15 @@ import warnings
 from warnings import warn
 
 import jax
+
 # jax.config.update("jax_enable_x64", True)
 import jax.numpy as jnp
 import pandas as pd
-from jax import grad,jit
+from jax import grad, jit
+from scipy.optimize import linprog
 
 from sml.linear_model.utils.linprog import _linprog_simplex
-from sml.linear_model.utils.linprog_ip import _linprog_ip   
-
-from scipy.optimize import linprog
+from sml.linear_model.utils.linprog_ip import _linprog_ip
 
 
 class QuantileRegressor:
@@ -96,10 +96,22 @@ class QuantileRegressor:
 
         # result = _linprog_simplex(c, A, b, maxiter=self.max_iter, tol=1e-3)
         # jit_linprog_ip = jit(_linprog_ip)
-        result = _linprog_ip(c, 0, A, b, maxiter=self.max_iter, tol=1e-3, pc=False,ip=True,lstsq=False, sym_pos=True, cholesky=True)
-        
+        result = _linprog_ip(
+            c,
+            0,
+            A,
+            b,
+            maxiter=self.max_iter,
+            tol=1e-3,
+            pc=False,
+            ip=True,
+            lstsq=False,
+            sym_pos=True,
+            cholesky=True,
+        )
+
         solution = result[0]
-        
+
         params = solution[:n_params] - solution[n_params : 2 * n_params]
         self.n_iter_ = result[2]
 
@@ -114,7 +126,7 @@ class QuantileRegressor:
         # result = linprog(c, A_eq=A, b_eq=b, bounds=(0, None), method='interior-point')
 
         # solution = result.x
-        
+
         # params = solution[:n_params] - solution[n_params : 2 * n_params]
         # self.n_iter_ = result.nit
 
@@ -134,6 +146,7 @@ class QuantileRegressor:
         else:
             return jnp.dot(X, self.coef_)
 
+
 def generate_data():
     from jax import random
 
@@ -147,16 +160,17 @@ def generate_data():
         5 * X[:, 0] + 2 * X[:, 1] + random.normal(key, (100,)) * 0.1
     )  # 高相关性，带有小噪声
     return X, y
-      
+
+
 if __name__ == "__main__":
     X, y = generate_data()
     # 0.4为nan
-    quantile=0.1
-    alpha=0.1
-    fit_intercept=True
-    lr=0.01
-    max_iter=1000
-    
+    quantile = 0.1
+    alpha = 0.1
+    fit_intercept = True
+    lr = 0.01
+    max_iter = 1000
+
     quantile_custom = QuantileRegressor(
         quantile=quantile,
         alpha=alpha,
@@ -172,8 +186,9 @@ if __name__ == "__main__":
     print(f"Accuracy in SPU: {acc_custom:.2f}")
     print(quantile_custom_fit.coef_)
     print(quantile_custom_fit.intercept_)
-    
+
     from sklearn.linear_model import QuantileRegressor as SklearnQuantileRegressor
+
     quantile_sklearn = SklearnQuantileRegressor(
         quantile=quantile, alpha=alpha, fit_intercept=fit_intercept, solver='highs'
     )
