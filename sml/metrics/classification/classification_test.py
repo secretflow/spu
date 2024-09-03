@@ -33,14 +33,14 @@ from sklearn.metrics import roc_auc_score as sk_roc_auc_score
 from sml.metrics.classification.classification import (
     accuracy_score,
     average_precision_score,
+    balanced_accuracy_score,
     bin_counts,
     equal_obs,
     f1_score,
     precision_score,
     recall_score,
     roc_auc_score,
-    balanced_accuracy_score,
-    top_k_accuracy_score
+    top_k_accuracy_score,
 )
 
 
@@ -83,13 +83,28 @@ class UnitTests(unittest.TestCase):
             3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM128
         )
 
-        def proc(y_true: jnp.ndarray, y_pred: jnp.ndarray, k, normalize, sample_weight, labels):
-            top_k_score = top_k_accuracy_score(y_true, y_pred, k=k, normalize=normalize, sample_weight=sample_weight,
-                                               labels=labels)
+        def proc(
+            y_true: jnp.ndarray,
+            y_pred: jnp.ndarray,
+            k,
+            normalize,
+            sample_weight,
+            labels,
+        ):
+            top_k_score = top_k_accuracy_score(
+                y_true,
+                y_pred,
+                k=k,
+                normalize=normalize,
+                sample_weight=sample_weight,
+                labels=labels,
+            )
             return top_k_score
 
         def sklearn_proc(y_true, y_pred, k, labels):
-            top_k_score = metrics.top_k_accuracy_score(y_true, y_pred, k=k, labels=labels)
+            top_k_score = metrics.top_k_accuracy_score(
+                y_true, y_pred, k=k, labels=labels
+            )
             return top_k_score
 
         def check(spu_result, sk_result):
@@ -97,13 +112,15 @@ class UnitTests(unittest.TestCase):
 
         # Test multiclass
         y_true = jnp.array([0, 1, 2, 2, 0])
-        y_score = jnp.array([
-            [0.8, 0.1, 0.1],
-            [0.3, 0.4, 0.3],
-            [0.1, 0.1, 0.8],
-            [0.2, 0.2, 0.6],
-            [0.7, 0.2, 0.1]
-        ])
+        y_score = jnp.array(
+            [
+                [0.8, 0.1, 0.1],
+                [0.3, 0.4, 0.3],
+                [0.1, 0.1, 0.8],
+                [0.2, 0.2, 0.6],
+                [0.7, 0.2, 0.1],
+            ]
+        )
         spu_result = spsim.sim_jax(sim, proc, static_argnums=(2, 3))(
             y_true, y_score, 2, True, None, None
         )
@@ -160,7 +177,7 @@ class UnitTests(unittest.TestCase):
         )
 
         def proc(
-                y_true, y_pred, average='binary', labels=None, pos_label=1, transform=1
+            y_true, y_pred, average='binary', labels=None, pos_label=1, transform=1
         ):
             f1 = f1_score(
                 y_true,

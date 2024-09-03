@@ -27,17 +27,17 @@ import sml.utils.emulation as emulation
 from sml.metrics.classification.classification import (
     accuracy_score,
     average_precision_score,
+    balanced_accuracy_score,
     f1_score,
     precision_score,
     recall_score,
     roc_auc_score,
-    balanced_accuracy_score,
-    top_k_accuracy_score
+    top_k_accuracy_score,
 )
-
 
 # TODO: design the enumation framework, just like py.unittest
 # all emulation action should begin with `emul_` (for reflection)
+
 
 def emul_balanced_accuracy(mode: emulation.Mode.MULTIPROCESS):
     def proc(y_true: jnp.ndarray, y_pred: jnp.ndarray, labels: jnp.ndarray):
@@ -69,9 +69,17 @@ def emul_balanced_accuracy(mode: emulation.Mode.MULTIPROCESS):
 
 
 def emul_top_k_accuracy_score(mode: emulation.Mode.MULTIPROCESS):
-    def proc(y_true: jnp.ndarray, y_pred: jnp.ndarray, k, normalize, sample_weight, labels):
-        top_k_score = top_k_accuracy_score(y_true, y_pred, k=k, normalize=normalize, sample_weight=sample_weight,
-                                           labels=labels)
+    def proc(
+        y_true: jnp.ndarray, y_pred: jnp.ndarray, k, normalize, sample_weight, labels
+    ):
+        top_k_score = top_k_accuracy_score(
+            y_true,
+            y_pred,
+            k=k,
+            normalize=normalize,
+            sample_weight=sample_weight,
+            labels=labels,
+        )
         return top_k_score
 
     def sklearn_proc(y_true, y_pred, k, labels):
@@ -83,13 +91,15 @@ def emul_top_k_accuracy_score(mode: emulation.Mode.MULTIPROCESS):
 
     # Test multiclass
     y_true = jnp.array([0, 1, 2, 2, 0])
-    y_score = jnp.array([
-        [0.8, 0.1, 0.1],
-        [0.3, 0.4, 0.3],
-        [0.1, 0.1, 0.8],
-        [0.2, 0.2, 0.6],
-        [0.7, 0.2, 0.1]
-    ])
+    y_score = jnp.array(
+        [
+            [0.8, 0.1, 0.1],
+            [0.3, 0.4, 0.3],
+            [0.1, 0.1, 0.8],
+            [0.2, 0.2, 0.6],
+            [0.7, 0.2, 0.1],
+        ]
+    )
     spu_result = emulator.run(proc, static_argnums=(2, 3))(
         y_true, y_score, 2, True, None, None
     )

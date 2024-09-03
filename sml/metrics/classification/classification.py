@@ -38,8 +38,8 @@ def confusion_matrix(y_true, y_pred, labels, sample_weight=None, normalize=None)
     # Calculate the confusion matrix
     for i, label in enumerate(labels):
         # Get the true label and predicted label as the Boolean value of the current label
-        true_mask = (y_true == label)
-        pred_mask = (y_pred == label)
+        true_mask = y_true == label
+        pred_mask = y_pred == label
 
         # Update the confusion matrix
         for j, _ in enumerate(labels):
@@ -50,7 +50,7 @@ def confusion_matrix(y_true, y_pred, labels, sample_weight=None, normalize=None)
 
 
 def balanced_accuracy_score(y_true, y_pred, labels, sample_weight=None, adjusted=False):
-    """ calculate balanced accuracy score """
+    """calculate balanced accuracy score"""
     C = confusion_matrix(y_true, y_pred, labels, sample_weight=sample_weight)
     with np.errstate(divide="ignore", invalid="ignore"):
         per_class = jnp.diag(C) / C.sum(axis=1)
