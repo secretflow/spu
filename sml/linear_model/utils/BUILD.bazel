@@ -36,3 +36,8 @@ py_library(
     name = "linprog",
     srcs = ["linprog.py"],
 )
+
+py_library(
+    name = "linprog_ip",
+    srcs = ["linprog_ip.py"],
+)

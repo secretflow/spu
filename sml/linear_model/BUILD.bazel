@@ -60,5 +60,6 @@ py_library(
     srcs = ["quantile.py"],
     deps = [
         "//sml/linear_model/utils:linprog",
+        "//sml/linear_model/utils:linprog_ip",
     ],
 )

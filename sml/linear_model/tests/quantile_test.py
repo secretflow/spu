@@ -25,7 +25,7 @@ from sml.linear_model.quantile import QuantileRegressor as SmlQuantileRegressor
 
 
 class UnitTests(unittest.TestCase):
-    def test_forest(self):
+    def test_quantile(self):
         def proc_wrapper(
             quantile,
             alpha,
@@ -74,7 +74,7 @@ class UnitTests(unittest.TestCase):
 
         # compare with sklearn
         quantile_sklearn = SklearnQuantileRegressor(
-            quantile=0.7, alpha=0.1, fit_intercept=True, solver='revised simplex'
+            quantile=0.1, alpha=0.1, fit_intercept=True, solver='revised simplex'
         )
         quantile_sklearn_fit = quantile_sklearn.fit(X, y)
         acc_sklearn = jnp.mean(y <= quantile_sklearn_fit.predict(X))
@@ -84,13 +84,14 @@ class UnitTests(unittest.TestCase):
 
         # run
         proc = proc_wrapper(
-            quantile=0.7, alpha=0.1, fit_intercept=True, lr=0.01, max_iter=1000
+            quantile=0.1, alpha=0.1, fit_intercept=True, lr=0.01, max_iter=1000
         )
         result, coef, intercept = spsim.sim_jax(sim, proc)(X, y)
         acc_custom = jnp.mean(y <= result)
 
         # print acc
-
+        print(result)
+        # print(y)
         print(f"Accuracy in SPU: {acc_custom:.2f}")
         print(coef)
         print(intercept)
