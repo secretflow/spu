@@ -39,10 +39,77 @@ from sml.metrics.classification.classification import (
     precision_score,
     recall_score,
     roc_auc_score,
+    balanced_accuracy_score,
+    top_k_accuracy_score
 )
 
 
 class UnitTests(unittest.TestCase):
+
+    def test_balanced_accuracy(self):
+        sim = spsim.Simulator.simple(
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM128
+        )
+
+        def proc(y_true: jnp.ndarray, y_pred: jnp.ndarray, labels: jnp.ndarray):
+            balanced_score = balanced_accuracy_score(y_true, y_pred, labels)
+            return balanced_score
+
+        def sklearn_proc(y_true, y_pred):
+            balanced_score = metrics.balanced_accuracy_score(y_true, y_pred)
+            return balanced_score
+
+        def check(spu_result, sk_result):
+            np.testing.assert_allclose(spu_result, sk_result, rtol=1, atol=1e-5)
+
+        # Test binary
+        y_true = jnp.array([0, 1, 1, 0, 1, 1])
+        y_pred = jnp.array([0, 0, 1, 0, 1, 1])
+        labels = jnp.array([0, 1])
+        spu_result = spsim.sim_jax(sim, proc)(y_true, y_pred, labels)
+        sk_result = sklearn_proc(y_true, y_pred)
+        check(spu_result, sk_result)
+
+        # Test multiclass
+        y_true = jnp.array([0, 1, 1, 0, 2, 1])
+        y_pred = jnp.array([0, 0, 1, 0, 2, 1])
+        labels = jnp.array([0, 1, 2])
+        spu_result = spsim.sim_jax(sim, proc)(y_true, y_pred, labels)
+        sk_result = sklearn_proc(y_true, y_pred)
+        check(spu_result, sk_result)
+
+    def test_top_k_accuracy(self):
+        sim = spsim.Simulator.simple(
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM128
+        )
+
+        def proc(y_true: jnp.ndarray, y_pred: jnp.ndarray, k, normalize, sample_weight, labels):
+            top_k_score = top_k_accuracy_score(y_true, y_pred, k=k, normalize=normalize, sample_weight=sample_weight,
+                                               labels=labels)
+            return top_k_score
+
+        def sklearn_proc(y_true, y_pred, k, labels):
+            top_k_score = metrics.top_k_accuracy_score(y_true, y_pred, k=k, labels=labels)
+            return top_k_score
+
+        def check(spu_result, sk_result):
+            np.testing.assert_allclose(spu_result, sk_result, rtol=1, atol=1e-5)
+
+        # Test multiclass
+        y_true = jnp.array([0, 1, 2, 2, 0])
+        y_score = jnp.array([
+            [0.8, 0.1, 0.1],
+            [0.3, 0.4, 0.3],
+            [0.1, 0.1, 0.8],
+            [0.2, 0.2, 0.6],
+            [0.7, 0.2, 0.1]
+        ])
+        spu_result = spsim.sim_jax(sim, proc, static_argnums=(2, 3))(
+            y_true, y_score, 2, True, None, None
+        )
+        sk_result = sklearn_proc(y_true, y_score, k=2, labels=None)
+        check(spu_result, sk_result)
+
     def test_auc(self):
         sim = spsim.Simulator.simple(
             3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
@@ -93,7 +160,7 @@ class UnitTests(unittest.TestCase):
         )
 
         def proc(
-            y_true, y_pred, average='binary', labels=None, pos_label=1, transform=1
+                y_true, y_pred, average='binary', labels=None, pos_label=1, transform=1
         ):
             f1 = f1_score(
                 y_true,

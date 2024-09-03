@@ -16,11 +16,90 @@ from typing import Tuple
 
 import jax
 import jax.numpy as jnp
+import numpy as np
 
 from sml.preprocessing.preprocessing import label_binarize
 from spu.ops.groupby import groupby, groupby_sum
 
 from .auc import binary_clf_curve, binary_roc_auc
+
+
+def confusion_matrix(y_true, y_pred, labels, sample_weight=None, normalize=None):
+    """calculate the confusion matrix"""
+    y_true = jnp.array(y_true)
+    y_pred = jnp.array(y_pred)
+
+    # 获取标签的数量
+    num_labels = len(labels)
+
+    # 初始化混淆矩阵
+    cm = jnp.zeros((num_labels, num_labels), dtype=jnp.int32)
+
+    # 计算混淆矩阵
+    for i, label in enumerate(labels):
+        # 获取真实标签和预测标签为当前标签的布尔值
+        true_mask = (y_true == label)
+        pred_mask = (y_pred == label)
+
+        # 更新混淆矩阵
+        for j, _ in enumerate(labels):
+            # 计算 TP, FP, FN, TN
+            cm = cm.at[i, j].set(jnp.sum(true_mask & (y_pred == j)))
+
+    return cm
+
+
+def balanced_accuracy_score(y_true, y_pred, labels, sample_weight=None, adjusted=False):
+    """ calculate balanced accuracy score """
+    C = confusion_matrix(y_true, y_pred, labels, sample_weight=sample_weight)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        per_class = jnp.diag(C) / C.sum(axis=1)
+    score = jnp.mean(per_class)
+    if adjusted:
+        n_classes = len(per_class)
+        chance = 1 / n_classes
+        score -= chance
+        score /= 1 - chance
+    return score
+
+
+def top_k_accuracy_score(
+    y_true, y_score, k=2, normalize=True, sample_weight=None, labels=None
+):
+    """
+    Top-k Accuracy classification score.
+    This metric computes the number of times when the correct label is among
+    the top `k` labels predicted (ranked by predicted scores).
+    """
+
+    # 转换 y_true 和 y_score 为 JAX 数组
+    y_true = jnp.asarray(y_true)
+    y_score = jnp.asarray(y_score)
+
+    if labels is not None:
+        # 如果提供了标签，确保 y_true 和 y_score 包含在 labels 中
+        labels = jnp.asarray(labels)
+        y_true = jnp.searchsorted(labels, y_true, sorter=jnp.argsort(labels))
+
+    # 计算每个样本的前 k 个预测的索引
+    top_k_indices = jnp.argsort(y_score, axis=1)[:, -k:]
+
+    # 检查 y_true 是否在前 k 个预测中
+    y_true_in_top_k = jnp.any(jnp.isin(y_true[:, None], top_k_indices), axis=1)
+
+    # 计算准确率
+    correct_predictions = jnp.sum(y_true_in_top_k)
+
+    if sample_weight is not None:
+        sample_weight = jnp.asarray(sample_weight)
+        accuracy = jnp.sum(sample_weight * y_true_in_top_k) / jnp.sum(sample_weight)
+    else:
+        accuracy = correct_predictions / len(y_true)
+
+    if normalize:
+        return accuracy
+    else:
+        return correct_predictions
 
 
 def roc_auc_score(y_true, y_pred):
