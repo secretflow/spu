@@ -116,6 +116,9 @@ class Communicator : public State {
   std::vector<T> rotate(absl::Span<T const> in, std::string_view tag);
 
   template <typename T>
+  std::vector<T> rotateR(absl::Span<T const> in, std::string_view tag);
+
+  template <typename T>
   void sendAsync(size_t dst_rank, absl::Span<T const> in, std::string_view tag);
 
   template <typename T>
@@ -134,6 +137,7 @@ class Communicator : public State {
                                      std::string_view tag);
 };
 
+// Send a message to the previous rank and receive a message from the next rank.
 template <typename T>
 std::vector<T> Communicator::rotate(absl::Span<T const> in,
                                     std::string_view tag) {
@@ -141,6 +145,22 @@ std::vector<T> Communicator::rotate(absl::Span<T const> in,
                              sizeof(T) * in.size());
   lctx_->SendAsync(lctx_->PrevRank(), bv, tag);
   auto buf = lctx_->Recv(lctx_->NextRank(), tag);
+
+  stats_.latency += 1;
+  stats_.comm += in.size() * sizeof(T);
+
+  SPU_ENFORCE(buf.size() == static_cast<int64_t>(sizeof(T) * in.size()));
+  return std::vector<T>(buf.data<T>(), buf.data<T>() + in.size());
+}
+
+// Send a message to the next rank and receive a message from the previous rank.
+template <typename T>
+std::vector<T> Communicator::rotateR(absl::Span<T const> in,
+                                    std::string_view tag) {
+  yacl::ByteContainerView bv(reinterpret_cast<uint8_t const*>(in.data()),
+                             sizeof(T) * in.size());
+  lctx_->SendAsync(lctx_->NextRank(), bv, tag);
+  auto buf = lctx_->Recv(lctx_->PrevRank(), tag);
 
   stats_.latency += 1;
   stats_.comm += in.size() * sizeof(T);

@@ -29,7 +29,7 @@
                 "runtime_config": {
                     "protocol": "ABY3",
                     "field": "FM64",
-                    "enable_pphlo_profile": true,
+                    "enable_pphlo_profile": false,
                     "enable_hal_profile": true
                 }
             }

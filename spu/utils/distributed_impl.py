@@ -201,7 +201,7 @@ class RPC:
         else:
             server.add_insecure_port(nodes_def[node_id])
         server.start()
-        logger.info(f"Starting grpc server at {nodes_def[node_id]}")
+        logger.info(f"Starting grpc server at {nodes_def[node_id]}, pid={os.getpid()}")
         server.wait_for_termination()
 
 

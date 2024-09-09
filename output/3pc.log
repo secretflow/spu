@@ -1,0 +1,67 @@
+[2024-08-15 15:32:34.624] [info] [thread_pool.cc:30] Create a fixed thread pool with size 63
+[2024-08-15 15:33:17.973] [info] [thread_pool.cc:30] Create a fixed thread pool with size 63
+[2024-08-15 15:33:17.973] [info] [thread_pool.cc:30] Create a fixed thread pool with size 63
+[2024-08-15 15:33:17.974] [info] [thread_pool.cc:30] Create a fixed thread pool with size 63
+[2024-08-15 15:33:32.089] [info] [api.cc:163] [Profiling] SPU execution text_generation completed, input processing took 8.148e-05s, execution took 15.204747266s, output processing took 7.861e-06s, total time 15.204836607s.
+[2024-08-15 15:33:32.090] [info] [api.cc:209] HAL profiling: total time 14.811977345
+[2024-08-15 15:33:32.090] [info] [api.cc:212] - f_mmul, executed 337 times, duration 7.956062764s, send bytes 41193200 recv bytes 44207760
+[2024-08-15 15:33:32.090] [info] [api.cc:212] - f_tanh, executed 12 times, duration 2.329745618s, send bytes 155811840 recv bytes 148439040
+[2024-08-15 15:33:32.090] [info] [api.cc:212] - mixed_mmul, executed 10 times, duration 1.178826104s, send bytes 4886112 recv bytes 8102560
+[2024-08-15 15:33:32.090] [info] [api.cc:212] - i_less, executed 57 times, duration 0.989917393s, send bytes 1811772 recv bytes 1811772
+[2024-08-15 15:33:32.090] [info] [api.cc:212] - f_mul, executed 234 times, duration 0.601412892s, send bytes 75651760 recv bytes 73436560
+[2024-08-15 15:33:32.090] [info] [api.cc:212] - f_less, executed 107 times, duration 0.363084965s, send bytes 2803212 recv bytes 2803212
+[2024-08-15 15:33:32.090] [info] [api.cc:212] - f_div, executed 12 times, duration 0.309885905s, send bytes 9523200 recv bytes 9888000
+[2024-08-15 15:33:32.090] [info] [api.cc:212] - f_rsqrt, executed 25 times, duration 0.253947459s, send bytes 150600 recv bytes 155720
+[2024-08-15 15:33:32.090] [info] [api.cc:212] - f_add, executed 707 times, duration 0.191531022s, send bytes 0 recv bytes 0
+[2024-08-15 15:33:32.090] [info] [api.cc:212] - _mux, executed 114 times, duration 0.187461807s, send bytes 11681032 recv bytes 3751408
+[2024-08-15 15:33:32.090] [info] [api.cc:212] - i_equal, executed 10 times, duration 0.166441392s, send bytes 10654484 recv bytes 10654484
+[2024-08-15 15:33:32.090] [info] [api.cc:212] - f_equal, executed 42 times, duration 0.104923119s, send bytes 1988044 recv bytes 2688236
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - f_exp, executed 12 times, duration 0.050233937s, send bytes 2304000 recv bytes 2649600
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - f_sub, executed 62 times, duration 0.042452241s, send bytes 0 recv bytes 0
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - seal, executed 25 times, duration 0.03985342s, send bytes 463600 recv bytes 463600
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - mixed_mul, executed 37 times, duration 0.020712429s, send bytes 351600 recv bytes 117200
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - _and, executed 64 times, duration 0.017385242s, send bytes 150781 recv bytes 150781
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - logical_not, executed 25 times, duration 0.004203526s, send bytes 0 recv bytes 0
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - _xor, executed 84 times, duration 0.003833835s, send bytes 0 recv bytes 0
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - i_add, executed 11 times, duration 4.9605e-05s, send bytes 0 recv bytes 0
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - int2fxp, executed 1 times, duration 1.267e-05s, send bytes 0 recv bytes 0
+[2024-08-15 15:33:32.091] [info] [api.cc:209] MPC profiling: total time 14.800947286
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - mmul_aa, executed 476 times, duration 8.71337864s, send bytes 11570000 recv bytes 11570000
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - msb_a2b, executed 186 times, duration 2.517900091s, send bytes 31675464 recv bytes 31675464
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - trunc_a, executed 1034 times, duration 1.083769105s, send bytes 180788960 recv bytes 186473920
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - mul_aa, executed 604 times, duration 0.660403455s, send bytes 42428352 recv bytes 42428352
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - b2a, executed 163 times, duration 0.391725514s, send bytes 18877272 recv bytes 14748736
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - add_aa, executed 1221 times, duration 0.267228003s, send bytes 0 recv bytes 0
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - mul_a1b, executed 131 times, duration 0.22435789s, send bytes 18542880 recv bytes 6180960
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - equal_sp, executed 10 times, duration 0.166373131s, send bytes 10654484 recv bytes 10654484
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - add_ap, executed 834 times, duration 0.166364362s, send bytes 0 recv bytes 0
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - equal_ss, executed 42 times, duration 0.104610488s, send bytes 1988044 recv bytes 2688236
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - not_a, executed 459 times, duration 0.10017357s, send bytes 0 recv bytes 0
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - a2b, executed 37 times, duration 0.073878328s, send bytes 1640800 recv bytes 1640800
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - and_bb, executed 286 times, duration 0.059103808s, send bytes 795381 recv bytes 795381
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - mul_ap, executed 285 times, duration 0.054803938s, send bytes 0 recv bytes 0
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - p2a, executed 15 times, duration 0.039653434s, send bytes 463600 recv bytes 463600
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - concatenate, executed 47 times, duration 0.036666383s, send bytes 0 recv bytes 0
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - add_pp, executed 189 times, duration 0.033227777s, send bytes 0 recv bytes 0
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - not_p, executed 136 times, duration 0.025814158s, send bytes 0 recv bytes 0
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - extract_slice, executed 2256 times, duration 0.016691088s, send bytes 0 recv bytes 0
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - xor_bb, executed 965 times, duration 0.010578954s, send bytes 0 recv bytes 0
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - mmul_ap, executed 72 times, duration 0.009376571s, send bytes 0 recv bytes 0
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - pad, executed 10 times, duration 0.008701189s, send bytes 0 recv bytes 0
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - bitrev_b, executed 62 times, duration 0.007597482s, send bytes 0 recv bytes 0
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - cast_type_b, executed 10 times, duration 0.006137532s, send bytes 0 recv bytes 0
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - reshape, executed 1570 times, duration 0.005738303s, send bytes 0 recv bytes 0
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - make_p, executed 1129 times, duration 0.003577825s, send bytes 0 recv bytes 0
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - rshift_b, executed 534 times, duration 0.003283848s, send bytes 0 recv bytes 0
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - and_bp, executed 450 times, duration 0.00256534s, send bytes 0 recv bytes 0
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - transpose, executed 401 times, duration 0.002357615s, send bytes 0 recv bytes 0
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - xor_bp, executed 60 times, duration 0.001597704s, send bytes 0 recv bytes 0
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - broadcast, executed 206 times, duration 0.000869573s, send bytes 0 recv bytes 0
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - update_slice, executed 10 times, duration 0.00077418s, send bytes 0 recv bytes 0
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - msb_p, executed 14 times, duration 0.000766341s, send bytes 0 recv bytes 0
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - lshift_b, executed 150 times, duration 0.000533871s, send bytes 0 recv bytes 0
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - mul_pp, executed 26 times, duration 0.00023756s, send bytes 0 recv bytes 0
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - p2b, executed 10 times, duration 9.125e-05s, send bytes 0 recv bytes 0
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - common_type_b, executed 10 times, duration 2.926e-05s, send bytes 0 recv bytes 0
+[2024-08-15 15:33:32.091] [info] [api.cc:212] - lshift_p, executed 1 times, duration 9.725e-06s, send bytes 0 recv bytes 0
+[2024-08-15 15:33:32.091] [info] [api.cc:222] Link details: total send bytes 319425237, recv bytes 309319933, send actions 6791

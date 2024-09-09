@@ -126,6 +126,9 @@ enum ProtocolKind {
   // A semi-honest 3PC-protocol for Neural Network, P2 as the helper,
   // (https://eprint.iacr.org/2018/442)
   SECURENN = 5;
+
+  ALKAID = 6;
+  ALBO = 7;
 }
 
 message ValueMetaProto {
