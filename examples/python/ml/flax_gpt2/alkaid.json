@@ -31,7 +31,8 @@
                     "field": "FM64",
                     "enable_pphlo_profile": false,
                     "enable_hal_profile": true,
-                    "fxp_exp_mode": 1
+                    "fxp_exp_mode": 0,
+                    "fxp_exp_iters": 5
                 }
             }
         },

@@ -1,0 +1,34 @@
+An NVIDIA GPU may be present on this machine, but a CUDA-enabled jaxlib is not installed. Falling back to cpu.
+
+------
+Run on CPU
+
+------
+Run on SPU
+Traceback (most recent call last):
+  File "/home/admin/dev/spu/./bazel-out/k8-fastbuild/bin/examples/python/ml/flax_gpt2/pumabench.runfiles/spulib/examples/python/ml/flax_gpt2/pumabench.py", line 170, in <module>
+    outputs_ids = run_on_spu()
+  File "/home/admin/dev/spu/./bazel-out/k8-fastbuild/bin/examples/python/ml/flax_gpt2/pumabench.runfiles/spulib/examples/python/ml/flax_gpt2/pumabench.py", line 158, in run_on_spu
+    outputs_ids = ppd.device("SPU")(
+  File "/home/admin/dev/spu/bazel-out/k8-fastbuild/bin/examples/python/ml/flax_gpt2/pumabench.runfiles/spulib/spu/utils/distributed_impl.py", line 681, in __call__
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+  File "/root/miniconda3/lib/python3.10/concurrent/futures/_base.py", line 649, in __exit__
+    self.shutdown(wait=True)
+  File "/root/miniconda3/lib/python3.10/concurrent/futures/thread.py", line 235, in shutdown
+    t.join()
+  File "/root/miniconda3/lib/python3.10/threading.py", line 1096, in join
+    self._wait_for_tstate_lock()
+  File "/root/miniconda3/lib/python3.10/threading.py", line 1116, in _wait_for_tstate_lock
+    if lock.acquire(block, timeout):
+KeyboardInterrupt
+Exception ignored in: <module 'threading' from '/root/miniconda3/lib/python3.10/threading.py'>
+Traceback (most recent call last):
+  File "/root/miniconda3/lib/python3.10/threading.py", line 1537, in _shutdown
+    atexit_call()
+  File "/root/miniconda3/lib/python3.10/concurrent/futures/thread.py", line 31, in _python_exit
+    t.join()
+  File "/root/miniconda3/lib/python3.10/threading.py", line 1096, in join
+    self._wait_for_tstate_lock()
+  File "/root/miniconda3/lib/python3.10/threading.py", line 1116, in _wait_for_tstate_lock
+    if lock.acquire(block, timeout):
+KeyboardInterrupt: 

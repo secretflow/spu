@@ -128,7 +128,7 @@ enum ProtocolKind {
   SECURENN = 5;
 
   ALKAID = 6;
-  ALKAID_BOOLEAN = 7;
+  ALBO = 7;
 }
 
 message ValueMetaProto {

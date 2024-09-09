@@ -19,6 +19,9 @@ bazel build //examples/python/ml/flax_mlp:flax_mlp --jobs 32
 bazel build //examples/python/ml/flax_gpt2:flax_gpt2 --jobs 32
 ./bazel-out/k8-fastbuild/bin/examples/python/ml/flax_gpt2/flax_gpt2
 
+bazel build //examples/python/ml/flax_gpt2:pumabench --jobs 32
+./bazel-out/k8-fastbuild/bin/examples/python/ml/flax_gpt2/pumabench
+
 bazel build //libspu/mpc:mfippa_test --jobs 32
 ./bazel-out/k8-fastbuild/bin/libspu/mpc/mfippa_test
 
@@ -33,6 +36,17 @@ unset https_proxy
 
 ./bazel-out/k8-fastbuild/bin/examples/python/ml/flax_gpt2/flax_gpt2 -c examples/python/ml/flax_gpt2/3pc.json
 ./bazel-out/k8-fastbuild/bin/examples/python/ml/flax_gpt2/flax_gpt2 -c examples/python/ml/flax_gpt2/alkaid.json
+
+./bazel-out/k8-fastbuild/bin/examples/python/ml/flax_gpt2/primitive_test -c examples/python/ml/flax_gpt2/3pc.json
+./bazel-out/k8-fastbuild/bin/examples/python/ml/flax_gpt2/primitive_test -c examples/python/ml/flax_gpt2/alkaid.json
+
+./bazel-out/k8-fastbuild/bin/examples/python/ml/flax_gpt2/pumabench -c examples/python/ml/flax_gpt2/3pc.json
+./bazel-out/k8-fastbuild/bin/examples/python/ml/flax_gpt2/pumabench -c examples/python/ml/flax_gpt2/alkaid.json
+
+nohup ./bazel-bin/examples/python/utils/nodectl  -c examples/python/ml/flax_gpt2/3pc.json up > aby3.out 2>&1 &
+nohup ./bazel-bin/examples/python/utils/nodectl -c examples/python/ml/flax_gpt2/alkaid.json up > alkaid.out 2>&1 &
+nohup ./bazel-out/k8-fastbuild/bin/examples/python/ml/flax_gpt2/pumabench -c examples/python/ml/flax_gpt2/3pc.json >/dev/null 2>&1 &
+nohup ./bazel-out/k8-fastbuild/bin/examples/python/ml/flax_gpt2/flax_gpt2 -c examples/python/ml/flax_gpt2/alkaid.json >/dev/null 2>&1 &
 ```
 
 0. my view: 动态比特向量容器
@@ -48,3 +62,7 @@ unset https_proxy
 2. a2b dynamic
 3. bit2a ([x] -> [x^rb] -> y=x^rb -> y*ra)
 4. eqz 
+
+0. 128 bit ppa
+1. 61 vs 62 vs 63
+2. offline

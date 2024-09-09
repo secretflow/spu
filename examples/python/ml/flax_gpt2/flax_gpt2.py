@@ -42,7 +42,7 @@ pretrained_model = FlaxGPT2LMHeadModel.from_pretrained("gpt2")
 
 # greedy search
 # ref: https://huggingface.co/blog/how-to-generate
-def text_generation(input_ids, params, token_num=3):
+def text_generation(input_ids, params, token_num=1):
     config = GPT2Config()
     model = FlaxGPT2LMHeadModel(config=config)
 
@@ -57,7 +57,7 @@ def text_generation(input_ids, params, token_num=3):
 def run_on_cpu():
     # encode context the generation is conditioned on
     inputs_ids = tokenizer.encode(
-        'I enjoy walking with my cute dog', return_tensors='jax'
+        'I enjoy walking with my cute dog which is named', return_tensors='jax'
     )
     outputs_ids = text_generation(inputs_ids, pretrained_model.params)
     return outputs_ids
@@ -66,7 +66,7 @@ def run_on_cpu():
 def run_on_spu():
     # encode context the generation is conditioned on
     inputs_ids = tokenizer.encode(
-        'I enjoy walking with my cute dog', return_tensors='jax'
+        'I enjoy walking with my cute dog which is named', return_tensors='jax'
     )
 
     input_ids = ppd.device("P1")(lambda x: x)(inputs_ids)

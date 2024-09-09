@@ -20,30 +20,30 @@
 
 import argparse
 import json
-import jax
+
 import jax.numpy as jnp
 import jax.nn as jnn
-
-import numpy as np
-import spu.utils.distributed as ppd
-
 import flax.linen as fnn
-from contextlib import contextmanager
-from typing import Any, Callable, Dict, Optional, Tuple, Union
+# import datasets
+
+import spu.utils.distributed as ppd
+# import spu.intrinsic as intrinsic
 import spu.spu_pb2 as spu_pb2
 
+from contextlib import contextmanager
+from typing import Any, Callable, Dict, Optional, Tuple, Union
+
 Array = Any
+
+parser = argparse.ArgumentParser(description='distributed driver.')
+parser.add_argument("-c", "--config", default="examples/python/ml/flax_gpt2/3pc.json")
+args = parser.parse_args()
+
 copts = spu_pb2.CompilerOptions()
 copts.enable_pretty_print = False
 copts.xla_pp_kind = 2
 # enable x / broadcast(y) -> x * broadcast(1/y)
 copts.enable_optimize_denominator_with_broadcast = True
-
-VECTOR_LEN = 1024 * 1024
-
-parser = argparse.ArgumentParser(description='distributed driver.')
-parser.add_argument("-c", "--config", default="examples/python/ml/flax_gpt2/3pc.json")
-args = parser.parse_args()
 
 with open(args.config, 'r') as file:
     conf = json.load(file)
@@ -112,115 +112,60 @@ def hack_gelu_context(msg: str, enabled: bool = False):
         yield
         return
     # hijack some target functions
-    raw_gelu = jnn.gelu
-    jnn.gelu = hack_gelu
+    raw_gelu = fnn.gelu
+    fnn.gelu = hack_gelu
     yield
     # recover back
-    jnn.gelu = raw_gelu
+    fnn.gelu = raw_gelu
     
-def show_l2(secret: float, plain: float):
-    print("Stastic.")
-    print(f"l2: {jnp.linalg.norm(secret - plain)}")
-    print(f"medium: {jnp.median(secret - plain)}")
-    print(f"max abs: {jnp.max(jnp.abs(secret - plain))}")
-    print(f"min abs: {jnp.min(jnp.abs(secret - plain))}")
+with hack_gelu_context("hijack jax gelu", enabled=True):
+    from transformers import AutoTokenizer, FlaxGPT2LMHeadModel, GPT2Config
+    tokenizer = AutoTokenizer.from_pretrained("gpt2")
+    pretrained_model = FlaxGPT2LMHeadModel.from_pretrained("gpt2")
 
-'''
-Primitive test.
-'''
-def msb(x):
-    return x > 0
-def eqz(x):
-    return x == 0
-def a2b(x):
-    return x ^ 1
-def b2a(x):
-    return (x ^ 1) + 1
-def exp(x):
-    return jnp.exp(x)
-def relu(x):
-    return jnn.relu(x)
-def gelu(x):
-    with hack_gelu_context("hijack jax gelu", enabled=True):
-        return jnn.gelu(x)
-def softmax(x):
-    with hack_softmax_context("hijack jax softmax", enabled=True):
-        return jnn.softmax(x)
-def sigmoid(x):
-    return jnn.sigmoid(x)
+# greedy search
+# ref: https://huggingface.co/blog/how-to-generate
+def text_generation(input_ids, params, token_num=1):
+    config = GPT2Config()
+    model = FlaxGPT2LMHeadModel(config=config)
 
-def sample_input():
-    np.random.seed()
-    x = np.random.randint(-10, 10, VECTOR_LEN)
-    return x
+    with hack_softmax_context("hijack jax softmax", enabled = True):
+        for _ in range(token_num):
+            outputs = model(input_ids=input_ids, params=params)
+            next_token_logits = outputs[0][0, -1, :]
+            next_token = jnp.argmax(next_token_logits)
+            input_ids = jnp.concatenate([input_ids, jnp.array([[next_token]])], axis=1)
+    return input_ids
 
-def exp_msb():
-    x = sample_input()
-    x_spu = ppd.device("P1")(lambda x: x)(x)
-    msb_spu = ppd.device("SPU")(msb)(x_spu)
-    msb_spu = ppd.get(msb_spu)
-    show_l2(msb_spu, (x > 0).astype(np.float64))
 
-# def exp_eqz():
-#     x = sample_input()
-#     x_spu = ppd.device("P1")(lambda x: x)(x)
-#     eqz_spu = ppd.device("SPU")(eqz)(x_spu)
+def run_on_cpu():
+    # encode context the generation is conditioned on
+    inputs_ids = tokenizer.encode(
+        'I enjoy walking with my cute dog which is named', return_tensors='jax'
+    )
+    outputs_ids = text_generation(inputs_ids, pretrained_model.params)
+    return outputs_ids
 
-def exp_ppa():
-    x = sample_input()
-    x_spu = ppd.device("P1")(lambda x: x)(x)
-    b2a_spu = ppd.device("SPU")(b2a)(x_spu)
-    b2a_spu = ppd.get(b2a_spu)
-    show_l2(b2a_spu, (x ^ 1).astype(np.float64) + 1)
 
-def exp_a2b():
-    x = sample_input()
-    x_spu = ppd.device("P1")(lambda x: x)(x)
-    a2b_spu = ppd.device("SPU")(a2b)(x_spu)
-    a2b_spu = ppd.get(a2b_spu)
-    show_l2(a2b_spu, (x ^ 1).astype(np.float64))
-    
-def exp_exp():
-    x = sample_input()
-    x_spu = ppd.device("P1")(lambda x: x)(x)
-    exp_spu = ppd.device("SPU")(exp)(x_spu)
-    exp_spu = ppd.get(exp_spu)
-    show_l2(exp_spu, jnp.exp(x))
-    
-def exp_relu():
-    x = sample_input()
-    x_spu = ppd.device("P1")(lambda x: x)(x)
-    b2a_spu = ppd.device("SPU")(relu)(x_spu)
-    show_l2(x_spu, x)
-    
-def exp_gelu():
-    x = sample_input()
-    x_spu = ppd.device("P1")(lambda x: x)(x)
-    b2a_spu = ppd.device("SPU")(gelu)(x_spu)
-    show_l2(x_spu, x)
-    
-def exp_softmax():
-    x = sample_input()
-    x_spu = ppd.device("P1")(lambda x: x)(x)
-    b2a_spu = ppd.device("SPU")(softmax)(x_spu)
-    show_l2(x_spu, x)
-    
-def exp_sigmoid():
-    x = sample_input()
-    x_spu = ppd.device("P1")(lambda x: x)(x)
-    b2a_spu = ppd.device("SPU")(sigmoid)(x_spu)
-    b2a_spu = ppd.get(b2a_spu)
-    show_l2(x_spu, x)
+def run_on_spu():
+    # encode context the generation is conditioned on
+    inputs_ids = tokenizer.encode(
+        'I enjoy walking with my cute dog which is named', return_tensors='jax'
+    )
+
+    input_ids = ppd.device("P1")(lambda x: x)(inputs_ids)
+    params = ppd.device("P2")(lambda x: x)(pretrained_model.params)
+    outputs_ids = ppd.device("SPU")(
+        text_generation, copts=copts
+    )(input_ids, params)
+    outputs_ids = ppd.get(outputs_ids)
+    return outputs_ids
+
 
 if __name__ == '__main__':
-    # exp_eqz()
-    
-    exp_msb()
-    exp_ppa()
-    exp_a2b()
-
-    # exp_exp()
-    # exp_relu()
-    # exp_gelu()
-    # exp_softmax()
-    # exp_sigmoid()
+    print('\n------\nRun on CPU')
+    # outputs_ids = run_on_cpu()
+    # print(tokenizer.decode(outputs_ids[0], skip_special_tokens=True))
+    print('\n------\nRun on SPU')
+    outputs_ids = run_on_spu()
+    print(tokenizer.decode(outputs_ids[0], skip_special_tokens=True))
