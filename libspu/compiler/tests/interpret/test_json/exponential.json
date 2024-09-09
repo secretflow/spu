@@ -1,0 +1,24 @@
+{
+    "name": "exponential",
+    "template": "basic_unary",
+    "testcases": [
+        {
+            "inputs": [
+                {
+                    "data": "[[0.0, 1.0], [2.0, 3.0]]",
+                    "shape": "2x2",
+                    "dtype": "f64"
+                }
+            ],
+            "expected": [
+                {
+                    "data": "[[1.000000e+00, 2.7182818284590451], [7.3890560989306504, 20.085536923187668]]",
+                    "shape": "2x2",
+                    "dtype": "f64"
+                }
+            ],
+            "checker": "expect_almost_eq",
+            "tol": 0.4
+        }
+    ]
+}

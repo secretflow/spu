@@ -115,13 +115,32 @@ def _jax_compilation(
 
                 register_backend_factory('interpreter', xla_back, priority=-100)
 
-    fn, kwargs = _argnames_partial_except(fn, static_argnames, kwargs)
+    jax_version = jax.__version_info__
 
-    cfn, output = jax.xla_computation(
-        fn, return_shape=True, static_argnums=static_argnums, backend="interpreter"
-    )(*args, **kwargs)
+    if jax_version[0] > 1 or jax_version[1] > 4 or jax_version[2] > 29:
+        # xla_computation is deprecated since 0.4.30, move to new api
+        lowered = (
+            jax.jit(
+                fn,
+                static_argnums=static_argnums,
+                static_argnames=static_argnames,
+                keep_unused=True,
+            )
+            .trace(*args, **kwargs)
+            .lower(lowering_platforms=('interpreter',))
+        )
+        return (
+            lowered.compiler_ir('hlo').as_serialized_hlo_module_proto(),
+            lowered.out_info,
+        )
+    else:
+        fn, kwargs = _argnames_partial_except(fn, static_argnames, kwargs)
 
-    return cfn.as_serialized_hlo_module_proto(), output
+        cfn, output = jax.xla_computation(
+            fn, return_shape=True, static_argnums=static_argnums, backend="interpreter"
+        )(*args, **kwargs)
+
+        return cfn.as_serialized_hlo_module_proto(), output
 
 
 ## Frontend patches
@@ -262,7 +281,7 @@ def torch_compile(
     fn: Callable,
     args_flat: List,
     m_args_flat: List,
-    state_dict: collections.OrderedDict(),
+    state_dict: collections.OrderedDict,
     copts=spu_pb2.CompilerOptions(),
 ):
     import os
@@ -276,8 +295,10 @@ def torch_compile(
     assert isinstance(
         fn, torch.export.ExportedProgram
     ), "input should be an exported torch model"
-
     os.environ['PJRT_DEVICE'] = 'CPU'
+    # remove xla flags imported by torch-xla
+    os.unsetenv("XLA_FLAGS")
+
     options = stablehlo.StableHLOExportOptions()
     options.override_tracing_arguments = m_args_flat
     shlo = stablehlo.exported_program_to_stablehlo(fn, options)

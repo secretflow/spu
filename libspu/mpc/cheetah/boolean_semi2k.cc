@@ -25,7 +25,7 @@ namespace {
 size_t getNumBits(const NdArrayRef& in) {
   if (in.eltype().isa<Pub2kTy>()) {
     const auto field = in.eltype().as<Pub2kTy>()->field();
-    return DISPATCH_ALL_FIELDS(field, "_",
+    return DISPATCH_ALL_FIELDS(field,
                                [&]() { return maxBitWidth<ring2k_t>(in); });
   } else if (in.eltype().isa<BShrTy>()) {
     return in.eltype().as<BShrTy>()->nbits();
@@ -44,18 +44,21 @@ void CommonTypeB::evaluate(KernelEvalContext* ctx) const {
   const Type& lhs = ctx->getParam<Type>(0);
   const Type& rhs = ctx->getParam<Type>(1);
 
-  SPU_ENFORCE(lhs == rhs, "cheetah always use same bshare type, lhs={}, rhs={}",
-              lhs, rhs);
+  const auto lhs_field = lhs.as<BShrTy>()->field();
+  const auto rhs_field = rhs.as<BShrTy>()->field();
+  const size_t lhs_nbits = lhs.as<BShrTy>()->nbits();
+  const size_t rhs_nbits = rhs.as<BShrTy>()->nbits();
 
-  ctx->setOutput(lhs);
+  SPU_ENFORCE(lhs_field == rhs_field,
+              "cheetah always use same bshare field, lhs={}, rhs={}", lhs_field,
+              rhs_field);
+
+  ctx->pushOutput(makeType<BShrTy>(lhs_field, std::max(lhs_nbits, rhs_nbits)));
 }
 
 NdArrayRef CastTypeB::proc(KernelEvalContext*, const NdArrayRef& in,
                            const Type& to_type) const {
-  SPU_ENFORCE(in.eltype() == to_type,
-              "cheetah always use same bshare type, lhs={}, rhs={}",
-              in.eltype(), to_type);
-  return in;
+  return in.as(to_type);
 }
 
 NdArrayRef B2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
@@ -78,8 +81,8 @@ NdArrayRef P2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   if (comm->getRank() == 0) {
     ring_xor_(x, in);
   }
-
-  return makeBShare(x, field, getNumBits(in));
+  auto nbits = getNumBits(in) == 0 ? 1 : getNumBits(in);
+  return makeBShare(x, field, nbits);
 }
 
 NdArrayRef AndBP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
@@ -90,7 +93,7 @@ NdArrayRef AndBP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
   const size_t out_nbits = std::min(getNumBits(lhs), getNumBits(rhs));
   NdArrayRef out(makeType<BShrTy>(field, out_nbits), lhs.shape());
 
-  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> _lhs(lhs);
     NdArrayView<ring2k_t> _rhs(rhs);
     NdArrayView<ring2k_t> _out(out);
@@ -127,32 +130,30 @@ NdArrayRef XorBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
 }
 
 NdArrayRef LShiftB::proc(KernelEvalContext*, const NdArrayRef& in,
-                         size_t shift) const {
+                         const Sizes& shift) const {
   const auto field = in.eltype().as<Ring2k>()->field();
-  shift %= SizeOf(field) * 8;
-
-  size_t out_nbits = in.eltype().as<BShare>()->nbits() + shift;
+  size_t out_nbits = in.eltype().as<BShare>()->nbits() +
+                     *std::max_element(shift.begin(), shift.end());
   out_nbits = std::clamp(out_nbits, static_cast<size_t>(0), SizeOf(field) * 8);
 
   return makeBShare(ring_lshift(in, shift), field, out_nbits);
 }
 
 NdArrayRef RShiftB::proc(KernelEvalContext*, const NdArrayRef& in,
-                         size_t shift) const {
+                         const Sizes& shift) const {
   const auto field = in.eltype().as<Ring2k>()->field();
-  shift %= SizeOf(field) * 8;
 
-  size_t nbits = in.eltype().as<BShare>()->nbits();
-  size_t out_nbits = nbits - std::min(nbits, shift);
-  SPU_ENFORCE(nbits <= SizeOf(field) * 8);
+  int64_t nbits = in.eltype().as<BShare>()->nbits();
+  int64_t out_nbits =
+      nbits - std::min(nbits, *std::min_element(shift.begin(), shift.end()));
+  SPU_ENFORCE(nbits <= static_cast<int64_t>(SizeOf(field) * 8));
 
   return makeBShare(ring_rshift(in, shift), field, out_nbits);
 }
 
 NdArrayRef ARShiftB::proc(KernelEvalContext*, const NdArrayRef& in,
-                          size_t shift) const {
+                          const Sizes& shift) const {
   const auto field = in.eltype().as<Ring2k>()->field();
-  shift %= SizeOf(field) * 8;
 
   // arithmetic right shift expects to work on ring, or the behaviour is
   // undefined.
@@ -180,7 +181,7 @@ NdArrayRef BitIntlB::proc(KernelEvalContext*, const NdArrayRef& in,
   NdArrayRef out(in.eltype(), in.shape());
   auto numel = in.numel();
 
-  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> _in(in);
     NdArrayView<ring2k_t> _out(out);
 
@@ -201,7 +202,7 @@ NdArrayRef BitDeintlB::proc(KernelEvalContext*, const NdArrayRef& in,
   NdArrayRef out(in.eltype(), in.shape());
   auto numel = in.numel();
 
-  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> _in(in);
     NdArrayView<ring2k_t> _out(out);
 

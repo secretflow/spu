@@ -39,9 +39,10 @@ class PrgState : public State {
   uint64_t priv_counter_ = 0;
 
   // Pseudorandom Secret Sharing seeds.
-  uint128_t next_seed_ = 0;
   uint128_t self_seed_ = 0;
-  uint64_t prss_counter_ = 0;
+  uint128_t next_seed_ = 0;
+  uint64_t r0_counter_ = 0;  // cnt for self_seed
+  uint64_t r1_counter_ = 0;  // cnt for next_seed
 
  public:
   static constexpr char kBindName[] = "PrgState";
@@ -65,7 +66,7 @@ class PrgState : public State {
   // This correlation could be used to construct zero shares.
   //
   // Note: ignore_first, ignore_second is for perf improvement.
-  enum class GenPrssCtrl { Both, First, Second, None };
+  enum class GenPrssCtrl { Both, First, Second };
   std::pair<NdArrayRef, NdArrayRef> genPrssPair(FieldType field,
                                                 const Shape& shape,
                                                 GenPrssCtrl ctrl);
@@ -73,29 +74,21 @@ class PrgState : public State {
   template <typename T>
   void fillPrssPair(T* r0, T* r1, size_t numel, GenPrssCtrl ctrl) {
     switch (ctrl) {
-      case GenPrssCtrl::None: {
-        // Nothing to generate, pure dummy
-        prss_counter_ = yacl::crypto::DummyUpdateRandomCount(prss_counter_,
-                                                             numel * sizeof(T));
-        return;
-      }
       case GenPrssCtrl::First: {
-        prss_counter_ = yacl::crypto::FillPRand(
-            kAesType, self_seed_, 0, prss_counter_, absl::MakeSpan(r0, numel));
+        r0_counter_ = yacl::crypto::FillPRand(
+            kAesType, self_seed_, 0, r0_counter_, absl::MakeSpan(r0, numel));
         return;
       }
       case GenPrssCtrl::Second: {
-        prss_counter_ = yacl::crypto::FillPRand(
-            kAesType, next_seed_, 0, prss_counter_, absl::MakeSpan(r1, numel));
+        r1_counter_ = yacl::crypto::FillPRand(
+            kAesType, next_seed_, 0, r1_counter_, absl::MakeSpan(r1, numel));
         return;
       }
       case GenPrssCtrl::Both: {
-        auto counter0 = yacl::crypto::FillPRand(
-            kAesType, self_seed_, 0, prss_counter_, absl::MakeSpan(r0, numel));
-        auto counter1 = yacl::crypto::FillPRand(
-            kAesType, next_seed_, 0, prss_counter_, absl::MakeSpan(r1, numel));
-        SPU_ENFORCE(counter0 == counter1);
-        prss_counter_ = counter0;
+        r0_counter_ = yacl::crypto::FillPRand(
+            kAesType, self_seed_, 0, r0_counter_, absl::MakeSpan(r0, numel));
+        r1_counter_ = yacl::crypto::FillPRand(
+            kAesType, next_seed_, 0, r1_counter_, absl::MakeSpan(r1, numel));
         return;
       }
     }

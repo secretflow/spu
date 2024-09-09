@@ -88,6 +88,10 @@ def rand_default(rng):
     return partial(_rand_dtype, rng)
 
 
+def rand_extra_large(rng):
+    return partial(jtu._rand_dtype, rng.randn, scale=2**30)
+
+
 def rand_not_small_nonzero(rng):
     def post(x):
         x = np.where(x == 0, np.array(1, dtype=x.dtype), x)
@@ -140,7 +144,7 @@ JAX_ONE_TO_ONE_OP_RECORDS = [
     REC("array_equiv", 2, number_dtypes, all_shapes, jtu.rand_some_equal),
     REC("reciprocal", 1, float_dtypes, all_shapes, rand_default),
     REC("subtract", 2, number_dtypes, all_shapes, rand_default),
-    REC("signbit", 1, number_dtypes, all_shapes, rand_default),
+    REC("signbit", 1, number_dtypes, all_shapes, rand_extra_large),
     REC("trunc", 1, number_dtypes, all_shapes, rand_default),
     REC("sin", 1, number_dtypes, all_shapes, rand_default),
     REC("cos", 1, number_dtypes, all_shapes, rand_default),
@@ -156,42 +160,16 @@ JAX_ONE_TO_ONE_OP_RECORDS = [
     REC("sinh", 1, number_dtypes, all_shapes, jtu.rand_small),
     REC("cosh", 1, number_dtypes, all_shapes, jtu.rand_small),
     REC("tanh", 1, number_dtypes, all_shapes, jtu.rand_default),
-    REC(
-        "arcsin",
-        1,
-        number_dtypes,
-        all_shapes,
-        jtu.rand_small,
-        Status.SysError,
-        "stablehlo.atan2",
-    ),  # FIXME: stablehlo.atan2
-    REC(
-        "arccos",
-        1,
-        number_dtypes,
-        all_shapes,
-        jtu.rand_small,
-        Status.SysError,
-        "stablehlo.atan2",
-    ),  # FIXME: stablehlo.atan2
-    REC(
-        "arctan",
-        1,
-        number_dtypes,
-        all_shapes,
-        jtu.rand_small,
-        Status.SysError,
-        "stablehlo.atan2",
-    ),  # FIXME: stablehlo.atan2
+    REC("arcsin", 1, number_dtypes, all_shapes, jtu.rand_small),
+    REC("arccos", 1, number_dtypes, all_shapes, jtu.rand_small),
+    REC("arctan", 1, number_dtypes, all_shapes, jtu.rand_small),
     REC(
         "arctan2",
         2,
         float_dtypes,
         all_shapes,
-        jtu.rand_small,
-        Status.SysError,
-        "stablehlo.atan2",
-    ),  # FIXME: stablehlo.atan2
+        rand_default,
+    ),
     REC("arcsinh", 1, number_dtypes, all_shapes, jtu.rand_small),
     REC(
         "arccosh", 1, number_dtypes, all_shapes, rand_default, Status.SysError, "nan"
@@ -209,25 +187,8 @@ JAX_ONE_TO_ONE_OP_RECORDS = [
 
 
 COMPOUND_OP_RECORDS = [
-    REC(
-        "angle",
-        1,
-        number_dtypes,
-        all_shapes,
-        rand_default,
-        Status.SysError,
-        "stablehlo.atan2",
-    ),  # FIXME: stablehlo.atan2
-    REC(
-        "angle",
-        1,
-        number_dtypes,
-        all_shapes,
-        rand_default,
-        Status.SysError,
-        "stablehlo.atan2",
-        kwargs={'deg': True},
-    ),  # FIXME: stablehlo.atan2
+    REC("angle", 1, number_dtypes, all_shapes, rand_default),
+    REC("angle", 1, number_dtypes, all_shapes, rand_default, kwargs={'deg': True}),
     REC("atleast_1d", 1, number_dtypes, all_shapes, rand_default),
     REC("atleast_2d", 1, number_dtypes, all_shapes, rand_default),
     REC("atleast_3d", 1, number_dtypes, all_shapes, rand_default),
@@ -345,6 +306,7 @@ COMPOUND_OP_RECORDS = [
 ]
 
 BITWISE_OP_RECORDS = [
+    REC("bitwise_count", 1, int_dtypes, all_shapes, jtu.rand_default),
     REC("bitwise_and", 2, int_dtypes, all_shapes, jtu.rand_bool),
     REC("bitwise_not", 1, int_dtypes, all_shapes, jtu.rand_bool),
     REC("invert", 1, int_dtypes, all_shapes, jtu.rand_bool),

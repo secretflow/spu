@@ -73,6 +73,21 @@ class B2A_Randbit : public UnaryKernel {
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x) const override;
 };
 
+class B2A_Disassemble : public DisassembleKernel {
+ public:
+  static constexpr char kBindName[] = "b2a_disassemble";
+
+  ce::CExpr latency() const override { return ce::Const(1); }
+
+  ce::CExpr comm() const override {
+    return ce::K() * (ce::N() - 1)  // Open bit masked value
+        ;
+  }
+
+  std::vector<NdArrayRef> proc(KernelEvalContext* ctx,
+                               const NdArrayRef& x) const override;
+};
+
 // Note: current only for 2PC.
 class MsbA2B : public UnaryKernel {
  public:

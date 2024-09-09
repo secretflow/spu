@@ -10,7 +10,22 @@
 >
 > please add your unreleased change here.
 
-## TBD
+- [Feature] Add more send/recv actions profiling
+
+## 20240716
+
+- [SPU] 0.9.2b0 release
+- [Feature] Support jax.numpy.bitwise_count
+- [Bugfix] Fix jax.numpy.signbit wrong answer with very large input
+
+## 20240621
+
+- [SPU] 0.9.1b0 release
+- [Feature] Add ORAM based dynamic_slice for ABY3
+- [Feature] Add Atan2Op support
+- [API] Add beaver cache support for semi2k (**experimental**)
+
+## 20240415
 
 - [Feature] Add minimax approximation for log
 - [Feature] Support jax.lax.top_k

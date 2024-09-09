@@ -113,7 +113,7 @@ CircuitBasicBlock<Value> MakeSPDZBasicBlock(SPUContext* ctx) {
   cbb._and = [=](T const& x, T const& y) -> T {
     COMMUTATIVE_DISPATCH(and_pp, and_bp, and_bb);
   };
-  cbb.lshift = [=](T const& x, size_t bits) -> T {
+  cbb.lshift = [=](T const& x, const Sizes& bits) -> T {
     if (_IsP(x)) {
       return lshift_p(ctx, x, bits);
     } else if (_IsB(x)) {
@@ -121,7 +121,7 @@ CircuitBasicBlock<Value> MakeSPDZBasicBlock(SPUContext* ctx) {
     }
     SPU_THROW("unsupported op x={}", x);
   };
-  cbb.rshift = [=](T const& x, size_t bits) -> T {
+  cbb.rshift = [=](T const& x, const Sizes& bits) -> T {
     if (_IsP(x)) {
       return rshift_p(ctx, x, bits);
     } else if (_IsB(x)) {
@@ -191,7 +191,7 @@ NdArrayRef Bit2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   ring_bitmask_(c, 0, 1);
 
   // 5. [x] = c + [r] - 2 * c * [r]
-  return DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  return DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> _c(c);
     NdArrayView<ring2k_t> _r(r);
     NdArrayView<ring2k_t> _r_mac(r_mac);
@@ -292,7 +292,7 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   ring_bitmask_(c, 0, 1);
 
   // 4. [x] = c + [r] - 2 * c * [r]
-  return DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  return DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayRef out(makeType<AShrTy>(field, true), out_shape);
     NdArrayRef expand_out(makeType<AShrTy>(field, true), _in.shape());
 
@@ -354,8 +354,8 @@ NdArrayRef MSB::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   //    then set r = \sum r_i 2^{i}
   for (int64_t i = 0; i < k; ++i) {
     auto [_r_i, _r_i_mac] = beaver->AuthRandBit(field, in.shape(), k, s);
-    ring_add_(_r_val, ring_lshift(_r_i, i));
-    ring_add_(_r_mac, ring_lshift(_r_i_mac, i));
+    ring_add_(_r_val, ring_lshift(_r_i, {i}));
+    ring_add_(_r_mac, ring_lshift(_r_i_mac, {i}));
     // record r_i & r_i_mac
     _r_vec.emplace_back(std::move(_r_i));
     _r_mac_vec.emplace_back(std::move(_r_i_mac));
@@ -381,8 +381,8 @@ NdArrayRef MSB::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
   const auto ty = makeType<RingTy>(field);
   for (int64_t i = 0; i < k - 1; ++i) {
-    ring_add_(_ar, ring_lshift(_r_vec[i], i));
-    ring_add_(_ar_mac, ring_lshift(_r_mac_vec[i], i));
+    ring_add_(_ar, ring_lshift(_r_vec[i], {i}));
+    ring_add_(_ar_mac, ring_lshift(_r_mac_vec[i], {i}));
 
     auto at_r_i = makeAShare(_r_vec[i], _r_mac_vec[i], field);
     auto bt_r_i = wrap_a2bit(ctx->sctx(), at_r_i);
@@ -415,8 +415,8 @@ NdArrayRef MSB::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   //            d  = a  - a'
   auto _au = getValueShare(au);
   auto _au_mac = getMacShare(au);
-  auto _aa = ring_sub(ring_lshift(_au, k - 1), _ar);
-  auto _aa_mac = ring_sub(ring_lshift(_au_mac, k - 1), _ar_mac);
+  auto _aa = ring_sub(ring_lshift(_au, {k - 1}), _ar);
+  auto _aa_mac = ring_sub(ring_lshift(_au_mac, {k - 1}), _ar_mac);
   if (comm->getRank() == 0) {
     ring_add_(_aa, _c_open);
   }
@@ -426,18 +426,18 @@ NdArrayRef MSB::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
   // 7. let e = d + 2^{k-1} b, then open e
   auto [_b, _b_mac] = beaver->AuthRandBit(field, in.shape(), k, s);
-  auto _e = ring_add(_d, ring_lshift(_b, k - 1));
-  auto _e_mac = ring_add(_d_mac, ring_lshift(_b_mac, k - 1));
+  auto _e = ring_add(_d, ring_lshift(_b, {k - 1}));
+  auto _e_mac = ring_add(_d_mac, ring_lshift(_b_mac, {k - 1}));
 
   auto [e_open, e_zero_mac] = beaver->BatchOpen(_e, _e_mac, k, s);
   SPU_ENFORCE(beaver->BatchMacCheck(e_open, e_zero_mac, k, s));
 
   // 8. e' be the most significant bit of e
-  auto _ee = ring_bitmask(ring_rshift(e_open, k - 1), 0, 1);
+  auto _ee = ring_bitmask(ring_rshift(e_open, {k - 1}), 0, 1);
 
   // 9. output e_{k-1} + b - 2 e_{k-1} b
-  auto _ret = ring_sub(_b, ring_lshift(ring_mul(_b, _ee), 1));
-  auto _ret_mac = ring_sub(_b_mac, ring_lshift(ring_mul(_b_mac, _ee), 1));
+  auto _ret = ring_sub(_b, ring_lshift(ring_mul(_b, _ee), {1}));
+  auto _ret_mac = ring_sub(_b_mac, ring_lshift(ring_mul(_b_mac, _ee), {1}));
   if (comm->getRank() == 0) {
     ring_add_(_ret, _ee);
   }

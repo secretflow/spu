@@ -54,7 +54,7 @@ PrgState::PrgState(const std::shared_ptr<yacl::link::Context>& lctx) {
 
     constexpr char kCommTag[] = "Random:PRSS";
 
-    // send seed to next party, receive seed from prev party
+    // send seed to prev party, receive seed from next party
     lctx->SendAsync(lctx->PrevRank(), yacl::SerializeUint128(self_seed_),
                     kCommTag);
     next_seed_ =

@@ -195,7 +195,7 @@ TEST_P(ArithmeticTest, MulA1B) {
       return;
     }
 
-    const size_t K = spu::SizeOf(conf.field()) * 8;
+    const int64_t K = spu::SizeOf(conf.field()) * 8;
 
     /* GIVEN */
     auto p0 = rand_p(obj.get(), conf.protocol() == ProtocolKind::CHEETAH
@@ -204,12 +204,12 @@ TEST_P(ArithmeticTest, MulA1B) {
     auto p1 = rand_p(obj.get(), conf.protocol() == ProtocolKind::CHEETAH
                                     ? Shape({200, 26})
                                     : kShape);
-    p1 = rshift_p(obj.get(), p1, K - 1);
+    p1 = rshift_p(obj.get(), p1, {K - 1});
     auto a0 = p2a(obj.get(), p0);
     auto a1 = p2b(obj.get(), p1);
     // hint runtime this is a 1bit value.
-    a1 = lshift_b(obj.get(), a1, K - 1);
-    a1 = rshift_b(obj.get(), a1, K - 1);
+    a1 = lshift_b(obj.get(), a1, {K - 1});
+    a1 = rshift_b(obj.get(), a1, {K - 1});
 
     /* WHEN */
     auto prev = obj->prot()->getState<Communicator>()->getStats();
@@ -238,12 +238,12 @@ TEST_P(ArithmeticTest, MulAV) {
       return;
     }
 
-    const size_t K = spu::SizeOf(conf.field()) * 8;
+    const int64_t K = spu::SizeOf(conf.field()) * 8;
 
     /* GIVEN */
     auto p0 = rand_p(obj.get(), kShape);
     auto p1 = rand_p(obj.get(), kShape);
-    p1 = rshift_p(obj.get(), p1, K - 1);
+    p1 = rshift_p(obj.get(), p1, {K - 1});
     auto a0 = p2a(obj.get(), p0);
     auto a1 = p2v(obj.get(), p1, 0);
 
@@ -275,17 +275,17 @@ TEST_P(ArithmeticTest, MulA1BV) {
       return;
     }
 
-    const size_t K = spu::SizeOf(conf.field()) * 8;
+    const int64_t K = spu::SizeOf(conf.field()) * 8;
 
     /* GIVEN */
     auto p0 = rand_p(obj.get(), kShape);
     auto p1 = rand_p(obj.get(), kShape);
-    p1 = rshift_p(obj.get(), p1, K - 1);
+    p1 = rshift_p(obj.get(), p1, {K - 1});
     auto a0 = p2a(obj.get(), p0);
     auto a1 = p2v(obj.get(), p1, 0);
     // hint runtime this is a 1bit value.
-    a1 = lshift_v(obj.get(), a1, K - 1);
-    a1 = rshift_v(obj.get(), a1, K - 1);
+    a1 = lshift_v(obj.get(), a1, {K - 1});
+    a1 = rshift_v(obj.get(), a1, {K - 1});
     // auto a1 = b2v(obj.get(), _a1, 0);
 
     /* WHEN */
@@ -436,7 +436,7 @@ TEST_P(ArithmeticTest, MatMulAV) {
   });
 }
 
-TEST_P(ArithmeticTest, NotA) {
+TEST_P(ArithmeticTest, NegateA) {
   const auto factory = std::get<0>(GetParam());
   const RuntimeConfig& conf = std::get<1>(GetParam());
   const size_t npc = std::get<2>(GetParam());
@@ -450,15 +450,15 @@ TEST_P(ArithmeticTest, NotA) {
 
     /* WHEN */
     auto prev = obj->prot()->getState<Communicator>()->getStats();
-    auto r_a = not_a(obj.get(), a0);
+    auto r_a = negate_a(obj.get(), a0);
     auto cost = obj->prot()->getState<Communicator>()->getStats() - prev;
 
     auto r_p = a2p(obj.get(), r_a);
-    auto r_pp = a2p(obj.get(), not_a(obj.get(), a0));
+    auto r_pp = a2p(obj.get(), negate_a(obj.get(), a0));
 
     /* THEN */
     EXPECT_VALUE_EQ(r_p, r_pp);
-    EXPECT_TRUE(verifyCost(obj->prot()->getKernel("not_a"), "not_a",
+    EXPECT_TRUE(verifyCost(obj->prot()->getKernel("negate_a"), "negate_a",
                            conf.field(), kShape, npc, cost));
   });
 }
@@ -482,10 +482,10 @@ TEST_P(ArithmeticTest, LShiftA) {
       }
       /* WHEN */
       auto prev = obj->prot()->getState<Communicator>()->getStats();
-      auto tmp = lshift_a(obj.get(), a0, bits);
+      auto tmp = lshift_a(obj.get(), a0, {static_cast<int64_t>(bits)});
       auto cost = obj->prot()->getState<Communicator>()->getStats() - prev;
       auto r_b = a2p(obj.get(), tmp);
-      auto r_p = lshift_p(obj.get(), p0, bits);
+      auto r_p = lshift_p(obj.get(), p0, {static_cast<int64_t>(bits)});
 
       /* THEN */
       EXPECT_VALUE_EQ(r_b, r_p);
@@ -513,10 +513,11 @@ TEST_P(ArithmeticTest, TruncA) {
 
     if (!kernel->hasMsbError()) {
       // trunc requires MSB to be zero.
-      p0 = arshift_p(obj.get(), p0, 1);
+      p0 = arshift_p(obj.get(), p0, {1});
     } else {
       // has msb error, only use lowest 10 bits.
-      p0 = arshift_p(obj.get(), p0, SizeOf(conf.field()) * 8 - 10);
+      p0 = arshift_p(obj.get(), p0,
+                     {static_cast<int64_t>(SizeOf(conf.field()) * 8 - 10)});
     }
 
     /* GIVEN */
@@ -529,7 +530,7 @@ TEST_P(ArithmeticTest, TruncA) {
     auto cost = obj->prot()->getState<Communicator>()->getStats() - prev;
 
     auto r_a = a2p(obj.get(), a1);
-    auto r_p = arshift_p(obj.get(), p0, bits);
+    auto r_p = arshift_p(obj.get(), p0, {static_cast<int64_t>(bits)});
 
     /* THEN */
     EXPECT_VALUE_ALMOST_EQ(r_a, r_p, npc);
@@ -674,11 +675,11 @@ TEST_BOOLEAN_BINARY_OP(xor)
             }                                                                  \
             /* WHEN */                                                         \
             auto prev = obj->prot()->getState<Communicator>()->getStats();     \
-            auto tmp = OP##_b(obj.get(), b0, bits);                            \
+            auto tmp = OP##_b(obj.get(), b0, {static_cast<int64_t>(bits)});    \
             auto cost =                                                        \
                 obj->prot()->getState<Communicator>()->getStats() - prev;      \
             auto r_b = b2p(obj.get(), tmp);                                    \
-            auto r_p = OP##_p(obj.get(), p0, bits);                            \
+            auto r_p = OP##_p(obj.get(), p0, {static_cast<int64_t>(bits)});    \
                                                                                \
             /* THEN */                                                         \
             EXPECT_VALUE_EQ(r_b, r_p);                                         \
@@ -834,6 +835,12 @@ TEST_P(ConversionTest, MSB) {
 
     /* GIVEN */
     auto p0 = rand_p(obj.get(), kShape);
+
+    // SECURENN has an msb input range here
+    if (conf.protocol() == ProtocolKind::SECURENN) {
+      p0 = arshift_p(obj.get(), p0, {1});
+    }
+
     auto a0 = p2a(obj.get(), p0);
 
     /* WHEN */
@@ -844,8 +851,10 @@ TEST_P(ConversionTest, MSB) {
     /* THEN */
     EXPECT_TRUE(verifyCost(obj->prot()->getKernel("msb_a2b"), "msb_a2b",
                            conf.field(), kShape, npc, cost));
-    EXPECT_VALUE_EQ(rshift_p(obj.get(), p0, SizeOf(conf.field()) * 8 - 1),
-                    b2p(obj.get(), b1));
+    EXPECT_VALUE_EQ(
+        rshift_p(obj.get(), p0,
+                 {static_cast<int64_t>(SizeOf(conf.field()) * 8 - 1)}),
+        b2p(obj.get(), b1));
   });
 }
 

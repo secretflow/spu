@@ -66,4 +66,10 @@ Value f_sigmoid(SPUContext* ctx, const Value& x);
 
 Value f_erf(SPUContext* ctx, const Value& x);
 
+Value f_atan2(SPUContext* ctx, const Value& y, const Value& x);
+
+Value f_acos(SPUContext* ctx, const Value& x);
+
+Value f_asin(SPUContext* ctx, const Value& x);
+
 }  // namespace spu::kernel::hal

@@ -30,11 +30,11 @@ namespace spu::kernel::hal {
     return mpc::NAME(ctx, in);                      \
   }
 
-#define MAP_SHIFT_OP(NAME)                                       \
-  Value _##NAME(SPUContext* ctx, const Value& in, size_t bits) { \
-    SPU_TRACE_HAL_DISP(ctx, in, bits);                           \
-    auto ret = mpc::NAME(ctx, in, bits);                         \
-    return ret;                                                  \
+#define MAP_SHIFT_OP(NAME)                                             \
+  Value _##NAME(SPUContext* ctx, const Value& in, const Sizes& bits) { \
+    SPU_TRACE_HAL_DISP(ctx, in, bits);                                 \
+    auto ret = mpc::NAME(ctx, in, bits);                               \
+    return ret;                                                        \
   }
 
 #define MAP_BITREV_OP(NAME)                                                   \
@@ -117,6 +117,30 @@ Value _trunc_v(SPUContext* ctx, const Value& in, size_t bits, SignType sign) {
   return mpc::trunc_v(ctx, in, bits, sign);
 }
 
+std::optional<Value> _oramonehot_ss(SPUContext* ctx, const Value& x,
+                                    int64_t db_size) {
+  SPU_TRACE_HAL_DISP(ctx, x, db_size);
+  return mpc::oram_onehot_ss(ctx, x, db_size);
+}
+
+std::optional<Value> _oramonehot_sp(SPUContext* ctx, const Value& x,
+                                    int64_t db_size) {
+  SPU_TRACE_HAL_DISP(ctx, x, db_size);
+  return mpc::oram_onehot_sp(ctx, x, db_size);
+}
+
+Value _oramread_ss(SPUContext* ctx, const Value& x, const Value& y,
+                   int64_t offset) {
+  SPU_TRACE_HAL_DISP(ctx, x, y, offset);
+  return mpc::oram_read_ss(ctx, x, y, offset);
+}
+
+Value _oramread_sp(SPUContext* ctx, const Value& x, const Value& y,
+                   int64_t offset) {
+  SPU_TRACE_HAL_DISP(ctx, x, y, offset);
+  return mpc::oram_read_sp(ctx, x, y, offset);
+}
+
 // p<->s
 MAP_UNARY_OP(p2s)
 MAP_UNARY_OP(s2p)
@@ -139,6 +163,10 @@ Value _s2v(SPUContext* ctx, const Value& in, int owner) {
 MAP_UNARY_OP(not_p)
 MAP_UNARY_OP(not_s)
 MAP_UNARY_OP(not_v)
+// Negate family
+MAP_UNARY_OP(negate_p)
+MAP_UNARY_OP(negate_s)
+MAP_UNARY_OP(negate_v)
 // Msb family
 MAP_UNARY_OP(msb_p)
 MAP_UNARY_OP(msb_s)

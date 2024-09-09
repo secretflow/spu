@@ -58,7 +58,7 @@ class Ref2kCommonTypeS : public Kernel {
     SPU_TRACE_MPC_DISP(ctx, lhs, rhs);
     SPU_ENFORCE(lhs.isa<Ref2kSecrTy>(), "invalid type, got={}", lhs);
     SPU_ENFORCE(rhs.isa<Ref2kSecrTy>(), "invalid type, got={}", rhs);
-    ctx->setOutput(lhs);
+    ctx->pushOutput(lhs);
   }
 };
 
@@ -79,7 +79,7 @@ class Ref2kCommonTypeV : public Kernel {
     const auto* lhs_v = lhs.as<Priv2kTy>();
     const auto* rhs_v = rhs.as<Priv2kTy>();
 
-    ctx->setOutput(
+    ctx->pushOutput(
         makeType<Ref2kSecrTy>(std::max(lhs_v->field(), rhs_v->field())));
   }
 };
@@ -165,7 +165,7 @@ class Ref2kV2S : public UnaryKernel {
 
     int64_t numel = in.numel();
 
-    DISPATCH_ALL_FIELDS(field, "v2s", [&]() {
+    DISPATCH_ALL_FIELDS(field, [&]() {
       std::vector<ring2k_t> _send(numel);
       NdArrayView<ring2k_t> _in(in);
 
@@ -196,13 +196,13 @@ class Ref2kRandS : public RandKernel {
     const auto field = ctx->getState<Z2kState>()->getDefaultField();
 
     return ring_rshift(
-        state->genPubl(field, shape).as(makeType<Ref2kSecrTy>(field)), 2);
+        state->genPubl(field, shape).as(makeType<Ref2kSecrTy>(field)), {2});
   }
 };
 
-class Ref2kNotS : public UnaryKernel {
+class Ref2kNegateS : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "not_s";
+  static constexpr char kBindName[] = "negate_s";
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -210,7 +210,7 @@ class Ref2kNotS : public UnaryKernel {
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override {
     const auto field = in.eltype().as<Ring2k>()->field();
-    return ring_not(in).as(makeType<Ref2kSecrTy>(field));
+    return ring_neg(in).as(makeType<Ref2kSecrTy>(field));
   }
 };
 
@@ -368,7 +368,7 @@ class Ref2kLShiftS : public ShiftKernel {
   ce::CExpr comm() const override { return ce::Const(0); }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
-                  size_t bits) const override {
+                  const Sizes& bits) const override {
     return ring_lshift(in, bits).as(in.eltype());
   }
 };
@@ -382,7 +382,7 @@ class Ref2kRShiftS : public ShiftKernel {
   ce::CExpr comm() const override { return ce::Const(0); }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
-                  size_t bits) const override {
+                  const Sizes& bits) const override {
     return ring_rshift(in, bits).as(in.eltype());
   }
 };
@@ -414,7 +414,7 @@ class Ref2kARShiftS : public ShiftKernel {
   ce::CExpr comm() const override { return ce::Const(0); }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
-                  size_t bits) const override {
+                  const Sizes& bits) const override {
     return ring_arshift(in, bits).as(in.eltype());
   }
 };
@@ -441,8 +441,8 @@ class Ref2kTruncS : public TruncAKernel {
     // https://stackoverflow.com/questions/14008330/how-do-you-multiply-two-fixed-point-numbers
     // Under certain pattern, like sum(mul(A, B)), error can accumulate in a
     // fairly significant way
-    auto v1 = ring_arshift(in, bits);
-    auto v2 = ring_arshift(in, bits - 1);
+    auto v1 = ring_arshift(in, {static_cast<int64_t>(bits)});
+    auto v2 = ring_arshift(in, {static_cast<int64_t>(bits - 1)});
     ring_and_(v2, ring_ones(in.eltype().as<Ring2k>()->field(), in.shape()));
     ring_add_(v1, v2);
     return v1;
@@ -458,7 +458,8 @@ class Ref2kMsbS : public UnaryKernel {
   ce::CExpr comm() const override { return ce::Const(0); }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override {
-    return ring_rshift(in, in.elsize() * 8 - 1).as(in.eltype());
+    return ring_rshift(in, {static_cast<int64_t>(in.elsize() * 8 - 1)})
+        .as(in.eltype());
   }
 };
 
@@ -487,7 +488,7 @@ void regRef2kProtocol(SPUContext* ctx,
   ctx->prot()
       ->regKernel<Ref2kCommonTypeS, Ref2kCommonTypeV, Ref2kCastTypeS,  //
                   Ref2kP2S, Ref2kS2P, Ref2kV2S, Ref2kS2V,              //
-                  Ref2kNotS,                                           //
+                  Ref2kNegateS,                                        //
                   Ref2kAddSS, Ref2kAddSP,                              //
                   Ref2kMulSS, Ref2kMulSP,                              //
                   Ref2kMatMulSS, Ref2kMatMulSP,                        //

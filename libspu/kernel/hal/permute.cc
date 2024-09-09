@@ -19,6 +19,7 @@
 #include "libspu/core/bit_utils.h"
 #include "libspu/core/context.h"
 #include "libspu/core/trace.h"
+#include "libspu/core/vectorize.h"
 #include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/polymorphic.h"
 #include "libspu/kernel/hal/prot_wrapper.h"
@@ -41,6 +42,12 @@ inline int64_t _get_owner(const Value &x) {
 
 inline bool _has_same_owner(const Value &x, const Value &y) {
   return _get_owner(x) == _get_owner(y);
+}
+
+void _hint_nbits(const Value &a, size_t nbits) {
+  if (a.storage_type().isa<BShare>()) {
+    const_cast<Type &>(a.storage_type()).as<BShare>()->setNbits(nbits);
+  }
 }
 
 // generate inverse permutation
@@ -531,20 +538,30 @@ spu::Value _opt_apply_perm_ss(SPUContext *ctx, const spu::Value &perm,
 std::vector<spu::Value> _bit_decompose(SPUContext *ctx, const spu::Value &x,
                                        int64_t valid_bits) {
   auto x_bshare = _prefer_b(ctx, x);
-  const auto k1 = _constant(ctx, 1U, x.shape());
-  std::vector<spu::Value> rets;
   size_t nbits = valid_bits != -1
                      ? static_cast<size_t>(valid_bits)
                      : x_bshare.storage_type().as<BShare>()->nbits();
-  rets.reserve(nbits);
-
-  for (size_t bit = 0; bit < nbits; ++bit) {
-    auto x_bshare_shift = right_shift_logical(ctx, x_bshare, bit);
-    auto lowest_bit = _and(ctx, x_bshare_shift, k1);
-    rets.emplace_back(_prefer_a(ctx, lowest_bit));
+  _hint_nbits(x_bshare, nbits);
+  if (ctx->hasKernel("b2a_disassemble")) {
+    auto ret =
+        dynDispatch<std::vector<spu::Value>>(ctx, "b2a_disassemble", x_bshare);
+    return ret;
   }
 
-  return rets;
+  const auto k1 = _constant(ctx, 1U, x.shape());
+  std::vector<spu::Value> rets_b;
+  rets_b.reserve(nbits);
+
+  for (size_t bit = 0; bit < nbits; ++bit) {
+    auto x_bshare_shift =
+        right_shift_logical(ctx, x_bshare, {static_cast<int64_t>(bit)});
+    rets_b.push_back(_and(ctx, x_bshare_shift, k1));
+  }
+
+  std::vector<spu::Value> rets_a;
+  vmap(rets_b.begin(), rets_b.end(), std::back_inserter(rets_a),
+       [&](const Value &x) { return _prefer_a(ctx, x); });
+  return rets_a;
 }
 
 // Generate vector of bit decomposition of sorting keys
@@ -687,10 +704,10 @@ spu::Value _apply_perm_ss(SPUContext *ctx, const Value &x, const Value &perm) {
 
 // Find mergeable keys from keys. Consecutive public/private(belong to one
 // owner) keys can be merged. Assume there are six keys, i.e., public_key0,
-// bob_key0, bob_key1, alice_key0, alice_key1, secret_key0. We can merge the six
-// keys into bob_new_key, alice_new_key, secret_key0 for the following sorting.
-// This function will return a vector of indices [3,5,6] which means key[0,3),
-// key[3,5), and key[5,6) can be merged.
+// bob_key0, bob_key1, alice_key0, alice_key1, secret_key0. We can merge the
+// six keys into bob_new_key, alice_new_key, secret_key0 for the following
+// sorting. This function will return a vector of indices [3,5,6] which means
+// key[0,3), key[3,5), and key[5,6) can be merged.
 std::vector<size_t> _find_mergeable_keys(SPUContext *ctx,
                                          absl::Span<spu::Value const> keys) {
   std::vector<size_t> split_indices;

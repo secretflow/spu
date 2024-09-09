@@ -80,9 +80,9 @@ class V2A : public UnaryKernel {
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
 
-class NotA : public UnaryKernel {
+class NegateA : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "not_a";
+  static constexpr char kBindName[] = "negate_a";
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -148,6 +148,20 @@ class MulAA : public BinaryKernel {
                   const NdArrayRef& rhs) const override;
 };
 
+class SquareA : public UnaryKernel {
+ public:
+  static constexpr char kBindName[] = "square_a";
+
+  ce::CExpr latency() const override {
+    // TODO: consider beaver
+    return ce::Const(1);
+  }
+
+  ce::CExpr comm() const override { return ce::K() * (ce::N() - 1); }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x) const override;
+};
+
 ////////////////////////////////////////////////////////////////////
 // matmul family
 ////////////////////////////////////////////////////////////////////
@@ -192,7 +206,7 @@ class LShiftA : public ShiftKernel {
   ce::CExpr comm() const override { return ce::Const(0); }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
-                  size_t bits) const override;
+                  const Sizes& bits) const override;
 };
 
 class TruncA : public TruncAKernel {
@@ -239,6 +253,13 @@ class TruncAPr : public TruncAKernel {
   TruncLsbRounding lsbRounding() const override {
     return TruncLsbRounding::Probabilistic;
   }
+};
+
+class BeaverCacheKernel : public Kernel {
+ public:
+  static constexpr char kBindName[] = "beaver_cache";
+
+  void evaluate(KernelEvalContext* ctx) const override;
 };
 
 }  // namespace spu::mpc::semi2k

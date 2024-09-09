@@ -50,7 +50,7 @@ NdArrayRef convertToNdArray(PtBufferView bv) {
   }
   const auto type = makePtType(bv.pt_type);
   auto out = NdArrayRef(type, bv.shape);
-  return DISPATCH_ALL_PT_TYPES(bv.pt_type, "pt_type", [&]() {
+  return DISPATCH_ALL_PT_TYPES(bv.pt_type, [&]() {
     using T = ScalarT;
     if (bv.shape.numel() > 0) {
       auto* out_ptr = out.data<T>();

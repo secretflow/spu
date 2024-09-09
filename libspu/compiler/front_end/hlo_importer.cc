@@ -30,7 +30,7 @@
 #include "xla/service/float_support.h"
 #include "xla/service/gather_expander.h"
 #include "xla/service/gather_simplifier.h"
-#include "xla/service/gpu/dot_dimension_sorter.h"
+#include "xla/service/gpu/transforms/dot_dimension_sorter.h"
 #include "xla/service/hlo_constant_folding.h"
 #include "xla/service/hlo_cse.h"
 #include "xla/service/hlo_dce.h"
@@ -196,12 +196,12 @@ HloImporter::parseXlaModuleFromString(const std::string &content) {
   auto module_config =
       xla::HloModule::CreateModuleConfigFromProto(hlo_module, debug_options);
   if (!module_config.status().ok()) {
-    SPU_THROW(module_config.status().message());
+    SPU_THROW("{}", module_config.status().message());
   }
 
   auto module = xla::HloModule::CreateFromProto(hlo_module, *module_config);
   if (!module.status().ok()) {
-    SPU_THROW(module.status().message());
+    SPU_THROW("{}", module.status().message());
   }
 
   xla::runHloPasses((*module).get());
@@ -214,7 +214,7 @@ HloImporter::parseXlaModuleFromString(const std::string &content) {
 
   auto status = importer.Import(**module);
   if (!status.ok()) {
-    SPU_THROW(status.message());
+    SPU_THROW("{}", status.message());
   }
 
   return mlir_hlo;

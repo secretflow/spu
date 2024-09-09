@@ -684,6 +684,103 @@ spu::Value SecretDynamicSliceImpl(SPUContext *ctx, const spu::Value &operand,
   return hal::concatenate(ctx, results, 0);
 }
 
+spu::Value SecretDynamicSliceOramImpl(
+    SPUContext *ctx, const spu::Value &operand, const Sizes &slice_size,
+    absl::Span<const spu::Value> start_indices) {
+  if (slice_size[0] == operand.shape()[0]) {
+    if (slice_size.size() == 1) {
+      return operand;
+    }
+
+    // Full dimension
+    Index start(operand.shape().size(), 0);
+    Index limit(operand.shape().begin(), operand.shape().end());
+    Strides strides(operand.shape().size(), 1);
+
+    std::vector<spu::Value> results(operand.shape()[0]);
+    for (int64_t idx = 0; idx < operand.shape()[0]; ++idx) {
+      start[0] = idx;
+      limit[0] = idx + 1;
+      // Slice one...
+      auto sliced = hal::slice(ctx, operand, start, limit, strides);
+      // Remove leading one
+      auto reshaped = hal::reshape(
+          ctx, sliced, {sliced.shape().begin() + 1, sliced.shape().end()});
+      // Do indexing
+      auto indexed = SecretDynamicSliceOramImpl(
+          ctx, reshaped, {slice_size.begin() + 1, slice_size.end()},
+          start_indices.subspan(1));
+      // Add leading one dimension back
+      Shape result_shape(indexed.shape().size() + 1, 1);
+      for (size_t idx = 0; idx < indexed.shape().size(); ++idx) {
+        result_shape[idx + 1] = indexed.shape()[idx];
+      }
+      results[idx] = hal::reshape(ctx, indexed, result_shape);
+    }
+
+    if (results.size() == 1) {
+      return results[0];
+    }
+    return hal::concatenate(ctx, results, 0);
+  }
+
+  if (start_indices[0].isPublic()) {
+    return SecretDynamicSliceImpl(ctx, operand, slice_size, start_indices);
+  }
+
+  // try oram impl
+  auto opt_onehot = hal::oramonehot(ctx, start_indices[0], operand.shape()[0],
+                                    operand.isPublic());
+  if (!opt_onehot.has_value()) {
+    // fall back
+    return SecretDynamicSliceImpl(ctx, operand, slice_size, start_indices);
+  }
+
+  auto onehot = opt_onehot.value();
+
+  // Do collapse inner dims when necessary
+  auto collapsed_operand = operand;
+  if (collapsed_operand.shape().size() > 2) {
+    // Reshape from XxYxZ to Xx(Y*Z)
+    collapsed_operand = hal::reshape(
+        ctx, collapsed_operand,
+        {operand.shape()[0],
+         Shape(operand.shape().begin() + 1, operand.shape().end()).numel()});
+  }
+
+  // slice each
+  std::vector<spu::Value> results(slice_size[0]);
+  Shape indexed_shape = operand.shape();
+  indexed_shape[0] = 1;
+
+  for (int64_t idx = 0; idx < slice_size[0]; ++idx) {
+    results[idx] = hal::oramread(ctx, onehot, collapsed_operand, idx);
+    results[idx] = hal::reshape(ctx, results[idx], indexed_shape);
+  }
+
+  if (slice_size.size() > 1) {
+    Shape result_shape(slice_size.begin(), slice_size.end());
+    result_shape[0] = 1;
+    // Keep indexing deeper
+    for (int64_t idx = 0; idx < slice_size[0]; ++idx) {
+      results[idx] = hal::reshape(
+          ctx, results[idx],
+          {results[idx].shape().begin() + 1, results[idx].shape().end()});
+      // slice next dim
+      results[idx] = SecretDynamicSliceOramImpl(
+          ctx, results[idx], {slice_size.begin() + 1, slice_size.end()},
+          start_indices.subspan(1));
+      results[idx] = hal::reshape(ctx, results[idx], result_shape);
+    }
+  }
+
+  if (results.size() == 1) {
+    return results[0];
+  }
+
+  return hal::concatenate(ctx, results, 0);
+}
+
 spu::Value SecretDynamicSlice(SPUContext *ctx, const spu::Value &operand,
                               const Sizes &slice_size,
                               absl::Span<const spu::Value> start_indices) {
@@ -744,8 +841,8 @@ spu::Value SecretDynamicSlice(SPUContext *ctx, const spu::Value &operand,
         hal::slice(ctx, adjusted_all_indices, {idx}, {idx + 1}, {1});
   }
 
-  return SecretDynamicSliceImpl(ctx, operand, slice_size,
-                                adjusted_start_indices);
+  return SecretDynamicSliceOramImpl(ctx, operand, slice_size,
+                                    adjusted_start_indices);
 }
 
 spu::Value DynamicSlice(SPUContext *ctx, const spu::Value &operand,
@@ -764,7 +861,8 @@ spu::Value DynamicSlice(SPUContext *ctx, const spu::Value &operand,
       auto v_idx = idx.value();
       start_indices_i64[idx.index()] = getIndices(ctx, v_idx)[0];
       // Transform start_indices
-      // start_indices[i] = clamp(start_indices[i], 0, operand.dimension_size[i]
+      // start_indices[i] = clamp(start_indices[i], 0,
+      // operand.dimension_size[i]
       // - size_indices[i])
       start_indices_i64[idx.index()] = std::min(
           std::max(start_indices_i64[idx.index()], static_cast<int64_t>(0)),

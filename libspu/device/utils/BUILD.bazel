@@ -1,0 +1,56 @@
+# Copyright 2024 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//bazel:spu.bzl", "spu_cc_binary", "spu_cc_library")
+
+package(
+    default_visibility = ["//visibility:public"],
+)
+
+spu_cc_library(
+    name = "debug_dump_constant",
+    srcs = [
+        "debug_dump_constant.cc",
+    ],
+    hdrs = [
+        "debug_dump_constant.h",
+    ],
+)
+
+spu_cc_library(
+    name = "pphlo_executor_test_runner",
+    testonly = True,
+    srcs = ["pphlo_executor_test_runner.cc"],
+    hdrs = ["pphlo_executor_test_runner.h"],
+    deps = [
+        "//libspu/compiler:compile",
+        "//libspu/device:api",
+        "//libspu/device:io",
+        "//libspu/device:test_utils",
+        "//libspu/device/pphlo:pphlo_executor",
+        "//libspu/kernel:test_util",
+    ],
+)
+
+spu_cc_binary(
+    name = "pphlo_executor_debug_runner",
+    srcs = ["pphlo_executor_debug_runner.cc"],
+    deps = [
+        "//libspu/device:api",
+        "//libspu/device:test_utils",
+        "//libspu/device/pphlo:pphlo_executor",
+        "//libspu/device/utils:debug_dump_constant",
+        "@llvm-project//llvm:Support",
+    ],
+)

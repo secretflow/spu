@@ -23,6 +23,7 @@ spu_cc_library(
     srcs = ["codegen.cc"],
     hdrs = ["codegen.h"],
     deps = [
-        "//libspu/dialect/pphlo:dialect",
+        "//libspu:version",
+        "//libspu/dialect/pphlo/IR:dialect",
     ],
 )

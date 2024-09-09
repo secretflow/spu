@@ -21,7 +21,7 @@ spu_cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//libspu/compiler/common:compilation_context",
-        "//libspu/compiler/passes:all_passes",
+        "//libspu/dialect/pphlo/transforms:all_passes",
         "@llvm-project//mlir:Transforms",
     ],
 )

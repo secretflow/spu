@@ -16,9 +16,11 @@ from typing import Tuple
 
 import jax
 import jax.numpy as jnp
-from auc import binary_roc_auc
 
+from sml.preprocessing.preprocessing import label_binarize
 from spu.ops.groupby import groupby, groupby_sum
+
+from .auc import binary_clf_curve, binary_roc_auc
 
 
 def roc_auc_score(y_true, y_pred):
@@ -222,3 +224,155 @@ def fun_score(
     else:
         raise ValueError("average should be None or 'binary'")
     return fun_result
+
+
+def precision_recall_curve(
+    y_true: jnp.ndarray, y_score: jnp.ndarray, pos_label=1, score_eps=1e-5
+):
+    """Compute precision-recall pairs for different probability thresholds.
+
+    Note: this implementation is restricted to the binary classification task.
+
+    Parameters
+    ----------
+    y_true : 1d array-like of shape (n,). True binary labels.
+
+    y_score : 1d array-like of shape (n,). Target scores, non-negative.
+
+    pos_label : int, default=1. The label of the positive class.
+
+    score_eps : float, default=1e-5. The lower bound for y_score.
+
+    Returns
+    -------
+    precisions : ndarray of shape (n + 1,).
+        Precision values where element i is the precision s.t.
+        score >= thresholds[i] and the last element is 1.
+
+    recalls : ndarray of shape (n + 1,).
+        Increasing recall values where element i is the recall s.t.
+        score >= thresholds[i] and the last element is 0.
+
+    thresholds : ndarray of shape (n,).
+        Decreasing thresholds used to compute precision and recall.
+        Results might include trailing zeros.
+    """
+
+    # normalize the input
+    y_true = jnp.where(y_true == pos_label, 1, 0)
+    y_score = jnp.where(
+        y_score < score_eps, score_eps, y_score
+    )  # to avoid messing up trailing zero and score zero
+
+    # compute TP and FP
+    sorted_pairs = create_sorted_label_score_pair(y_true, y_score)
+    fp, tp, thresholds = binary_clf_curve(sorted_pairs)
+
+    # compute precision and recalls
+    mask = jnp.where(thresholds > 0, 1, 0)  # tied value entries have mask=0
+    precisions = jnp.where(mask, tp / (tp + fp + 1e-5), 0)
+    max_tp = jnp.max(tp)
+    recalls = jnp.where(max_tp == 0, jnp.ones_like(tp), tp / max_tp)
+
+    return (
+        jnp.hstack((1, precisions)),
+        jnp.hstack((0, recalls)),
+        thresholds,
+    )
+
+
+def average_precision_score(
+    y_true: jnp.ndarray,
+    y_score: jnp.ndarray,
+    classes=(0, 1),
+    average="macro",
+    pos_label=1,
+    score_eps=1e-5,
+):
+    """Compute average precision (AP) from prediction scores.
+
+    .. math::
+        \\text{AP} = \\sum_n (R_n - R_{n-1}) P_n
+
+    Parameters
+    -------
+    y_true : array-like of shape (n_samples,)
+             True labels.
+
+    y_score : array-like of shape (n_samples,) or (n_samples, n_classes)
+              Estimated target scores as returned by a classifier, non-negative.
+
+    classes : 1d array-like, shape (n_classes,), default=(0,1) as for binary classification
+              Uniquely holds the label for each class.
+              SPU cannot support dynamic shape, so this parameter needs to be designated.
+
+    average : {'macro', 'micro', None}, default='macro'
+        This parameter is required for multiclass/multilabel targets and
+        will be ignored when y_true is binary.
+
+        'macro':
+            Calculate metrics for each label, and find their unweighted mean.
+        'micro':
+            Calculate metrics globally by considering each element of the label
+            indicator matrix as a label.
+        None:
+            Scores for each class are returned.
+
+    pos_label : int, default=1
+        The label of the positive class. Only applied to binary y_true.
+
+    score_eps : float, default=1e-5. The lower bound for y_score.
+
+    Returns
+    -------
+    average_precision : float
+        Average precision score.
+    """
+
+    assert average in (
+        'macro',
+        'micro',
+        None,
+    ), 'average must be either "macro", "micro" or None'
+
+    def binary_average_precision(y_true, y_score, pos_label=1):
+        """Compute the average precision for binary classification."""
+        precisions, recalls, _ = precision_recall_curve(
+            y_true, y_score, pos_label=pos_label, score_eps=score_eps
+        )
+
+        return jnp.sum(jnp.diff(recalls) * precisions[1:])
+
+    n_classes = len(classes)
+    if n_classes <= 2:
+        # binary classification
+        # given y_true all the same is a special case considered as binary classification
+        return binary_average_precision(y_true, y_score, pos_label=pos_label)
+    else:
+        # multi-class classification
+        # binarize labels using one-vs-all scheme into multilabel-indicator
+        y_true = label_binarize(y_true, classes=classes, n_classes=n_classes)
+
+        if average == "micro":
+            y_true = y_true.ravel()
+            y_score = y_score.ravel()
+        elif average == "macro":
+            pass
+
+        # extend the classes dimension if needed
+        if y_true.ndim == 1:
+            y_true = y_true[:, jnp.newaxis]
+        if y_score.ndim == 1:
+            y_score = y_score[:, jnp.newaxis]
+
+        # compute score for each class
+        n_classes = y_score.shape[1]
+        score = jnp.zeros((n_classes,))
+        for c in range(n_classes):
+            binary_ap = binary_average_precision(
+                y_true[:, c].ravel(), y_score[:, c].ravel(), pos_label=pos_label
+            )
+            score = score.at[c].set(binary_ap)
+
+        # average the scores
+        return jnp.average(score) if average else score

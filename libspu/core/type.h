@@ -132,10 +132,16 @@ class AShare {
   virtual ~AShare() = default;
 };
 
-/**
- * eq: 布尔分享定义接口。
- * 维护nbits_，用于表示多少位被用于存储bit。
-*/
+class OShare {
+ public:
+  virtual ~OShare() = default;
+};
+
+class OPShare {
+ public:
+  virtual ~OPShare() = default;
+};
+
 class BShare {
  protected:
   // Theoretically, `B share` works in F2 (mod 2) ring, which means it is

@@ -68,63 +68,89 @@ NdArrayRef BasicOTProtocols::B2A(const NdArrayRef &inp) {
   return PackedB2A(inp);
 }
 
+// Convert the packed boolean shares to arithmetic share
+// Input x in Z2k is the packed of b-bits for 1 <= b <= k.
+//       That is x0, x1, ..., x{b-1}
+// Output y in Z2k such that y = \sum_i x{i}*2^i mod 2^k
+//
+// Ref: The ABY paper https://encrypto.de/papers/DSZ15.pdf Section E
 NdArrayRef BasicOTProtocols::PackedB2A(const NdArrayRef &inp) {
   const auto *share_t = inp.eltype().as<BShrTy>();
   auto field = inp.eltype().as<Ring2k>()->field();
-  const size_t nbits = share_t->nbits();
-  SPU_ENFORCE(nbits > 0 && nbits <= 8 * SizeOf(field));
-
-  auto convert_from_bits_form = [&](NdArrayRef _bits) {
-    SPU_ENFORCE(_bits.isCompact(), "need compact input");
-    const int64_t n = _bits.numel() / nbits;
-    // init as all 0s.
-    auto iform = ring_zeros(field, inp.shape());
-    DISPATCH_ALL_FIELDS(field, "conv_to_bits", [&]() {
-      auto bits = NdArrayView<const ring2k_t>(_bits);
-      auto digit = NdArrayView<ring2k_t>(iform);
-      for (int64_t i = 0; i < n; ++i) {
-        // LSB is bits[0]; MSB is bits[nbits - 1]
-        // We iterate the bits in reversed order
-        const size_t offset = i * nbits;
-        digit[i] = 0;
-        for (size_t j = nbits; j > 0; --j) {
-          digit[i] = (digit[i] << 1) | (bits[offset + j - 1] & 1);
-        }
-      }
-    });
-    return iform;
-  };
+  const int64_t ring_width = SizeOf(field) * 8;
 
   const int64_t n = inp.numel();
-  auto rand_bits = RandBits(field, Shape{n * static_cast<int>(nbits)});
-  auto rand = convert_from_bits_form(rand_bits);
+  const int64_t nbits = share_t->nbits() == 0 ? 1 : share_t->nbits();
+  const int64_t numel = n * nbits;
 
-  // open c = x ^ r
-  auto opened = OpenShare(ring_xor(inp, rand), ReduceOp::XOR, nbits, conn_);
-
-  // compute c + (1 - 2*c)*<r>
-  NdArrayRef oup = ring_zeros(field, inp.shape());
-  DISPATCH_ALL_FIELDS(field, "packed_b2a", [&]() {
+  NdArrayRef cot_oup = ring_zeros(field, {numel});
+  NdArrayRef arith_oup = ring_zeros(field, inp.shape());
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using u2k = std::make_unsigned<ring2k_t>::type;
-    int rank = Rank();
-    auto xr = NdArrayView<const u2k>(rand_bits);
-    auto xc = NdArrayView<const u2k>(opened);
-    auto xo = NdArrayView<ring2k_t>(oup);
+    auto input = NdArrayView<const u2k>(inp);
+    auto cot_output = absl::MakeSpan(&cot_oup.at<u2k>(0), cot_oup.numel());
 
-    for (int64_t i = 0; i < n; ++i) {
-      const size_t offset = i * nbits;
-      u2k this_elt = xc[i];
-      for (size_t j = 0; j < nbits; ++j, this_elt >>= 1) {
-        u2k c_ij = this_elt & 1;
-        ring2k_t one_bit = (1 - c_ij * 2) * xr[offset + j];
-        if (rank == 0) {
-          one_bit += c_ij;
+    if (Rank() == 0) {
+      std::vector<u2k> corr_data(numel);
+
+      for (int64_t k = 0; k < nbits; ++k) {
+        int64_t i = k * n;
+        auto msk = makeBitsMask<u2k>(ring_width - k);
+        for (int64_t j = 0; j < n; ++j) {
+          // corr[k] = -2*x0_k
+          corr_data[i + j] = -2 * ((input[j] >> k) & 1);
+          corr_data[i + j] &= msk;
         }
-        xo[i] += (one_bit << j);
+      }
+      // Run the multiple COT in the collapse mode.
+      // That is, the k-th COT returns output of `ring_width - k` bits.
+      //
+      // The k-th COT gives the arithmetic share of the k-th bit of the input
+      // according to x_0 ^ x_1 = x_0 + x_1 - 2 * x_0 * x_1
+      ferret_sender_->SendCAMCC_Collapse(absl::MakeSpan(corr_data), cot_output,
+                                         /*bw*/ ring_width,
+                                         /*num_level*/ nbits);
+
+      ferret_sender_->Flush();
+      for (int64_t k = 0; k < nbits; ++k) {
+        int64_t i = k * n;
+        for (int64_t j = 0; j < n; ++j) {
+          cot_output[i + j] = ((input[j] >> k) & 1) - cot_output[i + j];
+        }
+      }
+    } else {
+      // choice[k] is the k-th bit x1_k
+      std::vector<uint8_t> choices(numel);
+      for (int64_t k = 0; k < nbits; ++k) {
+        int64_t i = k * n;
+        for (int64_t j = 0; j < n; ++j) {
+          choices[i + j] = (input[j] >> k) & 1;
+        }
+      }
+
+      ferret_receiver_->RecvCAMCC_Collapse(absl::MakeSpan(choices), cot_output,
+                                           ring_width, nbits);
+
+      for (int64_t k = 0; k < nbits; ++k) {
+        int64_t i = k * n;
+        for (int64_t j = 0; j < n; ++j) {
+          cot_output[i + j] = ((input[j] >> k) & 1) + cot_output[i + j];
+        }
+      }
+    }
+
+    // <x> = \sum_k 2^k * <x_k>
+    // where <x_k> is the arithmetic share of the k-th bit
+    NdArrayView<u2k> arith(arith_oup);
+    for (int64_t k = 0; k < nbits; ++k) {
+      int64_t i = k * n;
+      for (int64_t j = 0; j < n; ++j) {
+        arith[j] += (cot_output[i + j] << k);
       }
     }
   });
-  return oup;
+
+  return arith_oup;
 }
 
 // Math:
@@ -146,8 +172,9 @@ NdArrayRef BasicOTProtocols::SingleB2A(const NdArrayRef &inp, int bit_width) {
   const int64_t n = inp.numel();
 
   NdArrayRef oup = ring_zeros(field, inp.shape());
-  DISPATCH_ALL_FIELDS(field, "single_b2a", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using u2k = std::make_unsigned<ring2k_t>::type;
+    const u2k msk = makeBitsMask<u2k>(bit_width);
     auto input = NdArrayView<const u2k>(inp);
     // NOTE(lwj): oup is compact, so we just use Span
     auto output = absl::MakeSpan(&oup.at<u2k>(0), n);
@@ -165,7 +192,7 @@ NdArrayRef BasicOTProtocols::SingleB2A(const NdArrayRef &inp, int bit_width) {
       ferret_sender_->Flush();
 
       for (int64_t i = 0; i < n; ++i) {
-        output[i] = (input[i] & 1) - output[i];
+        output[i] = ((input[i] & 1) - output[i]) & msk;
       }
     } else {
       std::vector<uint8_t> choices(n);
@@ -175,7 +202,7 @@ NdArrayRef BasicOTProtocols::SingleB2A(const NdArrayRef &inp, int bit_width) {
       ferret_receiver_->RecvCAMCC(absl::MakeSpan(choices), output, bit_width);
 
       for (int64_t i = 0; i < n; ++i) {
-        output[i] = (input[i] & 1) + output[i];
+        output[i] = ((input[i] & 1) + output[i]) & msk;
       }
     }
   });
@@ -183,8 +210,8 @@ NdArrayRef BasicOTProtocols::SingleB2A(const NdArrayRef &inp, int bit_width) {
 }
 
 // Random bit r \in {0, 1} and return as AShr
-NdArrayRef BasicOTProtocols::RandBits(FieldType filed, const Shape &shape) {
-  auto r = ring_randbit(filed, shape).as(makeType<BShrTy>(filed, 1));
+NdArrayRef BasicOTProtocols::RandBits(FieldType field, const Shape &shape) {
+  auto r = ring_randbit(field, shape).as(makeType<BShrTy>(field, 1));
   return SingleB2A(r);
 }
 
@@ -313,7 +340,7 @@ std::array<NdArrayRef, 3> BasicOTProtocols::AndTriple(FieldType field,
   auto AND_b = ring_zeros(field, shape);
   auto AND_c = ring_zeros(field, shape);
 
-  DISPATCH_ALL_FIELDS(field, "AndTriple", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     auto AND_xa = NdArrayView<ring2k_t>(AND_a);
     auto AND_xb = NdArrayView<ring2k_t>(AND_b);
     auto AND_xc = NdArrayView<ring2k_t>(AND_c);
@@ -370,7 +397,7 @@ std::array<NdArrayRef, 5> BasicOTProtocols::CorrelatedAndTriple(
   auto AND_b1 = ring_zeros(field, shape);
   auto AND_c1 = ring_zeros(field, shape);
 
-  DISPATCH_ALL_FIELDS(field, "AndTriple", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     auto AND_xa = NdArrayView<ring2k_t>(AND_a);
     auto AND_xb0 = NdArrayView<ring2k_t>(AND_b0);
     auto AND_xc0 = NdArrayView<ring2k_t>(AND_c0);
@@ -405,7 +432,7 @@ NdArrayRef BasicOTProtocols::Multiplexer(const NdArrayRef &msg,
   std::vector<uint8_t> sel(size);
   // Compute (x0 + x1) * (b0 ^ b1)
   // Also b0 ^ b1 = 1 - 2*b0*b1
-  return DISPATCH_ALL_FIELDS(field, "Multiplexer", [&]() {
+  return DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<const ring2k_t> _msg(msg);
     NdArrayView<const ring2k_t> _sel(select);
     auto corr_data = absl::MakeSpan(&_corr_data.at<ring2k_t>(0), size);
@@ -446,7 +473,7 @@ NdArrayRef BasicOTProtocols::PrivateMulxRecv(const NdArrayRef &msg,
 
   auto recv = ring_zeros(field, msg.shape());
   std::vector<uint8_t> sel(size);
-  DISPATCH_ALL_FIELDS(field, "convert", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<const ring2k_t> _sel(select);
     pforeach(0, size,
              [&](int64_t i) { sel[i] = static_cast<uint8_t>(_sel[i] & 1); });
@@ -466,7 +493,7 @@ NdArrayRef BasicOTProtocols::PrivateMulxRecv(const NdArrayRef &msg,
   // Compute (x0 + x1) * b
   // x0 * b + x1 * b
   // COT compute <x1*b>
-  DISPATCH_ALL_FIELDS(field, "MultiplexerOnPrivate", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<const ring2k_t> _msg(msg);
     auto _recv = absl::MakeSpan(&recv.at<ring2k_t>(0), size);
 
@@ -489,7 +516,7 @@ NdArrayRef BasicOTProtocols::PrivateMulxSend(const NdArrayRef &msg) {
   auto recv = ring_zeros(field, msg.shape());
   // Compute (x0 + x1) * b
   // x0 * b + x1 * b
-  DISPATCH_ALL_FIELDS(field, "MultiplexerOnPrivate", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     auto _msg = absl::MakeConstSpan(&msg.at<ring2k_t>(0), size);
     auto _recv = absl::MakeSpan(&recv.at<ring2k_t>(0), size);
 

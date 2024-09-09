@@ -53,22 +53,13 @@ spu_cc_library(
     srcs = ["executor.cc"],
     hdrs = ["executor.h"],
     deps = [
+        ":intrinsic_table",
         ":symbol_table",
         "//libspu:spu_cc_proto",
         "//libspu/core:context",
         "//libspu/core:value",
-        "//libspu/dialect/pphlo:dialect",
+        "//libspu/dialect/pphlo/IR:dialect",
         "@llvm-project//mlir:IR",
-    ],
-)
-
-spu_cc_library(
-    name = "debug_dump_constant",
-    srcs = [
-        "debug_dump_constant.cc",
-    ],
-    hdrs = [
-        "debug_dump_constant.h",
     ],
 )
 
@@ -77,9 +68,11 @@ spu_cc_library(
     srcs = ["api.cc"],
     hdrs = ["api.h"],
     deps = [
-        ":debug_dump_constant",
         ":executor",
+        "//libspu:version",
         "//libspu/device/pphlo:pphlo_executor",
+        "//libspu/device/utils:debug_dump_constant",
+        "//libspu/dialect/utils",
         "@llvm-project//mlir:FuncDialect",
         "@llvm-project//mlir:IR",
         "@llvm-project//mlir:Parser",
@@ -88,7 +81,6 @@ spu_cc_library(
 
 spu_cc_library(
     name = "test_utils",
-    testonly = True,
     hdrs = ["test_utils.h"],
     deps = [
         ":io",
@@ -107,4 +99,9 @@ spu_cc_library(
         "//libspu/core:pt_buffer_view",
         "//libspu/core:value",
     ],
+)
+
+spu_cc_library(
+    name = "intrinsic_table",
+    hdrs = ["intrinsic_table.h"],
 )

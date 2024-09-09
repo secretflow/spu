@@ -25,6 +25,8 @@ please **DO NOT** use it directly in production.
 
 If you would like to contribute to SPU, please check [Contribution guidelines](CONTRIBUTING.md).
 
+If you would like to use SPU for research purposes, please check [research development guidelines](docs/SPU_gudience.pdf) from [@fionser](https://github.com/fionser).
+
 This documentation also contains instructions for [build and testing](CONTRIBUTING.md#build).
 
 ## Installation Guidelines
@@ -50,7 +52,9 @@ Please follow [Installation Guidelines](INSTALLATION.md) to install SPU.
 
 ## Citing SPU
 
-If you think SPU is helpful for your research or development, please consider citing our [paper](https://www.usenix.org/conference/atc23/presentation/ma):
+If you think SPU is helpful for your research or development, please consider citing our papers:
+
+[USENIX ATC'23](https://www.usenix.org/conference/atc23/presentation/ma)
 
 ```text
 @inproceedings {spu,
@@ -67,6 +71,26 @@ If you think SPU is helpful for your research or development, please consider ci
 }
 ```
 
+[ICML'24](https://proceedings.mlr.press/v235/wu24d.html)
+
+```text
+@inproceedings{ditto,
+  title = {Ditto: Quantization-aware Secure Inference of Transformers upon {MPC}},
+  author = {Wu, Haoqi and Fang, Wenjing and Zheng, Yancheng and Ma, Junming and Tan, Jin and Wang, Lei},
+  booktitle = {Proceedings of the 41st International Conference on Machine Learning},
+  pages = {53346--53365},
+  year = {2024},
+  editor = {Salakhutdinov, Ruslan and Kolter, Zico and Heller, Katherine and Weller, Adrian and Oliver, Nuria and Scarlett, Jonathan and Berkenkamp, Felix},
+  volume = {235},
+  series = {Proceedings of Machine Learning Research},
+  month = {21--27 Jul},
+  publisher = {PMLR},
+  pdf = {https://raw.githubusercontent.com/mlresearch/v235/main/assets/wu24d/wu24d.pdf},
+  url = {https://proceedings.mlr.press/v235/wu24d.html},
+  abstract = {Due to the rising privacy concerns on sensitive client data and trained models like Transformers, secure multi-party computation (MPC) techniques are employed to enable secure inference despite attendant overhead. Existing works attempt to reduce the overhead using more MPC-friendly non-linear function approximations. However, the integration of quantization widely used in plaintext inference into the MPC domain remains unclear. To bridge this gap, we propose the framework named Ditto to enable more efficient quantization-aware secure Transformer inference. Concretely, we first incorporate an MPC-friendly quantization into Transformer inference and employ a quantization-aware distillation procedure to maintain the model utility. Then, we propose novel MPC primitives to support the type conversions that are essential in quantization and implement the quantization-aware MPC execution of secure quantized inference. This approach significantly decreases both computation and communication overhead, leading to improvements in overall efficiency. We conduct extensive experiments on Bert and GPT2 models to evaluate the performance of Ditto. The results demonstrate that Ditto is about $3.14\sim 4.40\times$ faster than MPCFormer (ICLR 2023) and $1.44\sim 2.35\times$ faster than the state-of-the-art work PUMA with negligible utility degradation.}
+}
+```
+
 ## Acknowledgement
 
-We thank the significant contributions made by [Alibaba Gemini Lab](https://alibaba-gemini-lab.github.io).
+We thank the significant contributions made by [Alibaba Gemini Lab](https://alibaba-gemini-lab.github.io) and security advisories made by [VUL337@NISL@THU](https://netsec.ccert.edu.cn/vul337).

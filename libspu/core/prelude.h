@@ -42,9 +42,11 @@
                __VA_ARGS__)  // NOLINT, readability-simplify-boolean-expr
 
 #ifdef NDEBUG
-#define SPU_DEBUG_ONLY_THROW static_cast<void>
+#define SPU_DEBUG_ONLY_THROW(...) static_cast<void>(0)
+#define SPU_DEBUG_ONLY_ENFORCE(...) static_cast<void>(0)
 #else
-#define SPU_DEBUG_ONLY_THROW YACL_THROW
+#define SPU_DEBUG_ONLY_THROW(...) YACL_THROW(__VA_ARGS__)
+#define SPU_DEBUG_ONLY_ENFORCE(COND, ...) SPU_ENFORCE(COND, __VA_ARGS__)
 #endif
 
 // Force compiler to inline something regardless of optimization level.

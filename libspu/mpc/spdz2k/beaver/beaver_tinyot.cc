@@ -22,8 +22,8 @@
 #include "yacl/base/dynamic_bitset.h"
 #include "yacl/crypto/rand/rand.h"
 #include "yacl/crypto/tools/prg.h"
-#include "yacl/kernels/algorithms/base_ot.h"
-#include "yacl/kernels/algorithms/ot_store.h"
+#include "yacl/kernel/algorithms/base_ot.h"
+#include "yacl/kernel/type/ot_store.h"
 #include "yacl/utils/serialize.h"
 
 #include "libspu/mpc/common/prg_tensor.h"
@@ -68,7 +68,7 @@ NdArrayRef ring_sqrt2k(const NdArrayRef& x, size_t bits = 0) {
   }
 
   auto ret = ring_zeros(field, x.shape());
-  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using U = std::make_unsigned<ring2k_t>::type;
     NdArrayView<U> _ret(ret);
     NdArrayView<U> _x(x);
@@ -101,7 +101,7 @@ NdArrayRef ring_inv2k(const NdArrayRef& x, size_t bits = 0) {
   }
 
   auto ret = ring_zeros(field, x.shape());
-  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using U = std::make_unsigned<ring2k_t>::type;
     NdArrayView<U> _ret(ret);
     NdArrayView<U> _x(x);
@@ -118,7 +118,7 @@ std::vector<bool> ring_cast_vector_boolean(const NdArrayRef& x) {
   const auto field = x.eltype().as<Ring2k>()->field();
 
   std::vector<bool> res(x.numel());
-  DISPATCH_ALL_FIELDS(field, "RingOps", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> _x(x);
     yacl::parallel_for(0, x.numel(), 4096, [&](size_t start, size_t end) {
       for (size_t i = start; i < end; i++) {
@@ -192,7 +192,7 @@ uint128_t BeaverTinyOt::InitSpdzKey(FieldType, size_t s) {
 // - https://eprint.iacr.org/2018/482.pdf
 NdArrayRef BeaverTinyOt::AuthArrayRef(const NdArrayRef& x, FieldType field,
                                       size_t k, size_t s) {
-  return DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  return DISPATCH_ALL_FIELDS(field, [&]() {
     using T = ring2k_t;
 
     // 1. l_ = max(l, r + s, 2s)
@@ -346,7 +346,7 @@ BeaverTinyOt::Triple_Pair BeaverTinyOt::AuthAnd(FieldType field,
   // Generate authorize bits in the form of B-Share
   NdArrayRef spdz_choices(makeType<RingTy>(field), {tinyot_num * 3 + sigma});
 
-  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using U = std::make_unsigned<ring2k_t>::type;
     auto _size = auth_abcr.choices.size();
     NdArrayView<U> _spdz_choices(spdz_choices);
@@ -392,7 +392,7 @@ BeaverTinyOt::Triple_Pair BeaverTinyOt::AuthAnd(FieldType field,
   auto seed = GenSharedSeed(comm_);
   auto prg = yacl::crypto::Prg<uint64_t>(seed);
 
-  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using U = std::make_unsigned<ring2k_t>::type;
     NdArrayView<U> _check_spdz_bit(check_spdz_bit);
     NdArrayView<U> _check_spdz_mac(check_spdz_mac);
@@ -546,7 +546,7 @@ BeaverTinyOt::Pair_Pair BeaverTinyOt::AuthTrunc(FieldType field,
   NdArrayRef tr_val(b_val.eltype(), shape);
   NdArrayRef tr_mac(b_val.eltype(), shape);
 
-  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using PShrT = ring2k_t;
     NdArrayView<PShrT> _val(b_val);
     NdArrayView<PShrT> _mac(b_mac);
@@ -642,7 +642,7 @@ BeaverTinyOt::Pair BeaverTinyOt::AuthRandBit(FieldType field,
   SPU_ENFORCE(ring_all_equal(ring_bitmask(square, 0, 1), ones));
   auto root = ring_sqrt2k(square, k + 2);
   auto root_inv = ring_inv2k(root, k + 2);
-  auto root_inv_div2 = ring_rshift(root_inv, 1);
+  auto root_inv_div2 = ring_rshift(root_inv, {1});
 
   auto d = ring_mul(root_inv_div2, y);
   auto d_mac = ring_mul(root_inv_div2, y_mac);
@@ -751,17 +751,19 @@ std::pair<NdArrayRef, NdArrayRef> BeaverTinyOt::BatchOpen(
   // Open the low k_bits only
   // value = value + r * 2^k
   // mac = mac + r_mac * 2^k
-  auto masked_val = ring_add(value, ring_lshift(r_val, k));
-  auto masked_mac = ring_add(mac, ring_lshift(r_mac, k));
+  auto masked_val =
+      ring_add(value, ring_lshift(r_val, {static_cast<int64_t>(k)}));
+  auto masked_mac =
+      ring_add(mac, ring_lshift(r_mac, {static_cast<int64_t>(k)}));
 
-  // Because we would use Maccheck to comfirm the open value.
+  // Because we would use Maccheck to confirm the open value.
   // Thus, we don't need commit them.
   auto open_val = comm_->allReduce(ReduceOp::ADD, masked_val, kBindName);
   return {open_val, masked_mac};
 }
 
 void BeaverTinyOt::rotSend(FieldType field, NdArrayRef* q0, NdArrayRef* q1) {
-  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using T = ring2k_t;
 
     SPDLOG_DEBUG("rotSend start with numel {}", q0->numel());
@@ -784,7 +786,7 @@ void BeaverTinyOt::rotSend(FieldType field, NdArrayRef* q0, NdArrayRef* q1) {
 // todo: use dynamic_bitset instead of ArrayRef for `a` to improve performance
 void BeaverTinyOt::rotRecv(FieldType field, const NdArrayRef& a,
                            NdArrayRef* s) {
-  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using T = ring2k_t;
 
     SPDLOG_DEBUG("rotRecv start with numel {}", a.numel());
@@ -814,7 +816,7 @@ void BeaverTinyOt::rotRecv(FieldType field, const NdArrayRef& a,
 // SPDZ2k: Efficient MPC mod 2k for Dishonest Majority
 // - https://eprint.iacr.org/2018/482.pdf
 NdArrayRef BeaverTinyOt::voleSend(FieldType field, const NdArrayRef& x) {
-  return DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  return DISPATCH_ALL_FIELDS(field, [&]() {
     using T = ring2k_t;
 
     SPU_ENFORCE(spdz2k_ot_primitives_ != nullptr);
@@ -831,7 +833,7 @@ NdArrayRef BeaverTinyOt::voleSend(FieldType field, const NdArrayRef& x) {
 }
 
 NdArrayRef BeaverTinyOt::voleRecv(FieldType field, const NdArrayRef& alpha) {
-  return DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  return DISPATCH_ALL_FIELDS(field, [&]() {
     using T = ring2k_t;
 
     SPU_ENFORCE(spdz2k_ot_primitives_ != nullptr);
@@ -915,7 +917,7 @@ BeaverTinyOt::Triple_Pair BeaverTinyOt::AuthMul(FieldType field,
                                                 size_t s) {
   auto _size = shape.numel();
 
-  return DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  return DISPATCH_ALL_FIELDS(field, [&]() {
     using T = ring2k_t;
 
     SPDLOG_DEBUG("AuthMul start...");

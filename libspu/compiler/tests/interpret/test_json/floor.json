@@ -1,0 +1,57 @@
+{
+    "name": "floor",
+    "template": "basic_unary",
+    "testcases": [
+        {
+            "inputs": [
+                {
+                    "data": "[-2.5, 0.0, 2.5]",
+                    "shape": "3",
+                    "dtype": "f16"
+                }
+            ],
+            "expected": [
+                {
+                    "data": "[-3.000000e+00, 0.000000e+00, 2.000000e+00]",
+                    "shape": "3",
+                    "dtype": "f16"
+                }
+            ],
+            "checker": "expect_almost_eq"
+        },
+        {
+            "inputs": [
+                {
+                    "data": "[-2.5, 0.0, 2.5]",
+                    "shape": "3",
+                    "dtype": "f32"
+                }
+            ],
+            "expected": [
+                {
+                    "data": "[-3.000000e+00, 0.000000e+00, 2.000000e+00]",
+                    "shape": "3",
+                    "dtype": "f32"
+                }
+            ],
+            "checker": "expect_almost_eq"
+        },
+        {
+            "inputs": [
+                {
+                    "data": "[-2.5, 0.0, 2.5]",
+                    "shape": "3",
+                    "dtype": "f64"
+                }
+            ],
+            "expected": [
+                {
+                    "data": "[-3.000000e+00, 0.000000e+00, 2.000000e+00]",
+                    "shape": "3",
+                    "dtype": "f64"
+                }
+            ],
+            "checker": "expect_almost_eq"
+        }
+    ]
+}

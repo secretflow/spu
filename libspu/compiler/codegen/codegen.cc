@@ -16,9 +16,15 @@
 
 #include "llvm/Support/raw_ostream.h"
 
+#include "libspu/version.h"
+
 namespace spu::compiler {
 
 std::string CodeGen::doit(mlir::ModuleOp module) {
+  // Add ir version attr
+  module->setAttr("pphlo.version",
+                  mlir::StringAttr::get(module->getContext(), getVersionStr()));
+  // Emit module
   std::string ir_dump;
   llvm::raw_string_ostream stream(ir_dump);
   module.print(stream);

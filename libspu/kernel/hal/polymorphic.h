@@ -187,11 +187,12 @@ Value clamp(SPUContext* ctx, const Value& x, const Value& min,
 // @param dtype, second input value
 Value bitcast(SPUContext* ctx, const Value& x, DataType dtype);
 
-Value left_shift(SPUContext* ctx, const Value& x, size_t bits);
+Value left_shift(SPUContext* ctx, const Value& x, const Sizes& bits);
 
-Value right_shift_logical(SPUContext* ctx, const Value& x, size_t bits);
+Value right_shift_logical(SPUContext* ctx, const Value& x, const Sizes& bits);
 
-Value right_shift_arithmetic(SPUContext* ctx, const Value& x, size_t bits);
+Value right_shift_arithmetic(SPUContext* ctx, const Value& x,
+                             const Sizes& bits);
 
 /// the element-wise base-2 logarithm of x
 // @param in, should be positive, or the result is implementation defined.
@@ -213,6 +214,22 @@ Value sine(SPUContext* ctx, const Value& x);
 // @param in, the input value
 Value cosine(SPUContext* ctx, const Value& x);
 
+/// element-wise the angle between the positive x-axis and the ray from the
+/// origin to the point (x, y), confined to (−π, π]
+/// Note: -π will not be returned because of the missing of -0 and -inf in
+/// fixed-point arithmetic.
+// @param y, vertical coordinate
+// @param x, horizontal coordinate
+Value atan2(SPUContext* ctx, const Value& y, const Value& x);
+
+/// element-wise arccosine, i.e. x -> acos(x)
+// @param x, the input value
+Value acos(SPUContext* ctx, const Value& x);
+
+/// element-wise arcsine, i.e. x -> asin(x)
+// @param x, the input value
+Value asin(SPUContext* ctx, const Value& x);
+
 /// element-wise reciprocal of square root operation, i.e. x - > 1.0 / sqrt(x)
 // @param in, the input value
 Value rsqrt(SPUContext* ctx, const Value& x);
@@ -224,5 +241,10 @@ Value sqrt(SPUContext* ctx, const Value& x);
 /// element-wise sign operation
 // @param in, the input value
 Value sign(SPUContext* ctx, const Value& x);
+
+std::optional<Value> oramonehot(SPUContext* ctx, const Value& x,
+                                int64_t db_size, bool db_is_secret);
+
+Value oramread(SPUContext* ctx, const Value& x, const Value& y, int64_t offset);
 
 }  // namespace spu::kernel::hal

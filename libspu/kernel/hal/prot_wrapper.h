@@ -44,6 +44,10 @@ Value _not_p(SPUContext* ctx, const Value& in);
 Value _not_s(SPUContext* ctx, const Value& in);
 Value _not_v(SPUContext* ctx, const Value& in);
 
+Value _negate_p(SPUContext* ctx, const Value& in);
+Value _negate_s(SPUContext* ctx, const Value& in);
+Value _negate_v(SPUContext* ctx, const Value& in);
+
 Value _msb_p(SPUContext* ctx, const Value& in);
 Value _msb_s(SPUContext* ctx, const Value& in);
 Value _msb_v(SPUContext* ctx, const Value& in);
@@ -52,17 +56,17 @@ Value _equal_pp(SPUContext* ctx, const Value& x, const Value& y);
 std::optional<Value> _equal_sp(SPUContext* ctx, const Value& x, const Value& y);
 std::optional<Value> _equal_ss(SPUContext* ctx, const Value& x, const Value& y);
 
-Value _lshift_p(SPUContext* ctx, const Value& in, size_t bits);
-Value _lshift_s(SPUContext* ctx, const Value& in, size_t bits);
-Value _lshift_v(SPUContext* ctx, const Value& in, size_t bits);
+Value _lshift_p(SPUContext* ctx, const Value& in, const Sizes& bits);
+Value _lshift_s(SPUContext* ctx, const Value& in, const Sizes& bits);
+Value _lshift_v(SPUContext* ctx, const Value& in, const Sizes& bits);
 
-Value _rshift_p(SPUContext* ctx, const Value& in, size_t bits);
-Value _rshift_s(SPUContext* ctx, const Value& in, size_t bits);
-Value _rshift_v(SPUContext* ctx, const Value& in, size_t bits);
+Value _rshift_p(SPUContext* ctx, const Value& in, const Sizes& bits);
+Value _rshift_s(SPUContext* ctx, const Value& in, const Sizes& bits);
+Value _rshift_v(SPUContext* ctx, const Value& in, const Sizes& bits);
 
-Value _arshift_p(SPUContext* ctx, const Value& in, size_t bits);
-Value _arshift_s(SPUContext* ctx, const Value& in, size_t bits);
-Value _arshift_v(SPUContext* ctx, const Value& in, size_t bits);
+Value _arshift_p(SPUContext* ctx, const Value& in, const Sizes& bits);
+Value _arshift_s(SPUContext* ctx, const Value& in, const Sizes& bits);
+Value _arshift_v(SPUContext* ctx, const Value& in, const Sizes& bits);
 
 Value _trunc_p(SPUContext* ctx, const Value& in, size_t bits, SignType sign);
 Value _trunc_s(SPUContext* ctx, const Value& in, size_t bits, SignType sign);
@@ -155,6 +159,17 @@ Value _pad(SPUContext* ctx, const Value& in, const Value& padding_value,
            const Sizes& interior_padding);
 Value _concatenate(SPUContext* ctx, const std::vector<Value>& values,
                    int64_t axis);
+
+// secret database, secret start_indice
+std::optional<Value> _oramonehot_ss(SPUContext* ctx, const Value& x,
+                                    int64_t db_size);
+Value _oramread_ss(SPUContext* ctx, const Value& x, const Value& y,
+                   int64_t offset);
+// public database, secret start_indice
+std::optional<Value> _oramonehot_sp(SPUContext* ctx, const Value& x,
+                                    int64_t db_size);
+Value _oramread_sp(SPUContext* ctx, const Value& x, const Value& y,
+                   int64_t offset);
 
 // NOLINTEND(readability-identifier-naming)
 

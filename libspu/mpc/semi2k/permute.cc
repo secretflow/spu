@@ -50,18 +50,23 @@ NdArrayRef SecureInvPerm(KernelEvalContext* ctx, const NdArrayRef& x,
   const auto lctx = ctx->lctx();
   const auto field = x.eltype().as<AShrTy>()->field();
   auto* beaver = ctx->getState<Semi2kState>()->beaver();
+  auto numel = x.numel();
 
-  auto perm_pair = beaver->PermPair(field, x.shape(), perm_rank, pv);
+  auto [a_buf, b_buf] = beaver->PermPair(field, numel, perm_rank, pv);
 
-  auto t = wrap_a2v(ctx->sctx(), ring_sub(x, perm_pair.first).as(x.eltype()),
-                    perm_rank);
+  NdArrayRef a(std::make_shared<yacl::Buffer>(std::move(a_buf)), x.eltype(),
+               x.shape());
+  NdArrayRef b(std::make_shared<yacl::Buffer>(std::move(b_buf)), x.eltype(),
+               x.shape());
+
+  auto t = wrap_a2v(ctx->sctx(), ring_sub(x, a).as(x.eltype()), perm_rank);
 
   if (lctx->Rank() == perm_rank) {
     SPU_ENFORCE(pv.size());
-    ring_add_(perm_pair.second, applyInvPerm(t, pv));
-    return perm_pair.second.as(x.eltype());
+    ring_add_(b, applyInvPerm(t, pv));
+    return b.as(x.eltype());
   } else {
-    return perm_pair.second.as(x.eltype());
+    return b.as(x.eltype());
   }
 }
 
@@ -77,7 +82,7 @@ NdArrayRef RandPermM::proc(KernelEvalContext* ctx, const Shape& shape) const {
   const auto perm_vector = genRandomPerm(out.numel(), _seed[0]);
 
   const auto field = out.eltype().as<PShrTy>()->field();
-  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> _out(out);
     pforeach(0, out.numel(),
              [&](int64_t idx) { _out[idx] = ring2k_t(perm_vector[idx]); });

@@ -112,8 +112,12 @@ NdArrayRef B2A_Randbit::proc(KernelEvalContext* ctx,
   auto randbits =
       prg_state->genPriv(field, {numel * static_cast<int64_t>(nbits)});
   // reconstruct ranbits
-  if (rank == 0) comm->sendAsync(2, randbits, "randbits0");
-  if (rank == 1) comm->sendAsync(2, randbits, "randbits1");
+  if (rank == 0) {
+    comm->sendAsync(2, randbits, "randbits0");
+  }
+  if (rank == 1) {
+    comm->sendAsync(2, randbits, "randbits1");
+  }
   if (rank == 2) {
     auto randbits0 = comm->recv(0, makeType<AShrTy>(field), "randbits0");
     randbits0 = randbits0.reshape(randbits.shape());
@@ -132,7 +136,7 @@ NdArrayRef B2A_Randbit::proc(KernelEvalContext* ctx,
 
   auto res = NdArrayRef(makeType<AShrTy>(field), x.shape());
 
-  DISPATCH_ALL_FIELDS(field, kBindName, [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using U = ring2k_t;
 
     NdArrayView<U> _randbits(randbits);
@@ -182,12 +186,15 @@ NdArrayRef B2A_Randbit::proc(KernelEvalContext* ctx,
 }
 
 NdArrayRef Msb_a2b::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
-  // SC
-  // auto in_ = ring_add(in, in);
-  // auto in_ = in;
-  // auto in_ = ShareConvert().proc(ctx, in);
+#ifndef OPT_SECURENN_MSB
+  // this is the default securenn implementation
+  auto in_ = ring_add(in, in);
+  in_ = ShareConvert().proc(ctx, in_);
+  auto res = Msb().proc(ctx, in_);
+#else
+  // this is optimized but cannot calculate msb(-1) where all bits are 1
   auto res = Msb_opt().proc(ctx, in);
-  // auto res = Msb().proc(ctx, in_);
+#endif
   res = A2B().proc(ctx, res);
   return res;
 }
@@ -201,7 +208,7 @@ void CommonTypeV::evaluate(KernelEvalContext* ctx) const {
   const auto* lhs_v = lhs.as<Priv2kTy>();
   const auto* rhs_v = rhs.as<Priv2kTy>();
 
-  ctx->setOutput(makeType<AShrTy>(std::max(lhs_v->field(), rhs_v->field())));
+  ctx->pushOutput(makeType<AShrTy>(std::max(lhs_v->field(), rhs_v->field())));
 }
 
 }  // namespace spu::mpc::securenn

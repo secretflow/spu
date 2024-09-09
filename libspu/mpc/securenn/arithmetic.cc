@@ -19,8 +19,6 @@
 #include <random>
 
 #include "libspu/core/type_util.h"
-#include "libspu/core/vectorize.h"
-#include "libspu/mpc/ab_api.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pv2k.h"
@@ -37,7 +35,7 @@ NdArrayRef A2V::proc(KernelEvalContext* ctx, const NdArrayRef& in,
 
   auto numel = in.numel();
 
-  return DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  return DISPATCH_ALL_FIELDS(field, [&]() {
     std::vector<ring2k_t> share(numel);
     NdArrayView<ring2k_t> _in(in);
     pforeach(0, numel, [&](int64_t idx) { share[idx] = _in[idx]; });
@@ -109,7 +107,7 @@ NdArrayRef RandA::proc(KernelEvalContext* ctx, const Shape& shape) const {
   // - https://eprint.iacr.org/2019/599.pdf
   // It's safer to keep the number within [-2**(k-2), 2**(k-2)) for comparison
   // operations.
-  return ring_rshift(prg_state->genPriv(field, shape), 2)
+  return ring_rshift(prg_state->genPriv(field, shape), {2})
       .as(makeType<AShrTy>(field));
 }
 
@@ -134,30 +132,8 @@ NdArrayRef A2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   return out.as(makeType<Pub2kTy>(field));
 }
 
-NdArrayRef NotA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
-  auto* comm = ctx->getState<Communicator>();
-
-  // First, let's show negate could be locally processed.
-  //   let X = sum(Xi)     % M
-  //   let Yi = neg(Xi) = M-Xi
-  //
-  // we get
-  //   Y = sum(Yi)         % M
-  //     = n*M - sum(Xi)   % M
-  //     = -sum(Xi)        % M
-  //     = -X              % M
-  //
-  // 'not' could be processed accordingly.
-  //   not(X)
-  //     = M-1-X           # by definition, not is the complement of 2^k
-  //     = neg(X) + M-1
-  //
+NdArrayRef NegateA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   auto res = ring_neg(in);
-  if (comm->getRank() == 0) {
-    const auto field = in.eltype().as<Ring2k>()->field();
-    ring_add_(res, ring_not(ring_zeros(field, in.shape())));
-  }
-
   return res.as(in.eltype());
 }
 
@@ -200,10 +176,7 @@ NdArrayRef MatMulAP::proc(KernelEvalContext* ctx, const NdArrayRef& x,
 }
 
 NdArrayRef LShiftA::proc(KernelEvalContext* ctx, const NdArrayRef& in,
-                         size_t bits) const {
-  const auto field = in.eltype().as<Ring2k>()->field();
-  bits %= SizeOf(field) * 8;
-
+                         const Sizes& bits) const {
   return ring_lshift(in, bits).as(in.eltype());
 }
 
@@ -216,10 +189,10 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in,
   auto rank = comm->getRank();
   const auto numel = in.numel();
   const auto field = in.eltype().as<Ring2k>()->field();
-  const size_t k = SizeOf(field) * 8;
+  const int k = SizeOf(field) * 8;
 
   NdArrayRef out(in.eltype(), in.shape());
-  DISPATCH_ALL_FIELDS(field, "securenn.truncpr", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using U = ring2k_t;
 
     auto r = prg_state->genPriv(field, in.shape());
@@ -232,9 +205,11 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in,
     auto rb_recon = comm->reduce(ReduceOp::ADD, rb, 2, "rb");
 
     if (rank == 2) {
-      auto adjust1 =
-          ring_sub(ring_rshift(ring_lshift(r_recon, 1), bits + 1), rc_recon);
-      auto adjust2 = ring_sub(ring_rshift(r_recon, k - 1), rb_recon);
+      auto adjust1 = ring_sub(ring_rshift(ring_lshift(r_recon, {1}),
+                                          {static_cast<int64_t>(bits + 1)}),
+                              rc_recon);
+      auto adjust2 = ring_sub(
+          ring_rshift(r_recon, {static_cast<int64_t>(k - 1)}), rb_recon);
       comm->sendAsync(0, adjust1, "adjust1");
       comm->sendAsync(0, adjust2, "adjust2");
     }
@@ -362,7 +337,6 @@ NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
       b = prg_state
               ->genPrssPair(field, x.shape(), PrgState::GenPrssCtrl::Second)
               .second;
-      prg_state->genPrssPair(field, x.shape(), PrgState::GenPrssCtrl::None);
       c = comm->recv(2, ty, "c");
       c = c.reshape(x.shape());
     }
@@ -527,7 +501,6 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
               .second;
       b = prg_state->genPrssPair(field, shape2, PrgState::GenPrssCtrl::Second)
               .second;
-      prg_state->genPrssPair(field, shape3, PrgState::GenPrssCtrl::None);
 
       c = comm->recv(2, ty, "c");
       c = c.reshape(shape3);
@@ -594,7 +567,7 @@ NdArrayRef ShareConvert::proc(KernelEvalContext* ctx,
   const auto kComm = a.elsize() * size;
   comm->addCommStatsManually(4, 4 * log_p * kComm + 6 * kComm);
 
-  DISPATCH_ALL_FIELDS(field, "securenn.sc", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using U = ring2k_t;
     const U L_1 = (U)(~0);  // 2^k - 1
     // P0 and P1 add the share of zero
@@ -902,7 +875,7 @@ NdArrayRef Msb::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const auto kComm = in.elsize() * size;
   comm->addCommStatsManually(5, 13 * kComm + 4 * kComm * log_p);
 
-  DISPATCH_ALL_FIELDS(field, "securenn.msb", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using U = ring2k_t;
     const U L_1 = (U)(~0);
 
@@ -1050,7 +1023,6 @@ NdArrayRef Msb::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
             prg_state
                 ->genPrssPair(field, in.shape(), PrgState::GenPrssCtrl::Second)
                 .second;
-        prg_state->genPrssPair(field, in.shape(), PrgState::GenPrssCtrl::None);
         beaver_c = comm->recv(2, ty, "beaver_c");
         beaver_c = beaver_c.reshape(in.shape());
       }
@@ -1241,7 +1213,7 @@ NdArrayRef Msb_opt::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const auto kComm = in.elsize() * size;
   comm->addCommStatsManually(5, 9 * kComm + 3 * kComm * log_p);
 
-  DISPATCH_ALL_FIELDS(field, "securenn.msb", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using U = ring2k_t;
     const U L_1 = (U)(~0);
 
@@ -1395,7 +1367,6 @@ NdArrayRef Msb_opt::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
             prg_state
                 ->genPrssPair(field, in.shape(), PrgState::GenPrssCtrl::Second)
                 .second;
-        prg_state->genPrssPair(field, in.shape(), PrgState::GenPrssCtrl::None);
         beaver_c = comm->recv(2, ty, "beaver_c");
         beaver_c = beaver_c.reshape(in.shape());
       }

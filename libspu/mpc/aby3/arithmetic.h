@@ -116,9 +116,9 @@ class RandA : public RandKernel {
   NdArrayRef proc(KernelEvalContext* ctx, const Shape& shape) const override;
 };
 
-class NotA : public UnaryKernel {
+class NegateA : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "not_a";
+  static constexpr char kBindName[] = "negate_a";
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -243,7 +243,7 @@ class LShiftA : public ShiftKernel {
   ce::CExpr comm() const override { return ce::Const(0); }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
-                  size_t bits) const override;
+                  const Sizes& bits) const override;
 };
 
 // Refer to:

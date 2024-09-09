@@ -706,7 +706,7 @@ class SPU(Device):
 
             return tree_unflatten(out_tree, ret_flat)
 
-        def dump_pphlo(self, *args, **kwargs):
+        def dump_ir(self, *args, **kwargs):
             args, kwargs = self.device._place_arguments(*args, **kwargs)
             executable, *_ = self._compile_jax_func(
                 self.pyfunc, self.static_argnums, self.copts, *args, **kwargs
@@ -723,7 +723,10 @@ class SPU(Device):
 
             fn_name = repr(fn)
 
-            import jax.extend.linear_util as lu
+            try:
+                import jax.extend.linear_util as lu
+            except ImportError:
+                import jax.linear_util as lu  # fallback
             from jax._src import api_util as japi_util
             from jax.tree_util import tree_map, tree_flatten
 
@@ -869,9 +872,12 @@ class SPU(Device):
     class TorchFunction(Device.Function):
         device: SPU
 
-        def __init__(self, device: Device, pyfunc: Callable):
+        def __init__(
+            self, device: Device, pyfunc: Callable, copts: spu_pb2.CompilerOptions
+        ):
             super().__init__(device, pyfunc)
             self.state_dict = None
+            self.copts = copts
 
         def _place_state_dict(self, state_dict):
             # place arguments onto this device.
@@ -891,7 +897,7 @@ class SPU(Device):
 
             # now, all object are either PyObject or SPU.DeviceObject
             executable, args_flat, out_tree = self._compile_torch_func(
-                self.pyfunc, *args, **kwargs
+                self.pyfunc, self.copts, *args, **kwargs
             )
 
             def get_share_ref(idx, obj):
@@ -929,14 +935,14 @@ class SPU(Device):
                 ret = pytree.tree_unflatten(ret, out_spec)
             return ret
 
-        def dump_pphlo(self, state_dict, *args, **kwargs):
+        def dump_ir(self, state_dict, *args, **kwargs):
             # place state_dict
             self.state_dict = self._place_state_dict(state_dict)
             args, kwargs = self.device._place_arguments(*args, **kwargs)
             executable, *_ = self._compile_torch_func(self.pyfunc, *args, **kwargs)
             return executable.code.decode('utf-8')
 
-        def _compile_torch_func(self, fn, *args, **kwargs):
+        def _compile_torch_func(self, fn, copts, *args, **kwargs):
             import torch
 
             def mock_parameters(obj: Union[SPU.Object, np.ndarray]):
@@ -955,7 +961,7 @@ class SPU(Device):
 
             mock_args, mock_kwargs = tree_map(mock_parameters, (args, kwargs))
 
-            exported_fn = torch._export.export(fn, args=mock_args, kwargs=mock_kwargs)
+            exported_fn = torch.export.export(fn, args=mock_args, kwargs=mock_kwargs)
 
             args_flat, _ = tree_flatten((args, kwargs))
             m_args_flat, _ = tree_flatten((mock_args, mock_kwargs))
@@ -967,6 +973,7 @@ class SPU(Device):
                 args_flat,
                 m_args_flat,
                 state_dict=self.state_dict,
+                copts=self.copts,
             )
             return executable, args_flat, output_tree
 
@@ -1025,7 +1032,7 @@ class SPU(Device):
         elif _FRAMEWORK == Framework.JAX:
             return SPU.JaxFunction(self, fn, static_argnums, copts)
         elif _FRAMEWORK == Framework.EXP_TORCH:
-            return SPU.TorchFunction(self, fn)
+            return SPU.TorchFunction(self, fn, copts)
         else:
             raise Exception("unsupported frontend framework.")
 

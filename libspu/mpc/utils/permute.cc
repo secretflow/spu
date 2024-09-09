@@ -27,7 +27,7 @@ PermVector ring2pv(const NdArrayRef& x) {
               x.eltype());
   const auto field = x.eltype().as<Ring2k>()->field();
   PermVector pv(x.numel());
-  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> _x(x);
     pforeach(0, x.numel(), [&](int64_t idx) { pv[idx] = int64_t(_x[idx]); });
   });
@@ -39,7 +39,7 @@ NdArrayRef applyInvPerm(const NdArrayRef& x, absl::Span<const int64_t> pv) {
 
   NdArrayRef y(x.eltype(), x.shape());
   const auto field = x.eltype().as<Ring2k>()->field();
-  DISPATCH_ALL_FIELDS(field, kPermModule, [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> _x(x);
     NdArrayView<ring2k_t> _y(y);
     for (int64_t i = 0; i < y.numel(); i++) {
@@ -54,7 +54,7 @@ NdArrayRef applyPerm(const NdArrayRef& x, absl::Span<const int64_t> pv) {
 
   NdArrayRef y(x.eltype(), x.shape());
   const auto field = x.eltype().as<Ring2k>()->field();
-  DISPATCH_ALL_FIELDS(field, kPermModule, [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> _x(x);
     NdArrayView<ring2k_t> _y(y);
     for (int64_t i = 0; i < y.numel(); i++) {
@@ -86,7 +86,7 @@ PermVector genPermBySort(const NdArrayRef& x) {
   PermVector perm(x.shape()[0]);
   std::iota(perm.begin(), perm.end(), 0);
   const auto field = x.eltype().as<Ring2k>()->field();
-  DISPATCH_ALL_FIELDS(field, kPermModule, [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using T = std::make_signed_t<ring2k_t>;
 
     NdArrayView<T> _x(x);

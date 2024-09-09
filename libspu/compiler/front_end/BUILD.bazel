@@ -58,7 +58,7 @@ spu_cc_library(
         "@xla//xla/service:while_loop_constant_sinking",
         "@xla//xla/service:while_loop_simplifier",
         "@xla//xla/service:zero_sized_hlo_elimination",
-        "@xla//xla/service/gpu:dot_dimension_sorter",
+        "@xla//xla/service/gpu/transforms:dot_dimension_sorter",
         "@xla//xla/translate/hlo_to_mhlo:hlo_module_importer",
     ],
 )
@@ -71,8 +71,8 @@ spu_cc_library(
     deps = [
         ":hlo_importer",
         "//libspu/compiler/common:compilation_context",
-        "//libspu/compiler/passes:hlo_legalize_to_pphlo",
-        "//libspu/compiler/passes:lower_conversion_cast",
+        "//libspu/compiler/utils",
+        "//libspu/dialect/pphlo/transforms:all_passes",
         "@llvm-project//mlir:FuncExtensions",
         "@llvm-project//mlir:Parser",
         "@xla//xla/mlir_hlo:mhlo_passes",

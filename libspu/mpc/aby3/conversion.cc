@@ -73,11 +73,11 @@ NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
   auto numel = in.numel();
 
-  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using ashr_t = std::array<ring2k_t, 2>;
     NdArrayView<ashr_t> _in(in);
 
-    DISPATCH_UINT_PT_TYPES(out_btype, "_", [&]() {
+    DISPATCH_UINT_PT_TYPES(out_btype, [&]() {
       using bshr_el_t = ScalarT;
       using bshr_t = std::array<bshr_el_t, 2>;
 
@@ -163,7 +163,7 @@ NdArrayRef B2AByPPA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
   if (in_nbits == 0) {
     // special case, it's known to be zero.
-    DISPATCH_ALL_FIELDS(field, "_", [&]() {
+    DISPATCH_ALL_FIELDS(field, [&]() {
       NdArrayView<std::array<ring2k_t, 2>> _out(out);
       pforeach(0, numel, [&](int64_t idx) {
         _out[idx][0] = 0;
@@ -176,11 +176,11 @@ NdArrayRef B2AByPPA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   auto* comm = ctx->getState<Communicator>();
   auto* prg_state = ctx->getState<PrgState>();
 
-  DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), "_", [&]() {
+  DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), [&]() {
     using bshr_t = std::array<ScalarT, 2>;
     NdArrayView<bshr_t> _in(in);
 
-    DISPATCH_ALL_FIELDS(field, "_", [&]() {
+    DISPATCH_ALL_FIELDS(field, [&]() {
       using ashr_el_t = ring2k_t;
       using ashr_t = std::array<ashr_el_t, 2>;
 
@@ -335,7 +335,7 @@ NdArrayRef B2AByOT::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
   if (in_nbits == 0) {
     // special case, it's known to be zero.
-    DISPATCH_ALL_FIELDS(field, "_", [&]() {
+    DISPATCH_ALL_FIELDS(field, [&]() {
       NdArrayView<std::array<ring2k_t, 2>> _out(out);
       pforeach(0, numel, [&](int64_t idx) {
         _out[idx][0] = 0;
@@ -356,12 +356,12 @@ NdArrayRef B2AByOT::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   size_t P1 = (pivot + 1) % 3;
   size_t P2 = (pivot + 2) % 3;
 
-  DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), "_", [&]() {
+  DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), [&]() {
     using bshr_el_t = ScalarT;
     using bshr_t = std::array<bshr_el_t, 2>;
     NdArrayView<bshr_t> _in(in);
 
-    DISPATCH_ALL_FIELDS(field, "_", [&]() {
+    DISPATCH_ALL_FIELDS(field, [&]() {
       using ashr_el_t = ring2k_t;
       using ashr_t = std::array<ashr_el_t, 2>;
 
@@ -402,11 +402,6 @@ NdArrayRef B2AByOT::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
         });
       } else if (comm->getRank() == P1) {
         // the receiver
-        prg_state->fillPrssPair<ashr_el_t>(nullptr, nullptr, r0.size(),
-                                           PrgState::GenPrssCtrl::None);
-        prg_state->fillPrssPair<ashr_el_t>(nullptr, nullptr, r0.size(),
-                                           PrgState::GenPrssCtrl::None);
-
         auto b2 = bitDecompose<bshr_el_t>(getShare(in, 0), in_nbits);
 
         // ot.recv
@@ -505,12 +500,12 @@ NdArrayRef B2AByOT::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   NdArrayRef lo(out_type, in.shape());
   NdArrayRef hi(out_type, in.shape());
 
-  DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), "_", [&]() {
+  DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), [&]() {
     using in_el_t = ScalarT;
     using in_shr_t = std::array<in_el_t, 2>;
     NdArrayView<in_shr_t> _in(in);
 
-    DISPATCH_UINT_PT_TYPES(out_backtype, "_", [&]() {
+    DISPATCH_UINT_PT_TYPES(out_backtype, [&]() {
       using out_el_t = ScalarT;
       using out_shr_t = std::array<out_el_t, 2>;
 
@@ -684,7 +679,7 @@ NdArrayRef MsbA2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
       makeType<BShrTy>(GetStorageType(field), SizeOf(field) * 8);
   NdArrayRef m(bshr_type, in.shape());
   NdArrayRef n(bshr_type, in.shape());
-  DISPATCH_ALL_FIELDS(field, "aby3.msb.split", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using el_t = ring2k_t;
     using shr_t = std::array<el_t, 2>;
 
@@ -732,7 +727,9 @@ NdArrayRef MsbA2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
     // Compute the k'th bit.
     //   (m^n)[k] ^ carry
-    auto msb = xor_bb(sctx, rshift_b(sctx, xor_bb(sctx, wrap_m, wrap_n), nbits),
+    auto msb = xor_bb(sctx,
+                      rshift_b(sctx, xor_bb(sctx, wrap_m, wrap_n),
+                               {static_cast<int64_t>(nbits)}),
                       carry);
 
     return UnwrapValue(msb);
@@ -775,10 +772,10 @@ NdArrayRef eqz(KernelEvalContext* ctx, const NdArrayRef& in) {
   size_t P1 = (pivot + 1) % 3;
   size_t P2 = (pivot + 2) % 3;
 
-  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using ashr_el_t = ring2k_t;
     using ashr_t = std::array<ashr_el_t, 2>;
-    DISPATCH_UINT_PT_TYPES(in_bshr_btype, "_", [&]() {
+    DISPATCH_UINT_PT_TYPES(in_bshr_btype, [&]() {
       using bshr_el_t = ScalarT;
       std::vector<bshr_el_t> zero_flag_3pc_0(numel);
       std::vector<bshr_el_t> zero_flag_3pc_1(numel);
@@ -830,10 +827,6 @@ NdArrayRef eqz(KernelEvalContext* ctx, const NdArrayRef& in) {
                                              PrgState::GenPrssCtrl::First);
         } else {
           pforeach(0, numel, [&](int64_t idx) { a_s[idx] = _in[idx][1]; });
-          prg_state->fillPrssPair<ashr_el_t>({}, {}, numel,
-                                             PrgState::GenPrssCtrl::None);
-          prg_state->fillPrssPair<bshr_el_t>({}, {}, numel,
-                                             PrgState::GenPrssCtrl::None);
           r_arith = comm->recv<ashr_el_t>(P0, "r_arith");
           r_bool = comm->recv<bshr_el_t>(P0, "r_bool");
         }
@@ -869,8 +862,6 @@ NdArrayRef eqz(KernelEvalContext* ctx, const NdArrayRef& in) {
           // P1 zero_flag = (not(c_p xor [r]b0)^ rz, rb1)
           pforeach(0, numel,
                    [&](int64_t idx) { zero_flag_3pc_1[idx] = r_bool[idx]; });
-          prg_state->fillPrssPair<bshr_el_t>({}, {}, numel,
-                                             PrgState::GenPrssCtrl::None);
 
           auto flag_split = comm->recv<bshr_el_t>(P1, "flag_split");
           pforeach(0, numel, [&](int64_t idx) {
@@ -981,7 +972,7 @@ NdArrayRef EqualAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
   const auto field = lhs_ty->field();
   NdArrayRef out(makeType<AShrTy>(field), lhs.shape());
 
-  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using shr_t = std::array<ring2k_t, 2>;
     NdArrayView<shr_t> _out(out);
     NdArrayView<shr_t> _lhs(lhs);
@@ -1008,7 +999,7 @@ NdArrayRef EqualAP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
 
   auto rank = comm->getRank();
 
-  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using el_t = ring2k_t;
     using shr_t = std::array<el_t, 2>;
 
@@ -1037,7 +1028,7 @@ void CommonTypeV::evaluate(KernelEvalContext* ctx) const {
   const auto* lhs_v = lhs.as<Priv2kTy>();
   const auto* rhs_v = rhs.as<Priv2kTy>();
 
-  ctx->setOutput(makeType<AShrTy>(std::max(lhs_v->field(), rhs_v->field())));
+  ctx->pushOutput(makeType<AShrTy>(std::max(lhs_v->field(), rhs_v->field())));
 }
 
 // Xor gate for ASS.

@@ -15,7 +15,7 @@
 #pragma once
 
 #include "libspu/core/value.h"
-#include "libspu/dialect/pphlo/ops.h"
+#include "libspu/dialect/pphlo/IR/ops.h"
 
 namespace spu {
 class SPUContext;
@@ -60,9 +60,11 @@ class PPHloVerifier {
   VERIFY_DECL(SqrtOp)
   VERIFY_DECL(RoundOp)
   VERIFY_DECL(RoundNearestEvenOp)
+  VERIFY_DECL(PopcntOp)
 
   // Simple binary
   VERIFY_DECL(AddOp)
+  VERIFY_DECL(Atan2Op)
   VERIFY_DECL(SubtractOp)
   VERIFY_DECL(MulOp)
   VERIFY_DECL(PowOp)
@@ -139,7 +141,6 @@ class PPHloVerifier {
   NO_VERIFY_DEFN(RngOp)
   NO_VERIFY_DEFN(ConstantOp)
   NO_VERIFY_DEFN(MaxPoolScatterOp)
-  NO_VERIFY_DEFN(PreferAOp)
   NO_VERIFY_DEFN(ArgMaxOp)
   NO_VERIFY_DEFN(EpsilonOp)
   NO_VERIFY_DEFN(CustomCallOp)
@@ -148,6 +149,7 @@ class PPHloVerifier {
   NO_VERIFY_DEFN(ImagOp)
   NO_VERIFY_DEFN(ComplexOp)
   NO_VERIFY_DEFN(SimpleSortOp)
+  NO_VERIFY_DEFN(BroadcastShapeAsOp)
 
 #undef NO_VERIFY_DEFN
 };

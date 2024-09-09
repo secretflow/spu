@@ -17,6 +17,7 @@
 #include "libspu/mpc/aby3/arithmetic.h"
 #include "libspu/mpc/aby3/boolean.h"
 #include "libspu/mpc/aby3/conversion.h"
+#include "libspu/mpc/aby3/oram.h"
 #include "libspu/mpc/aby3/permute.h"
 #include "libspu/mpc/aby3/type.h"
 #include "libspu/mpc/common/communicator.h"
@@ -53,7 +54,7 @@ void regAby3Protocol(SPUContext* ctx,
           aby3::B2P, aby3::P2B, aby3::A2B,                      // Conversion2
           aby3::B2ASelector, /*aby3::B2AByOT, aby3::B2AByPPA*/  // B2A
           aby3::CastTypeB,                                      // Cast
-          aby3::NotA,                                           // Not
+          aby3::NegateA,                                        // Negate
           aby3::AddAP, aby3::AddAA,                             // Add
           aby3::MulAP, aby3::MulAA, aby3::MulA1B,               // Mul
           aby3::MatMulAP, aby3::MatMulAA,                       // MatMul
@@ -72,6 +73,8 @@ void regAby3Protocol(SPUContext* ctx,
 #else
           aby3::TruncA,
 #endif
+          aby3::OramOneHotAA, aby3::OramOneHotAP, aby3::OramReadOA,      // oram
+          aby3::OramReadOP,                                              // oram
           aby3::RandPermM, aby3::PermAM, aby3::PermAP, aby3::InvPermAM,  // perm
           aby3::InvPermAP                                                // perm
           >();

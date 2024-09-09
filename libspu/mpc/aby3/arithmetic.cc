@@ -41,7 +41,7 @@ std::vector<NdArrayRef> a1b_offline(size_t sender, const NdArrayRef& a,
 
   auto numel = a.numel();
 
-  return DISPATCH_ALL_FIELDS(field, "_", [&]() -> std::vector<NdArrayRef> {
+  return DISPATCH_ALL_FIELDS(field, [&]() -> std::vector<NdArrayRef> {
     using ashr_el_t = ring2k_t;
     NdArrayRef m0(makeType<RingTy>(field), a.shape());
     NdArrayRef m1(makeType<RingTy>(field), a.shape());
@@ -52,7 +52,7 @@ std::vector<NdArrayRef> a1b_offline(size_t sender, const NdArrayRef& a,
     NdArrayView<ashr_el_t> _m1(m1);
 
     return DISPATCH_UINT_PT_TYPES(
-        b.eltype().as<BShrTy>()->getBacktype(), "_",
+        b.eltype().as<BShrTy>()->getBacktype(),
         [&]() -> std::vector<NdArrayRef> {
           using bshr_t = std::array<ScalarT, 2>;
           if (self_rank == sender) {
@@ -82,8 +82,6 @@ std::vector<NdArrayRef> a1b_offline(size_t sender, const NdArrayRef& a,
 
             return {c1, c2, m0, m1};
           } else if (self_rank == (sender + 1) % 3) {
-            prg_state->genPrssPair(field, a.shape(),
-                                   PrgState::GenPrssCtrl::None);
             auto c1 = prg_state
                           ->genPrssPair(field, a.shape(),
                                         PrgState::GenPrssCtrl::First)
@@ -95,8 +93,6 @@ std::vector<NdArrayRef> a1b_offline(size_t sender, const NdArrayRef& a,
                           ->genPrssPair(field, a.shape(),
                                         PrgState::GenPrssCtrl::Second)
                           .second;
-            prg_state->genPrssPair(field, a.shape(),
-                                   PrgState::GenPrssCtrl::None);
 
             return {c2};
           }
@@ -109,7 +105,7 @@ std::vector<uint8_t> ring_cast_boolean(const NdArrayRef& x) {
   const size_t numel = x.numel();
   std::vector<uint8_t> res(numel);
 
-  DISPATCH_UINT_PT_TYPES(x.eltype().as<PtTy>()->pt_type(), "_", [&]() {
+  DISPATCH_UINT_PT_TYPES(x.eltype().as<PtTy>()->pt_type(), [&]() {
     NdArrayView<ScalarT> _x(x);
     pforeach(0, numel, [&](int64_t idx) {
       res[idx] = static_cast<uint8_t>(_x[idx] & 0x1);
@@ -127,7 +123,7 @@ NdArrayRef RandA::proc(KernelEvalContext* ctx, const Shape& shape) const {
 
   NdArrayRef out(makeType<AShrTy>(field), shape);
 
-  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using el_t = ring2k_t;
 
     std::vector<el_t> r0(shape.numel());
@@ -153,7 +149,7 @@ NdArrayRef A2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const auto field = in.eltype().as<AShrTy>()->field();
   auto numel = in.numel();
 
-  return DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  return DISPATCH_ALL_FIELDS(field, [&]() {
     using pshr_el_t = ring2k_t;
     using ashr_el_t = ring2k_t;
     using ashr_t = std::array<ashr_el_t, 2>;
@@ -184,7 +180,7 @@ NdArrayRef P2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
   auto rank = comm->getRank();
 
-  return DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  return DISPATCH_ALL_FIELDS(field, [&]() {
     using ashr_el_t = ring2k_t;
     using ashr_t = std::array<ashr_el_t, 2>;
     using pshr_el_t = ring2k_t;
@@ -226,7 +222,7 @@ NdArrayRef A2V::proc(KernelEvalContext* ctx, const NdArrayRef& in,
   auto* comm = ctx->getState<Communicator>();
   const auto field = in.eltype().as<AShrTy>()->field();
 
-  return DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  return DISPATCH_ALL_FIELDS(field, [&]() {
     using vshr_el_t = ring2k_t;
     using ashr_el_t = ring2k_t;
     using ashr_t = std::array<ashr_el_t, 2>;
@@ -267,7 +263,7 @@ NdArrayRef V2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
   size_t owner_rank = in_ty->owner();
 
-  return DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  return DISPATCH_ALL_FIELDS(field, [&]() {
     using ashr_el_t = ring2k_t;
     using ashr_t = std::array<ashr_el_t, 2>;
 
@@ -304,14 +300,11 @@ NdArrayRef V2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   });
 }
 
-NdArrayRef NotA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
-  auto* comm = ctx->getState<Communicator>();
+NdArrayRef NegateA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const auto* in_ty = in.eltype().as<AShrTy>();
   const auto field = in_ty->field();
 
-  auto rank = comm->getRank();
-
-  return DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  return DISPATCH_ALL_FIELDS(field, [&]() {
     using el_t = std::make_unsigned_t<ring2k_t>;
     using shr_t = std::array<el_t, 2>;
 
@@ -319,16 +312,9 @@ NdArrayRef NotA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
     NdArrayView<shr_t> _out(out);
     NdArrayView<shr_t> _in(in);
 
-    // neg(x) = not(x) + 1
-    // not(x) = neg(x) - 1
     pforeach(0, in.numel(), [&](int64_t idx) {
       _out[idx][0] = -_in[idx][0];
       _out[idx][1] = -_in[idx][1];
-      if (rank == 0) {
-        _out[idx][1] -= 1;
-      } else if (rank == 1) {
-        _out[idx][0] -= 1;
-      }
     });
 
     return out;
@@ -349,7 +335,7 @@ NdArrayRef AddAP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
 
   auto rank = comm->getRank();
 
-  return DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  return DISPATCH_ALL_FIELDS(field, [&]() {
     using el_t = ring2k_t;
     using shr_t = std::array<el_t, 2>;
 
@@ -376,7 +362,7 @@ NdArrayRef AddAA::proc(KernelEvalContext*, const NdArrayRef& lhs,
   SPU_ENFORCE(lhs_ty->field() == rhs_ty->field());
   const auto field = lhs_ty->field();
 
-  return DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  return DISPATCH_ALL_FIELDS(field, [&]() {
     using shr_t = std::array<ring2k_t, 2>;
 
     NdArrayRef out(makeType<AShrTy>(field), lhs.shape());
@@ -403,7 +389,7 @@ NdArrayRef MulAP::proc(KernelEvalContext*, const NdArrayRef& lhs,
   SPU_ENFORCE(lhs_ty->field() == rhs_ty->field());
   const auto field = lhs_ty->field();
 
-  return DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  return DISPATCH_ALL_FIELDS(field, [&]() {
     using el_t = ring2k_t;
     using shr_t = std::array<el_t, 2>;
 
@@ -426,7 +412,7 @@ NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
   auto* comm = ctx->getState<Communicator>();
   auto* prg_state = ctx->getState<PrgState>();
 
-  return DISPATCH_ALL_FIELDS(field, "aby3.mulAA", [&]() {
+  return DISPATCH_ALL_FIELDS(field, [&]() {
     using el_t = ring2k_t;
     using shr_t = std::array<el_t, 2>;
 
@@ -575,7 +561,7 @@ NdArrayRef MulA1B::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
                       .reshape(r2.first.shape());
     }
 
-    DISPATCH_ALL_FIELDS(field, "_", [&]() {
+    DISPATCH_ALL_FIELDS(field, [&]() {
       // using  = ring2k_t;
       NdArrayView<ring2k_t> r1_0(r1.first);
       NdArrayView<ring2k_t> r1_1(r1.second);
@@ -675,11 +661,12 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
 }
 
 NdArrayRef LShiftA::proc(KernelEvalContext*, const NdArrayRef& in,
-                         size_t bits) const {
+                         const Sizes& bits) const {
   const auto* in_ty = in.eltype().as<AShrTy>();
   const auto field = in_ty->field();
+  bool is_splat = bits.size() == 1;
 
-  return DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  return DISPATCH_ALL_FIELDS(field, [&]() {
     using shr_t = std::array<ring2k_t, 2>;
 
     NdArrayRef out(makeType<AShrTy>(field), in.shape());
@@ -687,8 +674,9 @@ NdArrayRef LShiftA::proc(KernelEvalContext*, const NdArrayRef& in,
     NdArrayView<shr_t> _in(in);
 
     pforeach(0, in.numel(), [&](int64_t idx) {
-      _out[idx][0] = _in[idx][0] << bits;
-      _out[idx][1] = _in[idx][1] << bits;
+      auto shift_bit = is_splat ? bits[0] : bits[idx];
+      _out[idx][0] = _in[idx][0] << shift_bit;
+      _out[idx][1] = _in[idx][1] << shift_bit;
     });
 
     return out;
@@ -722,22 +710,23 @@ NdArrayRef TruncA::proc(KernelEvalContext* ctx, const NdArrayRef& in,
   comm->addCommStatsManually(1, kComm);  // comm => 1, 2
 
   // ret
+  const Sizes shift_bit = {static_cast<int64_t>(bits)};
   switch (comm->getRank()) {
     case 0: {
-      const auto z1 = ring_arshift(x1, bits);
+      const auto z1 = ring_arshift(x1, shift_bit);
       const auto z2 = comm->recv(1, x1.eltype(), kBindName);
       return makeAShare(z1, z2, field);
     }
 
     case 1: {
       auto r1 = r_future.get().second;
-      const auto z1 = ring_sub(ring_arshift(ring_add(x1, x2), bits), r1);
+      const auto z1 = ring_sub(ring_arshift(ring_add(x1, x2), shift_bit), r1);
       comm->sendAsync(0, z1, kBindName);
       return makeAShare(z1, r1, field);
     }
 
     case 2: {
-      const auto z2 = ring_arshift(x2, bits);
+      const auto z2 = ring_arshift(x2, shift_bit);
       return makeAShare(r_future.get().first, z2, field);
     }
 
@@ -790,7 +779,7 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in,
   size_t P2 = (pivot + 2) % 3;
 
   NdArrayRef out(in.eltype(), in.shape());
-  DISPATCH_ALL_FIELDS(field, "aby3.truncpr", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using el_t = ring2k_t;
     using shr_t = std::array<el_t, 2>;
 

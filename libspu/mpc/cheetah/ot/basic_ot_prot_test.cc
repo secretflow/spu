@@ -82,7 +82,7 @@ TEST_P(BasicOTProtTest, SingleB2A) {
 
   auto bshr0 = ring_rand(field, shape).as(boolean_t);
   auto bshr1 = ring_rand(field, shape).as(boolean_t);
-  DISPATCH_ALL_FIELDS(field, "", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     auto mask = static_cast<ring2k_t>(-1);
     if (nbits > 0) {
       mask = (static_cast<ring2k_t>(1) << packed_nbits) - 1;
@@ -110,7 +110,7 @@ TEST_P(BasicOTProtTest, SingleB2A) {
   EXPECT_EQ(ashr0.shape(), ashr1.shape());
   EXPECT_EQ(shape, ashr0.shape());
 
-  DISPATCH_ALL_FIELDS(field, "", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> b0(bshr0);
     NdArrayView<ring2k_t> b1(bshr1);
     NdArrayView<ring2k_t> a0(ashr0);
@@ -129,16 +129,16 @@ TEST_P(BasicOTProtTest, SingleB2A) {
 
 TEST_P(BasicOTProtTest, PackedB2A) {
   size_t kWorldSize = 2;
-  Shape shape = {11, 12, 13};
+  Shape shape = {2};
   FieldType field = std::get<0>(GetParam());
   auto ot_type = std::get<1>(GetParam());
-  for (size_t nbits : {1, 2}) {
-    size_t packed_nbits = 8 * SizeOf(field) - nbits;
+  for (size_t nbits : {3, 8, 9}) {
+    size_t packed_nbits = nbits;
     auto boolean_t = makeType<BShrTy>(field, packed_nbits);
 
     auto bshr0 = ring_rand(field, shape).as(boolean_t);
     auto bshr1 = ring_rand(field, shape).as(boolean_t);
-    DISPATCH_ALL_FIELDS(field, "", [&]() {
+    DISPATCH_ALL_FIELDS(field, [&]() {
       auto mask = static_cast<ring2k_t>(-1);
       if (nbits > 0) {
         mask = (static_cast<ring2k_t>(1) << packed_nbits) - 1;
@@ -165,7 +165,7 @@ TEST_P(BasicOTProtTest, PackedB2A) {
     EXPECT_EQ(ashr0.shape(), ashr1.shape());
     EXPECT_EQ(ashr0.shape(), shape);
 
-    DISPATCH_ALL_FIELDS(field, "", [&]() {
+    DISPATCH_ALL_FIELDS(field, [&]() {
       NdArrayView<ring2k_t> b0(bshr0);
       NdArrayView<ring2k_t> b1(bshr1);
       NdArrayView<ring2k_t> a0(ashr0);
@@ -187,7 +187,7 @@ TEST_P(BasicOTProtTest, PackedB2A) {
 
 TEST_P(BasicOTProtTest, PackedB2AFull) {
   size_t kWorldSize = 2;
-  Shape shape = {1, 2, 3, 4, 5};
+  Shape shape = {1L};
 
   FieldType field = std::get<0>(GetParam());
   auto ot_type = std::get<1>(GetParam());
@@ -197,7 +197,7 @@ TEST_P(BasicOTProtTest, PackedB2AFull) {
 
     auto bshr0 = ring_rand(field, shape).as(boolean_t);
     auto bshr1 = ring_rand(field, shape).as(boolean_t);
-    DISPATCH_ALL_FIELDS(field, "", [&]() {
+    DISPATCH_ALL_FIELDS(field, [&]() {
       auto mask = static_cast<ring2k_t>(-1);
       if (nbits > 0) {
         mask = (static_cast<ring2k_t>(1) << packed_nbits) - 1;
@@ -215,17 +215,20 @@ TEST_P(BasicOTProtTest, PackedB2AFull) {
     utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
       auto conn = std::make_shared<Communicator>(ctx);
       BasicOTProtocols ot_prot(conn, ot_type);
+      size_t sent = ctx->GetStats()->sent_bytes;
       if (ctx->Rank() == 0) {
         ashr0 = ot_prot.B2A(bshr0);
       } else {
         ashr1 = ot_prot.B2A(bshr1);
       }
+      sent = ctx->GetStats()->sent_bytes - sent;
+      printf("B2A sent %f byte per\n", sent * 1. / shape.numel());
     });
 
     EXPECT_EQ(ashr0.shape(), ashr1.shape());
     EXPECT_EQ(ashr0.shape(), shape);
 
-    DISPATCH_ALL_FIELDS(field, "", [&]() {
+    DISPATCH_ALL_FIELDS(field, [&]() {
       NdArrayView<ring2k_t> b0(bshr0);
       NdArrayView<ring2k_t> b1(bshr1);
       NdArrayView<ring2k_t> a0(ashr0);
@@ -264,7 +267,7 @@ TEST_P(BasicOTProtTest, AndTripleSparse) {
       }
     });
 
-    DISPATCH_ALL_FIELDS(field, "", [&]() {
+    DISPATCH_ALL_FIELDS(field, [&]() {
       ring2k_t max = static_cast<ring2k_t>(1) << target_nbits;
       NdArrayView<ring2k_t> a0(triple[0][0]);
       NdArrayView<ring2k_t> b0(triple[0][1]);
@@ -301,7 +304,7 @@ TEST_P(BasicOTProtTest, BitwiseAnd) {
   for (int i : {0, 1}) {
     lhs[i] = ring_rand(field, shape).as(boolean_t);
     rhs[i] = ring_rand(field, shape).as(boolean_t);
-    DISPATCH_ALL_FIELDS(field, "mask", [&]() {
+    DISPATCH_ALL_FIELDS(field, [&]() {
       ring2k_t mask = makeBitsMask<ring2k_t>(bw);
       NdArrayView<ring2k_t> L(lhs[i]);
       NdArrayView<ring2k_t> R(rhs[i]);
@@ -321,7 +324,7 @@ TEST_P(BasicOTProtTest, BitwiseAnd) {
   auto expected = ring_and(ring_xor(lhs[0], lhs[1]), ring_xor(rhs[0], rhs[1]));
   auto got = ring_xor(out[0], out[1]);
 
-  DISPATCH_ALL_FIELDS(field, "", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> e(expected);
     NdArrayView<ring2k_t> g(got);
 
@@ -347,7 +350,7 @@ TEST_P(BasicOTProtTest, AndTripleFull) {
     }
   });
 
-  DISPATCH_ALL_FIELDS(field, "", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> a0(packed_triple[0][0]);
     NdArrayView<ring2k_t> b0(packed_triple[0][1]);
     NdArrayView<ring2k_t> c0(packed_triple[0][2]);
@@ -380,7 +383,7 @@ TEST_P(BasicOTProtTest, Multiplexer) {
   auto bshr0 = ring_rand(field, shape).as(boolean_t);
   auto bshr1 = ring_rand(field, shape).as(boolean_t);
 
-  DISPATCH_ALL_FIELDS(field, "", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     auto mask = static_cast<ring2k_t>(1);
     NdArrayView<ring2k_t> xb0(bshr0);
     NdArrayView<ring2k_t> xb1(bshr1);
@@ -404,7 +407,7 @@ TEST_P(BasicOTProtTest, Multiplexer) {
   EXPECT_EQ(computed[0].shape(), computed[1].shape());
   EXPECT_EQ(computed[0].shape(), shape);
 
-  DISPATCH_ALL_FIELDS(field, "", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> a0(ashr0);
     NdArrayView<ring2k_t> a1(ashr1);
     NdArrayView<ring2k_t> b0(bshr0);
@@ -441,7 +444,7 @@ TEST_P(BasicOTProtTest, CorrelatedAndTriple) {
     EXPECT_EQ(corr_triple[1][0].shape(), corr_triple[1][i].shape());
   }
 
-  DISPATCH_ALL_FIELDS(field, "", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     auto a0 = NdArrayView<ring2k_t>(corr_triple[0][0]);
     auto b0 = NdArrayView<ring2k_t>(corr_triple[0][1]);
     auto c0 = NdArrayView<ring2k_t>(corr_triple[0][2]);
@@ -484,7 +487,7 @@ TEST_P(BasicOTProtTest, PrivateMulx) {
   auto ashr1 = ring_rand(field, shape);
   auto choices = ring_rand(field, shape).as(boolean_t);
 
-  DISPATCH_ALL_FIELDS(field, "bit", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     auto mask = static_cast<ring2k_t>(1);
     NdArrayView<ring2k_t> xb(choices);
     pforeach(0, xb.numel(), [&](int64_t i) { xb[i] &= mask; });
@@ -504,7 +507,7 @@ TEST_P(BasicOTProtTest, PrivateMulx) {
   EXPECT_EQ(computed[0].shape(), computed[1].shape());
   EXPECT_EQ(computed[0].shape(), shape);
 
-  DISPATCH_ALL_FIELDS(field, "check", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> a0(ashr0);
     NdArrayView<ring2k_t> a1(ashr1);
     NdArrayView<ring2k_t> c(choices);
