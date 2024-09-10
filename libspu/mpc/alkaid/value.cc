@@ -34,6 +34,13 @@ NdArrayRef getShare(const NdArrayRef& in, int64_t share_idx) {
     return NdArrayRef(
         in.buf(), ty, in.shape(), new_strides,
         in.offset() + share_idx * static_cast<int64_t>(ty.size()));
+  } else if (in.eltype().isa<OShrTy>()) {
+    const auto field = in.eltype().as<OShrTy>()->field();
+    const auto ty = makeType<RingTy>(field);
+    
+    return NdArrayRef(
+        in.buf(), ty, in.shape(), new_strides,
+        in.offset() + share_idx * static_cast<int64_t>(ty.size()));
   } else if (in.eltype().isa<BShrTy>()) {
     const auto stype = in.eltype().as<BShrTy>()->getBacktype();
     const auto ty = makeType<PtTy>(stype);

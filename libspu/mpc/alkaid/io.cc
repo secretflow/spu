@@ -148,7 +148,7 @@ NdArrayRef AlkaidIo::fromShares(const std::vector<NdArrayRef>& shares) const {
     SPU_ENFORCE(field_ == eltype.as<Ring2k>()->field());
     NdArrayRef out(makeType<Pub2kTy>(field_), shares[0].shape());
 
-    DISPATCH_ALL_FIELDS(field_, "_", [&]() {
+    DISPATCH_ALL_FIELDS(field_, [&]() {
       using el_t = ring2k_t;
       using shr_t = std::array<el_t, 2>;
       NdArrayView<ring2k_t> _out(out);
@@ -166,10 +166,10 @@ NdArrayRef AlkaidIo::fromShares(const std::vector<NdArrayRef>& shares) const {
   } else if (eltype.isa<BShrTy>()) {
     NdArrayRef out(makeType<Pub2kTy>(field_), shares[0].shape());
 
-    DISPATCH_ALL_FIELDS(field_, "_", [&]() {
+    DISPATCH_ALL_FIELDS(field_, [&]() {
       NdArrayView<ring2k_t> _out(out);
 
-      DISPATCH_UINT_PT_TYPES(eltype.as<BShrTy>()->getBacktype(), "_", [&] {
+      DISPATCH_UINT_PT_TYPES(eltype.as<BShrTy>()->getBacktype(), [&] {
         using shr_t = std::array<ScalarT, 2>;
         for (size_t si = 0; si < shares.size(); si++) {
           NdArrayView<shr_t> _s(shares[si]);

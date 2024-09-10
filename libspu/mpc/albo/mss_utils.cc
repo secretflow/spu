@@ -28,17 +28,17 @@ namespace spu::mpc::albo {
     const PtType out_btype = calcBShareBacktype(out_nbits);
     NdArrayRef out(makeType<BShrTy>(out_btype, out_nbits), lhs.shape());
 
-    return DISPATCH_UINT_PT_TYPES(rhs_ty->getBacktype(), "_", [&]() {
+    return DISPATCH_UINT_PT_TYPES(rhs_ty->getBacktype(), [&]() {
         using rhs_el_t = ScalarT;
         using rhs_shr_t = std::array<rhs_el_t, 2>;
         NdArrayView<rhs_shr_t> _rhs(rhs);
 
-        return DISPATCH_UINT_PT_TYPES(lhs_ty->getBacktype(), "_", [&]() {
+        return DISPATCH_UINT_PT_TYPES(lhs_ty->getBacktype(), [&]() {
         using lhs_el_t = ScalarT;
         using lhs_shr_t = std::array<lhs_el_t, 2>;
         NdArrayView<lhs_shr_t> _lhs(lhs);
 
-        return DISPATCH_UINT_PT_TYPES(out_btype, "_", [&]() {
+        return DISPATCH_UINT_PT_TYPES(out_btype, [&]() {
             using out_el_t = ScalarT;
             // mss(x) = (Dx, dx0, dx1), x = Dx ^ dx0 ^ dx1
             using out_shr_t = std::array<out_el_t, 2>;
@@ -68,17 +68,17 @@ namespace spu::mpc::albo {
     const PtType out_btype = calcBShareBacktype(out_nbits);
     NdArrayRef out(makeType<BShrTy>(out_btype, out_nbits), lhs.shape());
 
-    return DISPATCH_UINT_PT_TYPES(rhs_ty->getBacktype(), "_", [&]() {
+    return DISPATCH_UINT_PT_TYPES(rhs_ty->getBacktype(), [&]() {
         using rhs_el_t = ScalarT;
         using rhs_shr_t = std::array<rhs_el_t, 2>;
         NdArrayView<rhs_shr_t> _rhs(rhs);
 
-        return DISPATCH_UINT_PT_TYPES(lhs_ty->getBacktype(), "_", [&]() {
+        return DISPATCH_UINT_PT_TYPES(lhs_ty->getBacktype(), [&]() {
         using lhs_el_t = ScalarT;
         using lhs_shr_t = std::array<lhs_el_t, 2>;
         NdArrayView<lhs_shr_t> _lhs(lhs);
 
-        return DISPATCH_UINT_PT_TYPES(out_btype, "_", [&]() {
+        return DISPATCH_UINT_PT_TYPES(out_btype, [&]() {
             using out_el_t = ScalarT;
             // mss(x) = (Dx, dx0, dx1), x = Dx ^ dx0 ^ dx1
             using out_shr_t = std::array<out_el_t, 2>;
@@ -109,17 +109,17 @@ namespace spu::mpc::albo {
     const PtType out_btype = calcBShareBacktype(out_nbits);
     NdArrayRef out(makeType<BShrTyMss>(out_btype, out_nbits), lhs.shape());
 
-    return DISPATCH_UINT_PT_TYPES(rhs_ty->getBacktype(), "_", [&]() {
+    return DISPATCH_UINT_PT_TYPES(rhs_ty->getBacktype(), [&]() {
         using rhs_el_t = ScalarT;
         using rhs_shr_t = std::array<rhs_el_t, 3>;
         NdArrayView<rhs_shr_t> _rhs(rhs);
 
-        return DISPATCH_UINT_PT_TYPES(lhs_ty->getBacktype(), "_", [&]() {
+        return DISPATCH_UINT_PT_TYPES(lhs_ty->getBacktype(), [&]() {
         using lhs_el_t = ScalarT;
         using lhs_shr_t = std::array<lhs_el_t, 3>;
         NdArrayView<lhs_shr_t> _lhs(lhs);
 
-        return DISPATCH_UINT_PT_TYPES(out_btype, "_", [&]() {
+        return DISPATCH_UINT_PT_TYPES(out_btype, [&]() {
             using out_el_t = ScalarT;
             // mss(x) = (Dx, dx0, dx1), x = Dx ^ dx0 ^ dx1
             using out_shr_t = std::array<out_el_t, 3>;
@@ -152,17 +152,17 @@ namespace spu::mpc::albo {
     const PtType out_btype = calcBShareBacktype(out_nbits);
     NdArrayRef out(makeType<BShrTy>(out_btype, out_nbits), lhs.shape());
 
-    return DISPATCH_UINT_PT_TYPES(rhs_ty->getBacktype(), "_", [&]() {
+    return DISPATCH_UINT_PT_TYPES(rhs_ty->getBacktype(), [&]() {
         using rhs_el_t = ScalarT;
         using rhs_shr_t = std::array<rhs_el_t, 2>;
         NdArrayView<rhs_shr_t> _rhs(rhs);
 
-        return DISPATCH_UINT_PT_TYPES(lhs_ty->getBacktype(), "_", [&]() {
+        return DISPATCH_UINT_PT_TYPES(lhs_ty->getBacktype(), [&]() {
         using lhs_el_t = ScalarT;
         using lhs_shr_t = std::array<lhs_el_t, 2>;
         NdArrayView<lhs_shr_t> _lhs(lhs);
 
-        return DISPATCH_UINT_PT_TYPES(out_btype, "_", [&]() {
+        return DISPATCH_UINT_PT_TYPES(out_btype, [&]() {
             using out_el_t = ScalarT;
             // mss(x) = (Dx, dx0, dx1), x = Dx ^ dx0 ^ dx1
             using out_shr_t = std::array<out_el_t, 2>;
@@ -208,17 +208,17 @@ namespace spu::mpc::albo {
     const PtType out_btype = calcBShareBacktype(out_nbits);
     NdArrayRef out(makeType<BShrTy>(out_btype, out_nbits), lhs.shape());
 
-    return DISPATCH_UINT_PT_TYPES(rhs_ty->getBacktype(), "_", [&]() {
+    return DISPATCH_UINT_PT_TYPES(rhs_ty->getBacktype(), [&]() {
         using rhs_el_t = ScalarT;
         using rhs_shr_t = std::array<rhs_el_t, 3>;
         NdArrayView<rhs_shr_t> _rhs(rhs);
 
-        return DISPATCH_UINT_PT_TYPES(lhs_ty->getBacktype(), "_", [&]() {
+        return DISPATCH_UINT_PT_TYPES(lhs_ty->getBacktype(), [&]() {
         using lhs_el_t = ScalarT;
         using lhs_shr_t = std::array<lhs_el_t, 3>;
         NdArrayView<lhs_shr_t> _lhs(lhs);
 
-        return DISPATCH_UINT_PT_TYPES(out_btype, "_", [&]() {
+        return DISPATCH_UINT_PT_TYPES(out_btype, [&]() {
             using out_el_t = ScalarT;
             // mss(x) = (Dx, dx0, dx1), x = Dx ^ dx0 ^ dx1
             using out_shr_t = std::array<out_el_t, 2>;
@@ -302,12 +302,12 @@ namespace spu::mpc::albo {
     const PtType out_btype = calcBShareBacktype(out_nbits);
     NdArrayRef out(makeType<BShrTyMss>(out_btype, out_nbits), in.shape());
 
-        return DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), "_", [&]() {
+        return DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), [&]() {
         using in_el_t = ScalarT;
         using in_shr_t = std::array<in_el_t, 2>;
         NdArrayView<in_shr_t> _in(in);
 
-        return DISPATCH_UINT_PT_TYPES(out_btype, "_", [&]() {
+        return DISPATCH_UINT_PT_TYPES(out_btype, [&]() {
             using out_el_t = ScalarT;
             // mss(x) = (Dx, dx0, dx1), x = Dx ^ dx0 ^ dx1
             using out_shr_t = std::array<out_el_t, 3>;
@@ -357,12 +357,12 @@ namespace spu::mpc::albo {
     const PtType out_btype = calcBShareBacktype(out_nbits);
     NdArrayRef out(makeType<BShrTy>(out_btype, out_nbits), in.shape());
 
-        return DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), "_", [&]() {
+        return DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), [&]() {
         using in_el_t = ScalarT;
         using in_shr_t = std::array<in_el_t, 2>;
         NdArrayView<in_shr_t> _in(in);
 
-        return DISPATCH_UINT_PT_TYPES(out_btype, "_", [&]() {
+        return DISPATCH_UINT_PT_TYPES(out_btype, [&]() {
             using out_el_t = ScalarT;
             // mss(x) = (Dx, dx0, dx1), x = Dx ^ dx0 ^ dx1
             using out_shr_t = std::array<out_el_t, 2>;
@@ -411,12 +411,12 @@ namespace spu::mpc::albo {
     const PtType out_btype = calcBShareBacktype(out_nbits);
     NdArrayRef out(makeType<BShrTyMss>(out_btype, out_nbits), in.shape());
 
-        return DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), "_", [&]() {
+        return DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), [&]() {
         using in_el_t = ScalarT;
         using in_shr_t = std::array<in_el_t, 2>;
         NdArrayView<in_shr_t> _in(in);
 
-        return DISPATCH_UINT_PT_TYPES(out_btype, "_", [&]() {
+        return DISPATCH_UINT_PT_TYPES(out_btype, [&]() {
             using out_el_t = ScalarT;
             // mss(x) = (Dx, dx0, dx1), x = Dx ^ dx0 ^ dx1
             using out_shr_t = std::array<out_el_t, 3>;
@@ -475,12 +475,12 @@ namespace spu::mpc::albo {
     const PtType out_btype = calcBShareBacktype(out_nbits);
     NdArrayRef out(makeType<BShrTy>(out_btype, out_nbits), in.shape());
 
-        return DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), "_", [&]() {
+        return DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), [&]() {
         using in_el_t = ScalarT;
         using in_shr_t = std::array<in_el_t, 3>;
         NdArrayView<in_shr_t> _in(in);
 
-        return DISPATCH_UINT_PT_TYPES(out_btype, "_", [&]() {
+        return DISPATCH_UINT_PT_TYPES(out_btype, [&]() {
             using out_el_t = ScalarT;
             // mss(x) = (Dx, dx0, dx1), x = Dx ^ dx0 ^ dx1
             using out_shr_t = std::array<out_el_t, 2>;
@@ -508,7 +508,7 @@ namespace spu::mpc::albo {
     const auto field = in.eltype().as<AShrTyMss>()->field();
     NdArrayRef out(makeType<AShrTy>(field), in.shape());
 
-        return DISPATCH_ALL_FIELDS(field, "albo.msb.split", [&]() {
+        return DISPATCH_ALL_FIELDS(field, [&]() {
         using in_el_t = ring2k_t;
         using in_shr_t = std::array<in_el_t, 3>;
         NdArrayView<in_shr_t> _in(in);
@@ -541,12 +541,12 @@ namespace spu::mpc::albo {
     const PtType out_btype = calcBShareBacktype(out_nbits);
     NdArrayRef out(makeType<BShrTy>(out_btype, out_nbits), in.shape());
 
-        return DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), "_", [&]() {
+        return DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), [&]() {
         using in_el_t = ScalarT;
         using in_shr_t = std::array<in_el_t, 2>;
         NdArrayView<in_shr_t> _in(in);
 
-        return DISPATCH_UINT_PT_TYPES(out_btype, "_", [&]() {
+        return DISPATCH_UINT_PT_TYPES(out_btype, [&]() {
             using out_el_t = ScalarT;
             // mss(x) = (Dx, dx0, dx1), x = Dx ^ dx0 ^ dx1
             using out_shr_t = std::array<out_el_t, 2>;

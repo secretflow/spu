@@ -17,6 +17,7 @@
 #include "libspu/mpc/albo/arithmetic.h"
 #include "libspu/mpc/albo/boolean.h"
 #include "libspu/mpc/albo/conversion.h"
+#include "libspu/mpc/albo/oram.h"
 #include "libspu/mpc/albo/permute.h"
 #include "libspu/mpc/albo/type.h"
 #include "libspu/mpc/common/communicator.h"
@@ -53,7 +54,7 @@ void regAlboProtocol(SPUContext* ctx,
           albo::B2P, albo::P2B, albo::A2B,                      // Conversion2
           albo::B2ASelector, /*albo::B2AByOT, albo::B2AByPPA*/  // B2A
           albo::CastTypeB,                                      // Cast
-          albo::NotA,                                           // Not
+          albo::NegateA,                                        // Negate
           albo::AddAP, albo::AddAA,                             // Add
           albo::MulAP, albo::MulAA, albo::MulA1B,               // Mul
           albo::MatMulAP, albo::MatMulAA,                       // MatMul
@@ -72,8 +73,10 @@ void regAlboProtocol(SPUContext* ctx,
 #else
           albo::TruncA,
 #endif
-          albo::RandPermM, albo::PermAM, albo::PermAP, albo::InvPermAM,  // perm
-          albo::InvPermAP                                                // perm
+          albo::OramOneHotAA, albo::OramOneHotAP, albo::OramReadOA,       // oram
+          albo::OramReadOP,                                               // oram
+          albo::RandPermM, albo::PermAM, albo::PermAP, albo::InvPermAM,   // perm
+          albo::InvPermAP                                                 // perm
           >();
 }
 

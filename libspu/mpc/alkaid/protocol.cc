@@ -17,6 +17,7 @@
 #include "libspu/mpc/alkaid/arithmetic.h"
 #include "libspu/mpc/alkaid/boolean.h"
 #include "libspu/mpc/alkaid/conversion.h"
+#include "libspu/mpc/alkaid/oram.h"
 #include "libspu/mpc/alkaid/permute.h"
 #include "libspu/mpc/alkaid/type.h"
 #include "libspu/mpc/common/communicator.h"
@@ -49,31 +50,33 @@ void regAlkaidProtocol(SPUContext* ctx,
   // register arithmetic & binary kernels
   ctx->prot()
       ->regKernel<                                              //
-          alkaid::P2A, alkaid::V2A, alkaid::A2P, alkaid::A2V,           // Conversions
+          alkaid::P2A, alkaid::V2A, alkaid::A2P, alkaid::A2V,         // Conversions
           alkaid::B2P, alkaid::P2B, alkaid::A2B,                      // Conversion2
           alkaid::B2ASelector, /*alkaid::B2AByOT, alkaid::B2AByPPA*/  // B2A
-          alkaid::CastTypeB,                                      // Cast
-          alkaid::NotA,                                           // Not
-          alkaid::AddAP, alkaid::AddAA,                             // Add
+          alkaid::CastTypeB,                                          // Cast
+          alkaid::NegateA,                                            // Negate
+          alkaid::AddAP, alkaid::AddAA,                               // Add
           alkaid::MulAP, alkaid::MulAA, alkaid::MulA1B,               // Mul
-          alkaid::MatMulAP, alkaid::MatMulAA,                       // MatMul
-          alkaid::LShiftA, alkaid::LShiftB,                         // LShift
-          alkaid::RShiftB, alkaid::ARShiftB,                        // (A)Rshift
-          alkaid::MsbA2B,                                         // MSB
-          alkaid::EqualAA, alkaid::EqualAP,                         // Equal
-          alkaid::CommonTypeB, alkaid::CommonTypeV,                 // CommonType
-          alkaid::AndBP, alkaid::AndBB,                             // And
-          alkaid::XorBP, alkaid::XorBB,                             // Xor
-          alkaid::BitrevB,                                        // bitreverse
-          alkaid::BitIntlB, alkaid::BitDeintlB,  // bit(de)interleave
-          alkaid::RandA,                       // rand
+          alkaid::MatMulAP, alkaid::MatMulAA,                         // MatMul
+          alkaid::LShiftA, alkaid::LShiftB,                           // LShift
+          alkaid::RShiftB, alkaid::ARShiftB,                          // (A)Rshift
+          alkaid::MsbA2B,                                             // MSB
+          alkaid::EqualAA, alkaid::EqualAP,                           // Equal
+          alkaid::CommonTypeB, alkaid::CommonTypeV,                   // CommonType
+          alkaid::AndBP, alkaid::AndBB,                               // And
+          alkaid::XorBP, alkaid::XorBB,                               // Xor
+          alkaid::BitrevB,                                            // bitreverse
+          alkaid::BitIntlB, alkaid::BitDeintlB,                       // bit(de)interleave
+          alkaid::RandA,                                              // rand
 #ifdef ENABLE_PRECISE_ALKAID_TRUNCPR
           alkaid::TruncAPr,  // Trunc
 #else
           alkaid::TruncA,
 #endif
-          alkaid::RandPermM, alkaid::PermAM, alkaid::PermAP, alkaid::InvPermAM,  // perm
-          alkaid::InvPermAP                                                // perm
+          alkaid::OramOneHotAA, alkaid::OramOneHotAP, alkaid::OramReadOA,       // oram
+          alkaid::OramReadOP,                                                   // oram
+          alkaid::RandPermM, alkaid::PermAM, alkaid::PermAP, alkaid::InvPermAM, // perm
+          alkaid::InvPermAP                                                     // perm                                             // perm
           >();
 }
 

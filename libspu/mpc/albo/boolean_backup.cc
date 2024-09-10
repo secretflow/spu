@@ -39,12 +39,12 @@ NdArrayRef ResharingRss2Mss(KernelEvalContext* ctx, const NdArrayRef& in) {
   const PtType out_btype = calcBShareBacktype(out_nbits);
   NdArrayRef out(makeType<BShrTyMss>(out_btype, out_nbits), in.shape());
 
-    return DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), "_", [&]() {
+    return DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), [&]() {
       using in_el_t = ScalarT;
       using in_shr_t = std::array<in_el_t, 2>;
       NdArrayView<in_shr_t> _in(in);
 
-      return DISPATCH_UINT_PT_TYPES(out_btype, "_", [&]() {
+      return DISPATCH_UINT_PT_TYPES(out_btype, [&]() {
         using out_el_t = ScalarT;
         // mss(x) = (Dx, dx0, dx1), x = Dx ^ dx0 ^ dx1
         using out_shr_t = std::array<out_el_t, 3>;
@@ -98,11 +98,11 @@ void CommonTypeB::evaluate(KernelEvalContext* ctx) const {
 NdArrayRef CastTypeB::proc(KernelEvalContext*, const NdArrayRef& in,
                            const Type& to_type) const {
   NdArrayRef out(to_type, in.shape());
-  DISPATCH_UINT_PT_TYPES(in.eltype().as<BShrTyMss>()->getBacktype(), "_", [&]() {
+  DISPATCH_UINT_PT_TYPES(in.eltype().as<BShrTyMss>()->getBacktype(), [&]() {
     using in_el_t = ScalarT;
     using in_shr_t = std::array<in_el_t, 3>;
 
-    DISPATCH_UINT_PT_TYPES(to_type.as<BShrTyMss>()->getBacktype(), "_", [&]() {
+    DISPATCH_UINT_PT_TYPES(to_type.as<BShrTyMss>()->getBacktype(), [&]() {
       using out_el_t = ScalarT;
       using out_shr_t = std::array<out_el_t, 3>;
 
@@ -130,7 +130,7 @@ NdArrayRef B2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
     using bshr_el_t = ScalarT;
     using bshr_t = std::array<bshr_el_t, 3>;
 
-    return DISPATCH_ALL_FIELDS(field, "_", [&]() {
+    return DISPATCH_ALL_FIELDS(field, [&]() {
       using pshr_el_t = ring2k_t;
 
       NdArrayRef out(makeType<Pub2kTy>(field), in.shape());
@@ -156,12 +156,12 @@ NdArrayRef P2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const auto* in_ty = in.eltype().as<Pub2kTy>();
   const auto field = in_ty->field();
 
-  return DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  return DISPATCH_ALL_FIELDS(field, [&]() {
     const size_t nbits = maxBitWidth<ring2k_t>(in);
     const PtType btype = calcBShareBacktype(nbits);
     NdArrayView<ring2k_t> _in(in);
 
-    return DISPATCH_UINT_PT_TYPES(btype, "_", [&]() {
+    return DISPATCH_UINT_PT_TYPES(btype, [&]() {
       using bshr_el_t = ScalarT;
       using bshr_t = std::array<bshr_el_t, 3>;
 
@@ -189,7 +189,7 @@ NdArrayRef B2V::proc(KernelEvalContext* ctx, const NdArrayRef& in,
     using bshr_t = std::array<bshr_el_t, 3>;
     NdArrayView<bshr_t> _in(in);
 
-    return DISPATCH_ALL_FIELDS(field, "_", [&]() {
+    return DISPATCH_ALL_FIELDS(field, [&]() {
       using vshr_scalar_t = ring2k_t;
 
       auto out_ty = makeType<Priv2kTy>(field, rank);
@@ -227,7 +227,7 @@ NdArrayRef AndBP::proc(KernelEvalContext*, const NdArrayRef& lhs,
   const auto* lhs_ty = lhs.eltype().as<BShrTyMss>();
   const auto* rhs_ty = rhs.eltype().as<Pub2kTy>();
 
-  return DISPATCH_ALL_FIELDS(rhs_ty->field(), "_", [&]() {
+  return DISPATCH_ALL_FIELDS(rhs_ty->field(), [&]() {
     using rhs_scalar_t = ring2k_t;
 
     const size_t rhs_nbits = maxBitWidth<rhs_scalar_t>(rhs);
@@ -236,13 +236,13 @@ NdArrayRef AndBP::proc(KernelEvalContext*, const NdArrayRef& lhs,
 
     NdArrayView<rhs_scalar_t> _rhs(rhs);
 
-    return DISPATCH_UINT_PT_TYPES(lhs_ty->getBacktype(), "_", [&]() {
+    return DISPATCH_UINT_PT_TYPES(lhs_ty->getBacktype(), [&]() {
       using lhs_el_t = ScalarT;
       using lhs_shr_t = std::array<lhs_el_t, 3>;
 
       NdArrayView<lhs_shr_t> _lhs(lhs);
 
-      return DISPATCH_UINT_PT_TYPES(out_btype, "_", [&]() {
+      return DISPATCH_UINT_PT_TYPES(out_btype, [&]() {
         using out_el_t = ScalarT;
         using out_shr_t = std::array<out_el_t, 3>;
 
@@ -275,17 +275,17 @@ NdArrayRef AndBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
   const PtType out_btype = calcBShareBacktype(out_nbits);
   NdArrayRef out(makeType<BShrTy>(out_btype, out_nbits), lhs.shape());
 
-  return DISPATCH_UINT_PT_TYPES(rhs_ty->getBacktype(), "_", [&]() {
+  return DISPATCH_UINT_PT_TYPES(rhs_ty->getBacktype(), [&]() {
     using rhs_el_t = ScalarT;
     using rhs_shr_t = std::array<rhs_el_t, 3>;
     NdArrayView<rhs_shr_t> _rhs(rhs);
 
-    return DISPATCH_UINT_PT_TYPES(lhs_ty->getBacktype(), "_", [&]() {
+    return DISPATCH_UINT_PT_TYPES(lhs_ty->getBacktype(), [&]() {
       using lhs_el_t = ScalarT;
       using lhs_shr_t = std::array<lhs_el_t, 3>;
       NdArrayView<lhs_shr_t> _lhs(lhs);
 
-      return DISPATCH_UINT_PT_TYPES(out_btype, "_", [&]() {
+      return DISPATCH_UINT_PT_TYPES(out_btype, [&]() {
         using out_el_t = ScalarT;
         // mss(x) = (Dx, dx0, dx1), x = Dx ^ dx0 ^ dx1
         using out_shr_t = std::array<out_el_t, 2>;
@@ -341,7 +341,7 @@ NdArrayRef XorBP::proc(KernelEvalContext*, const NdArrayRef& lhs,
   const auto* lhs_ty = lhs.eltype().as<BShrTyMss>();
   const auto* rhs_ty = rhs.eltype().as<Pub2kTy>();
 
-  return DISPATCH_ALL_FIELDS(rhs_ty->field(), "_", [&]() {
+  return DISPATCH_ALL_FIELDS(rhs_ty->field(), [&]() {
     using rhs_scalar_t = ring2k_t;
 
     const size_t rhs_nbits = maxBitWidth<rhs_scalar_t>(rhs);
@@ -352,13 +352,13 @@ NdArrayRef XorBP::proc(KernelEvalContext*, const NdArrayRef& lhs,
 
     NdArrayRef out(makeType<BShrTyMss>(out_btype, out_nbits), lhs.shape());
 
-    return DISPATCH_UINT_PT_TYPES(lhs_ty->getBacktype(), "_", [&]() {
+    return DISPATCH_UINT_PT_TYPES(lhs_ty->getBacktype(), [&]() {
       using lhs_el_t = ScalarT;
       using lhs_shr_t = std::array<lhs_el_t, 3>;
 
       NdArrayView<lhs_shr_t> _lhs(lhs);
 
-      return DISPATCH_UINT_PT_TYPES(out_btype, "_", [&]() {
+      return DISPATCH_UINT_PT_TYPES(out_btype, [&]() {
         using out_el_t = ScalarT;
         using out_shr_t = std::array<out_el_t, 3>;
 
@@ -384,19 +384,19 @@ NdArrayRef XorBB::proc(KernelEvalContext*, const NdArrayRef& lhs,
   const size_t out_nbits = std::max(lhs_ty->nbits(), rhs_ty->nbits());
   const PtType out_btype = calcBShareBacktype(out_nbits);
 
-  return DISPATCH_UINT_PT_TYPES(rhs_ty->getBacktype(), "_", [&]() {
+  return DISPATCH_UINT_PT_TYPES(rhs_ty->getBacktype(), [&]() {
     using rhs_el_t = ScalarT;
     using rhs_shr_t = std::array<rhs_el_t, 3>;
 
     NdArrayView<rhs_shr_t> _rhs(rhs);
 
-    return DISPATCH_UINT_PT_TYPES(lhs_ty->getBacktype(), "_", [&]() {
+    return DISPATCH_UINT_PT_TYPES(lhs_ty->getBacktype(), [&]() {
       using lhs_el_t = ScalarT;
       using lhs_shr_t = std::array<lhs_el_t, 3>;
 
       NdArrayView<lhs_shr_t> _lhs(lhs);
 
-      return DISPATCH_UINT_PT_TYPES(out_btype, "_", [&]() {
+      return DISPATCH_UINT_PT_TYPES(out_btype, [&]() {
         using out_el_t = ScalarT;
         using out_shr_t = std::array<out_el_t, 3>;
 
@@ -425,13 +425,13 @@ NdArrayRef LShiftB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
   const size_t out_nbits = std::min(in_ty->nbits() + bits, SizeOf(field) * 8);
   const PtType out_btype = calcBShareBacktype(out_nbits);
 
-  return DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), "_", [&]() {
+  return DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), [&]() {
     using in_el_t = ScalarT;
     using in_shr_t = std::array<in_el_t, 3>;
 
     NdArrayView<in_shr_t> _in(in);
 
-    return DISPATCH_UINT_PT_TYPES(out_btype, "_", [&]() {
+    return DISPATCH_UINT_PT_TYPES(out_btype, [&]() {
       using out_el_t = ScalarT;
       using out_shr_t = std::array<out_el_t, 3>;
 
@@ -459,11 +459,11 @@ NdArrayRef RShiftB::proc(KernelEvalContext*, const NdArrayRef& in,
   out_nbits -= std::min(out_nbits, bits);
   const PtType out_btype = calcBShareBacktype(out_nbits);
 
-  return DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), "_", [&]() {
+  return DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), [&]() {
     using in_shr_t = std::array<ScalarT, 3>;
     NdArrayView<in_shr_t> _in(in);
 
-    return DISPATCH_UINT_PT_TYPES(out_btype, "_", [&]() {
+    return DISPATCH_UINT_PT_TYPES(out_btype, [&]() {
       using out_el_t = ScalarT;
       using out_shr_t = std::array<out_el_t, 3>;
 
@@ -494,7 +494,7 @@ NdArrayRef ARShiftB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
   const PtType out_btype = in_ty->getBacktype();
   const size_t out_nbits = in_ty->nbits();
 
-  return DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), "_", [&]() {
+  return DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), [&]() {
     using el_t = std::make_signed_t<ScalarT>;
     using shr_t = std::array<el_t, 3>;
 
@@ -521,13 +521,13 @@ NdArrayRef BitrevB::proc(KernelEvalContext*, const NdArrayRef& in, size_t start,
   const size_t out_nbits = std::max(in_ty->nbits(), end);
   const PtType out_btype = calcBShareBacktype(out_nbits);
 
-  return DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), "_", [&]() {
+  return DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), [&]() {
     using in_el_t = ScalarT;
     using in_shr_t = std::array<in_el_t, 3>;
 
     NdArrayView<in_shr_t> _in(in);
 
-    return DISPATCH_UINT_PT_TYPES(out_btype, "_", [&]() {
+    return DISPATCH_UINT_PT_TYPES(out_btype, [&]() {
       using out_el_t = ScalarT;
       using out_shr_t = std::array<out_el_t, 3>;
 
@@ -566,7 +566,7 @@ NdArrayRef BitIntlB::proc(KernelEvalContext*, const NdArrayRef& in,
   SPU_ENFORCE(absl::has_single_bit(nbits));
 
   NdArrayRef out(in.eltype(), in.shape());
-  DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), "_", [&]() {
+  DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), [&]() {
     using el_t = ScalarT;
     using shr_t = std::array<el_t, 3>;
     NdArrayView<shr_t> _out(out);
@@ -590,7 +590,7 @@ NdArrayRef BitDeintlB::proc(KernelEvalContext*, const NdArrayRef& in,
   SPU_ENFORCE(absl::has_single_bit(nbits));
 
   NdArrayRef out(in.eltype(), in.shape());
-  DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), "_", [&]() {
+  DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), [&]() {
     using el_t = ScalarT;
     using shr_t = std::array<el_t, 3>;
     NdArrayView<shr_t> _out(out);

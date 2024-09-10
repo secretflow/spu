@@ -32,6 +32,7 @@ spu_cc_library(
         ":arithmetic",
         ":boolean",
         ":conversion",
+        ":oram",
         ":permute",
         ":value",
         "//libspu/mpc/standard_shape:protocol",
@@ -112,6 +113,23 @@ spu_cc_library(
         "//libspu/mpc/common:prg_state",
         "//libspu/mpc/utils:circuits",
         "@yacl//yacl/utils:platform_utils",
+    ],
+)
+
+spu_cc_library(
+    name = "oram",
+    srcs = ["oram.cc"],
+    hdrs = ["oram.h"],
+    deps = [
+        ":type",
+        ":value",
+        "//libspu/mpc:ab_api",
+        "//libspu/mpc/common:communicator",
+        "//libspu/mpc/common:prg_state",
+        "//libspu/mpc/utils:ring_ops",
+        "//libspu/mpc/aby3:oram",
+        "@yacl//yacl/crypto/block_cipher:symmetric_crypto",
+        "@yacl//yacl/crypto/rand",
     ],
 )
 

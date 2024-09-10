@@ -116,9 +116,9 @@ class RandA : public RandKernel {
   NdArrayRef proc(KernelEvalContext* ctx, const Shape& shape) const override;
 };
 
-class NotA : public UnaryKernel {
+class NegateA : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "not_a";
+  static constexpr char kBindName[] = "negate_a";
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -243,12 +243,12 @@ class LShiftA : public ShiftKernel {
   ce::CExpr comm() const override { return ce::Const(0); }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
-                  size_t bits) const override;
+                  const Sizes& bits) const override;
 };
 
 // Refer to:
 // Share Truncation I, 5.1 Fixed-point Arithmetic, P13,
-// ALKAID: A Mixed Protocol Framework for Machine Learning
+// ABY3: A Mixed Protocol Framework for Machine Learning
 // - https://eprint.iacr.org/2018/403.pdf
 class TruncA : public TruncAKernel {
  public:
