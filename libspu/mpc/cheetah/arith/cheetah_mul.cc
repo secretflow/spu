@@ -114,6 +114,10 @@ struct CheetahMul::Impl : public EnableCPRNG {
   NdArrayRef MulOLE(const NdArrayRef &shr, yacl::link::Context *conn,
                     bool evaluator, uint32_t msg_width_hint);
 
+  NdArrayRef MulShare(const NdArrayRef &xshr, const NdArrayRef &yshr,
+                      yacl::link::Context *conn, bool evaluator,
+                      uint32_t msg_width_hint);
+
  protected:
   void LocalExpandSEALContexts(size_t target);
 
@@ -164,6 +168,16 @@ struct CheetahMul::Impl : public EnableCPRNG {
                        const Options &options,
                        absl::Span<const yacl::Buffer> ciphers,
                        absl::Span<const RLWEPt> plains,
+                       absl::Span<const uint64_t> rnd_mask,
+                       yacl::link::Context *conn = nullptr);
+
+  // Enc(x0) * y1 + Enc(y0) * x1 + rand_mask
+  void FMAThenResponse(FieldType field, int64_t num_elts,
+                       const Options &options,
+                       absl::Span<const yacl::Buffer> ciphers_x0,
+                       absl::Span<const yacl::Buffer> ciphers_y0,
+                       absl::Span<const RLWEPt> plains_x1,
+                       absl::Span<const RLWEPt> plains_y1,
                        absl::Span<const uint64_t> rnd_mask,
                        yacl::link::Context *conn = nullptr);
 
@@ -386,6 +400,79 @@ NdArrayRef CheetahMul::Impl::MulOLE(const NdArrayRef &shr,
   return DecryptArray(field, numel, options, recv_ct).reshape(shr.shape());
 }
 
+NdArrayRef CheetahMul::Impl::MulShare(const NdArrayRef &xshr,
+                                      const NdArrayRef &yshr,
+                                      yacl::link::Context *conn, bool evaluator,
+                                      uint32_t msg_width_hint) {
+  if (conn == nullptr) {
+    conn = lctx_.get();
+  }
+
+  auto eltype = xshr.eltype();
+  SPU_ENFORCE(eltype.isa<Ring2k>(), "must be ring_type, got={}", eltype);
+  SPU_ENFORCE(yshr.eltype().isa<Ring2k>(), "must be ring_type, got={}",
+              yshr.eltype());
+  SPU_ENFORCE(xshr.numel() > 0);
+  SPU_ENFORCE_EQ(xshr.shape(), yshr.shape());
+
+  auto field = eltype.as<Ring2k>()->field();
+  Options options;
+  options.ring_bitlen = SizeOf(field) * 8;
+  options.msg_bitlen =
+      msg_width_hint == 0 ? options.ring_bitlen : msg_width_hint;
+  SPU_ENFORCE(options.msg_bitlen > 0 &&
+              options.msg_bitlen <= options.ring_bitlen);
+  LazyExpandSEALContexts(options, conn);
+  LazyInitModSwitchHelper(options);
+
+  size_t numel = xshr.numel();
+  int nxt_rank = conn->NextRank();
+
+  // x0*y0 + <x0 + y1 + x1 * y0> + x1 * y1
+  if (evaluator) {
+    std::vector<RLWEPt> encoded_x0;
+    std::vector<RLWEPt> encoded_y0;
+    EncodeArray(xshr, false, options, &encoded_x0);
+    EncodeArray(yshr, false, options, &encoded_y0);
+
+    size_t payload_sze = encoded_x0.size();
+    std::vector<yacl::Buffer> recv_ct_x1(payload_sze);
+    std::vector<yacl::Buffer> recv_ct_y1(payload_sze);
+    auto io_task = std::async(std::launch::async, [&]() {
+      for (size_t idx = 0; idx < payload_sze; ++idx) {
+        recv_ct_x1[idx] = conn->Recv(nxt_rank, "");
+      }
+      for (size_t idx = 0; idx < payload_sze; ++idx) {
+        recv_ct_y1[idx] = conn->Recv(nxt_rank, "");
+      }
+    });
+
+    std::vector<uint64_t> random_share_mask;
+    PrepareRandomMask(field, xshr.numel(), options, random_share_mask);
+
+    // wait for IO
+    io_task.get();
+    FMAThenResponse(field, numel, options, recv_ct_x1, recv_ct_y1, encoded_x0,
+                    encoded_y0, absl::MakeConstSpan(random_share_mask), conn);
+    // convert x \in [0, P) to [0, 2^k) by round(2^k*x/P)
+    auto &ms_helper = ms_helpers_.find(options)->second;
+    auto out = ms_helper.ModulusDownRNS(field, xshr.shape(), random_share_mask)
+                   .reshape(xshr.shape());
+    ring_add_(out, ring_mul(xshr, yshr));
+    return out;
+  }
+
+  size_t payload_sze = EncryptArrayThenSend(xshr, options, conn);
+  (void)EncryptArrayThenSend(yshr, options, conn);
+  std::vector<yacl::Buffer> recv_ct(payload_sze);
+  for (size_t idx = 0; idx < payload_sze; ++idx) {
+    recv_ct[idx] = conn->Recv(nxt_rank, "");
+  }
+  auto out = DecryptArray(field, numel, options, recv_ct).reshape(xshr.shape());
+  ring_add_(out, ring_mul(xshr, yshr));
+  return out;
+}
+
 size_t CheetahMul::Impl::EncryptArrayThenSend(const NdArrayRef &array,
                                               const Options &options,
                                               yacl::link::Context *conn) {
@@ -573,6 +660,72 @@ void CheetahMul::Impl::MulThenResponse(FieldType, int64_t num_elts,
   }
 }
 
+void CheetahMul::Impl::FMAThenResponse(
+    FieldType, int64_t num_elts, const Options &options,
+    absl::Span<const yacl::Buffer> ciphers_x0,
+    absl::Span<const yacl::Buffer> ciphers_y0,
+    absl::Span<const RLWEPt> plains_x1, absl::Span<const RLWEPt> plains_y1,
+    absl::Span<const uint64_t> rnd_mask, yacl::link::Context *conn) {
+  SPU_ENFORCE(!ciphers_x0.empty(), "CheetahMul: empty cipher");
+  SPU_ENFORCE(!ciphers_y0.empty(), "CheetahMul: empty cipher");
+  SPU_ENFORCE_EQ(ciphers_x0.size(), ciphers_y0.size());
+  SPU_ENFORCE_EQ(plains_x1.size(), ciphers_x0.size(),
+                 "CheetahMul: ct/pt size mismatch");
+  SPU_ENFORCE_EQ(plains_y1.size(), ciphers_y0.size(),
+                 "CheetahMul: ct/pt size mismatch");
+
+  const int64_t num_splits = CeilDiv(num_elts, num_slots());
+  const int64_t num_seal_ctx = WorkingContextSize(options);
+  const int64_t num_ciphers = num_seal_ctx * num_splits;
+  SPU_ENFORCE(ciphers_x0.size() == (size_t)num_ciphers,
+              "CheetahMul : expect {} != {}", num_ciphers, ciphers_x0.size());
+  SPU_ENFORCE(rnd_mask.size() == (size_t)num_elts * num_seal_ctx,
+              "CheetahMul: rnd_mask size mismatch");
+
+  std::vector<yacl::Buffer> response(num_ciphers);
+  yacl::parallel_for(0, num_ciphers, [&](int64_t job_bgn, int64_t job_end) {
+    RLWECt ct_x;
+    RLWECt ct_y;
+    std::vector<uint64_t> u64tmp(num_slots(), 0);
+    for (int64_t job_id = job_bgn; job_id < job_end; ++job_id) {
+      int64_t cntxt_id = job_id / num_splits;
+      int64_t split_id = job_id % num_splits;
+
+      int64_t slice_bgn = split_id * num_slots();
+      int64_t slice_n = std::min(num_slots(), num_elts - slice_bgn);
+      // offset by context id
+      slice_bgn += cntxt_id * num_elts;
+
+      DecodeSEALObject(ciphers_x0[job_id], seal_cntxts_[cntxt_id], &ct_x);
+      DecodeSEALObject(ciphers_y0[job_id], seal_cntxts_[cntxt_id], &ct_y);
+
+      // ct_x <- Re-randomize(ct_x * pt_y + ct_y * pt_x) - random_mask
+      simd_mul_instances_[cntxt_id]->FMAThenReshareInplace(
+          {&ct_x, 1}, {&ct_y, 1}, plains_y1.subspan(job_id, 1),
+          plains_x1.subspan(job_id, 1), rnd_mask.subspan(slice_bgn, slice_n),
+          *peer_pub_key_, seal_cntxts_[cntxt_id]);
+
+      response[job_id] = EncodeSEALObject(ct_x);
+    }
+  });
+
+  if (conn == nullptr) {
+    conn = lctx_.get();
+  }
+
+  int nxt_rank = conn->NextRank();
+  for (int64_t i = 0; i < num_ciphers; i += kCtAsyncParallel) {
+    int64_t this_batch = std::min(num_ciphers - i, kCtAsyncParallel);
+    conn->Send(nxt_rank, response[i],
+               fmt::format("FMAThenResponse ct[{}] to rank{}", i, nxt_rank));
+    for (int64_t j = 1; j < this_batch; ++j) {
+      conn->SendAsync(
+          nxt_rank, response[i + j],
+          fmt::format("FMAThenResponse ct[{}] to rank{}", i + j, nxt_rank));
+    }
+  }
+}
+
 NdArrayRef CheetahMul::Impl::DecryptArray(
     FieldType field, int64_t size, const Options &options,
     const std::vector<yacl::Buffer> &ct_array) {
@@ -623,6 +776,20 @@ int CheetahMul::Rank() const { return impl_->Rank(); }
 size_t CheetahMul::OLEBatchSize() const {
   SPU_ENFORCE(impl_ != nullptr);
   return impl_->OLEBatchSize();
+}
+
+NdArrayRef CheetahMul::MulShare(const NdArrayRef &xshr, const NdArrayRef &yshr,
+                                yacl::link::Context *conn, bool is_evaluator,
+                                uint32_t msg_width_hint) {
+  SPU_ENFORCE(impl_ != nullptr);
+  SPU_ENFORCE(conn != nullptr);
+  return impl_->MulShare(xshr, yshr, conn, is_evaluator, msg_width_hint);
+}
+
+NdArrayRef CheetahMul::MulShare(const NdArrayRef &xshr, const NdArrayRef &yshr,
+                                bool is_evaluator, uint32_t msg_width_hint) {
+  SPU_ENFORCE(impl_ != nullptr);
+  return impl_->MulShare(xshr, yshr, nullptr, is_evaluator, msg_width_hint);
 }
 
 NdArrayRef CheetahMul::MulOLE(const NdArrayRef &inp, yacl::link::Context *conn,
