@@ -119,6 +119,14 @@ spu_cc_test(
     ],
 )
 
+spu_cc_test(
+    name = "gfmp_ops_test",
+    srcs = ["gfmp_ops_test.cc"],
+    deps = [
+        ":gfmp_ops"
+    ]
+)
+
 spu_cc_binary(
     name = "ring_ops_bench",
     srcs = ["ring_ops_bench.cc"],

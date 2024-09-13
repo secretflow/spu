@@ -57,6 +57,36 @@ void gfmp_mod_impl(NdArrayRef& ret, const NdArrayRef& x) {
   });
 }
 
+// batch inversion
+void gfmp_inverse_impl(NdArrayRef& ret, const NdArrayRef& x) {
+  ENFORCE_EQ_ELSIZE_AND_SHAPE(ret, x);
+  const auto* ty = x.eltype().as<GfmpTy>();
+  const auto field = ty->field();
+  const auto numel = x.numel();
+
+  NdArrayRef prefix_prod(ret.eltype(), ret.shape());
+  DISPATCH_ALL_FIELDS(field, [&]() {
+    NdArrayView<ring2k_t> _prefix_prod(prefix_prod);
+    NdArrayView<ring2k_t> _x(x);
+    NdArrayView<ring2k_t> _ret(ret);
+    _prefix_prod[0] = _x[0];
+    for (int64_t i = 1; i < numel; ++i) {
+      _prefix_prod[i] = mul_mod(_prefix_prod[i - 1], _x[i]);
+    }
+
+    ring2k_t pprod_inverse = mul_inv(_prefix_prod[numel - 1]);
+    _ret[numel - 1] = mul_inv(_prefix_prod[numel - 1]);
+    for(int64_t i = numel - 1; i >= 1; i--) {
+      _ret[i-1] = mul_mod(_ret[i], _x[i]);
+    }
+
+    for(int64_t i = 1; i < numel; ++i) {
+      _ret[i] = mul_mod(_ret[i], _prefix_prod[i - 1]);
+    }
+  });
+  
+}
+
 void gfmp_mul_mod_impl(NdArrayRef& ret, const NdArrayRef& x,
                        const NdArrayRef& y) {
   ENFORCE_EQ_ELSIZE_AND_SHAPE(ret, x);
@@ -156,6 +186,18 @@ NdArrayRef gfmp_mod(const NdArrayRef& x) {
 void gfmp_mod_(NdArrayRef& x) {
   SPU_ENFORCE_GFMP(x);
   gfmp_mod_impl(x, x);
+}
+
+NdArrayRef gfmp_batch_inverse(const NdArrayRef& x) {
+  SPU_ENFORCE_GFMP(x);
+  NdArrayRef ret(x.eltype(), x.shape());
+  gfmp_inverse_impl(ret, x);
+  return ret;
+}
+
+void gfmp_batch_inverse(NdArrayRef& x) {
+  SPU_ENFORCE_GFMP(x);
+  gfmp_inverse_impl(x, x);
 }
 
 NdArrayRef gfmp_mul_mod(const NdArrayRef& x, const NdArrayRef& y) {
@@ -283,7 +325,7 @@ std::vector<NdArrayRef> gfmp_rand_shamir_shares(const NdArrayRef& x,
                                                 size_t world_size,
                                                 size_t threshold) {
   SPU_ENFORCE_GFMP(x);
-  SPU_ENFORCE(world_size >= threshold && threshold >= 1,
+  SPU_ENFORCE(world_size > threshold && threshold >= 1,
               "invalid party numbers {} or threshold {}", world_size,
               threshold);
   SPU_ENFORCE_EQ(coeffs.numel(), static_cast<int64_t>(threshold) * x.numel());
@@ -341,6 +383,7 @@ NdArrayRef gfmp_reconstruct_shamir_shares(absl::Span<const NdArrayRef> shares,
     NdArrayView<ring2k_t> _out(out);
     pforeach(0, numel, [&](int64_t idx) {
       ring2k_t secret = 0;
+      // TODO optimize me: the reconstruction vector for a fixed point can be pre-computed
       for (size_t i = 0; i < shares.size(); ++i) {
         NdArrayView<ring2k_t> _share(shares[i]);
         ring2k_t y = _share[idx];
@@ -349,7 +392,7 @@ NdArrayRef gfmp_reconstruct_shamir_shares(absl::Span<const NdArrayRef> shares,
           if (i != j) {
             ring2k_t xi = i + 1;
             ring2k_t xj = j + 1;
-            auto tmp = mul_mod(xj, mul_inv(add_mod(xi, add_inv(xj))));
+            auto tmp = mul_mod(xj, mul_inv(add_mod(xj, add_inv(xi))));
             prod = mul_mod(prod, tmp);
           }
         }

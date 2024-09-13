@@ -25,6 +25,9 @@ NdArrayRef gfmp_rand(FieldType field, const Shape& shape, uint128_t prg_seed,
 NdArrayRef gfmp_mod(const NdArrayRef& x);
 void gfmp_mod_(NdArrayRef& x);
 
+NdArrayRef gfmp_batch_inverse(const NdArrayRef& x);
+void gfmp_batch_inverse(NdArrayRef& x);
+
 NdArrayRef gfmp_mul_mod(const NdArrayRef& x, const NdArrayRef& y);
 void gfmp_mul_mod_(NdArrayRef& x, const NdArrayRef& y);
 
