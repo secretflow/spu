@@ -29,9 +29,46 @@ from sml.linear_model.utils.linprog_ip import _linprog_ip
 
 
 class QuantileRegressor:
+    """
+    Initialize the quantile regression model.
+
+    Parameters
+    ----------
+    quantile : float, default=0.5
+        The quantile to be predicted. Must be between 0 and 1.
+        A quantile of 0.5 corresponds to the median (50th percentile).
+
+    alpha : float, default=1.0
+        Regularization strength; must be a positive float.
+        Larger values specify stronger regularization, reducing model complexity.
+
+    fit_intercept : bool, default=True
+        Whether to calculate the intercept for the model.
+        If False, no intercept will be used in calculations, meaning the model will
+        assume that the data is already centered.
+
+    lr : float, default=0.01
+        Learning rate for the optimization process. This controls the size of
+        the steps taken in each iteration towards minimizing the objective function.
+
+    max_iter : int, default=10
+        The maximum number of iterations for the optimization algorithm.
+        This controls how long the model will continue to update the weights
+        before stopping.
+
+    Attributes
+    ----------
+    coef_ : array-like of shape (n_features,)
+        The coefficients (weights) assigned to the input features. These will be
+        learned during model fitting.
+
+    intercept_ : float
+        The intercept (bias) term. If `fit_intercept=True`, this will be
+        learned during model fitting.
+    """
 
     def __init__(
-        self, quantile=0.5, alpha=1.0, fit_intercept=True, lr=0.01, max_iter=1000
+        self, quantile=0.5, alpha=1.0, fit_intercept=True, lr=0.01, max_iter=10
     ):
         self.quantile = quantile
         self.alpha = alpha
@@ -43,9 +80,37 @@ class QuantileRegressor:
         self.intercept_ = None
 
     def fit(self, X, y, sample_weight=None):
+        """
+        Fit the quantile regression model using linear programming.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Training data.
+
+        y : array-like of shape (n_samples,)
+            Target values.
+
+        sample_weight : array-like of shape (n_samples,), optional
+            Individual weights for each sample. If not provided, all samples
+            are assumed to have equal weight.
+
+        Returns
+        -------
+        self : object
+            Returns an instance of self.
+
+        Steps:
+        1. Determine the number of parameters (`n_params`), accounting for the intercept if needed.
+        2. Define the objective function `c`, incorporating both the L1 regularization and the pinball loss.
+        3. Set up the equality constraint matrix `A_eq` and vector `b_eq` based on the input data `X` and `y`.
+        4. Solve the linear programming problem using `_linprog_ip`.
+        5. Extract the model parameters (intercept and coefficients) from the solution.
+        """
+
         n_samples, n_features = X.shape
         n_params = n_features
-
+        # print(n_params)
         sample_weight = jnp.ones((n_samples,))
 
         if self.fit_intercept:
@@ -85,6 +150,7 @@ class QuantileRegressor:
         eye = jnp.eye(n_samples)
         if self.fit_intercept:
             ones = jnp.ones((n_samples, 1))
+
             A = jnp.concatenate([ones, X, -ones, -X, eye, -eye], axis=1)
         else:
             A = jnp.concatenate([X, -X, eye, -eye], axis=1)
@@ -94,8 +160,6 @@ class QuantileRegressor:
         n, m = A.shape
         av = jnp.arange(n) + m
 
-        # result = _linprog_simplex(c, A, b, maxiter=self.max_iter, tol=1e-3)
-        # jit_linprog_ip = jit(_linprog_ip)
         result = _linprog_ip(
             c,
             0,
@@ -105,9 +169,6 @@ class QuantileRegressor:
             tol=1e-3,
             pc=False,
             ip=True,
-            lstsq=False,
-            sym_pos=True,
-            cholesky=True,
         )
 
         solution = result[0]
@@ -122,23 +183,32 @@ class QuantileRegressor:
             self.coef_ = params
             self.intercept_ = 0.0
         return self
-        # # interior-point
-        # result = linprog(c, A_eq=A, b_eq=b, bounds=(0, None), method='interior-point')
-
-        # solution = result.x
-
-        # params = solution[:n_params] - solution[n_params : 2 * n_params]
-        # self.n_iter_ = result.nit
-
-        # if self.fit_intercept:
-        #     self.coef_ = params[1:]
-        #     self.intercept_ = params[0]
-        # else:
-        #     self.coef_ = params
-        #     self.intercept_ = 0.0
-        # return self
 
     def predict(self, X):
+        """
+        Predict target values using the fitted quantile regression model.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Input data for which predictions are to be made.
+
+        Returns
+        -------
+        y_pred : array-like of shape (n_samples,)
+            Predicted target values.
+
+        Notes
+        -----
+        The predict method computes the predicted target values using the model's
+        learned coefficients and intercept (if fit_intercept=True).
+
+        - If the model includes an intercept, a column of ones is added to the input data `X` to account
+        for the intercept in the linear combination.
+        - The method then computes the dot product between the modified `X` and the stacked vector of
+        intercept and coefficients.
+        - If there is no intercept, the method simply computes the dot product between `X` and the coefficients.
+        """
         if self.fit_intercept:
             X = jnp.column_stack((jnp.ones(X.shape[0]), X))
 
@@ -148,28 +218,24 @@ class QuantileRegressor:
 
 
 def generate_data():
-    from jax import random
+    import numpy as np
 
-    # 设置随机种子
-    key = random.PRNGKey(42)
-    # 生成 X 数据
-    key, subkey = random.split(key)
-    X = random.normal(subkey, (100, 2))
-    # 生成 y 数据
-    y = (
-        5 * X[:, 0] + 2 * X[:, 1] + random.normal(key, (100,)) * 0.1
-    )  # 高相关性，带有小噪声
+    np.random.seed(42)
+
+    X = np.random.normal(size=(100, 2))
+
+    y = 3 * X[:, 0] + 2 * X[:, 1] + np.random.normal(size=(100,)) * 0.1
     return X, y
 
 
 if __name__ == "__main__":
     X, y = generate_data()
-    # 0.4为nan
-    quantile = 0.1
+
+    quantile = 0.7
     alpha = 0.1
     fit_intercept = True
     lr = 0.01
-    max_iter = 1000
+    max_iter = 10
 
     quantile_custom = QuantileRegressor(
         quantile=quantile,

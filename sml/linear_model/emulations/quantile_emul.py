@@ -46,17 +46,11 @@ def emul_quantile(mode=emulation.Mode.MULTIPROCESS):
         return proc
 
     def generate_data():
-        from jax import random
+        import numpy as np
 
-        # 设置随机种子
-        key = random.PRNGKey(42)
-        # 生成 X 数据
-        key, subkey = random.split(key)
-        X = random.normal(subkey, (100, 2))
-        # 生成 y 数据
-        y = (
-            5 * X[:, 0] + 2 * X[:, 1] + random.normal(key, (100,)) * 0.1
-        )  # 高相关性，带有小噪声
+        np.random.seed(42)
+        X = np.random.normal(size=(100, 2))
+        y = 5 * X[:, 0] + 2 * X[:, 1] + np.random.normal(size=(100,)) * 0.1
         return X, y
 
     try:
@@ -69,7 +63,7 @@ def emul_quantile(mode=emulation.Mode.MULTIPROCESS):
 
         # compare with sklearn
         quantile_sklearn = SklearnQuantileRegressor(
-            quantile=0.3, alpha=0.1, fit_intercept=True, solver='highs'
+            quantile=0.7, alpha=0.1, fit_intercept=True, solver='highs'
         )
         start = time.time()
         quantile_sklearn_fit = quantile_sklearn.fit(X, y)
@@ -82,7 +76,7 @@ def emul_quantile(mode=emulation.Mode.MULTIPROCESS):
 
         # run
         proc = proc_wrapper(
-            quantile=0.3, alpha=0.1, fit_intercept=True, lr=0.01, max_iter=1000
+            quantile=0.7, alpha=0.1, fit_intercept=True, lr=0.01, max_iter=10
         )
         start = time.time()
         result = emulator.run(proc)(X_spu, y_spu)

@@ -15,8 +15,6 @@
 import unittest
 
 import jax.numpy as jnp
-
-# import numpy as np
 from sklearn.linear_model import QuantileRegressor as SklearnQuantileRegressor
 
 import spu.spu_pb2 as spu_pb2  # type: ignore
@@ -51,30 +49,27 @@ class UnitTests(unittest.TestCase):
         n_samples, n_features = 100, 2
 
         def generate_data():
-            from jax import random
+            import numpy as np
 
-            # 设置随机种子
-            key = random.PRNGKey(42)
-            # 生成 X 数据
-            key, subkey = random.split(key)
-            X = random.normal(subkey, (100, 2))
-            # 生成 y 数据
-            y = (
-                5 * X[:, 0] + 2 * X[:, 1] + random.normal(key, (100,)) * 0.1
-            )  # 高相关性，带有小噪声
+            np.random.seed(42)
+            X = np.random.normal(size=(100, 2))
+            y = 5 * X[:, 0] + 3 * X[:, 1] + np.random.normal(size=(100,)) * 0.1
             return X, y
 
-        # bandwidth and latency only work for docker mode
+        # # bandwidth and latency only work for docker mode
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
+            3,
+            spu_pb2.ProtocolKind.ABY3,
+            spu_pb2.FieldType.FM64,
         )
 
-        # X, y, coef, sample_weight = generate_data()
         X, y = generate_data()
-
+        quantile = 0.2
+        alpha = 0.1
+        fit_intercept = True
         # compare with sklearn
         quantile_sklearn = SklearnQuantileRegressor(
-            quantile=0.1, alpha=0.1, fit_intercept=True, solver='revised simplex'
+            quantile=quantile, alpha=alpha, fit_intercept=fit_intercept, solver='highs'
         )
         quantile_sklearn_fit = quantile_sklearn.fit(X, y)
         acc_sklearn = jnp.mean(y <= quantile_sklearn_fit.predict(X))
@@ -84,14 +79,14 @@ class UnitTests(unittest.TestCase):
 
         # run
         proc = proc_wrapper(
-            quantile=0.1, alpha=0.1, fit_intercept=True, lr=0.01, max_iter=1000
+            quantile=quantile,
+            alpha=alpha,
+            fit_intercept=fit_intercept,
+            lr=0.01,
+            max_iter=10,
         )
         result, coef, intercept = spsim.sim_jax(sim, proc)(X, y)
         acc_custom = jnp.mean(y <= result)
-
-        # print acc
-        print(result)
-        # print(y)
         print(f"Accuracy in SPU: {acc_custom:.2f}")
         print(coef)
         print(intercept)
