@@ -31,6 +31,8 @@ export https_proxy=http://192.168.109.37:7890
 unset http_proxy 
 unset https_proxy
 
+sh ./mytest/mynet.sh lan
+
 ./bazel-bin/examples/python/utils/nodectl -c examples/python/ml/flax_gpt2/3pc.json up
 ./bazel-bin/examples/python/utils/nodectl -c examples/python/ml/flax_gpt2/alkaid.json up
 

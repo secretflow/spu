@@ -150,5 +150,6 @@ class CommonTypeV : public Kernel {
 NdArrayRef MsbA2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in, size_t start_rank = 0);
 NdArrayRef A2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in);
 NdArrayRef B2AMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in);
+NdArrayRef PPATest(KernelEvalContext* ctx, const NdArrayRef& in);
 
 }  // namespace spu::mpc::albo

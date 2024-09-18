@@ -171,7 +171,7 @@ NdArrayRef AlboIo::fromShares(const std::vector<NdArrayRef>& shares) const {
     DISPATCH_ALL_FIELDS(field_, [&]() {
       NdArrayView<ring2k_t> _out(out);
 
-      DISPATCH_UINT_PT_TYPES(eltype.as<BShrTy>()->getBacktype(), [&] {
+      DISPATCH_UINT_PT_TYPES(eltype.as<BShrTyMss>()->getBacktype(), [&] {
         using shr_t = std::array<ScalarT, 3>;
         for (size_t si = 0; si < shares.size(); si++) {
           NdArrayView<shr_t> _s(shares[si]);

@@ -160,7 +160,7 @@ class BShrTyMss : public TypeImpl<BShrTyMss, TypeObject, Secret, BShare> {
   size_t size() const override { return SizeOf(back_type_) * 3; }
 
   bool equals(TypeObject const* other) const override {
-    auto const* derived_other = dynamic_cast<BShrTy const*>(other);
+    auto const* derived_other = dynamic_cast<BShrTyMss const*>(other);
     SPU_ENFORCE(derived_other);
     return getBacktype() == derived_other->getBacktype() &&
            nbits() == derived_other->nbits();

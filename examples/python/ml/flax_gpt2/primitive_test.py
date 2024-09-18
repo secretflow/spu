@@ -39,7 +39,13 @@ copts.xla_pp_kind = 2
 # enable x / broadcast(y) -> x * broadcast(1/y)
 copts.enable_optimize_denominator_with_broadcast = True
 
-VECTOR_LEN = 1024 * 1024
+EXP_TIMES = 100
+
+# # Microbenchmark
+VECTOR_LEN = 1
+
+# Activation benchmark
+# VECTOR_LEN = 1000
 
 parser = argparse.ArgumentParser(description='distributed driver.')
 parser.add_argument("-c", "--config", default="examples/python/ml/flax_gpt2/3pc.json")
@@ -143,6 +149,8 @@ def relu(x):
 def gelu(x):
     with hack_gelu_context("hijack jax gelu", enabled=True):
         return jnn.gelu(x)
+def silu(x):
+    return jnn.silu(x)
 def softmax(x):
     with hack_softmax_context("hijack jax softmax", enabled=True):
         return jnn.softmax(x)
@@ -155,10 +163,12 @@ def sample_input():
     return x
 
 def exp_msb():
-    x = sample_input()
-    x_spu = ppd.device("P1")(lambda x: x)(x)
-    msb_spu = ppd.device("SPU")(msb)(x_spu)
-    msb_spu = ppd.get(msb_spu)
+    print("this is exp_msb.")
+    for _ in range(EXP_TIMES):
+        x = sample_input()
+        x_spu = ppd.device("P1")(lambda x: x)(x)
+        msb_spu = ppd.device("SPU")(msb)(x_spu)
+        msb_spu = ppd.get(msb_spu)
     show_l2(msb_spu, (x > 0).astype(np.float64))
 
 # def exp_eqz():
@@ -166,61 +176,87 @@ def exp_msb():
 #     x_spu = ppd.device("P1")(lambda x: x)(x)
 #     eqz_spu = ppd.device("SPU")(eqz)(x_spu)
 
-def exp_ppa():
-    x = sample_input()
-    x_spu = ppd.device("P1")(lambda x: x)(x)
-    b2a_spu = ppd.device("SPU")(b2a)(x_spu)
-    b2a_spu = ppd.get(b2a_spu)
-    show_l2(b2a_spu, (x ^ 1).astype(np.float64) + 1)
+def exp_b2a():
+    print("this is exp_b2a.")
+    for _ in range(EXP_TIMES):
+        x = sample_input()
+        x_spu = ppd.device("P1")(lambda x: x)(x)
+        b2a_spu = ppd.device("SPU")(b2a)(x_spu)
+        b2a_spu = ppd.get(b2a_spu)
+    show_l2(b2a_spu, ((x ^ 1) + 1).astype(np.float64) + 1)
 
 def exp_a2b():
-    x = sample_input()
-    x_spu = ppd.device("P1")(lambda x: x)(x)
-    a2b_spu = ppd.device("SPU")(a2b)(x_spu)
-    a2b_spu = ppd.get(a2b_spu)
+    print("this is exp_a2b.")
+    for _ in range(EXP_TIMES):
+        x = sample_input()
+        x_spu = ppd.device("P1")(lambda x: x)(x)
+        a2b_spu = ppd.device("SPU")(a2b)(x_spu)
+        a2b_spu = ppd.get(a2b_spu)
     show_l2(a2b_spu, (x ^ 1).astype(np.float64))
     
-def exp_exp():
-    x = sample_input()
-    x_spu = ppd.device("P1")(lambda x: x)(x)
-    exp_spu = ppd.device("SPU")(exp)(x_spu)
-    exp_spu = ppd.get(exp_spu)
-    show_l2(exp_spu, jnp.exp(x))
+# def exp_exp():
+#     print("this is exp_exp.")
+#     x = sample_input()
+#     x_spu = ppd.device("P1")(lambda x: x)(x)
+#     exp_spu = ppd.device("SPU")(exp)(x_spu)
+#     exp_spu = ppd.get(exp_spu)
+#     show_l2(exp_spu, jnp.exp(x))
     
 def exp_relu():
-    x = sample_input()
-    x_spu = ppd.device("P1")(lambda x: x)(x)
-    b2a_spu = ppd.device("SPU")(relu)(x_spu)
-    show_l2(x_spu, x)
+    print("this is exp_relu.")
+    for _ in range(EXP_TIMES):
+        x = sample_input()
+        x_spu = ppd.device("P1")(lambda x: x)(x)
+        relu_spu = ppd.device("SPU")(relu)(x_spu)
+        relu_spu = ppd.get(relu_spu)
+    show_l2(relu_spu, jnn.relu(x))
     
 def exp_gelu():
-    x = sample_input()
-    x_spu = ppd.device("P1")(lambda x: x)(x)
-    b2a_spu = ppd.device("SPU")(gelu)(x_spu)
-    show_l2(x_spu, x)
+    print("this is exp_gelu.")
+    for _ in range(EXP_TIMES):
+        x = sample_input()
+        x_spu = ppd.device("P1")(lambda x: x)(x)
+        gelu_spu = ppd.device("SPU")(gelu)(x_spu)
+        gelu_spu = ppd.get(gelu_spu)
+    show_l2(gelu_spu, jnn.gelu(x))
+    
+def exp_silu():
+    print("this is exp_silu.")
+    for _ in range(EXP_TIMES):
+        x = sample_input().astype(np.float64)
+        x_spu = ppd.device("P1")(lambda x: x)(x)
+        silu_spu = ppd.device("SPU")(silu)(x_spu)
+        silu_spu = ppd.get(silu_spu)
+    show_l2(silu_spu, jnn.silu(x))
     
 def exp_softmax():
-    x = sample_input()
-    x_spu = ppd.device("P1")(lambda x: x)(x)
-    b2a_spu = ppd.device("SPU")(softmax)(x_spu)
-    show_l2(x_spu, x)
+    print("this is exp_softmax.")
+    for _ in range(EXP_TIMES):
+        x = sample_input()
+        x_spu = ppd.device("P1")(lambda x: x)(x)
+        softmax_spu = ppd.device("SPU")(softmax)(x_spu)
+        softmax_spu = ppd.get(softmax_spu)
+    show_l2(softmax_spu, jnn.softmax(x))
     
 def exp_sigmoid():
-    x = sample_input()
-    x_spu = ppd.device("P1")(lambda x: x)(x)
-    b2a_spu = ppd.device("SPU")(sigmoid)(x_spu)
-    b2a_spu = ppd.get(b2a_spu)
-    show_l2(x_spu, x)
+    print("this is exp_sigmoid.")
+    for _ in range(EXP_TIMES):
+        x = sample_input().astype(np.float64)
+        x_spu = ppd.device("P1")(lambda x: x)(x)
+        sigmoid_spu = ppd.device("SPU")(sigmoid)(x_spu)
+        sigmoid_spu = ppd.get(sigmoid_spu)
+    show_l2(sigmoid_spu, jnn.sigmoid(x))
 
 if __name__ == '__main__':
-    # exp_eqz()
     
-    exp_msb()
-    exp_ppa()
+    # exp_msb()
+    exp_b2a()
     exp_a2b()
 
-    # exp_exp()
     # exp_relu()
     # exp_gelu()
+    # exp_silu()
     # exp_softmax()
+    
     # exp_sigmoid()
+    

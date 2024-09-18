@@ -32,6 +32,7 @@
 #include "libspu/mpc/utils/ring_ops.h"
 
 // TODO: it shows incorrect result that defines EQ_USE_PRG_STATE and undefines EQ_USE_OFFLINE. Fix it.
+#define EQ_TEST_PPA
 
 namespace spu::mpc::aby3 {
 
@@ -41,6 +42,36 @@ static NdArrayRef wrap_add_bb(SPUContext* ctx, const NdArrayRef& x,
   return UnwrapValue(add_bb(ctx, WrapValue(x), WrapValue(y)));
 }
 
+NdArrayRef PPATest(KernelEvalContext* ctx, const NdArrayRef& in) {
+  const auto field = in.eltype().as<AShrTy>()->field();
+  const auto numel = in.numel();
+
+  const Type rss_bshr_type =
+      makeType<BShrTy>(GetStorageType(field), SizeOf(field) * 8);
+
+  NdArrayRef m(rss_bshr_type, in.shape());
+  NdArrayRef n(rss_bshr_type, in.shape());
+
+  return DISPATCH_ALL_FIELDS(field, [&]() {
+    using el_t = ring2k_t;
+    using rss_shr_t = std::array<el_t, 2>;
+
+    NdArrayView<rss_shr_t> _in(in);          
+    NdArrayView<rss_shr_t> _m(m);
+    NdArrayView<rss_shr_t> _n(n);
+
+    // only for test
+    pforeach(0, numel, [&](int64_t idx) {
+      _m[idx][0] = _in[idx][0];
+      _m[idx][1] = _in[idx][1];
+      _n[idx][0] = _in[idx][0];
+      _n[idx][1] = _in[idx][1];
+    });
+
+    return wrap_add_bb(ctx->sctx(), m, n);
+  });  
+}
+
 // Reference:
 // ABY3: A Mixed Protocol Framework for Machine Learning
 // P16 5.3 Share Conversions, Bit Decomposition
@@ -48,6 +79,9 @@ static NdArrayRef wrap_add_bb(SPUContext* ctx, const NdArrayRef& x,
 //
 // Latency: 2 + log(nbits) from 1 rotate and 1 ppa.
 NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
+  #ifdef EQ_TEST_PPA
+  return PPATest(ctx, in);
+  #else
   const auto field = in.eltype().as<Ring2k>()->field();
 
   auto* comm = ctx->getState<Communicator>();
@@ -114,6 +148,7 @@ NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   });
 
   return wrap_add_bb(ctx->sctx(), m, n);  // comm => log(k) + 1, 2k(logk) + k
+  #endif
 }
 
 NdArrayRef B2ASelector::proc(KernelEvalContext* ctx,

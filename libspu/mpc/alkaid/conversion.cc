@@ -2400,11 +2400,9 @@ std::pair<NdArrayRef, NdArrayRef> PGCell_4FanIn1Out(KernelEvalContext* ctx,
 NdArrayRef PPAFromABY2(KernelEvalContext* ctx, const NdArrayRef& x, const NdArrayRef& y)
 {
   const auto numel = x.numel();
-  const auto* in_ty = x.eltype().as<BShrTyMss>();
-  const size_t in_nbits = in_ty->nbits();
+  const size_t in_nbits = std::max(x.eltype().as<BShrTyMss>()->nbits(), y.eltype().as<BShrTyMss>()->nbits());
   const auto in_shape = x.shape();
 
-  SPU_ENFORCE(in_nbits == y.eltype().as<BShrTyMss>()->nbits(), "invalid nbits={}", in_nbits);
   SPU_ENFORCE(x.numel() == y.numel(), "invalid numel x.numel()={}, y.numel()={}", x.numel(), y.numel());
 
   const Type rss_bshr_type = 
@@ -2655,11 +2653,9 @@ NdArrayRef PPAFromABY2(KernelEvalContext* ctx, const NdArrayRef& x, const NdArra
 NdArrayRef PPASklanky(KernelEvalContext* ctx, const NdArrayRef& x, const NdArrayRef& y)
 {
   const auto numel = x.numel();
-  const auto* in_ty = x.eltype().as<BShrTyMss>();
-  const size_t in_nbits = in_ty->nbits();
+  const size_t in_nbits = std::max(x.eltype().as<BShrTyMss>()->nbits(), y.eltype().as<BShrTyMss>()->nbits());
   const auto in_shape = x.shape();
 
-  SPU_ENFORCE(in_nbits == y.eltype().as<BShrTyMss>()->nbits(), "invalid nbits={}", in_nbits);
   SPU_ENFORCE(x.numel() == y.numel(), "invalid numel x.numel()={}, y.numel()={}", x.numel(), y.numel());
 
   const Type rss_bshr_type = 
@@ -2746,6 +2742,7 @@ NdArrayRef PPASklanky(KernelEvalContext* ctx, const NdArrayRef& x, const NdArray
       auto pops = sklanky_split<bshr_el_t>(p, 2);
 
       std::tie(g, p) = PGCell_4FanIn1Out(ctx, pops[0], pops[1], pops[2], pops[3], gops[0], gops[1], gops[2], gops[3], false);
+      g = ResharingMss2Rss(ctx, g);
 
       // if (comm->getRank() == 0) std::cout << "PPA: generate signal p and signal g." << std::endl;
       // if (comm->getRank() == 0) std::cout << "PPA: signal p." << _p[0][0] << " " << _p[1][0] << std::endl;
@@ -3036,7 +3033,7 @@ NdArrayRef B2AMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in) {
         }
       }
 
-      auto ppa_result = PPAFromABY2(ctx, in_mss, dabit_b);
+      auto ppa_result = PPASklanky(ctx, in_mss, dabit_b);
 
       {
         NdArrayView<rss_shr_t> _z(ppa_result);
