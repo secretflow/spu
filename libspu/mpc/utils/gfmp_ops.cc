@@ -195,11 +195,6 @@ NdArrayRef gfmp_batch_inverse(const NdArrayRef& x) {
   return ret;
 }
 
-void gfmp_batch_inverse(NdArrayRef& x) {
-  SPU_ENFORCE_GFMP(x);
-  gfmp_inverse_impl(x, x);
-}
-
 NdArrayRef gfmp_mul_mod(const NdArrayRef& x, const NdArrayRef& y) {
   SPU_ENFORCE_GFMP(x);
   SPU_ENFORCE_GFMP(y);
