@@ -168,6 +168,20 @@ class MulAA : public BinaryKernel {
                   const NdArrayRef& rhs) const override;
 };
 
+class MulAAP : public BinaryKernel {
+ public:
+  static constexpr char kBindName[] = "mul_aa_p";
+
+  Kind kind() const override { return Kind::Dynamic; }
+
+  ce::CExpr latency() const override { return ce::Const(1); }
+
+  ce::CExpr comm() const override { return ce::K() * 2 * (ce::N() - 1); }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                  const NdArrayRef& rhs) const override;
+};
+
 ////////////////////////////////////////////////////////////////////
 // matmul family
 ////////////////////////////////////////////////////////////////////

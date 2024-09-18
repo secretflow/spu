@@ -118,6 +118,10 @@ Value mul_aa(SPUContext* ctx, const Value& x, const Value& y) {
   TILED_DISPATCH(ctx, x, y);
 }
 
+Value mul_aa_p(SPUContext* ctx, const Value& x, const Value& y) {
+  TILED_DISPATCH(ctx, x, y);
+}
+
 Value square_a(SPUContext* ctx, const Value& x) { TILED_DISPATCH(ctx, x); }
 
 OptionalAPI<Value> mul_av(SPUContext* ctx, const Value& x, const Value& y) {

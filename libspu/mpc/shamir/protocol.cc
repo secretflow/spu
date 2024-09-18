@@ -51,7 +51,7 @@ void regShamirProtocol(SPUContext* ctx,
                   shamir::RandA,                       //
                   shamir::NegateA,                     //
                   shamir::AddAP, shamir::AddAA,        //
-                  shamir::MulAP, shamir::MulAA,        //
+                  shamir::MulAP, shamir::MulAA, shamir::MulAAP,       //
                   shamir::MatMulAP, shamir::MatMulAA,  //
                   shamir::LShiftB, shamir::RShiftB, shamir::ARShiftB,
                   shamir::CommonTypeB, shamir::CastTypeB,         //

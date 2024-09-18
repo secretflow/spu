@@ -303,6 +303,59 @@ TEST_P(ArithmeticTest, MulA1BV) {
   });
 }
 
+TEST_P(ArithmeticTest, MulAA) {
+  const auto factory = std::get<0>(GetParam());
+  const RuntimeConfig& conf = std::get<1>(GetParam());
+  const size_t npc = std::get<2>(GetParam());
+
+  utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+    auto sctx = factory(conf, lctx);
+
+    auto p0 = rand_p(sctx.get(), kShape);
+    auto p1 = rand_p(sctx.get(), kShape);
+
+    auto v0 = p2v(sctx.get(), p0, 0);
+    auto v1 = p2v(sctx.get(), p1, 1);
+
+    auto a0 = v2a(sctx.get(), v0);
+    auto a1 = v2a(sctx.get(), v1);
+
+    auto prod = mul_aa(sctx.get(), a0, a1);
+    auto p_prod = a2p(sctx.get(), prod);
+
+    auto s = mul_pp(sctx.get(), p0, p1);
+
+    /* THEN */
+    EXPECT_VALUE_EQ(s, p_prod);
+  });
+}
+
+TEST_P(ArithmeticTest, MulAAP) {
+  const auto factory = std::get<0>(GetParam());
+  const RuntimeConfig& conf = std::get<1>(GetParam());
+  const size_t npc = std::get<2>(GetParam());
+
+  utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+    auto sctx = factory(conf, lctx);
+
+    auto p0 = rand_p(sctx.get(), kShape);
+    auto p1 = rand_p(sctx.get(), kShape);
+
+    auto v0 = p2v(sctx.get(), p0, 0);
+    auto v1 = p2v(sctx.get(), p1, 1);
+
+    auto a0 = v2a(sctx.get(), v0);
+    auto a1 = v2a(sctx.get(), v1);
+
+    auto prod = mul_aa_p(sctx.get(), a0, a1);
+
+    auto s = mul_pp(sctx.get(), p0, p1);
+
+    /* THEN */
+    EXPECT_VALUE_EQ(s, prod);
+  });
+}
+
 TEST_P(ArithmeticTest, MatMulAP) {
   const auto factory = std::get<0>(GetParam());
   const RuntimeConfig& conf = std::get<1>(GetParam());
