@@ -245,7 +245,7 @@ NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
   int64_t batch_sze = ctx->getState<CheetahMulState>()->get()->OLEBatchSize();
   int64_t numel = x.numel();
 
-  if (numel >= batch_sze) {
+  if (numel >= 2 * batch_sze) {
     return mulDirectly(ctx, x, y);
   }
   return mulWithBeaver(ctx, x, y);
@@ -326,6 +326,46 @@ NdArrayRef MulAA::mulWithBeaver(KernelEvalContext* ctx, const NdArrayRef& x,
   return z.as(x.eltype());
 }
 
+#if 1
+NdArrayRef MulAA::mulDirectly(KernelEvalContext* ctx, const NdArrayRef& x,
+                              const NdArrayRef& y) const {
+  // Compute (x0 + x1) * (y0+ y1)
+  auto* comm = ctx->getState<Communicator>();
+  auto* mul_prot = ctx->getState<CheetahMulState>()->get();
+  mul_prot->LazyInitKeys(x.eltype().as<Ring2k>()->field());
+
+  auto fx = x.reshape({x.numel()});
+  auto fy = y.reshape({y.numel()});
+  const int64_t n = fx.numel();
+  const int64_t nhalf = n / 2;
+  const int rank = comm->getRank();
+
+  // For long vectors, split into two subtasks.
+  auto dupx = ctx->getState<CheetahMulState>()->duplx();
+  std::future<NdArrayRef> task = std::async(std::launch::async, [&] {
+    return mul_prot->MulShare(fx.slice({nhalf}, {n}, {1}),
+                              fy.slice({nhalf}, {n}, {1}), dupx.get(),
+                              /*evaluator*/ rank == 0);
+  });
+
+  std::vector<NdArrayRef> out_slices(2);
+  out_slices[0] =
+      mul_prot->MulShare(fx.slice({0}, {nhalf}, {1}),
+                         fy.slice({0}, {nhalf}, {1}), /*evaluato*/ rank != 0);
+  out_slices[1] = task.get();
+
+  NdArrayRef out(out_slices[0].eltype(), x.shape());
+  int64_t offset = 0;
+  for (auto& out_slice : out_slices) {
+    std::memcpy(out.data<std::byte>() + offset, out_slice.data(),
+                out_slice.numel() * out.elsize());
+    offset += out_slice.numel() * out.elsize();
+  }
+  return out;
+}
+#else
+// Old code for MulAA using two OLEs which commnuicate about 30% more than the
+// above version.
 NdArrayRef MulAA::mulDirectly(KernelEvalContext* ctx, const NdArrayRef& x,
                               const NdArrayRef& y) const {
   // (x0 + x1) * (y0+ y1)
@@ -335,7 +375,6 @@ NdArrayRef MulAA::mulDirectly(KernelEvalContext* ctx, const NdArrayRef& x,
   mul_prot->LazyInitKeys(x.eltype().as<Ring2k>()->field());
 
   const int rank = comm->getRank();
-  // auto fy = y.reshape({y.numel()});
 
   auto dupx = ctx->getState<CheetahMulState>()->duplx();
   std::future<NdArrayRef> task = std::async(std::launch::async, [&] {
@@ -355,6 +394,7 @@ NdArrayRef MulAA::mulDirectly(KernelEvalContext* ctx, const NdArrayRef& x,
   NdArrayRef x0y1 = task.get();
   return ring_add(x0y1, ring_add(x1y0, ring_mul(x, y))).as(x.eltype());
 }
+#endif
 
 NdArrayRef MatMulVVS::proc(KernelEvalContext* ctx, const NdArrayRef& x,
                            const NdArrayRef& y) const {
