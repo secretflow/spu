@@ -88,21 +88,54 @@ def _pivot_row(T, basis, pivcol, phase, tol=1e-9, bland=False):
     return ~all_masked & has_valid_row, row
 
 
+# def _apply_pivot(T, basis, pivrow, pivcol, tol=1e-9):
+#     pivrow = jnp.int32(pivrow)
+#     basis = basis.at[pivrow].set(pivcol)
+#     pivval = T[pivrow, pivcol]
+#     T = T.at[pivrow].set(T[pivrow] / pivval)
+
+#     # 向量化更新所有行
+#     pivrow_vector = T[pivrow]
+#     scalar = T[:, pivcol].reshape(-1, 1)  # 获取每行的标量，形状为 (n, 1)
+
+#     # 使用矩阵减法进行批量更新，避免循环
+#     updated_T = T - scalar * pivrow_vector
+
+#     # 由于主元行已经被更新过，因此我们需要恢复该行
+#     updated_T = updated_T.at[pivrow].set(T[pivrow])
+#     # updated_T = T
+#     return updated_T, basis
+
 def _apply_pivot(T, basis, pivrow, pivcol, tol=1e-9):
+    # 将 pivrow 和 pivcol 转换为 int32 类型
     pivrow = jnp.int32(pivrow)
+    pivcol = jnp.int32(pivcol)
+
+    # 更新 basis 数组
     basis = basis.at[pivrow].set(pivcol)
-    pivval = T[pivrow, pivcol]
-    T = T.at[pivrow].set(T[pivrow] / pivval)
-
-    # 向量化更新所有行
-    pivrow_vector = T[pivrow]
-    scalar = T[:, pivcol].reshape(-1, 1)  # 获取每行的标量，形状为 (n, 1)
-
+    
+    # 生成 one-hot 向量
+    pivrow_one_hot = jax.nn.one_hot(pivrow, T.shape[0])
+    pivcol_one_hot = jax.nn.one_hot(pivcol, T.shape[1])
+    
+    # 计算主元值
+    pivval = jnp.dot(pivrow_one_hot, jnp.dot(T, pivcol_one_hot))
+    
+    # 更新主元行
+    # T = T.at[pivrow].set(T[pivrow] / pivval)
+    updated_row = T[pivrow] / pivval
+    T = pivrow_one_hot[:, None] * updated_row + T * (1 - pivrow_one_hot[:, None])
+    
+    # 计算需要更新的行
+    scalar = jnp.dot(T, pivcol_one_hot).reshape(-1, 1)  # 获取每行的标量，形状为 (n, 1)
+    
     # 使用矩阵减法进行批量更新，避免循环
-    updated_T = T - scalar * pivrow_vector
-
+    updated_T = T - scalar * T[pivrow]
+    
     # 由于主元行已经被更新过，因此我们需要恢复该行
-    updated_T = updated_T.at[pivrow].set(T[pivrow])
+    # updated_T = updated_T.at[pivrow].set(T[pivrow])
+    row_restore_matrix = pivrow_one_hot[:, None] * T[pivrow]
+    updated_T = row_restore_matrix + updated_T * (1 - pivrow_one_hot[:, None])
 
     return updated_T, basis
 
@@ -167,9 +200,9 @@ def _solve_simplex(
             T, pivrow, basis, tol, nit = carry
             return pivrow < basis.size
 
-        T, pivrow, basis, tol, nit = lax.while_loop(
-            cond_fun, body_fun, (T, pivrow, basis, tol, nit)
-        )
+        # T, pivrow, basis, tol, nit = lax.while_loop(
+        #     cond_fun, body_fun, (T, pivrow, basis, tol, nit)
+        # )
         return T, pivrow, basis, tol, nit
 
     phase_is_2 = phase == 2
@@ -246,12 +279,17 @@ def _solve_simplex(
         status = jnp.where(pivcol_is_found, status_True, status)
         complete = jnp.where(pivcol_is_found, complete_True, complete)
 
+        # 瓶颈在这里
         def cal_ifnot_complete(T, basis, nit, status, complete, maxiter):
             nit_greater_maxiter = nit >= maxiter
             status = jnp.where(nit_greater_maxiter, 1, status)
             complete = jnp.where(nit_greater_maxiter, True, complete)
 
             apply_T, apply_basis = _apply_pivot(T, basis, pivrow, pivcol, tol)
+            
+            # apply_T = T
+            # apply_basis = basis
+
             T = jnp.where(nit_greater_maxiter, T, apply_T)
             basis = jnp.where(nit_greater_maxiter, basis, apply_basis)
             nit = jnp.where(nit_greater_maxiter, nit, nit + 1)
