@@ -62,6 +62,10 @@ NdArrayRef wrap_a2v(SPUContext* ctx, const NdArrayRef& x, size_t rank) {
   return UnwrapValue(a2v(ctx, WrapValue(x), rank));
 }
 
+NdArrayRef wrap_b2a(SPUContext* ctx, const NdArrayRef& x) {
+  return UnwrapValue(b2a(ctx, WrapValue(x)));
+}
+
 }  // namespace
 
 void CommonTypeB::evaluate(KernelEvalContext* ctx) const {
@@ -93,33 +97,7 @@ NdArrayRef CastTypeB::proc(KernelEvalContext*, const NdArrayRef& in,
 }
 
 NdArrayRef B2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
-  const auto* in_ty = in.eltype().as<BShrTy>();
-  const auto nbits = in_ty->nbits();
-  const auto field = in_ty->field();
-
-  std::vector<NdArrayRef> bits;
-  for (size_t i = 0; i < nbits; ++i) {
-    bits.push_back(getBitShare(in, i));
-  }
-  std::vector<NdArrayRef> tmp;
-  vmap(bits.begin(), bits.end(), std::back_inserter(tmp),
-       [ctx](const NdArrayRef& a) { return wrap_a2p(ctx->sctx(), a); });
-
-  return DISPATCH_ALL_FIELDS(field, [&]() {
-    const auto out_ty = makeType<PubGfmpTy>(field);
-    NdArrayRef out = ring_zeros(field, in.shape()).as(out_ty);
-    NdArrayView<ring2k_t> _in(in);
-
-    for (size_t i = 0; i < nbits; ++i) {
-      NdArrayView<ring2k_t> _out(out);
-      NdArrayView<ring2k_t> _bit_i_p(tmp[i]);
-      pforeach(0, in.numel(), [&](int64_t idx) {
-        _out[idx] += (static_cast<ring2k_t>(_bit_i_p[idx]) << i);
-      });
-    }
-    gfmp_mod_(out);
-    return out;
-  });
+  return wrap_a2p(ctx->sctx(), wrap_b2a(ctx->sctx(), in));
 }
 
 NdArrayRef P2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
@@ -154,39 +132,7 @@ NdArrayRef P2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
 NdArrayRef B2V::proc(KernelEvalContext* ctx, const NdArrayRef& in,
                      size_t rank) const {
-  auto* comm = ctx->getState<Communicator>();
-  const auto* in_ty = in.eltype().as<BShrTy>();
-  const auto nbits = in_ty->nbits();
-  const auto field = in_ty->field();
-
-  std::vector<NdArrayRef> bits;
-  for (size_t i = 0; i < nbits; ++i) {
-    bits.push_back(getBitShare(in, i));
-  }
-  std::vector<NdArrayRef> tmp;
-  vmap(bits.begin(), bits.end(), std::back_inserter(tmp),
-       [ctx, rank](const NdArrayRef& a) {
-         return wrap_a2v(ctx->sctx(), a, rank);
-       });
-
-  return DISPATCH_ALL_FIELDS(field, [&]() {
-    const auto out_ty = makeType<PrivGfmpTy>(field, rank);
-    NdArrayRef out;
-    if (comm->getRank() == rank) {
-      out = ring_zeros(field, in.shape()).as(out_ty);
-      for (size_t i = 0; i < nbits; ++i) {
-        NdArrayView<ring2k_t> _out(out);
-        NdArrayView<ring2k_t> _bit_i_v(tmp[i]);
-        pforeach(0, in.numel(), [&](int64_t idx) {
-          _out[idx] += (static_cast<ring2k_t>(_bit_i_v[idx]) << i);
-        });
-      }
-      gfmp_mod_(out);
-    } else {
-      out = makeConstantArrayRef(out_ty, in.shape());
-    }
-    return out;
-  });
+  return wrap_a2v(ctx->sctx(), wrap_b2a(ctx->sctx(), in), rank);
 }
 
 NdArrayRef AndBP::proc(KernelEvalContext*, const NdArrayRef& lhs,

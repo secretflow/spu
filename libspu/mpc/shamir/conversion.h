@@ -47,17 +47,11 @@ class B2A : public UnaryKernel {
   Kind kind() const override { return Kind::Dynamic; }
 
   ce::CExpr latency() const override {
-    return (Log(ce::K()) + 1) * Log(ce::N())  // A2B
-           + Log(ce::K() + 1)                 // add_bb
-           + 1                                // reveal
-        ;
+    return ce::Const(0);
   }
 
   ce::CExpr comm() const override {
-    const auto n_1 = ce::N() - 1;
-    return (2 * Log(ce::K()) + 1) * 2 * ce::K() * n_1 * n_1  // A2B
-           + (2 * Log(ce::K()) + 1) * 2 * ce::K()            // add_bb
-        ;
+    return ce::Const(0);
   }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x) const override;

@@ -21,7 +21,7 @@ namespace spu::mpc::shamir {
 INSTANTIATE_TEST_SUITE_P(
     ShamirIoTest, ShamirIoTest,
     testing::Combine(testing::Values(makeShamirIo),  //
-                     testing::Values(3),             //
+                     testing::Values(4),             //
                      testing::Values(FieldType::FM32, FieldType::FM64,
                                      FieldType::FM128)),
     [](const testing::TestParamInfo<ShamirIoTest::ParamType>& p) {

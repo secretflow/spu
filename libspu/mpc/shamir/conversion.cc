@@ -62,6 +62,40 @@ NdArrayRef wrap_a2p(SPUContext* ctx, const NdArrayRef& in) {
   return UnwrapValue(a2p(ctx, WrapValue(in)));
 }
 
+NdArrayRef wrap_mul_p(SPUContext* ctx, const NdArrayRef& x, const NdArrayRef& y) {
+  return UnwrapValue(mul_aa_p(ctx, WrapValue(x), WrapValue(y)));
+}
+
+// void mult_reveal(SPUContext* ctx, const NdArrayRef& a, const NdArrayRef& b, std::string_view name) {
+//   NdArrayRef x_open = wrap_mul_p(ctx, a, b);
+//   if(ctx->getState<Communicator>()->getRank() == 0) {
+//     ring_print(x_open, name);
+//   }
+// }
+
+// void reveal(SPUContext* ctx, const NdArrayRef & x, std::string_view name) {
+//   NdArrayRef x_open = wrap_a2p(ctx, x);
+//   if(ctx->getState<Communicator>()->getRank() == 0) {
+//     ring_print(x_open, name);
+//   }
+// }
+
+// TODO: combine mul and mul_p
+// NdArrayRef wrap_mul(SPUContext* ctx, const NdArrayRef& x, const NdArrayRef& y, const NdArrayRef& z) {
+//   if (is_public(x) && is_public(y)) {
+//     return UnwrapValue(mul_pp(ctx, WrapValue(x), WrapValue(y)));
+//   } else if (is_secret(x) && is_public(y)) {
+//     return UnwrapValue(mul_ap(ctx, WrapValue(x), WrapValue(y)));
+//   } else if (is_secret(y) && is_public(x)) {
+//     return UnwrapValue(mul_ap(ctx, WrapValue(y), WrapValue(x)));
+//   } else if (is_secret(x) && is_secret(y) && is_secret(z)) {
+//     return UnwrapValue(mul_aa(ctx, WrapValue(x), WrapValue(y)));
+//   } else if (is_secret(x) && is_secret(y) && is_public(z)) {
+//     return UnwrapValue(mul_aa_p(ctx, WrapValue(x), WrapValue(y)));
+//   }
+//   SPU_THROW("should not reach, x={}, y={}", x.eltype(), y.eltype());
+// }
+
 NdArrayRef wrap_mul(SPUContext* ctx, const NdArrayRef& x, const NdArrayRef& y) {
   if (is_public(x) && is_public(y)) {
     return UnwrapValue(mul_pp(ctx, WrapValue(x), WrapValue(y)));
@@ -112,6 +146,65 @@ NdArrayRef wrap_xor(SPUContext* ctx, const NdArrayRef& x, const NdArrayRef& y) {
   auto x_add_y = wrap_add(ctx, x, y);
   auto k2xy = wrap_mul(ctx, x_mul_y, k2);
   auto out = wrap_sub(ctx, x_add_y, k2xy);
+  return out;
+}
+
+std::pair<std::vector<NdArrayRef>, std::vector<NdArrayRef>> gen_prefix_mult_share(SPUContext* ctx, const int64_t numel, const int64_t num_prefix) {
+  // let k denote num_prefix
+  const auto field = ctx->getState<Z2kState>()->getDefaultField();
+  auto ty = makeType<PubGfmpTy>(field);
+
+  auto mul_lambda = [ctx](const NdArrayRef& a, const NdArrayRef& b) {
+    return wrap_mul(ctx, a, b);
+  };
+  auto mul_p_lambda = [ctx](const NdArrayRef& a, const NdArrayRef& b) {
+    return wrap_mul_p(ctx, a, b);
+  };
+
+  NdArrayRef rand_raw = wrap_rand_a(ctx, {(num_prefix << 1) * numel});
+  
+  // for each instance, generate r_1 ..., r_k and s_1 ..., s_k
+  std::vector<NdArrayRef> rand_r;
+  std::vector<NdArrayRef> rand_s;
+  
+  int64_t offset = num_prefix * numel;
+  
+  
+  for (int64_t i = 0; i < num_prefix; ++i) {
+    rand_r.push_back(rand_raw.slice({i * numel}, {(i + 1) * numel}, {}).reshape({numel}));
+    rand_s.push_back(rand_raw.slice({offset + i * numel}, {offset + (i + 1) * numel}, {}).reshape({numel}));
+  }
+
+  std::vector<NdArrayRef> rand_prod; 
+  std::vector<NdArrayRef> rand_prod_offset; 
+  // TODO: The following two multiplications (mul and mul_p) can be run in parallel.
+  // rand_prod is of length num_prefix storing B_i = r_i * s_i
+  vmap(rand_r.cbegin(), rand_r.cend(), rand_s.cbegin(), rand_s.cend(), std::back_inserter(rand_prod), mul_p_lambda);
+
+  // rand_prod_offset is of length num_prefix - 1 storing C_0 = s_0 and C_i = r_i * s_{i+1} for i > 1
+  rand_prod_offset.push_back(rand_s[0]);
+  vmap(rand_r.cbegin(), rand_r.cend() - 1, rand_s.cbegin() + 1, rand_s.cend(), std::back_inserter(rand_prod_offset), mul_lambda);
+
+
+  auto p_rand_prod = rand_prod[0];
+  // rand_prod is of length num_prefix storing B_i^-1 = (r_i * s_i)^{-1}
+  std::vector<NdArrayRef> rand_prod_inv;
+  for(int64_t i = 0; i < num_prefix; ++i) {
+    rand_prod_inv.push_back(gfmp_batch_inverse(rand_prod[i]));
+  }
+
+  // An unbounded multiplication instance
+  // ( [r0]_t , [r0^-1]_t )
+  // ( [r1]_t , [r1 * r2^-1]_t,)
+  // ( [r2]_t , [r2 * r3^-1]_t)
+  // ...
+  // ( [ri]_t , [ri-1 * ri^-1]_t) for i = 2, ..., k
+  std::vector<NdArrayRef> rand_r_aux;
+  vmap(rand_prod_inv.cbegin(), rand_prod_inv.cend(), rand_prod_offset.cbegin(), rand_prod_offset.cend(), std::back_inserter(rand_r_aux), mul_lambda);
+
+  std::pair<std::vector<NdArrayRef>, std::vector<NdArrayRef>> out;
+  out.first = std::move(rand_r);
+  out.second = std::move(rand_r_aux);
   return out;
 }
 
@@ -272,60 +365,23 @@ std::vector<NdArrayRef> prefix_mul(SPUContext* ctx,
   SPU_ENFORCE(!inputs.empty());
   int64_t l = inputs.size();
   auto numel = inputs[0].numel();
-  NdArrayRef b;
-  NdArrayRef b_inv;
-  std::tie(b, b_inv) = rand_bits_pair(ctx, (l + 1) * numel);
-  auto shape = inputs[0].shape();
-
+  auto mul_p_lambda = [ctx](const NdArrayRef& a, const NdArrayRef& b) {
+    return wrap_mul_p(ctx, a, b);
+  };
   auto mul_lambda = [ctx](const NdArrayRef& a, const NdArrayRef& b) {
     return wrap_mul(ctx, a, b);
   };
-  auto open_lambda = [ctx](const NdArrayRef& a) { return wrap_a2p(ctx, a); };
 
-  // D[i] = B[i-1] * A[i] * B_inv[i]
-  std::vector<NdArrayRef> d_p;
-  {
-    std::vector<NdArrayRef> b_pre_vec;
-    std::vector<NdArrayRef> b_inv_vec;
-    for (int64_t i = 0; i < l; ++i) {
-      b_pre_vec.push_back(
-          b.slice({i * numel}, {(i + 1) * numel}, {}).reshape(shape));
-      b_inv_vec.push_back(
-          b_inv.slice({(i + 1) * numel}, {(i + 2) * numel}, {}).reshape(shape));
-    }
-    std::vector<NdArrayRef> tmp;
-    std::vector<NdArrayRef> d;
-    vmap(b_pre_vec.cbegin(), b_pre_vec.cend(), inputs.begin(), inputs.end(),
-         std::back_inserter(tmp), mul_lambda);
-    vmap(tmp.begin(), tmp.end(), b_inv_vec.begin(), b_inv_vec.end(),
-         std::back_inserter(d), mul_lambda);
-    vmap(d.begin(), d.end(), std::back_inserter(d_p), open_lambda);
-  }
+  auto randomness = gen_prefix_mult_share(ctx, numel, l);
+  auto r = randomness.first;
+  auto r_aux = randomness.second;
 
-  // prefix public mul D_p
-  for (int64_t i = 1; i < l; ++i) {
-    d_p[i] = wrap_mul(ctx, d_p[i], d_p[i - 1]);
-  }
-
-  // Out[i] = D_p[i] * B_inv[0] * B[i+1]
   std::vector<NdArrayRef> out;
-  {
-    out.push_back(inputs[0]);
-    std::vector<NdArrayRef> b_vec;
-    std::vector<NdArrayRef> b_inv_vec;
-    for (int64_t i = 1; i < l; ++i) {
-      b_inv_vec.push_back(b_inv.slice({0}, {numel}, {}).reshape(shape));
-      b_vec.push_back(
-          b.slice({(i + 1) * numel}, {(i + 2) * numel}, {}).reshape(shape));
-    }
-    std::vector<NdArrayRef> tmp;
-    std::vector<NdArrayRef> d_ij;
-    vmap(b_inv_vec.begin(), b_inv_vec.end(), b_vec.begin(), b_vec.end(),
-         std::back_inserter(tmp), mul_lambda);
-    vmap(d_p.begin() + 1, d_p.end(), tmp.begin(), tmp.end(),
-         std::back_inserter(d_ij), mul_lambda);
-    out.insert(out.end(), d_ij.begin(), d_ij.end());
+  vmap(inputs.cbegin(), inputs.cend(), r_aux.cbegin(), r_aux.cend(), std::back_inserter(out), mul_p_lambda);
+  for(int64_t i = 1; i < l; ++i) {
+    out[i] = wrap_mul(ctx, out[i], out[i-1]);
   }
+  vmap(out.cbegin(), out.cend(), r.cbegin(), r.cend(), out.begin(), mul_lambda);
 
   return out;
 }
@@ -451,12 +507,14 @@ Triple unbounded_carries(SPUContext* ctx, const std::vector<NdArrayRef>& s,
   SPU_ENFORCE_EQ(s.size(), p.size());
   SPU_ENFORCE_EQ(k.size(), p.size());
   NdArrayRef a;
+  // TODO: remove this because this b is the partial result of q.
   NdArrayRef b = unbounded_mul(ctx, p);
   NdArrayRef c = wrap_make_zeros(ctx, s[0].shape());
   {
     auto p_copy = p;
     std::reverse(p_copy.begin(), p_copy.end());
     // equivalent to prefix_and
+    // TODO: 
     auto q = prefix_mul(ctx, p_copy);
     std::reverse(q.begin(), q.end());
     auto mul_lambda = [ctx](const NdArrayRef& a, const NdArrayRef& b) {
