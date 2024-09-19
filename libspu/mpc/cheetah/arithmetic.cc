@@ -354,7 +354,7 @@ NdArrayRef MulAA::mulDirectly(KernelEvalContext* ctx, const NdArrayRef& x,
                          fy.slice({0}, {nhalf}, {1}), /*evaluato*/ rank != 0);
   out_slices[1] = task.get();
 
-  NdArrayRef out(out_slices[0].eltype(), x.shape());
+  NdArrayRef out(x.eltype(), x.shape());
   int64_t offset = 0;
   for (auto& out_slice : out_slices) {
     std::memcpy(out.data<std::byte>() + offset, out_slice.data(),
