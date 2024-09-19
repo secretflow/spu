@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@yacl//bazel:yacl.bzl", "OMP_DEPS")
 load("//bazel:spu.bzl", "spu_cc_binary")
 
 package(
@@ -32,7 +33,7 @@ spu_cc_binary(
         "@llvm-project//mlir:Pass",
         "@xla//xla/mlir_hlo",
         "@xla//xla/mlir_hlo:mhlo_passes",
-    ],
+    ] + OMP_DEPS,
 )
 
 spu_cc_binary(

@@ -39,10 +39,10 @@ def _yacl():
         http_archive,
         name = "yacl",
         urls = [
-            "https://github.com/secretflow/yacl/archive/refs/tags/0.4.5b4_nightly_20240731.tar.gz",
+            "https://github.com/secretflow/yacl/archive/refs/tags/0.4.5b5_nightly_20240919.tar.gz",
         ],
-        strip_prefix = "yacl-0.4.5b4_nightly_20240731",
-        sha256 = "952715bd56f6d9386984e9963426a1399bd2bd3702cf3efede9c82591cfab99b",
+        strip_prefix = "yacl-0.4.5b5_nightly_20240919",
+        sha256 = "0ef295f6878dce6160fd44e6af59fa369099f736fa8d4a10f9685dda66aefa71",
     )
 
 def _libpsi():
@@ -50,10 +50,10 @@ def _libpsi():
         http_archive,
         name = "psi",
         urls = [
-            "https://github.com/secretflow/psi/archive/refs/tags/v0.4.0.dev240814.tar.gz",
+            "https://github.com/secretflow/psi/archive/refs/tags/v0.4.3.dev240919.tar.gz",
         ],
-        strip_prefix = "psi-0.4.0.dev240814",
-        sha256 = "2a16a5751d1b7051f01edd11f1fcf01b67ff4d67ec136e7bc6d1d729d7f22634",
+        strip_prefix = "psi-0.4.3.dev240919",
+        sha256 = "1ee34fbbd9a8f36dea8f7c45588a858e8c31f3a38e60e1fc67cb428ea79334e3",
     )
 
 def _rules_proto_grpc():

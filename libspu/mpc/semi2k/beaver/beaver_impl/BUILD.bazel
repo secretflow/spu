@@ -54,7 +54,7 @@ spu_cc_library(
         "//libspu/mpc/semi2k/beaver:beaver_interface",
         "//libspu/mpc/semi2k/beaver/beaver_impl/ttp_server:service_cc_proto",
         "//libspu/mpc/utils:ring_ops",
-        "@yacl//yacl/crypto/pke:asymmetric_sm2_crypto",
+        "@yacl//yacl/crypto/pke:sm2_enc",
         "@yacl//yacl/link",
         "@yacl//yacl/link/algorithm:barrier",
         "@yacl//yacl/utils:parallel",

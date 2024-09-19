@@ -36,7 +36,7 @@ spu_cc_library(
         ":service_cc_proto",
         "//libspu/mpc/semi2k/beaver/beaver_impl/trusted_party",
         "@com_github_brpc_brpc//:brpc",
-        "@yacl//yacl/crypto/pke:asymmetric_sm2_crypto",
+        "@yacl//yacl/crypto/pke:sm2_enc",
     ],
 )
 
