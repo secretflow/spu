@@ -90,7 +90,7 @@ NdArrayRef CastTypeB::proc(KernelEvalContext*, const NdArrayRef& in,
 NdArrayRef B2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const auto field = in.eltype().as<Ring2k>()->field();
   auto* comm = ctx->getState<Communicator>();
-  auto out = comm->allReduce(ReduceOp::XOR, in, kBindName);
+  auto out = comm->allReduce(ReduceOp::XOR, in, kBindName());
   return out.as(makeType<Pub2kTy>(field));
 }
 

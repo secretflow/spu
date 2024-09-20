@@ -15,6 +15,7 @@
 #include "libspu/mpc/semi2k/beaver/beaver_impl/ttp_server/beaver_server.h"
 
 #include <algorithm>
+#include <future>
 #include <vector>
 
 #include "absl/strings/ascii.h"
@@ -26,6 +27,7 @@
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/mpc/common/prg_tensor.h"
 #include "libspu/mpc/semi2k/beaver/beaver_impl/trusted_party/trusted_party.h"
+#include "libspu/mpc/semi2k/beaver/beaver_impl/ttp_server/beaver_stream.h"
 
 #include "libspu/mpc/semi2k/beaver/beaver_impl/ttp_server/service.pb.h"
 
@@ -174,9 +176,91 @@ std::vector<yacl::Buffer> StripNdArray(std::vector<NdArrayRef>& nds,
 template <class T>
 struct dependent_false : std::false_type {};
 
+class StreamReader : public brpc::StreamInputHandler {
+ public:
+  enum class Status : int8_t {
+    kNotFinished,
+    kNormalFinished,
+    kAbnormalFinished,
+    kStreamFailed,
+  };
+
+  StreamReader() {
+    future_finished_ = promise_finished_.get_future();
+    future_closed_ = promise_closed_.get_future();
+  }
+
+  int on_received_messages(brpc::StreamId id, butil::IOBuf* const messages[],
+                           size_t size) override {
+    SPDLOG_DEBUG("on_received_messages, stream id: {}", id);
+    if (status_ != Status::kNotFinished) {
+      SPDLOG_WARN("unexpected messages received");
+      return -1;
+    }
+
+    for (size_t i = 0; i < size; ++i) {
+      const auto& message = messages[i];
+      SPDLOG_DEBUG("receive buf size: {}", message->size());
+      if (!total_buf_size_.has_value()) {
+        beaver::ttp_server::BeaverPermUpStreamMeta meta{};
+        message->copy_to(&meta, sizeof(meta));
+        message->pop_front(sizeof(meta));
+        total_buf_size_.emplace(meta.total_buf_size);
+      }
+
+      buf_.append(message->movable());
+      if (buf_.length() == total_buf_size_.value()) {
+        status_ = Status::kNormalFinished;
+        promise_finished_.set_value(status_);
+      } else if (buf_.length() > total_buf_size_.value()) {
+        SPDLOG_ERROR("buf length ({}) greater than expected buf size ({})",
+                     buf_.length(), total_buf_size_.value());
+        status_ = Status::kAbnormalFinished;
+        promise_finished_.set_value(status_);
+      }
+    }
+    return 0;
+  }
+
+  void on_idle_timeout(brpc::StreamId id) override {
+    SPDLOG_INFO("Stream {} idle timeout", id);
+  }
+
+  void on_closed(brpc::StreamId id) override {
+    SPDLOG_DEBUG("Stream {} closed", id);
+    promise_closed_.set_value();
+  }
+
+  void on_failed(brpc::StreamId id, int error_code,
+                 const std::string& error_text) override {
+    SPDLOG_ERROR("Stream {} failed, error_code: {}, error_text: {}", id,
+                 error_code, error_text);
+    status_ = Status::kStreamFailed;
+    promise_finished_.set_value(status_);
+  }
+
+  const auto& GetBufRef() const {
+    SPU_ENFORCE(status_ == Status::kNormalFinished);
+    return buf_;
+  }
+
+  Status WaitFinished() { return future_finished_.get(); };
+
+  void WaitClosed() { future_closed_.wait(); }
+
+ private:
+  butil::IOBuf buf_;
+  std::optional<uint64_t> total_buf_size_;
+  Status status_ = Status::kNotFinished;
+  std::promise<Status> promise_finished_;
+  std::promise<void> promise_closed_;
+  std::future<Status> future_finished_;
+  std::future<void> future_closed_;
+};
+
 template <class AdjustRequest>
 std::vector<yacl::Buffer> AdjustImpl(
-    const AdjustRequest& req,
+    const AdjustRequest& req, StreamReader& stream_reader,
     const std::unique_ptr<yacl::crypto::AsymmetricDecryptor>& decryptor) {
   std::vector<NdArrayRef> ret;
   size_t field_size;
@@ -213,7 +297,14 @@ std::vector<yacl::Buffer> AdjustImpl(
     auto adjust = TrustedParty::adjustEqz(ops);
     ret.push_back(std::move(adjust));
   } else if constexpr (std::is_same_v<AdjustRequest, AdjustPermRequest>) {
-    std::vector<int64_t> pv(req.perm_vec().begin(), req.perm_vec().end());
+    auto status = stream_reader.WaitFinished();
+    SPU_ENFORCE(status == StreamReader::Status::kNormalFinished,
+                "Stream reader finished abnormally, status: {}",
+                static_cast<int32_t>(status));
+    const auto& buf = stream_reader.GetBufRef();
+    SPU_ENFORCE(buf.length() % sizeof(int64_t) == 0);
+    std::vector<int64_t> pv(buf.length() / sizeof(int64_t));
+    buf.copy_to(pv.data());
     auto adjust = TrustedParty::adjustPerm(ops, pv);
     ret.push_back(std::move(adjust));
   } else {
@@ -246,34 +337,94 @@ class ServiceImpl final : public BeaverService {
   void Adjust(::google::protobuf::RpcController* controller,
               const AdjustRequest* req, AdjustResponse* rsp,
               ::google::protobuf::Closure* done) const {
-    brpc::ClosureGuard done_guard(done);
     auto* cntl = static_cast<brpc::Controller*>(controller);
     std::string client_side(butil::endpoint2str(cntl->remote_side()).c_str());
+    StreamReader reader;
+    brpc::StreamId stream_id = brpc::INVALID_STREAM_ID;
+    auto request = *req;
 
-    std::vector<yacl::Buffer> adjusts;
-    try {
-      adjusts = AdjustImpl(*req, decryptor_);
-    } catch (const DecryptError& e) {
-      auto err = fmt::format("Seed Decrypt error {}", e.what());
-      SPDLOG_ERROR("{}, client {}", err, client_side);
-      rsp->set_code(ErrorCode::SeedDecryptError);
-      rsp->set_message(err);
-      return;
-    } catch (const std::exception& e) {
-      auto err = fmt::format("adjust error {}", e.what());
-      SPDLOG_ERROR("{}, client {}", err, client_side);
-      rsp->set_code(ErrorCode::OpAdjustError);
-      rsp->set_message(err);
+    // To address the scenario where clients transmit data after an RPC
+    // response, give precedence to setting up absl::MakeCleanup before invoking
+    // brpc::ClosureGuard to ensure proper resource management
+    auto cleanup = absl::MakeCleanup([&]() {
+      auto cleanup = absl::MakeCleanup([&]() {
+        if (stream_id != brpc::INVALID_STREAM_ID) {
+          // To avoid encountering a core dump, it is essential to close the
+          // process stream prior to the destruction of the StreamReader object
+          reader.WaitClosed();
+        }
+      });
+      std::vector<yacl::Buffer> adjusts;
+      try {
+        adjusts = AdjustImpl(request, reader, decryptor_);
+      } catch (const DecryptError& e) {
+        auto err = fmt::format("Seed Decrypt error {}", e.what());
+        SPDLOG_ERROR("{}, client {}", err,
+                     client_side);  // TODO: catch the function name
+        BeaverDownStreamMeta meta{};
+        meta.err_code = ErrorCode::SeedDecryptError;
+        butil::IOBuf buf;
+        SPU_ENFORCE_EQ(buf.append(&meta, sizeof(meta)), 0);
+        SPU_ENFORCE_EQ(buf.append(err.c_str()), 0);
+        brpc::StreamWrite(stream_id, buf);
+        return;
+      } catch (const std::exception& e) {
+        auto err = fmt::format("adjust error {}", e.what());
+        SPDLOG_ERROR("{}, client {}", err, client_side);
+        BeaverDownStreamMeta meta{};
+        meta.err_code = ErrorCode::OpAdjustError;
+        butil::IOBuf buf;
+        SPU_ENFORCE_EQ(buf.append(&meta, sizeof(meta)), 0);
+        SPU_ENFORCE_EQ(buf.append(err.c_str()), 0);
+        brpc::StreamWrite(stream_id, buf);
+        return;
+      }
+
+      butil::IOBuf buf;
+      BeaverDownStreamMeta meta{};
+      meta.total_buf_num = adjusts.size();
+      SPU_ENFORCE_EQ(buf.append(&meta, sizeof(meta)), 0);
+      for (const auto& adjust : adjusts) {
+        uint64_t cur_buf_size = adjust.size();
+        buf.append(&cur_buf_size, sizeof(cur_buf_size));
+      }
+
+      for (auto& adjust : adjusts) {
+        // FIXME: TTP adjuster server and client MUST have same endianness.
+        size_t left_buf_size = adjust.size();
+        int64_t chunk_idx = 0;
+        while (left_buf_size > 0) {
+          size_t cur_chunk_size = std::min(left_buf_size, kDownStreamChunkSize);
+          SPU_ENFORCE_EQ(buf.append(adjust.data<char>() +
+                                        (chunk_idx * kDownStreamChunkSize),
+                                    cur_chunk_size),
+
+                         0);
+          // ret cannot be EAGAIN, given that we have not set max_buf_size
+          int ret = brpc::StreamWrite(stream_id, buf);
+          if (ret != 0) {
+            SPDLOG_ERROR("brpc::StreamWrite return {}", ret);
+            return;
+          }
+
+          buf.clear();
+          left_buf_size -= cur_chunk_size;
+          ++chunk_idx;
+        }
+        adjust.reset();
+      }
+    });
+
+    brpc::ClosureGuard done_guard(done);
+    brpc::StreamOptions stream_options;
+    stream_options.max_buf_size = 0;
+    stream_options.handler = &reader;
+    if (brpc::StreamAccept(&stream_id, *cntl, &stream_options) != 0) {
+      SPDLOG_ERROR("Failed to accept stream");
+      rsp->set_code(ErrorCode::StreamAcceptError);
       return;
     }
-
     rsp->set_code(ErrorCode::OK);
-    for (auto& a : adjusts) {
-      // FIXME: TTP adjuster server and client MUST have same endianness.
-      rsp->add_adjust_outputs(a.data(), a.size());
-      // how to move this buffer to pb ?
-      a.reset();
-    }
   }
 
   void AdjustMul(::google::protobuf::RpcController* controller,

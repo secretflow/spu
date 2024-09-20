@@ -1159,7 +1159,7 @@ std::vector<spu::Value> permute(SPUContext *ctx,
   for (auto const &input : inputs) {
     auto transposed = hal::transpose(ctx, input, perm);
     auto reshaped = hal::reshape(ctx, transposed, {N, W});
-    inputs2d.push_back(reshaped);
+    inputs2d.push_back(std::move(reshaped));
   }
 
   // Call permute1d for each dim to permute.

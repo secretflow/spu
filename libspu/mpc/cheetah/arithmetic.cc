@@ -309,7 +309,7 @@ NdArrayRef MulAA::mulWithBeaver(KernelEvalContext* ctx, const NdArrayRef& x,
   auto* comm = ctx->getState<Communicator>();
   // Open x - a & y - b
   auto res = vmap({ring_sub(x, a), ring_sub(y, b)}, [&](const NdArrayRef& s) {
-    return comm->allReduce(ReduceOp::ADD, s, kBindName);
+    return comm->allReduce(ReduceOp::ADD, s, kBindName());
   });
   auto x_a = std::move(res[0]);
   auto y_b = std::move(res[1]);

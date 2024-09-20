@@ -99,8 +99,8 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& x) const {
   auto r_b = wrap_a2b(ctx->sctx(), r_a);
 
   // evaluate adder circuit on x & r, and reveal x+r
-  auto x_plus_r = comm->allReduce(ReduceOp::XOR,
-                                  wrap_add_bb(ctx->sctx(), x, r_b), kBindName);
+  auto x_plus_r = comm->allReduce(
+      ReduceOp::XOR, wrap_add_bb(ctx->sctx(), x, r_b), kBindName());
 
   // compute -r + (x+r)
   ring_neg_(r_a);
