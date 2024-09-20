@@ -1,4 +1,4 @@
-// Copyright 2023 Ant Group Co., Ltd.
+// Copyright 2024 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,23 +14,21 @@
 
 #pragma once
 
-#include <memory>
+#include <cstdint>
 
-#include "libspu/mpc/common/communicator.h"
+namespace spu::mpc::semi2k::beaver::ttp_server {
 
-namespace spu::mpc {
+constexpr size_t kUpStreamChunkSize = 50 * 1024 * 1024;    // bytes
+constexpr size_t kDownStreamChunkSize = 50 * 1024 * 1024;  // bytes
 
-class SecurennState : public State {
- public:
-  SecurennState() = default;
-
-  static constexpr const char* kBindName() { return "SecurennState"; }
-
-  std::unique_ptr<State> fork() override {
-    auto ret = std::unique_ptr<SecurennState>(new SecurennState);
-    // ret->beaver_ = beaver_->Spawn();
-    return ret;
-  }
+struct BeaverPermUpStreamMeta {
+  uint64_t total_buf_size;
 };
 
-}  // namespace spu::mpc
+// A list of buffer streams
+struct BeaverDownStreamMeta {
+  uint32_t total_buf_num;  // total buffer stream num
+  int32_t err_code = 0;
+};
+
+}  // namespace spu::mpc::semi2k::beaver::ttp_server

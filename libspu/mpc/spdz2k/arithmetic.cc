@@ -480,7 +480,7 @@ NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
 
   // open e, f
   auto res = vmap({e, f}, [&](const NdArrayRef& s) {
-    return comm->allReduce(ReduceOp::ADD, s, kBindName);
+    return comm->allReduce(ReduceOp::ADD, s, kBindName());
   });
   auto p_e = std::move(res[0]);
   auto p_f = std::move(res[1]);
@@ -547,7 +547,7 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
 
   // open x-a & y-b
   auto res = vmap({ring_sub(x, a), ring_sub(y, b)}, [&](const NdArrayRef& s) {
-    return comm->allReduce(ReduceOp::ADD, s, kBindName);
+    return comm->allReduce(ReduceOp::ADD, s, kBindName());
   });
   auto p_e = std::move(res[0]);
   auto p_f = std::move(res[1]);

@@ -19,7 +19,7 @@
 namespace spu::mpc::cheetah {
 class RandA : public RandKernel {
  public:
-  static constexpr char kBindName[] = "rand_a";
+  static constexpr const char* kBindName() { return "rand_a"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
@@ -28,7 +28,7 @@ class RandA : public RandKernel {
 
 class P2A : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "p2a";
+  static constexpr const char* kBindName() { return "p2a"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
@@ -37,7 +37,7 @@ class P2A : public UnaryKernel {
 
 class A2P : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "a2p";
+  static constexpr const char* kBindName() { return "a2p"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
@@ -46,7 +46,7 @@ class A2P : public UnaryKernel {
 
 class A2V : public RevealToKernel {
  public:
-  static constexpr char kBindName[] = "a2v";
+  static constexpr const char* kBindName() { return "a2v"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
@@ -56,7 +56,7 @@ class A2V : public RevealToKernel {
 
 class V2A : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "v2a";
+  static constexpr const char* kBindName() { return "v2a"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
@@ -65,7 +65,7 @@ class V2A : public UnaryKernel {
 
 class NegateA : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "negate_a";
+  static constexpr const char* kBindName() { return "negate_a"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -76,7 +76,7 @@ class NegateA : public UnaryKernel {
 
 class AddAP : public BinaryKernel {
  public:
-  static constexpr char kBindName[] = "add_ap";
+  static constexpr const char* kBindName() { return "add_ap"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -88,7 +88,7 @@ class AddAP : public BinaryKernel {
 
 class AddAA : public BinaryKernel {
  public:
-  static constexpr char kBindName[] = "add_aa";
+  static constexpr const char* kBindName() { return "add_aa"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -100,7 +100,7 @@ class AddAA : public BinaryKernel {
 
 class MulAP : public BinaryKernel {
  public:
-  static constexpr char kBindName[] = "mul_ap";
+  static constexpr const char* kBindName() { return "mul_ap"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -113,7 +113,7 @@ class MulAP : public BinaryKernel {
 
 class MulA1B : public BinaryKernel {
  public:
-  static constexpr char kBindName[] = "mul_a1b";
+  static constexpr const char* kBindName() { return "mul_a1b"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
@@ -123,7 +123,7 @@ class MulA1B : public BinaryKernel {
 
 class MulA1BV : public BinaryKernel {
  public:
-  static constexpr char kBindName[] = "mul_a1bv";
+  static constexpr const char* kBindName() { return "mul_a1bv"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
@@ -142,7 +142,7 @@ class MulAA : public BinaryKernel {
   NdArrayRef squareDirectly(KernelEvalContext* ctx, const NdArrayRef& x) const;
 
  public:
-  static constexpr char kBindName[] = "mul_aa";
+  static constexpr const char* kBindName() { return "mul_aa"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
@@ -152,7 +152,7 @@ class MulAA : public BinaryKernel {
 
 class SquareA : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "square_a";
+  static constexpr const char* kBindName() { return "square_a"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
@@ -165,7 +165,7 @@ class MulAV : public BinaryKernel {
                          const NdArrayRef& rhs) const;
 
  public:
-  static constexpr char kBindName[] = "mul_av";
+  static constexpr const char* kBindName() { return "mul_av"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
@@ -178,7 +178,7 @@ class MulAV : public BinaryKernel {
 ////////////////////////////////////////////////////////////////////
 class MatMulAP : public MatmulKernel {
  public:
-  static constexpr char kBindName[] = "mmul_ap";
+  static constexpr const char* kBindName() { return "mmul_ap"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -190,7 +190,7 @@ class MatMulAP : public MatmulKernel {
 
 class MatMulAV : public MatmulKernel {
  public:
-  static constexpr char kBindName[] = "mmul_av";
+  static constexpr const char* kBindName() { return "mmul_av"; }
 
   Kind kind() const override { return Kind::Dynamic; }
   // LHS: m x k
@@ -201,7 +201,7 @@ class MatMulAV : public MatmulKernel {
 
 class MatMulVVS : public MatmulKernel {
  public:
-  static constexpr char kBindName[] = "mmul_vvs";
+  static constexpr const char* kBindName() { return "mmul_vvs"; }
 
   Kind kind() const override { return Kind::Dynamic; }
   // LHS: m x k
@@ -212,7 +212,7 @@ class MatMulVVS : public MatmulKernel {
 
 class MatMulAA : public MatmulKernel {
  public:
-  static constexpr char kBindName[] = "mmul_aa";
+  static constexpr const char* kBindName() { return "mmul_aa"; }
 
   Kind kind() const override { return Kind::Dynamic; }
   // LHS: m x k
@@ -223,7 +223,7 @@ class MatMulAA : public MatmulKernel {
 
 class Conv2DAA : public Conv2DKernel {
  public:
-  static constexpr char kBindName[] = "conv2d_aa";
+  static constexpr const char* kBindName() { return "conv2d_aa"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
@@ -234,7 +234,7 @@ class Conv2DAA : public Conv2DKernel {
 
 class TruncA : public TruncAKernel {
  public:
-  static constexpr char kBindName[] = "trunc_a";
+  static constexpr const char* kBindName() { return "trunc_a"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
@@ -250,7 +250,7 @@ class TruncA : public TruncAKernel {
 
 class LShiftA : public ShiftKernel {
  public:
-  static constexpr char kBindName[] = "lshift_a";
+  static constexpr const char* kBindName() { return "lshift_a"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -262,7 +262,7 @@ class LShiftA : public ShiftKernel {
 
 class MsbA2B : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "msb_a2b";
+  static constexpr const char* kBindName() { return "msb_a2b"; }
 
   MsbA2B(size_t nbits = 0) : nbits_(nbits) {}
 
@@ -276,7 +276,7 @@ class MsbA2B : public UnaryKernel {
 
 class EqualAA : public BinaryKernel {
  public:
-  static constexpr char kBindName[] = "equal_aa";
+  static constexpr const char* kBindName() { return "equal_aa"; }
 
   EqualAA(size_t nbits = 0) : nbits_(nbits) {}
 
@@ -291,7 +291,7 @@ class EqualAA : public BinaryKernel {
 
 class EqualAP : public BinaryKernel {
  public:
-  static constexpr char kBindName[] = "equal_ap";
+  static constexpr const char* kBindName() { return "equal_ap"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
@@ -301,7 +301,7 @@ class EqualAP : public BinaryKernel {
 
 class LessAP : public BinaryKernel {
  public:
-  static constexpr char kBindName[] = "f_less_ap";
+  static constexpr const char* kBindName() { return "f_less_ap"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
@@ -311,7 +311,7 @@ class LessAP : public BinaryKernel {
 
 class LessPA : public BinaryKernel {
  public:
-  static constexpr char kBindName[] = "f_less_pa";
+  static constexpr const char* kBindName() { return "f_less_pa"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
