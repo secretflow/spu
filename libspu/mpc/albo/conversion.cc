@@ -938,11 +938,12 @@ void CommonTypeV::evaluate(KernelEvalContext* ctx) const {
 }
 
 template<typename NativeCppType, size_t share_number=2>
-NdArrayRef lshift(const NdArrayRef& in, size_t shift) {
-  NdArrayRef out = in.clone();
-
+NdArrayRef lshift(const NdArrayRef& in, size_t shift) 
+{
   using el_t = NativeCppType;
   using shr_t = std::array<el_t, share_number>;
+
+  NdArrayRef out = in.clone();
   NdArrayView<shr_t> _out(out);
 
   pforeach(0, in.numel(), [&](int64_t idx) {
@@ -950,8 +951,29 @@ NdArrayRef lshift(const NdArrayRef& in, size_t shift) {
       _out[idx][i] <<= shift;
     }
   });
+
+  out.eltype().as<BShrTy>()->setNbits(out.eltype().as<BShrTy>()->nbits() + shift);
   return out;
 }
+
+template<typename NativeCppType, size_t share_number=2>
+NdArrayRef rshift(const NdArrayRef& in, size_t shift) 
+{
+  using el_t = NativeCppType;
+  using shr_t = std::array<el_t, share_number>;
+
+  NdArrayRef out = in.clone();
+  NdArrayView<shr_t> _out(out);
+
+  pforeach(0, in.numel(), [&](int64_t idx) {
+    for (size_t i = 0; i < share_number; i++) {
+      _out[idx][i] >>= shift;
+    }
+  });
+
+  out.eltype().as<BShrTy>()->setNbits(out.eltype().as<BShrTy>()->nbits() - shift);
+  return out;
+} 
 
 
 uint64_t select(uint64_t x, uint64_t mask, uint64_t offset, size_t idx) {
@@ -1342,9 +1364,8 @@ NdArrayRef MsbA2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in, size_t
       // TODO: The atomized cost of there is k. However, since P0 sends two elements, the SPU
       // logs the transmission of 2k for P0. We manually reduced the logging of k elements. 
       // Nevertheless, this implementation does not adhere to the principle of thread safety.
-      // comm->addCommStatsManually(0, -sizeof(el_t) * numel);   // bcast
-      // const std::atomic<size_t> & lctx_sent_bytes = comm->lctx().get()->GetStats().get()->sent_bytes;
-      // const_cast<std::atomic<size_t> &>(lctx_sent_bytes) -= sizeof(el_t) * numel;
+      const std::atomic<size_t> & lctx_sent_actions = comm->lctx().get()->GetStats().get()->sent_actions;
+      const_cast<std::atomic<size_t> &>(lctx_sent_actions) -= 1;
     }
     else if (comm->getRank() == start_rank_next) 
     {
@@ -1368,7 +1389,7 @@ NdArrayRef MsbA2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in, size_t
     });
 
     // 4. generate signal p and g.
-    g = MssAnd2NoComm(ctx, ResharingRss2Mss(ctx, sig_g_rss));
+    g = ResharingRss2Mss(ctx, MssAnd2NoComm(ctx, m, n));
     p = MssXor2(ctx, m, n);
     NdArrayView<mss_shr_t> _p(p);
     NdArrayView<mss_shr_t> _g(g);
@@ -1414,11 +1435,11 @@ NdArrayRef MsbA2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in, size_t
       k /= 4;
       if (k > 1)
       {
-        auto pg = pack_2_bitvec_ass(p_res, g_combined);
-        pg = ResharingAss2Mss(ctx, pg);
-        std::tie(g, p) = unpack_2_bitvec_mss(pg);
-        // p = ResharingAss2Mss(ctx, p_res);
-        // g = ResharingAss2Mss(ctx, g_combined);
+        // auto pg = pack_2_bitvec_ass(p_res, g_combined);
+        // pg = ResharingAss2Mss(ctx, pg);
+        // std::tie(g, p) = unpack_2_bitvec_mss(pg);
+        std::vector<NdArrayRef> pg = spu::vmap({p_res, g_combined}, [&](NdArrayRef a) {return ResharingAss2Mss(ctx, a);});
+        g = pg[1], p = pg[0];
       } else {
         #ifndef EQ_PACK_SINGLE_BIT
         g = ResharingAss2Mss(ctx, g_combined);
@@ -1515,8 +1536,6 @@ std::pair<NdArrayRef, NdArrayRef> PGCell_4FanIn4Out(KernelEvalContext* ctx,
    *  gr3_ass -> gr3_mss, gr2_ass -> gr2_mss, gr1_rss -> gr1_mss          (up)
    */
 
-  auto* comm = ctx->getState<Communicator>();
-
   auto p3_rss = ResharingMss2Rss(ctx, p3);
   auto p2_rss = ResharingMss2Rss(ctx, p2);
   auto g2_rss = ResharingMss2Rss(ctx, g2);
@@ -1560,14 +1579,11 @@ std::pair<NdArrayRef, NdArrayRef> PGCell_4FanIn4Out(KernelEvalContext* ctx,
       bit_interleave_ass(pack_2_bitvec_ass(p0_ass, p2_ass)),
       bit_interleave_ass(pack_2_bitvec_ass(p1_ass, p3_ass))));
 
-  std::pair<NdArrayRef, NdArrayRef> result;
-  result.first = ResharingAss2Mss(ctx, g_packed_ass);
-  result.second = ResharingAss2Mss(ctx, p_packed_ass);
-  // comm->addCommStatsManually(-1, 0);
-  // const std::atomic<size_t> & lctx_sent_actions = comm->lctx().get()->GetStats().get()->sent_actions;
-  // const_cast<std::atomic<size_t> &>(lctx_sent_actions) -= 1;
-
-  return result;
+  NdArrayRef gr3_mss, pr3_mss;
+  auto gp = pack_2_bitvec_ass(p_packed_ass, g_packed_ass);
+  auto gp_mss = ResharingAss2Mss(ctx, gp);
+  std::tie(gr3_mss, pr3_mss) = unpack_2_bitvec_mss(gp_mss);
+  return std::make_pair(gr3_mss, pr3_mss);
 }
 
 /**
@@ -1604,9 +1620,6 @@ std::pair<NdArrayRef, NdArrayRef> PGCell_4FanIn1Out(KernelEvalContext* ctx,
    *  p01_rss -> p01_mss, p012_ass -> p012_mss, p0123_ass -> p0123_mss    (up)
    *  gr3_ass -> gr3_mss, gr2_ass -> gr2_mss, gr1_rss -> gr1_mss          (up)
    */
-
-  auto* comm = ctx->getState<Communicator>();
-
   auto p3_rss = ResharingMss2Rss(ctx, p3);
   auto g2_rss = ResharingMss2Rss(ctx, g2);
   auto g1_rss = ResharingMss2Rss(ctx, g1);
@@ -1626,19 +1639,19 @@ std::pair<NdArrayRef, NdArrayRef> PGCell_4FanIn1Out(KernelEvalContext* ctx,
   auto gr3_ass = AssXor2(ctx, AssXor2(ctx, g3_ass, g2p3_ass), AssXor2(ctx, g1p23_ass, g0p123_ass));
   auto pr3_ass = p0123_ass;
 
-  auto gr3_mss = ResharingAss2Mss(ctx, gr3_ass);
-  NdArrayRef pr3_mss = gr3_mss;
-  if (output_p) {
-    pr3_mss = ResharingAss2Mss(ctx, pr3_ass);
-    comm->addCommStatsManually(-1, 0);
-    const std::atomic<size_t> & lctx_sent_actions = comm->lctx().get()->GetStats().get()->sent_actions;
-    const_cast<std::atomic<size_t> &>(lctx_sent_actions) -= 1;
+  if (output_p) 
+  {
+    // NdArrayRef gr3_mss, pr3_mss;
+    // auto gp = pack_2_bitvec_ass(pr3_ass, gr3_ass);
+    // auto gp_mss = ResharingAss2Mss(ctx, gp);
+    // std::tie(gr3_mss, pr3_mss) = unpack_2_bitvec_mss(gp_mss);
+    // return std::make_pair(gr3_mss, pr3_mss);
+    std::vector<NdArrayRef> res = spu::vmap({pr3_ass, gr3_ass}, [&](const NdArrayRef &a) {return ResharingAss2Mss(ctx, a);});
+    return std::make_pair(res[1], res[0]);
+  } else {
+    auto gr3_mss = ResharingAss2Mss(ctx, gr3_ass);
+    return std::make_pair(gr3_mss, gr3_mss);
   }
-
-  std::pair<NdArrayRef, NdArrayRef> result;
-  result.first = gr3_mss;
-  result.second = pr3_mss;
-  return result;
 }
 
 NdArrayRef PPAFromABY2(KernelEvalContext* ctx, const NdArrayRef& x, const NdArrayRef& y)
@@ -1927,7 +1940,6 @@ NdArrayRef PPASklanky(KernelEvalContext* ctx, const NdArrayRef& x, const NdArray
     NdArrayView<mss_shr_t> _g(g);
     NdArrayView<mss_shr_t> _out(out);
 
-
     // 1. Compute signal g and p.
     auto sig_g_rss = MssAnd2NoComm(ctx, x, y);
     auto sig_g_mss = ResharingRss2Mss(ctx, sig_g_rss);
@@ -1955,15 +1967,16 @@ NdArrayRef PPASklanky(KernelEvalContext* ctx, const NdArrayRef& x, const NdArray
       _out[idx][2] = _p[idx][2];
     });
 
-    // Construnction from aby 2.0. See https://eprint.iacr.org/2020/1225
-    // Level 0. Use 4 fan-in and 4 outputs cell. 
-    // p3, p2, p1, p0 -> p3 & p2 & p1 & p0, p2 & p1 & p0, p1 & p0, p0
-    // g works in the same way.
+    // Sklanky PPA.
+    // Level 0. Use 4 fan-in and 1 outputs cell. 
     {
       auto gops = sklanky_split<bshr_el_t>(g, 0);
       auto pops = sklanky_split<bshr_el_t>(p, 0);
 
       std::tie(g, p) = PGCell_4FanIn1Out(ctx, pops[0], pops[1], pops[2], pops[3], gops[0], gops[1], gops[2], gops[3]);
+
+      // g = lshift<bshr_el_t, 3>(g, 16);
+      // p = lshift<bshr_el_t, 3>(p, 16);
 
       // if (comm->getRank() == 0) std::cout << "PPA: generate signal p and signal g." << std::endl;
       // if (comm->getRank() == 0) std::cout << "PPA: signal p." << _p[0][0] << " " << _p[1][0] << std::endl;
@@ -1971,13 +1984,14 @@ NdArrayRef PPASklanky(KernelEvalContext* ctx, const NdArrayRef& x, const NdArray
     }
 
     // Level 1. Use 4 fan-in and 1 output cell. 
-    // p3, p2, p1, p0 -> p3 & p2 & p1 & p0
-    // g works in the same way.
     { 
       auto gops = sklanky_split<bshr_el_t>(g, 1);
       auto pops = sklanky_split<bshr_el_t>(p, 1);
 
       std::tie(g, p) = PGCell_4FanIn1Out(ctx, pops[0], pops[1], pops[2], pops[3], gops[0], gops[1], gops[2], gops[3]);
+
+      // g = lshift<bshr_el_t, 3>(g, 16);
+      // p = lshift<bshr_el_t, 3>(p, 16);
 
       // if (comm->getRank() == 0) std::cout << "PPA: generate signal p and signal g." << std::endl;
       // if (comm->getRank() == 0) std::cout << "PPA: signal p." << _p[0][0] << " " << _p[1][0] << std::endl;
@@ -1985,13 +1999,14 @@ NdArrayRef PPASklanky(KernelEvalContext* ctx, const NdArrayRef& x, const NdArray
     }
 
     // Level 2. Use 4 fan-in and 1 output cell. 
-    // p3, p2, p1, p0 -> p3 & p2 & p1 & p0
-    // g works in the same way.
     {
       auto gops = sklanky_split<bshr_el_t>(g, 2);
       auto pops = sklanky_split<bshr_el_t>(p, 2);
 
       std::tie(g, p) = PGCell_4FanIn1Out(ctx, pops[0], pops[1], pops[2], pops[3], gops[0], gops[1], gops[2], gops[3], false);
+
+      // g = lshift<bshr_el_t, 3>(g, 16);
+      // p = lshift<bshr_el_t, 3>(p, 16);
 
       // if (comm->getRank() == 0) std::cout << "PPA: generate signal p and signal g." << std::endl;
       // if (comm->getRank() == 0) std::cout << "PPA: signal p." << _p[0][0] << " " << _p[1][0] << std::endl;
@@ -2107,8 +2122,8 @@ NdArrayRef A2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in) {
     if (comm->getRank() == 0) 
     {
       r0 = comm->recv<el_t>(1, "MsbA2B, special resharing from ASS to MSS, get dn2");
-      const std::atomic<size_t> & lctx_sent_bytes = comm->lctx().get()->GetStats().get()->sent_bytes;
-      const_cast<std::atomic<size_t> &>(lctx_sent_bytes) -= sizeof(el_t) * numel;
+      const std::atomic<size_t> & lctx_sent_actions = comm->lctx().get()->GetStats().get()->sent_actions;
+      const_cast<std::atomic<size_t> &>(lctx_sent_actions) -= 1;
     }
     else if (comm->getRank() == 1) 
     {

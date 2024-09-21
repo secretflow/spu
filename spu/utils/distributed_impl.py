@@ -300,7 +300,7 @@ class NodeServicer(distributed_pb2_grpc.NodeServiceServicer):
         payload = rebuild_messages(itr.data for itr in req_itr)
         # Warning: this is only a demo, do not use in production.
         (fn, args, kwargs) = pickle.loads(payload)
-        logger.info(f"RunR: {fn.__name__} at {self.node_id}")
+        # logger.info(f"RunR: {fn.__name__} at {self.node_id}")
         try:
             from jax.tree_util import tree_map
 
@@ -318,7 +318,7 @@ class NodeServicer(distributed_pb2_grpc.NodeServiceServicer):
         payload = rebuild_messages(itr.data for itr in req_itr)
         # Warning: this is only a demo, do not use in production.
         (fn, args, kwargs) = pickle.loads(payload)
-        logger.info(f"Run : {fn.__name__} at {self.node_id}")
+        # logger.info(f"Run : {fn.__name__} at {self.node_id}")
         try:
             from jax.tree_util import tree_map
 

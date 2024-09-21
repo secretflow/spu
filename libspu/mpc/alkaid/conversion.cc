@@ -2088,8 +2088,10 @@ NdArrayRef MsbA2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in, size_t
       // logs the transmission of 2k for P0. We manually reduced the logging of k elements. 
       // Nevertheless, this implementation does not adhere to the principle of thread safety.
       // comm->addCommStatsManually(0, -sizeof(el_t) * numel);   // bcast
-      const std::atomic<size_t> & lctx_sent_bytes = comm->lctx().get()->GetStats().get()->sent_bytes;
-      const_cast<std::atomic<size_t> &>(lctx_sent_bytes) -= sizeof(el_t) * numel;
+      // const std::atomic<size_t> & lctx_sent_bytes = comm->lctx().get()->GetStats().get()->sent_bytes;
+      // const_cast<std::atomic<size_t> &>(lctx_sent_bytes) -= sizeof(el_t) * numel;
+      const std::atomic<size_t> & lctx_sent_actions = comm->lctx().get()->GetStats().get()->sent_actions;
+      const_cast<std::atomic<size_t> &>(lctx_sent_actions) -= 1;
     }
     else if (comm->getRank() == start_rank_next) 
     {
@@ -2169,11 +2171,11 @@ NdArrayRef MsbA2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in, size_t
       k /= 4;
       if (k > 1)
       {
-        auto pg = pack_2_bitvec_ass(p_res, g_combined);
-        pg = ResharingAss2Mss(ctx, pg);
-        std::tie(g, p) = unpack_2_bitvec_mss(pg);
-        // p = ResharingAss2Mss(ctx, p_res);
-        // g = ResharingAss2Mss(ctx, g_combined);
+        // auto pg = pack_2_bitvec_ass(p_res, g_combined);
+        // pg = ResharingAss2Mss(ctx, pg);
+        // std::tie(g, p) = unpack_2_bitvec_mss(pg);
+        std::vector<NdArrayRef> pg = spu::vmap({p_res, g_combined}, [&](NdArrayRef a) {return ResharingAss2Mss(ctx, a);});
+        g = pg[1], p = pg[0];
       } else {
         #ifndef EQ_PACK_SINGLE_BIT
         auto pg = pack_2_bitvec_ass(p_res, g_combined);
@@ -2360,9 +2362,6 @@ std::pair<NdArrayRef, NdArrayRef> PGCell_4FanIn1Out(KernelEvalContext* ctx,
    *  p01_rss -> p01_mss, p012_ass -> p012_mss, p0123_ass -> p0123_mss    (up)
    *  gr3_ass -> gr3_mss, gr2_ass -> gr2_mss, gr1_rss -> gr1_mss          (up)
    */
-
-  auto* comm = ctx->getState<Communicator>();
-
   auto p3_rss = ResharingMss2Rss(ctx, p3);
   auto g2_rss = ResharingMss2Rss(ctx, g2);
   auto g1_rss = ResharingMss2Rss(ctx, g1);
@@ -2382,19 +2381,7 @@ std::pair<NdArrayRef, NdArrayRef> PGCell_4FanIn1Out(KernelEvalContext* ctx,
   auto gr3_ass = AssXor2(ctx, AssXor2(ctx, g3_ass, g2p3_ass), AssXor2(ctx, g1p23_ass, g0p123_ass));
   auto pr3_ass = p0123_ass;
 
-  auto gr3_mss = ResharingAss2Mss(ctx, gr3_ass);
-  NdArrayRef pr3_mss = gr3_mss;
-  if (output_p) {
-    pr3_mss = ResharingAss2Mss(ctx, pr3_ass);
-    comm->addCommStatsManually(-1, 0);
-    const std::atomic<size_t> & lctx_sent_actions = comm->lctx().get()->GetStats().get()->sent_actions;
-    const_cast<std::atomic<size_t> &>(lctx_sent_actions) -= 1;
-  }
-
-  std::pair<NdArrayRef, NdArrayRef> result;
-  result.first = gr3_mss;
-  result.second = pr3_mss;
-  return result;
+  return std::make_pair(gr3_ass, pr3_ass);
 }
 
 NdArrayRef PPAFromABY2(KernelEvalContext* ctx, const NdArrayRef& x, const NdArrayRef& y)
@@ -2499,6 +2486,11 @@ NdArrayRef PPAFromABY2(KernelEvalContext* ctx, const NdArrayRef& x, const NdArra
       }
 
       std::tie(gops[0], pops[0]) = PGCell_4FanIn1Out(ctx, pops[0], pops[1], pops[2], pops[3], gops[0], gops[1], gops[2], gops[3]);
+
+      auto gp = pack_2_bitvec_ass(pops[0], gops[0]);
+      auto gp_mss = ResharingAss2Mss(ctx, gp);
+      std::tie(gops[0], pops[0]) = unpack_2_bitvec_mss(gp_mss);
+
       pops[1] = NdArrayRef(mss_bshr_type, in_shape);
       gops[1] = NdArrayRef(mss_bshr_type, in_shape);
 
@@ -2574,6 +2566,9 @@ NdArrayRef PPAFromABY2(KernelEvalContext* ctx, const NdArrayRef& x, const NdArra
           pops[0], pops[1], pops[2], pops[3], 
           gops[0], gops[1], gops[2], gops[3], false);
       // pops[1] = NdArrayRef(mss_bshr_type, in_shape);
+      auto gp = pack_2_bitvec_ass(pops[0], gops[0]);
+      auto gp_mss = ResharingAss2Mss(ctx, gp);
+      std::tie(gops[0], pops[0]) = unpack_2_bitvec_mss(gp_mss);
       gops[1] = NdArrayRef(mss_bshr_type, in_shape);
 
       // NdArrayView<std::array<uint16_t, 3>> _pops0(pops[0]);
@@ -2715,6 +2710,10 @@ NdArrayRef PPASklanky(KernelEvalContext* ctx, const NdArrayRef& x, const NdArray
 
       std::tie(g, p) = PGCell_4FanIn1Out(ctx, pops[0], pops[1], pops[2], pops[3], gops[0], gops[1], gops[2], gops[3]);
 
+      auto gp = pack_2_bitvec_ass(p, g);
+      auto gp_mss = ResharingAss2Mss(ctx, gp);
+      std::tie(g, p) = unpack_2_bitvec_mss(gp_mss);
+
       // if (comm->getRank() == 0) std::cout << "PPA: generate signal p and signal g." << std::endl;
       // if (comm->getRank() == 0) std::cout << "PPA: signal p." << _p[0][0] << " " << _p[1][0] << std::endl;
       // if (comm->getRank() == 0) std::cout << "PPA: signal g." << _g[0][0] << " " << _g[1][0] << std::endl;
@@ -2729,6 +2728,10 @@ NdArrayRef PPASklanky(KernelEvalContext* ctx, const NdArrayRef& x, const NdArray
 
       std::tie(g, p) = PGCell_4FanIn1Out(ctx, pops[0], pops[1], pops[2], pops[3], gops[0], gops[1], gops[2], gops[3]);
 
+      auto gp = pack_2_bitvec_ass(p, g);
+      auto gp_mss = ResharingAss2Mss(ctx, gp);
+      std::tie(g, p) = unpack_2_bitvec_mss(gp_mss);
+
       // if (comm->getRank() == 0) std::cout << "PPA: generate signal p and signal g." << std::endl;
       // if (comm->getRank() == 0) std::cout << "PPA: signal p." << _p[0][0] << " " << _p[1][0] << std::endl;
       // if (comm->getRank() == 0) std::cout << "PPA: signal g." << _g[0][0] << " " << _g[1][0] << std::endl;
@@ -2742,7 +2745,7 @@ NdArrayRef PPASklanky(KernelEvalContext* ctx, const NdArrayRef& x, const NdArray
       auto pops = sklanky_split<bshr_el_t>(p, 2);
 
       std::tie(g, p) = PGCell_4FanIn1Out(ctx, pops[0], pops[1], pops[2], pops[3], gops[0], gops[1], gops[2], gops[3], false);
-      g = ResharingMss2Rss(ctx, g);
+      g = ResharingAss2Rss(ctx, g);
 
       // if (comm->getRank() == 0) std::cout << "PPA: generate signal p and signal g." << std::endl;
       // if (comm->getRank() == 0) std::cout << "PPA: signal p." << _p[0][0] << " " << _p[1][0] << std::endl;

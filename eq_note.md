@@ -45,6 +45,9 @@ sh ./mytest/mynet.sh lan
 ./bazel-out/k8-fastbuild/bin/examples/python/ml/flax_gpt2/pumabench -c examples/python/ml/flax_gpt2/3pc.json
 ./bazel-out/k8-fastbuild/bin/examples/python/ml/flax_gpt2/pumabench -c examples/python/ml/flax_gpt2/alkaid.json
 
+./bazel-out/k8-fastbuild/bin/examples/python/ml/flax_gpt2/albenchmark -c examples/python/ml/flax_gpt2/3pc.json
+./bazel-out/k8-fastbuild/bin/examples/python/ml/flax_gpt2/albenchmark -c examples/python/ml/flax_gpt2/alkaid.json
+
 nohup ./bazel-bin/examples/python/utils/nodectl  -c examples/python/ml/flax_gpt2/3pc.json up > aby3.out 2>&1 &
 nohup ./bazel-bin/examples/python/utils/nodectl -c examples/python/ml/flax_gpt2/alkaid.json up > alkaid.out 2>&1 &
 nohup ./bazel-out/k8-fastbuild/bin/examples/python/ml/flax_gpt2/pumabench -c examples/python/ml/flax_gpt2/3pc.json >/dev/null 2>&1 &
