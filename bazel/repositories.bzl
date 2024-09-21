@@ -229,7 +229,7 @@ def _com_github_eigenteam_eigen():
     EIGEN_SHA256 = "01fcd68409c038bbcfd16394274c2bf71e2bb6dda89a2319e23fc59a2da17210"
     maybe(
         http_archive,
-        name = "com_github_eigenteam_eigen",
+        name = "eigen_archive",
         sha256 = EIGEN_SHA256,
         build_file = "@spulib//bazel:eigen.BUILD",
         strip_prefix = "eigen-{commit}".format(commit = EIGEN_COMMIT),
@@ -241,7 +241,7 @@ def _com_github_eigenteam_eigen():
 def _com_github_nvidia_cutlass():
     maybe(
         http_archive,
-        name = "com_github_nvidia_cutlass",
+        name = "cutlass_archive",
         strip_prefix = "cutlass-3.5.1",
         urls = [
             "https://github.com/NVIDIA/cutlass/archive/refs/tags/v3.5.1.tar.gz",

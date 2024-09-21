@@ -106,7 +106,7 @@ spu_cc_library(
     linkopts = OMP_LINKFLAGS,
     deps = [
         "//libspu/core:parallel_utils",
-        "@com_github_eigenteam_eigen//:eigen3",
+        "@eigen_archive//:eigen3",
     ] + OMP_DEPS,
 )
 
