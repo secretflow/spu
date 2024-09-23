@@ -27,6 +27,9 @@
 #include "libspu/mpc/semi2k/io.h"
 #include "libspu/mpc/semi2k/protocol.h"
 
+#include "libspu/mpc/fantastic4/io.h"
+#include "libspu/mpc/fantastic4/protocol.h"
+
 namespace spu::mpc {
 
 void Factory::RegisterProtocol(
@@ -47,6 +50,9 @@ void Factory::RegisterProtocol(
     }
     case ProtocolKind::SECURENN: {
       return regSecurennProtocol(ctx, lctx);
+    }
+    case ProtocolKind::FANTASTIC4: {
+      return regFantastic4Protocol(ctx, lctx);
     }
     default: {
       SPU_THROW("Invalid protocol kind {}", ctx->config().protocol());
@@ -71,6 +77,9 @@ std::unique_ptr<IoInterface> Factory::CreateIO(const RuntimeConfig& conf,
     }
     case ProtocolKind::SECURENN: {
       return securenn::makeSecurennIo(conf.field(), npc);
+    }
+    case ProtocolKind::FANTASTIC4: {
+      return fantastic4::makeFantastic4Io(conf.field(), npc);
     }
     default: {
       SPU_THROW("Invalid protocol kind {}", conf.protocol());
