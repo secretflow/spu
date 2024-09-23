@@ -36,6 +36,24 @@ def cho_solve_wrapper(a, b):
     return cho_solve(cho_factor(a), b)
 
 
+def test_while(x):
+    n = 0
+    complete = False
+    y = x
+    av = jnp.arange(len(x)) * 1.0
+    complete = complete | (jnp.max(x) > 6.0)
+
+    while n < 2:
+        complete_is_false = complete == False
+        y = jnp.where(complete_is_false, av, y)
+        av = jnp.where(complete_is_false, av + x, av)
+        complete = complete | (jnp.max(x) > 6.0)
+        x = x * x
+        n += 1
+
+    return y
+
+
 if __name__ == "__main__":
     """
     You can modify the code below for debug purpose only.
@@ -47,19 +65,22 @@ if __name__ == "__main__":
     # Tweak compiler options
     copts.disable_div_sqrt_rewrite = True
 
+    y = jnp.array([2.0, 1.0])
     # x = np.random.randn(3, 4)
-    y = np.random.randn(100, 3)
-    y = np.dot(y, y.T)
-    r = np.random.randn(100, 1)
+    # y = np.random.randn(10, 3)
+    # y = np.dot(y, y.T)
+    # r = np.random.randn(100, 1)
     # fn = lambda x, y: si.example_binary(x, y)
     # fn = lambda x, y: jnp.matmul(x, y)
     # fn = solve
-    fn = cho_solve_wrapper
+    # fn = cho_solve_wrapper
+    fn = test_while
 
     spu_fn = ppsim.sim_jax(sim, fn, copts=copts)
-    z = spu_fn(y, r)
+    # z = spu_fn(y, r)
+    z = spu_fn(y)
 
-    # print(spu_fn.pphlo)
+    print(spu_fn.pphlo)
 
     print(f"spu out = {z}")
-    print(f"cpu out = {fn(y, r)}")
+    print(f"cpu out = {fn(y)}")

@@ -75,7 +75,7 @@ class UnitTests(unittest.TestCase):
 
         # compare with sklearn
         quantile_sklearn = SklearnQuantileRegressor(
-            quantile=0.7, alpha=0.1, fit_intercept=True, solver='revised simplex'
+            quantile=0.5, alpha=0.1, fit_intercept=True, solver='revised simplex'
         )
         quantile_sklearn_fit = quantile_sklearn.fit(X, y)
         # acc_sklearn = jnp.mean(jnp.square(y - quantile_sklearn_fit.predict(X)))
@@ -88,10 +88,13 @@ class UnitTests(unittest.TestCase):
 
         # run
         proc = proc_wrapper(
-            quantile=0.7, alpha=0.1, fit_intercept=True, lr=0.01, max_iter=1
+            quantile=0.5, alpha=0.1, fit_intercept=True, lr=0.01, max_iter=2
         )
-        # result, coef, intercept = spsim.sim_jax(sim, proc)(X, y)
-        result, coef, intercept = proc(X, y)
+
+        spu_f = spsim.sim_jax(sim, proc)
+        result, coef, intercept = spu_f(X, y)
+        # print(spu_f.pphlo)
+        # result, coef, intercept = proc(X, y)
         acc_custom = mean_squared_error(y, result, squared=False)
 
         # print acc

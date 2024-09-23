@@ -106,6 +106,7 @@ def _pivot_row(T, basis, pivcol, phase, tol=1e-9, bland=False):
 #     # updated_T = T
 #     return updated_T, basis
 
+
 def _apply_pivot(T, basis, pivrow, pivcol, tol=1e-9):
     # 将 pivrow 和 pivcol 转换为 int32 类型
     pivrow = jnp.int32(pivrow)
@@ -113,25 +114,25 @@ def _apply_pivot(T, basis, pivrow, pivcol, tol=1e-9):
 
     # 更新 basis 数组
     basis = basis.at[pivrow].set(pivcol)
-    
+
     # 生成 one-hot 向量
     pivrow_one_hot = jax.nn.one_hot(pivrow, T.shape[0])
     pivcol_one_hot = jax.nn.one_hot(pivcol, T.shape[1])
-    
+
     # 计算主元值
     pivval = jnp.dot(pivrow_one_hot, jnp.dot(T, pivcol_one_hot))
-    
+
     # 更新主元行
     # T = T.at[pivrow].set(T[pivrow] / pivval)
     updated_row = T[pivrow] / pivval
     T = pivrow_one_hot[:, None] * updated_row + T * (1 - pivrow_one_hot[:, None])
-    
+
     # 计算需要更新的行
     scalar = jnp.dot(T, pivcol_one_hot).reshape(-1, 1)  # 获取每行的标量，形状为 (n, 1)
-    
+
     # 使用矩阵减法进行批量更新，避免循环
     updated_T = T - scalar * T[pivrow]
-    
+
     # 由于主元行已经被更新过，因此我们需要恢复该行
     # updated_T = updated_T.at[pivrow].set(T[pivrow])
     row_restore_matrix = pivrow_one_hot[:, None] * T[pivrow]
@@ -156,100 +157,24 @@ def _solve_simplex(
     message = ''
     complete = False
 
-    m = jnp.where(phase == 1, T.shape[1] - 2, T.shape[1] - 1)
-
-    def func_col(T, pivrow, basis, tol, nit):
-        cols = jnp.arange(T.shape[1] - 1)  # 获取所有列的索引
-
-        def apply_pivot_and_update(col):
-            pivcol = col
-            updated_T, updated_basis = _apply_pivot(T, basis, pivrow, pivcol, tol)
-            updated_nit = nit + 1
-            return updated_T, updated_basis, updated_nit
-
-        # 判断每列是否满足 tol 条件
-        is_greater_than_tol = jnp.abs(T[pivrow, cols]) > tol
-
-        # 针对满足条件的列应用 pivot 和更新操作
-        updated_T, updated_basis, updated_nit = jax.vmap(apply_pivot_and_update)(cols)
-
-        # 使用 jnp.where 选择满足条件的更新
-        T = jnp.where(is_greater_than_tol[:, None, None], updated_T, T)
-        basis = jnp.where(is_greater_than_tol[:, None], updated_basis, basis)
-        nit = jnp.where(is_greater_than_tol, updated_nit, nit)
-        T = T[-1]
-        basis = basis[-1]
-        nit = sum(nit)
-
-        return T, basis, nit
-
     def func_row(T, pivrow, basis, tol, nit):
-        def body_fun(carry):
-            T, pivrow, basis, tol, nit = carry
-            basis_pivrow_greater = basis[pivrow] > T.shape[1] - 2
-            func_col_T, func_col_basis, func_col_nit = func_col(
-                T, pivrow, basis, tol, nit
-            )
-            T = jnp.where(basis_pivrow_greater, func_col_T, T)
-            basis = jnp.where(basis_pivrow_greater, func_col_basis, basis)
-            nit = jnp.where(basis_pivrow_greater, func_col_nit, nit)
-
-            return T, pivrow + 1, basis, tol, nit
-
-        def cond_fun(carry):
-            T, pivrow, basis, tol, nit = carry
-            return pivrow < basis.size
-
-        # T, pivrow, basis, tol, nit = lax.while_loop(
-        #     cond_fun, body_fun, (T, pivrow, basis, tol, nit)
-        # )
         return T, pivrow, basis, tol, nit
 
     phase_is_2 = phase == 2
     func_row_T, func_row_pivrow, func_row_basis, func_row_tol, func_row_nit = func_row(
         T, 0, basis, tol, nit
     )
-    T = jnp.where(phase_is_2, func_row_T, T)
-    pivrow = jnp.where(phase_is_2, func_row_pivrow, 0)
-    basis = jnp.where(phase_is_2, func_row_basis, basis)
-    tol = jnp.where(phase_is_2, func_row_tol, tol)
-    nit = jnp.where(phase_is_2, func_row_nit, nit)
+    # T = jnp.where(phase_is_2, func_row_T, T)
+    # pivrow = jnp.where(phase_is_2, func_row_pivrow, 0)
+    # basis = jnp.where(phase_is_2, func_row_basis, basis)
+    # tol = jnp.where(phase_is_2, func_row_tol, tol)
 
-    def cond_ifnot_complete(carry):
-        (
-            num,
-            T,
-            basis,
-            pivcol,
-            pivrow,
-            phase,
-            tol,
-            bland,
-            status,
-            complete,
-            nit,
-            maxiter,
-        ) = carry
-        return num < maxiter
-        # return ~complete
+    # nit = jnp.where(phase_is_2, func_row_nit, nit)
 
-    # 这个complete不会更新,一直为False
+    pivcol = 0
+    pivrow = 0
 
-    def body_ifnot_complete(carry):
-        (
-            num,
-            T,
-            basis,
-            pivcol,
-            pivrow,
-            phase,
-            tol,
-            bland,
-            status,
-            complete,
-            nit,
-            maxiter,
-        ) = carry
+    for _ in range(maxiter):
         pivcol_found, pivcol = _pivot_col(T, tol, bland)
         pivrow_found = False
 
@@ -286,7 +211,6 @@ def _solve_simplex(
             complete = jnp.where(nit_greater_maxiter, True, complete)
 
             apply_T, apply_basis = _apply_pivot(T, basis, pivrow, pivcol, tol)
-            
             # apply_T = T
             # apply_basis = basis
 
@@ -306,33 +230,14 @@ def _solve_simplex(
         ) = cal_ifnot_complete(T, basis, nit, status, complete, maxiter)
 
         T = jnp.where(complete_is_False, ifnot_complete_T, T)
+
         basis = jnp.where(complete_is_False, ifnot_complete_basis, basis)
+        # basis = jnp.where(complete_is_False, basis, basis)
+
         nit = jnp.where(complete_is_False, ifnot_complete_nit, nit)
         status = jnp.where(complete_is_False, ifnot_complete_status, status)
         complete = jnp.where(complete_is_False, ifnot_complete_complete, complete)
 
-        return (
-            num + 1,
-            T,
-            basis,
-            pivcol,
-            pivrow,
-            phase,
-            tol,
-            bland,
-            status,
-            complete,
-            nit,
-            maxiter,
-        )
-
-    num, T, basis, pivcol, pivrow, phase, tol, bland, status, complete, nit, maxiter = (
-        lax.while_loop(
-            cond_ifnot_complete,
-            body_ifnot_complete,
-            (0, T, basis, 0, 0, phase, tol, bland, status, complete, nit, maxiter),
-        )
-    )
     return T, basis, nit, status
 
 
@@ -366,9 +271,10 @@ def _linprog_simplex(
     T = jnp.vstack((row_constraints, row_objective, row_pseudo_objective))
 
     # phase 1
-    T, basis, nit1, status = _solve_simplex(
-        T, n, basis, maxiter=maxiter, tol=tol, phase=1, bland=bland
-    )
+    # T, basis, nit1, status = _solve_simplex(
+    #     T, n, basis, maxiter=maxiter, tol=tol, phase=1, bland=bland
+    # )
+    nit1 = 1
 
     nit2 = nit1
 
@@ -397,6 +303,7 @@ def _linprog_simplex(
         _solve_simplex_nit2,
         _solve_simplex_status,
     ) = _solve_simplex(T, n, basis, maxiter, tol, 2, bland, nit1)
+
     status_is_0 = status == 0
     T = jnp.where(status_is_0, _solve_simplex_T, T)
     basis = jnp.where(status_is_0, _solve_simplex_basis, basis)
