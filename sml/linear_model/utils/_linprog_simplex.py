@@ -37,6 +37,7 @@ def _pivot_col(T, tol=1e-5, bland=False):
 
     return valid, result
 
+
 def _pivot_row(T, basis, pivcol, phase, tol=1e-5, bland=False):
 
     def true_mask_func(T, pivcol):
@@ -116,7 +117,7 @@ def _solve_simplex(
 ):
     status = 0
     complete = False
-    
+
     num = 0
     pivcol = 0
     pivrow = 0
@@ -141,8 +142,8 @@ def _solve_simplex(
         complete = jnp.where(pivcol_isnot_found, True, complete)
 
         pivcol_is_found = pivcol_found == True
-        pivrow_True, status_True, complete_True = (
-            cal_pivcol_found_True(T, basis, pivcol, phase, tol, bland, status, complete)
+        pivrow_True, status_True, complete_True = cal_pivcol_found_True(
+            T, basis, pivcol, phase, tol, bland, status, complete
         )
 
         pivrow = jnp.where(pivcol_is_found, pivrow_True, pivrow)

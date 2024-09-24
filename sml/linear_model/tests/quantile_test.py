@@ -23,6 +23,7 @@ import spu.spu_pb2 as spu_pb2  # type: ignore
 import spu.utils.simulation as spsim
 from sml.linear_model.quantile import QuantileRegressor as SmlQuantileRegressor
 
+
 class UnitTests(unittest.TestCase):
     def test_quantile(self):
         def proc_wrapper(
@@ -51,12 +52,11 @@ class UnitTests(unittest.TestCase):
 
         def generate_data():
             from jax import random
+
             key = random.PRNGKey(42)
             key, subkey = random.split(key)
             X = random.normal(subkey, (100, 2))
-            y = (
-                5 * X[:, 0] + 2 * X[:, 1] + random.normal(key, (100,)) * 0.1
-            )
+            y = 5 * X[:, 0] + 2 * X[:, 1] + random.normal(key, (100,)) * 0.1
             return X, y
 
         # bandwidth and latency only work for docker mode
