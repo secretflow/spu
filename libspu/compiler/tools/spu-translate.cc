@@ -72,7 +72,7 @@ void isEqual(const xt::xarray<T> &lhs, const xt::xarray<T> &rhs) {
 
   auto error = lhs - rhs;
 
-  for (auto v : error) {
+  for (T v : error) {
     if (v != 0) {
       llvm::report_fatal_error(fmt::format("Diff = {}", v).c_str());
     }

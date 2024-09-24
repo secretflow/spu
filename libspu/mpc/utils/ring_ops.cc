@@ -223,7 +223,7 @@ NdArrayRef ring_rand(FieldType field, const Shape& shape) {
 NdArrayRef ring_rand(FieldType field, const Shape& shape, uint128_t prg_seed,
                      uint64_t* prg_counter) {
   constexpr yacl::crypto::SymmetricCrypto::CryptoType kCryptoType =
-      yacl::crypto::SymmetricCrypto::CryptoType::AES128_CTR;
+      yacl::crypto::SymmetricCrypto::CryptoType::AES128_ECB;
   constexpr uint128_t kAesInitialVector = 0U;
 
   NdArrayRef res(makeType<RingTy>(field), shape);

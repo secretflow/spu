@@ -25,15 +25,20 @@ enum class RecOp : uint8_t {
   XOR = 1,
 };
 
-std::vector<NdArrayRef> reconstruct(
-    RecOp op, absl::Span<const TrustedParty::Operand> ops) {
+std::vector<NdArrayRef> reconstruct(RecOp op,
+                                    absl::Span<TrustedParty::Operand> ops) {
   std::vector<NdArrayRef> rs(ops.size());
 
   const auto world_size = ops[0].seeds.size();
   for (size_t rank = 0; rank < world_size; rank++) {
     for (size_t idx = 0; idx < ops.size(); idx++) {
       // FIXME: TTP adjuster server and client MUST have same endianness.
-      auto t = prgReplayArray(ops[idx].seeds[rank], ops[idx].desc);
+      NdArrayRef t;
+      if (rank < world_size - 1) {
+        t = prgReplayArray(ops[idx].seeds[rank], ops[idx].desc);
+      } else {
+        t = prgReplayArrayMutable(ops[idx].seeds[rank], ops[idx].desc);
+      }
 
       if (rank == 0) {
         rs[idx] = t;
@@ -65,7 +70,7 @@ void checkOperands(absl::Span<const TrustedParty::Operand> ops,
 
 }  // namespace
 
-NdArrayRef TrustedParty::adjustMul(absl::Span<const Operand> ops) {
+NdArrayRef TrustedParty::adjustMul(absl::Span<Operand> ops) {
   SPU_ENFORCE_EQ(ops.size(), 3U);
   checkOperands(ops);
 
@@ -74,7 +79,7 @@ NdArrayRef TrustedParty::adjustMul(absl::Span<const Operand> ops) {
   return ring_sub(ring_mul(rs[0], rs[1]), rs[2]);
 }
 
-NdArrayRef TrustedParty::adjustSquare(absl::Span<const Operand> ops) {
+NdArrayRef TrustedParty::adjustSquare(absl::Span<Operand> ops) {
   SPU_ENFORCE_EQ(ops.size(), 2U);
 
   auto rs = reconstruct(RecOp::ADD, ops);
@@ -82,7 +87,7 @@ NdArrayRef TrustedParty::adjustSquare(absl::Span<const Operand> ops) {
   return ring_sub(ring_mul(rs[0], rs[0]), rs[1]);
 }
 
-NdArrayRef TrustedParty::adjustDot(absl::Span<const Operand> ops) {
+NdArrayRef TrustedParty::adjustDot(absl::Span<Operand> ops) {
   SPU_ENFORCE_EQ(ops.size(), 3U);
   checkOperands(ops, true, true);
   SPU_ENFORCE(ops[2].transpose == false);
@@ -99,7 +104,7 @@ NdArrayRef TrustedParty::adjustDot(absl::Span<const Operand> ops) {
   return ring_sub(ring_mmul(rs[0], rs[1]), rs[2]);
 }
 
-NdArrayRef TrustedParty::adjustAnd(absl::Span<const Operand> ops) {
+NdArrayRef TrustedParty::adjustAnd(absl::Span<Operand> ops) {
   SPU_ENFORCE_EQ(ops.size(), 3U);
   checkOperands(ops);
 
@@ -108,8 +113,7 @@ NdArrayRef TrustedParty::adjustAnd(absl::Span<const Operand> ops) {
   return ring_xor(ring_and(rs[0], rs[1]), rs[2]);
 }
 
-NdArrayRef TrustedParty::adjustTrunc(absl::Span<const Operand> ops,
-                                     size_t bits) {
+NdArrayRef TrustedParty::adjustTrunc(absl::Span<Operand> ops, size_t bits) {
   SPU_ENFORCE_EQ(ops.size(), 2U);
   checkOperands(ops);
 
@@ -119,7 +123,7 @@ NdArrayRef TrustedParty::adjustTrunc(absl::Span<const Operand> ops,
 }
 
 std::pair<NdArrayRef, NdArrayRef> TrustedParty::adjustTruncPr(
-    absl::Span<const Operand> ops, size_t bits) {
+    absl::Span<Operand> ops, size_t bits) {
   // descs[0] is r, descs[1] adjust to r[k-2, bits], descs[2] adjust to r[k-1]
   SPU_ENFORCE_EQ(ops.size(), 3U);
   checkOperands(ops);
@@ -139,7 +143,7 @@ std::pair<NdArrayRef, NdArrayRef> TrustedParty::adjustTruncPr(
   return {adjust1, adjust2};
 }
 
-NdArrayRef TrustedParty::adjustRandBit(absl::Span<const Operand> ops) {
+NdArrayRef TrustedParty::adjustRandBit(absl::Span<Operand> ops) {
   SPU_ENFORCE_EQ(ops.size(), 1U);
   auto rs = reconstruct(RecOp::ADD, ops);
 
@@ -147,7 +151,7 @@ NdArrayRef TrustedParty::adjustRandBit(absl::Span<const Operand> ops) {
   return ring_sub(ring_randbit(ops[0].desc.field, ops[0].desc.shape), rs[0]);
 }
 
-NdArrayRef TrustedParty::adjustEqz(absl::Span<const Operand> ops) {
+NdArrayRef TrustedParty::adjustEqz(absl::Span<Operand> ops) {
   SPU_ENFORCE_EQ(ops.size(), 2U);
   checkOperands(ops);
   auto rs_a = reconstruct(RecOp::ADD, ops.subspan(0, 1));
@@ -156,7 +160,7 @@ NdArrayRef TrustedParty::adjustEqz(absl::Span<const Operand> ops) {
   return ring_xor(rs_a[0], rs_b[0]);
 }
 
-NdArrayRef TrustedParty::adjustPerm(absl::Span<const Operand> ops,
+NdArrayRef TrustedParty::adjustPerm(absl::Span<Operand> ops,
                                     absl::Span<const int64_t> perm_vec) {
   SPU_ENFORCE_EQ(ops.size(), 2U);
   auto rs = reconstruct(RecOp::ADD, ops);

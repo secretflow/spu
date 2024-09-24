@@ -31,24 +31,24 @@ class TrustedParty {
     bool transpose{false};
   };
 
-  static NdArrayRef adjustMul(absl::Span<const Operand>);
+  static NdArrayRef adjustMul(absl::Span<Operand>);
 
-  static NdArrayRef adjustSquare(absl::Span<const Operand>);
+  static NdArrayRef adjustSquare(absl::Span<Operand>);
 
-  static NdArrayRef adjustDot(absl::Span<const Operand>);
+  static NdArrayRef adjustDot(absl::Span<Operand>);
 
-  static NdArrayRef adjustAnd(absl::Span<const Operand>);
+  static NdArrayRef adjustAnd(absl::Span<Operand>);
 
-  static NdArrayRef adjustTrunc(absl::Span<const Operand>, size_t bits);
+  static NdArrayRef adjustTrunc(absl::Span<Operand>, size_t bits);
 
-  static std::pair<NdArrayRef, NdArrayRef> adjustTruncPr(
-      absl::Span<const Operand>, size_t bits);
+  static std::pair<NdArrayRef, NdArrayRef> adjustTruncPr(absl::Span<Operand>,
+                                                         size_t bits);
 
-  static NdArrayRef adjustRandBit(absl::Span<const Operand>);
+  static NdArrayRef adjustRandBit(absl::Span<Operand>);
 
-  static NdArrayRef adjustEqz(absl::Span<const Operand>);
+  static NdArrayRef adjustEqz(absl::Span<Operand>);
 
-  static NdArrayRef adjustPerm(absl::Span<const Operand>,
+  static NdArrayRef adjustPerm(absl::Span<Operand>,
                                absl::Span<const int64_t> perm_vec);
 };
 
