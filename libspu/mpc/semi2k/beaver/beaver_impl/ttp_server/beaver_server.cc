@@ -22,7 +22,7 @@
 #include "spdlog/spdlog.h"
 #include "yacl/base/byte_container_view.h"
 #include "yacl/base/exception.h"
-#include "yacl/crypto/pke/asymmetric_sm2_crypto.h"
+#include "yacl/crypto/pke/sm2_enc.h"
 
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/mpc/common/prg_tensor.h"
@@ -51,9 +51,8 @@ class DecryptError : public yacl::Exception {
 template <class AdjustRequest>
 std::tuple<std::vector<TrustedParty::Operand>,
            std::vector<std::vector<PrgSeed>>, size_t>
-BuildOperand(
-    const AdjustRequest& req, uint32_t field_size,
-    const std::unique_ptr<yacl::crypto::AsymmetricDecryptor>& decryptor) {
+BuildOperand(const AdjustRequest& req, uint32_t field_size,
+             const std::unique_ptr<yacl::crypto::PkeDecryptor>& decryptor) {
   std::vector<TrustedParty::Operand> ops;
   std::vector<std::vector<PrgSeed>> seeds;
   size_t pad_length = 0;
@@ -261,7 +260,7 @@ class StreamReader : public brpc::StreamInputHandler {
 template <class AdjustRequest>
 std::vector<yacl::Buffer> AdjustImpl(
     const AdjustRequest& req, StreamReader& stream_reader,
-    const std::unique_ptr<yacl::crypto::AsymmetricDecryptor>& decryptor) {
+    const std::unique_ptr<yacl::crypto::PkeDecryptor>& decryptor) {
   std::vector<NdArrayRef> ret;
   size_t field_size;
   if constexpr (std::is_same_v<AdjustRequest, AdjustAndRequest>) {
@@ -319,7 +318,7 @@ std::vector<yacl::Buffer> AdjustImpl(
 
 class ServiceImpl final : public BeaverService {
  private:
-  std::unique_ptr<yacl::crypto::AsymmetricDecryptor> decryptor_;
+  std::unique_ptr<yacl::crypto::PkeDecryptor> decryptor_;
 
  public:
   ServiceImpl(const std::string& asym_crypto_schema,

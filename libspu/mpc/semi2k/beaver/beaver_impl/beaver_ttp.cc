@@ -18,7 +18,7 @@
 #include <utility>
 #include <vector>
 
-#include "yacl/crypto/pke/asymmetric_sm2_crypto.h"
+#include "yacl/crypto/pke/sm2_enc.h"
 #include "yacl/crypto/rand/rand.h"
 #include "yacl/link/algorithm/allgather.h"
 
@@ -303,7 +303,7 @@ BeaverTtp::BeaverTtp(std::shared_ptr<yacl::link::Context> lctx, Options ops)
 
   yacl::Buffer encrypted_seed;
   {
-    std::unique_ptr<yacl::crypto::AsymmetricEncryptor> encryptor;
+    std::unique_ptr<yacl::crypto::PkeEncryptor> encryptor;
     auto lower_schema = absl::AsciiStrToLower(options_.asym_crypto_schema);
     if (lower_schema == "sm2") {
       encryptor = std::make_unique<yacl::crypto::Sm2Encryptor>(
