@@ -259,7 +259,7 @@ class StreamReader : public brpc::StreamInputHandler {
 
 template <class AdjustRequest>
 std::vector<yacl::Buffer> AdjustImpl(
-    const AdjustRequest& req,
+    const AdjustRequest& req, StreamReader& stream_reader,
     const std::unique_ptr<yacl::crypto::PkeDecryptor>& decryptor) {
   std::vector<NdArrayRef> ret;
   size_t field_size;
