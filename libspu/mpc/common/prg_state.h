@@ -45,7 +45,7 @@ class PrgState : public State {
   uint64_t r1_counter_ = 0;  // cnt for next_seed
 
  public:
-  static constexpr char kBindName[] = "PrgState";
+  static constexpr const char* kBindName() { return "PrgState"; }
   static constexpr auto kAesType =
       yacl::crypto::SymmetricCrypto::CryptoType::AES128_CTR;
 
