@@ -18,16 +18,13 @@
 
 namespace spu::mpc::semi2k::beaver::ttp_server {
 
+constexpr size_t kReplayChunkSize = 50 * 1024 * 1024;  // bytes
+
 constexpr size_t kUpStreamChunkSize = 50 * 1024 * 1024;    // bytes
 constexpr size_t kDownStreamChunkSize = 50 * 1024 * 1024;  // bytes
 
-struct BeaverPermUpStreamMeta {
-  uint64_t total_buf_size;
-};
-
 // A list of buffer streams
 struct BeaverDownStreamMeta {
-  uint32_t total_buf_num;  // total buffer stream num
   int32_t err_code = 0;
 };
 

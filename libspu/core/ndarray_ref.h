@@ -20,6 +20,7 @@
 
 #include "absl/types/span.h"
 #include "fmt/ostream.h"
+#include "fmt/ranges.h"
 #include "yacl/base/buffer.h"
 
 #include "libspu/core/bit_utils.h"

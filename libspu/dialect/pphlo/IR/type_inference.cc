@@ -420,8 +420,14 @@ LogicalResult inferDynamicUpdateSliceOp(
   }
 
   // dynamic_update_slice_c1
+  TypeTools tools(operand.getContext());
+  auto common_vis =
+      tools.computeCommonVisibility({tools.getTypeVisibility(operandType),
+                                     tools.getTypeVisibility(updateType)});
+
   inferredReturnTypes.emplace_back(RankedTensorType::get(
-      operandType.getShape(), operandType.getElementType()));
+      operandType.getShape(),
+      tools.getType(operandType.getElementType(), common_vis)));
   return success();
 }
 
