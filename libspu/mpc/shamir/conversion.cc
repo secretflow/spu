@@ -66,13 +66,6 @@ NdArrayRef wrap_mul_p(SPUContext* ctx, const NdArrayRef& x, const NdArrayRef& y)
   return UnwrapValue(mul_aa_p(ctx, WrapValue(x), WrapValue(y)));
 }
 
-void reveal(SPUContext* ctx, const NdArrayRef& x, std::string_view name) {
-  auto x_p = wrap_a2p(ctx, x);
-  if(ctx->getState<Communicator>()->getRank() == 0) {
-    ring_print(x_p, name);
-  }
-}
-
 NdArrayRef wrap_mul(SPUContext* ctx, const NdArrayRef& x, const NdArrayRef& y) {
   if (is_public(x) && is_public(y)) {
     return UnwrapValue(mul_pp(ctx, WrapValue(x), WrapValue(y)));
@@ -815,9 +808,6 @@ NdArrayRef MulAATrunc::proc(KernelEvalContext* ctx, const NdArrayRef& x, const N
           r_2t = wrap_add(sctx, r_2t, wrap_mul(sctx, k, r_bit_square));
     }
     r_2t = wrap_add(sctx, r_2t, zero_shares);
-
-    reveal(sctx, r, "r");
-    reveal(sctx, r_2t, "r_2t");
 
     
     // k2 = 2^(l-2)
