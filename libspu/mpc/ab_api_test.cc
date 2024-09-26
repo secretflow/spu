@@ -574,10 +574,12 @@ TEST_P(ArithmeticTest, TruncA) {
       p0 = arshift_p(obj.get(), p0,
                      {static_cast<int64_t>(SizeOf(conf.field()) * 8 - 10)});
     }
-
+    auto v0 = p2v(obj.get(), p0, 0);
+    
     /* GIVEN */
     const size_t bits = 2;
-    auto a0 = p2a(obj.get(), p0);
+    auto a0 = v2a(obj.get(), v0);
+    // auto a0 = p2a(obj.get(), p0);
 
     /* WHEN */
     auto prev = obj->prot()->getState<Communicator>()->getStats();
@@ -590,6 +592,50 @@ TEST_P(ArithmeticTest, TruncA) {
     /* THEN */
     EXPECT_VALUE_ALMOST_EQ(r_a, r_p, npc);
     EXPECT_TRUE(verifyCost(obj->prot()->getKernel("trunc_a"), "trunc_a",
+                           conf.field(), kShape, npc, cost));
+  });
+}
+
+TEST_P(ArithmeticTest, MulAATrunc) {
+  const auto factory = std::get<0>(GetParam());
+  const RuntimeConfig& conf = std::get<1>(GetParam());
+  const size_t npc = std::get<2>(GetParam());
+
+  // ArrayRef p0_large =
+  //     ring_rand_range(conf.field(), kShape, -(1 << 28), -(1 << 27));
+  // ArrayRef p0_small = ring_rand_range(conf.field(), kShape, 1, 10000);
+
+  utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+    auto obj = factory(conf, lctx);
+
+     
+    auto p0 = rand_p(obj.get(), kShape);
+    auto p1 = rand_p(obj.get(), kShape);
+    
+    auto bits_range_gap = p0.elsize() * 8 - (p0.elsize() * 8) / 2;
+    p0 = arshift_p(obj.get(), p0, {static_cast<int64_t>(bits_range_gap)});
+    p1 = arshift_p(obj.get(), p1, {static_cast<int64_t>(bits_range_gap)});
+    auto prod = mul_pp(obj.get(), p0, p1);
+
+    auto v0 = p2v(obj.get(), p0, 0);
+    auto v1 = p2v(obj.get(), p1, 1);
+    
+    /* GIVEN */
+    auto a0 = v2a(obj.get(), v0);
+    auto a1 = v2a(obj.get(), v1);
+
+    /* WHEN */
+    const size_t bits = 2;
+    auto prev = obj->prot()->getState<Communicator>()->getStats();
+    auto prod_a = mul_aa_trunc(obj.get(), a0, a1, bits, SignType::Unknown);
+    auto cost = obj->prot()->getState<Communicator>()->getStats() - prev;
+
+    auto r_a = a2p(obj.get(), prod_a);
+    auto r_p = arshift_p(obj.get(), prod, {static_cast<int64_t>(bits)});
+
+    /* THEN */
+    EXPECT_VALUE_ALMOST_EQ(r_a, r_p, npc);
+    EXPECT_TRUE(verifyCost(obj->prot()->getKernel("mul_aa_trunc"), "mul_aa_trunc",
                            conf.field(), kShape, npc, cost));
   });
 }

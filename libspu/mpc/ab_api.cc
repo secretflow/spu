@@ -146,6 +146,10 @@ Value trunc_a(SPUContext* ctx, const Value& x, size_t nbits, SignType sign) {
   TILED_DISPATCH(ctx, x, nbits, sign);
 }
 
+Value mul_aa_trunc(SPUContext *ctx, const Value &x, const Value &y, size_t nbits, SignType sign) {
+  TILED_DISPATCH(ctx, x, y, nbits, sign);
+}
+
 Value mmul_ap(SPUContext* ctx, const Value& x, const Value& y) {
   FORCE_DISPATCH(ctx, x, y);
 }

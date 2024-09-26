@@ -58,7 +58,7 @@ void regShamirProtocol(SPUContext* ctx,
                   shamir::CommonTypeV, shamir::A2B, shamir::B2A,  //
                   shamir::AndBP, shamir::XorBP,                   //
                   shamir::P2B, shamir::B2P, shamir::B2V, shamir::XorBB,
-                  shamir::AndBB, shamir::BitrevB, shamir::TruncA,
+                  shamir::AndBB, shamir::BitrevB, shamir::TruncA, shamir::MulAATrunc,
                   shamir::MsbA,  //
                   shamir::BitIntlB, shamir::BitDeintlB>();
 }

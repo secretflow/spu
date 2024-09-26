@@ -66,35 +66,12 @@ NdArrayRef wrap_mul_p(SPUContext* ctx, const NdArrayRef& x, const NdArrayRef& y)
   return UnwrapValue(mul_aa_p(ctx, WrapValue(x), WrapValue(y)));
 }
 
-// void mult_reveal(SPUContext* ctx, const NdArrayRef& a, const NdArrayRef& b, std::string_view name) {
-//   NdArrayRef x_open = wrap_mul_p(ctx, a, b);
-//   if(ctx->getState<Communicator>()->getRank() == 0) {
-//     ring_print(x_open, name);
-//   }
-// }
-
-// void reveal(SPUContext* ctx, const NdArrayRef & x, std::string_view name) {
-//   NdArrayRef x_open = wrap_a2p(ctx, x);
-//   if(ctx->getState<Communicator>()->getRank() == 0) {
-//     ring_print(x_open, name);
-//   }
-// }
-
-// TODO: combine mul and mul_p
-// NdArrayRef wrap_mul(SPUContext* ctx, const NdArrayRef& x, const NdArrayRef& y, const NdArrayRef& z) {
-//   if (is_public(x) && is_public(y)) {
-//     return UnwrapValue(mul_pp(ctx, WrapValue(x), WrapValue(y)));
-//   } else if (is_secret(x) && is_public(y)) {
-//     return UnwrapValue(mul_ap(ctx, WrapValue(x), WrapValue(y)));
-//   } else if (is_secret(y) && is_public(x)) {
-//     return UnwrapValue(mul_ap(ctx, WrapValue(y), WrapValue(x)));
-//   } else if (is_secret(x) && is_secret(y) && is_secret(z)) {
-//     return UnwrapValue(mul_aa(ctx, WrapValue(x), WrapValue(y)));
-//   } else if (is_secret(x) && is_secret(y) && is_public(z)) {
-//     return UnwrapValue(mul_aa_p(ctx, WrapValue(x), WrapValue(y)));
-//   }
-//   SPU_THROW("should not reach, x={}, y={}", x.eltype(), y.eltype());
-// }
+void reveal(SPUContext* ctx, const NdArrayRef& x, std::string_view name) {
+  auto x_p = wrap_a2p(ctx, x);
+  if(ctx->getState<Communicator>()->getRank() == 0) {
+    ring_print(x_p, name);
+  }
+}
 
 NdArrayRef wrap_mul(SPUContext* ctx, const NdArrayRef& x, const NdArrayRef& y) {
   if (is_public(x) && is_public(y)) {
@@ -208,6 +185,18 @@ std::pair<std::vector<NdArrayRef>, std::vector<NdArrayRef>> gen_prefix_mult_shar
   return out;
 }
 
+// Generate zero sharings of degree = threshold
+NdArrayRef gen_zero_shares(KernelEvalContext* ctx, int64_t numel, int64_t threshold) {
+  const auto field = ctx->getState<Z2kState>()->getDefaultField();
+  auto* prg_state = ctx->getState<PrgState>();
+  auto* comm = ctx->getState<Communicator>();
+  auto ty = makeType<PubGfmpTy>(field);
+  auto r = prg_state->genPubl(field, {threshold * numel}).as(ty);
+  auto coeffs = gfmp_mod(r);
+  NdArrayRef zeros = ring_zeros(field, {numel}).as(makeType<GfmpTy>(field));
+  auto shares = gfmp_rand_shamir_shares(zeros, coeffs, comm->getWorldSize(), threshold);
+  return shares[comm->getRank()].as(makeType<AShrTy>(field));
+}
 // Ref: https://iacr.org/archive/tcc2006/38760286/38760286.pdf
 //  Page 11: Protocol RAN2
 NdArrayRef rand_bits(SPUContext* ctx, int64_t numel) {
@@ -216,145 +205,38 @@ NdArrayRef rand_bits(SPUContext* ctx, int64_t numel) {
   std::vector<int64_t> cur_failed_indices;
   std::vector<int64_t> pre_failed_indices;
   std::mutex idx_mtx;
-  int64_t produced = 0;
-  int64_t un_produced = numel;
 
-  while (un_produced > 0) {
-    NdArrayRef tmp_out(out.eltype(), out.shape());
-    auto rand_a = wrap_rand_a(ctx, {un_produced});
-    auto rand_a_square = wrap_mul(ctx, rand_a, rand_a);
-    auto rand_a_square_p = wrap_a2p(ctx, rand_a_square);
-    DISPATCH_ALL_FIELDS(field, [&]() {
-      NdArrayView<ring2k_t> _rand_a(rand_a);
-      NdArrayView<ring2k_t> _rand_a_square_p(rand_a_square_p);
-      NdArrayView<ring2k_t> _out(out);
-      NdArrayView<ring2k_t> _tmp_out(tmp_out);
-      pforeach(0, un_produced, [&](int64_t idx) {
-        if (_rand_a_square_p[idx] != 0) {
-          auto b = sqrt_mod(_rand_a_square_p[idx]);
-          auto c = mul_mod(mul_inv(b), _rand_a[idx]);
-          _tmp_out[idx] = mul_mod(mul_inv(static_cast<ring2k_t>(2)),
-                                  add_mod(c, static_cast<ring2k_t>(1)));
-        } else {  // abort
-          std::unique_lock lock(idx_mtx);
-          cur_failed_indices.push_back(idx);
-        }
-      });
-      if (pre_failed_indices.empty()) {
-        ring_assign(out, tmp_out);
+  // TODO: To minimize round complexity, another method to handling rand_a = 0 is sampling redundantly,
+  // which means that we can sample (1 + \epsilon) * `numel` elements.
+  auto rand_a = wrap_rand_a(ctx, {numel});
+  auto rand_a_square_p = wrap_mul_p(ctx, rand_a, rand_a);
+  NdArrayRef rand_sqrt(out.eltype(), out.shape());
+  
+  DISPATCH_ALL_FIELDS(field, [&]() {
+    NdArrayView<ring2k_t> _rand_a(rand_a);
+    NdArrayView<ring2k_t> _rand_a_square_p(rand_a_square_p);
+    NdArrayView<ring2k_t> _rand_sqrt(rand_sqrt);
+    int64_t num_failed = 0;
+    pforeach(0, numel, [&](int64_t idx) {
+      if (_rand_a_square_p[idx] == 0 ) {
+        num_failed ++;
       } else {
-        pforeach(0, un_produced, [&](int64_t idx) {
-          _out[pre_failed_indices[idx]] = _tmp_out[idx];
-        });
+        _rand_sqrt[idx] = sqrt_mod(_rand_a_square_p[idx]);
       }
-      un_produced = cur_failed_indices.size();
-      produced = numel - un_produced;
-      pre_failed_indices = cur_failed_indices;
-      cur_failed_indices.clear();
     });
-  }
-  return out;
-}
-
-// Ref: https://iacr.org/archive/tcc2006/38760286/38760286.pdf
-//  Generate random [r] and its multiplicative inverse [r]-1 on the prime field
-//  Note: there is a typo in the original paper. The inverse of A equals the
-//  inverse of revealed C multiplies B rather than A.
-std::pair<NdArrayRef, NdArrayRef> rand_bits_pair(SPUContext* ctx,
-                                                 int64_t numel) {
-  const auto field = ctx->getState<Z2kState>()->getDefaultField();
-  NdArrayRef out(makeType<AShrTy>(field), {numel});
-  NdArrayRef out_inv(makeType<AShrTy>(field), {numel});
-  std::vector<int64_t> cur_failed_indices;
-  std::vector<int64_t> pre_failed_indices;
-  std::mutex idx_mtx;
-  int64_t produced = 0;
-  int64_t un_produced = numel;
-
-  while (un_produced > 0) {
-    NdArrayRef tmp_inv(out.eltype(), out.shape());
-    auto rand_ab = wrap_rand_a(ctx, {un_produced * 2});
-    auto rand_a = rand_ab.slice({0}, {un_produced}, {});
-    auto rand_b = rand_ab.slice({un_produced}, {un_produced * 2}, {});
-    auto rand_c = wrap_a2p(ctx, wrap_mul(ctx, rand_a, rand_b));
-
-    DISPATCH_ALL_FIELDS(field, [&]() {
-      NdArrayView<ring2k_t> _rand_a(rand_a);
-      NdArrayView<ring2k_t> _rand_b(rand_b);
-      NdArrayView<ring2k_t> _rand_c(rand_c);
-      NdArrayView<ring2k_t> _out(out);
-      NdArrayView<ring2k_t> _out_inv(out_inv);
-      NdArrayView<ring2k_t> _tmp_inv(tmp_inv);
-      pforeach(0, un_produced, [&](int64_t idx) {
-        if (_rand_c[idx] != 0) {
-          _tmp_inv[idx] = mul_mod(mul_inv(_rand_c[idx]), _rand_b[idx]);
-        } else {  // abort
-          std::unique_lock lock(idx_mtx);
-          cur_failed_indices.push_back(idx);
-        }
-      });
-      if (pre_failed_indices.empty()) {
-        ring_assign(out, rand_a);
-        ring_assign(out_inv, tmp_inv);
-      } else {
-        pforeach(0, un_produced, [&](int64_t idx) {
-          _out[pre_failed_indices[idx]] = _rand_a[idx];
-          _out_inv[pre_failed_indices[idx]] = _tmp_inv[idx];
-        });
-      }
-      un_produced = cur_failed_indices.size();
-      produced = numel - un_produced;
-      pre_failed_indices = cur_failed_indices;
-      cur_failed_indices.clear();
+    SPU_ENFORCE_EQ(num_failed, 0);
+  });
+  NdArrayRef rand_sqrt_inverse = gfmp_batch_inverse(rand_sqrt);
+  DISPATCH_ALL_FIELDS(field, [&]() {
+    NdArrayView<ring2k_t> _rand_a(rand_a);
+    NdArrayView<ring2k_t> _rand_sqrt_inverse(rand_sqrt_inverse);
+    NdArrayView<ring2k_t> _out(out);
+    const ring2k_t inverse_two = mul_inv(static_cast<ring2k_t>(2));
+    pforeach(0, numel, [&](int64_t idx) {
+      auto c = mul_mod(_rand_a[idx], _rand_sqrt_inverse[idx]);
+      _out[idx] = mul_mod(inverse_two, add_mod(c, static_cast<ring2k_t>(1)));
     });
-  }
-  return {std::move(out), std::move(out_inv)};
-}
-
-// Ref: https://iacr.org/archive/tcc2006/38760286/38760286.pdf
-//  Unbounded Fan-In Multiplication
-NdArrayRef unbounded_mul(SPUContext* ctx,
-                         const std::vector<NdArrayRef>& inputs) {
-  SPU_ENFORCE(!inputs.empty());
-  int64_t l = inputs.size();
-  auto numel = inputs[0].numel();
-  NdArrayRef b;
-  NdArrayRef b_inv;
-  std::tie(b, b_inv) = rand_bits_pair(ctx, (l + 1) * numel);
-  auto shape = inputs[0].shape();
-
-  auto mul_lambda = [ctx](const NdArrayRef& a, const NdArrayRef& b) {
-    return wrap_mul(ctx, a, b);
-  };
-  auto open_lambda = [ctx](const NdArrayRef& a) { return wrap_a2p(ctx, a); };
-
-  // D[i] = B[i-1] * A[i] * B_inv[i]
-  std::vector<NdArrayRef> d_p;
-  {
-    std::vector<NdArrayRef> b_pre_vec;
-    std::vector<NdArrayRef> b_inv_vec;
-    for (int64_t i = 0; i < l; ++i) {
-      b_pre_vec.push_back(
-          b.slice({i * numel}, {(i + 1) * numel}, {}).reshape(shape));
-      b_inv_vec.push_back(
-          b_inv.slice({(i + 1) * numel}, {(i + 2) * numel}, {}).reshape(shape));
-    }
-    std::vector<NdArrayRef> tmp;
-    std::vector<NdArrayRef> d;
-    vmap(b_pre_vec.cbegin(), b_pre_vec.cend(), inputs.begin(), inputs.end(),
-         std::back_inserter(tmp), mul_lambda);
-    vmap(tmp.begin(), tmp.end(), b_inv_vec.begin(), b_inv_vec.end(),
-         std::back_inserter(d), mul_lambda);
-    vmap(d.begin(), d.end(), std::back_inserter(d_p), open_lambda);
-  }
-
-  // prefix public mul D_p
-  for (int64_t i = 1; i < l; ++i) {
-    d_p[i] = wrap_mul(ctx, d_p[i], d_p[i - 1]);
-  }
-  auto b_pre_inv = b_inv.slice({0}, {numel}, {}).reshape(shape);
-  auto b_cur = b.slice({l * numel}, {(l + 1) * numel}, {}).reshape(shape);
-  auto out = wrap_mul(ctx, d_p[l - 1], wrap_mul(ctx, b_pre_inv, b_cur));
+  });
   return out;
 }
 
@@ -507,15 +389,13 @@ Triple unbounded_carries(SPUContext* ctx, const std::vector<NdArrayRef>& s,
   SPU_ENFORCE_EQ(s.size(), p.size());
   SPU_ENFORCE_EQ(k.size(), p.size());
   NdArrayRef a;
-  // TODO: remove this because this b is the partial result of q.
-  NdArrayRef b = unbounded_mul(ctx, p);
+
+  auto p_copy = p;
+  std::reverse(p_copy.begin(), p_copy.end());
+  std::vector<NdArrayRef> q = prefix_mul(ctx, p_copy);
+  NdArrayRef b = q[q.size() - 1];
   NdArrayRef c = wrap_make_zeros(ctx, s[0].shape());
   {
-    auto p_copy = p;
-    std::reverse(p_copy.begin(), p_copy.end());
-    // equivalent to prefix_and
-    // TODO: 
-    auto q = prefix_mul(ctx, p_copy);
     std::reverse(q.begin(), q.end());
     auto mul_lambda = [ctx](const NdArrayRef& a, const NdArrayRef& b) {
       return wrap_mul(ctx, a, b);
@@ -647,6 +527,38 @@ std::pair<std::vector<NdArrayRef>, NdArrayRef> solved_bits(SPUContext* ctx,
     size_t exp = ScalarTypeToPrime<ring2k_t>::exp;
     std::vector<NdArrayRef> out_bits(exp);
     NdArrayRef out = wrap_make_zeros(ctx, shape).as(makeType<AShrTy>(field));
+    auto randbits = rand_bits(ctx, numel * exp);
+    for (int64_t i = 0; i < static_cast<int64_t>(exp); ++i) {
+      out_bits[i] = randbits.slice({i * numel}, {(i + 1) * numel}, {}).reshape(shape);
+
+    }
+    
+    std::vector<ring2k_t> bits_coeff(exp);
+    for (size_t i = 0; i < exp; ++i) {
+      bits_coeff[i] = static_cast<ring2k_t>(1) << i;
+    }
+
+    NdArrayView<ring2k_t> _out(out);
+    pforeach(0, numel, [&](int64_t idx) {
+      for (size_t i = 0; i < exp; ++i) {
+        NdArrayView<ring2k_t> _out_i(out_bits[i]);
+        _out[idx] = add_mod(
+            _out[idx], 
+            mul_mod(static_cast<ring2k_t>(1) << i, _out_i[idx]));
+      }
+    });
+
+    std::pair<std::vector<NdArrayRef>, NdArrayRef> ret;
+    ret.first = std::move(out_bits);
+    ret.second = std::move(out);
+    return ret;
+  });
+
+  
+  return DISPATCH_ALL_FIELDS(field, [&]() {
+    size_t exp = ScalarTypeToPrime<ring2k_t>::exp;
+    std::vector<NdArrayRef> out_bits(exp);
+    NdArrayRef out = wrap_make_zeros(ctx, shape).as(makeType<AShrTy>(field));
 
     auto k1 = hack_make_p(ctx, 1, shape);
     std::vector<NdArrayRef> tmp_p_bits(exp, k1);
@@ -728,6 +640,7 @@ std::vector<NdArrayRef> bit_decompose(SPUContext* ctx, const NdArrayRef& in) {
 
 }  // namespace
 
+using Bits = std::vector<NdArrayRef>;
 // Ref: https://iacr.org/archive/tcc2006/38760286/38760286.pdf
 //  Page 9: Protocol BITS
 NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& x) const {
@@ -739,29 +652,50 @@ NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& x) const {
   auto a_minus_b = wrap_sub(sctx, x, b);
   auto c = wrap_a2p(sctx, a_minus_b);
   auto c_bits = bit_decompose(sctx, c);
-  auto d_bits = bit_add(sctx, c_bits, b_bits);
-
-  // For a Mersenne Prime p = 2^exp - 1. The length of d_bits is exp+1. So the
-  // bits of p is all ones except the msb is zero.
-  const auto k0 = hack_make_p(sctx, 0, x.shape());
   const auto k1 = hack_make_p(sctx, 1, x.shape());
-  auto p_bits = std::vector<NdArrayRef>(d_bits.size(), k1);
-  p_bits.back() = k0;
-  auto q = bit_lt_ap(sctx, p_bits, d_bits);
-  auto f_bits = std::vector<NdArrayRef>(d_bits.size() - 1, k0);
-  f_bits[0] = k1;
-  std::vector<NdArrayRef> g_bits(d_bits.size() - 1);
-  for (size_t i = 0; i < f_bits.size(); ++i) {
-    g_bits[i] = wrap_mul(sctx, f_bits[i], q);
+  auto c_plus_one = wrap_add(sctx, c, k1);
+  auto c_plus_one_bits = bit_decompose(sctx, c_plus_one);
+
+  std::vector<std::future<Bits>> futures;
+  std::vector<std::unique_ptr<SPUContext>> sub_ctxs;
+  for (size_t i = 0; i < 2; ++i) {
+    sub_ctxs.push_back(sctx->fork());
   }
-  auto h_bits = bit_add(sctx,
-                        std::vector<NdArrayRef>(
-                            d_bits.begin(), d_bits.begin() + d_bits.size() - 1),
-                        g_bits);
-  NdArrayRef out(makeType<BShrTy>(field, h_bits.size() - 1), x.shape());
-  for (size_t i = 0; i < h_bits.size() - 1; ++i) {
+
+  auto async_res0 = std::async(bit_add, sub_ctxs[0].get(), c_bits, b_bits);
+  futures.push_back(std::move(async_res0));
+  auto async_res1 = std::async(bit_add, sub_ctxs[1].get(), c_plus_one_bits, b_bits);
+  futures.push_back(std::move(async_res1));
+  
+  auto c1 = futures[0].get();
+  auto c2 = futures[1].get();
+
+  NdArrayRef s = c1.back();
+
+  auto sub_lambda = [sctx](const NdArrayRef& a, const NdArrayRef& b) {
+    return wrap_sub(sctx, a, b);
+  };
+  auto add_lambda = [sctx](const NdArrayRef& a, const NdArrayRef& b) {
+    return wrap_add(sctx, a, b);
+  };
+  auto mul_lambda = [sctx](const NdArrayRef& a, const NdArrayRef& b) {
+    return wrap_mul(sctx, a, b);
+  };
+  std::vector<NdArrayRef> c_delta;
+  vmap(c2.cbegin(), c2.cend() - 1, c1.cbegin(), c1.cend() - 1, std::back_inserter(c_delta), sub_lambda);
+  
+  std::vector<NdArrayRef> s_bits(c_delta.size(), s);
+  std::vector<NdArrayRef> prod;
+  vmap(s_bits.cbegin(), s_bits.cend(), c_delta.cbegin(), c_delta.cend(), std::back_inserter(prod), mul_lambda);
+
+  std::vector<NdArrayRef> x_bits;
+  vmap(c1.cbegin(), c1.cend() - 1, prod.cbegin(), prod.cend(), std::back_inserter(x_bits), add_lambda);
+
+  NdArrayRef out(makeType<BShrTy>(field, prod.size()), x.shape());
+  // vmap()
+  for (size_t i = 0; i < x_bits.size(); ++i) {
     auto out_i = getBitShare(out, i);
-    ring_assign(out_i, h_bits[i]);
+    ring_assign(out_i, x_bits[i]);
   }
   return out;
 }
@@ -838,6 +772,81 @@ NdArrayRef TruncA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
     return ret;
   });
 }
+
+// Ref:
+// https://www.usenix.org/system/files/sec24summer-prepub-278-liu-fengrun.pdf
+// Protocol 3.2: Fixed-Mult
+NdArrayRef MulAATrunc::proc(KernelEvalContext* ctx, const NdArrayRef& x, const NdArrayRef& y,
+                        size_t bits, SignType sign) const {
+  (void)sign;  // TODO: optimize me.
+  SPU_ENFORCE(x.numel() == y.numel());
+  SPU_ENFORCE_EQ(x.eltype(), y.eltype());
+
+  // local mul
+  auto tmp_2t = gfmp_mul_mod(x, y);
+
+  const auto field = x.eltype().as<GfmpTy>()->field();
+  auto* sctx = ctx->sctx();
+  std::vector<NdArrayRef> r_bits;
+  NdArrayRef r;
+  std::tie(r_bits, r) = solved_bits(sctx, x.shape());
+  auto zero_shares = gen_zero_shares(ctx, tmp_2t.numel(), sctx->config().sss_threshold()<<1).reshape(tmp_2t.shape());
+  
+  auto r_msb = r_bits.back();
+  return DISPATCH_ALL_FIELDS(field, [&]() {
+    auto l = ScalarTypeToPrime<ring2k_t>::exp;
+    SPU_ENFORCE_LT(bits, l);
+    NdArrayRef r_hat = wrap_make_zeros(sctx, x.shape());
+    for (size_t i = bits; i < l; ++i) {
+      auto k =
+          hack_make_p(sctx, static_cast<uint128_t>(1) << (i - bits), x.shape());
+      r_hat = wrap_add(sctx, r_hat, wrap_mul(sctx, k, r_bits[i]));
+    }
+    for (size_t i = l - bits; i < l; ++i) {
+      auto k = hack_make_p(sctx, static_cast<uint128_t>(1) << i, x.shape());
+      r_hat = wrap_add(sctx, r_hat, wrap_mul(sctx, k, r_msb));
+    }
+
+    NdArrayRef r_2t = wrap_make_zeros(sctx, tmp_2t.shape());
+    for (size_t i = 0; i < l; ++i) {
+      auto k =
+          hack_make_p(sctx, static_cast<uint128_t>(1) << i, x.shape());
+          auto r_bit_square = gfmp_mul_mod(r_bits[i], r_bits[i]);
+          r_2t = wrap_add(sctx, r_2t, wrap_mul(sctx, k, r_bit_square));
+    }
+    r_2t = wrap_add(sctx, r_2t, zero_shares);
+
+    reveal(sctx, r, "r");
+    reveal(sctx, r_2t, "r_2t");
+
+    
+    // k2 = 2^(l-2)
+    auto k2 =
+        hack_make_p(sctx, static_cast<uint128_t>(1) << (l - 2), x.shape());
+    auto b = wrap_add(sctx, tmp_2t, k2);
+    auto c = wrap_add(sctx, b, r_2t);
+    auto c_p = wrap_a2p(sctx, c);
+    auto c_p_trunc = wrap_arshift_p(sctx, c_p, {static_cast<int64_t>(bits)});
+    auto c_bits = bit_decompose(sctx, c_p);
+    auto c_msb = c_bits.back();
+
+    // k1 = 1
+    auto k1 = hack_make_p(sctx, 1, x.shape());
+    auto e = wrap_mul(sctx, wrap_sub(sctx, k1, r_msb), c_msb);
+    // k3 = 2^(l-d) - 1
+    auto k3 = hack_make_p(sctx, (static_cast<uint128_t>(1) << (l - bits)) - 1,
+                          x.shape());
+    auto f =
+        wrap_add(sctx, wrap_sub(sctx, c_p_trunc, r_hat), wrap_mul(sctx, e, k3));
+
+    // k4 = 2^(l-d-2)
+    auto k4 = hack_make_p(sctx, static_cast<uint128_t>(1) << (l - bits - 2),
+                          x.shape());
+    auto ret = wrap_sub(sctx, f, k4);
+    return ret;
+  });
+}
+
 
 NdArrayRef MsbA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   auto* sctx = ctx->sctx();

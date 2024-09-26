@@ -106,6 +106,22 @@ class TruncAKernel : public Kernel {
                           size_t bits, SignType sign) const = 0;
 };
 
+class MulTruncAKernel : public Kernel {
+ public:
+  void evaluate(KernelEvalContext* ctx) const override;
+
+  // For protocol like SecureML, the most significant bit may have error with
+  // low probability, which lead to huge calculation error.
+  //
+  // Return true if the protocol has this kind of error.
+  virtual bool hasMsbError() const = 0;
+
+  virtual TruncLsbRounding lsbRounding() const = 0;
+
+  virtual NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs, const NdArrayRef& rhs,
+                          size_t bits, SignType sign) const = 0;
+};
+
 class BitSplitKernel : public Kernel {
  public:
   void evaluate(KernelEvalContext* ctx) const override;

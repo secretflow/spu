@@ -64,11 +64,32 @@ class TruncA : public TruncAKernel {
 
   Kind kind() const override { return Kind::Dynamic; }
 
-  ce::CExpr latency() const override { return ce::Const(0); }
+  ce::CExpr latency() const override { return ce::Const(1); }
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x, size_t bits,
+                  SignType sign) const override;
+
+  bool hasMsbError() const override { return false; }
+
+  // TODO: Add probabilistic truncation (with edabits)
+  TruncLsbRounding lsbRounding() const override {
+    return TruncLsbRounding::Random;
+  }
+};
+
+class MulAATrunc : public MulTruncAKernel {
+ public:
+  static constexpr char kBindName[] = "mul_aa_trunc";
+
+  Kind kind() const override { return Kind::Dynamic; }
+
+  ce::CExpr latency() const override { return ce::Const(1); }
+
+  ce::CExpr comm() const override { return ce::Const(0); }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x, const NdArrayRef& y, size_t bits,
                   SignType sign) const override;
 
   bool hasMsbError() const override { return false; }

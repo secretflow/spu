@@ -65,11 +65,13 @@ void gfmp_inverse_impl(NdArrayRef& ret, const NdArrayRef& x) {
   const auto numel = x.numel();
 
   NdArrayRef prefix_prod(ret.eltype(), ret.shape());
+ 
   DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> _prefix_prod(prefix_prod);
     NdArrayView<ring2k_t> _x(x);
     NdArrayView<ring2k_t> _ret(ret);
     _prefix_prod[0] = _x[0];
+    // TODO optimize prefix_mult in parallel
     for (int64_t i = 1; i < numel; ++i) {
       _prefix_prod[i] = mul_mod(_prefix_prod[i - 1], _x[i]);
     }
