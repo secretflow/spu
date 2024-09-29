@@ -68,7 +68,7 @@ workflows:
         - not: << pipeline.parameters.GHA_Meta >>
     jobs:
       - path-filtering/filter:
-          base-revision: main
+          base-revision: next
           config-path: .circleci/continue-config.yml
           mapping: |
             spu/.* build-and-run true
