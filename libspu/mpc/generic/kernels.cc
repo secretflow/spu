@@ -430,8 +430,8 @@ MemRef Bitrev::proc(KernelEvalContext* ctx, const MemRef& in, size_t start,
     int64_t nbits = in.eltype().as<BaseRingType>()->valid_bits();
     int64_t out_nbits = std::max(nbits, static_cast<int64_t>(end));
     int64_t field = ctx->sctx()->config().protocol().field();
-    out_nbits =
-        std::clamp(out_nbits, 0L, static_cast<int64_t>(SizeOf(field) * 8));
+    out_nbits = std::clamp<int64_t>(out_nbits, 0,
+                                    static_cast<int64_t>(SizeOf(field) * 8));
     const_cast<Type&>(out_ty).as<BaseRingType>()->set_valid_bits(out_nbits);
     const_cast<Type&>(out_ty).as<BaseRingType>()->set_storage_type(
         GetStorageType(field));
