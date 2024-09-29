@@ -1,0 +1,12 @@
+---
+name: Mark stale issues and pull requests
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: 40 9 * * *
+permissions:
+  pull-requests: write
+  issues: write
+jobs:
+  stale:
+    uses: secretflow/.github/.github/workflows/stale.yml@main

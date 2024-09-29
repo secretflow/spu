@@ -1,0 +1,18 @@
+func.func @%OP%_op_test_%IN0_DTYPE%_%OUT0_DTYPE%_p() {
+   %0 = arith.constant dense<%INPUT0%> : tensor<%IN0_SHAPE%x%IN0_DTYPE%>
+   %1 = pphlo.%OP% %0 %ATTR%: (tensor<%IN0_SHAPE%x%IN0_DTYPE%>)->tensor<%OUT0_SHAPE%x%OUT0_DTYPE%>
+   %2 = arith.constant dense<%EXPECTED0%> : tensor<%OUT0_SHAPE%x%OUT0_DTYPE%>
+   pphlo.custom_call @%CHECKER%(%1, %2) %TOL_ATTR%: (tensor<%OUT0_SHAPE%x%OUT0_DTYPE%>, tensor<%OUT0_SHAPE%x%OUT0_DTYPE%>)->()
+   func.return
+}
+
+// -----
+
+func.func @%OP%_op_test_%IN0_DTYPE%_%OUT0_DTYPE%_s() {
+   %0 = arith.constant dense<%INPUT0%> : tensor<%IN0_SHAPE%x%IN0_DTYPE%>
+   %1 = pphlo.convert %0 : (tensor<%IN0_SHAPE%x%IN0_DTYPE%>)->tensor<%IN0_SHAPE%x!pphlo.secret<%IN0_DTYPE%>>
+   %2 = pphlo.%OP% %1 %ATTR%: (tensor<%IN0_SHAPE%x!pphlo.secret<%IN0_DTYPE%>>)->tensor<%OUT0_SHAPE%x!pphlo.secret<%OUT0_DTYPE%>>
+   %3 = arith.constant dense<%EXPECTED0%> : tensor<%OUT0_SHAPE%x%OUT0_DTYPE%>
+   pphlo.custom_call @%CHECKER%(%3, %2) %TOL_ATTR%: (tensor<%OUT0_SHAPE%x%OUT0_DTYPE%>, tensor<%OUT0_SHAPE%x!pphlo.secret<%OUT0_DTYPE%>>)->()
+   func.return
+}

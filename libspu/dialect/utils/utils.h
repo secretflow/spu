@@ -1,0 +1,38 @@
+// Copyright 2024 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#pragma once
+
+#include "llvm/Support/raw_ostream.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/IR/BuiltinOps.h"
+#include "yacl/base/int128.h"
+
+namespace mlir::spu {
+
+template <typename T>
+std::string mlirObjectToString(T&& mlir_obj) {
+  std::string buf;
+  llvm::raw_string_ostream rss(buf);
+  rss << mlir_obj;
+  rss.flush();
+  return buf;
+}
+
+mlir::func::FuncOp get_entrypoint(ModuleOp op);
+
+APInt convertFromInt128(int64_t nbits, const int128_t& v);
+int128_t convertFromAPInt(const APInt& v);
+
+}  // namespace mlir::spu

@@ -1,0 +1,23 @@
+{
+    "name": "round_nearest_even",
+    "template": "basic_unary",
+    "testcases": [
+        {
+            "inputs": [
+                {
+                    "data": "[-2.5, 0.4, 0.5, 0.6, 2.5]",
+                    "shape": "5",
+                    "dtype": "f64"
+                }
+            ],
+            "expected": [
+                {
+                    "data": "[-2.0, 0.0, 0.0, 1.0, 2.0]",
+                    "shape": "5",
+                    "dtype": "f64"
+                }
+            ],
+            "checker": "expect_almost_eq"
+        }
+    ]
+}

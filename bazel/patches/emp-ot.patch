@@ -1,0 +1,99 @@
+diff --git a/emp-ot/ferret/ferret_cot.hpp b/emp-ot/ferret/ferret_cot.hpp
+index 9dc8222..fbd6170 100644
+--- a/emp-ot/ferret/ferret_cot.hpp
++++ b/emp-ot/ferret/ferret_cot.hpp
+@@ -28,8 +28,8 @@ FerretCOT<T>::FerretCOT(int party, int threads, T **ios,
+ template<typename T>
+ FerretCOT<T>::~FerretCOT() {
+ 	if (ot_pre_data != nullptr) {
+-		if(party == ALICE) write_pre_data128_to_file((void*)ot_pre_data, (__uint128_t)Delta, pre_ot_filename);
+-		else write_pre_data128_to_file((void*)ot_pre_data, (__uint128_t)0, pre_ot_filename);
++		// if(party == ALICE) write_pre_data128_to_file((void*)ot_pre_data, (__uint128_t)Delta, pre_ot_filename);
++		// else write_pre_data128_to_file((void*)ot_pre_data, (__uint128_t)0, pre_ot_filename);
+ 		delete[] ot_pre_data;
+ 	}
+ 	if (ot_data != nullptr) delete[] ot_data;
+@@ -100,7 +100,9 @@ void FerretCOT<T>::setup(std::string pre_file) {
+ 	});
+ 
+ 	ot_pre_data = new block[param.n_pre];
+-	bool hasfile = file_exists(pre_ot_filename), hasfile2;
++	//bool hasfile = file_exists(pre_ot_filename), hasfile2;
++	bool hasfile = false; 
++	bool hasfile2 = false;
+ 	if(party == ALICE) {
+ 		io->send_data(&hasfile, sizeof(bool));
+ 		io->flush();
+
+diff --git a/emp-ot/ferret/mpcot_reg.h b/emp-ot/ferret/mpcot_reg.h
+index 6659aa7..6b01601 100644
+--- a/emp-ot/ferret/mpcot_reg.h
++++ b/emp-ot/ferret/mpcot_reg.h
+@@ -123,6 +123,10 @@ public:
+ 		for(int i = start; i < end; ++i)
+ 			exec_f2k_sender(senders[i], ot, sparse_vector+i*leave_n, 
+ 					ios[threads - 1], i);
++
++        for (int i = 0; i < threads; i++)
++            ios[i]->flush();
++
+ 		for (auto & f : fut) f.get();
+ 	}
+ 
+@@ -152,7 +156,7 @@ public:
+ 			block *ggm_tree_mem, IO *io, int i) {
+ 		sender->compute(ggm_tree_mem, Delta_f2k);
+ 		sender->template send_f2k<OTPre<IO>>(ot, io, i);
+-		io->flush();
++		//io->flush();
+ 		if(is_malicious)
+ 			sender->consistency_check_msg_gen(consist_check_VW+i);
+ 	}
+
+diff --git a/emp-ot/ferret/preot.h b/emp-ot/ferret/preot.h
+index 0ac7641..a0ae2d3 100644
+--- a/emp-ot/ferret/preot.h
++++ b/emp-ot/ferret/preot.h
+@@ -10,10 +10,6 @@ class OTPre { public:
+ 	block * pre_data = nullptr;
+ 	bool * bits = nullptr;
+ 	int n;
+-	vector<block*> pointers;
+-	vector<const bool*> choices;
+-	vector<const block*> pointers0;
+-	vector<const block*> pointers1;
+ 
+ 	CCRH ccrh;
+ 	int length, count;
+
+diff --git a/emp-ot/ferret/twokeyprp.h b/emp-ot/ferret/twokeyprp.h
+index fd6236d..c2361a3 100644
+--- a/emp-ot/ferret/twokeyprp.h
++++ b/emp-ot/ferret/twokeyprp.h
+@@ -9,8 +9,8 @@ class TwoKeyPRP { public:
+ 	emp::AES_KEY aes_key[2];
+
+ 	TwoKeyPRP(block seed0, block seed1) {
+-		AES_set_encrypt_key((const block)seed0, aes_key);
+-		AES_set_encrypt_key((const block)seed1, &aes_key[1]);
++		AES_set_encrypt_key(seed0, aes_key);
++		AES_set_encrypt_key(seed1, &aes_key[1]);
+ 	}
+
+ 	void node_expand_1to2(block *children, block parent) {
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index fa06fd7..faf9802 100755
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -12,5 +12,8 @@ include_directories(${EMP-TOOL_INCLUDE_DIRS})
+ install(FILES cmake/emp-ot-config.cmake DESTINATION cmake/)
+ install(DIRECTORY emp-ot DESTINATION include/)
+
+-ENABLE_TESTING()
+-ADD_SUBDIRECTORY(test)
++option(ENABLE_TESTS "Enable tests" OFF)
++if (${ENABLE_TESTS})
++    ENABLE_TESTING()
++    ADD_SUBDIRECTORY(test)
++endif()

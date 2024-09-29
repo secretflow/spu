@@ -1,0 +1,14 @@
+---
+name: Python Linter
+on:
+  push:
+    branches:
+    - main
+  pull_request:
+    branches:
+    - main
+permissions:
+  contents: read
+jobs:
+  python-linter:
+    uses: secretflow/.github/.github/workflows/python-linter.yml@main

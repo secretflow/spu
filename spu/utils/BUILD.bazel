@@ -1,0 +1,77 @@
+# Copyright 2021 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@rules_proto_grpc//python:defs.bzl", "python_grpc_compile")
+load("@rules_python//python:defs.bzl", "py_library")
+
+package(default_visibility = ["//visibility:public"])
+
+py_library(
+    name = "simulation",
+    srcs = ["simulation.py"],
+    deps = [
+        ":frontend",
+        "//spu:api",
+    ],
+)
+
+proto_library(
+    name = "distributed_proto",
+    srcs = ["distributed.proto"],
+)
+
+python_grpc_compile(
+    name = "distributed_py_proto_grpc",
+    output_mode = "NO_PREFIX",
+    prefix_path = "../..",
+    protos = ["distributed_proto"],
+)
+
+py_library(
+    name = "distributed_impl",
+    srcs = [
+        "distributed_impl.py",
+        ":distributed_py_proto_grpc",
+        "//libspu:spu_py_proto",
+    ],
+    deps = [
+        ":frontend",
+        "//spu:api",
+    ],
+)
+
+py_library(
+    name = "distributed",
+    srcs = [
+        "distributed.py",
+    ],
+    deps = [
+        ":distributed_impl",
+        ":polyfill",
+    ],
+)
+
+py_library(
+    name = "frontend",
+    srcs = ["frontend.py"],
+    deps = [
+        "//spu:api",
+    ],
+)
+
+py_library(
+    name = "polyfill",
+    srcs = ["polyfill.py"],
+)

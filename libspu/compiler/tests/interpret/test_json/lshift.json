@@ -1,0 +1,27 @@
+{
+    "name": "shift_left",
+    "template": "basic_binary",
+    "testcases": [
+        {
+            "inputs": [
+                {
+                    "data": "[-1, 0, 1]",
+                    "shape": "3",
+                    "dtype": "i64"
+                },
+                {
+                    "data": "[1, 2, 3]",
+                    "shape": "3",
+                    "dtype": "i64"
+                }
+            ],
+            "expected": [
+                {
+                    "data": "[-2, 0, 8]",
+                    "shape": "3",
+                    "dtype": "i64"
+                }
+            ]
+        }
+    ]
+}

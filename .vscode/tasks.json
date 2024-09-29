@@ -1,0 +1,31 @@
+{
+    "tasks": [
+        {
+            "label": "Build and Test all (Debug)",
+            "type": "shell",
+            "command": "bazel test //... -c dbg --spawn_strategy=standalone --strip=never",
+            "group": {
+                "kind": "build",
+            },
+            "problemMatcher": "$gcc",
+        },
+        {
+            "label": "Build and Test all (Fast)",
+            "type": "shell",
+            "command": "bazel test //...",
+            "group": {
+                "kind": "build",
+            },
+            "problemMatcher": "$gcc",
+        },
+        {
+            "label": "Build and Test all (Release)",
+            "type": "shell",
+            "command": "bazel test //... -c opt",
+            "group": {
+                "kind": "build",
+            },
+            "problemMatcher": "$gcc",
+        },
+    ]
+}

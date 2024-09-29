@@ -1,0 +1,6 @@
+{
+    "use_mock_data": false,
+    "problem_type": "classification",
+    "builtin_dataset_name": "breast_cancer",
+    "left_slice_feature_ratio": 0.5
+}

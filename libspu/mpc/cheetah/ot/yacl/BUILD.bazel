@@ -1,0 +1,61 @@
+# Copyright 2022 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("@yacl//bazel:yacl.bzl", "AES_COPT_FLAGS")
+load("//bazel:spu.bzl", "spu_cc_library", "spu_cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+spu_cc_library(
+    name = "ferret",
+    srcs = [
+        "ferret.cc",
+        "yacl_ote_adapter.cc",
+    ],
+    hdrs = [
+        "ferret.h",
+        "mitccrh_exp.h",
+        "yacl_ote_adapter.h",
+        "yacl_util.h",
+    ],
+    copts = AES_COPT_FLAGS + ["-Wno-ignored-attributes"],
+    deps = [
+        "//libspu/mpc/cheetah:type",
+        "//libspu/mpc/cheetah/ot:ferret_ot_interface",
+        "//libspu/mpc/cheetah/ot:ot_util",
+        "//libspu/mpc/common:communicator",
+        "@yacl//yacl/base:aligned_vector",
+        "@yacl//yacl/base:buffer",
+        "@yacl//yacl/base:dynamic_bitset",
+        "@yacl//yacl/base:int128",
+        "@yacl//yacl/crypto/aes:aes_opt",
+        "@yacl//yacl/crypto/rand",
+        "@yacl//yacl/crypto/tools:crhash",
+        "@yacl//yacl/crypto/tools:rp",
+        "@yacl//yacl/kernel/algorithms:base_ot",
+        "@yacl//yacl/kernel/algorithms:ferret_ote",
+        "@yacl//yacl/kernel/algorithms:iknp_ote",
+        "@yacl//yacl/kernel/algorithms:softspoken_ote",
+        "@yacl//yacl/link",
+    ],
+)
+
+spu_cc_test(
+    name = "ferret_test",
+    srcs = ["ferret_test.cc"],
+    deps = [
+        ":ferret",
+        "//libspu/mpc/utils:simulate",
+    ],
+)

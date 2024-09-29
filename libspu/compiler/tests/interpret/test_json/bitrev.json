@@ -1,0 +1,23 @@
+{
+    "name": "bitrev",
+    "template": "basic_unary",
+    "testcases": [
+        {
+            "inputs": [
+                {
+                    "data": "[262143, 1, 34359738368, 536870911]",
+                    "shape": "4",
+                    "dtype": "i64"
+                }
+            ],
+            "expected": [
+                {
+                    "data": "[68719214592, 34359738368, 1, 68719476608]",
+                    "shape": "4",
+                    "dtype": "i64"
+                }
+            ],
+            "attributes": "start = 0, end = 36"
+        }
+    ]
+}

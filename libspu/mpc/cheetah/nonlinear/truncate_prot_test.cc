@@ -1,0 +1,218 @@
+// Copyright 2022 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include "libspu/mpc/cheetah/nonlinear/truncate_prot.h"
+
+#include "gtest/gtest.h"
+
+#include "libspu/mpc/cheetah/ot/basic_ot_prot.h"
+#include "libspu/mpc/utils/ring_ops.h"
+#include "libspu/mpc/utils/simulate.h"
+
+namespace spu::mpc::cheetah {
+
+class TruncateProtTest
+    : public ::testing::TestWithParam<std::tuple<size_t, bool, std::string>> {
+  void SetUp() override {}
+};
+
+INSTANTIATE_TEST_SUITE_P(
+    Cheetah, TruncateProtTest,
+    testing::Combine(testing::Values(32, 64, 128), testing::Values(true, false),
+                     testing::Values("Unknown", "Zero", "One")),
+    [](const testing::TestParamInfo<TruncateProtTest::ParamType> &p) {
+      return fmt::format("{}{}MSB{}", std::get<0>(p.param),
+                         std::get<1>(p.param) ? "Signed" : "Unsigned",
+                         std::get<2>(p.param));
+    });
+
+template <typename T>
+bool SignBit(T x) {
+  using uT = typename std::make_unsigned<T>::type;
+  return (static_cast<uT>(x) >> (8 * sizeof(T) - 1)) & 1;
+}
+
+TEST_P(TruncateProtTest, Basic) {
+  size_t kWorldSize = 2;
+  int64_t n = 100;
+  size_t shift = 12;
+  size_t field = std::get<0>(GetParam());
+  bool signed_arith = std::get<1>(GetParam());
+  std::string msb = std::get<2>(GetParam());
+  SignType sign;
+
+  MemRef inp[2] = {MemRef(makeType<RingTy>(SE_INVALID, field), {n}),
+                   MemRef(makeType<RingTy>(SE_INVALID, field), {n})};
+  ring_rand(inp[0]);
+
+  if (msb == "Unknown") {
+    ring_rand(inp[1]);
+    sign = SignType::Unknown;
+  } else {
+    MemRef msg(makeType<RingTy>(SE_INVALID, field), {n});
+    ring_rand(msg);
+    DISPATCH_ALL_STORAGE_TYPES(GetStorageType(field), [&]() {
+      auto xmsg = MemRefView<ScalarT>(msg);
+      size_t bw = SizeOf(field) * 8;
+      if (msb == "Zero") {
+        ScalarT mask = (static_cast<ScalarT>(1) << (bw - 1)) - 1;
+        pforeach(0, msg.numel(), [&](int64_t i) { xmsg[i] &= mask; });
+
+        sign = SignType::Positive;
+      } else {
+        ScalarT mask = (static_cast<ScalarT>(1) << (bw - 1));
+        pforeach(0, msg.numel(), [&](int64_t i) { xmsg[i] |= mask; });
+        sign = SignType::Negative;
+      }
+    });
+
+    inp[1] = ring_sub(msg, inp[0]);
+  }
+
+  MemRef oup[2];
+  utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
+    int rank = ctx->Rank();
+    auto conn = std::make_shared<Communicator>(ctx);
+    auto base = std::make_shared<BasicOTProtocols>(
+        conn, CheetahOtKind::YACL_Softspoken);
+    TruncateProtocol trunc_prot(base);
+    TruncateProtocol::Meta meta;
+    meta.sign = sign;
+    meta.signed_arith = signed_arith;
+    meta.shift_bits = shift;
+    meta.use_heuristic = false;
+
+    [[maybe_unused]] auto b0 = ctx->GetStats()->sent_bytes.load();
+    [[maybe_unused]] auto s0 = ctx->GetStats()->sent_actions.load();
+
+    oup[rank] = trunc_prot.Compute(inp[rank], meta);
+
+    [[maybe_unused]] auto b1 = ctx->GetStats()->sent_bytes.load();
+    [[maybe_unused]] auto s1 = ctx->GetStats()->sent_actions.load();
+
+    SPDLOG_DEBUG("Truncate {} bits share by {} bits {} bits each #sent {}",
+                 SizeOf(field) * 8, meta.shift_bits,
+                 (b1 - b0) * 8. / inp[0].numel(), (s1 - s0));
+  });
+
+  EXPECT_EQ(oup[0].shape(), oup[1].shape());
+
+  DISPATCH_ALL_STORAGE_TYPES(GetStorageType(field), [&]() {
+    using signed_t = std::make_signed<ScalarT>::type;
+    using usigned_t = std::make_unsigned<ScalarT>::type;
+
+    if (signed_arith) {
+      auto xout0 = MemRefView<signed_t>(oup[0]);
+      auto xout1 = MemRefView<signed_t>(oup[1]);
+      auto xinp0 = absl::MakeSpan(&inp[0].at<signed_t>(0), inp[0].numel());
+      auto xinp1 = absl::MakeSpan(&inp[1].at<signed_t>(0), inp[1].numel());
+
+      for (int64_t i = 0; i < n; ++i) {
+        signed_t in = xinp0[i] + xinp1[i];
+        signed_t expected = in >> shift;
+        if (sign != SignType::Unknown) {
+          ASSERT_EQ(SignBit<signed_t>(in), sign == SignType::Negative);
+        }
+        signed_t got = xout0[i] + xout1[i];
+        EXPECT_NEAR(expected, got, 1);
+      }
+    } else {
+      auto xout0 = MemRefView<usigned_t>(oup[0]);
+      auto xout1 = MemRefView<usigned_t>(oup[1]);
+      auto xinp0 = absl::MakeSpan(&inp[0].at<usigned_t>(0), inp[0].numel());
+      auto xinp1 = absl::MakeSpan(&inp[1].at<usigned_t>(0), inp[1].numel());
+
+      for (int64_t i = 0; i < n; ++i) {
+        usigned_t in = xinp0[i] + xinp1[i];
+        usigned_t expected = (in) >> shift;
+        if (sign != SignType::Unknown) {
+          ASSERT_EQ(SignBit<usigned_t>(in), sign == SignType::Negative);
+        }
+        usigned_t got = xout0[i] + xout1[i];
+        ASSERT_NEAR(expected, got, 1);
+      }
+    }
+  });
+}
+
+TEST_P(TruncateProtTest, Heuristic) {
+  size_t kWorldSize = 2;
+  int64_t n = 100;
+  size_t shift = 13;
+  size_t field = std::get<0>(GetParam());
+  bool signed_arith = std::get<1>(GetParam());
+  std::string msb = std::get<2>(GetParam());
+  if (not signed_arith or msb != "Unknown") {
+    return;
+  }
+
+  MemRef inp[2] = {MemRef(makeType<RingTy>(SE_INVALID, field), {n}),
+                   MemRef(makeType<RingTy>(SE_INVALID, field), {n})};
+  ring_rand(inp[0]);
+
+  DISPATCH_ALL_STORAGE_TYPES(GetStorageType(field), [&]() {
+    MemRef msg(makeType<RingTy>(SE_INVALID, field), {n});
+    ring_rand(msg);
+    ring_rshift_(msg,
+                 {static_cast<int64_t>(TruncateProtocol::kHeuristicBound)});
+    MemRefView<ScalarT> xmsg(msg);
+    for (int64_t i = 0; i < n; i += 2) {
+      xmsg[i] = -xmsg[i];
+    }
+    inp[1] = ring_sub(msg, inp[0]);
+  });
+
+  MemRef oup[2];
+  utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
+    int rank = ctx->Rank();
+    auto conn = std::make_shared<Communicator>(ctx);
+    auto base = std::make_shared<BasicOTProtocols>(
+        conn, CheetahOtKind::YACL_Softspoken);
+    TruncateProtocol trunc_prot(base);
+    TruncateProtocol::Meta meta;
+    meta.sign = SignType::Unknown;
+    meta.signed_arith = true;
+    meta.shift_bits = shift;
+    meta.use_heuristic = true;
+    oup[rank] = trunc_prot.Compute(inp[rank], meta);
+  });
+
+  [[maybe_unused]] int count_zero = 0;
+  [[maybe_unused]] int count_pos = 0;
+  [[maybe_unused]] int count_neg = 0;
+  DISPATCH_ALL_STORAGE_TYPES(GetStorageType(field), [&]() {
+    using signed_t = std::make_signed<ScalarT>::type;
+
+    auto xout0 = MemRefView<signed_t>(oup[0]);
+    auto xout1 = MemRefView<signed_t>(oup[1]);
+    auto xinp0 = MemRefView<signed_t>(inp[0]);
+    auto xinp1 = MemRefView<signed_t>(inp[1]);
+
+    for (int64_t i = 0; i < n; ++i) {
+      signed_t in = xinp0[i] + xinp1[i];
+      signed_t expected = in >> shift;
+      signed_t got = xout0[i] + xout1[i];
+      EXPECT_NEAR(expected, got, 1);
+      if (expected == got) {
+        count_zero += 1;
+      } else if (expected < got) {
+        count_pos += 1;
+      } else {
+        count_neg += 1;
+      }
+    }
+  });
+}
+
+}  // namespace spu::mpc::cheetah

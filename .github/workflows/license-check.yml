@@ -1,0 +1,14 @@
+---
+name: License Check
+on:
+  push:
+    branches:
+    - main
+  pull_request:
+    branches:
+    - main
+permissions:
+  contents: read
+jobs:
+  license-checker:
+    uses: secretflow/.github/.github/workflows/license-check.yml@main
