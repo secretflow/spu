@@ -21,7 +21,6 @@
 using namespace spu::kernel::hlo;
 
 #define DEFINE_CAPI_OBJECT_WRAP(name, cpptype)                \
-  static inline name wrap(cpptype *cpp) { return name{cpp}; } \
   static inline cpptype *unwrap(name c) {                     \
     return static_cast<cpptype *>(c.ptr);                     \
   }
