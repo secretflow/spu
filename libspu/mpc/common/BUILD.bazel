@@ -65,6 +65,7 @@ spu_cc_library(
     hdrs = ["prg_state.h"],
     deps = [
         "//libspu/core:object",
+        "//libspu/mpc/utils:permute",
         "@yacl//yacl/crypto/rand",
         "@yacl//yacl/crypto/tools:prg",
         "@yacl//yacl/link:context",

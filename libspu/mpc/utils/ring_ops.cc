@@ -234,21 +234,27 @@ NdArrayRef ring_rand(FieldType field, const Shape& shape, uint128_t prg_seed,
   return res;
 }
 
-NdArrayRef ring_rand_range(FieldType field, const Shape& shape, int32_t min,
-                           int32_t max) {
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  std::uniform_int_distribution<int32_t> dis(min, max);
+NdArrayRef ring_rand_range(FieldType field, const Shape& shape, uint128_t min,
+                           uint128_t max) {
+  constexpr yacl::crypto::SymmetricCrypto::CryptoType kCryptoType =
+      yacl::crypto::SymmetricCrypto::CryptoType::AES128_ECB;
+  constexpr uint64_t kAesInitialVector = 0U;
+  uint64_t cnt = 0;
 
   NdArrayRef x(makeType<RingTy>(field), shape);
   auto numel = x.numel();
 
   DISPATCH_ALL_FIELDS(field, [&]() {
+    std::vector<ring2k_t> rand_range(numel);
+    yacl::crypto::FillPRandWithLtN<ring2k_t>(
+        kCryptoType, yacl::crypto::SecureRandSeed(), kAesInitialVector, cnt,
+        absl::MakeSpan(rand_range), static_cast<ring2k_t>(max - min + 1));
     SPU_ENFORCE(sizeof(ring2k_t) >= sizeof(int32_t));
 
     auto iter = x.begin();
     for (auto idx = 0; idx < numel; ++idx, ++iter) {
-      iter.getScalarValue<ring2k_t>() = static_cast<ring2k_t>(dis(gen));
+      iter.getScalarValue<ring2k_t>() =
+          rand_range[idx] + static_cast<ring2k_t>(min);
     }
   });
 
@@ -292,17 +298,15 @@ NdArrayRef ring_ones(FieldType field, const Shape& shape) {
 }
 
 NdArrayRef ring_randbit(FieldType field, const Shape& shape) {
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  std::uniform_int_distribution<> distrib(0, RAND_MAX);
-
   NdArrayRef ret(makeType<RingTy>(field), shape);
   auto numel = ret.numel();
+
+  auto rand_bytes = yacl::crypto::RandBytes(numel, false);
 
   return DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> _ret(ret);
     for (auto idx = 0; idx < numel; ++idx) {
-      _ret[idx] = distrib(gen) & 0x1;
+      _ret[idx] = static_cast<ring2k_t>(rand_bytes[idx]) & 0x1;
     }
     return ret;
   });

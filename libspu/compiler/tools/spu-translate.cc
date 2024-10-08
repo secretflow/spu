@@ -41,9 +41,6 @@
 #include "libspu/compiler/core/core.h"
 #undef EXPOSE_PIPELINE_BUILDER
 
-template <typename T>
-struct fmt::formatter<xt::xarray<T>> : ostream_formatter {};
-
 llvm::cl::opt<uint32_t> ProtocolKind(
     "protocol_kind", llvm::cl::init(1),
     llvm::cl::desc("1 for REF2k, 2 for SEMI2k, 3 for ABY3, 4 for Cheetah"));

@@ -66,4 +66,3 @@ NdArrayRef xt_to_ndarray(const xt::xexpression<E>& e) {
 
 template <typename T>
 struct fmt::is_range<xt::xarray<T>, char> : std::false_type {};
-
