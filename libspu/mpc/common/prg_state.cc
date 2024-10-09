@@ -19,6 +19,8 @@
 #include "yacl/link/algorithm/allgather.h"
 #include "yacl/utils/serialize.h"
 
+#include "libspu/mpc/utils/permute.h"
+
 namespace spu::mpc {
 
 PrgState::PrgState() {
@@ -105,6 +107,17 @@ NdArrayRef PrgState::genPubl(FieldType field, const Shape& shape) {
       kAesType, pub_seed_, 0, pub_counter_,
       absl::MakeSpan(res.data<char>(), res.buf()->size()));
 
+  return res;
+}
+
+Index PrgState::genPrivPerm(size_t numel) {
+  return genRandomPerm(numel, priv_seed_, &priv_counter_);
+}
+
+std::pair<Index, Index> PrgState::genPrssPermPair(size_t numel) {
+  std::pair<Index, Index> res;
+  res.first = genRandomPerm(numel, self_seed_, &r0_counter_);
+  res.second = genRandomPerm(numel, next_seed_, &r1_counter_);
   return res;
 }
 
