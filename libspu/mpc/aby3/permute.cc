@@ -27,7 +27,9 @@ NdArrayRef RandPermM::proc(KernelEvalContext* ctx, const Shape& shape) const {
   NdArrayRef out(makeType<PShrTy>(), shape);
 
   auto* prg_state = ctx->getState<PrgState>();
-  const auto [pv_self, pv_next] = prg_state->genPrssPermPair(out.numel());
+  const auto& pvs = prg_state->genPrssPermPair(out.numel());
+  const auto& pv_self = pvs.first;
+  const auto& pv_next = pvs.second;
 
   const auto field = out.eltype().as<PShrTy>()->field();
   auto out1 = getFirstShare(out);
