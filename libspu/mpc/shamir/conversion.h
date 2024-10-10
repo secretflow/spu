@@ -109,7 +109,7 @@ class MsbA : public UnaryKernel {
   ce::CExpr latency() const override {
     // 1 * carry : log(k) + 1
     // 1 * rotate: 1
-    return Log(ce::K()) + 1 + 1;
+    return ce::Const(3);
   }
 
   ce::CExpr comm() const override {
