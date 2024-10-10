@@ -154,8 +154,7 @@ MemRef LShift::proc(KernelEvalContext* ctx, const MemRef& in,
       in.eltype().as<BaseRingType>()->valid_bits() +
       (shift.empty() ? 0 : *std::max_element(shift.begin(), shift.end()));
   int64_t field = ctx->sctx()->config().protocol().field();
-  out_nbits =
-      std::clamp(out_nbits, 0L, static_cast<int64_t>(SizeOf(field) * 8));
+  out_nbits = std::clamp<int64_t>(out_nbits, 0, SizeOf(field) * 8);
 
   // fast path for packed bshares
   if (is_packed(in.eltype())) {
@@ -224,8 +223,7 @@ MemRef RShift::proc(KernelEvalContext* ctx, const MemRef& in,
           nbits,
           (shift.empty() ? 0 : *std::min_element(shift.begin(), shift.end())));
   int64_t field = ctx->sctx()->config().protocol().field();
-  out_nbits =
-      std::clamp(out_nbits, 0L, static_cast<int64_t>(SizeOf(field) * 8));
+  out_nbits = std::clamp<int64_t>(out_nbits, 0, SizeOf(field) * 8);
 
   if (is_packed(in.eltype())) {
     const_cast<Type&>(out_ty).as<BaseRingType>()->set_valid_bits(out_nbits);
@@ -430,8 +428,7 @@ MemRef Bitrev::proc(KernelEvalContext* ctx, const MemRef& in, size_t start,
     int64_t nbits = in.eltype().as<BaseRingType>()->valid_bits();
     int64_t out_nbits = std::max(nbits, static_cast<int64_t>(end));
     int64_t field = ctx->sctx()->config().protocol().field();
-    out_nbits =
-        std::clamp(out_nbits, 0L, static_cast<int64_t>(SizeOf(field) * 8));
+    out_nbits = std::clamp<int64_t>(out_nbits, 0, SizeOf(field) * 8);
     const_cast<Type&>(out_ty).as<BaseRingType>()->set_valid_bits(out_nbits);
     const_cast<Type&>(out_ty).as<BaseRingType>()->set_storage_type(
         GetStorageType(field));
