@@ -24,6 +24,7 @@
 #include "libspu/dialect/pphlo/IR/ops.h"
 #include "libspu/dialect/pphlo/IR/types.h"
 #include "libspu/dialect/pphlo/transforms/pass_details.h"
+#include "libspu/dialect/utils/utils.h"
 
 namespace mlir::spu::pphlo {
 namespace {
@@ -458,8 +459,10 @@ struct ConvertOpConverter : public OpRewritePattern<pphlo::ConvertOp> {
     if (targetType.isInteger(/*width=*/1)) {
       // When casting to bool, we need to compare whether the value is equal to
       // zero.
-      Value zero = rewriter.create<arith::ConstantOp>(
-          loc, rewriter.getZeroAttr(converted_in.getType()));
+      auto zero = splatifyConstant(
+          rewriter,
+          rewriter.getZeroAttr(getElementTypeOrSelf(converted_in.getType())),
+          converted_in);
       if (sourceType.isInteger()) {
         rewriter.replaceOpWithNewOp<mlir::arith::CmpIOp>(
             op, arith::CmpIPredicate::ne, converted_in, zero);
@@ -563,10 +566,11 @@ struct NotConverter : public OpRewritePattern<pphlo::NotOp> {
     auto el_type = getElementTypeOrSelf(in.getType());
 
     // pphlo.not(x) -> x ^ -1
-    Value allOnes = getConstantOrSplat(
-        rewriter, loc, in.getType(),
+    auto allOnes = splatifyConstant(
+        rewriter,
         rewriter.getIntegerAttr(
-            el_type, APInt::getAllOnes(el_type.getIntOrFloatBitWidth())));
+            el_type, APInt::getAllOnes(el_type.getIntOrFloatBitWidth())),
+        in);
 
     Value ret = rewriter.create<::mlir::arith::XOrIOp>(loc, allOnes, in);
 

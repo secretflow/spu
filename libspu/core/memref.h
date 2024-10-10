@@ -43,7 +43,7 @@ struct ValueProto {
 class MemRef {
   std::shared_ptr<yacl::Buffer> buf_{nullptr};
 
-  Type eltype_{};
+  Type eltype_;
 
   // the shape.
   Shape shape_{};
@@ -153,6 +153,11 @@ class MemRef {
     return strides_ == makeCompactStrides(shape_);
   }
 
+  bool isSplat() const {
+    return std::all_of(strides_.begin(), strides_.end(),
+                       [](Stride s) { return s == 0; });
+  }
+
   // Test only
   bool canUseFastIndexing() const { return use_fast_indexing_; }
   const Stride& fastIndexingStride() const { return fast_indexing_stride_; }
@@ -167,14 +172,14 @@ class MemRef {
   T& at(const Index& pos) {
     auto fi = calcFlattenOffset(pos, shape_, strides_);
     return *reinterpret_cast<T*>(static_cast<std::byte*>(data()) +
-                                 elsize() * fi);
+                                 (elsize() * fi));
   }
 
   template <typename T = std::byte>
   const T& at(const Index& pos) const {
     auto fi = calcFlattenOffset(pos, shape_, strides_);
     return *reinterpret_cast<const T*>(static_cast<const std::byte*>(data()) +
-                                       elsize() * fi);
+                                       (elsize() * fi));
   }
 
   // Get data pointer
@@ -192,7 +197,7 @@ class MemRef {
   T& at(int64_t pos) {
     if (use_fast_indexing_) {
       return *reinterpret_cast<T*>(static_cast<std::byte*>(data()) +
-                                   elsize() * pos * fast_indexing_stride_);
+                                   (elsize() * pos * fast_indexing_stride_));
     } else {
       return at<T>(unflattenIndex(pos, shape_));
     }
@@ -201,9 +206,9 @@ class MemRef {
   template <typename T = std::byte>
   const T& at(int64_t pos) const {
     if (use_fast_indexing_) {
-      return *reinterpret_cast<const T*>(static_cast<const std::byte*>(data()) +
-                                         elsize() * pos *
-                                             fast_indexing_stride_);
+      return *reinterpret_cast<const T*>(
+          static_cast<const std::byte*>(data()) +
+          (elsize() * pos * fast_indexing_stride_));
     } else {
       return at<T>(unflattenIndex(pos, shape_));
     }
@@ -458,23 +463,25 @@ class MemRefView {
 
   T& operator[](size_t idx) {
     if (arr_->canUseFastIndexing()) {
-      return *reinterpret_cast<T*>(arr_->data<std::byte>() +
-                                   elsize_ * idx * arr_->fastIndexingStride());
+      return *reinterpret_cast<T*>(
+          arr_->data<std::byte>() +
+          (elsize_ * idx * arr_->fastIndexingStride()));
     } else {
       const auto& indices = unflattenIndex(idx, arr_->shape());
       auto fi = calcFlattenOffset(indices, arr_->shape(), arr_->strides());
-      return *reinterpret_cast<T*>(arr_->data<std::byte>() + elsize_ * fi);
+      return *reinterpret_cast<T*>(arr_->data<std::byte>() + (elsize_ * fi));
     }
   }
 
   T const& operator[](size_t idx) const {
     if (arr_->canUseFastIndexing()) {
-      return *reinterpret_cast<T*>(arr_->data<std::byte>() +
-                                   elsize_ * idx * arr_->fastIndexingStride());
+      return *reinterpret_cast<T*>(
+          arr_->data<std::byte>() +
+          (elsize_ * idx * arr_->fastIndexingStride()));
     } else {
       const auto& indices = unflattenIndex(idx, arr_->shape());
       auto fi = calcFlattenOffset(indices, arr_->shape(), arr_->strides());
-      return *reinterpret_cast<T*>(arr_->data<std::byte>() + elsize_ * fi);
+      return *reinterpret_cast<T*>(arr_->data<std::byte>() + (elsize_ * fi));
     }
   }
 };

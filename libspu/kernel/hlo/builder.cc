@@ -16,6 +16,7 @@
 
 #include "llvm/ADT/TypeSwitch.h"
 #include "mlir/Dialect/Arith/IR/Arith.h"
+#include "mlir/Dialect/Tensor/IR/Tensor.h"
 #include "mlir/IR/BuiltinAttributes.h"
 
 #include "libspu/compiler/common/compilation_context.h"
@@ -97,9 +98,9 @@ HloBuilder::HloBuilder()
       builder_(mlir::OpBuilder(module_.getBodyRegion())),
       loc_(mlir::UnknownLoc::get(&mlir_ctx_)),
       type_tools_(&mlir_ctx_) {
-  mlir_ctx_
-      .loadDialect<PPHloDialect, mlir::func::FuncDialect,
-                   mlir::arith::ArithDialect, mlir::spu::ring::RingDialect>();
+  mlir_ctx_.loadDialect<PPHloDialect, mlir::func::FuncDialect,
+                        mlir::arith::ArithDialect, mlir::spu::ring::RingDialect,
+                        mlir::tensor::TensorDialect>();
 
   mlir::DialectRegistry registry;
   mlir_ctx_.appendDialectRegistry(registry);
@@ -157,6 +158,108 @@ mlir::Value HloBuilder::Argument(spu::PtType pt_type,
   main_fun_op_.setFunctionType(builder_.getFunctionType(arg_type_list, {}));
 
   return main_fun_op_.getBody().addArgument(arg_type, loc_);
+}
+
+mlir::Value HloBuilder::SplatConstant(const PtBufferView &view,
+                                      const mlir::Value &as_shape) {
+  SPU_ENFORCE(view.shape.numel() == 1, "Only scalar is allowed");
+  mlir::TypedAttr const_attr;
+  auto pt_type = view.pt_type;
+  mlir::Type element_type;
+
+  switch (pt_type) {
+#define SWITCH_CASE_INT_AUX(_PtT_, _BuiltinT_, _Bits_)                  \
+  case _PtT_: {                                                         \
+    element_type = mlir::IntegerType::get(&mlir_ctx_, _Bits_);          \
+    const_attr =                                                        \
+        builder_.getIntegerAttr(element_type, view.get<_BuiltinT_>(0)); \
+    break;                                                              \
+  }
+
+#define SWITCH_CASE_INT(_PtT_, _BuiltinT_) \
+  SWITCH_CASE_INT_AUX(_PtT_, _BuiltinT_, sizeof(_BuiltinT_) * 8)
+
+    SWITCH_CASE_INT_AUX(PT_I1, bool, 1)
+    SWITCH_CASE_INT(PT_I8, int8_t)
+    SWITCH_CASE_INT(PT_U8, uint8_t)
+    SWITCH_CASE_INT(PT_I16, int16_t)
+    SWITCH_CASE_INT(PT_U16, uint16_t)
+    SWITCH_CASE_INT(PT_I32, int32_t)
+    SWITCH_CASE_INT(PT_U32, uint32_t)
+    SWITCH_CASE_INT(PT_I64, int64_t)
+    SWITCH_CASE_INT(PT_U64, uint64_t)
+    SWITCH_CASE_INT(PT_I128, int128_t)
+
+#undef SWITCH_CASE_INT
+#undef SWITCH_CASE_INT_AUX
+
+#define SWITCH_CASE_FLOAT(_PtT_, _BuiltinT_, _MlirT_)                   \
+  case _PtT_: {                                                         \
+    auto element_type = mlir::FloatType::get##_MlirT_(&mlir_ctx_);      \
+    const_attr =                                                        \
+        builder_.getIntegerAttr(element_type, view.get<_BuiltinT_>(0)); \
+    break;                                                              \
+  }
+
+    SWITCH_CASE_FLOAT(PT_F16, half_float::half, F16)
+    SWITCH_CASE_FLOAT(PT_F32, float, F32)
+    SWITCH_CASE_FLOAT(PT_F64, double, F64)
+
+#undef SWITCH_CASE_FLOAT
+
+    default: {
+      SPU_ENFORCE(false, "should not be here");
+      return {};
+    }
+  }
+
+  auto const_value =
+      mlir::spu::splatifyConstant(builder_, const_attr, as_shape);
+
+  switch (pt_type) {
+    case PT_U8:
+      [[fallthrough]];
+    case PT_U16:
+      [[fallthrough]];
+    case PT_U32:
+      [[fallthrough]];
+    case PT_U64: {
+      auto unsigned_type =
+          builder_.getIntegerType(element_type.getIntOrFloatBitWidth(), false);
+      auto current_type = mlir::cast<mlir::ShapedType>(const_value.getType());
+      const_value = builder_.create<mlir::spu::pphlo::BitcastConvertOp>(
+          loc_, current_type.clone(unsigned_type), const_value);
+    }
+    default:
+      // noop
+      break;
+  }
+
+  return const_value;
+}
+
+mlir::Value HloBuilder::Splat(const mlir::Value &in,
+                              const mlir::Value &as_shape) {
+  mlir::Value element = in;
+  if (mlir::dyn_cast<mlir::ShapedType>(in.getType())) {
+    element =
+        builder_.create<mlir::tensor::ExtractOp>(loc_, in, mlir::ValueRange());
+  }
+
+  llvm::SmallVector<mlir::Value> dynamic_dim;
+  auto base_shape = mlir::cast<mlir::ShapedType>(as_shape.getType()).getShape();
+
+  if (mlir::ShapedType::isDynamicShape(base_shape)) {
+    for (size_t rank = 0; rank < base_shape.size(); ++rank) {
+      if (mlir::ShapedType::isDynamic(base_shape[rank])) {
+        dynamic_dim.emplace_back(
+            builder_.create<mlir::tensor::DimOp>(loc_, as_shape, rank));
+      }
+    }
+  }
+
+  return builder_.create<mlir::tensor::SplatOp>(loc_, element, base_shape,
+                                                dynamic_dim);
 }
 
 mlir::Value HloBuilder::Constant(const PtBufferView &view,

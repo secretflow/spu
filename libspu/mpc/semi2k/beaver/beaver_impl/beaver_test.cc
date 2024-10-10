@@ -893,7 +893,9 @@ TEST_P(BeaverTest, PermPair) {
   const size_t adjust_rank = std::get<4>(GetParam());
   const int64_t kNumel = 10;
   std::random_device rd;
-  const auto r_perm = genRandomPerm(kNumel, rd());
+  uint128_t seed = rd();
+  uint64_t ctr = rd();
+  const auto r_perm = genRandomPerm(kNumel, seed, &ctr);
 
   for (size_t r = 0; r < kWorldSize; ++r) {
     std::vector<Pair> pairs(kWorldSize);

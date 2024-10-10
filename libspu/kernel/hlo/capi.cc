@@ -147,6 +147,15 @@ MlirValue spuHloConstant(SpuHloBuilder builder, SpuHloPtBufferView view,
   return wrap(unwrap(builder)->Constant(*unwrap(view), unwrap(out_shape)));
 }
 
+MlirValue spuSplatConstant(SpuHloBuilder builder, SpuHloPtBufferView view,
+                           MlirValue as_shape) {
+  return wrap(unwrap(builder)->SplatConstant(*unwrap(view), unwrap(as_shape)));
+}
+
+MlirValue spuSplat(SpuHloBuilder builder, MlirValue in, MlirValue as_shape) {
+  return wrap(unwrap(builder)->Splat(unwrap(in), unwrap(as_shape)));
+}
+
 MlirValue spuHloArgument(SpuHloBuilder builder, SpuHloPtType pt_type,
                          SpuHloVisibility visibility, SpuHloShape shape) {
   return wrap(unwrap(builder)->Argument(unwrap(pt_type), unwrap(visibility),

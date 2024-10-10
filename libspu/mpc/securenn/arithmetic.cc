@@ -18,6 +18,8 @@
 #include <functional>
 #include <random>
 
+#include "yacl/crypto/rand/rand.h"
+
 #include "libspu/core/type_util.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
@@ -857,10 +859,6 @@ MemRef ShareConvert::proc(KernelEvalContext* ctx, const MemRef& a) const {
     }  // P0 and P1 end execute
 
     if (rank == 2) {
-      std::random_device rd;
-      std::mt19937 gen(rd());
-      std::uniform_int_distribution<U> dis(0, L_1 - 1);
-
       auto a_0 = comm->recv(0, ty, "a_");
       auto a_1 = comm->recv(1, ty, "a_");
       a_0 = a_0.reshape(a.shape());
@@ -885,6 +883,7 @@ MemRef ShareConvert::proc(KernelEvalContext* ctx, const MemRef& a) const {
       MemRefView<U> _dp_x_p1(dp_x_p1);
 
       MemRef delta_p0(ty, a.shape());
+      ring_rand_range(delta_p0, 0, L_1 - 1);
       MemRef delta_p1(ty, a.shape());
       MemRefView<U> _delta_p0(delta_p0);
       MemRefView<U> _delta_p1(delta_p1);
@@ -904,7 +903,6 @@ MemRef ShareConvert::proc(KernelEvalContext* ctx, const MemRef& a) const {
         }
 
         // split delta in Z_(L_1)
-        _delta_p0[idx] = dis(gen);
         _delta_p1[idx] = _delta[idx] - _delta_p0[idx];
         if (_delta[idx] < _delta_p0[idx])
           _delta_p1[idx] -= (U)1;  // when overflow
@@ -918,6 +916,7 @@ MemRef ShareConvert::proc(KernelEvalContext* ctx, const MemRef& a) const {
 
       // split eta_ in Z_(L_1)
       MemRef eta_p0(ty, a.shape());
+      ring_rand_range(eta_p0, 0, L_1 - 1);
       MemRef eta_p1(ty, a.shape());
       MemRefView<U> _eta_p0(eta_p0);
       MemRefView<U> _eta_p1(eta_p1);
@@ -945,7 +944,6 @@ MemRef ShareConvert::proc(KernelEvalContext* ctx, const MemRef& a) const {
         }
 
         // split eta_ in Z_(L_1)
-        _eta_p0[idx] = dis(gen);
         _eta_p1[idx] = _eta_[idx] - _eta_p0[idx];
         if (_eta_[idx] < _eta_p0[idx]) _eta_p1[idx] -= (U)1;  // when overflow
       });                                                     // end pforeach
@@ -1005,10 +1003,6 @@ MemRef Msb::proc(KernelEvalContext* ctx, const MemRef& in) const {
                             u_r1.elsize() * u_r1.numel());
 
     if (rank == 2) {
-      std::random_device rd;
-      std::mt19937 gen(rd());
-      std::uniform_int_distribution<U> dis(0, L_1 - 1);
-
       // random for beaver
       // P2 generate a0, a1, b0, b1, c0 by PRF
       // and calculate c1
@@ -1028,11 +1022,13 @@ MemRef Msb::proc(KernelEvalContext* ctx, const MemRef& in) const {
       // end beaver  (c1 will be sent with x to reduce one round latency)
 
       MemRef x(ty, in.shape());
+      ring_rand_range(x, 0, L_1 - 1);
       MemRefView<U> _x(x);
 
       // split x into x_p0 and x_p1 in Z_(L-1), (L=2^k)
 
       MemRef x_p0(ty, in.shape());
+      ring_rand_range(x_p0, 0, L_1 - 1);
       MemRef x_p1(ty, in.shape());
       MemRefView<U> _x_p0(x_p0);
       MemRefView<U> _x_p1(x_p1);
@@ -1051,11 +1047,9 @@ MemRef Msb::proc(KernelEvalContext* ctx, const MemRef& in) const {
       MemRef lsb_x(ty, in.shape());
       MemRefView<U> _lsb_x(lsb_x);
       pforeach(0, size, [&](int64_t idx) {
-        _x[idx] = dis(gen);
         auto dp_x = bitDecompose(_x[idx], k);  // vector<uint8_t>
 
         // split x
-        _x_p0[idx] = dis(gen);
         _x_p1[idx] = _x[idx] - _x_p0[idx];
         if (_x[idx] < _x_p0[idx]) _x_p1[idx] -= (U)1;  // when overflow
 
@@ -1377,10 +1371,6 @@ MemRef Msb_opt::proc(KernelEvalContext* ctx, const MemRef& in) const {
                             beta_1.elsize() * beta_1.numel());
 
     if (rank == 2) {
-      std::random_device rd;
-      std::mt19937 gen(rd());
-      std::uniform_int_distribution<U> dis(0, L_1 - 1);
-
       // random for beaver
       // P2 generate a0, a1, b0, b1, c0 by PRF
       // and calculate c1

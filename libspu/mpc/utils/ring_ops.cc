@@ -243,19 +243,46 @@ void ring_rand(MemRef& in, uint128_t prg_seed, uint64_t* prg_counter) {
       absl::MakeSpan(in.data<char>(), in.buf()->size()));
 }
 
-void ring_rand_range(MemRef& in, int32_t min, int32_t max) {
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  std::uniform_int_distribution<int32_t> dis(min, max);
+void ring_rand_range(MemRef& in, uint128_t min, uint128_t max) {
+  constexpr yacl::crypto::SymmetricCrypto::CryptoType kCryptoType =
+      yacl::crypto::SymmetricCrypto::CryptoType::AES128_ECB;
+  constexpr uint64_t kAesInitialVector = 0U;
+  uint64_t cnt = 0;
 
   auto numel = in.numel();
-
   DISPATCH_ALL_STORAGE_TYPES(in.eltype().storage_type(), [&]() {
-    SPU_ENFORCE(sizeof(ScalarT) >= sizeof(int32_t));
-
-    MemRefView<ScalarT> _in(in);
-    for (auto idx = 0; idx < numel; ++idx) {
-      _in[idx] = static_cast<ScalarT>(dis(gen));
+    if constexpr (std::is_same_v<ScalarT, uint8_t> ||
+                  std::is_same_v<ScalarT, uint16_t> ||
+                  std::is_same_v<ScalarT, uint32_t>) {
+      std::vector<uint32_t> rand_range(numel);
+      yacl::crypto::FillPRandWithLtN<uint32_t>(
+          kCryptoType, yacl::crypto::SecureRandSeed(), kAesInitialVector, cnt,
+          absl::MakeSpan(rand_range), static_cast<uint32_t>(max - min + 1));
+      auto iter = in.begin();
+      for (auto idx = 0; idx < numel; ++idx, ++iter) {
+        iter.getScalarValue<ScalarT>() =
+            rand_range[idx] + static_cast<ScalarT>(min);
+      }
+    } else if constexpr (std::is_same_v<ScalarT, uint64_t>) {
+      std::vector<uint64_t> rand_range(numel);
+      yacl::crypto::FillPRandWithLtN<uint64_t>(
+          kCryptoType, yacl::crypto::SecureRandSeed(), kAesInitialVector, cnt,
+          absl::MakeSpan(rand_range), static_cast<uint64_t>(max - min + 1));
+      auto iter = in.begin();
+      for (auto idx = 0; idx < numel; ++idx, ++iter) {
+        iter.getScalarValue<uint64_t>() =
+            rand_range[idx] + static_cast<uint64_t>(min);
+      }
+    } else {
+      std::vector<uint128_t> rand_range(numel);
+      yacl::crypto::FillPRandWithLtN<uint128_t>(
+          kCryptoType, yacl::crypto::SecureRandSeed(), kAesInitialVector, cnt,
+          absl::MakeSpan(rand_range), max - min + 1);
+      auto iter = in.begin();
+      for (auto idx = 0; idx < numel; ++idx, ++iter) {
+        iter.getScalarValue<uint128_t>() =
+            rand_range[idx] + static_cast<uint128_t>(min);
+      }
     }
   });
 }
@@ -310,16 +337,13 @@ void ring_ones(MemRef& in) {
 }
 
 void ring_randbit(MemRef& in) {
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  std::uniform_int_distribution<> distrib(0, RAND_MAX);
-
   auto numel = in.numel();
 
   DISPATCH_ALL_STORAGE_TYPES(in.eltype().storage_type(), [&]() {
+    auto rand_bytes = yacl::crypto::RandBytes(numel, false);
     MemRefView<ScalarT> _in(in);
     for (auto idx = 0; idx < numel; ++idx) {
-      _in[idx] = distrib(gen) & 0x1;
+      _in[idx] = static_cast<ScalarT>(rand_bytes[idx]) & 0x1;
     }
   });
 }

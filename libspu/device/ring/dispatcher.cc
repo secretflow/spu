@@ -156,35 +156,29 @@ STANDARD_BINARY_COMMUTATIVE_OP_EXEC_IMPL(XorOp, kernel::hal::_xor)
 
 #undef STANDARD_BINARY_COMMUTATIVE_OP_EXEC_IMPL
 
-#define STANDARD_SHIFT_OP_EXEC_IMPL(OpName, Name)                             \
-  void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,           \
-               mlir::spu::ring::OpName &op, const ExecutionOptions &opts) {   \
-    const auto &lhs = lookupValue(sscope, op.getLhs(), opts);                 \
-    if (lhs.numel() == 0) {                                                   \
-      addValue(sscope, op.getResult(), lhs, opts);                            \
-      return;                                                                 \
-    }                                                                         \
-    auto bits = kernel::hal::dump_public_as<int64_t>(                         \
-        sctx, lookupValue(sscope, op.getRhs(), opts));                        \
-    Sizes sbits;                                                              \
-    if (auto con_op = op.getRhs().getDefiningOp<mlir::arith::ConstantOp>()) { \
-      const auto &dea =                                                       \
-          mlir::dyn_cast<mlir::DenseElementsAttr>(con_op.getValue());         \
-      if (dea.isSplat()) {                                                    \
-        sbits.push_back(bits[0]);                                             \
-      } else {                                                                \
-        sbits.insert(sbits.begin(), bits.begin(), bits.end());                \
-      }                                                                       \
-    } else {                                                                  \
-      sbits.insert(sbits.begin(), bits.begin(), bits.end());                  \
-    }                                                                         \
-    if (lhs.isSecret()) {                                                     \
-      addValue(sscope, op.getResult(), Name##_s(sctx, lhs, sbits), opts);     \
-    } else if (lhs.isPrivate()) {                                             \
-      addValue(sscope, op.getResult(), Name##_v(sctx, lhs, sbits), opts);     \
-    } else {                                                                  \
-      SPU_THROW("Should not reach here, lhs type {}", lhs.eltype());          \
-    }                                                                         \
+#define STANDARD_SHIFT_OP_EXEC_IMPL(OpName, Name)                           \
+  void execute(OpExecutor *, SPUContext *sctx, SymbolScope *sscope,         \
+               mlir::spu::ring::OpName &op, const ExecutionOptions &opts) { \
+    const auto &lhs = lookupValue(sscope, op.getLhs(), opts);               \
+    if (lhs.numel() == 0) {                                                 \
+      addValue(sscope, op.getResult(), lhs, opts);                          \
+      return;                                                               \
+    }                                                                       \
+    const auto &rhs = lookupValue(sscope, op.getRhs(), opts);               \
+    auto bits = kernel::hal::dump_public_as<int64_t>(sctx, rhs);            \
+    Sizes sbits;                                                            \
+    if (rhs.isSplat()) {                                                    \
+      sbits.push_back(bits[0]);                                             \
+    } else {                                                                \
+      sbits.insert(sbits.begin(), bits.begin(), bits.end());                \
+    }                                                                       \
+    if (lhs.isSecret()) {                                                   \
+      addValue(sscope, op.getResult(), Name##_s(sctx, lhs, sbits), opts);   \
+    } else if (lhs.isPrivate()) {                                           \
+      addValue(sscope, op.getResult(), Name##_v(sctx, lhs, sbits), opts);   \
+    } else {                                                                \
+      SPU_THROW("Should not reach here, lhs type {}", lhs.eltype());        \
+    }                                                                       \
   }
 
 STANDARD_SHIFT_OP_EXEC_IMPL(LShiftOp, kernel::hal::_lshift)

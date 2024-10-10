@@ -50,6 +50,7 @@ spu_cc_library(
     hdrs = ["permute.h"],
     deps = [
         "//libspu/core:memref",
+        "@yacl//yacl/crypto/rand",
     ],
 )
 

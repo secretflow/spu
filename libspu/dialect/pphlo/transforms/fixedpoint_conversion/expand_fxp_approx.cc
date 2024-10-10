@@ -32,7 +32,7 @@ namespace {
                                    OpBuilder &rewriter,                     \
                                    const fixedpoint::Config &config) {      \
     fixedpoint::builder::FxpBuilder builder(rewriter, op->getLoc(), config, \
-                                            in[0].getType());               \
+                                            in[0]);                         \
     return fixedpoint::ApproxFcn(builder, in[0]);                           \
   }
 
@@ -51,7 +51,7 @@ UNARY_APPROX_IMPL(ReciprocalOp, reciprocal_approx)
 [[maybe_unused]] auto lowerImpl(Expm1Op op, ValueRange in, OpBuilder &rewriter,
                                 const fixedpoint::Config &config) {
   fixedpoint::builder::FxpBuilder builder(rewriter, op->getLoc(), config,
-                                          in[0].getType());
+                                          in[0]);
   // ret = exp(x) - 1
   auto exp_op = fixedpoint::exponential_approx(builder, in[0]);
   auto one = builder.fxp_constant(1.0F);
@@ -61,7 +61,7 @@ UNARY_APPROX_IMPL(ReciprocalOp, reciprocal_approx)
 [[maybe_unused]] auto lowerImpl(Log1pOp op, ValueRange in, OpBuilder &rewriter,
                                 const fixedpoint::Config &config) {
   fixedpoint::builder::FxpBuilder builder(rewriter, op->getLoc(), config,
-                                          in[0].getType());
+                                          in[0]);
   // ret = log(x + 1)
   auto one = builder.fxp_constant(1.0F);
   auto x1p = builder.add(in[0], one);
@@ -75,7 +75,7 @@ UNARY_APPROX_IMPL(ReciprocalOp, reciprocal_approx)
     auto lhs = ins[0];                                                      \
     auto rhs = ins[1];                                                      \
     fixedpoint::builder::FxpBuilder builder(rewriter, op->getLoc(), config, \
-                                            rhs.getType());                 \
+                                            rhs);                           \
     return fixedpoint::ApproxFcn(builder, lhs, rhs);                        \
   }
 
@@ -145,7 +145,7 @@ class ErfConverter : public OpRewritePattern<CustomCallOp> {
     }
 
     fixedpoint::builder::FxpBuilder builder(rewriter, op->getLoc(), config_,
-                                            op.getOperands()[0].getType());
+                                            op.getOperands()[0]);
 
     auto ret = fixedpoint::erf_approx(builder, op.getOperands()[0]);
 

@@ -17,15 +17,17 @@
 #include <algorithm>
 #include <random>
 
+#include "yacl/crypto/rand/rand.h"
+
 #include "libspu/core/memref.h"
 #include "libspu/core/type_util.h"
 
 namespace spu::mpc {
 
-PermVector ring2pv(const MemRef& x) {
+Index ring2pv(const MemRef& x) {
   SPU_ENFORCE(x.eltype().isa<BaseRingType>(), "must be ring2k_type, got={}",
               x.eltype());
-  PermVector pv(x.numel());
+  Index pv(x.numel());
   DISPATCH_ALL_STORAGE_TYPES(x.eltype().storage_type(), [&]() {
     MemRefView<ScalarT> _x(x);
     pforeach(0, x.numel(), [&](int64_t idx) { pv[idx] = int64_t(_x[idx]); });
@@ -47,6 +49,26 @@ MemRef applyInvPerm(const MemRef& x, absl::Span<const int64_t> pv) {
   return y;
 }
 
+MemRef applyInvPerm(const MemRef& x, const MemRef& pv) {
+  SPU_ENFORCE_EQ(x.shape().ndim(), 1U, "x should be 1-d tensor");
+  SPU_ENFORCE_EQ(x.shape(), pv.shape(), "x and pv should have same shape");
+
+  MemRef y(x.eltype(), x.shape());
+  DISPATCH_ALL_STORAGE_TYPES(x.eltype().storage_type(), [&]() {
+    using OT = ScalarT;
+    MemRefView<OT> _x(x);
+    MemRefView<OT> _y(y);
+    DISPATCH_ALL_STORAGE_TYPES(pv.eltype().storage_type(), [&]() {
+      using IT = ScalarT;
+      MemRefView<IT> _pv(pv);
+      for (int64_t i = 0; i < y.numel(); i++) {
+        _y[_pv[i]] = _x[i];
+      }
+    });
+  });
+  return y;
+}
+
 MemRef applyPerm(const MemRef& x, absl::Span<const int64_t> pv) {
   SPU_ENFORCE_EQ(x.shape().ndim(), 1U, "x should be 1-d memref");
 
@@ -61,26 +83,41 @@ MemRef applyPerm(const MemRef& x, absl::Span<const int64_t> pv) {
   return y;
 }
 
-PermVector genRandomPerm(size_t size, uint64_t seed) {
-  PermVector perm(size);
-  std::iota(perm.begin(), perm.end(), 0);
-  // TODO: change PRNG to CSPRNG
-  std::mt19937 rng(seed);
-  std::shuffle(perm.begin(), perm.end(), rng);
-  return perm;
+MemRef applyPerm(const MemRef& x, const MemRef& pv) {
+  SPU_ENFORCE_EQ(x.shape().ndim(), 1U, "x should be 1-d tensor");
+  SPU_ENFORCE_EQ(x.shape(), pv.shape(), "x and pv should have same shape");
+
+  MemRef y(x.eltype(), x.shape());
+  DISPATCH_ALL_STORAGE_TYPES(x.eltype().storage_type(), [&]() {
+    using OT = ScalarT;
+    MemRefView<OT> _x(x);
+    MemRefView<OT> _y(y);
+    DISPATCH_ALL_STORAGE_TYPES(pv.eltype().storage_type(), [&]() {
+      using IT = ScalarT;
+      MemRefView<IT> _pv(pv);
+      for (int64_t i = 0; i < y.numel(); i++) {
+        _y[i] = _x[_pv[i]];
+      }
+    });
+  });
+  return y;
 }
 
-PermVector genInversePerm(absl::Span<const int64_t> pv) {
-  PermVector ret(pv.size());
-  for (size_t i = 0; i < pv.size(); ++i) {
-    ret[pv[i]] = i;
-  }
+MemRef genInversePerm(const MemRef& perm) {
+  MemRef ret(perm.eltype(), perm.shape());
+  DISPATCH_ALL_STORAGE_TYPES(perm.eltype().storage_type(), [&]() {
+    MemRefView<ScalarT> _ret(ret);
+    MemRefView<ScalarT> _perm(perm);
+    for (int64_t i = 0; i < perm.numel(); ++i) {
+      _ret[_perm[i]] = ScalarT(i);
+    }
+  });
   return ret;
 }
 
-PermVector genPermBySort(const MemRef& x) {
-  SPU_ENFORCE_EQ(x.shape().ndim(), 1U, "x should be 1-d memref");
-  PermVector perm(x.shape()[0]);
+Index genPermBySort(const MemRef& x) {
+  SPU_ENFORCE_EQ(x.shape().ndim(), 1U, "x should be 1-d tensor");
+  Index perm(x.shape()[0]);
   std::iota(perm.begin(), perm.end(), 0);
   DISPATCH_ALL_STORAGE_TYPES(x.eltype().storage_type(), [&]() {
     using T = std::make_signed_t<ScalarT>;
@@ -89,6 +126,13 @@ PermVector genPermBySort(const MemRef& x) {
     auto cmp = [&_x](int64_t a, int64_t b) { return _x[a] < _x[b]; };
     std::stable_sort(perm.begin(), perm.end(), cmp);
   });
+  return perm;
+}
+
+Index genRandomPerm(size_t numel, uint128_t seed, uint64_t* ctr) {
+  Index perm(numel);
+  std::iota(perm.begin(), perm.end(), 0);
+  yacl::crypto::ReplayShuffle(perm.begin(), perm.end(), seed, ctr);
   return perm;
 }
 

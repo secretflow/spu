@@ -192,6 +192,19 @@ class ArithSelectConverter : public OpConversionPattern<arith::SelectOp> {
   }
 };
 
+class TensorDimConverter : public OpConversionPattern<tensor::DimOp> {
+ public:
+  using OpConversionPattern::OpConversionPattern;
+
+  LogicalResult matchAndRewrite(
+      tensor::DimOp op, tensor::DimOpAdaptor adaptor,
+      ConversionPatternRewriter &rewriter) const override {
+    rewriter.replaceOpWithNewOp<tensor::DimOp>(op, adaptor.getSource(),
+                                               adaptor.getIndex());
+    return success();
+  }
+};
+
 class FuncOpConverter : public OpConversionPattern<::mlir::func::FuncOp> {
  public:
   FuncOpConverter(TypeConverter &type_converter, MLIRContext *context)
@@ -272,7 +285,8 @@ struct LowerSecretFloatToFxp
                                            RewritePatternSet &patterns) {
     auto *context = patterns.getContext();
 
-    patterns.insert<FuncOpConverter, ArithSelectConverter>(converter, context);
+    patterns.insert<FuncOpConverter, ArithSelectConverter, TensorDimConverter>(
+        converter, context);
 
     addPatterns<
 #define GET_OP_LIST
@@ -297,10 +311,11 @@ struct LowerSecretFloatToFxp
     ConversionTarget target(context);
     SecretFloatConverter converter(getFxpWidthConfig());
 
-    target.addLegalDialect<PPHloDialect,
-                           // Public compute may already in following dialects
-                           mlir::arith::ArithDialect, mlir::math::MathDialect,
-                           mlir::scf::SCFDialect>();
+    target
+        .addLegalDialect<PPHloDialect,
+                         // Public compute may already in following dialects
+                         mlir::arith::ArithDialect, mlir::math::MathDialect,
+                         mlir::scf::SCFDialect, mlir::tensor::TensorDialect>();
     target.addLegalOp<mlir::ModuleOp>();
 
     target.addDynamicallyLegalOp<
@@ -310,8 +325,8 @@ struct LowerSecretFloatToFxp
         [&](Operation *op) { return converter.isLegal(op); });
 
     // arith select can work on secret when cond is a public.
-    target.addDynamicallyLegalOp<arith::SelectOp>(
-        [&](arith::SelectOp op) { return converter.isLegal(op); });
+    target.addDynamicallyLegalOp<arith::SelectOp, tensor::DimOp>(
+        [&](Operation *op) { return converter.isLegal(op); });
 
     target.addDynamicallyLegalOp<::mlir::func::FuncOp>(
         [&](::mlir::func::FuncOp op) {

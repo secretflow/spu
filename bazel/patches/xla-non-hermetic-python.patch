@@ -7,25 +7,25 @@ index 7cc1e08568..45480bd4a3 100644
  # use the python binary specified by ./configure.py script.
  load("@bazel_tools//tools/python:toolchain.bzl", "py_runtime_pair")
 -load("@python//:defs.bzl", "interpreter")
- 
+
  py_runtime(
      name = "py2_runtime",
 -    interpreter_path = interpreter,
 +    interpreter_path = "%{PYTHON_BIN_PATH}",
      python_version = "PY2",
  )
- 
+
  py_runtime(
      name = "py3_runtime",
 -    interpreter_path = interpreter,
 +    interpreter_path = "%{PYTHON_BIN_PATH}",
      python_version = "PY3",
  )
- 
+
 @@ -33,8 +32,27 @@ toolchain(
      exec_compatible_with = [%{PLATFORM_CONSTRAINT}],
  )
- 
+
 -alias(name = "python_headers",
 -      actual = "@python//:python_headers")
 +# To build Python C/C++ extension on Windows, we need to link to python import library pythonXY.lib
@@ -49,19 +49,19 @@ index 7cc1e08568..45480bd4a3 100644
 +    }),
 +    includes = ["python_include"],
 +)
- 
+
  # This alias is exists for the use of targets in the @llvm-project dependency,
  # which expect a python_headers target called @python_runtime//:headers. We use
 @@ -45,9 +63,18 @@ alias(
      actual = ":python_headers",
  )
- 
+
 +cc_library(
 +    name = "numpy_headers",
 +    hdrs = [":numpy_include"],
 +    includes = ["numpy_include"],
 +)
- 
+
  config_setting(
      name = "windows",
      values = {"cpu": "x64_windows"},
@@ -79,9 +79,9 @@ index 97c7907fc3..c80cc5287b 100644
 --- a/third_party/py/numpy/BUILD
 +++ b/third_party/py/numpy/BUILD
 @@ -2,14 +2,15 @@ licenses(["restricted"])
- 
+
  package(default_visibility = ["//visibility:public"])
- 
+
 -alias(
 +py_library(
      name = "numpy",
@@ -89,13 +89,13 @@ index 97c7907fc3..c80cc5287b 100644
 +    srcs = ["tf_numpy_dummy.py"],
 +    srcs_version = "PY3",
  )
- 
+
  alias(
      name = "headers",
 -    actual = "@pypi_numpy//:numpy_headers",
 +    actual = "@local_config_python//:numpy_headers",
  )
- 
+
  genrule(
 diff --git a/third_party/py/python_configure.bzl b/third_party/py/python_configure.bzl
 index 3728a91b93..89732c3e33 100644
@@ -109,7 +109,7 @@ index 3728a91b93..89732c3e33 100644
 +  * `PYTHON_BIN_PATH`: location of python binary.
 +  * `PYTHON_LIB_PATH`: Location of python libraries.
  """
- 
+
  load(
 @@ -6,8 +11,192 @@ load(
      "BAZEL_SH",
@@ -126,7 +126,7 @@ index 3728a91b93..89732c3e33 100644
 +    "raw_exec",
 +    "read_dir",
  )
- 
+
 +def _genrule(src_dir, genrule_name, command, outs):
 +    """Returns a string with a genrule.
 +
@@ -303,7 +303,7 @@ index 3728a91b93..89732c3e33 100644
 +
  def _create_local_python_repository(repository_ctx):
      """Creates the repository containing files set up to build with Python."""
- 
+
 @@ -15,14 +204,68 @@ def _create_local_python_repository(repository_ctx):
      # function to be restarted with all previous state being lost. This
      # can easily lead to a O(n^2) runtime in the number of labels.
@@ -361,7 +361,7 @@ index 3728a91b93..89732c3e33 100644
 +    """Creates pointers to a remotely configured repo set up to build with Python.
 +    """
 +    repository_ctx.template("BUILD", config_repo_label(remote_config_repo, ":BUILD"), {})
- 
+
  def _python_autoconf_impl(repository_ctx):
      """Implementation of the python_autoconf repository rule."""
 -    _create_local_python_repository(repository_ctx)
@@ -372,11 +372,11 @@ index 3728a91b93..89732c3e33 100644
 +        )
 +    else:
 +        _create_local_python_repository(repository_ctx)
- 
+
  _ENVIRONS = [
      BAZEL_SH,
 @@ -32,6 +275,7 @@ _ENVIRONS = [
- 
+
  local_python_configure = repository_rule(
      implementation = _create_local_python_repository,
 +    environ = _ENVIRONS,
@@ -384,7 +384,7 @@ index 3728a91b93..89732c3e33 100644
          "environ": attr.string_dict(),
          "platform_constraint": attr.string(),
 @@ -50,6 +294,7 @@ remote_python_configure = repository_rule(
- 
+
  python_configure = repository_rule(
      implementation = _python_autoconf_impl,
 +    environ = _ENVIRONS + [TF_PYTHON_CONFIG_REPO],
@@ -400,25 +400,25 @@ index 7cc1e08568..45480bd4a3 100644
  # use the python binary specified by ./configure.py script.
  load("@bazel_tools//tools/python:toolchain.bzl", "py_runtime_pair")
 -load("@python//:defs.bzl", "interpreter")
- 
+
  py_runtime(
      name = "py2_runtime",
 -    interpreter_path = interpreter,
 +    interpreter_path = "%{PYTHON_BIN_PATH}",
      python_version = "PY2",
  )
- 
+
  py_runtime(
      name = "py3_runtime",
 -    interpreter_path = interpreter,
 +    interpreter_path = "%{PYTHON_BIN_PATH}",
      python_version = "PY3",
  )
- 
+
 @@ -33,8 +32,27 @@ toolchain(
      exec_compatible_with = [%{PLATFORM_CONSTRAINT}],
  )
- 
+
 -alias(name = "python_headers",
 -      actual = "@python//:python_headers")
 +# To build Python C/C++ extension on Windows, we need to link to python import library pythonXY.lib
@@ -442,19 +442,19 @@ index 7cc1e08568..45480bd4a3 100644
 +    }),
 +    includes = ["python_include"],
 +)
- 
+
  # This alias is exists for the use of targets in the @llvm-project dependency,
  # which expect a python_headers target called @python_runtime//:headers. We use
 @@ -45,9 +63,18 @@ alias(
      actual = ":python_headers",
  )
- 
+
 +cc_library(
 +    name = "numpy_headers",
 +    hdrs = [":numpy_include"],
 +    includes = ["numpy_include"],
 +)
- 
+
  config_setting(
      name = "windows",
      values = {"cpu": "x64_windows"},
@@ -472,9 +472,9 @@ index 97c7907fc3..c80cc5287b 100644
 --- a/third_party/tsl/third_party/py/numpy/BUILD
 +++ b/third_party/tsl/third_party/py/numpy/BUILD
 @@ -2,14 +2,15 @@ licenses(["restricted"])
- 
+
  package(default_visibility = ["//visibility:public"])
- 
+
 -alias(
 +py_library(
      name = "numpy",
@@ -482,13 +482,13 @@ index 97c7907fc3..c80cc5287b 100644
 +    srcs = ["tf_numpy_dummy.py"],
 +    srcs_version = "PY3",
  )
- 
+
  alias(
      name = "headers",
 -    actual = "@pypi_numpy//:numpy_headers",
 +    actual = "@local_config_python//:numpy_headers",
  )
- 
+
  genrule(
 diff --git a/third_party/tsl/third_party/py/python_configure.bzl b/third_party/tsl/third_party/py/python_configure.bzl
 index 3728a91b93..89732c3e33 100644
@@ -502,7 +502,7 @@ index 3728a91b93..89732c3e33 100644
 +  * `PYTHON_BIN_PATH`: location of python binary.
 +  * `PYTHON_LIB_PATH`: Location of python libraries.
  """
- 
+
  load(
 @@ -6,8 +11,192 @@ load(
      "BAZEL_SH",
@@ -519,7 +519,7 @@ index 3728a91b93..89732c3e33 100644
 +    "raw_exec",
 +    "read_dir",
  )
- 
+
 +def _genrule(src_dir, genrule_name, command, outs):
 +    """Returns a string with a genrule.
 +
@@ -696,7 +696,7 @@ index 3728a91b93..89732c3e33 100644
 +
  def _create_local_python_repository(repository_ctx):
      """Creates the repository containing files set up to build with Python."""
- 
+
 @@ -15,14 +204,68 @@ def _create_local_python_repository(repository_ctx):
      # function to be restarted with all previous state being lost. This
      # can easily lead to a O(n^2) runtime in the number of labels.
@@ -754,7 +754,7 @@ index 3728a91b93..89732c3e33 100644
 +    """Creates pointers to a remotely configured repo set up to build with Python.
 +    """
 +    repository_ctx.template("BUILD", config_repo_label(remote_config_repo, ":BUILD"), {})
- 
+
  def _python_autoconf_impl(repository_ctx):
      """Implementation of the python_autoconf repository rule."""
 -    _create_local_python_repository(repository_ctx)
@@ -765,11 +765,11 @@ index 3728a91b93..89732c3e33 100644
 +        )
 +    else:
 +        _create_local_python_repository(repository_ctx)
- 
+
  _ENVIRONS = [
      BAZEL_SH,
 @@ -32,6 +275,7 @@ _ENVIRONS = [
- 
+
  local_python_configure = repository_rule(
      implementation = _create_local_python_repository,
 +    environ = _ENVIRONS,
@@ -777,7 +777,7 @@ index 3728a91b93..89732c3e33 100644
          "environ": attr.string_dict(),
          "platform_constraint": attr.string(),
 @@ -50,6 +294,7 @@ remote_python_configure = repository_rule(
- 
+
  python_configure = repository_rule(
      implementation = _python_autoconf_impl,
 +    environ = _ENVIRONS + [TF_PYTHON_CONFIG_REPO],

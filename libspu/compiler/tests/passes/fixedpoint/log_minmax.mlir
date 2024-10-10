@@ -25,56 +25,58 @@ func.func @main(%arg0: tensor<2x2x!pphlo.secret<f32>>) -> (tensor<2x2x!pphlo.sec
     //CHECK: %9 = pphlo.custom_call @spu.compiler.internal.encode_to_fxp(%cst_10) {allow_float = true} : (tensor<2x2xf32>) -> tensor<2x2x!pphlo.fxp<64, 18>>
     //CHECK: %cst_11 = arith.constant dense<1.000000e+00> : tensor<2x2xf32>
     //CHECK: %10 = pphlo.custom_call @spu.compiler.internal.encode_to_fxp(%cst_11) {allow_float = true} : (tensor<2x2xf32>) -> tensor<2x2x!pphlo.fxp<64, 18>>
-    //CHECK: %cst_12 = arith.constant dense<1> : tensor<2x2xui64>
+    //CHECK: %cst_12 = arith.constant dense<1> : tensor<2x2xi64>
     //CHECK: %11 = pphlo.bitcast_convert %arg0 : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>) -> tensor<2x2x!pphlo.secret<ui64>>
     //CHECK: %12 = pphlo.prefix_or %11 : tensor<2x2x!pphlo.secret<ui64>>
     //CHECK: %13 = pphlo.popcnt %12 {bits = 38 : i64} : tensor<2x2x!pphlo.secret<ui64>>
     //CHECK: %14 = pphlo.bitcast_convert %13 : (tensor<2x2x!pphlo.secret<ui64>>) -> tensor<2x2x!pphlo.secret<i64>>
-    //CHECK: %15 = pphlo.shift_right_logical %12, %cst_12 : (tensor<2x2x!pphlo.secret<ui64>>, tensor<2x2xui64>) -> tensor<2x2x!pphlo.secret<ui64>>
-    //CHECK: %16 = pphlo.xor %12, %15 : tensor<2x2x!pphlo.secret<ui64>>
-    //CHECK: %17 = pphlo.bitrev %16 {end = 37 : i64, start = 0 : i64} : tensor<2x2x!pphlo.secret<ui64>>
-    //CHECK: %18 = pphlo.bitcast_convert %17 : (tensor<2x2x!pphlo.secret<ui64>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>
-    //CHECK: %19 = pphlo.multiply %arg0, %18 : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>, tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
-    //CHECK: %20 = pphlo.truncate %19 : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>
-    //CHECK: %21 = pphlo.subtract %20, %10 : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>, tensor<2x2x!pphlo.fxp<64, 18>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>
-    //CHECK: %22 = pphlo.multiply %21, %8 : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>, tensor<2x2x!pphlo.fxp<64, 18>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
-    //CHECK: %23 = pphlo.add %22, %9 : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>, tensor<2x2x!pphlo.fxp<64, 18>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
-    //CHECK: %24 = pphlo.multiply %21, %21 : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>, tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
-    //CHECK: %25 = pphlo.truncate %24 {sign = #pphlo<sign_type Positive>} : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>
-    //CHECK: %26 = pphlo.multiply %25, %7 : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>, tensor<2x2x!pphlo.fxp<64, 18>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
-    //CHECK: %27 = pphlo.add %23, %26 : tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
-    //CHECK: %28 = pphlo.multiply %25, %21 : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>, tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
-    //CHECK: %29 = pphlo.truncate %28 {sign = #pphlo<sign_type Positive>} : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>
-    //CHECK: %30 = pphlo.multiply %29, %6 : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>, tensor<2x2x!pphlo.fxp<64, 18>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
-    //CHECK: %31 = pphlo.add %27, %30 : tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
-    //CHECK: %32 = pphlo.multiply %29, %21 : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>, tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
-    //CHECK: %33 = pphlo.truncate %32 {sign = #pphlo<sign_type Positive>} : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>
-    //CHECK: %34 = pphlo.multiply %33, %5 : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>, tensor<2x2x!pphlo.fxp<64, 18>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
-    //CHECK: %35 = pphlo.add %31, %34 : tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
-    //CHECK: %36 = pphlo.multiply %33, %21 : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>, tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
-    //CHECK: %37 = pphlo.truncate %36 {sign = #pphlo<sign_type Positive>} : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>
-    //CHECK: %38 = pphlo.multiply %37, %4 : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>, tensor<2x2x!pphlo.fxp<64, 18>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
-    //CHECK: %39 = pphlo.add %35, %38 : tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
-    //CHECK: %40 = pphlo.multiply %37, %21 : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>, tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
-    //CHECK: %41 = pphlo.truncate %40 {sign = #pphlo<sign_type Positive>} : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>
-    //CHECK: %42 = pphlo.multiply %41, %3 : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>, tensor<2x2x!pphlo.fxp<64, 18>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
-    //CHECK: %43 = pphlo.add %39, %42 : tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
-    //CHECK: %44 = pphlo.multiply %41, %21 : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>, tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
-    //CHECK: %45 = pphlo.truncate %44 {sign = #pphlo<sign_type Positive>} : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>
-    //CHECK: %46 = pphlo.multiply %45, %2 : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>, tensor<2x2x!pphlo.fxp<64, 18>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
-    //CHECK: %47 = pphlo.add %43, %46 : tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
-    //CHECK: %48 = pphlo.multiply %45, %21 : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>, tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
-    //CHECK: %49 = pphlo.truncate %48 {sign = #pphlo<sign_type Positive>} : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>
-    //CHECK: %50 = pphlo.multiply %49, %1 : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>, tensor<2x2x!pphlo.fxp<64, 18>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
-    //CHECK: %51 = pphlo.add %47, %50 : tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
-    //CHECK: %52 = pphlo.truncate %51 {sign = #pphlo<sign_type Positive>} : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>
-    //CHECK: %53 = pphlo.subtract %14, %cst_1 : (tensor<2x2x!pphlo.secret<i64>>, tensor<2x2xi64>) -> tensor<2x2x!pphlo.secret<i64>>
-    //CHECK: %54 = pphlo.shift_left %53, %cst_0 : (tensor<2x2x!pphlo.secret<i64>>, tensor<2x2xi64>) -> tensor<2x2x!pphlo.secret<i64>>
-    //CHECK: %55 = pphlo.bitcast_convert %54 : (tensor<2x2x!pphlo.secret<i64>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>
-    //CHECK: %56 = pphlo.multiply %55, %0 : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>, tensor<2x2x!pphlo.fxp<64, 18>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
-    //CHECK: %57 = pphlo.truncate %56 : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>
-    //CHECK: %58 = pphlo.add %52, %57 : tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>
-    //CHECK: return %58 : tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>
+    //CHECK: %15 = pphlo.bitcast_convert %cst_12 : (tensor<2x2xi64>) -> tensor<2x2xui64>
+    //CHECK: %16 = pphlo.shift_right_logical %12, %15 : (tensor<2x2x!pphlo.secret<ui64>>, tensor<2x2xui64>) -> tensor<2x2x!pphlo.secret<ui64>>
+    //CHECK: %17 = pphlo.xor %12, %16 : tensor<2x2x!pphlo.secret<ui64>>
+    //CHECK: %18 = pphlo.bitrev %17 {end = 37 : i64, start = 0 : i64} : tensor<2x2x!pphlo.secret<ui64>>
+    //CHECK: %19 = pphlo.bitcast_convert %18 : (tensor<2x2x!pphlo.secret<ui64>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>
+    //CHECK: %20 = pphlo.multiply %arg0, %19 : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>, tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
+    //CHECK: %21 = pphlo.truncate %20 : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>
+    //CHECK: %22 = pphlo.subtract %21, %10 : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>, tensor<2x2x!pphlo.fxp<64, 18>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>
+    //CHECK: %23 = pphlo.multiply %22, %8 : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>, tensor<2x2x!pphlo.fxp<64, 18>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
+    //CHECK: %24 = pphlo.add %23, %9 : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>, tensor<2x2x!pphlo.fxp<64, 18>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
+    //CHECK: %25 = pphlo.multiply %22, %22 : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>, tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
+    //CHECK: %26 = pphlo.truncate %25 {sign = #pphlo<sign_type Positive>} : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>
+    //CHECK: %27 = pphlo.multiply %26, %7 : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>, tensor<2x2x!pphlo.fxp<64, 18>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
+    //CHECK: %28 = pphlo.add %24, %27 : tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
+    //CHECK: %29 = pphlo.multiply %26, %22 : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>, tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
+    //CHECK: %30 = pphlo.truncate %29 {sign = #pphlo<sign_type Positive>} : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>
+    //CHECK: %31 = pphlo.multiply %30, %6 : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>, tensor<2x2x!pphlo.fxp<64, 18>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
+    //CHECK: %32 = pphlo.add %28, %31 : tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
+    //CHECK: %33 = pphlo.multiply %30, %22 : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>, tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
+    //CHECK: %34 = pphlo.truncate %33 {sign = #pphlo<sign_type Positive>} : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>
+    //CHECK: %35 = pphlo.multiply %34, %5 : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>, tensor<2x2x!pphlo.fxp<64, 18>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
+    //CHECK: %36 = pphlo.add %32, %35 : tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
+    //CHECK: %37 = pphlo.multiply %34, %22 : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>, tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
+    //CHECK: %38 = pphlo.truncate %37 {sign = #pphlo<sign_type Positive>} : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>
+    //CHECK: %39 = pphlo.multiply %38, %4 : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>, tensor<2x2x!pphlo.fxp<64, 18>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
+    //CHECK: %40 = pphlo.add %36, %39 : tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
+    //CHECK: %41 = pphlo.multiply %38, %22 : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>, tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
+    //CHECK: %42 = pphlo.truncate %41 {sign = #pphlo<sign_type Positive>} : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>
+    //CHECK: %43 = pphlo.multiply %42, %3 : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>, tensor<2x2x!pphlo.fxp<64, 18>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
+    //CHECK: %44 = pphlo.add %40, %43 : tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
+    //CHECK: %45 = pphlo.multiply %42, %22 : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>, tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
+    //CHECK: %46 = pphlo.truncate %45 {sign = #pphlo<sign_type Positive>} : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>
+    //CHECK: %47 = pphlo.multiply %46, %2 : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>, tensor<2x2x!pphlo.fxp<64, 18>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
+    //CHECK: %48 = pphlo.add %44, %47 : tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
+    //CHECK: %49 = pphlo.multiply %46, %22 : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>, tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
+    //CHECK: %50 = pphlo.truncate %49 {sign = #pphlo<sign_type Positive>} : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>
+    //CHECK: %51 = pphlo.multiply %50, %1 : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>, tensor<2x2x!pphlo.fxp<64, 18>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
+    //CHECK: %52 = pphlo.add %48, %51 : tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
+    //CHECK: %53 = pphlo.truncate %52 {sign = #pphlo<sign_type Positive>} : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>
+    //CHECK: %54 = pphlo.subtract %14, %cst_1 : (tensor<2x2x!pphlo.secret<i64>>, tensor<2x2xi64>) -> tensor<2x2x!pphlo.secret<i64>>
+    //CHECK: %55 = pphlo.bitcast_convert %cst_0 : tensor<2x2xi64>
+    //CHECK: %56 = pphlo.shift_left %54, %55 : (tensor<2x2x!pphlo.secret<i64>>, tensor<2x2xi64>) -> tensor<2x2x!pphlo.secret<i64>>
+    //CHECK: %57 = pphlo.bitcast_convert %56 : (tensor<2x2x!pphlo.secret<i64>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>
+    //CHECK: %58 = pphlo.multiply %57, %0 : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>, tensor<2x2x!pphlo.fxp<64, 18>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>
+    //CHECK: %59 = pphlo.truncate %58 : (tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 36>>>) -> tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>
+    //CHECK: %60 = pphlo.add %53, %59 : tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>
+    //CHECK: return %60 : tensor<2x2x!pphlo.secret<!pphlo.fxp<64, 18>>>
     %0 = pphlo.log %arg0 : tensor<2x2x!pphlo.secret<f32>>
     return %0 : tensor<2x2x!pphlo.secret<f32>>
 }

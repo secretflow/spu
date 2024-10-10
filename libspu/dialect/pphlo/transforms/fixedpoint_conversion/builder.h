@@ -29,28 +29,27 @@ class FxpBuilder {
   Location loc_;
   // Fxp thingy
   Config config_;
-  Type base_fxp_type_;
+  Value base_fxp_value_;
   // Type tools
   TypeTools tools_;
 
+  IntegerAttr getIntegerAttr(Type t, int128_t value);
+  FloatAttr getFloatAttr(Type t, double value);
+
  public:
   FxpBuilder(OpBuilder &rewriter, Location loc, const Config &config,
-             Type base_fxp_type)
+             Value base_value)
       : builder_(rewriter),
         loc_(loc),
         config_(config),
-        base_fxp_type_(base_fxp_type),
-        tools_(loc_->getContext()) {}
-
-  FxpBuilder(OpBuilder &rewriter, Location loc, Type base_fxp_type)
-      : builder_(rewriter),
-        loc_(loc),
-        base_fxp_type_(base_fxp_type),
+        base_fxp_value_(base_value),
         tools_(loc_->getContext()) {}
 
   FxpBuilder(FxpBuilder &) = delete;
 
-  void replaceBaseFxpType(Type new_type) { base_fxp_type_ = new_type; }
+  void replaceBaseFxpValue(Value base_fxp_value) {
+    base_fxp_value_ = base_fxp_value;
+  }
 
   TypeTools &getTypeTools() { return tools_; }
 

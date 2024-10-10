@@ -93,11 +93,15 @@ SPU_HLO_CAPI void spuHloValueDestroy(SpuHloValue value);
 SPU_HLO_CAPI MlirValue spuHloConstant(SpuHloBuilder builder,
                                       SpuHloPtBufferView view,
                                       SpuHloShape out_shape);
+SPU_HLO_CAPI MlirValue spuSplatConstant(SpuHloBuilder builder,
+                                        SpuHloPtBufferView view,
+                                        MlirValue as_shape);
+SPU_HLO_CAPI MlirValue spuSplat(SpuHloBuilder builder, MlirValue in,
+                                MlirValue as_shape);
 SPU_HLO_CAPI MlirValue spuHloArgument(SpuHloBuilder builder,
                                       SpuHloPtType pt_type,
                                       SpuHloVisibility visibility,
                                       SpuHloShape shape);
-
 SPU_HLO_CAPI MlirValue spuHloAdd(SpuHloBuilder builder, MlirValue lhs,
                                  MlirValue rhs);
 SPU_HLO_CAPI MlirValue spuHloSub(SpuHloBuilder builder, MlirValue lhs,

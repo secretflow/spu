@@ -17,13 +17,52 @@
 #include "fmt/format.h"
 #include "fmt/ranges.h"
 #include "llvm/Support/FormatVariadic.h"
+#include "mlir/Dialect/Arith/IR/Arith.h"
+#include "mlir/Dialect/Tensor/IR/Tensor.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/TypeUtilities.h"
 #include "stablehlo/dialect/TypeInference.h"
 
 #include "libspu/dialect/pphlo/IR/ops.h.inc"
+#include "libspu/dialect/utils/utils.h"
 
 namespace mlir::spu::pphlo {
+
+void ShiftLeftOp::build(OpBuilder& builder, OperationState& result, Value lhs,
+                        IntegerAttr rhs) {
+  Value new_rhs = splatifyConstant(builder, rhs, lhs);
+
+  TypeTools tools(builder.getContext());
+  auto p_rhs_type = tools.getExpressedType(lhs.getType());
+  new_rhs = builder.create<pphlo::BitcastConvertOp>(builder.getUnknownLoc(),
+                                                    p_rhs_type, new_rhs);
+
+  build(builder, result, lhs, new_rhs);
+}
+
+void ShiftRightLogicalOp::build(OpBuilder& builder, OperationState& result,
+                                Value lhs, IntegerAttr rhs) {
+  Value new_rhs = splatifyConstant(builder, rhs, lhs);
+
+  TypeTools tools(builder.getContext());
+  auto p_rhs_type = tools.getExpressedType(lhs.getType());
+  new_rhs = builder.create<pphlo::BitcastConvertOp>(builder.getUnknownLoc(),
+                                                    p_rhs_type, new_rhs);
+
+  build(builder, result, lhs, new_rhs);
+}
+
+void ShiftRightArithmeticOp::build(OpBuilder& builder, OperationState& result,
+                                   Value lhs, IntegerAttr rhs) {
+  Value new_rhs = splatifyConstant(builder, rhs, lhs);
+
+  TypeTools tools(builder.getContext());
+  auto p_rhs_type = tools.getExpressedType(lhs.getType());
+  new_rhs = builder.create<pphlo::BitcastConvertOp>(builder.getUnknownLoc(),
+                                                    p_rhs_type, new_rhs);
+
+  build(builder, result, lhs, new_rhs);
+}
 
 template <typename T>
 static LogicalResult Verify(T /*op*/) {

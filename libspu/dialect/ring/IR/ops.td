@@ -308,6 +308,10 @@ def Ring_LShiftOp  : Ring_Op<"lshift", [Pure, Elementwise,
 
   let results = (outs AnySecretContainer: $result);
 
+  let builders = [
+    OpBuilder<(ins "Value":$lhs, "IntegerAttr":$rhs)>,
+  ];
+
   let assemblyFormat = [{
     $lhs `,` $rhs attr-dict
       `:` custom<SameOperandsAndResultType>(type($lhs), type($rhs), type($result))
@@ -325,6 +329,10 @@ def Ring_RShiftOP  : Ring_Op<"rshift", [Pure, Elementwise,
 
   let results = (outs AnySecretContainer: $result);
 
+  let builders = [
+    OpBuilder<(ins "Value":$lhs, "IntegerAttr":$rhs)>,
+  ];
+
   let assemblyFormat = [{
     $lhs `,` $rhs attr-dict
       `:` custom<SameOperandsAndResultType>(type($lhs), type($rhs), type($result))
@@ -341,6 +349,10 @@ def Ring_ARShiftOp : Ring_Op<"arshift", [Pure, Elementwise,
   );
 
   let results = (outs AnySecretContainer: $result);
+
+  let builders = [
+    OpBuilder<(ins "Value":$lhs, "IntegerAttr":$rhs)>,
+  ];
 
   let assemblyFormat = [{
     $lhs `,` $rhs attr-dict
