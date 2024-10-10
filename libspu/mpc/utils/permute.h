@@ -18,24 +18,23 @@
 
 namespace spu::mpc {
 
-using PermVector = std::vector<int64_t>;
-
-PermVector genRandomPerm(size_t size, uint64_t seed);
-
-PermVector genInversePerm(absl::Span<const int64_t> pv);
+MemRef genInversePerm(const MemRef& perm);
 
 // generate permutation vector that can make x ordered
-PermVector genPermBySort(const MemRef& x);
+Index genPermBySort(const MemRef& x);
 
 // reorder 1-d memref element by applying inverse permutation.
 // ret = ApplyInvPerm(x, pv) -> ret[pv[i]] = x[i]
 MemRef applyInvPerm(const MemRef& x, absl::Span<const int64_t> pv);
+MemRef applyInvPerm(const MemRef& x, const MemRef& pv);
 
 // reorder 1-d memref element by applying permutation.
 // ret = ApplyPerm(x, pv) -> ret[i] = x[pv[i]]
 MemRef applyPerm(const MemRef& x, absl::Span<const int64_t> pv);
+MemRef applyPerm(const MemRef& x, const MemRef& pv);
 
 // get a permutation vector from a ring
-PermVector ring2pv(const MemRef& x);
+Index ring2pv(const MemRef& x);
 
+Index genRandomPerm(size_t numel, uint128_t seed, uint64_t* ctr);
 }  // namespace spu::mpc

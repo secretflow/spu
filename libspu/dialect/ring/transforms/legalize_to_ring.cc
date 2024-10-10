@@ -76,12 +76,11 @@ template <typename SHIFT_T>
 Value buildShift(OpBuilder &builder, Value lhs, int8_t bits) {
   auto const_t = cast<ShapedType>(stripSecretType(lhs.getType()));
 
-  APInt bits_(const_t.getElementType().getIntOrFloatBitWidth(), bits);
+  auto bit_attr = builder.getIntegerAttr(
+      builder.getIntegerType(const_t.getElementType().getIntOrFloatBitWidth()),
+      bits);
 
-  auto bits_v = builder.create<arith::ConstantOp>(
-      lhs.getLoc(), DenseIntElementsAttr::get(const_t, bits_));
-
-  return builder.create<SHIFT_T>(lhs.getLoc(), lhs.getType(), lhs, bits_v);
+  return builder.create<SHIFT_T>(lhs.getLoc(), lhs, bit_attr);
 }
 
 template <typename OP>
@@ -274,12 +273,10 @@ class RingOpUnaryConverter<pphlo::ConvertOp>
       // (x + 0.99 * (x < 0)) >> fxp_bits
       auto msb = rewriter.create<ring::MsbOp>(op->getLoc(), result);
       auto const_type = cast<ShapedType>(stripSecretType(result.getType()));
-      auto oneMinusEps = rewriter.create<arith::ConstantOp>(
-          op->getLoc(),
-          DenseIntElementsAttr::get(
-              const_type,
-              APInt(const_type.getElementType().getIntOrFloatBitWidth(),
-                    (static_cast<uint64_t>(1) << in_fxp_bits) - 1)));
+      auto v = rewriter.getIntegerAttr(
+          rewriter.getIntegerType(const_type.getElementTypeBitWidth()),
+          (static_cast<uint64_t>(1) << in_fxp_bits) - 1);
+      auto oneMinusEps = splatifyConstant(rewriter, v, msb);
       auto mul = rewriter.create<ring::MulOp>(op->getLoc(), result.getType(),
                                               oneMinusEps, msb);
       result = rewriter.create<ring::AddOp>(op->getLoc(), result, mul);

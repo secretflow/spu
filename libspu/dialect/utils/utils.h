@@ -16,6 +16,7 @@
 
 #include "llvm/Support/raw_ostream.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "yacl/base/int128.h"
 
@@ -34,5 +35,8 @@ mlir::func::FuncOp get_entrypoint(ModuleOp op);
 
 APInt convertFromInt128(int64_t nbits, const int128_t& v);
 int128_t convertFromAPInt(const APInt& v);
+
+Value splatifyConstant(OpBuilder& rewritter, TypedAttr attr,
+                       Value base_shape_value);
 
 }  // namespace mlir::spu

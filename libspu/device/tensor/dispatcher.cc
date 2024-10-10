@@ -20,6 +20,7 @@
 #include "libspu/core/trace.h"           // IWYU pragma: keep
 #include "libspu/device/utils/utils.h"   // IWYU pragma: keep
 #include "libspu/dialect/utils/utils.h"  // IWYU pragma: keep
+#include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/public_helper.h"
 #include "libspu/kernel/hal/shape_ops.h"
 
@@ -157,6 +158,33 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
 }
 
 void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
+             mlir::tensor::DimOp &op, const ExecutionOptions &) {
+  const auto &in = sscope->lookupValue(op.getSource());
+  auto index = kernel::hal::getScalarValue<int64_t>(
+      sctx, sscope->lookupValue(op.getIndex()));
+
+  sscope->addValue(op.getResult(),
+                   kernel::hal::constant(sctx, in.shape()[index]));
+}
+
+void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
+             mlir::tensor::SplatOp &op, const ExecutionOptions &) {
+  const auto &in = sscope->lookupValue(op.getInput());
+
+  Shape result_shape = op.getResult().getType().getShape();
+
+  for (size_t rank = 0, dyn_index = 0; rank < result_shape.size(); ++rank) {
+    if (mlir::ShapedType::isDynamic(result_shape[rank])) {
+      result_shape[rank] = kernel::hal::getScalarValue<int64_t>(
+          sctx, sscope->lookupValue(op.getDynamicSizes()[dyn_index++]));
+    }
+  }
+
+  sscope->addValue(op.getResult(),
+                   kernel::hal::broadcast_to(sctx, in, result_shape));
+}
+
+void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
              mlir::tensor::BitcastOp &op, const ExecutionOptions &) {
   auto in = sscope->lookupValue(op.getOperand());
 
@@ -182,6 +210,8 @@ void dispatch(mlir::tensor::TensorDialect *, SPUContext *sctx,
              mlir::tensor::ConcatOp,         //
              mlir::tensor::PadOp,            //
              mlir::tensor::ReshapeOp,        //
+             mlir::tensor::DimOp,            //
+             mlir::tensor::SplatOp,          //
              mlir::tensor::InsertSliceOp     //
              >(executor, sctx, sscope, op, opts);
 }

@@ -46,7 +46,7 @@ void ring_print(const MemRef& x, std::string_view name = "_");
 
 void ring_rand(MemRef& in);
 void ring_rand(MemRef& in, uint128_t prg_seed, uint64_t* prg_counter);
-void ring_rand_range(MemRef& in, int32_t min, int32_t max);
+void ring_rand_range(MemRef& in, uint128_t min, uint128_t max);
 
 void ring_zeros(MemRef& in);
 

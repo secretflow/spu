@@ -32,8 +32,10 @@ spu_cc_library(
     ]),
     visibility = ["//visibility:public"],
     deps = [
+        "@llvm-project//mlir:ArithDialect",
         "@llvm-project//mlir:FuncDialect",
         "@llvm-project//mlir:IR",
+        "@llvm-project//mlir:TensorDialect",
         "@yacl//yacl/base:int128",
     ],
 )

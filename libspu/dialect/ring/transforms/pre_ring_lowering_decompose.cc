@@ -90,14 +90,12 @@ struct BitParityDecompose : public OpRewritePattern<pphlo::BitParityOp> {
     }
 
     while (bits > 1) {
-      auto shift_bits = rewriter.create<arith::ConstantOp>(
-          op.getLoc(),
-          SplatElementsAttr::get(
-              pt_type, rewriter.getIntegerAttr(pt_el_type, bits / 2)));
       ret = rewriter.create<pphlo::XorOp>(
           op.getLoc(), ret,
-          rewriter.create<pphlo::ShiftRightLogicalOp>(op->getLoc(), ret,
-                                                      shift_bits));
+          rewriter.create<pphlo::ShiftRightLogicalOp>(
+              op->getLoc(), ret,
+              rewriter.getIntegerAttr(
+                  rewriter.getIntegerType(pt_el_type.getWidth()), bits / 2)));
       bits /= 2;
     }
 
@@ -162,10 +160,8 @@ struct BitDeintlDecompose : public OpRewritePattern<pphlo::BitDeintlOp> {
           op.getLoc(),
           DenseElementsAttr::get(pt_type, llvm::APInt(pt_el_type.getWidth(),
                                                       kBitIntlSwapMasks[idx])));
-      auto shift = rewriter.create<arith::ConstantOp>(
-          op.getLoc(),
-          DenseElementsAttr::get(pt_type,
-                                 llvm::APInt(pt_el_type.getWidth(), 1 << idx)));
+      auto shift = rewriter.getIntegerAttr(
+          rewriter.getIntegerType(pt_el_type.getWidth()), 1 << idx);
       // out = (out & keep) ^ ((out >> shift) & move) ^ ((out & move) << shift);
       out = rewriter.create<pphlo::XorOp>(
           op->getLoc(),
@@ -258,13 +254,10 @@ struct PrefixOrDecompose : public OpRewritePattern<pphlo::PrefixOrOp> {
     for (int idx = 0; idx < absl::bit_width(bit_width) - 1; ++idx) {
       const uint64_t offset = 1L << idx;
 
-      auto offset_v = rewriter.create<arith::ConstantOp>(
-          op.getLoc(),
-          SplatElementsAttr::get(pt_type,
-                                 rewriter.getIntegerAttr(pt_el_type, offset)));
-
-      auto b1 = rewriter.create<pphlo::ShiftRightLogicalOp>(op->getLoc(), b0,
-                                                            offset_v);
+      auto b1 = rewriter.create<pphlo::ShiftRightLogicalOp>(
+          op->getLoc(), b0,
+          rewriter.getIntegerAttr(
+              rewriter.getIntegerType(pt_el_type.getWidth()), offset));
 
       b0 = rewriter.create<pphlo::OrOp>(op->getLoc(), b0, b1);
     }
@@ -286,12 +279,8 @@ struct LogicalNotDecompose : public OpRewritePattern<pphlo::NotOp> {
       return failure();  // Not what we care here.
     }
 
-    auto pub_type =
-        mlir::cast<ShapedType>(tools.getExpressedType(op.getType()));
-
-    auto k1 = rewriter.create<arith::ConstantOp>(
-        op->getLoc(),
-        SplatElementsAttr::get(pub_type, rewriter.getBoolAttr(true)));
+    auto k1 =
+        splatifyConstant(rewriter, rewriter.getBoolAttr(true), op.getOperand());
 
     rewriter.replaceOpWithNewOp<pphlo::XorOp>(op, op.getOperand(), k1);
 
@@ -302,16 +291,16 @@ struct LogicalNotDecompose : public OpRewritePattern<pphlo::NotOp> {
 struct SignDecompose : public OpRewritePattern<pphlo::SignOp> {
  private:
   Value buildZero(PatternRewriter &rewriter, const mlir::Location &loc,
-                  RankedTensorType type) const {
+                  Value source_value, RankedTensorType type) const {
     auto el_type = type.getElementType();
 
     if (el_type.isInteger()) {
-      return rewriter.create<arith::ConstantOp>(loc,
-                                                rewriter.getZeroAttr(type));
+      return splatifyConstant(rewriter, rewriter.getZeroAttr(el_type),
+                              source_value);
     } else {
-      auto fp_constant = rewriter.create<arith::ConstantOp>(
-          loc, rewriter.getZeroAttr(type.clone(rewriter.getF32Type())));
-      return BuildEncodeToFxp(rewriter, loc, fp_constant, type);
+      auto zero = splatifyConstant(
+          rewriter, rewriter.getZeroAttr(rewriter.getF32Type()), source_value);
+      return BuildEncodeToFxp(rewriter, loc, zero, type);
     }
   }
 
@@ -327,7 +316,7 @@ struct SignDecompose : public OpRewritePattern<pphlo::SignOp> {
         mlir::cast<RankedTensorType>(tools.getExpressedType(op.getType()));
 
     // is_negative = x < 0 ? 1 : 0;
-    auto zero = buildZero(rewriter, loc, pt_type);
+    auto zero = buildZero(rewriter, loc, op.getOperand(), pt_type);
     // x < 0
     Value is_negative =
         rewriter.create<pphlo::LessOp>(loc, op.getOperand(), zero);
@@ -340,13 +329,11 @@ struct SignDecompose : public OpRewritePattern<pphlo::SignOp> {
         loc, tools.replaceBaseType(is_negative.getType(), rewriter.getI8Type()),
         is_negative);
 
-    auto one = rewriter.create<arith::ConstantOp>(
-        op.getLoc(), rewriter.getOneAttr(pt_type.clone(rewriter.getI8Type())));
+    auto one = splatifyConstant(
+        rewriter, rewriter.getOneAttr(rewriter.getI8Type()), op.getOperand());
 
-    auto neg_two = rewriter.create<arith::ConstantOp>(
-        op.getLoc(),
-        SplatElementsAttr::get(mlir::cast<ShapedType>(one.getType()),
-                               rewriter.getI8IntegerAttr(-2)));
+    auto neg_two = splatifyConstant(rewriter, rewriter.getI8IntegerAttr(-2),
+                                    op.getOperand());
 
     // -2 * is_negative
     Value mul = rewriter.create<pphlo::MulOp>(loc, is_negative.getType(),

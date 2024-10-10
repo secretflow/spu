@@ -14,6 +14,9 @@
 
 #include "libspu/dialect/utils/utils.h"
 
+#include "mlir/Dialect/Arith/IR/Arith.h"
+#include "mlir/Dialect/Tensor/IR/Tensor.h"
+
 namespace mlir::spu {
 
 mlir::func::FuncOp get_entrypoint(ModuleOp op) {
@@ -49,6 +52,32 @@ int128_t convertFromAPInt(const APInt& v) {
               std::min<unsigned int>(v.getNumWords() * sizeof(int64_t),
                                      sizeof(int128_t)));
   return ret;
+}
+
+Value splatifyConstant(OpBuilder& rewritter, TypedAttr attr,
+                       Value base_shape_value) {
+  auto base_shape =
+      mlir::cast<ShapedType>(base_shape_value.getType()).getShape();
+
+  auto loc = rewritter.getUnknownLoc();
+
+  if (ShapedType::isDynamicShape(base_shape)) {
+    auto c = rewritter.create<arith::ConstantOp>(loc, attr);
+    llvm::SmallVector<Value> dynamic_slice;
+    for (size_t rank = 0; rank < base_shape.size(); ++rank) {
+      if (ShapedType::isDynamic(base_shape[rank])) {
+        dynamic_slice.emplace_back(
+            rewritter.create<tensor::DimOp>(loc, base_shape_value, rank));
+      }
+    }
+    return rewritter.create<tensor::SplatOp>(
+        loc, c, RankedTensorType::get(base_shape, attr.getType()),
+        dynamic_slice);
+  }
+
+  return rewritter.create<arith::ConstantOp>(
+      loc, SplatElementsAttr::get(
+               RankedTensorType::get(base_shape, attr.getType()), attr));
 }
 
 }  // namespace mlir::spu

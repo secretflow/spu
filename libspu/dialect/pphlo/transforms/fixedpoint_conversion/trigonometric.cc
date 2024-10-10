@@ -71,7 +71,7 @@ Value tanh_chebyshev(builder::FxpBuilder &builder, Value input) {
       builder.reshape(input, {static_cast<int64_t>(1), in_rt.getNumElements()});
 
   // Use flattened_type for builder
-  builder.replaceBaseFxpType(flatten_x.getType());
+  builder.replaceBaseFxpValue(flatten_x);
 
   // Clamp input to [-5.0, 5.0]
   auto neg_five = builder.fxp_constant(-5.0F);
@@ -88,7 +88,7 @@ Value tanh_chebyshev(builder::FxpBuilder &builder, Value input) {
   auto mmul = builder.dot(coeff_value, poly);
 
   // Restore buidler type
-  builder.replaceBaseFxpType(input.getType());
+  builder.replaceBaseFxpValue(input);
 
   return builder.reshape(mmul, in_rt.getShape());
 }
@@ -122,7 +122,7 @@ Value sine_chebyshev(builder::FxpBuilder &builder, Value input) {
   normalized = builder.reshape(normalized, {1, in_rt.getNumElements()});
 
   // Flattened
-  builder.replaceBaseFxpType(normalized.getType());
+  builder.replaceBaseFxpValue(normalized);
 
   // rescale the original x
   auto c1 = builder.fxp_constant(0.25464790894703254F);
@@ -132,7 +132,7 @@ Value sine_chebyshev(builder::FxpBuilder &builder, Value input) {
       compute_chebyshev_polynomials(builder, normalized, kCoeffs.size());
 
   // Unflattened
-  builder.replaceBaseFxpType(input.getType());
+  builder.replaceBaseFxpValue(input);
 
   auto ret = builder.dot(coeff_value, poly);
 

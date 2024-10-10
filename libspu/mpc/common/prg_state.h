@@ -15,6 +15,7 @@
 #pragma once
 
 #include "absl/types/span.h"
+#include "yacl/crypto/rand/rand.h"
 #include "yacl/crypto/tools/prg.h"
 #include "yacl/link/context.h"
 
@@ -58,6 +59,11 @@ class PrgState : public State {
 
   void fillPriv(void* in, size_t nbytes);
   void fillPubl(void* in, size_t nbytes);
+
+  Index genPrivPerm(size_t numel);
+
+  // Generate a random permutation pair (p0, p1).
+  std::pair<Index, Index> genPrssPermPair(size_t numel);
 
   // Generate a random pair (r0, r1), where
   //   r1 = next_party.r0

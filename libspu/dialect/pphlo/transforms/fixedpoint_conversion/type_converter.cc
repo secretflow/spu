@@ -114,6 +114,7 @@ Type SecretFloatConverter::convertSecretType(SecretType type) const {
 
 SecretFloatConverter::SecretFloatConverter(FxpWidthConfig config)
     : config_(config) {
+  addConversion([](IndexType t) { return t; });
   addConversion([&](RankedTensorType type) -> Type {
     auto eltype = type.getElementType();
     if (auto st = mlir::dyn_cast<SecretType>(eltype)) {

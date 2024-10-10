@@ -66,6 +66,7 @@ spu_cc_library(
     deps = [
         "//libspu/core:memref",
         "//libspu/core:object",
+        "//libspu/mpc/utils:permute",
         "@yacl//yacl/crypto/rand",
         "@yacl//yacl/crypto/tools:prg",
         "@yacl//yacl/link:context",

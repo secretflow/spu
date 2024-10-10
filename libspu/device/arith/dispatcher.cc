@@ -767,6 +767,28 @@ void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
   sscope->addValue(op.getResult(), std::move(ret));
 }
 
+void execute(OpExecutor *executor, SPUContext *sctx, SymbolScope *sscope,
+             mlir::arith::TruncIOp &op, const ExecutionOptions &) {
+  const auto &in = sscope->lookupValue(op.getIn());
+
+  auto ret_setype = getSemanticTypeFromMlirType(op.getType());
+  auto numel = in.numel();
+
+  MemRef ret(makeType<mpc::Pub2kTy>(ret_setype), in.shape());
+
+  DISPATCH_ALL_STORAGE_TYPES(in.eltype().storage_type(), [&]() {
+    MemRefView<ScalarT> _in(in);
+    DISPATCH_ALL_STORAGE_TYPES(ret.eltype().storage_type(), [&]() {
+      MemRefView<ScalarT> _out(ret);
+      for (int64_t idx = 0; idx < numel; ++idx) {
+        _out[idx] = _in[idx];
+      }
+    });
+  });
+
+  sscope->addValue(op.getResult(), std::move(ret));
+}
+
 #include "libspu/device/utils/dispatch_template.cc.inc"
 
 void dispatch(mlir::arith::ArithDialect *, SPUContext *sctx,
@@ -802,7 +824,8 @@ void dispatch(mlir::arith::ArithDialect *, SPUContext *sctx,
              mlir::arith::UIToFPOp,     //
              mlir::arith::SIToFPOp,     //
              mlir::arith::FPToSIOp,     //
-             mlir::arith::XOrIOp        //
+             mlir::arith::XOrIOp,       //
+             mlir::arith::TruncIOp      //
              >(executor, sctx, sscope, op, opts);
 }
 

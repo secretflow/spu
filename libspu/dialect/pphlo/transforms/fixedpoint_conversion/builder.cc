@@ -15,8 +15,10 @@
 #include "libspu/dialect/pphlo/transforms/fixedpoint_conversion/builder.h"
 
 #include "mlir/Dialect/Arith/IR/Arith.h"
+#include "mlir/Dialect/Tensor/IR/Tensor.h"
 
 #include "libspu/core/half.h"
+#include "libspu/core/prelude.h"
 #include "libspu/device/intrinsic_table.h"
 #include "libspu/dialect/pphlo/IR/ops.h"
 #include "libspu/dialect/utils/utils.h"
@@ -65,11 +67,11 @@ Type inferTruncType(Type fxp, int64_t bits_to_trunc) {
 }  // namespace
 
 int64_t FxpBuilder::getCurrentFxpBits() {
-  return tools_.getFxpBits(base_fxp_type_);
+  return tools_.getFxpBits(base_fxp_value_.getType());
 }
 
 int64_t FxpBuilder::getCurrentFxpWidth() {
-  return tools_.getFxpWidth(base_fxp_type_);
+  return tools_.getFxpWidth(base_fxp_value_.getType());
 }
 
 Type FxpBuilder::getIntTypeWithSameWidth(Type t, bool unsign) {
@@ -103,22 +105,20 @@ Type FxpBuilder::getIntTypeWithSameWidth(Type t, bool unsign) {
 
 Value FxpBuilder::fxp_constant_with_type(Type fxp_type,
                                          llvm::ArrayRef<double> value) {
+  SPU_ENFORCE(value.size() > 1);
   // Get corresponding floating point type
-  auto fp_type = fxpToFpTypeConversion(fxp_type);
-  auto fp_base_type =
-      mlir::dyn_cast<RankedTensorType>(fp_type).getElementType();
+  auto fp_type = mlir::cast<ShapedType>(fxpToFpTypeConversion(fxp_type));
+  auto fp_base_type = fp_type.getElementType();
 
   if (fp_base_type.isF64()) {
     return builder_.create<arith::ConstantOp>(
-        loc_,
-        DenseFPElementsAttr::get(mlir::dyn_cast<ShapedType>(fp_type), value));
+        loc_, DenseFPElementsAttr::get(fp_type, value));
   }
 
   if (fp_base_type.isF32()) {
     llvm::SmallVector<float> casted(value);
     return builder_.create<arith::ConstantOp>(
-        loc_,
-        DenseFPElementsAttr::get(mlir::dyn_cast<ShapedType>(fp_type), casted));
+        loc_, DenseFPElementsAttr::get(fp_type, casted));
   }
 
   if (fp_base_type.isF16()) {
@@ -127,8 +127,33 @@ Value FxpBuilder::fxp_constant_with_type(Type fxp_type,
       casted[idx] = value[idx];
     }
     return builder_.create<arith::ConstantOp>(
-        loc_,
-        DenseFPElementsAttr::get(mlir::dyn_cast<ShapedType>(fp_type), casted));
+        loc_, DenseFPElementsAttr::get(fp_type, casted));
+  }
+
+  llvm_unreachable("Should not hit");
+}
+
+IntegerAttr FxpBuilder::getIntegerAttr(Type t, int128_t value) {
+  auto base = mlir::cast<IntegerType>(
+      getElementTypeOrSelf(getTypeTools().getBaseType(t)));
+  return builder_.getIntegerAttr(
+      IntegerType::get(t.getContext(), base.getWidth()),
+      convertFromInt128(base.getWidth(), value));
+}
+
+FloatAttr FxpBuilder::getFloatAttr(Type t, double value) {
+  auto base = mlir::cast<FloatType>(getElementTypeOrSelf(
+      getTypeTools().getBaseType(fxpToFpTypeConversion(t))));
+  if (base.isF64()) {
+    return builder_.getFloatAttr(base, value);
+  }
+
+  if (base.isF32()) {
+    return builder_.getFloatAttr(base, static_cast<float>(value));
+  }
+
+  if (base.isF16()) {
+    return builder_.getFloatAttr(base, static_cast<half_float::half>(value));
   }
 
   llvm_unreachable("Should not hit");
@@ -136,9 +161,10 @@ Value FxpBuilder::fxp_constant_with_type(Type fxp_type,
 
 Value FxpBuilder::int_constant_with_type(Type int_type,
                                          llvm::ArrayRef<int128_t> value) {
-  int_type = tools_.getExpressedType(int_type);
-  auto it = mlir::dyn_cast<IntegerType>(
-      mlir::dyn_cast<ShapedType>(int_type).getElementType());
+  SPU_ENFORCE(value.size() > 1);
+
+  auto type = mlir::cast<ShapedType>(tools_.getExpressedType(int_type));
+  auto it = mlir::dyn_cast<IntegerType>(type.getElementType());
   bool isSigneless = it.isSignless();
   llvm::SmallVector<APInt> casted(value.size());
   for (size_t idx = 0; idx < value.size(); ++idx) {
@@ -155,24 +181,28 @@ Value FxpBuilder::int_constant_with_type(Type int_type,
   }
 
   return builder_.create<arith::ConstantOp>(
-      loc_,
-      DenseElementsAttr::get(mlir::dyn_cast<ShapedType>(int_type), casted));
-
-  llvm_unreachable("Should not hit");
+      loc_, DenseElementsAttr::get(
+                RankedTensorType::get({static_cast<int64_t>(value.size())}, it),
+                casted));
 }
 
 Value FxpBuilder::int_constant(int128_t value) {
-  auto int_type = getIntTypeWithSameWidth(base_fxp_type_);
-  return int_constant_with_type(int_type, value);
+  auto int_attr =
+      getIntegerAttr(getIntTypeWithSameWidth(base_fxp_value_.getType()), value);
+  return splatifyConstant(builder_, int_attr, base_fxp_value_);
 }
 
 Value FxpBuilder::uint_constant(uint128_t value) {
-  auto int_type = getIntTypeWithSameWidth(base_fxp_type_, true);
-  return int_constant_with_type(int_type, value);
+  auto int_attr =
+      getIntegerAttr(getIntTypeWithSameWidth(base_fxp_value_.getType()), value);
+  auto c = splatifyConstant(builder_, int_attr, base_fxp_value_);
+
+  return bitcast(c, getIntTypeWithSameWidth(c.getType(), true));
 }
 
 Value FxpBuilder::fxp_constant(double value) {
-  return fxp_constant_with_type(base_fxp_type_, value);
+  auto fp_attr = getFloatAttr(base_fxp_value_.getType(), value);
+  return splatifyConstant(builder_, fp_attr, base_fxp_value_);
 }
 
 Value FxpBuilder::mul(Value lhs, Value rhs, SignType sign) {
@@ -264,17 +294,17 @@ Value FxpBuilder::prefix_or(Value in) {
 }
 
 Value FxpBuilder::rshift(Value in, int64_t bits) {
-  auto c = int_constant_with_type(in.getType(), bits);
+  auto c = getIntegerAttr(in.getType(), bits);
   return builder_.create<ShiftRightLogicalOp>(loc_, in, c);
 }
 
 Value FxpBuilder::arshift(Value in, int64_t bits) {
-  auto c = int_constant_with_type(in.getType(), bits);
+  auto c = getIntegerAttr(in.getType(), bits);
   return builder_.create<ShiftRightArithmeticOp>(loc_, in, c);
 }
 
 Value FxpBuilder::lshift(Value in, int64_t bits) {
-  auto c = int_constant_with_type(in.getType(), bits);
+  auto c = getIntegerAttr(in.getType(), bits);
   return builder_.create<ShiftLeftOp>(loc_, in, c);
 }
 

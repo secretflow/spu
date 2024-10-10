@@ -27,6 +27,7 @@ spu_cc_library(
     deps = [
         "//libspu/device:executor",
         "//libspu/device/utils",
+        "//libspu/kernel/hal:constants",
         "//libspu/kernel/hal:public_helper",
         "//libspu/kernel/hal:shape_ops",
         "@llvm-project//mlir:TensorDialect",

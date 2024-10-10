@@ -428,6 +428,10 @@ def PPHLO_ShiftLeftOp
 
     Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#shift_left
   }];
+
+  let builders = [
+    OpBuilder<(ins "Value":$lhs, "IntegerAttr":$rhs)>,
+  ];
 }
 
 def PPHLO_ShiftRightArithmeticOp
@@ -438,6 +442,10 @@ def PPHLO_ShiftRightArithmeticOp
 
     Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#shift_right_arithmetic
   }];
+
+  let builders = [
+    OpBuilder<(ins "Value":$lhs, "IntegerAttr":$rhs)>,
+  ];
 }
 
 def PPHLO_ShiftRightLogicalOp
@@ -448,6 +456,10 @@ def PPHLO_ShiftRightLogicalOp
 
     Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#shift_right_logical
   }];
+
+  let builders = [
+    OpBuilder<(ins "Value":$lhs, "IntegerAttr":$rhs)>,
+  ];
 }
 
 def PPHLO_SubtractOp : PPHLO_BinaryElementwiseOpWithTypeInfer<"subtract", [], PPHLO_NoComplexTensor> {

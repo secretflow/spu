@@ -1,0 +1,52 @@
+# Common settings that generally should always be used with your language specific settings
+
+# Auto detect text files and perform LF normalization
+* text=auto
+
+#
+# The above will handle all files NOT found below
+#
+
+# Documents
+*.rtf diff=astextplain eol=lf
+*.md linguist-detectable
+
+# Scripts
+*.sh text eol=lf
+
+# Serialization
+*.json text eol=lf
+*.toml text eol=lf
+*.xml text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+
+# Text files where line endings should be preserved
+*.patch -text eol=lf
+
+#
+# Exclude files from exporting
+#
+
+.gitattributes export-ignore
+.gitignore export-ignore
+
+# C++ sources
+*.cc text diff=cpp eol=lf
+*.h text diff=cpp eol=lf
+
+# Basic .gitattributes for a python repo.
+
+# Python source files
+# ============
+*.py text diff=python eol=lf
+
+# Jupyter notebook
+*.ipynb text eol=lf
+
+# Bazel
+*.bzl linguist-language=Python eol=lf
+*.bazel linguist-language=Python eol=lf
+BUILD linguist-language=Python eol=lf
+WORKSPACE linguist-language=Python eol=lf
+.bazelversion text eol=lf

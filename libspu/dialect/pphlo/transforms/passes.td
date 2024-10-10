@@ -135,7 +135,7 @@ def LowerSecretFloatToFixedPoint: Pass<"lower-sfloat-to-fxp", "func::FuncOp"> {
 def ExpandFixedPointApproximations: Pass<"expand-fixedpoint-approx", "func::FuncOp"> {
   let summary = "Expand secret non-linear ops to fixedpoint based approximations";
   let constructor = "createExpandFixedPointApprox()";
-  let dependentDialects = ["pphlo::PPHloDialect"];
+  let dependentDialects = ["pphlo::PPHloDialect", "tensor::TensorDialect"];
   let options = [
     // Approximation config
     Option<"lower_accuracy_rsqrt_", "lower_accuracy_rsqrt", "bool", "false", "Use a lower accuracy rsqrt approximation">,

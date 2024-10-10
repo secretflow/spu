@@ -49,6 +49,9 @@ class HloBuilder final {
   std::string EmitCodes() const;
 
   mlir::Value Constant(const PtBufferView &view, const Shape &out_shape);
+  mlir::Value SplatConstant(const PtBufferView &view,
+                            const mlir::Value &as_shape);
+  mlir::Value Splat(const mlir::Value &in, const mlir::Value &as_shape);
   mlir::Value Argument(spu::PtType pt_type, spu::Visibility visibility,
                        const Shape &shape);
 

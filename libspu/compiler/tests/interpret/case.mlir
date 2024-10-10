@@ -72,4 +72,3 @@ func.func @case_out_of_bound_index_default() {
   pphlo.custom_call @expect_eq(%expected, %result1) : (tensor<2xi64>, tensor<2x!pphlo.secret<i64>>)->()
   func.return
 }
-
