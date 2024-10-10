@@ -1,6 +1,6 @@
 myst-parser==4.0.0
 rstcheck==6.2.4
-sphinx==8.0.2
+sphinx==8.1.0
 nbsphinx==0.9.5
 sphinx-autobuild==2024.10.3
 sphinx-markdown-parser==0.2.4
