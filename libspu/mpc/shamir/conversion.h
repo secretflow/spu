@@ -20,7 +20,7 @@ namespace spu::mpc::shamir {
 
 class A2B : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "a2b";
+  static constexpr const char* kBindName() {return  "a2b"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
@@ -42,7 +42,7 @@ class A2B : public UnaryKernel {
 
 class B2A : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "b2a";
+  static constexpr const char* kBindName() {return  "b2a"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
@@ -60,7 +60,7 @@ class B2A : public UnaryKernel {
 // Todo: put this kernel to arithmetic.h
 class TruncA : public TruncAKernel {
  public:
-  static constexpr char kBindName[] = "trunc_a";
+  static constexpr const char* kBindName() {return  "trunc_a"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
@@ -81,7 +81,7 @@ class TruncA : public TruncAKernel {
 
 class MulAATrunc : public MulTruncAKernel {
  public:
-  static constexpr char kBindName[] = "mul_aa_trunc";
+  static constexpr const char* kBindName() {return  "mul_aa_trunc"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
@@ -102,7 +102,7 @@ class MulAATrunc : public MulTruncAKernel {
 
 class MsbA : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "msb_a";
+  static constexpr const char* kBindName() {return  "msb_a"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
@@ -123,7 +123,7 @@ class MsbA : public UnaryKernel {
 
 class CommonTypeV : public Kernel {
  public:
-  static constexpr char kBindName[] = "common_type_v";
+  static constexpr const char* kBindName() {return  "common_type_v"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 

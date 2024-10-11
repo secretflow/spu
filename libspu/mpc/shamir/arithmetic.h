@@ -20,7 +20,7 @@ namespace spu::mpc::shamir {
 
 class RandA : public RandKernel {
  public:
-  static constexpr char kBindName[] = "rand_a";
+  static constexpr const char* kBindName() {return  "rand_a"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
@@ -33,7 +33,7 @@ class RandA : public RandKernel {
 
 class P2A : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "p2a";
+  static constexpr const char* kBindName() {return  "p2a"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
@@ -46,7 +46,7 @@ class P2A : public UnaryKernel {
 
 class A2P : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "a2p";
+  static constexpr const char* kBindName() {return  "a2p"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
@@ -59,7 +59,7 @@ class A2P : public UnaryKernel {
 
 class A2V : public RevealToKernel {
  public:
-  static constexpr char kBindName[] = "a2v";
+  static constexpr const char* kBindName() {return  "a2v"; }
 
   // TODO: communication is unbalanced
   Kind kind() const override { return Kind::Dynamic; }
@@ -74,7 +74,7 @@ class A2V : public RevealToKernel {
 
 class V2A : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "v2a";
+  static constexpr const char* kBindName() {return  "v2a"; }
 
   // TODO: communication is unbalanced
   Kind kind() const override { return Kind::Dynamic; }
@@ -88,7 +88,7 @@ class V2A : public UnaryKernel {
 
 class NotA : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "not_a";
+  static constexpr const char* kBindName() {return  "not_a"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
@@ -101,7 +101,7 @@ class NotA : public UnaryKernel {
 
 class NegateA : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "negate_a";
+  static constexpr const char* kBindName() {return  "negate_a"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
@@ -117,7 +117,7 @@ class NegateA : public UnaryKernel {
 ////////////////////////////////////////////////////////////////////
 class AddAP : public BinaryKernel {
  public:
-  static constexpr char kBindName[] = "add_ap";
+  static constexpr const char* kBindName() {return  "add_ap"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -129,7 +129,7 @@ class AddAP : public BinaryKernel {
 
 class AddAA : public BinaryKernel {
  public:
-  static constexpr char kBindName[] = "add_aa";
+  static constexpr const char* kBindName() {return  "add_aa"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -144,7 +144,7 @@ class AddAA : public BinaryKernel {
 ////////////////////////////////////////////////////////////////////
 class MulAP : public BinaryKernel {
  public:
-  static constexpr char kBindName[] = "mul_ap";
+  static constexpr const char* kBindName() {return  "mul_ap"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -156,7 +156,7 @@ class MulAP : public BinaryKernel {
 
 class MulAA : public BinaryKernel {
  public:
-  static constexpr char kBindName[] = "mul_aa";
+  static constexpr const char* kBindName() {return  "mul_aa"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
@@ -170,7 +170,7 @@ class MulAA : public BinaryKernel {
 
 class MulAAP : public BinaryKernel {
  public:
-  static constexpr char kBindName[] = "mul_aa_p";
+  static constexpr const char* kBindName() {return  "mul_aa_p"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
@@ -187,7 +187,7 @@ class MulAAP : public BinaryKernel {
 ////////////////////////////////////////////////////////////////////
 class MatMulAP : public MatmulKernel {
  public:
-  static constexpr char kBindName[] = "mmul_ap";
+  static constexpr const char* kBindName() {return  "mmul_ap"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -199,7 +199,7 @@ class MatMulAP : public MatmulKernel {
 
 class MatMulAA : public MatmulKernel {
  public:
-  static constexpr char kBindName[] = "mmul_aa";
+  static constexpr const char* kBindName() {return  "mmul_aa"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
