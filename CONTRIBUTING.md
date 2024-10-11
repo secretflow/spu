@@ -72,7 +72,7 @@ python3 -m pip install -r requirements-dev.txt
 #### macOS
 
 ```sh
-# macOS >= 12.0, Xcode >= 14.0
+# macOS >= 13.0, Xcode >= 15.0
 
 # Install Xcode
 https://apps.apple.com/us/app/xcode/id497799835?mt=12

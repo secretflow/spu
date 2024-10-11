@@ -14,14 +14,16 @@
 
 #include "libspu/mpc/semi2k/beaver/beaver_impl/beaver_ttp.h"
 
+#include <future>
 #include <utility>
 #include <vector>
 
-#include "yacl/crypto/pke/asymmetric_sm2_crypto.h"
+#include "yacl/crypto/pke/sm2_enc.h"
 #include "yacl/crypto/rand/rand.h"
 #include "yacl/link/algorithm/allgather.h"
 
 #include "libspu/mpc/common/prg_tensor.h"
+#include "libspu/mpc/semi2k/beaver/beaver_impl/ttp_server/beaver_stream.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
 namespace brpc {
@@ -87,12 +89,136 @@ AdjustRequest BuildAdjustRequest(
 template <class T>
 struct dependent_false : std::false_type {};
 
+class StreamReader : public brpc::StreamInputHandler {
+ public:
+  enum class Status : int8_t {
+    kNotFinished,
+    kNormalFinished,
+    kAbnormalFinished,
+    kStreamFailed,
+  };
+
+  StreamReader(int32_t num_buf, size_t buf_len) {
+    SPU_ENFORCE(num_buf > 0);
+    SPU_ENFORCE(buf_len > 0);
+    buf_vec_.resize(num_buf);
+    buf_len_ = buf_len;
+    future_finished_ = promise_finished_.get_future();
+    future_closed_ = promise_closed_.get_future();
+  }
+
+  int on_received_messages(brpc::StreamId id, butil::IOBuf* const messages[],
+                           size_t size) override {
+    SPDLOG_DEBUG("on_received_messages, stream id: {}", id);
+    for (size_t i = 0; i < size; ++i) {
+      if (status_ != Status::kNotFinished) {
+        SPDLOG_ERROR("unexpected messages received");
+        return -1;
+      }
+
+      SPDLOG_DEBUG("receive buf size: {}", messages[i]->size());
+      const auto& message = messages[i];
+      beaver::ttp_server::BeaverDownStreamMeta meta;
+      message->copy_to(&meta, sizeof(meta));
+      message->pop_front(sizeof(meta));
+      if (meta.err_code != 0) {
+        SPDLOG_ERROR("response error from server, err_code: {}, err_text: {}",
+                     meta.err_code, message->to_string());
+        status_ = Status::kAbnormalFinished;
+        promise_finished_.set_value(status_);
+        return -2;
+      }
+
+      SPU_ENFORCE(message->length() % buf_vec_.size() == 0);
+      size_t msg_len = message->length() / buf_vec_.size();
+      for (size_t buf_idx = 0; buf_idx < buf_vec_.size(); ++buf_idx) {
+        message->append_to(&buf_vec_[buf_idx], msg_len, buf_idx * msg_len);
+      }
+
+      SPU_ENFORCE(buf_vec_[0].length() <= buf_len_,
+                  "unexpected bytes received");
+      if (buf_vec_[0].length() == buf_len_) {
+        status_ = Status::kNormalFinished;
+        promise_finished_.set_value(status_);
+      }
+    }
+    return 0;
+  }
+
+  void on_idle_timeout(brpc::StreamId id) override {
+    SPDLOG_WARN("Stream {} idle timeout", id);
+  }
+
+  void on_closed(brpc::StreamId id) override {
+    SPDLOG_DEBUG("Stream {} closed", id);
+    promise_closed_.set_value();
+  }
+
+  void on_failed(brpc::StreamId id, int error_code,
+                 const std::string& error_text) override {
+    SPDLOG_ERROR("Stream {} failed, error_code: {}, error_text: {}", id,
+                 error_code, error_text);
+    status_ = Status::kStreamFailed;
+    promise_finished_.set_value(status_);
+  }
+
+  const auto& GetBufVecRef() const {
+    SPU_ENFORCE(status_ == Status::kNormalFinished);
+    return buf_vec_;
+  }
+
+  Status WaitFinished() { return future_finished_.get(); };
+
+  void WaitClosed() { future_closed_.wait(); }
+
+ private:
+  std::vector<butil::IOBuf> buf_vec_;
+  size_t buf_len_;
+  Status status_ = Status::kNotFinished;
+  std::promise<Status> promise_finished_;
+  std::promise<void> promise_closed_;
+  std::future<Status> future_finished_;
+  std::future<void> future_closed_;
+};
+
+// Obtain a tuple containing num_buf and buf_len
 template <class AdjustRequest>
-std::vector<NdArrayRef> RpcCall(brpc::Channel& channel, AdjustRequest req,
-                                FieldType ret_field) {
+std::tuple<int32_t, int64_t> GetBufferLength(const AdjustRequest& req) {
+  if constexpr (std::is_same_v<AdjustRequest,
+                               beaver::ttp_server::AdjustDotRequest>) {
+    SPU_ENFORCE_EQ(req.prg_inputs().size(), 3);
+    return {1, req.prg_inputs()[2].buffer_len()};
+  } else if constexpr (std::is_same_v<
+                           AdjustRequest,
+                           beaver::ttp_server::AdjustTruncPrRequest>) {
+    SPU_ENFORCE_GE(req.prg_inputs().size(), 1);
+    return {2, req.prg_inputs()[0].buffer_len()};
+  } else {
+    SPU_ENFORCE_GE(req.prg_inputs().size(), 1);
+    return {1, req.prg_inputs()[0].buffer_len()};
+  }
+}
+
+template <class AdjustRequest>
+std::vector<NdArrayRef> RpcCall(
+    brpc::Channel& channel, AdjustRequest req, FieldType ret_field,
+    const std::vector<butil::IOBuf>* upstream_messages = nullptr) {
   brpc::Controller cntl;
   beaver::ttp_server::BeaverService::Stub stub(&channel);
   beaver::ttp_server::AdjustResponse rsp;
+
+  auto [num_buf, buf_len] = GetBufferLength(req);
+  StreamReader reader(num_buf, buf_len);
+  brpc::StreamOptions stream_options;
+  stream_options.max_buf_size = 2 * beaver::ttp_server::kUpStreamChunkSize;
+  stream_options.handler = &reader;
+  brpc::StreamId stream_id;
+  SPU_ENFORCE_EQ(brpc::StreamCreate(&stream_id, cntl, &stream_options), 0,
+                 "Failed to create stream");
+  auto cleanup = absl::MakeCleanup([&stream_id, &reader]() {
+    SPU_ENFORCE(brpc::StreamClose(stream_id) == 0);
+    reader.WaitClosed();
+  });
 
   if constexpr (std::is_same_v<AdjustRequest,
                                beaver::ttp_server::AdjustMulRequest>) {
@@ -135,14 +261,31 @@ std::vector<NdArrayRef> RpcCall(brpc::Channel& channel, AdjustRequest req,
               "Adjust server failed code={}, error={}",
               ErrorCode_Name(rsp.code()), rsp.message());
 
+  if (upstream_messages != nullptr) {
+    for (const auto& message : *upstream_messages) {
+      int ret = brpc::StreamWrite(stream_id, message);
+      if (ret == EAGAIN) {
+        SPU_ENFORCE_EQ(brpc::StreamWait(stream_id, nullptr), 0);
+        ret = brpc::StreamWrite(stream_id, message);
+      }
+      SPU_ENFORCE_EQ(ret, 0, "Write stream failed");
+      SPDLOG_DEBUG("write buf size {} to stream id {}", message.length(),
+                   stream_id);
+    }
+  }
+
+  auto status = reader.WaitFinished();
+  SPU_ENFORCE(status == StreamReader::Status::kNormalFinished,
+              "Stream reader finished abnormally, status: {}",
+              static_cast<int32_t>(status));
   std::vector<NdArrayRef> ret;
-  for (const auto& output : rsp.adjust_outputs()) {
-    SPU_ENFORCE(output.size() % SizeOf(ret_field) == 0);
-    int64_t size = output.size() / SizeOf(ret_field);
+  for (const auto& buf : reader.GetBufVecRef()) {
+    SPU_ENFORCE(buf.length() % SizeOf(ret_field) == 0);
+    int64_t size = buf.length() / SizeOf(ret_field);
     // FIXME: change beaver interface: change return type to buffer.
     NdArrayRef array(makeType<RingTy>(ret_field), {size});
     // FIXME: TTP adjuster server and client MUST have same endianness.
-    std::memcpy(array.data(), output.data(), output.size());
+    buf.copy_to(array.data());
     ret.push_back(std::move(array));
   }
 
@@ -179,7 +322,7 @@ BeaverTtp::BeaverTtp(std::shared_ptr<yacl::link::Context> lctx, Options ops)
 
   yacl::Buffer encrypted_seed;
   {
-    std::unique_ptr<yacl::crypto::AsymmetricEncryptor> encryptor;
+    std::unique_ptr<yacl::crypto::PkeEncryptor> encryptor;
     auto lower_schema = absl::AsciiStrToLower(options_.asym_crypto_schema);
     if (lower_schema == "sm2") {
       encryptor = std::make_unique<yacl::crypto::Sm2Encryptor>(
@@ -466,10 +609,20 @@ BeaverTtp::Pair BeaverTtp::PermPair(FieldType field, int64_t size,
   if (lctx_->Rank() == perm_rank) {
     auto req = BuildAdjustRequest<beaver::ttp_server::AdjustPermRequest>(
         descs, descs_seed);
-    for (auto p : perm_vec) {
-      req.add_perm_vec(p);
+    std::vector<butil::IOBuf> stream_data;
+    size_t left_buf_size = perm_vec.size() * sizeof(int64_t);
+    size_t chunk_idx = 0;
+    while (left_buf_size > 0) {
+      using beaver::ttp_server::kUpStreamChunkSize;
+      size_t cur_chunk_size = std::min(left_buf_size, kUpStreamChunkSize);
+      stream_data.emplace_back();
+      stream_data.back().append(reinterpret_cast<const char*>(perm_vec.data()) +
+                                    (chunk_idx * kUpStreamChunkSize),
+                                cur_chunk_size);
+      ++chunk_idx;
+      left_buf_size -= cur_chunk_size;
     }
-    auto adjusts = RpcCall(channel_, req, field);
+    auto adjusts = RpcCall(channel_, req, field, &stream_data);
     SPU_ENFORCE_EQ(adjusts.size(), 1U);
     ring_add_(b, adjusts[0].reshape(b.shape()));
   }

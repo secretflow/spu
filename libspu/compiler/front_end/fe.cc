@@ -14,6 +14,7 @@
 
 #include "libspu/compiler/front_end/fe.h"
 
+#include "fmt/ranges.h"
 #include "mlir/Dialect/Func/Extensions/InlinerExtension.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/IR/BuiltinOps.h"

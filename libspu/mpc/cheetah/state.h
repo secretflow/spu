@@ -75,7 +75,7 @@ class CheetahMulState : public State {
       : mul_prot_(std::move(mul_prot)) {}
 
  public:
-  static constexpr char kBindName[] = "CheetahMul";
+  static constexpr const char* kBindName() { return "CheetahMul"; }
 
   explicit CheetahMulState(const std::shared_ptr<yacl::link::Context>& lctx,
                            bool enable_mul_lsb_error = false) {
@@ -100,7 +100,7 @@ class CheetahDotState : public State {
       : dot_prot_(std::move(dot_prot)) {}
 
  public:
-  static constexpr char kBindName[] = "CheetahDot";
+  static constexpr const char* kBindName() { return "CheetahDot"; }
 
   explicit CheetahDotState(const std::shared_ptr<yacl::link::Context>& lctx,
                            bool disable_matmul_pack = false) {
@@ -125,7 +125,7 @@ class CheetahOTState : public State {
   CheetahOtKind ot_kind_;
 
  public:
-  static constexpr char kBindName[] = "CheetahOT";
+  static constexpr const char* kBindName() { return "CheetahOT"; }
 
   explicit CheetahOTState(size_t maximum_instances, CheetahOtKind ot_kind)
       : maximum_instances_(std::min(kMaxOTParallel, maximum_instances)),

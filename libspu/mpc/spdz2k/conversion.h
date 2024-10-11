@@ -27,7 +27,7 @@ using ce::N;
 
 class A2B : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "a2b";
+  static constexpr const char* kBindName() { return "a2b"; }
 
   CExpr latency() const override {
     // 1 * AddBB : log(k) + 1
@@ -48,7 +48,7 @@ class A2B : public UnaryKernel {
 
 class A2Bit : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "a2bit";
+  static constexpr const char* kBindName() { return "a2bit"; }
 
   CExpr latency() const override {
     // 1 * AddBB : log(k) + 1
@@ -69,7 +69,7 @@ class A2Bit : public UnaryKernel {
 
 class Bit2A : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "bit2a";
+  static constexpr const char* kBindName() { return "bit2a"; }
 
   CExpr latency() const override {
     // 1 * AddBB : log(k) + 1
@@ -90,7 +90,7 @@ class Bit2A : public UnaryKernel {
 
 class BitDec : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "bit_dec";
+  static constexpr const char* kBindName() { return "bit_dec"; }
 
   CExpr latency() const override {
     // 1 * AddBB : log(k) + 1
@@ -112,7 +112,7 @@ class BitDec : public UnaryKernel {
 // https://encrypto.de/papers/DSZ15.pdf
 class B2A : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "b2a";
+  static constexpr const char* kBindName() { return "b2a"; }
 
   CExpr latency() const override {
     // 2 * rotate   : 2
@@ -133,7 +133,7 @@ class B2A : public UnaryKernel {
 
 class MSB : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "msb_a2b";
+  static constexpr const char* kBindName() { return "msb_a2b"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
@@ -142,7 +142,7 @@ class MSB : public UnaryKernel {
 
 class AddBB : public BinaryKernel {
  public:
-  static constexpr char kBindName[] = "add_bb";
+  static constexpr const char* kBindName() { return "add_bb"; }
 
   CExpr latency() const override {
     // Cost from other gates (from KoggeStoneAdder):
@@ -166,7 +166,7 @@ class AddBB : public BinaryKernel {
 
 class AddBP : public BinaryKernel {
  public:
-  static constexpr char kBindName[] = "add_bp";
+  static constexpr const char* kBindName() { return "add_bp"; }
 
   CExpr latency() const override { return Const(0); }
 
@@ -178,7 +178,7 @@ class AddBP : public BinaryKernel {
 
 class BitLTBB : public BinaryKernel {
  public:
-  static constexpr char kBindName[] = "bitlt_bb";
+  static constexpr const char* kBindName() { return "bitlt_bb"; }
 
   CExpr latency() const override { return Const(0); }
 
@@ -190,7 +190,7 @@ class BitLTBB : public BinaryKernel {
 
 class BitLEBB : public BinaryKernel {
  public:
-  static constexpr char kBindName[] = "bitle_bb";
+  static constexpr const char* kBindName() { return "bitle_bb"; }
 
   CExpr latency() const override { return Const(0); }
 

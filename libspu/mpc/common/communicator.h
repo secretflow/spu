@@ -50,7 +50,7 @@ enum class ReduceOp {
 // gap.
 class Communicator : public State {
  public:
-  static constexpr char kBindName[] = "Communicator";
+  static constexpr const char* kBindName() { return "Communicator"; }
 
   struct Stats {
     //

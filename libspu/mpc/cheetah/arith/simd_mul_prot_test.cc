@@ -87,7 +87,7 @@ class SIMDMulTest : public ::testing::TestWithParam<bool>, public EnableCPRNG {
 };
 
 INSTANTIATE_TEST_SUITE_P(
-    Cheetah, SIMDMulTest, testing::Values(true, false),
+    Cheetah, SIMDMulTest, testing::Values(true),
     [](const testing::TestParamInfo<SIMDMulTest::ParamType> &p) {
       return fmt::format("{}", p.param ? "NoiseFlood" : "Approx");
     });
@@ -116,20 +116,10 @@ TEST_P(SIMDMulTest, Basic) {
     simd_mul_prot_->SymEncrypt(encode_b, *rlwe_sk_, *context_, false,
                                absl::MakeSpan(encrypt_b));
 
-    if (GetParam()) {
-      RandomPlain(absl::MakeSpan(out_a));
-      simd_mul_prot_->MulThenReshareInplace(absl::MakeSpan(encrypt_b), encode_a,
-                                            absl::MakeConstSpan(out_a),
-                                            *rlwe_pk_, *context_);
-    } else {
-      simd_mul_prot_->MulThenReshareInplaceOneBit(
-          absl::MakeSpan(encrypt_b), encode_a, absl::MakeSpan(out_a), *rlwe_pk_,
-          *context_);
-    }
-    if (rep == 0) {
-      printf("rep ct.L %zd\n", encrypt_b[0].coeff_modulus_size());
-    }
-
+    RandomPlain(absl::MakeSpan(out_a));
+    simd_mul_prot_->MulThenReshareInplace(absl::MakeSpan(encrypt_b), encode_a,
+                                          absl::MakeConstSpan(out_a), *rlwe_pk_,
+                                          *context_);
     auto _out_b = absl::MakeSpan(out_b);
     for (size_t i = 0; i < num_pt; ++i) {
       seal::Plaintext pt;

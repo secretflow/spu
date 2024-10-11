@@ -22,7 +22,7 @@
 #include <vector>
 
 #include "absl/types/span.h"
-#include "fmt/format.h"
+#include "fmt/ranges.h"
 #include "spdlog/spdlog.h"
 #include "yacl/link/context.h"
 

@@ -207,4 +207,37 @@ TEST_P(CheetahMulTest, MixedRingSizeMul) {
   EXPECT_TRUE(ring_all_equal(expected2, computed2, kMaxDiff));
 }
 
+TEST_P(CheetahMulTest, MulShare) {
+  size_t kWorldSize = 2;
+  auto field = std::get<0>(GetParam());
+  int64_t n = std::get<1>(GetParam());
+  bool allow_approx = std::get<2>(GetParam());
+
+  auto a_bits = ring_rand(field, {n});
+  auto b_bits = ring_rand(field, {n});
+
+  std::vector<NdArrayRef> a_shr(kWorldSize);
+  std::vector<NdArrayRef> b_shr(kWorldSize);
+  a_shr[0] = ring_rand(field, {n});
+  b_shr[0] = ring_rand(field, {n});
+  a_shr[1] = ring_sub(a_bits, a_shr[0]);
+  b_shr[1] = ring_sub(b_bits, b_shr[0]);
+
+  std::vector<NdArrayRef> result(kWorldSize);
+  utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> lctx) {
+    int rank = lctx->Rank();
+    // (a0 + a1) * (b0 + b1)
+    // a0*b0 + a0*b1 + a1*b0 + a1*b1
+    auto mul = std::make_shared<CheetahMul>(lctx, allow_approx);
+
+    result[rank] = mul->MulShare(a_shr[rank], b_shr[rank], rank == 0);
+  });
+
+  auto expected = ring_mul(a_bits, b_bits);
+  auto computed = ring_add(result[0], result[1]);
+
+  const int64_t kMaxDiff = allow_approx ? 1 : 0;
+  EXPECT_TRUE(ring_all_equal(expected, computed, kMaxDiff));
+}
+
 }  // namespace spu::mpc::cheetah::test

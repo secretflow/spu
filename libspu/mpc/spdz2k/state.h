@@ -78,7 +78,7 @@ class Spdz2kState : public State {
   }
 
  public:
-  static constexpr char kBindName[] = "Spdz2kState";
+  static constexpr const char* kBindName() { return "Spdz2kState"; }
   static constexpr auto kAesType =
       yacl::crypto::SymmetricCrypto::CryptoType::AES128_CTR;
 

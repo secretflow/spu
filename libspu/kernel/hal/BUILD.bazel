@@ -232,7 +232,6 @@ spu_cc_library(
     hdrs = ["utils.h"],
     deps = [
         ":constants",
-        ":polymorphic",
         ":ring",
         ":shape_ops",
         "//libspu/core:prelude",

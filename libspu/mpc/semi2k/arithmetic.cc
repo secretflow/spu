@@ -61,7 +61,7 @@ NdArrayRef P2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 NdArrayRef A2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const auto field = in.eltype().as<Ring2k>()->field();
   auto* comm = ctx->getState<Communicator>();
-  auto out = comm->allReduce(ReduceOp::ADD, in, kBindName);
+  auto out = comm->allReduce(ReduceOp::ADD, in, kBindName());
   return out.as(makeType<Pub2kTy>(field));
 }
 
@@ -371,7 +371,7 @@ NdArrayRef TruncA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
                   x.shape());
 
     // open x - r
-    auto x_r = comm->allReduce(ReduceOp::ADD, ring_sub(x, r), kBindName);
+    auto x_r = comm->allReduce(ReduceOp::ADD, ring_sub(x, r), kBindName());
     auto res = rb;
     if (comm->getRank() == 0) {
       ring_add_(res, ring_arshift(x_r, {static_cast<int64_t>(bits)}));
@@ -422,7 +422,7 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in,
         x_plus_r[idx] = x + _r[idx];
       });
       // open <x> + <r> = c
-      c = comm->allReduce<U, std::plus>(x_plus_r, kBindName);
+      c = comm->allReduce<U, std::plus>(x_plus_r, kBindName());
     }
 
     pforeach(0, numel, [&](int64_t idx) {

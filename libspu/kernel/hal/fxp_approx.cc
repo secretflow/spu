@@ -29,18 +29,6 @@
 namespace spu::kernel::hal {
 namespace detail {
 
-Value EvaluatePolynomial(SPUContext* ctx, const Value& x,
-                         absl::Span<const float> coefficients) {
-  auto poly = constant(ctx, coefficients[0], x.dtype(), x.shape());
-
-  for (size_t i = 1; i < coefficients.size(); ++i) {
-    auto c = constant(ctx, coefficients[i], x.dtype(), x.shape());
-    poly = f_mul(ctx, poly, x);
-    poly = f_add(ctx, poly, c);
-  }
-  return poly;
-}
-
 Value log_minmax_normalized(SPUContext* ctx, const Value& x) {
   static std::array<float, 9> kLogCoefficient{
       0.0,          0.9999964239,  -0.4998741238, 0.3317990258, -0.2407338084,

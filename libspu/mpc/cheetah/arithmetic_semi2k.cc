@@ -47,7 +47,7 @@ NdArrayRef P2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 NdArrayRef A2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const auto field = in.eltype().as<Ring2k>()->field();
   auto* comm = ctx->getState<Communicator>();
-  auto out = comm->allReduce(ReduceOp::ADD, in, kBindName);
+  auto out = comm->allReduce(ReduceOp::ADD, in, kBindName());
   return out.as(makeType<Pub2kTy>(field));
 }
 

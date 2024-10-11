@@ -48,8 +48,8 @@ void ring_print(const NdArrayRef& x, std::string_view name = "_");
 NdArrayRef ring_rand(FieldType field, const Shape& shape);
 NdArrayRef ring_rand(FieldType field, const Shape& shape, uint128_t prg_seed,
                      uint64_t* prg_counter);
-NdArrayRef ring_rand_range(FieldType field, const Shape& shape, int32_t min,
-                           int32_t max);
+NdArrayRef ring_rand_range(FieldType field, const Shape& shape, uint128_t min,
+                           uint128_t max);
 
 NdArrayRef ring_zeros(FieldType field, const Shape& shape);
 

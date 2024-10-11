@@ -20,7 +20,7 @@ namespace spu::mpc::semi2k {
 
 class A2B : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "a2b";
+  static constexpr const char* kBindName() { return "a2b"; }
 
   ce::CExpr latency() const override {
     return (Log(ce::K()) + 1)  // adder-circuit;
@@ -40,7 +40,7 @@ class A2B : public UnaryKernel {
 
 class B2A : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "b2a";
+  static constexpr const char* kBindName() { return "b2a"; }
 
   ce::CExpr latency() const override {
     return (Log(ce::K()) + 1) * Log(ce::N())  // A2B
@@ -61,7 +61,7 @@ class B2A : public UnaryKernel {
 
 class B2A_Randbit : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "b2a";
+  static constexpr const char* kBindName() { return "b2a"; }
 
   ce::CExpr latency() const override { return ce::Const(1); }
 
@@ -75,7 +75,7 @@ class B2A_Randbit : public UnaryKernel {
 
 class B2A_Disassemble : public DisassembleKernel {
  public:
-  static constexpr char kBindName[] = "b2a_disassemble";
+  static constexpr const char* kBindName() { return "b2a_disassemble"; }
 
   ce::CExpr latency() const override { return ce::Const(1); }
 
@@ -91,7 +91,7 @@ class B2A_Disassemble : public DisassembleKernel {
 // Note: current only for 2PC.
 class MsbA2B : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "msb_a2b";
+  static constexpr const char* kBindName() { return "msb_a2b"; }
 
   ce::CExpr latency() const override {
     // 1 * carry: log(k) + 1
@@ -109,7 +109,7 @@ class MsbA2B : public UnaryKernel {
 
 class EqualAA : public BinaryKernel {
  public:
-  static constexpr char kBindName[] = "equal_aa";
+  static constexpr const char* kBindName() { return "equal_aa"; }
 
   ce::CExpr latency() const override {
     // 1 * edabits + logk * andbb
@@ -126,7 +126,7 @@ class EqualAA : public BinaryKernel {
 
 class EqualAP : public BinaryKernel {
  public:
-  static constexpr char kBindName[] = "equal_ap";
+  static constexpr const char* kBindName() { return "equal_ap"; }
 
   ce::CExpr latency() const override {
     // 1 * edabits + logk * andbb
@@ -143,7 +143,7 @@ class EqualAP : public BinaryKernel {
 
 class CommonTypeV : public Kernel {
  public:
-  static constexpr char kBindName[] = "common_type_v";
+  static constexpr const char* kBindName() { return "common_type_v"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 

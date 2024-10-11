@@ -222,6 +222,66 @@ void SIMDMulProt::MulThenReshareInplace(absl::Span<RLWECt> ct,
   }
 }
 
+// Compute ct0 * pt1 + ct1 * pt1 - mask mod p
+void SIMDMulProt::FMAThenReshareInplace(absl::Span<RLWECt> ct0,
+                                        absl::Span<const RLWECt> ct1,
+                                        absl::Span<const RLWEPt> pt0,
+                                        absl::Span<const RLWEPt> pt1,
+                                        absl::Span<const uint64_t> share_mask,
+                                        const RLWEPublicKey &public_key,
+                                        const seal::SEALContext &context) {
+  SPU_ENFORCE_EQ(ct0.size(), ct1.size());
+  SPU_ENFORCE_EQ(pt0.size(), pt1.size());
+  SPU_ENFORCE_EQ(ct0.size(), pt0.size());
+  SPU_ENFORCE_EQ(CeilDiv(share_mask.size(), (size_t)simd_lane_), ct0.size());
+
+  seal::Evaluator evaluator(context);
+  RLWECt zero_enc;
+  RLWEPt rnd;
+
+  constexpr int kMarginBitsForDec = 10;
+  seal::parms_id_type final_level_id = context.last_parms_id();
+  while (final_level_id != context.first_parms_id()) {
+    auto cntxt = context.get_context_data(final_level_id);
+    if (cntxt->total_coeff_modulus_bit_count() >=
+        kMarginBitsForDec + cntxt->parms().plain_modulus().bit_count()) {
+      break;
+    }
+    final_level_id = cntxt->prev_context_data()->parms_id();
+  }
+
+  RLWECt tmp_ct;
+  for (size_t i = 0; i < ct0.size(); ++i) {
+    // 1. Ct-Pt Mul
+    evaluator.multiply_plain_inplace(ct0[i], pt0[i]);
+    evaluator.multiply_plain(ct1[i], pt1[i], tmp_ct);
+    evaluator.add_inplace(ct0[i], tmp_ct);
+
+    // 2. Noise flooding
+    NoiseFloodInplace(ct0[i], context);
+
+    // 3. Drop some modulus for a smaller communication
+    evaluator.mod_switch_to_inplace(ct0[i], final_level_id);
+
+    // 4. Re-randomize via adding enc(0)
+    seal::util::encrypt_zero_asymmetric(public_key, context, ct0[i].parms_id(),
+                                        ct0[i].is_ntt_form(), zero_enc);
+    evaluator.add_inplace(ct0[i], zero_enc);
+
+    // 5. Additive share
+    size_t slice_bgn = i * simd_lane_;
+    size_t slice_n =
+        std::min((size_t)simd_lane_, share_mask.size() - slice_bgn);
+    EncodeSingle(share_mask.subspan(slice_bgn, slice_n), rnd);
+    evaluator.sub_plain_inplace(ct0[i], rnd);
+
+    // 6. Truncate for smaller communication
+    if (ct0[i].coeff_modulus_size() == 1) {
+      TruncateBFVForDecryption(ct0[i], context);
+    }
+  }
+}
+
 void SIMDMulProt::NoiseFloodInplace(RLWECt &ct,
                                     const seal::SEALContext &context) {
   SPU_ENFORCE(seal::is_metadata_valid_for(ct, context));

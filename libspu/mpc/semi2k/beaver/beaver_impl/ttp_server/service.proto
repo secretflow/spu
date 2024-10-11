@@ -22,6 +22,7 @@ enum ErrorCode {
   OK = 0;
   OpAdjustError = 1;
   SeedDecryptError = 2;
+  StreamAcceptError = 3;
 }
 
 // PRG generated buffer metainfo.
@@ -170,8 +171,6 @@ message AdjustPermRequest {
   repeated PrgBufferMeta prg_inputs = 1;
   // What field size should be used to interpret buffer content
   uint32 field_size = 2;
-  // permutation vector
-  repeated int64 perm_vec = 3;
   // output
   // adjust_b = (apply inverse permutation perm_vec to ra) - rb
   // make
@@ -181,6 +180,4 @@ message AdjustPermRequest {
 message AdjustResponse {
   ErrorCode code = 1;
   string message = 2;
-  // Adjust output array buffer
-  repeated bytes adjust_outputs = 3;
 }

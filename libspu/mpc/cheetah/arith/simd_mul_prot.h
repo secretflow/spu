@@ -55,11 +55,19 @@ class SIMDMulProt : public EnableCPRNG {
                              const RLWEPublicKey& public_key,
                              const seal::SEALContext& context);
 
-  void MulThenReshareInplaceOneBit(absl::Span<RLWECt> ct,
-                                   absl::Span<const RLWEPt> pt,
-                                   absl::Span<uint64_t> share_mask,
-                                   const RLWEPublicKey& public_key,
-                                   const seal::SEALContext& context);
+  // ct0 * pt0 + ct1 * pt1 + mask
+  void FMAThenReshareInplace(absl::Span<RLWECt> ct0,
+                             absl::Span<const RLWECt> ct1,
+                             absl::Span<const RLWEPt> pt0,
+                             absl::Span<const RLWEPt> pt1,
+                             absl::Span<const uint64_t> share_mask,
+                             const RLWEPublicKey& public_key,
+                             const seal::SEALContext& context);
+
+  [[deprecated]] void MulThenReshareInplaceOneBit(
+      absl::Span<RLWECt> ct, absl::Span<const RLWEPt> pt,
+      absl::Span<uint64_t> share_mask, const RLWEPublicKey& public_key,
+      const seal::SEALContext& context);
 
   inline int64_t SIMDLane() const { return simd_lane_; }
 

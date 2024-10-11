@@ -107,7 +107,7 @@ BeaverTfpUnsafe::Triple BeaverTfpUnsafe::Mul(FieldType field, int64_t size,
 
   if (lctx_->Rank() == 0) {
     ops[2].seeds = seeds_;
-    auto adjust = TrustedParty::adjustMul(ops);
+    auto adjust = TrustedParty::adjustMul(absl::MakeSpan(ops));
     ring_add_(c, adjust);
   }
 
@@ -158,7 +158,7 @@ BeaverTfpUnsafe::Pair BeaverTfpUnsafe::Square(FieldType field, int64_t size,
 
   if (lctx_->Rank() == 0) {
     ops[1].seeds = seeds_;
-    auto adjust = TrustedParty::adjustSquare(ops);
+    auto adjust = TrustedParty::adjustSquare(absl::MakeSpan(ops));
     ring_add_(b, adjust);
   }
 
@@ -223,7 +223,7 @@ BeaverTfpUnsafe::Triple BeaverTfpUnsafe::Dot(FieldType field, int64_t m,
 
   if (lctx_->Rank() == 0) {
     ops[2].seeds = seeds_;
-    auto adjust = TrustedParty::adjustDot(ops);
+    auto adjust = TrustedParty::adjustDot(absl::MakeSpan(ops));
     ring_add_(c, adjust);
   }
 
@@ -250,7 +250,7 @@ BeaverTfpUnsafe::Triple BeaverTfpUnsafe::And(int64_t size) {
     for (auto& op : ops) {
       op.seeds = seeds_;
     }
-    auto adjust = TrustedParty::adjustAnd(ops);
+    auto adjust = TrustedParty::adjustAnd(absl::MakeSpan(ops));
     ring_xor_(c, adjust);
   }
 
@@ -276,7 +276,7 @@ BeaverTfpUnsafe::Pair BeaverTfpUnsafe::Trunc(FieldType field, int64_t size,
     for (auto& op : ops) {
       op.seeds = seeds_;
     }
-    auto adjust = TrustedParty::adjustTrunc(ops, bits);
+    auto adjust = TrustedParty::adjustTrunc(absl::MakeSpan(ops), bits);
     ring_add_(b, adjust);
   }
 
@@ -300,7 +300,7 @@ BeaverTfpUnsafe::Triple BeaverTfpUnsafe::TruncPr(FieldType field, int64_t size,
     for (auto& op : ops) {
       op.seeds = seeds_;
     }
-    auto adjusts = TrustedParty::adjustTruncPr(ops, bits);
+    auto adjusts = TrustedParty::adjustTruncPr(absl::MakeSpan(ops), bits);
     ring_add_(rc, std::get<0>(adjusts));
     ring_add_(rb, std::get<1>(adjusts));
   }
@@ -322,7 +322,7 @@ BeaverTfpUnsafe::Array BeaverTfpUnsafe::RandBit(FieldType field, int64_t size) {
     for (auto& op : ops) {
       op.seeds = seeds_;
     }
-    auto adjust = TrustedParty::adjustRandBit(ops);
+    auto adjust = TrustedParty::adjustRandBit(absl::MakeSpan(ops));
     ring_add_(a, adjust);
   }
 
@@ -348,10 +348,11 @@ BeaverTfpUnsafe::Pair BeaverTfpUnsafe::PermPair(
       auto pv_buf = lctx_->Recv(perm_rank, kTag);
 
       ring_add_(b, TrustedParty::adjustPerm(
-                       ops, absl::MakeSpan(pv_buf.data<int64_t>(),
-                                           pv_buf.size() / sizeof(int64_t))));
+                       absl::MakeSpan(ops),
+                       absl::MakeSpan(pv_buf.data<int64_t>(),
+                                      pv_buf.size() / sizeof(int64_t))));
     } else {
-      ring_add_(b, TrustedParty::adjustPerm(ops, perm_vec));
+      ring_add_(b, TrustedParty::adjustPerm(absl::MakeSpan(ops), perm_vec));
     }
   } else if (perm_rank == lctx_->Rank()) {
     lctx_->SendAsync(
@@ -380,7 +381,7 @@ BeaverTfpUnsafe::Pair BeaverTfpUnsafe::Eqz(FieldType field, int64_t size) {
     for (auto& op : ops) {
       op.seeds = seeds_;
     }
-    auto adjust = TrustedParty::adjustEqz(ops);
+    auto adjust = TrustedParty::adjustEqz(absl::MakeSpan(ops));
     ring_xor_(b, adjust);
   }
 

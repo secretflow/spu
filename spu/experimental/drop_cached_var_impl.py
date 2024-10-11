@@ -26,9 +26,9 @@ from jaxlib.hlo_helpers import custom_call
 
 
 # Public facing interface
-def drop_cached_var(input, *dependences):
+def drop_cached_var(input, *dependencies):
     # Add necessary preprocessing code
-    return _drop_cached_var_prim.bind(input, *dependences)
+    return _drop_cached_var_prim.bind(input, *dependencies)
 
 
 # *********************************
@@ -38,12 +38,12 @@ def drop_cached_var(input, *dependences):
 
 # For JIT compilation we need a function to evaluate the shape and dtype of the
 # outputs of our op for some given inputs
-def _drop_cached_var_abstract(input, *dependences):
+def _drop_cached_var_abstract(input, *dependencies):
     return core.ShapedArray(input.shape, input.dtype)
 
 
 # We also need a lowering rule to provide an MLIR "lowering" of out primitive.
-def _drop_cached_var_lowering(ctx, input, *dependences):
+def _drop_cached_var_lowering(ctx, input, *dependencies):
     # The inputs and outputs all have the same shape and memory layout
     # so let's predefine this specification
     dtype = mlir.ir.RankedTensorType(input.type)
@@ -53,7 +53,7 @@ def _drop_cached_var_lowering(ctx, input, *dependences):
         # Output types
         result_types=[dtype],
         # The inputs:
-        operands=[input, *dependences],
+        operands=[input, *dependencies],
         has_side_effect=True,
     ).results
 
@@ -70,8 +70,8 @@ _drop_cached_var_prim.def_abstract_eval(_drop_cached_var_abstract)
 mlir.register_lowering(_drop_cached_var_prim, _drop_cached_var_lowering)
 
 
-def _drop_cached_var_transpose(ct, input, *dependences):
-    return [ct] * (len(dependences) + 1)
+def _drop_cached_var_transpose(ct, input, *dependencies):
+    return [ct] * (len(dependencies) + 1)
 
 
 # Connect the JVP and batching rules

@@ -188,7 +188,7 @@ NdArrayRef OramReadOA::proc(KernelEvalContext *ctx, const NdArrayRef &onehot,
 
     auto f = std::async([&] { ring_assign(o1, z1); });
     // reshare
-    ring_assign(o2, comm->rotate(z1, kBindName));
+    ring_assign(o2, comm->rotate(z1, kBindName()));
     f.get();
   });
 
@@ -244,7 +244,7 @@ NdArrayRef OramReadOP::proc(KernelEvalContext *ctx, const NdArrayRef &onehot,
     ring_add_(out2pc, r.get());
 
     auto f = std::async([&] { ring_assign(o1, out2pc); });
-    ring_assign(o2, comm->rotate(out2pc, kBindName));
+    ring_assign(o2, comm->rotate(out2pc, kBindName()));
     f.get();
   });
 

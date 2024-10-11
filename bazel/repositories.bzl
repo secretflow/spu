@@ -39,10 +39,10 @@ def _yacl():
         http_archive,
         name = "yacl",
         urls = [
-            "https://github.com/secretflow/yacl/archive/refs/tags/0.4.5b4_nightly_20240731.tar.gz",
+            "https://github.com/secretflow/yacl/archive/refs/tags/0.4.5b7_nightly_20240930.tar.gz",
         ],
-        strip_prefix = "yacl-0.4.5b4_nightly_20240731",
-        sha256 = "952715bd56f6d9386984e9963426a1399bd2bd3702cf3efede9c82591cfab99b",
+        strip_prefix = "yacl-0.4.5b7_nightly_20240930",
+        sha256 = "cf8dc7cceb9c5d05df00f1c086feec99d554db3e3cbe101253cf2a5a1adb9072",
     )
 
 def _libpsi():
@@ -50,10 +50,10 @@ def _libpsi():
         http_archive,
         name = "psi",
         urls = [
-            "https://github.com/secretflow/psi/archive/refs/tags/v0.4.0.dev240814.tar.gz",
+            "https://github.com/secretflow/psi/archive/refs/tags/v0.4.3.dev240919.tar.gz",
         ],
-        strip_prefix = "psi-0.4.0.dev240814",
-        sha256 = "2a16a5751d1b7051f01edd11f1fcf01b67ff4d67ec136e7bc6d1d729d7f22634",
+        strip_prefix = "psi-0.4.3.dev240919",
+        sha256 = "1ee34fbbd9a8f36dea8f7c45588a858e8c31f3a38e60e1fc67cb428ea79334e3",
     )
 
 def _rules_proto_grpc():
@@ -168,10 +168,10 @@ def _com_github_pybind11():
         http_archive,
         name = "pybind11",
         build_file = "@pybind11_bazel//:pybind11.BUILD",
-        sha256 = "b1e209c42b3a9ed74da3e0b25a4f4cd478d89d5efbb48f04b277df427faf6252",
-        strip_prefix = "pybind11-2.13.5",
+        sha256 = "e08cb87f4773da97fa7b5f035de8763abc656d87d5773e62f6da0587d1f0ec20",
+        strip_prefix = "pybind11-2.13.6",
         urls = [
-            "https://github.com/pybind/pybind11/archive/refs/tags/v2.13.5.tar.gz",
+            "https://github.com/pybind/pybind11/archive/refs/tags/v2.13.6.tar.gz",
         ],
     )
 
@@ -229,7 +229,7 @@ def _com_github_eigenteam_eigen():
     EIGEN_SHA256 = "01fcd68409c038bbcfd16394274c2bf71e2bb6dda89a2319e23fc59a2da17210"
     maybe(
         http_archive,
-        name = "com_github_eigenteam_eigen",
+        name = "eigen_archive",
         sha256 = EIGEN_SHA256,
         build_file = "@spulib//bazel:eigen.BUILD",
         strip_prefix = "eigen-{commit}".format(commit = EIGEN_COMMIT),
@@ -241,11 +241,11 @@ def _com_github_eigenteam_eigen():
 def _com_github_nvidia_cutlass():
     maybe(
         http_archive,
-        name = "com_github_nvidia_cutlass",
-        strip_prefix = "cutlass-3.5.0",
+        name = "cutlass_archive",
+        strip_prefix = "cutlass-3.5.1",
         urls = [
-            "https://github.com/NVIDIA/cutlass/archive/refs/tags/v3.5.0.tar.gz",
+            "https://github.com/NVIDIA/cutlass/archive/refs/tags/v3.5.1.tar.gz",
         ],
-        sha256 = "ef6af8526e3ad04f9827f35ee57eec555d09447f70a0ad0cf684a2e426ccbcb6",
+        sha256 = "20b7247cda2d257cbf8ba59ba3ca40a9211c4da61a9c9913e32b33a2c5883a36",
         build_file = "@spulib//bazel:nvidia_cutlass.BUILD",
     )

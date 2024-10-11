@@ -75,7 +75,7 @@ void isEqual(const xt::xarray<T> &lhs, const xt::xarray<T> &rhs) {
 
   auto error = lhs - rhs;
 
-  for (auto v : error) {
+  for (T v : error) {
     if (v != 0) {
       llvm::report_fatal_error(fmt::format("Diff = {}", v).c_str());
     }
@@ -109,7 +109,7 @@ bool testOpHandler(::spu::SPUContext *sctx, mlir::Operation *op,
 
     auto error = xt::fabs(lhs - rhs);
 
-    for (auto v : error) {
+    for (double v : error) {
       if (v > tol) {
         llvm::report_fatal_error(
             fmt::format("Diff {} greater than tol {}", v, tol).c_str());

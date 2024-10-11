@@ -77,7 +77,7 @@ class Z2kState : public State {
   FieldType field_;
 
  public:
-  static constexpr char kBindName[] = "Z2kState";
+  static constexpr const char* kBindName() { return "Z2kState"; }
 
   explicit Z2kState(FieldType field) : field_(field) {}
 

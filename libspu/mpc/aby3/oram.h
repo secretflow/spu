@@ -24,7 +24,7 @@ namespace spu::mpc::aby3 {
 // Ashared index, Ashared database
 class OramOneHotAA : public OramOneHotKernel {
  public:
-  static constexpr char kBindName[] = "oram_onehot_aa";
+  static constexpr const char* kBindName() { return "oram_onehot_aa"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
@@ -35,7 +35,7 @@ class OramOneHotAA : public OramOneHotKernel {
 // Ashared index, Public database
 class OramOneHotAP : public OramOneHotKernel {
  public:
-  static constexpr char kBindName[] = "oram_onehot_ap";
+  static constexpr const char* kBindName() { return "oram_onehot_ap"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
@@ -45,7 +45,7 @@ class OramOneHotAP : public OramOneHotKernel {
 
 class OramReadOA : public OramReadKernel {
  public:
-  static constexpr char kBindName[] = "oram_read_aa";
+  static constexpr const char* kBindName() { return "oram_read_aa"; }
 
   ce::CExpr latency() const override {
     // 1 * rotate: 1
@@ -64,7 +64,7 @@ class OramReadOA : public OramReadKernel {
 
 class OramReadOP : public OramReadKernel {
  public:
-  static constexpr char kBindName[] = "oram_read_ap";
+  static constexpr const char* kBindName() { return "oram_read_ap"; }
 
   ce::CExpr latency() const override {
     // 1 * rotate: 1
@@ -101,6 +101,8 @@ class OramDpf {
   std::vector<CorrectionFlagT> final_e;
 
   OramDpf() = delete;
+
+  // clang-format off
   explicit OramDpf(int64_t numel, DpfKeyT root_seed, uint128_t aes_key,
                    uint128_t target_point)
       : cw(Log2Ceil(numel), 0),
@@ -113,6 +115,7 @@ class OramDpf {
         root_seed_(root_seed),
         aes_crypto_(yacl::crypto::SymmetricCrypto::CryptoType::AES128_ECB,
                     aes_key, 1) {};
+  // clang-format on
 
   // genrate 2pc-dpf according to 'ctrl'
   void gen(KernelEvalContext* ctx, DpfGenCtrl ctrl);
@@ -135,10 +138,13 @@ class OramContext {
   std::vector<std::vector<T>> convert_help_v;
 
   OramContext() = default;
+
+  // clang-format off
   explicit OramContext(int64_t dpf_size)
       : dpf_e(2, std::vector<T>(dpf_size)),
         convert_help_v(2, std::vector<T>(dpf_size)),
         dpf_size_(dpf_size) {};
+  // clang-format on
 
   void genDpf(KernelEvalContext* ctx, DpfGenCtrl ctrl, uint128_t aes_key,
               uint128_t target_point);

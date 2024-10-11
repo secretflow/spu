@@ -34,26 +34,34 @@ Value polynomial(SPUContext* ctx, const Value& x,
   SPU_ENFORCE(x.isFxp());
   SPU_ENFORCE(!coeffs.empty());
 
-  if (coeffs.size() == 1U) {
+  if (coeffs.size() == 1U || x.numel() == 0) {
     return coeffs[0];
   }
-  Value x_pow = constant(ctx, 1.0F, x.dtype(), x.shape());
-  Value res = _mul(ctx, x_pow, coeffs[0]);
+  // Use a parallel circuit to calculate x, x^2, x^3, ..., x^n.
+  // The general log(n) algorithm
+  // algorithm:
+  //  Step 0. x
+  //  Step 1. x, x2
+  //  Step 2. x, x2, x3, x4
+  //  ...
+  std::vector<spu::Value> x_prefix(1, x);
+  size_t degree = coeffs.size() - 1;
+  for (int64_t i = 0; i < Log2Ceil(degree); ++i) {
+    size_t x_size = std::min(x_prefix.size(), degree - x_prefix.size());
+    std::vector<spu::Value> x_pow(x_size, x_prefix.back());
+    // TODO: this can be further optimized to use sign hint
+    vmap(x_prefix.begin(), x_prefix.begin() + x_size, x_pow.begin(),
+         x_pow.end(), std::back_inserter(x_prefix),
+         [ctx, sign_x](const Value& a, const Value& b) {
+           return f_mul(ctx, a, b, sign_x);
+         });
+  }
+
+  Value res = _mul(ctx, constant(ctx, 1.0F, x.dtype(), x.shape()), coeffs[0]);
 
   const auto fbits = ctx->getFxpBits();
   for (size_t i = 1; i < coeffs.size(); i++) {
-    if ((i & 1) == 0U) {
-      // x^{even order} is always positive
-      x_pow = _trunc(ctx, _mul(ctx, x_pow, x), fbits, SignType::Positive);
-    } else {
-      if (i > 1) {
-        x_pow = _trunc(ctx, _mul(ctx, x_pow, x), fbits, sign_x);
-      } else {
-        // i=1, then save a _trunc
-        x_pow = x;
-      }
-    }
-    res = _add(ctx, res, _mul(ctx, x_pow, coeffs[i]));
+    res = _add(ctx, res, _mul(ctx, x_prefix[i - 1], coeffs[i]));
   }
 
   return _trunc(ctx, res, fbits, sign_ret).setDtype(x.dtype());
@@ -93,7 +101,6 @@ Value maskNumberOfBits(SPUContext* ctx, const Value& in, size_t nbits) {
 }
 
 namespace {
-
 Value reciprocal_goldschmidt_normalized_approx(SPUContext* ctx,
                                                const Value& b_abs,
                                                const Value& factor) {

@@ -42,4 +42,8 @@ inline NdArrayRef prgReplayArray(PrgSeed seed, const PrgArrayDesc& desc) {
   return ring_rand(desc.field, desc.shape, seed, &counter);
 }
 
+inline NdArrayRef prgReplayArrayMutable(PrgSeed seed, PrgArrayDesc& desc) {
+  return ring_rand(desc.field, desc.shape, seed, &desc.prg_counter);
+}
+
 }  // namespace spu::mpc

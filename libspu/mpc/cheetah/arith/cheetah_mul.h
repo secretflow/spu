@@ -44,13 +44,26 @@ class CheetahMul {
 
   void LazyInitKeys(FieldType field, uint32_t msg_width_hint = 0);
 
+  // x, y => [x*y] for two private inputs
   // NOTE: make sure to call InitKeys first
   NdArrayRef MulOLE(const NdArrayRef& inp, yacl::link::Context* conn,
                     bool is_evaluator, uint32_t msg_width_hint = 0);
 
+  // x, y => [x*y] for two private inputs
   // NOTE: make sure to call InitKeys first
   NdArrayRef MulOLE(const NdArrayRef& inp, bool is_evaluator,
                     uint32_t msg_width_hint = 0);
+
+  // [x], [y] => [x*y] for two shares
+  // NOTE: make sure to call InitKeys first
+  NdArrayRef MulShare(const NdArrayRef& x, const NdArrayRef& y,
+                      yacl::link::Context* conn, bool is_evaluator,
+                      uint32_t msg_width_hint = 0);
+
+  // [x], [y] => [x*y] for two shares
+  // NOTE: make sure to call InitKeys first
+  NdArrayRef MulShare(const NdArrayRef& x, const NdArrayRef& y,
+                      bool is_evaluator, uint32_t msg_width_hint = 0);
 
   int Rank() const;
 

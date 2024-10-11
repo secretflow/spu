@@ -33,7 +33,7 @@ class Semi2kState : public State {
   Semi2kState() = default;
 
  public:
-  static constexpr char kBindName[] = "Semi2kState";
+  static constexpr const char* kBindName() { return "Semi2kState"; }
 
   explicit Semi2kState(const RuntimeConfig& conf,
                        const std::shared_ptr<yacl::link::Context>& lctx) {

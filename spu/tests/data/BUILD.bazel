@@ -17,12 +17,15 @@ package(default_visibility = ["//visibility:public"])
 filegroup(
     name = "data",
     data = [
-        "100K-1-16.json",
         "alice.csv",
         "bob.csv",
         "carol.csv",
         "db.csv",
         "ground_truth.csv",
+        "pir/100K-1-16.json",
+        "pir/db.csv",
+        "pir/ground_truth.csv",
+        "pir/query.csv",
         "query.csv",
     ],
 )

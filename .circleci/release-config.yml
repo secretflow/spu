@@ -63,7 +63,7 @@ commands:
 jobs:
   macOS_publish:
     macos:
-      xcode: 15.4.0
+      xcode: 16.0.0
     resource_class: macos.m1.large.gen1
     parameters:
       python_ver:

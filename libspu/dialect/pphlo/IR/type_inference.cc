@@ -420,8 +420,17 @@ LogicalResult inferDynamicUpdateSliceOp(
   }
 
   // dynamic_update_slice_c1
-  inferredReturnTypes.emplace_back(RankedTensorType::get(
-      operandType.getShape(), operandType.getElementType()));
+  TypeTools tools(operand.getContext());
+  auto vis = llvm::map_to_vector(startIndices, [&](mlir::Value v) {
+    return tools.getTypeVisibility(v.getType());
+  });
+  vis.emplace_back(tools.getTypeVisibility(operand.getType()));
+  vis.emplace_back(tools.getTypeVisibility(update.getType()));
+
+  inferredReturnTypes.emplace_back(
+      RankedTensorType::get(operandType.getShape(),
+                            tools.getType(operandType.getElementType(),
+                                          tools.computeCommonVisibility(vis))));
   return success();
 }
 

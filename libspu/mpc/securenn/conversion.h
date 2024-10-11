@@ -19,7 +19,7 @@ namespace spu::mpc::securenn {
 
 class A2B : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "a2b";
+  static constexpr const char* kBindName() { return "a2b"; }
 
   ce::CExpr latency() const override {
     return (Log(ce::K()) + 1)  // adder-circuit;
@@ -39,7 +39,7 @@ class A2B : public UnaryKernel {
 
 class B2A : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "b2a";
+  static constexpr const char* kBindName() { return "b2a"; }
 
   ce::CExpr latency() const override {
     return (Log(ce::K()) + 1) * Log(ce::N())  // A2B
@@ -60,7 +60,7 @@ class B2A : public UnaryKernel {
 
 class B2A_Randbit : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "b2a";
+  static constexpr const char* kBindName() { return "b2a"; }
 
   ce::CExpr latency() const override { return ce::Const(1); }
 
@@ -74,7 +74,7 @@ class B2A_Randbit : public UnaryKernel {
 
 class Msb_a2b : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "msb_a2b";
+  static constexpr const char* kBindName() { return "msb_a2b"; }
 
   ce::CExpr latency() const override {
 #ifndef OPT_SECURENN_MSB
@@ -110,7 +110,7 @@ class Msb_a2b : public UnaryKernel {
 
 class CommonTypeV : public Kernel {
  public:
-  static constexpr char kBindName[] = "common_type_v";
+  static constexpr const char* kBindName() { return "common_type_v"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 

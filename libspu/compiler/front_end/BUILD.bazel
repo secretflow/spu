@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@yacl//bazel:yacl.bzl", "OMP_DEPS")
 load("//bazel:spu.bzl", "spu_cc_library")
 
 spu_cc_library(
@@ -60,7 +61,7 @@ spu_cc_library(
         "@xla//xla/service:zero_sized_hlo_elimination",
         "@xla//xla/service/gpu/transforms:dot_dimension_sorter",
         "@xla//xla/translate/hlo_to_mhlo:hlo_module_importer",
-    ],
+    ] + OMP_DEPS,
 )
 
 spu_cc_library(
