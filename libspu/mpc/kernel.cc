@@ -107,6 +107,17 @@ void TruncAKernel::evaluate(KernelEvalContext* ctx) const {
   ctx->pushOutput(WrapValue(z));
 }
 
+void MulTruncAKernel::evaluate(KernelEvalContext* ctx) const {
+  const auto& lhs = ctx->getParam<Value>(0);
+  const auto& rhs = ctx->getParam<Value>(1);
+  size_t bits = ctx->getParam<size_t>(2);
+  SignType sign = ctx->getParam<SignType>(3);
+
+  auto z = proc(ctx, UnwrapValue(lhs), UnwrapValue(rhs), bits, sign);
+
+  ctx->pushOutput(WrapValue(z));
+}
+
 void BitSplitKernel::evaluate(KernelEvalContext* ctx) const {
   const auto& in = ctx->getParam<Value>(0);
   size_t stride = ctx->getParam<size_t>(1);

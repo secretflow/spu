@@ -126,6 +126,10 @@ enum ProtocolKind {
   // A semi-honest 3PC-protocol for Neural Network, P2 as the helper,
   // (https://eprint.iacr.org/2018/442)
   SECURENN = 5;
+
+  // A semi-honest multi-party protocol in the honest-majority setting.
+  // (https://www.usenix.org/conference/usenixsecurity24/presentation/liu-fengrun)
+  SHAMIR = 6;
 }
 
 message ValueMetaProto {
@@ -316,6 +320,9 @@ message RuntimeConfig {
   // For protocol like SecureML, the most significant bit may have error with
   // low probability, which lead to huge calculation error.
   bool trunc_allow_msb_error = 73;
+
+  // Threshold for shamir secret sharing.
+  uint64 sss_threshold = 74;
 
   /// System related configurations start.
 
