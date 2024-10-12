@@ -99,7 +99,6 @@ setup_spec = SetupSpec(
 # NOTE: The lists below must be kept in sync with spu/BUILD.bazel.
 spu_lib_files = [
     "bazel-bin/spu/libspu" + pyd_suffix,
-    "bazel-bin/spu/libpsi" + pyd_suffix,
 ]
 
 # These are the directories where automatically generated Python protobuf
@@ -207,11 +206,7 @@ def fix_pb(file, old_pattern, new_pattern):
 def pip_run(build_ext):
     build(True, True)
 
-    # Change __module__ in psi_pb2.py and pir_pb2.py
-    fix_pb('bazel-bin/spu/psi_pb2.py', 'psi.psi.psi_pb2', 'spu.psi_pb2')
     fix_pb('bazel-bin/spu/link_pb2.py', 'yacl.link.link_pb2', 'link.pir_pb2')
-    fix_pb('bazel-bin/spu/psi_v2_pb2.py', 'psi.proto.psi_v2_pb2', 'spu.psi_pb2')
-    fix_pb('bazel-bin/spu/pir_pb2.py', 'psi.pir.pir_pb2', 'spu.pir_pb2')
 
     setup_spec.files_to_include += spu_lib_files
 

@@ -32,7 +32,6 @@ def spu_deps():
     _com_github_eigenteam_eigen()
     _com_github_nvidia_cutlass()
     _yacl()
-    _libpsi()
 
 def _yacl():
     maybe(
@@ -43,17 +42,6 @@ def _yacl():
         ],
         strip_prefix = "yacl-0.4.5b7_nightly_20240930",
         sha256 = "cf8dc7cceb9c5d05df00f1c086feec99d554db3e3cbe101253cf2a5a1adb9072",
-    )
-
-def _libpsi():
-    maybe(
-        http_archive,
-        name = "psi",
-        urls = [
-            "https://github.com/secretflow/psi/archive/refs/tags/v0.4.3.dev240919.tar.gz",
-        ],
-        strip_prefix = "psi-0.4.3.dev240919",
-        sha256 = "1ee34fbbd9a8f36dea8f7c45588a858e8c31f3a38e60e1fc67cb428ea79334e3",
     )
 
 def _rules_proto_grpc():

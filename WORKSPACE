@@ -27,10 +27,6 @@ load("@yacl//bazel:repositories.bzl", "yacl_deps")
 
 yacl_deps()
 
-load("@psi//bazel:repositories.bzl", "psi_deps")
-
-psi_deps()
-
 load("@rules_python//python:repositories.bzl", "py_repositories")
 
 py_repositories()
