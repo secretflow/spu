@@ -42,7 +42,7 @@ spu_cmake_external(
     deps = [
         "@com_github_facebook_zstd//:zstd",
     ] + select({
-        "@platforms//cpu:x86_64": ["@com_intel_hexl//:hexl"],
+        # "@platforms//cpu:x86_64": ["@com_intel_hexl//:hexl"],
         "//conditions:default": [],
     }),
 )
