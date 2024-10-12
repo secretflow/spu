@@ -25,7 +25,8 @@ def spu_deps():
     _com_github_openxla_xla()
     _com_github_pybind11_bazel()
     _com_github_pybind11()
-    _com_intel_hexl()
+
+    # _com_intel_hexl()
     _com_github_emptoolkit_emp_tool()
     _com_github_emptoolkit_emp_ot()
     _com_github_facebook_zstd()
@@ -164,20 +165,20 @@ def _com_github_pybind11():
         ],
     )
 
-def _com_intel_hexl():
-    maybe(
-        http_archive,
-        name = "com_intel_hexl",
-        type = "tar.gz",
-        strip_prefix = "hexl-1.2.5",
-        sha256 = "3692e6e6183dbc49253e51e86c3e52e7affcac925f57db0949dbb4d34b558a9a",
-        build_file = "@spulib//bazel:hexl.BUILD",
-        urls = [
-            "https://github.com/intel/hexl/archive/refs/tags/v1.2.5.tar.gz",
-        ],
-        patch_args = ["-p1"],
-        patches = ["@spulib//bazel:patches/hexl.patch"],
-    )
+# def _com_intel_hexl():
+#     maybe(
+#         http_archive,
+#         name = "com_intel_hexl",
+#         type = "tar.gz",
+#         strip_prefix = "hexl-1.2.5",
+#         sha256 = "3692e6e6183dbc49253e51e86c3e52e7affcac925f57db0949dbb4d34b558a9a",
+#         build_file = "@spulib//bazel:hexl.BUILD",
+#         urls = [
+#             "https://github.com/intel/hexl/archive/refs/tags/v1.2.5.tar.gz",
+#         ],
+#         patch_args = ["-p1"],
+#         patches = ["@spulib//bazel:patches/hexl.patch"],
+#     )
 
 def _com_github_emptoolkit_emp_tool():
     maybe(
