@@ -52,26 +52,6 @@ pybind_extension(
     ],
 )
 
-pybind_extension(
-    name = "libpsi",
-    srcs = ["libpsi.cc"],
-    linkopts = select({
-        "@bazel_tools//src/conditions:darwin": [
-            "-Wl,-exported_symbols_list,$(location //spu:exported_symbols.lds)",
-        ],
-        "//conditions:default": [
-            "-Wl,--version-script,$(location //spu:version_script.lds)",
-        ],
-    }),
-    deps = [
-        ":exported_symbols.lds",
-        ":version_script.lds",
-        "@psi//psi:launch",
-        "@psi//psi/legacy:memory_psi",
-        "@yacl//yacl/link",
-    ],
-)
-
 py_library(
     name = "api",
     srcs = [
@@ -85,50 +65,9 @@ py_library(
 )
 
 python_proto_compile(
-    name = "psi_py_proto",
-    output_mode = "NO_PREFIX_FLAT",
-    protos = ["@psi//psi/proto:psi_proto"],
-)
-
-python_proto_compile(
     name = "link_py_proto",
     output_mode = "NO_PREFIX_FLAT",
     protos = ["@yacl//yacl/link:link_proto"],
-)
-
-python_proto_compile(
-    name = "psi_v2_py_proto",
-    output_mode = "NO_PREFIX",
-    protos = ["@psi//psi/proto:psi_v2_proto"],
-)
-
-# Hack generated protobuf due to https://github.com/protocolbuffers/protobuf/issues/1491
-genrule(
-    name = "psi_v2_py_proto_fixed",
-    srcs = [":psi_v2_py_proto"],
-    outs = ["psi_v2_pb2.py"],
-    cmd = "sed 's#from yacl.link import#from . import#g;s#from psi.proto import#from . import#g' $(SRCS) > $(OUTS)",
-)
-
-py_library(
-    name = "psi",
-    srcs = [
-        "psi.py",
-        ":link_py_proto",
-        ":pir_py_proto",
-        ":psi_py_proto",
-        ":psi_v2_py_proto_fixed",
-    ],
-    data = [
-        ":libpsi.so",
-        ":libspu.so",
-    ],
-)
-
-python_proto_compile(
-    name = "pir_py_proto",
-    output_mode = "NO_PREFIX_FLAT",
-    protos = ["@psi//psi/proto:pir_proto"],
 )
 
 py_library(
@@ -137,7 +76,6 @@ py_library(
         "__init__.py",
         "version.py",
         ":api",
-        ":psi",
         "//spu/experimental:experimentals",
         "//spu/intrinsic:all_intrinsics",
         "//spu/utils:simulation",

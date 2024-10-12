@@ -46,9 +46,9 @@ Please follow [Installation Guidelines](INSTALLATION.md) to install SPU.
 
 ### Hardware Requirements
 
-| General Features | FourQ based PSI | GPU |
-| ---------------- | --------------- | --- |
-| AVX/ARMv8        | AVX2/ARMv8      | CUDA 11.8+ |
+| General Features | GPU |
+| ---------------- | --- |
+| AVX/ARMv8        | CUDA 11.8+ |
 
 ## Citing SPU
 

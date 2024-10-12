@@ -28,8 +28,6 @@ body:
         - MPC protocol
         - SPU runtime
         - SPU compiler
-        - PSI
-        - PIR
         - Documentation/Tutorial/Example
         - Others
     validations:

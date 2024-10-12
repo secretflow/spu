@@ -19,7 +19,6 @@ filegroup(
     data = [
         "breast_cancer",
         "perfect_logit",
-        "psi",
     ],
 )
 
@@ -36,13 +35,5 @@ filegroup(
     srcs = [
         "perfect_logit_a.csv",  # generated, perfect linear
         "perfect_logit_b.csv",  # generated, perfect linear
-    ],
-)
-
-filegroup(
-    name = "psi",
-    srcs = [
-        "psi_1.csv",
-        "psi_2.csv",
     ],
 )
