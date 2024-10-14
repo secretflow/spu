@@ -99,6 +99,11 @@ void populateRuntimeConfig(RuntimeConfig& cfg) {
     cfg.set_sigmoid_mode(RuntimeConfig::SIGMOID_REAL);
   }
 
+  // shamir threshold
+  if (cfg.protocol() == ProtocolKind::SHAMIR && cfg.sss_threshold() == 0) {
+    SPU_THROW("shamir secret sharing threshold must be set");
+  }
+
   // MPC related configurations
   // trunc_allow_msb_error           // by pass.
 }

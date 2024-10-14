@@ -212,7 +212,17 @@ FOREACH_PT_TYPES(CASE)
 std::ostream& operator<<(std::ostream& os, ProtocolKind protocol);
 
 //////////////////////////////////////////////////////////////
-// Field 2k types, TODO(jint) support Zq
+// Field GFP mappings, currently only support Mersenne primes
+//////////////////////////////////////////////////////////////
+#define FIELD_TO_MERSENNE_PRIME_EXP_MAP(FN) \
+  FN(FM32, uint32_t, 31)                    \
+  FN(FM64, uint64_t, 61)                    \
+  FN(FM128, uint128_t, 127)
+
+size_t GetMersennePrimeExp(FieldType field);
+
+//////////////////////////////////////////////////////////////
+// Field 2k types
 //////////////////////////////////////////////////////////////
 #define FIELD_TO_STORAGE_MAP(FN) \
   FN(FM32, PT_U32)               \
@@ -258,6 +268,21 @@ inline size_t SizeOf(FieldType field) { return SizeOf(GetStorageType(field)); }
         SPU_THROW("unimplemented for field={}", FIELD); \
     }                                                   \
   }()
+
+//////////////////////////////////////////////////////////////
+// Field Prime types
+//////////////////////////////////////////////////////////////
+template <typename T>
+struct ScalarTypeToPrime {};
+
+#define DEF_TRAITS(Field, ScalarT, Exp)                                    \
+  template <>                                                              \
+  struct ScalarTypeToPrime<ScalarT> {                                      \
+    static constexpr size_t exp = Exp;                                     \
+    static constexpr ScalarT prime = (static_cast<ScalarT>(1) << Exp) - 1; \
+  };
+FIELD_TO_MERSENNE_PRIME_EXP_MAP(DEF_TRAITS)
+#undef DEF_TRAITS
 
 //////////////////////////////////////////////////////////////
 // Value range information, should it be here, at top level(jint)?

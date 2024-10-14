@@ -123,6 +123,22 @@ std::ostream& operator<<(std::ostream& os, ProtocolKind protocol) {
 }
 
 //////////////////////////////////////////////////////////////
+// Field GFP mappings, currently only support Mersenne primes
+//////////////////////////////////////////////////////////////
+size_t GetMersennePrimeExp(FieldType field) {
+#define CASE(Name, ScalarT, MersennePrimeExp) \
+  case FieldType::Name:                       \
+    return MersennePrimeExp;                  \
+    break;
+  switch (field) {
+    FIELD_TO_MERSENNE_PRIME_EXP_MAP(CASE)
+    default:
+      SPU_THROW("unknown supported field {}", field);
+  }
+#undef CASE
+}
+
+//////////////////////////////////////////////////////////////
 // Field 2k types, TODO(jint) support Zq
 //////////////////////////////////////////////////////////////
 std::ostream& operator<<(std::ostream& os, FieldType field) {

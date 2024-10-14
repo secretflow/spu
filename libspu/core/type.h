@@ -43,6 +43,16 @@ class Ring2k {
   FieldType field() const { return field_; }
 };
 
+// This trait means the data is maintained in Galois prime field.
+class Gfp {
+ protected:
+  uint128_t prime_{0};
+
+ public:
+  virtual ~Gfp() = default;
+  uint128_t p() const { return prime_; }
+};
+
 // The public interface.
 //
 // The value of this type is public visible for parties.
@@ -384,6 +394,54 @@ class RingTy : public TypeImpl<RingTy, TypeObject, Ring2k> {
   }
 };
 
+// Galois field type of Mersenne primes, e.g., 2^127-1
+class GfmpTy : public TypeImpl<GfmpTy, TypeObject, Gfp, Ring2k> {
+  using Base = TypeImpl<GfmpTy, TypeObject, Gfp, Ring2k>;
+
+ protected:
+  size_t mersenne_prime_exp_;
+
+ public:
+  using Base::Base;
+  explicit GfmpTy(FieldType field) {
+    field_ = field;
+    mersenne_prime_exp_ = GetMersennePrimeExp(field);
+    prime_ = (static_cast<uint128_t>(1) << mersenne_prime_exp_) - 1;
+  }
+
+  static std::string_view getStaticId() { return "Gfmp"; }
+
+  size_t size() const override {
+    if (field_ == FT_INVALID) {
+      return 0;
+    }
+    return SizeOf(GetStorageType(field_));
+  }
+
+  size_t mp_exp() const { return mersenne_prime_exp_; }
+
+  void fromString(std::string_view detail) override {
+    auto comma = detail.find_first_of(',');
+    auto field_str = detail.substr(0, comma);
+    auto mp_exp_str = detail.substr(comma + 1);
+    SPU_ENFORCE(FieldType_Parse(std::string(field_str), &field_),
+                "parse failed from={}", detail);
+    mersenne_prime_exp_ = std::stoul(std::string(mp_exp_str));
+    prime_ = (static_cast<uint128_t>(1) << mersenne_prime_exp_) - 1;
+  }
+
+  std::string toString() const override {
+    return fmt::format("{},{}", FieldType_Name(field()), mersenne_prime_exp_);
+  }
+
+  bool equals(TypeObject const* other) const override {
+    auto const* derived_other = dynamic_cast<GfmpTy const*>(other);
+    SPU_ENFORCE(derived_other);
+    return field() == derived_other->field() &&
+           mp_exp() == derived_other->mp_exp() && p() == derived_other->p();
+  }
+};
+
 class TypeContext final {
  public:
   using TypeCreateFn =
@@ -395,7 +453,8 @@ class TypeContext final {
 
  public:
   TypeContext() {
-    addTypes<VoidTy, PtTy, RingTy>();  // Base types that we need to register
+    addTypes<VoidTy, PtTy, RingTy,
+             GfmpTy>();  // Base types that we need to register
   }
 
   template <typename T>
