@@ -76,10 +76,10 @@ spu_cc_library(
     deps = [
         ":linalg",
         "//libspu/core:ndarray_ref",
+        "//libspu/core:type_util",
         "@yacl//yacl/crypto/rand",
         "@yacl//yacl/crypto/tools:prg",
         "@yacl//yacl/utils:parallel",
-        "//libspu/core:type_util",
     ],
 )
 
@@ -90,7 +90,6 @@ spu_cc_test(
         ":ring_ops",
     ],
 )
-
 
 spu_cc_library(
     name = "gfmp_ops",
