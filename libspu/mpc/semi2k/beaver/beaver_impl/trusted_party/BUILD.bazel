@@ -24,5 +24,7 @@ spu_cc_library(
         "//libspu/mpc/common:prg_tensor",
         "//libspu/mpc/utils:permute",
         "//libspu/mpc/utils:ring_ops",
+        "//libspu/mpc/utils:gfmp_ops",
+        "//libspu/core:type_util",
     ],
 )

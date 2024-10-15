@@ -201,6 +201,31 @@ Value exp_taylor(SPUContext* ctx, const Value& x) {
   return res;
 }
 
+Value exp_prime(SPUContext* ctx, const Value& x) {
+  auto clamped_x = x;
+  auto offset = ctx->config().experimental_exp_prime_offset();
+  auto fxp = ctx->getFxpBits();
+  if (!ctx->config().experimental_exp_prime_disable_lower_bound()) {
+    // currently the bound is tied to FM128
+    SPU_ENFORCE_EQ(ctx->getField(), FieldType::FM128);
+    auto lower_bound = (48.0 - offset - 2.0 * fxp) / M_LOG2E;
+    clamped_x = _clamp_lower(ctx, clamped_x,
+                             constant(ctx, lower_bound, x.dtype(), x.shape()))
+                    .setDtype(x.dtype());
+  }
+  if (ctx->config().experimental_exp_prime_enable_upper_bound()) {
+    // currently the bound is tied to FM128
+    SPU_ENFORCE_EQ(ctx->getField(), FieldType::FM128);
+    auto upper_bound = (124.0 - 2.0 * fxp - offset) / M_LOG2E;
+    clamped_x = _clamp_upper(ctx, clamped_x,
+                             constant(ctx, upper_bound, x.dtype(), x.shape()))
+                    .setDtype(x.dtype());
+  }
+
+  auto ret = dynDispatch<spu::Value>(ctx, "exp_a", clamped_x);
+  return ret.setDtype(x.dtype());
+}
+
 namespace {
 
 // Pade approximation of exp2(x), x is in [0, 1].
@@ -439,13 +464,22 @@ Value f_exp(SPUContext* ctx, const Value& x) {
     case RuntimeConfig::EXP_PADE: {
       // The valid input for exp_pade is [-kInputLimit, kInputLimit].
       // TODO(junfeng): should merge clamp into exp_pade to save msb ops.
-      const float kInputLimit = 32 / std::log2(std::exp(1));
+      const float kInputLimit = 32.0 / std::log2(std::exp(1));
       const auto clamped_x =
           _clamp(ctx, x, constant(ctx, -kInputLimit, x.dtype(), x.shape()),
                  constant(ctx, kInputLimit, x.dtype(), x.shape()))
               .setDtype(x.dtype());
       return detail::exp_pade(ctx, clamped_x);
     }
+    case RuntimeConfig::EXP_PRIME:
+      if (ctx->hasKernel("exp_a")) {
+        return detail::exp_prime(ctx, x);
+      } else {
+        SPU_THROW(
+            "exp_a is not implemented for this protocol, currently only "
+            "2pc "
+            "semi2k is supported.");
+      }
     default:
       SPU_THROW("unexpected exp approximation method {}",
                 ctx->config().fxp_exp_mode());

@@ -43,6 +43,7 @@ spu_cc_library(
     deps = [
         "//libspu/core:object",
         "//libspu/mpc/utils:ring_ops",
+        "//libspu/mpc/utils:gfmp_ops",
         "@yacl//yacl/link:context",
         "@yacl//yacl/link/algorithm:allgather",
         "@yacl//yacl/link/algorithm:broadcast",
@@ -89,6 +90,7 @@ spu_cc_library(
     deps = [
         "//libspu/core:ndarray_ref",
         "//libspu/mpc/utils:ring_ops",
+        "//libspu/mpc/utils:gfmp_ops",
         "@yacl//yacl/crypto/tools:prg",
     ],
 )

@@ -23,6 +23,7 @@
 
 #include "libspu/mpc/common/prg_tensor.h"
 #include "libspu/mpc/semi2k/beaver/beaver_impl/trusted_party/trusted_party.h"
+#include "libspu/mpc/utils/gfmp_ops.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc::semi2k {
@@ -32,9 +33,9 @@ namespace {
 inline size_t CeilDiv(size_t a, size_t b) { return (a + b - 1) / b; }
 
 void FillReplayDesc(Beaver::ReplayDesc* desc, FieldType field, int64_t size,
-
                     const std::vector<Beaver::PrgSeedBuff>& encrypted_seeds,
-                    PrgCounter counter, PrgSeed self_seed) {
+                    PrgCounter counter, PrgSeed self_seed,
+                    ElementType eltype = ElementType::kRing) {
   if (desc == nullptr || desc->status != Beaver::Init) {
     return;
   }
@@ -43,6 +44,7 @@ void FillReplayDesc(Beaver::ReplayDesc* desc, FieldType field, int64_t size,
   desc->prg_counter = counter;
   desc->encrypted_seeds = encrypted_seeds;
   desc->seed = self_seed;
+  desc->eltype = eltype;
 }
 
 }  // namespace
@@ -67,7 +69,8 @@ BeaverTfpUnsafe::BeaverTfpUnsafe(std::shared_ptr<yacl::link::Context> lctx)
 
 BeaverTfpUnsafe::Triple BeaverTfpUnsafe::Mul(FieldType field, int64_t size,
                                              ReplayDesc* x_desc,
-                                             ReplayDesc* y_desc) {
+                                             ReplayDesc* y_desc,
+                                             ElementType eltype) {
   std::vector<TrustedParty::Operand> ops(3);
   Shape shape({size, 1});
   std::vector<std::vector<PrgSeed>> replay_seeds(3);
@@ -75,9 +78,13 @@ BeaverTfpUnsafe::Triple BeaverTfpUnsafe::Mul(FieldType field, int64_t size,
   auto if_replay = [&](const ReplayDesc* replay_desc, size_t idx) {
     if (replay_desc == nullptr || replay_desc->status != Beaver::Replay) {
       ops[idx].seeds = seeds_;
-      return prgCreateArray(field, shape, seed_, &counter_, &ops[idx].desc);
+      // enforce the eltypes in ops
+      ops[idx].desc.eltype = eltype;
+      return prgCreateArray(field, shape, seed_, &counter_, &ops[idx].desc,
+                            eltype);
     } else {
       SPU_ENFORCE(replay_desc->field == field);
+      SPU_ENFORCE(replay_desc->eltype == eltype);
       SPU_ENFORCE(replay_desc->size == size);
       if (lctx_->Rank() == 0) {
         SPU_ENFORCE(replay_desc->encrypted_seeds.size() == lctx_->WorldSize());
@@ -90,31 +97,68 @@ BeaverTfpUnsafe::Triple BeaverTfpUnsafe::Mul(FieldType field, int64_t size,
         }
         ops[idx].seeds = replay_seeds[idx];
         ops[idx].desc.field = field;
+        ops[idx].desc.eltype = eltype;
         ops[idx].desc.shape = shape;
         ops[idx].desc.prg_counter = replay_desc->prg_counter;
       }
       PrgCounter tmp_counter = replay_desc->prg_counter;
       return prgCreateArray(field, shape, replay_desc->seed, &tmp_counter,
-                            nullptr);
+                            nullptr, eltype);
     }
   };
 
-  FillReplayDesc(x_desc, field, size, seeds_buff_, counter_, seed_);
+  FillReplayDesc(x_desc, field, size, seeds_buff_, counter_, seed_, eltype);
   auto a = if_replay(x_desc, 0);
-  FillReplayDesc(y_desc, field, size, seeds_buff_, counter_, seed_);
+  FillReplayDesc(y_desc, field, size, seeds_buff_, counter_, seed_, eltype);
   auto b = if_replay(y_desc, 1);
-  auto c = prgCreateArray(field, shape, seed_, &counter_, &ops[2].desc);
+  auto c = prgCreateArray(field, shape, seed_, &counter_, &ops[2].desc, eltype);
 
   if (lctx_->Rank() == 0) {
     ops[2].seeds = seeds_;
     auto adjust = TrustedParty::adjustMul(absl::MakeSpan(ops));
-    ring_add_(c, adjust);
+    if (eltype == ElementType::kGfmp) {
+      auto T = c.eltype();
+      gfmp_add_mod_(c, adjust.as(T));
+    } else {
+      ring_add_(c, adjust);
+    }
   }
 
   Triple ret;
   std::get<0>(ret) = std::move(*a.buf());
   std::get<1>(ret) = std::move(*b.buf());
   std::get<2>(ret) = std::move(*c.buf());
+
+  return ret;
+}
+
+BeaverTfpUnsafe::Pair BeaverTfpUnsafe::MulPriv(FieldType field, int64_t size,
+                                               ElementType eltype) {
+  std::vector<TrustedParty::Operand> ops(2);
+  Shape shape({size, 1});
+
+  ops[0].seeds = seeds_;
+  // enforce the eltypes in ops
+  ops[0].desc.eltype = eltype;
+  ops[1].desc.eltype = eltype;
+  auto a_or_b =
+      prgCreateArray(field, shape, seed_, &counter_, &ops[0].desc, eltype);
+  auto c = prgCreateArray(field, shape, seed_, &counter_, &ops[1].desc, eltype);
+
+  if (lctx_->Rank() == 0) {
+    ops[1].seeds = seeds_;
+    auto adjust = TrustedParty::adjustMulPriv(absl::MakeSpan(ops));
+    if (eltype == ElementType::kGfmp) {
+      auto T = c.eltype();
+      gfmp_add_mod_(c, adjust.as(T));
+    } else {
+      ring_add_(c, adjust);
+    }
+  }
+
+  Pair ret;
+  std::get<0>(ret) = std::move(*a_or_b.buf());
+  std::get<1>(ret) = std::move(*c.buf());
 
   return ret;
 }

@@ -25,7 +25,11 @@
 #include "libspu/mpc/api_test.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/semi2k/beaver/beaver_impl/ttp_server/beaver_server.h"
+#include "libspu/mpc/semi2k/exp.h"
+#include "libspu/mpc/semi2k/prime_utils.h"
 #include "libspu/mpc/semi2k/state.h"
+#include "libspu/mpc/semi2k/type.h"
+#include "libspu/mpc/utils/gfmp.h"
 #include "libspu/mpc/utils/ring_ops.h"
 #include "libspu/mpc/utils/simulate.h"
 
@@ -36,6 +40,12 @@ RuntimeConfig makeConfig(FieldType field) {
   RuntimeConfig conf;
   conf.set_protocol(ProtocolKind::SEMI2K);
   conf.set_field(field);
+  if (field == FieldType::FM64) {
+    conf.set_fxp_fraction_bits(17);
+  } else if (field == FieldType::FM128) {
+    conf.set_fxp_fraction_bits(40);
+  }
+  conf.set_experimental_enable_exp_prime(true);
   return conf;
 }
 
@@ -404,4 +414,173 @@ TEST_P(BeaverCacheTest, SquareA) {
   });
 }
 
+TEST_P(BeaverCacheTest, priv_mul_test) {
+  const auto factory = std::get<0>(GetParam());
+  const RuntimeConfig& conf = std::get<1>(GetParam());
+  const size_t npc = std::get<2>(GetParam());
+  // only supports 2 party (not counting beaver)
+  if (npc != 2) {
+    return;
+  }
+  NdArrayRef ring2k_shr[2];
+
+  int64_t numel = 1;
+  FieldType field = conf.field();
+
+  std::vector<double> real_vec(numel);
+  for (int64_t i = 0; i < numel; ++i) {
+    real_vec[i] = 2;
+  }
+
+  auto rnd_msg = gfmp_zeros(field, {numel});
+
+  DISPATCH_ALL_FIELDS(field, [&]() {
+    using sT = std::make_signed<ring2k_t>::type;
+    NdArrayView<sT> xmsg(rnd_msg);
+    pforeach(0, numel, [&](int64_t i) { xmsg[i] = std::round(real_vec[i]); });
+  });
+
+  ring2k_shr[0] = rnd_msg;
+  ring2k_shr[1] = rnd_msg;
+
+  NdArrayRef input, outp_pub;
+  NdArrayRef outp[2];
+
+  utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+    auto obj = factory(conf, lctx);
+
+    KernelEvalContext kcontext(obj.get());
+
+    int rank = lctx->Rank();
+
+    outp[rank] = spu::mpc::semi2k::MulPrivModMP(&kcontext, ring2k_shr[rank]);
+  });
+  auto got = gfmp_add_mod(outp[0], outp[1]);
+  DISPATCH_ALL_FIELDS(field, [&]() {
+    using sT = std::make_signed<ring2k_t>::type;
+    NdArrayView<sT> got_view(got);
+
+    double max_err = 0.0;
+    double min_err = 99.0;
+    for (int64_t i = 0; i < numel; ++i) {
+      double expected = real_vec[i] * real_vec[i];
+      double got = static_cast<double>(got_view[i]);
+      max_err = std::max(max_err, std::abs(expected - got));
+      min_err = std::min(min_err, std::abs(expected - got));
+    }
+    ASSERT_LE(min_err, 1e-3);
+    ASSERT_LE(max_err, 1e-3);
+  });
+}
+
+TEST_P(BeaverCacheTest, exp_mod_test) {
+  const RuntimeConfig& conf = std::get<1>(GetParam());
+  FieldType field = conf.field();
+
+  DISPATCH_ALL_FIELDS(field, [&]() {
+    // exponents < 32
+    ring2k_t exponents[5] = {10, 21, 27};
+
+    for (ring2k_t exponent : exponents) {
+      ring2k_t y = exp_mod<ring2k_t>(2, exponent);
+      ring2k_t prime = ScalarTypeToPrime<ring2k_t>::prime;
+      ring2k_t prime_minus_one = (prime - 1);
+      ring2k_t shifted_bit = 1;
+      shifted_bit <<= exponent;
+      EXPECT_EQ(y, shifted_bit % prime_minus_one);
+    }
+  });
+}
+
+TEST_P(BeaverCacheTest, ExpA) {
+  const auto factory = std::get<0>(GetParam());
+  const RuntimeConfig& conf = std::get<1>(GetParam());
+  const size_t npc = std::get<2>(GetParam());
+  // exp only supports 2 party (not counting beaver)
+  // only supports FM128 for now
+  // note not using ctx->hasKernel("exp_a") because we are testing kernel
+  // registration as well.
+  if (npc != 2 || conf.field() != FieldType::FM128) {
+    return;
+  }
+  auto fxp = conf.fxp_fraction_bits();
+
+  NdArrayRef ring2k_shr[2];
+
+  int64_t numel = 100;
+  FieldType field = conf.field();
+
+  // how to define and achieve high pricision for e^20
+  std::uniform_real_distribution<double> dist(-18.0, 15.0);
+  std::default_random_engine rd;
+  std::vector<double> real_vec(numel);
+  for (int64_t i = 0; i < numel; ++i) {
+    // make the input a fixed point number, eliminate the fixed point encoding
+    // error
+    real_vec[i] =
+        static_cast<double>(std::round((dist(rd) * (1L << fxp)))) / (1L << fxp);
+  }
+
+  auto rnd_msg = ring_zeros(field, {numel});
+
+  DISPATCH_ALL_FIELDS(field, [&]() {
+    using sT = std::make_signed<ring2k_t>::type;
+    NdArrayView<sT> xmsg(rnd_msg);
+    pforeach(0, numel, [&](int64_t i) {
+      xmsg[i] = std::round(real_vec[i] * (1L << fxp));
+    });
+  });
+
+  ring2k_shr[0] = ring_rand(field, rnd_msg.shape())
+                      .as(makeType<spu::mpc::semi2k::AShrTy>(field));
+  ring2k_shr[1] = ring_sub(rnd_msg, ring2k_shr[0])
+                      .as(makeType<spu::mpc::semi2k::AShrTy>(field));
+
+  NdArrayRef outp_pub;
+  NdArrayRef outp[2];
+
+  utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+    auto obj = factory(conf, lctx);
+
+    KernelEvalContext kcontext(obj.get());
+
+    int rank = lctx->Rank();
+
+    size_t bytes = lctx->GetStats()->sent_bytes;
+    size_t action = lctx->GetStats()->sent_actions;
+
+    spu::mpc::semi2k::ExpA exp;
+    outp[rank] = exp.proc(&kcontext, ring2k_shr[rank]);
+
+    bytes = lctx->GetStats()->sent_bytes - bytes;
+    action = lctx->GetStats()->sent_actions - action;
+    SPDLOG_INFO("ExpA ({}) for n = {}, sent {} MiB ({} B per), actions {}",
+                field, numel, bytes * 1. / 1024. / 1024., bytes * 1. / numel,
+                action);
+  });
+  assert(outp[0].eltype() == ring2k_shr[0].eltype());
+  auto got = ring_add(outp[0], outp[1]);
+  ring_print(got, "exp result");
+  DISPATCH_ALL_FIELDS(field, [&]() {
+    using sT = std::make_signed<ring2k_t>::type;
+    NdArrayView<sT> got_view(got);
+
+    double max_err = 0.0;
+    for (int64_t i = 0; i < numel; ++i) {
+      double expected = std::exp(real_vec[i]);
+      expected = static_cast<double>(std::round((expected * (1L << fxp)))) /
+                 (1L << fxp);
+      double got = static_cast<double>(got_view[i]) / (1L << fxp);
+      // cout left here for future improvement
+      std::cout << "expected: " << fmt::format("{0:f}", expected)
+                << ", got: " << fmt::format("{0:f}", got) << std::endl;
+      std::cout << "expected: "
+                << fmt::format("{0:b}",
+                               static_cast<ring2k_t>(expected * (1L << fxp)))
+                << ", got: " << fmt::format("{0:b}", got_view[i]) << std::endl;
+      max_err = std::max(max_err, std::abs(expected - got));
+    }
+    ASSERT_LE(max_err, 1e-0);
+  });
+}
 }  // namespace spu::mpc::test
