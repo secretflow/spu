@@ -76,6 +76,7 @@ spu_cc_library(
     deps = [
         ":linalg",
         "//libspu/core:ndarray_ref",
+        "//libspu/core:type_util",
         "@yacl//yacl/crypto/rand",
         "@yacl//yacl/crypto/tools:prg",
         "@yacl//yacl/utils:parallel",
@@ -87,6 +88,36 @@ spu_cc_test(
     srcs = ["ring_ops_test.cc"],
     deps = [
         ":ring_ops",
+    ],
+)
+
+spu_cc_library(
+    name = "gfmp_ops",
+    srcs = ["gfmp_ops.cc"],
+    hdrs = ["gfmp_ops.h"],
+    copts = select({
+        "@platforms//cpu:x86_64": [
+            "-mavx",
+        ],
+        "//conditions:default": [],
+    }),
+    deps = [
+        ":gfmp",
+        ":linalg",
+        ":ring_ops",
+        "//libspu/core:ndarray_ref",
+        "@yacl//yacl/crypto/rand",
+        "@yacl//yacl/crypto/tools:prg",
+        "@yacl//yacl/utils:parallel",
+    ],
+)
+
+spu_cc_library(
+    name = "gfmp",
+    hdrs = ["gfmp.h"],
+    deps = [
+        "//libspu/core:type_util",
+        "@yacl//yacl/base:int128",
     ],
 )
 

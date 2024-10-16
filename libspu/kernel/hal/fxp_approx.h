@@ -38,6 +38,8 @@ Value exp2_pade(SPUContext* ctx, const Value& x);
 // Works for range [-12.0, 18.0]
 Value exp_pade(SPUContext* ctx, const Value& x);
 
+Value exp_prime(SPUContext* ctx, const Value& x);
+
 Value tanh_chebyshev(SPUContext* ctx, const Value& x);
 
 }  // namespace detail

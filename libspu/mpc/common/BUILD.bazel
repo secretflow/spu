@@ -42,6 +42,7 @@ spu_cc_library(
     hdrs = ["communicator.h"],
     deps = [
         "//libspu/core:object",
+        "//libspu/mpc/utils:gfmp_ops",
         "//libspu/mpc/utils:ring_ops",
         "@yacl//yacl/link:context",
         "@yacl//yacl/link/algorithm:allgather",
@@ -88,6 +89,7 @@ spu_cc_library(
     hdrs = ["prg_tensor.h"],
     deps = [
         "//libspu/core:ndarray_ref",
+        "//libspu/mpc/utils:gfmp_ops",
         "//libspu/mpc/utils:ring_ops",
         "@yacl//yacl/crypto/tools:prg",
     ],

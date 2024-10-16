@@ -52,7 +52,8 @@ template <class AdjustRequest>
 std::tuple<std::vector<TrustedParty::Operand>,
            std::vector<std::vector<PrgSeed>>, size_t>
 BuildOperand(const AdjustRequest& req, uint32_t field_size,
-             const std::unique_ptr<yacl::crypto::PkeDecryptor>& decryptor) {
+             const std::unique_ptr<yacl::crypto::PkeDecryptor>& decryptor,
+             ElementType eltype) {
   std::vector<TrustedParty::Operand> ops;
   std::vector<std::vector<PrgSeed>> seeds;
   size_t pad_length = 0;
@@ -140,7 +141,7 @@ BuildOperand(const AdjustRequest& req, uint32_t field_size,
     }
     seeds.emplace_back(std::move(seed));
     ops.push_back(
-        TrustedParty::Operand{{shape, type, prg_count}, seeds.back()});
+        TrustedParty::Operand{{shape, type, prg_count, eltype}, seeds.back()});
   }
 
   if constexpr (std::is_same_v<AdjustRequest, AdjustDotRequest>) {
@@ -305,6 +306,9 @@ std::vector<NdArrayRef> AdjustImpl(const AdjustRequest& req,
   if constexpr (std::is_same_v<AdjustRequest, AdjustMulRequest>) {
     auto adjust = TrustedParty::adjustMul(ops);
     ret.push_back(std::move(adjust));
+  } else if constexpr (std::is_same_v<AdjustRequest, AdjustMulPrivRequest>) {
+    auto adjust = TrustedParty::adjustMulPriv(ops);
+    ret.push_back(std::move(adjust));
   } else if constexpr (std::is_same_v<AdjustRequest, AdjustSquareRequest>) {
     auto adjust = TrustedParty::adjustSquare(ops);
     ret.push_back(std::move(adjust));
@@ -357,7 +361,17 @@ void AdjustAndSend(
   } else {
     field_size = req.field_size();
   }
-  auto [ops, seeds, pad_length] = BuildOperand(req, field_size, decryptor);
+  ElementType eltype = ElementType::kRing;
+  // enable eltype for selected requests here
+  // later all requests may support gfmp
+  if constexpr (std::is_same_v<AdjustRequest, AdjustMulRequest> ||
+                std::is_same_v<AdjustRequest, AdjustMulPrivRequest>) {
+    if (req.element_type() == ElType::GFMP) {
+      eltype = ElementType::kGfmp;
+    }
+  }
+  auto [ops, seeds, pad_length] =
+      BuildOperand(req, field_size, decryptor, eltype);
 
   if constexpr (std::is_same_v<AdjustRequest, AdjustDotRequest> ||
                 std::is_same_v<AdjustRequest, AdjustPermRequest>) {
@@ -472,6 +486,12 @@ class ServiceImpl final : public BeaverService {
   void AdjustMul(::google::protobuf::RpcController* controller,
                  const AdjustMulRequest* req, AdjustResponse* rsp,
                  ::google::protobuf::Closure* done) override {
+    Adjust(controller, req, rsp, done);
+  }
+
+  void AdjustMulPriv(::google::protobuf::RpcController* controller,
+                     const AdjustMulPrivRequest* req, AdjustResponse* rsp,
+                     ::google::protobuf::Closure* done) override {
     Adjust(controller, req, rsp, done);
   }
 

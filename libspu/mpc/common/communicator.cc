@@ -14,6 +14,7 @@
 
 #include "libspu/mpc/common/communicator.h"
 
+#include "libspu/mpc/utils/gfmp_ops.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc {
@@ -53,7 +54,11 @@ NdArrayRef Communicator::allReduce(ReduceOp op, const NdArrayRef& in,
     auto arr = NdArrayRef(stealBuffer(std::move(bufs[idx])), in.eltype(),
                           in.shape(), makeCompactStrides(in.shape()), kOffset);
     if (op == ReduceOp::ADD) {
-      ring_add_(res, arr);
+      if (in.eltype().isa<GfmpTy>()) {
+        gfmp_add_mod_(res, arr);
+      } else {
+        ring_add_(res, arr);
+      }
     } else if (op == ReduceOp::XOR) {
       ring_xor_(res, arr);
     } else {
@@ -86,7 +91,11 @@ NdArrayRef Communicator::reduce(ReduceOp op, const NdArrayRef& in, size_t root,
           NdArrayRef(stealBuffer(std::move(bufs[idx])), in.eltype(), in.shape(),
                      makeCompactStrides(in.shape()), kOffset);
       if (op == ReduceOp::ADD) {
-        ring_add_(res, arr);
+        if (in.eltype().isa<GfmpTy>()) {
+          gfmp_add_mod_(res, arr);
+        } else {
+          ring_add_(res, arr);
+        }
       } else if (op == ReduceOp::XOR) {
         ring_xor_(res, arr);
       } else {
@@ -94,7 +103,6 @@ NdArrayRef Communicator::reduce(ReduceOp op, const NdArrayRef& in, size_t root,
       }
     }
   }
-
   stats_.latency += 1;
   stats_.comm += in.numel() * in.elsize();
 
@@ -113,6 +121,42 @@ NdArrayRef Communicator::rotate(const NdArrayRef& in, std::string_view tag) {
   stats_.comm += in.numel() * in.elsize();
 
   return NdArrayRef(stealBuffer(std::move(res_buf)), in.eltype(), in.shape(),
+                    makeCompactStrides(in.shape()), kOffset);
+}
+
+std::vector<NdArrayRef> Communicator::gather(const NdArrayRef& in, size_t root,
+                                             std::string_view tag) {
+  const auto array = getOrCreateCompactArray(in);
+  yacl::ByteContainerView bv(reinterpret_cast<uint8_t const*>(array.data()),
+                             array.numel() * array.elsize());
+  auto bufs = yacl::link::Gather(lctx_, bv, root, tag);
+
+  stats_.latency += 1;
+  stats_.comm += array.numel() * array.elsize();
+
+  auto res = std::vector<NdArrayRef>(getWorldSize());
+  if (root == getRank()) {
+    SPU_ENFORCE_EQ(bufs.size(), getWorldSize());
+    for (size_t idx = 0; idx < bufs.size(); idx++) {
+      res[idx] =
+          NdArrayRef(stealBuffer(std::move(bufs[idx])), in.eltype(), in.shape(),
+                     makeCompactStrides(in.shape()), kOffset);
+    }
+  }
+  return res;
+}
+
+NdArrayRef Communicator::broadcast(const NdArrayRef& in, size_t root,
+                                   std::string_view tag) {
+  const auto array = getOrCreateCompactArray(in);
+  yacl::ByteContainerView bv(reinterpret_cast<uint8_t const*>(array.data()),
+                             array.elsize() * array.numel());
+  auto buf = yacl::link::Broadcast(lctx_, bv, root, tag);
+
+  stats_.latency += 1;
+  stats_.comm += in.elsize() * in.numel();
+
+  return NdArrayRef(stealBuffer(std::move(buf)), in.eltype(), in.shape(),
                     makeCompactStrides(in.shape()), kOffset);
 }
 
