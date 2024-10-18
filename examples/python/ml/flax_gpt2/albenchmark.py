@@ -42,10 +42,10 @@ copts.enable_optimize_denominator_with_broadcast = True
 EXP_TIMES = 100
 
 # Microbenchmark
-# VECTOR_LEN = 1
+VECTOR_LEN = 1
 
 # Activation benchmark
-VECTOR_LEN = 1000
+# VECTOR_LEN = 1000
 
 parser = argparse.ArgumentParser(description='distributed driver.')
 parser.add_argument("-c", "--config", default="examples/python/ml/flax_gpt2/3pc.json")
@@ -55,6 +55,34 @@ with open(args.config, 'r') as file:
     conf = json.load(file)
 
 ppd.init(conf["nodes"], conf["devices"])
+
+def hack_sigmoid(x: Array) -> Array:
+    
+    # f(x) = 0.5 + 0.125x if -4 <= x <= 4
+    #        1            if       x > 4
+    #        0            if  -4 > x
+
+    b0 = x < -4.0
+    b1 = x < 4.0
+    b2 = ~ b1
+    
+    b1 = b0 ^ b1  # x in [-4.0, 4.0)    
+
+    ret = b1 * (0.5 + 0.125 * x) + b2 * 1.0
+
+    return ret
+
+@contextmanager
+def hack_sigmoid_context(msg: str, enabled: bool = False):
+    if not enabled:
+        yield
+        return
+    # hijack some target functions
+    raw_sigmoid = jnn.sigmoid
+    jnn.sigmoid = hack_sigmoid
+    yield
+    # recover back
+    jnn.sigmoid = raw_sigmoid
 
 def hack_softmax(x: Array,
             axis: Optional[Union[int, Tuple[int, ...]]] = -1,
@@ -158,7 +186,6 @@ def hack_silu(x: Array) -> Array:
     ret = b2 * x + b4 * seg1 + b3 * seg2
     return ret
 
-
 @contextmanager
 def hack_silu_context(msg: str, enabled: bool = True):
     if not enabled:
@@ -248,10 +275,11 @@ def softmax(x):
     return ret
 
 def sigmoid(x):
-    ret = []
-    for _ in range(EXP_TIMES):
-        y = sample_input().astype(np.float64) + x
-        ret.append(jnn.sigmoid(y))
+    with hack_sigmoid_context("hijack jax sigmoid", enabled=True):
+        ret = []
+        for _ in range(EXP_TIMES):
+            y = sample_input().astype(np.float64) + x
+            ret.append(jnn.sigmoid(y))
     return ret
 
 def sample_input():
@@ -337,7 +365,7 @@ def exp_sigmoid():
 
 if __name__ == '__main__':
     
-    # exp_msb()
+    exp_msb()
     exp_abconversion()
 
     # exp_relu()

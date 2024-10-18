@@ -153,6 +153,7 @@
         "source_location": "cpp",
         "latch": "cpp",
         "scoped_allocator": "cpp",
-        "print": "cpp"
+        "print": "cpp",
+        "*.def": "cpp"
     }
 }

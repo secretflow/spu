@@ -71,3 +71,7 @@ nohup ./bazel-out/k8-fastbuild/bin/examples/python/ml/flax_gpt2/flax_gpt2 -c exa
 0. 128 bit ppa
 1. 61 vs 62 vs 63
 2. offline
+
+20241009:
+1. 16 bits ppa
+2. offline

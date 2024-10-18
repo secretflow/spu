@@ -32,7 +32,7 @@
 #include "libspu/mpc/utils/ring_ops.h"
 
 // TODO: it shows incorrect result that defines EQ_USE_PRG_STATE and undefines EQ_USE_OFFLINE. Fix it.
-#define EQ_TEST_PPA
+// #define EQ_TEST_PPA
 
 namespace spu::mpc::aby3 {
 

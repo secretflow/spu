@@ -1,13 +1,13 @@
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/mpc/kernel.h"
-#include "libspu/mpc/albo/value.h"
+#include "libspu/mpc/alkaid/value.h"
 
 // #define EQ_USE_OFFLINE
 // #define EQ_USE_PRG_STATE
 
 #define P0_COUT if (comm->getRank() == 0) std::cout
 
-namespace spu::mpc::albo {
+namespace spu::mpc::alkaid {
 
 NdArrayRef AssXor2(KernelEvalContext* ctx, const NdArrayRef& lhs,
                     const NdArrayRef& rhs);
@@ -511,4 +511,4 @@ NdArrayRef bitwise_vmap_by_byte(const NdArrayRef& in, UnaryOp func, size_t in_nb
   });
 }
 
-} // namespace spu::mpc::albo
+} // namespace spu::mpc::alkaid

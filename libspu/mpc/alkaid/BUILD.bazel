@@ -61,6 +61,7 @@ spu_cc_library(
         ":ot",
         ":type",
         ":value",
+        ":mss_utils",
         "//libspu/core:trace",
         "//libspu/mpc/common:communicator",
         "//libspu/mpc/common:prg_state",
@@ -97,6 +98,7 @@ spu_cc_library(
     deps = [
         ":type",
         ":value",
+        ":mss_utils",
         "//libspu/mpc/common:communicator",
         "//libspu/mpc/common:prg_state",
     ],
@@ -108,6 +110,7 @@ spu_cc_library(
     hdrs = ["conversion.h"],
     deps = [
         ":value",
+        ":mss_utils",
         "//libspu/mpc:ab_api",
         "//libspu/mpc/common:communicator",
         "//libspu/mpc/common:prg_state",
@@ -214,6 +217,19 @@ spu_cc_library(
         "//libspu/mpc/common:communicator",
         "//libspu/mpc/utils:permute",
         "//libspu/mpc/utils:ring_ops",
+    ],
+)
+
+spu_cc_library(
+    name = "mss_utils",
+    srcs = ["mss_utils.cc"],
+    hdrs = ["mss_utils.h"],
+    deps = [
+        ":type",
+        ":value",
+        "//libspu/mpc/common:communicator",
+        "//libspu/mpc/common:prg_state",
+        "@yacl//yacl/utils:platform_utils",
     ],
 )
 

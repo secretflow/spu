@@ -1,4 +1,4 @@
-#include "libspu/mpc/albo/mss_utils.h"
+#include "libspu/mpc/alkaid/mss_utils.h"
 
 #include <functional>
 #include <iostream>
@@ -10,14 +10,14 @@
 #include "libspu/core/parallel_utils.h"
 #include "libspu/core/prelude.h"
 #include "libspu/core/trace.h"
-#include "libspu/mpc/albo/type.h"
-#include "libspu/mpc/albo/value.h"
+#include "libspu/mpc/alkaid/type.h"
+#include "libspu/mpc/alkaid/value.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pv2k.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
-namespace spu::mpc::albo {
+namespace spu::mpc::alkaid {
     // Xor gate for ASS.
 NdArrayRef AssXor2(KernelEvalContext* ctx, const NdArrayRef& lhs,
                     const NdArrayRef& rhs) {
@@ -643,4 +643,4 @@ std::pair<NdArrayRef, NdArrayRef> unpack_2_bitvec_mss(const NdArrayRef& in) {
     });
   });
 }
-} // namespace spu::mpc::albo
+} // namespace spu::mpc::alkaid
