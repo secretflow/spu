@@ -22,7 +22,7 @@
 #include "spdlog/spdlog.h"
 #include "yacl/base/byte_container_view.h"
 #include "yacl/base/exception.h"
-#include "yacl/crypto/pke/asymmetric_sm2_crypto.h"
+#include "yacl/crypto/pke/sm2_enc.h"
 
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/mpc/common/prg_tensor.h"
@@ -51,9 +51,9 @@ class DecryptError : public yacl::Exception {
 template <class AdjustRequest>
 std::tuple<std::vector<TrustedParty::Operand>,
            std::vector<std::vector<PrgSeed>>, size_t>
-BuildOperand(
-    const AdjustRequest& req, uint32_t field_size,
-    const std::unique_ptr<yacl::crypto::AsymmetricDecryptor>& decryptor) {
+BuildOperand(const AdjustRequest& req, uint32_t field_size,
+             const std::unique_ptr<yacl::crypto::PkeDecryptor>& decryptor,
+             ElementType eltype) {
   std::vector<TrustedParty::Operand> ops;
   std::vector<std::vector<PrgSeed>> seeds;
   size_t pad_length = 0;
@@ -141,7 +141,7 @@ BuildOperand(
     }
     seeds.emplace_back(std::move(seed));
     ops.push_back(
-        TrustedParty::Operand{{shape, type, prg_count}, seeds.back()});
+        TrustedParty::Operand{{shape, type, prg_count, eltype}, seeds.back()});
   }
 
   if constexpr (std::is_same_v<AdjustRequest, AdjustDotRequest>) {
@@ -185,7 +185,8 @@ class StreamReader : public brpc::StreamInputHandler {
     kStreamFailed,
   };
 
-  StreamReader() {
+  explicit StreamReader(size_t total_buf_len) {
+    total_buf_len_ = total_buf_len;
     future_finished_ = promise_finished_.get_future();
     future_closed_ = promise_closed_.get_future();
   }
@@ -193,28 +194,20 @@ class StreamReader : public brpc::StreamInputHandler {
   int on_received_messages(brpc::StreamId id, butil::IOBuf* const messages[],
                            size_t size) override {
     SPDLOG_DEBUG("on_received_messages, stream id: {}", id);
-    if (status_ != Status::kNotFinished) {
-      SPDLOG_WARN("unexpected messages received");
-      return -1;
-    }
-
     for (size_t i = 0; i < size; ++i) {
+      if (status_ != Status::kNotFinished) {
+        SPDLOG_WARN("unexpected messages received");
+        return -1;
+      }
       const auto& message = messages[i];
       SPDLOG_DEBUG("receive buf size: {}", message->size());
-      if (!total_buf_size_.has_value()) {
-        beaver::ttp_server::BeaverPermUpStreamMeta meta{};
-        message->copy_to(&meta, sizeof(meta));
-        message->pop_front(sizeof(meta));
-        total_buf_size_.emplace(meta.total_buf_size);
-      }
-
       buf_.append(message->movable());
-      if (buf_.length() == total_buf_size_.value()) {
+      if (buf_.length() == total_buf_len_) {
         status_ = Status::kNormalFinished;
         promise_finished_.set_value(status_);
-      } else if (buf_.length() > total_buf_size_.value()) {
+      } else if (buf_.length() > total_buf_len_) {
         SPDLOG_ERROR("buf length ({}) greater than expected buf size ({})",
-                     buf_.length(), total_buf_size_.value());
+                     buf_.length(), total_buf_len_);
         status_ = Status::kAbnormalFinished;
         promise_finished_.set_value(status_);
       }
@@ -250,7 +243,7 @@ class StreamReader : public brpc::StreamInputHandler {
 
  private:
   butil::IOBuf buf_;
-  std::optional<uint64_t> total_buf_size_;
+  size_t total_buf_len_;
   Status status_ = Status::kNotFinished;
   std::promise<Status> promise_finished_;
   std::promise<void> promise_closed_;
@@ -259,20 +252,62 @@ class StreamReader : public brpc::StreamInputHandler {
 };
 
 template <class AdjustRequest>
-std::vector<yacl::Buffer> AdjustImpl(
-    const AdjustRequest& req, StreamReader& stream_reader,
-    const std::unique_ptr<yacl::crypto::AsymmetricDecryptor>& decryptor) {
-  std::vector<NdArrayRef> ret;
-  size_t field_size;
-  if constexpr (std::is_same_v<AdjustRequest, AdjustAndRequest>) {
-    field_size = 128 / 8;
-  } else {
-    field_size = req.field_size();
+size_t GetBufferLength(const AdjustRequest& req) {
+  if constexpr (std::is_same_v<AdjustRequest,
+                               beaver::ttp_server::AdjustPermRequest>) {
+    if (req.prg_inputs().size() > 0 && req.field_size() > 0) {
+      return req.prg_inputs()[0].buffer_len() / req.field_size() *
+             sizeof(int64_t);
+    } else {
+      SPDLOG_ERROR("Invalid request, prg_inputs size: {}, field_size: {}",
+                   req.prg_inputs().size(), req.field_size());
+    }
   }
-  auto [ops, seeds, pad_length] = BuildOperand(req, field_size, decryptor);
+  return 0;
+}
 
+void SendStreamData(brpc::StreamId stream_id,
+                    absl::Span<const yacl::Buffer> buf_vec) {
+  SPU_ENFORCE(!buf_vec.empty());
+  for (size_t idx = 1; idx < buf_vec.size(); ++idx) {
+    SPU_ENFORCE_EQ(buf_vec[0].size(), buf_vec[idx].size());
+  }
+
+  size_t chunk_size = kDownStreamChunkSize / buf_vec.size();
+  // FIXME: TTP adjuster server and client MUST have same endianness.
+  size_t left_buf_size = buf_vec[0].size();
+  int64_t chunk_idx = 0;
+  while (left_buf_size > 0) {
+    butil::IOBuf io_buf;
+    BeaverDownStreamMeta meta;
+    io_buf.append(&meta, sizeof(meta));
+
+    size_t cur_chunk_size = std::min(left_buf_size, chunk_size);
+    for (const auto& buf : buf_vec) {
+      int ret = io_buf.append(buf.data<char>() + (chunk_idx * chunk_size),
+                              cur_chunk_size);
+      SPU_ENFORCE_EQ(ret, 0, "Append data to IO buffer failed");
+    }
+
+    // StreamWrite result cannot be EAGAIN, given that we have not set
+    // max_buf_size
+    SPU_ENFORCE_EQ(brpc::StreamWrite(stream_id, io_buf), 0);
+
+    left_buf_size -= cur_chunk_size;
+    ++chunk_idx;
+  }
+}
+
+template <class AdjustRequest>
+std::vector<NdArrayRef> AdjustImpl(const AdjustRequest& req,
+                                   absl::Span<TrustedParty::Operand> ops,
+                                   StreamReader& stream_reader) {
+  std::vector<NdArrayRef> ret;
   if constexpr (std::is_same_v<AdjustRequest, AdjustMulRequest>) {
     auto adjust = TrustedParty::adjustMul(ops);
+    ret.push_back(std::move(adjust));
+  } else if constexpr (std::is_same_v<AdjustRequest, AdjustMulPrivRequest>) {
+    auto adjust = TrustedParty::adjustMulPriv(ops);
     ret.push_back(std::move(adjust));
   } else if constexpr (std::is_same_v<AdjustRequest, AdjustSquareRequest>) {
     auto adjust = TrustedParty::adjustSquare(ops);
@@ -312,14 +347,70 @@ std::vector<yacl::Buffer> AdjustImpl(
                   "not support AdjustRequest type");
   }
 
-  return StripNdArray(ret, pad_length);
+  return ret;
+}
+
+template <class AdjustRequest>
+void AdjustAndSend(
+    const AdjustRequest& req, brpc::StreamId stream_id,
+    StreamReader& stream_reader,
+    const std::unique_ptr<yacl::crypto::PkeDecryptor>& decryptor) {
+  size_t field_size;
+  if constexpr (std::is_same_v<AdjustRequest, AdjustAndRequest>) {
+    field_size = 128 / 8;
+  } else {
+    field_size = req.field_size();
+  }
+  ElementType eltype = ElementType::kRing;
+  // enable eltype for selected requests here
+  // later all requests may support gfmp
+  if constexpr (std::is_same_v<AdjustRequest, AdjustMulRequest> ||
+                std::is_same_v<AdjustRequest, AdjustMulPrivRequest>) {
+    if (req.element_type() == ElType::GFMP) {
+      eltype = ElementType::kGfmp;
+    }
+  }
+  auto [ops, seeds, pad_length] =
+      BuildOperand(req, field_size, decryptor, eltype);
+
+  if constexpr (std::is_same_v<AdjustRequest, AdjustDotRequest> ||
+                std::is_same_v<AdjustRequest, AdjustPermRequest>) {
+    auto adjusts = AdjustImpl(req, absl::MakeSpan(ops), stream_reader);
+    auto buf_vec = StripNdArray(adjusts, pad_length);
+    SendStreamData(stream_id, buf_vec);
+    return;
+  }
+
+  SPU_ENFORCE_EQ(beaver::ttp_server::kReplayChunkSize % 128, 0U);
+  SPU_ENFORCE(!ops.empty());
+  for (size_t idx = 1; idx < ops.size(); idx++) {
+    SPU_ENFORCE(ops[0].desc.shape == ops[idx].desc.shape);
+  }
+  int64_t left_elements = ops[0].desc.shape.at(0);
+  int64_t chunk_elements =
+      beaver::ttp_server::kReplayChunkSize / SizeOf(ops[0].desc.field);
+  while (left_elements > 0) {
+    int64_t cur_elements = std::min(left_elements, chunk_elements);
+    left_elements -= cur_elements;
+    for (auto& op : ops) {
+      op.desc.shape[0] = cur_elements;
+    }
+    auto adjusts = AdjustImpl(req, absl::MakeSpan(ops), stream_reader);
+    if (left_elements > 0) {
+      auto buf_vec = StripNdArray(adjusts, 0);
+      SendStreamData(stream_id, buf_vec);
+    } else {
+      auto buf_vec = StripNdArray(adjusts, pad_length);
+      SendStreamData(stream_id, buf_vec);
+    }
+  }
 }
 
 }  // namespace
 
 class ServiceImpl final : public BeaverService {
  private:
-  std::unique_ptr<yacl::crypto::AsymmetricDecryptor> decryptor_;
+  std::unique_ptr<yacl::crypto::PkeDecryptor> decryptor_;
 
  public:
   ServiceImpl(const std::string& asym_crypto_schema,
@@ -339,9 +430,9 @@ class ServiceImpl final : public BeaverService {
               ::google::protobuf::Closure* done) const {
     auto* cntl = static_cast<brpc::Controller*>(controller);
     std::string client_side(butil::endpoint2str(cntl->remote_side()).c_str());
-    StreamReader reader;
     brpc::StreamId stream_id = brpc::INVALID_STREAM_ID;
     auto request = *req;
+    StreamReader reader(GetBufferLength(*req));
 
     // To address the scenario where clients transmit data after an RPC
     // response, give precedence to setting up absl::MakeCleanup before invoking
@@ -354,14 +445,13 @@ class ServiceImpl final : public BeaverService {
           reader.WaitClosed();
         }
       });
-      std::vector<yacl::Buffer> adjusts;
       try {
-        adjusts = AdjustImpl(request, reader, decryptor_);
+        AdjustAndSend(request, stream_id, reader, decryptor_);
       } catch (const DecryptError& e) {
         auto err = fmt::format("Seed Decrypt error {}", e.what());
         SPDLOG_ERROR("{}, client {}", err,
                      client_side);  // TODO: catch the function name
-        BeaverDownStreamMeta meta{};
+        BeaverDownStreamMeta meta;
         meta.err_code = ErrorCode::SeedDecryptError;
         butil::IOBuf buf;
         SPU_ENFORCE_EQ(buf.append(&meta, sizeof(meta)), 0);
@@ -371,7 +461,7 @@ class ServiceImpl final : public BeaverService {
       } catch (const std::exception& e) {
         auto err = fmt::format("adjust error {}", e.what());
         SPDLOG_ERROR("{}, client {}", err, client_side);
-        BeaverDownStreamMeta meta{};
+        BeaverDownStreamMeta meta;
         meta.err_code = ErrorCode::OpAdjustError;
         butil::IOBuf buf;
         SPU_ENFORCE_EQ(buf.append(&meta, sizeof(meta)), 0);
@@ -379,45 +469,11 @@ class ServiceImpl final : public BeaverService {
         brpc::StreamWrite(stream_id, buf);
         return;
       }
-
-      butil::IOBuf buf;
-      BeaverDownStreamMeta meta{};
-      meta.total_buf_num = adjusts.size();
-      SPU_ENFORCE_EQ(buf.append(&meta, sizeof(meta)), 0);
-      for (const auto& adjust : adjusts) {
-        uint64_t cur_buf_size = adjust.size();
-        buf.append(&cur_buf_size, sizeof(cur_buf_size));
-      }
-
-      for (auto& adjust : adjusts) {
-        // FIXME: TTP adjuster server and client MUST have same endianness.
-        size_t left_buf_size = adjust.size();
-        int64_t chunk_idx = 0;
-        while (left_buf_size > 0) {
-          size_t cur_chunk_size = std::min(left_buf_size, kDownStreamChunkSize);
-          SPU_ENFORCE_EQ(buf.append(adjust.data<char>() +
-                                        (chunk_idx * kDownStreamChunkSize),
-                                    cur_chunk_size),
-
-                         0);
-          // ret cannot be EAGAIN, given that we have not set max_buf_size
-          int ret = brpc::StreamWrite(stream_id, buf);
-          if (ret != 0) {
-            SPDLOG_ERROR("brpc::StreamWrite return {}", ret);
-            return;
-          }
-
-          buf.clear();
-          left_buf_size -= cur_chunk_size;
-          ++chunk_idx;
-        }
-        adjust.reset();
-      }
     });
 
     brpc::ClosureGuard done_guard(done);
     brpc::StreamOptions stream_options;
-    stream_options.max_buf_size = 0;
+    stream_options.max_buf_size = 0;  // there is no flow control for downstream
     stream_options.handler = &reader;
     if (brpc::StreamAccept(&stream_id, *cntl, &stream_options) != 0) {
       SPDLOG_ERROR("Failed to accept stream");
@@ -430,6 +486,12 @@ class ServiceImpl final : public BeaverService {
   void AdjustMul(::google::protobuf::RpcController* controller,
                  const AdjustMulRequest* req, AdjustResponse* rsp,
                  ::google::protobuf::Closure* done) override {
+    Adjust(controller, req, rsp, done);
+  }
+
+  void AdjustMulPriv(::google::protobuf::RpcController* controller,
+                     const AdjustMulPrivRequest* req, AdjustResponse* rsp,
+                     ::google::protobuf::Closure* done) override {
     Adjust(controller, req, rsp, done);
   }
 

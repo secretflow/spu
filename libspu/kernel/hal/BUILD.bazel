@@ -127,6 +127,7 @@ spu_cc_test(
     deps = [
         ":fxp_approx",
         "//libspu/kernel:test_util",
+        "//libspu/mpc/utils:simulate",
     ],
 )
 

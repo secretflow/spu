@@ -39,10 +39,10 @@ def _yacl():
         http_archive,
         name = "yacl",
         urls = [
-            "https://github.com/secretflow/yacl/archive/refs/tags/0.4.5b4_nightly_20240731.tar.gz",
+            "https://github.com/secretflow/yacl/archive/refs/tags/0.4.5b8_nightly_20241014.tar.gz",
         ],
-        strip_prefix = "yacl-0.4.5b4_nightly_20240731",
-        sha256 = "952715bd56f6d9386984e9963426a1399bd2bd3702cf3efede9c82591cfab99b",
+        strip_prefix = "yacl-0.4.5b8_nightly_20241014",
+        sha256 = "9141792f07eba507ffd21c57ec3df2ad5fdf90ce605ffb7bc1b7b4e84a9c34fa",
     )
 
 def _libpsi():
@@ -50,10 +50,10 @@ def _libpsi():
         http_archive,
         name = "psi",
         urls = [
-            "https://github.com/secretflow/psi/archive/refs/tags/v0.4.0.dev240814.tar.gz",
+            "https://github.com/secretflow/psi/archive/refs/tags/v0.5.0.dev241016.tar.gz",
         ],
-        strip_prefix = "psi-0.4.0.dev240814",
-        sha256 = "2a16a5751d1b7051f01edd11f1fcf01b67ff4d67ec136e7bc6d1d729d7f22634",
+        strip_prefix = "psi-0.5.0.dev241016",
+        sha256 = "1672e4284f819c40e34c65b0d5b1dfe4cc959b81d6f63daef7b39f7eb8d742e2",
     )
 
 def _rules_proto_grpc():
@@ -229,7 +229,7 @@ def _com_github_eigenteam_eigen():
     EIGEN_SHA256 = "01fcd68409c038bbcfd16394274c2bf71e2bb6dda89a2319e23fc59a2da17210"
     maybe(
         http_archive,
-        name = "com_github_eigenteam_eigen",
+        name = "eigen_archive",
         sha256 = EIGEN_SHA256,
         build_file = "@spulib//bazel:eigen.BUILD",
         strip_prefix = "eigen-{commit}".format(commit = EIGEN_COMMIT),
@@ -241,7 +241,7 @@ def _com_github_eigenteam_eigen():
 def _com_github_nvidia_cutlass():
     maybe(
         http_archive,
-        name = "com_github_nvidia_cutlass",
+        name = "cutlass_archive",
         strip_prefix = "cutlass-3.5.1",
         urls = [
             "https://github.com/NVIDIA/cutlass/archive/refs/tags/v3.5.1.tar.gz",

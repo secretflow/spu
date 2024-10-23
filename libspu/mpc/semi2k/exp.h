@@ -14,18 +14,24 @@
 
 #pragma once
 
-#include <cstdint>
+#include "libspu/mpc/kernel.h"
 
-namespace spu::mpc::semi2k::beaver::ttp_server {
+namespace spu::mpc::semi2k {
 
-constexpr size_t kReplayChunkSize = 50 * 1024 * 1024;  // bytes
+// Given [x*2^fxp] mod 2k for x
+// compute [exp(x) * 2^fxp] mod 2^k
+// Example:
+// spu::mpc::semi2k::ExpA exp;
+// outp = exp.proc(&kcontext, ring2k_shr);
+class ExpA : public UnaryKernel {
+ public:
+  static constexpr const char* kBindName() { return "exp_a"; }
 
-constexpr size_t kUpStreamChunkSize = 50 * 1024 * 1024;    // bytes
-constexpr size_t kDownStreamChunkSize = 50 * 1024 * 1024;  // bytes
+  ce::CExpr latency() const override { return ce::Const(2); }
 
-// A list of buffer streams
-struct BeaverDownStreamMeta {
-  int32_t err_code = 0;
+  ce::CExpr comm() const override { return 2 * ce::K(); }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
 
-}  // namespace spu::mpc::semi2k::beaver::ttp_server
+}  // namespace spu::mpc::semi2k

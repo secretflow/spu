@@ -30,8 +30,8 @@ class UnitTests(unittest.TestCase):
             # setup stage
             sender_setup_config_json = f'''
             {{
-                "db_file": "spu/tests/data/db.csv",
-                "params_file": "spu/tests/data/100K-1-16.json",
+                "source_file": "spu/tests/data/pir/db.csv",
+                "params_file": "spu/tests/data/pir/100K-1-16.json",
                 "sdb_out_file": "{temp_dir}/sdb",
                 "save_db_only": true
             }}
@@ -51,9 +51,9 @@ class UnitTests(unittest.TestCase):
 
             receiver_online_config_json = f'''
             {{
-                "query_file": "spu/tests/data/query.csv",
+                "query_file": "spu/tests/data/pir/query.csv",
                 "output_file": "{temp_dir}/result.csv",
-                "params_file": "spu/tests/data/100K-1-16.json"
+                "params_file": "spu/tests/data/pir/100K-1-16.json"
             }}
             '''
 
@@ -92,7 +92,7 @@ class UnitTests(unittest.TestCase):
             import pandas as pd
 
             df1 = pd.read_csv(f'{temp_dir}/result.csv')
-            df2 = pd.read_csv('spu/tests/data/ground_truth.csv')
+            df2 = pd.read_csv('spu/tests/data/pir/ground_truth.csv')
 
             self.assertTrue(df1.equals(df2))
 

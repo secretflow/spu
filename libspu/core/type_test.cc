@@ -125,4 +125,24 @@ TEST(TypeTest, RingTy) {
   EXPECT_EQ(Type::fromString(fm128.toString()), fm128);
 }
 
+TEST(TypeTest, GfmpTy) {
+  Type gfmp31 = makeType<GfmpTy>(FM32);
+  EXPECT_EQ(gfmp31.size(), 4);
+  EXPECT_TRUE(gfmp31.isa<GfmpTy>());
+  EXPECT_EQ(gfmp31.toString(), "Gfmp<FM32,31>");
+  EXPECT_EQ(Type::fromString(gfmp31.toString()), gfmp31);
+
+  Type gfmp61 = makeType<GfmpTy>(FM64);
+  EXPECT_EQ(gfmp61.size(), 8);
+  EXPECT_TRUE(gfmp61.isa<GfmpTy>());
+  EXPECT_EQ(gfmp61.toString(), "Gfmp<FM64,61>");
+  EXPECT_EQ(Type::fromString(gfmp61.toString()), gfmp61);
+
+  Type gfmp127 = makeType<GfmpTy>(FM128);
+  EXPECT_EQ(gfmp127.size(), 16);
+  EXPECT_TRUE(gfmp127.isa<GfmpTy>());
+  EXPECT_EQ(gfmp127.toString(), "Gfmp<FM128,127>");
+  EXPECT_EQ(Type::fromString(gfmp127.toString()), gfmp127);
+}
+
 }  // namespace spu

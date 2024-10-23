@@ -15,6 +15,7 @@
 #include "libspu/dialect/pphlo/IR/ops.h"
 
 #include "fmt/format.h"
+#include "fmt/ranges.h"
 #include "llvm/Support/FormatVariadic.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/TypeUtilities.h"
