@@ -15,8 +15,6 @@
 import unittest
 
 import jax.numpy as jnp
-
-# import numpy as np
 from sklearn.linear_model import QuantileRegressor as SklearnQuantileRegressor
 
 import spu.spu_pb2 as spu_pb2  # type: ignore
@@ -71,20 +69,22 @@ class UnitTests(unittest.TestCase):
             quantile=0.2, alpha=0.1, fit_intercept=True, solver='revised simplex'
         )
         quantile_sklearn_fit = quantile_sklearn.fit(X, y)
-        acc_sklearn = jnp.mean(y <= quantile_sklearn_fit.predict(X))
-        print(f"Accuracy in SKlearn: {acc_sklearn:.2f}")
+        y_pred_plain = quantile_sklearn_fit.predict(X)
+        rmse_plain = jnp.sqrt(jnp.mean((y - y_pred_plain) ** 2))
+        print(f"RMSE in SKlearn: {rmse_plain:.2f}")
         print(quantile_sklearn_fit.coef_)
         print(quantile_sklearn_fit.intercept_)
 
         # run
+        # Larger max_iter can give higher accuracy, but it will take more time to run
         proc = proc_wrapper(
-            quantile=0.2, alpha=0.1, fit_intercept=True, lr=0.01, max_iter=300
+            quantile=0.2, alpha=0.1, fit_intercept=True, lr=0.01, max_iter=100
         )
         result, coef, intercept = spsim.sim_jax(sim, proc)(X, y)
-        acc_custom = jnp.mean(y <= result)
+        rmse_encrpted = jnp.sqrt(jnp.mean((y - result) ** 2))
 
-        # print accuracy
-        print(f"Accuracy in SPU: {acc_custom:.2f}")
+        # print RMSE
+        print(f"RMSE in SPU: {rmse_encrpted:.2f}")
         print(coef)
         print(intercept)
 

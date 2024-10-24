@@ -12,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numbers
-import warnings
-from warnings import warn
-
 import jax
 import jax.numpy as jnp
 import pandas as pd
@@ -46,6 +42,8 @@ class QuantileRegressor:
         The maximum number of iterations for the optimization algorithm.
         This controls how long the model will continue to update the weights
         before stopping.
+    max_val : float, default=1e10
+        The maximum value allowed for the model parameters.
     Attributes
     ----------
     coef_ : array-like of shape (n_features,)
@@ -57,13 +55,20 @@ class QuantileRegressor:
     """
 
     def __init__(
-        self, quantile=0.5, alpha=1.0, fit_intercept=True, lr=0.01, max_iter=1000
+        self,
+        quantile=0.5,
+        alpha=1.0,
+        fit_intercept=True,
+        lr=0.01,
+        max_iter=1000,
+        max_val=1e10,
     ):
         self.quantile = quantile
         self.alpha = alpha
         self.fit_intercept = fit_intercept
         self.lr = lr
         self.max_iter = max_iter
+        self.max_val = max_val
 
         self.coef_ = None
         self.intercept_ = None
@@ -94,7 +99,6 @@ class QuantileRegressor:
         n_samples, n_features = X.shape
         n_params = n_features
 
-        # sample_weight = jnp.ones((n_samples,))
         if sample_weight is None:
             sample_weight = jnp.ones((n_samples,))
 
@@ -141,9 +145,11 @@ class QuantileRegressor:
 
         b = y
 
-        result = _linprog_simplex(c, A, b, maxiter=self.max_iter, tol=1e-3)
+        result = _linprog_simplex(
+            c, A, b, maxiter=self.max_iter, tol=1e-3, max_val=self.max_val
+        )
 
-        solution = result[0]
+        solution = result
 
         params = solution[:n_params] - solution[n_params : 2 * n_params]
 
@@ -177,9 +183,14 @@ class QuantileRegressor:
         - If there is no intercept, the method simply computes the dot product between `X` and the coefficients.
         """
 
-        if self.fit_intercept:
-            X = jnp.column_stack((jnp.ones(X.shape[0]), X))
+        assert (
+            self.coef_ is not None and self.intercept_ is not None
+        ), "Model has not been fitted yet. Please fit the model before predicting."
 
-            return jnp.dot(X, jnp.hstack([self.intercept_, self.coef_]))
-        else:
-            return jnp.dot(X, self.coef_)
+        n_features = len(self.coef_)
+        assert X.shape[1] == n_features, (
+            f"Input X must have {n_features} features, "
+            f"but got {X.shape[1]} features instead."
+        )
+
+        return jnp.dot(X, self.coef_) + self.intercept_

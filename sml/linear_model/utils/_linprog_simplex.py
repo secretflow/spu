@@ -12,40 +12,39 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import warnings
-from warnings import warn
-
 import jax
 import jax.numpy as jnp
 from jax import jit, lax
 
 
-def _pivot_col(T, tol=1e-5, bland=False):
+def _pivot_col(T, tol=1e-5):
     mask = T[-1, :-1] >= -tol
 
     all_masked = jnp.all(mask)
 
-    bland_first_col = jnp.argmin(jnp.where(mask, jnp.inf, jnp.arange(T.shape[1] - 1)))
     # 定义根据最小值选择列的函数
     ma = jnp.where(mask, jnp.inf, T[-1, :-1])
     min_col = jnp.argmin(ma)
 
-    result = jnp.where(bland, bland_first_col, min_col)
-
     valid = ~all_masked
-    result = jnp.where(all_masked, 0, result)
+    result = jnp.where(all_masked, 0, min_col)
 
     return valid, result
 
 
-def _pivot_row(T, basis, pivcol, phase, tol=1e-5, bland=False):
+def _pivot_row(T, basis, pivcol, phase, tol=1e-5, max_val=1e10):
 
     def true_mask_func(T, pivcol):
-        mask = T[:-2, pivcol] <= tol
-        ma = jnp.where(mask, jnp.inf, T[:-2, pivcol])
-        mb = jnp.where(mask, jnp.inf, T[:-2, -1])
+        if phase == 1:
+            k = 2
+        else:
+            k = 1
 
-        q = jnp.where(ma == 1.75921860e13, jnp.inf, mb / ma)
+        mask = T[:-k, pivcol] <= tol
+        ma = jnp.where(mask, jnp.inf, T[:-k, pivcol])
+        mb = jnp.where(mask, jnp.inf, T[:-k, -1])
+
+        q = jnp.where(ma >= max_val, jnp.inf, mb / ma)
 
         # 选择最小比值的行
         min_rows = jnp.nanargmin(q)
@@ -53,11 +52,16 @@ def _pivot_row(T, basis, pivcol, phase, tol=1e-5, bland=False):
         return min_rows, all_masked
 
     def false_mask_func(T, pivcol):
-        mask = T[:-1, pivcol] <= tol
-        ma = jnp.where(mask, jnp.inf, T[:-1, pivcol])
-        mb = jnp.where(mask, jnp.inf, T[:-1, -1])
+        if phase == 1:
+            k = 2
+        else:
+            k = 1
 
-        q = jnp.where(ma == 1.75921860e13, jnp.inf, mb / ma)
+        mask = T[:-k, pivcol] <= tol
+        ma = jnp.where(mask, jnp.inf, T[:-k, pivcol])
+        mb = jnp.where(mask, jnp.inf, T[:-k, -1])
+
+        q = jnp.where(ma >= max_val, jnp.inf, mb / ma)
 
         # 选择最小比值的行
         min_rows = jnp.nanargmin(q)
@@ -69,20 +73,14 @@ def _pivot_row(T, basis, pivcol, phase, tol=1e-5, bland=False):
     min_rows = jnp.where(phase == 1, true_min_rows, false_min_rows)
     all_masked = jnp.where(phase == 1, true_all_masked, false_all_masked)
 
-    # 检查掩码数组是否全被掩盖
-    has_valid_row = min_rows.size > 0
     row = min_rows
-
     # 处理全被掩盖的情况
     row = jnp.where(all_masked, 0, row)
 
-    # 处理没有满足条件的行的情况
-    row = jnp.where(has_valid_row, row, 0)
-
-    return ~all_masked & has_valid_row, row
+    return ~all_masked, row
 
 
-def _apply_pivot(T, basis, pivrow, pivcol, tol=1e-5):
+def _apply_pivot(T, basis, pivrow, pivcol):
     pivrow = jnp.int32(pivrow)
     pivcol = jnp.int32(pivcol)
 
@@ -110,57 +108,45 @@ def _solve_simplex(
     T,
     n,
     basis,
-    maxiter=300,
+    maxiter=100,
     tol=1e-5,
     phase=2,
-    bland=False,
 ):
-    status = 0
     complete = False
 
     num = 0
     pivcol = 0
     pivrow = 0
     while num < maxiter:
-        pivcol_found, pivcol = _pivot_col(T, tol, bland)
+        pivcol_found, pivcol = _pivot_col(T, tol)
 
-        def cal_pivcol_found_True(
-            T, basis, pivcol, phase, tol, bland, status, complete
-        ):
-            pivrow_found, pivrow = _pivot_row(T, basis, pivcol, phase, tol, bland)
+        def cal_pivcol_found_True(T, basis, pivcol, phase, tol, complete):
+            pivrow_found, pivrow = _pivot_row(T, basis, pivcol, phase, tol)
 
             pivrow_isnot_found = pivrow_found == False
-            status = jnp.where(pivrow_isnot_found, 1, status)
             complete = jnp.where(pivrow_isnot_found, True, complete)
 
-            return pivrow, status, complete
-
-        pivcol_isnot_found = pivcol_found == False
-        pivcol = jnp.where(pivcol_isnot_found, 0, pivcol)
-        pivrow = jnp.where(pivcol_isnot_found, 0, pivrow)
-        status = jnp.where(pivcol_isnot_found, 0, status)
-        complete = jnp.where(pivcol_isnot_found, True, complete)
+            return pivrow, complete
 
         pivcol_is_found = pivcol_found == True
-        pivrow_True, status_True, complete_True = cal_pivcol_found_True(
-            T, basis, pivcol, phase, tol, bland, status, complete
+        pivrow_True, complete_True = cal_pivcol_found_True(
+            T, basis, pivcol, phase, tol, complete
         )
 
-        pivrow = jnp.where(pivcol_is_found, pivrow_True, pivrow)
-        status = jnp.where(pivcol_is_found, status_True, status)
+        pivrow = jnp.where(pivcol_is_found, pivrow_True, 0)
+
         complete = jnp.where(pivcol_is_found, complete_True, complete)
 
         complete_is_False = complete == False
-        apply_T, apply_basis = _apply_pivot(T, basis, pivrow, pivcol, tol)
+        apply_T, apply_basis = _apply_pivot(T, basis, pivrow, pivcol)
         T = jnp.where(complete_is_False, apply_T, T)
         basis = jnp.where(complete_is_False, apply_basis, basis)
         num = num + 1
 
-    return T, basis, status
+    return T, basis
 
 
-def _linprog_simplex(c, A, b, c0=0, maxiter=300, tol=1e-5, bland=False):
-    status = 0
+def _linprog_simplex(c, A, b, c0=0, maxiter=300, tol=1e-5, max_val=1e10):
     n, m = A.shape
 
     # All constraints must have b >= 0.
@@ -178,21 +164,16 @@ def _linprog_simplex(c, A, b, c0=0, maxiter=300, tol=1e-5, bland=False):
     T = jnp.vstack((row_constraints, row_objective, row_pseudo_objective))
 
     # phase 1
-    T, basis, status = _solve_simplex(
-        T, n, basis, maxiter=maxiter, tol=tol, phase=1, bland=bland
-    )
-
-    status = jnp.where(jnp.abs(T[-1, -1]) < tol, status, 1)
+    T, basis = _solve_simplex(T, n, basis, maxiter=maxiter, tol=tol, phase=1)
 
     T_new = T[:-1, :]
-    jit_delete = jit(jnp.delete, static_argnames=['assume_unique_indices'])
     T = jnp.delete(T_new, av, 1, assume_unique_indices=True)
 
     # phase 2
-    T, basis, status = _solve_simplex(T, n, basis, maxiter, tol, 2, bland)
+    T, basis = _solve_simplex(T, n, basis, maxiter, tol, 2)
 
     solution = jnp.zeros(n + m)
     solution = solution.at[basis[:n]].set(T[:n, -1])
     x = solution[:m]
 
-    return x, status
+    return x

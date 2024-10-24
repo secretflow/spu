@@ -41,7 +41,7 @@ def emul_quantile(mode=emulation.Mode.MULTIPROCESS):
         def proc(X, y):
             quantile_custom_fit = quantile_custom.fit(X, y)
             result = quantile_custom_fit.predict(X)
-            return result
+            return result, quantile_custom_fit.coef_, quantile_custom_fit.intercept_
 
         return proc
 
@@ -69,30 +69,36 @@ def emul_quantile(mode=emulation.Mode.MULTIPROCESS):
 
         # compare with sklearn
         quantile_sklearn = SklearnQuantileRegressor(
-            quantile=0.3, alpha=0.1, fit_intercept=True, solver='highs'
+            quantile=0.2, alpha=0.1, fit_intercept=True, solver='highs'
         )
         start = time.time()
         quantile_sklearn_fit = quantile_sklearn.fit(X, y)
-        score_plain = jnp.mean(y <= quantile_sklearn_fit.predict(X))
+        y_pred_plain = quantile_sklearn_fit.predict(X)
+        rmse_plain = jnp.sqrt(jnp.mean((y - y_pred_plain) ** 2))
         end = time.time()
         print(f"Running time in SKlearn: {end - start:.2f}s")
+        print(quantile_sklearn_fit.coef_)
+        print(quantile_sklearn_fit.intercept_)
 
         # mark these data to be protected in SPU
         X_spu, y_spu = emulator.seal(X, y)
 
         # run
+        # Larger max_iter can give higher accuracy, but it will take more time to run
         proc = proc_wrapper(
-            quantile=0.3, alpha=0.1, fit_intercept=True, lr=0.01, max_iter=300
+            quantile=0.2, alpha=0.1, fit_intercept=True, lr=0.01, max_iter=100
         )
         start = time.time()
-        result = emulator.run(proc)(X_spu, y_spu)
+        result, coef, intercept = emulator.run(proc)(X_spu, y_spu)
         end = time.time()
-        score_encrpted = jnp.mean(y <= result)
+        rmse_encrpted = jnp.sqrt(jnp.mean((y - result) ** 2))
         print(f"Running time in SPU: {end - start:.2f}s")
+        print(coef)
+        print(intercept)
 
-        # print acc
-        print(f"Accuracy in SKlearn: {score_plain:.2f}")
-        print(f"Accuracy in SPU: {score_encrpted:.2f}")
+        # print RMSE
+        print(f"RMSE in SKlearn: {rmse_plain:.2f}")
+        print(f"RMSE in SPU: {rmse_encrpted:.2f}")
 
     finally:
         emulator.down()
