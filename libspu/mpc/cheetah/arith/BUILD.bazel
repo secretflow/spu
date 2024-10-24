@@ -1,0 +1,103 @@
+# Copyright 2021 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//bazel:spu.bzl", "spu_cc_library", "spu_cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+spu_cc_library(
+    name = "cheetah_arith",
+    deps = [
+        ":cheetah_dot",
+        ":cheetah_mul",
+    ],
+)
+
+spu_cc_library(
+    name = "cheetah_dot",
+    srcs = ["cheetah_dot.cc"],
+    hdrs = ["cheetah_dot.h"],
+    deps = [
+        ":arith_comm",
+        ":matmat_prot",
+        "//libspu/mpc/cheetah/rlwe:packlwes",
+        "@yacl//yacl/utils:elapsed_timer",
+    ],
+)
+
+spu_cc_library(
+    name = "cheetah_mul",
+    srcs = ["cheetah_mul.cc"],
+    hdrs = ["cheetah_mul.h"],
+    deps = [":arith_comm"],
+)
+
+spu_cc_library(
+    name = "matmat_prot",
+    srcs = ["matmat_prot.cc"],
+    hdrs = ["matmat_prot.h"],
+    deps = [
+        ":arith_comm",
+    ],
+)
+
+spu_cc_library(
+    name = "arith_comm",
+    srcs = [
+        "common.cc",
+        "vector_encoder.cc",
+    ],
+    hdrs = [
+        "common.h",
+        "vector_encoder.h",
+    ],
+    deps = [
+        "//libspu/core:prelude",
+        "//libspu/core:xt_helper",
+        "//libspu/mpc/cheetah/rlwe:cheetah_rlwe",
+        "@yacl//yacl/link",
+    ],
+)
+
+spu_cc_test(
+    name = "matmat_prot_test",
+    srcs = ["matmat_prot_test.cc"],
+    deps = [
+        ":matmat_prot",
+        "@com_github_xtensor_xtensor//:xtensor",
+    ],
+)
+
+spu_cc_test(
+    name = "cheetah_mul_test",
+    srcs = ["cheetah_mul_test.cc"],
+    deps = [
+        ":cheetah_mul",
+        "//libspu/mpc/utils:ring_ops",
+        "//libspu/mpc/utils:simulate",
+        "@com_github_xtensor_xtensor//:xtensor",
+    ],
+)
+
+spu_cc_test(
+    name = "cheetah_dot_test",
+    size = "large",
+    srcs = ["cheetah_dot_test.cc"],
+    deps = [
+        ":cheetah_dot",
+        "//libspu/mpc/utils:ring_ops",
+        "//libspu/mpc/utils:simulate",
+        "@com_github_xtensor_xtensor//:xtensor",
+    ],
+)

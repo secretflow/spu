@@ -1,0 +1,110 @@
+# Copyright 2021 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
+load("@rules_python//python:defs.bzl", "py_library")
+load("@rules_python//python:packaging.bzl", "py_package")
+
+package(default_visibility = ["//visibility:public"])
+
+exports_files(
+    [
+        "exported_symbols.lds",
+        "version_script.lds",
+    ],
+    visibility = ["//visibility:private"],
+)
+
+pybind_extension(
+    name = "libspu",
+    srcs = ["libspu.cc"],
+    linkopts = select({
+        "@bazel_tools//src/conditions:darwin": [
+            "-Wl,-exported_symbols_list,$(location //spu:exported_symbols.lds)",
+        ],
+        "//conditions:default": [
+            "-Wl,--version-script,$(location //spu:version_script.lds)",
+        ],
+    }),
+    deps = [
+        ":exported_symbols.lds",
+        ":version_script.lds",
+        "//libspu/compiler:compile",
+        "//libspu/compiler/common:compilation_context",
+        "//libspu/core:logging",
+        "//libspu/device:api",
+        "//libspu/device:io",
+        "//libspu/device/pphlo:pphlo_executor",
+        "//libspu/pir",
+        "//libspu/psi:bucket_psi",
+        "//libspu/psi:memory_psi",
+        "@yacl//yacl/link",
+    ],
+)
+
+py_library(
+    name = "api",
+    srcs = [
+        "api.py",
+        "spu_pb2.py",
+        "//libspu:spu_py_proto",
+    ],
+    data = [
+        ":libspu.so",
+    ],
+)
+
+py_library(
+    name = "psi",
+    srcs = [
+        "psi.py",
+        "psi_pb2.py",
+        "//libspu:psi_py_proto",
+    ],
+    data = [
+        ":libspu.so",
+    ],
+)
+
+py_library(
+    name = "pir",
+    srcs = [
+        "pir.py",
+        "pir_pb2.py",
+        "//libspu:pir_py_proto",
+    ],
+    data = [
+        ":libspu.so",
+    ],
+)
+
+py_library(
+    name = "init",
+    srcs = [
+        "__init__.py",
+        "version.py",
+        ":api",
+        ":pir",
+        ":psi",
+        "//spu/intrinsic:all_intrinsics",
+        "//spu/utils:simulation",
+    ],
+)
+
+py_package(
+    name = "_lib_deps",
+    deps = [
+        ":api",
+    ],
+)

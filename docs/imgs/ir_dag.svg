@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="100%" height="100%" viewBox="0.00 0.00 588.48 334.64" id="graph">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 330.6377)">
+<title>G</title>
+<g id="a_graph0"><a xlink:title=" ">
+<polygon fill="#ffffff" stroke="transparent" points="-4,4 -4,-330.6377 584.48,-330.6377 584.48,4 -4,4"></polygon>
+<text text-anchor="start" x="8" y="-311.0377" font-family="Times,serif" font-weight="bold" font-size="14.00" fill="#000000">module_0000.xla_computation_func.0000.HLO passes.after_pipeline-start.before_operand_upcaster</text>
+<text text-anchor="start" x="232.6853" y="-297.0377" font-family="Times,serif" font-weight="bold" font-size="14.00" fill="#000000">Computation main.5</text>
+</a>
+</g>
+<!-- 25863376 -->
+<g id="node1" class="node">
+<title>25863376</title>
+<polygon fill="#ffe0b2" stroke="#cbae82" points="281.66,-290.6377 188.82,-290.6377 188.82,-254.6377 281.66,-254.6377 281.66,-290.6377"></polygon>
+<text text-anchor="start" x="201.6183" y="-275.0377" font-family="Times,serif" font-weight="bold" font-size="14.00" fill="#000000">Parameter 0</text>
+<text text-anchor="start" x="197.0305" y="-261.0377" font-family="Times,serif" font-size="14.00" fill="#000000">f32[3,4]{1,0}</text>
+</g>
+<!-- 25748112 -->
+<g id="node3" class="node">
+<title>25748112</title>
+<g id="a_node3"><a xlink:title="xla_computation(func)/jit(main)/max
+source: /home/haoqi.whq/.cache/bazel/_bazel_haoqi.whq/bd15e67f09906d483a88b2a872e74859/execroot/spulib/bazel-out/k8-opt/bin/examples/python/dump_xla.runfiles/spulib/examples/python/dump_xla.py:59">
+<polygon fill="#ffffff" stroke="#9e9e9e" points="336.66,-218.6377 243.82,-218.6377 243.82,-182.6377 336.66,-182.6377 336.66,-218.6377"></polygon>
+<text text-anchor="start" x="256.6015" y="-203.0377" font-family="Times,serif" font-weight="bold" font-size="14.00" fill="#000000">maximum.3</text>
+<text text-anchor="start" x="252.0305" y="-189.0377" font-family="Times,serif" font-size="14.00" fill="#000000">f32[3,4]{1,0}</text>
+</a>
+</g>
+</g>
+<!-- 25863376&#45;&gt;25748112 -->
+<g id="edge1" class="edge">
+<title>25863376-&gt;25748112</title>
+<g id="a_edge1"><a xlink:title="Arg_0.1 -> maximum.3">
+<path fill="none" stroke="#000000" d="M249.1188,-254.4691C255.4536,-246.1763 263.0784,-236.1947 270.0326,-227.091"></path>
+<polygon fill="none" stroke="#000000" points="272.8852,-229.1223 276.1743,-219.051 267.3225,-224.873 272.8852,-229.1223"></polygon>
+</a>
+</g>
+<text text-anchor="middle" x="271.8879" y="-234.3862" font-family="Times,serif" font-size="14.00" fill="#000000">0</text>
+</g>
+<!-- 26469072 -->
+<g id="node2" class="node">
+<title>26469072</title>
+<polygon fill="#ffe0b2" stroke="#cbae82" points="391.66,-290.6377 298.82,-290.6377 298.82,-254.6377 391.66,-254.6377 391.66,-290.6377"></polygon>
+<text text-anchor="start" x="311.6183" y="-275.0377" font-family="Times,serif" font-weight="bold" font-size="14.00" fill="#000000">Parameter 1</text>
+<text text-anchor="start" x="307.0305" y="-261.0377" font-family="Times,serif" font-size="14.00" fill="#000000">f32[3,4]{1,0}</text>
+</g>
+<!-- 26469072&#45;&gt;25748112 -->
+<g id="edge2" class="edge">
+<title>26469072-&gt;25748112</title>
+<g id="a_edge2"><a xlink:title="Arg_1.2 -> maximum.3">
+<path fill="none" stroke="#000000" d="M331.3612,-254.4691C325.0264,-246.1763 317.4016,-236.1947 310.4474,-227.091"></path>
+<polygon fill="none" stroke="#000000" points="313.1575,-224.873 304.3057,-219.051 307.5948,-229.1223 313.1575,-224.873"></polygon>
+</a>
+</g>
+<text text-anchor="middle" x="322.0258" y="-224.1244" font-family="Times,serif" font-size="14.00" fill="#000000">1</text>
+</g>
+<!-- 18620560 -->
+<g id="node4" class="node">
+<title>18620560</title>
+<polygon fill="#ffffff" stroke="#9e9e9e" points="325.5433,-146.6377 254.9367,-146.6377 254.9367,-110.6377 325.5433,-110.6377 325.5433,-146.6377"></polygon>
+<text text-anchor="start" x="270.9921" y="-131.0377" font-family="Times,serif" font-weight="bold" font-size="14.00" fill="#000000">tuple.4</text>
+<text text-anchor="start" x="262.8385" y="-117.0377" font-family="Times,serif" font-size="14.00" fill="#000000">(f32[3,4])</text>
+</g>
+<!-- 25748112&#45;&gt;18620560 -->
+<g id="edge3" class="edge">
+<title>25748112-&gt;18620560</title>
+<g id="a_edge3"><a xlink:title="maximum.3 -> tuple.4">
+<path fill="none" stroke="#000000" d="M290.24,-182.4691C290.24,-174.7687 290.24,-165.612 290.24,-157.0543"></path>
+<polygon fill="none" stroke="#000000" points="293.7401,-157.0509 290.24,-147.051 286.7401,-157.051 293.7401,-157.0509"></polygon>
+</a>
+</g>
+</g>
+<!-- cluster_24950960 -->
+<g id="node5" class="node">
+<title>cluster_24950960</title>
+<g id="a_node5"><a xlink:title=" ">
+<ellipse fill="#bcaaa4" stroke="#8c7b75" cx="290.24" cy="-37.3188" rx="37.1386" ry="37.1386"></ellipse>
+<text text-anchor="start" x="271.1888" y="-33.1188" font-family="Times,serif" font-size="14.00" fill="#000000">ROOT</text>
+</a>
+</g>
+</g>
+<!-- 18620560&#45;&gt;cluster_24950960 -->
+<g id="edge4" class="edge">
+<title>18620560-&gt;cluster_24950960</title>
+<g id="a_edge4"><a xlink:title=" ">
+<path fill="none" stroke="#000000" d="M290.24,-110.596C290.24,-103.1939 290.24,-94.2407 290.24,-85.1718"></path>
+<polygon fill="#000000" stroke="#000000" points="293.7401,-84.96 290.24,-74.9601 286.7401,-84.9601 293.7401,-84.96"></polygon>
+</a>
+</g>
+</g>
+</g>
+<style>
+  @import url(https://fonts.googleapis.com/css?family=Roboto:400,700);
+  svg text {
+    font-family: 'Roboto';
+    font-size: 12px;
+  }
+
+    #node4:hover ~ #edge4 text { fill: #1976d2; }
+  #node4:hover ~ #edge4 path { stroke: #1976d2; stroke-width: .2em; }
+  #node4:hover ~ #edge4 polygon { fill: #1976d2; stroke: #1976d2; stroke-width: .2em; }
+
+  #node5:hover ~ #edge4 text { fill: #d32f2f; }
+  #node5:hover ~ #edge4 path { stroke: #d32f2f; stroke-width: .2em; }
+  #node5:hover ~ #edge4 polygon { fill: #d32f2f; stroke: #d32f2f; stroke-width: .2em; }
+
+  #node3:hover ~ #edge3 text { fill: #1976d2; }
+  #node3:hover ~ #edge3 path { stroke: #1976d2; stroke-width: .2em; }
+  #node3:hover ~ #edge3 polygon { fill: #1976d2; stroke: #1976d2; stroke-width: .2em; }
+
+  #node4:hover ~ #edge3 text { fill: #d32f2f; }
+  #node4:hover ~ #edge3 path { stroke: #d32f2f; stroke-width: .2em; }
+  #node4:hover ~ #edge3 polygon { fill: #d32f2f; stroke: #d32f2f; stroke-width: .2em; }
+
+  #node2:hover ~ #edge2 text { fill: #1976d2; }
+  #node2:hover ~ #edge2 path { stroke: #1976d2; stroke-width: .2em; }
+  #node2:hover ~ #edge2 polygon { fill: #1976d2; stroke: #1976d2; stroke-width: .2em; }
+
+  #node3:hover ~ #edge2 text { fill: #d32f2f; }
+  #node3:hover ~ #edge2 path { stroke: #d32f2f; stroke-width: .2em; }
+  #node3:hover ~ #edge2 polygon { fill: #d32f2f; stroke: #d32f2f; stroke-width: .2em; }
+
+  #node1:hover ~ #edge1 text { fill: #1976d2; }
+  #node1:hover ~ #edge1 path { stroke: #1976d2; stroke-width: .2em; }
+  #node1:hover ~ #edge1 polygon { fill: #1976d2; stroke: #1976d2; stroke-width: .2em; }
+
+  #node3:hover ~ #edge1 text { fill: #d32f2f; }
+  #node3:hover ~ #edge1 path { stroke: #d32f2f; stroke-width: .2em; }
+  #node3:hover ~ #edge1 polygon { fill: #d32f2f; stroke: #d32f2f; stroke-width: .2em; }
+</style></svg>

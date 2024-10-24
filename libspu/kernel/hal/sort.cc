@@ -1,0 +1,604 @@
+#include "libspu/kernel/hal/sort.h"
+
+#include <algorithm>
+#include <future>
+
+#include "libspu/core/context.h"
+#include "libspu/kernel/hal/constants.h"
+#include "libspu/kernel/hal/polymorphic.h"
+#include "libspu/kernel/hal/prot_wrapper.h"
+#include "libspu/kernel/hal/public_helper.h"
+#include "libspu/kernel/hal/ring.h"
+#include "libspu/kernel/hal/shape_ops.h"
+
+#include "libspu/spu.pb.h"
+
+namespace spu::kernel::hal {
+namespace {
+
+Value Permute1D(SPUContext *, const Value &x, const Index &indices) {
+  SPU_ENFORCE(x.shape().size() == 1);
+  return Value(x.data().linear_gather(indices), x.dtype());
+}
+
+// Vectorized Prefix Sum
+// Ref: https://en.algorithmica.org/hpc/algorithms/prefix/
+Value PrefixSum(SPUContext *ctx, const Value &x) {
+  SPU_ENFORCE(x.shape().ndim() == 2U && x.shape()[0] == 1,
+              "x should be 1-row matrix");
+
+  auto padding0 = _constant(ctx, 0U, {1, 1});
+  auto x_t = x;
+  for (int64_t shift = 1; shift < x.numel(); shift *= 2) {
+    auto x_slice = slice(ctx, x_t, {0, 0}, {1, x.numel() - shift}, {});
+    auto x_rshift = pad(ctx, x_slice, padding0, {0, shift}, {0, 0}, {0, 0});
+    x_t = _add(ctx, x_t, x_rshift);
+  }
+
+  return x_t;
+}
+
+using SequenceT = std::vector<std::pair<Index, Index>>;
+
+void CmpSwap(SPUContext *ctx, const CompFn &comparator_body,
+             std::vector<spu::Value> &values_to_sort, const Index &lhs_indices,
+             const Index &rhs_indices) {
+  size_t num_operands = values_to_sort.size();
+
+  std::vector<spu::Value> values;
+  values.reserve(2 * num_operands);
+  for (size_t i = 0; i < num_operands; ++i) {
+    values.emplace_back(values_to_sort[i].data().linear_gather(lhs_indices),
+                        values_to_sort[i].dtype());
+    values.emplace_back(values_to_sort[i].data().linear_gather(rhs_indices),
+                        values_to_sort[i].dtype());
+  }
+
+  spu::Value predicate = comparator_body(values);
+  predicate = hal::_prefer_a(ctx, predicate);
+
+  for (size_t i = 0; i < num_operands; ++i) {
+    auto fst = values[2 * i];
+    auto sec = values[2 * i + 1];
+
+    auto greater = spu::kernel::hal::select(ctx, predicate, fst, sec);
+    auto less = spu::kernel::hal::select(ctx, predicate, sec, fst);
+
+    values_to_sort[i].data().linear_scatter(greater.data(), lhs_indices);
+    values_to_sort[i].data().linear_scatter(less.data(), rhs_indices);
+  }
+}
+
+// Bitonic sort sequence for arbitrary size
+// Ref:
+// https://www.inf.hs-flensburg.de/lang/algorithmen/sortieren/bitonic/oddn.htm
+inline int GreatestPowerOfTwoLessThan(int64_t n) {
+  int64_t k = 1;
+  while (k < n) {
+    k = k << 1;
+  }
+  return k >> 1;
+}
+
+void MergeSequence(SequenceT &seq, int64_t lo, int64_t n, bool forward,
+                   int64_t &depth) {
+  if (n > 1) {
+    auto m = GreatestPowerOfTwoLessThan(n);
+    if (static_cast<int64_t>(seq.size()) - 1 < depth) {
+      seq.resize(depth + 1);
+    }
+    for (auto i = lo; i < lo + n - m; ++i) {
+      if (forward) {
+        seq[depth].first.emplace_back(i);
+        seq[depth].second.emplace_back(i + m);
+      } else {
+        seq[depth].first.emplace_back(i + m);
+        seq[depth].second.emplace_back(i);
+      }
+    }
+    ++depth;
+
+    int64_t lower_depth = depth;
+    MergeSequence(seq, lo, m, forward, lower_depth);
+
+    int64_t upper_depth = depth;
+    MergeSequence(seq, lo + m, n - m, forward, upper_depth);
+
+    depth = std::max(lower_depth, upper_depth);
+  }
+}
+
+void SortSequence(SequenceT &seq, int64_t lo, int64_t n, bool forward,
+                  int64_t &depth) {
+  if (n > 1) {
+    int64_t m = n / 2;
+    int64_t lower_depth = depth;
+
+    SortSequence(seq, lo, m, !forward, lower_depth);
+
+    int64_t upper_depth = depth;
+    SortSequence(seq, lo + m, n - m, forward, upper_depth);
+
+    depth = std::max(lower_depth, upper_depth);
+
+    MergeSequence(seq, lo, n, forward, ++depth);
+  }
+}
+
+void BuildCmpSwapSequence(SequenceT &seq, int64_t numel) {
+  int64_t depth = 0;
+  SortSequence(seq, 0, numel, true, depth);
+}
+
+void BitonicSort(SPUContext *ctx, const CompFn &comparator_body,
+                 std::vector<spu::Value> &values_to_sort) {
+  // Build a sorting network...
+  SequenceT sequence;
+  BuildCmpSwapSequence(sequence, values_to_sort.front().numel());
+
+  for (const auto &seq : sequence) {
+    if (seq.first.empty()) {
+      continue;  // Skip empty sequence
+    }
+    CmpSwap(ctx, comparator_body, values_to_sort, seq.first, seq.second);
+  }
+}
+
+// Secure shuffle a shared permutation <perm> and use it to permute shared bit
+// vectors of x.
+// x is a list of shared bit vectors, <perm> is a shared permutation,
+// random_perm is a permutation for shuffling <perm>, and m is the
+// revealed permutation of shuffled <perm>.
+//
+// The steps are as follows:
+//   1) secure shuffle <perm> as <sp>
+//   2) secure shuffle <x> as <sx>
+//   3) reveal securely shuffled <sp> as m
+//   4) inverse permute <sx> by m and return
+std::pair<std::vector<spu::Value>, spu::Value> ShufflePerm(
+    SPUContext *ctx, absl::Span<spu::Value const> x, spu::Value perm,
+    spu::Value random_perm) {
+  // 1. <SP> = secure shuffle <perm>
+  auto sp = _perm_ss(ctx, perm, random_perm);
+
+  // 2. <SX> = secure shuffle <x>
+  std::vector<spu::Value> sx;
+  for (size_t i = 0; i < x.size(); ++i) {
+    sx.emplace_back(_perm_ss(ctx, x[i], random_perm));
+  }
+
+  // 3. M = reveal(<SP>)
+  auto m = _s2p(ctx, sp);
+  SPU_ENFORCE_EQ(m.shape().ndim(), 1U, "perm should be 1-d tensor");
+
+  // 4. <T> = SP(<SX>)
+  std::vector<spu::Value> v;
+
+  for (size_t i = 0; i < sx.size(); ++i) {
+    auto t = _inv_perm_sp(ctx, sx[i], m);
+    v.emplace_back(std::move(t));
+  }
+
+  return {v, m};
+}
+
+// Process two bit vectors in one loop
+// Reference: https://eprint.iacr.org/2019/695.pdf (5.2 Optimizations)
+//
+// perm = GenInvPermByTwoBitVectors(x, y)
+//   input: bit vector x, bit vector y
+//          bit vector y is more significant than x
+//   output: shared inverse permutation
+//
+// We can generate inverse permutation by two bit vectors in one loop.
+// It needs one extra mul op and 2 times memory to store intermediate data than
+// GenInvPermByBitVector. But the number of invocations of permutation-related
+// protocols such as SecureInvPerm or Compose will be reduced to half.
+//
+// If we process three bit vectors in one loop, it needs at least four extra
+// mul ops and 2^2 times data to store intermediate data. The number of
+// invocations of permutation-related protocols such as SecureInvPerm or
+// Compose will be reduced to 1/3. It's latency friendly but not bandwidth
+// friendly.
+//
+// Example:
+//   1) x = [0, 1], y = [1, 0]
+//   2) rev_x = [1, 0], rev_y = [0, 1]
+//   3) f0 = rev_x * rev_y = [0, 0]
+//      f1 = x * rev_y = [0, 1]
+//      f2 = rev_x * y = [1, 0]
+//      f3 = x * y = [0, 0]
+//      f =  [f0, f1, f2, f3] = [0, 0, 0, 1, 1, 0, 0, 0]
+//   4) s[i] = s[i - 1] + f[i], s[0] = f[0]
+//      s = [0, 0, 0, 1, 2, 2, 2, 2]
+//   5) fs = f * s
+//      fs = [0, 0, 0, 1, 2, 0, 0, 0]
+//   6) split fs to four vector
+//      fsv[0] = [0, 0]
+//      fsv[1] = [0, 1]
+//      fsv[2] = [2, 0]
+//      fsv[3] = [0, 0]
+//   7) r = fsv[0] + fsv[1] + fsv[2] + fsv[3]
+//      r = [2, 1]
+//   8) get res by sub r by one
+//      res = [1, 0]
+spu::Value GenInvPermByTwoBitVectors(SPUContext *ctx, const spu::Value &x,
+                                     const spu::Value &y) {
+  SPU_ENFORCE(x.shape() == y.shape(), "x and y should has the same shape");
+  SPU_ENFORCE(x.shape().ndim() == 1, "x and y should be 1-d");
+
+  const auto k1 = _constant(ctx, 1U, x.shape());
+  auto rev_x = _sub(ctx, k1, x);
+  auto rev_y = _sub(ctx, k1, y);
+  auto f0 = _mul(ctx, rev_x, rev_y);
+  auto f1 = _sub(ctx, rev_y, f0);
+  auto f2 = _sub(ctx, rev_x, f0);
+  auto f3 = _sub(ctx, y, f2);
+
+  const auto numel = x.numel();
+  Shape new_shape = {1, numel};
+  auto f =
+      concatenate(ctx,
+                  {reshape(ctx, f0, new_shape), reshape(ctx, f1, new_shape),
+                   reshape(ctx, f2, new_shape), reshape(ctx, f3, new_shape)},
+                  1);
+  auto s = f.clone();
+
+  // calculate prefix sum
+  auto ps = PrefixSum(ctx, s);
+
+  // mul f and s
+  auto fs = _mul(ctx, f, ps);
+
+  auto fs0 = slice(ctx, fs, {0, 0}, {1, numel}, {});
+  auto fs1 = slice(ctx, fs, {0, numel}, {1, 2 * numel}, {});
+  auto fs2 = slice(ctx, fs, {0, 2 * numel}, {1, 3 * numel}, {});
+  auto fs3 = slice(ctx, fs, {0, 3 * numel}, {1, 4 * numel}, {});
+
+  // calculate result
+  auto s01 = _add(ctx, fs0, fs1);
+  auto s23 = _add(ctx, fs2, fs3);
+  auto r = _add(ctx, s01, s23);
+  auto res = _sub(ctx, reshape(ctx, r, x.shape()), k1);
+
+  return res;
+}
+
+// Generate perm by bit vector
+//   input: bit vector generated by bit decomposition
+//   output: shared inverse permutation
+//
+// Example:
+//   1) x = [1, 0, 1, 0, 0]
+//   2) rev_x = [0, 1, 0, 1, 1]
+//   3) f = [rev_x, x]
+//      f = [0, 1, 0, 1, 1, 1, 0, 1, 0, 0]
+//   4) s[i] = s[i - 1] + f[i], s[0] = f[0]
+//      s = [0, 1, 1, 2, 3, 4, 4, 5, 5, 5]
+//   5) fs = f * s
+//      fs = [0, 1, 0, 2, 3, 4, 0, 5, 0, 0]
+//   6) split fs to two vector
+//      fsv[0] = [0, 1, 0, 2, 3]
+//      fsv[1] = [4, 0, 5, 0, 0]
+//   7) r = fsv[0] + fsv[1]
+//      r = [4, 1, 5, 2, 3]
+//   8) get res by sub r by one
+//      res = [3, 0, 4, 1, 2]
+spu::Value GenInvPermByBitVector(SPUContext *ctx, const spu::Value &x) {
+  SPU_ENFORCE(x.shape().ndim() == 1, "x should be 1-d");
+
+  const auto k1 = _constant(ctx, 1U, x.shape());
+  auto rev_x = _sub(ctx, k1, x);
+
+  const auto numel = x.numel();
+  Shape new_shape = {1, numel};
+  auto f = concatenate(
+      ctx, {reshape(ctx, rev_x, new_shape), reshape(ctx, x, new_shape)}, 1);
+  auto s = f.clone();
+
+  // calculate prefix sum
+  auto ps = PrefixSum(ctx, s);
+
+  // mul f and s
+  auto fs = _mul(ctx, f, ps);
+
+  auto fs0 = slice(ctx, fs, {0, 0}, {1, numel}, {});
+  auto fs1 = slice(ctx, fs, {0, numel}, {1, 2 * numel}, {});
+
+  // calculate result
+  auto r = _add(ctx, fs0, fs1);
+  auto res = _sub(ctx, reshape(ctx, r, x.shape()), k1);
+  return res;
+}
+
+// This is the inverse of ShufflePerm.
+// The input is a shared inverse permutation <perm>, a public permutation
+// shuffled_perm generated by ShufflePerm, and a secret permutation random_perm
+// for secure unshuffle.
+//
+// The steps are as follows:
+//   1) permute <perm> by shuffled_perm as <sm>
+//   2) secure unshuffle <sm> and return results
+//
+// By doing ShufflePerm and UnshufflePerm, we get the shared inverse
+// permutation of initial shared bit vectors.
+spu::Value UnshufflePerm(SPUContext *ctx, const spu::Value &perm,
+                         const spu::Value &shuffled_perm,
+                         const spu::Value &random_perm) {
+  auto sm = _perm_sp(ctx, perm, shuffled_perm);
+  auto res = _inv_perm_ss(ctx, sm, random_perm);
+  return res;
+}
+
+std::vector<spu::Value> BitDecompose(SPUContext *ctx, const spu::Value &x,
+                                     int64_t valid_bits) {
+  auto x_bshare = _prefer_b(ctx, x);
+  const auto k1 = _constant(ctx, 1U, x.shape());
+  std::vector<spu::Value> rets;
+  size_t nbits = valid_bits != -1
+                     ? static_cast<size_t>(valid_bits)
+                     : x_bshare.storage_type().as<BShare>()->nbits();
+  rets.reserve(nbits);
+  std::vector<std::unique_ptr<SPUContext>> sub_ctxs;
+  for (size_t bit = 0; bit < nbits; ++bit) {
+    sub_ctxs.push_back(ctx->fork());
+  }
+
+  std::vector<std::future<spu::Value>> futures;
+  for (size_t bit = 0; bit < nbits; ++bit) {
+    auto async_res = std::async(
+        [&](size_t bit, const spu::Value &x, const spu::Value &k1) {
+          auto sub_ctx = sub_ctxs[bit].get();
+          auto x_bshare_shift = right_shift_logical(sub_ctx, x, bit);
+          auto lowest_bit = _and(sub_ctx, x_bshare_shift, k1);
+          return _prefer_a(sub_ctx, lowest_bit);
+        },
+        bit, x_bshare, k1);
+    futures.push_back(std::move(async_res));
+  }
+  for (size_t bit = 0; bit < nbits; ++bit) {
+    rets.emplace_back(futures[bit].get());
+  }
+
+  return rets;
+}
+
+// Generate vector of bit decomposition of sorting keys
+std::vector<spu::Value> GenBvVector(SPUContext *ctx,
+                                    absl::Span<spu::Value const> inputs,
+                                    SortDirection direction, int64_t num_keys,
+                                    int64_t valid_bits) {
+  std::vector<spu::Value> ret;
+  const auto k1 = _constant(ctx, 1U, inputs[0].shape());
+  // inputs[0] is the most significant key
+  for (int64_t i = num_keys - 1; i >= 0; --i) {
+    const auto &t = BitDecompose(ctx, inputs[i], valid_bits);
+
+    SPU_ENFORCE(t.size() > 0);
+    for (size_t j = 0; j < t.size() - 1; j++) {
+      // Radix sort is a stable sorting algorithm for the ascending order, if we
+      // flip the bit, then we can get the descending order for stable sort
+      if (direction == SortDirection::Descending) {
+        ret.emplace_back(_sub(ctx, k1, t[j]));
+      } else {
+        ret.emplace_back(t[j]);
+      }
+    }
+    // The sign bit is opposite
+    if (direction == SortDirection::Descending) {
+      ret.emplace_back(t.back());
+    } else {
+      ret.emplace_back(_sub(ctx, k1, t.back()));
+    }
+  }
+  return ret;
+}
+
+// Generate shared inverse permutation by key
+spu::Value GenInvPerm(SPUContext *ctx, absl::Span<spu::Value const> inputs,
+                      SortDirection direction, int64_t num_keys,
+                      int64_t valid_bits) {
+  // 1. generate bit decomposition vector of keys
+  std::vector<spu::Value> bv =
+      GenBvVector(ctx, inputs, direction, num_keys, valid_bits);
+  SPU_ENFORCE_GT(bv.size(), 0U);
+
+  // 2. generate natural permutation for initialization
+  auto init_perm = iota(ctx, spu::DT_I64, inputs[0].numel());
+  auto shared_perm = _p2s(ctx, init_perm);
+
+  // 3. generate shared inverse permutation by bit vector and process
+  size_t bv_size = bv.size();
+  size_t bv_idx = 0;
+  for (; bv_idx < bv_size - 1; bv_idx += 2) {
+    auto random_perm = _rand_perm_s(ctx, inputs[0].shape());
+    auto [shuffled_bv, shuffled_perm] =
+        ShufflePerm(ctx, std::vector<spu::Value>{bv[bv_idx], bv[bv_idx + 1]},
+                    shared_perm, random_perm);
+    auto perm = GenInvPermByTwoBitVectors(ctx, shuffled_bv[0], shuffled_bv[1]);
+    shared_perm = UnshufflePerm(ctx, perm, shuffled_perm, random_perm);
+  }
+
+  if (bv_idx == bv_size - 1) {
+    auto random_perm = _rand_perm_s(ctx, inputs[0].shape());
+    auto [shuffled_bv, shuffled_perm] = ShufflePerm(
+        ctx, std::vector<spu::Value>{bv[bv_idx]}, shared_perm, random_perm);
+    auto perm = GenInvPermByBitVector(ctx, shuffled_bv[0]);
+    shared_perm = UnshufflePerm(ctx, perm, shuffled_perm, random_perm);
+  }
+
+  return shared_perm;
+}
+
+// Apply inverse permutation on each tensor of x by a shared inverse permutation
+// <perm>
+std::vector<spu::Value> ApplyInvPerm(SPUContext *ctx,
+                                     absl::Span<spu::Value const> x,
+                                     const spu::Value &perm) {
+  // sanity check.
+  SPU_ENFORCE(!x.empty(), "inputs should not be empty");
+  SPU_ENFORCE(x[0].shape().ndim() == 1,
+              "inputs should be 1-d but actually have {} dimensions",
+              x[0].shape().ndim());
+  SPU_ENFORCE(std::all_of(x.begin(), x.end(),
+                          [&x](const spu::Value &input) {
+                            return input.shape() == x[0].shape();
+                          }),
+              "inputs shape mismatched");
+
+  // 1. <SP> = secure shuffle <perm>
+  auto shuffle_perm = _rand_perm_s(ctx, x[0].shape());
+  auto sp = _perm_ss(ctx, perm, shuffle_perm);
+
+  // 2. <SX> = secure shuffle <x>
+  std::vector<spu::Value> sx;
+  for (size_t i = 0; i < x.size(); ++i) {
+    sx.emplace_back(_perm_ss(ctx, x[i], shuffle_perm));
+  }
+
+  // 3. M = reveal(<SP>)
+  auto m = _s2p(ctx, sp);
+  SPU_ENFORCE_EQ(m.shape().ndim(), 1U, "perm should be 1-d tensor");
+
+  // 4. <T> = SP(<SX>)
+  std::vector<spu::Value> v;
+  for (size_t i = 0; i < sx.size(); ++i) {
+    auto t = _inv_perm_sp(ctx, sx[i], m).setDtype(x[i].dtype());
+    v.emplace_back(std::move(t));
+  }
+
+  return v;
+}
+
+// Secure Radix Sort
+// Ref:
+//  https://eprint.iacr.org/2019/695.pdf
+//
+// Each input is a 1-d tensor, inputs[0, num_keys) are the keys, and sort inputs
+// according to keys
+std::vector<spu::Value> RadixSort(SPUContext *ctx,
+                                  absl::Span<spu::Value const> inputs,
+                                  SortDirection direction, int64_t num_keys,
+                                  int64_t valid_bits) {
+  auto perm = GenInvPerm(ctx, inputs, direction, num_keys, valid_bits);
+  auto res = ApplyInvPerm(ctx, inputs, perm);
+  return res;
+}
+
+}  // namespace
+
+std::vector<spu::Value> sort1d(SPUContext *ctx,
+                               absl::Span<spu::Value const> inputs,
+                               const CompFn &cmp, Visibility comparator_ret_vis,
+                               bool is_stable) {
+  // sanity check.
+  SPU_ENFORCE(!inputs.empty(), "Inputs should not be empty");
+  SPU_ENFORCE(inputs[0].shape().ndim() == 1,
+              "Inputs should be 1-d but actually have {} dimensions",
+              inputs[0].shape().ndim());
+  SPU_ENFORCE(std::all_of(inputs.begin(), inputs.end(),
+                          [&inputs](const spu::Value &v) {
+                            return v.shape() == inputs[0].shape();
+                          }),
+              "Inputs shape mismatched");
+
+  std::vector<spu::Value> ret;
+  if (comparator_ret_vis == VIS_PUBLIC) {
+    Index indices_to_sort(inputs[0].numel());
+    std::iota(indices_to_sort.begin(), indices_to_sort.end(), 0);
+    auto comparator = [&cmp, &inputs, &ctx](int64_t a, int64_t b) {
+      std::vector<spu::Value> values;
+      values.reserve(2 * inputs.size());
+      for (const auto &input : inputs) {
+        values.push_back(hal::slice(ctx, input, {a}, {a + 1}));
+        values.push_back(hal::slice(ctx, input, {b}, {b + 1}));
+      }
+      spu::Value cmp_ret = cmp(values);
+      return getBooleanValue(ctx, cmp_ret);
+    };
+
+    if (is_stable) {
+      std::stable_sort(indices_to_sort.begin(), indices_to_sort.end(),
+                       comparator);
+    } else {
+      std::sort(indices_to_sort.begin(), indices_to_sort.end(), comparator);
+    }
+
+    ret.reserve(inputs.size());
+    for (const auto &input : inputs) {
+      ret.push_back(Permute1D(ctx, input, indices_to_sort));
+    }
+  } else {
+    SPU_ENFORCE(!is_stable,
+                "Stable sort is unsupported if comparator return is secret.");
+
+    // make a copy for inplace sort
+    for (auto const &input : inputs) {
+      ret.push_back(input.clone());
+    }
+    BitonicSort(ctx, cmp, ret);
+  }
+
+  return ret;
+}
+
+std::vector<spu::Value> simple_sort1d(SPUContext *ctx,
+                                      absl::Span<spu::Value const> inputs,
+                                      SortDirection direction, int64_t num_keys,
+                                      int64_t valid_bits) {
+  // sanity check.
+  SPU_ENFORCE(!inputs.empty(), "Inputs should not be empty");
+  SPU_ENFORCE(inputs[0].shape().ndim() == 1,
+              "Inputs should be 1-d but actually have {} dimensions",
+              inputs[0].shape().ndim());
+  SPU_ENFORCE(std::all_of(inputs.begin(), inputs.end(),
+                          [&inputs](const spu::Value &v) {
+                            return v.shape() == inputs[0].shape();
+                          }),
+              "Inputs shape mismatched");
+  SPU_ENFORCE(num_keys > 0 && num_keys <= static_cast<int64_t>(inputs.size()),
+              "num_keys {} is not valid", num_keys);
+
+  bool fallback = false;
+  // If all keys are secret values and the protocol supports secret shuffle and
+  // unshuffle, we can use radix sort for fast 1-D sort. Otherwise, we fallback
+  // to generic sort1d, and use the inputs[0] as the sorting key
+  if (!std::all_of(inputs.begin(), inputs.begin() + num_keys,
+                   [](const spu::Value &v) { return v.isSecret(); })) {
+    fallback = true;
+    SPDLOG_WARN("Fallback to generic sort1d because not all keys are secret");
+  }
+
+  if (!fallback &&
+      !(ctx->hasKernel("rand_perm_s") && ctx->hasKernel("perm_as") &&
+        ctx->hasKernel("perm_ap") && ctx->hasKernel("inv_perm_as") &&
+        ctx->hasKernel("inv_perm_ap"))) {
+    fallback = true;
+    SPDLOG_WARN(
+        "Fallback to generic sort1d because permutation-related kernels are "
+        "not supported");
+  }
+  if (!fallback) {
+    auto ret = RadixSort(ctx, inputs, direction, num_keys, valid_bits);
+    return ret;
+  } else {
+    SPDLOG_WARN(
+        "Fallback to generic sort1d only support use the first operand as key");
+
+    auto ret = sort1d(
+        ctx, inputs,
+        [&](absl::Span<const spu::Value> cmp_inputs) {
+          if (direction == SortDirection::Ascending) {
+            return hal::less(ctx, cmp_inputs[0], cmp_inputs[1]);
+          }
+          if (direction == SortDirection::Descending) {
+            return hal::greater(ctx, cmp_inputs[0], cmp_inputs[1]);
+          }
+          SPU_THROW("Should not reach here");
+        },
+        inputs[0].vtype(), false);
+    return ret;
+  }
+}
+
+}  // namespace spu::kernel::hal

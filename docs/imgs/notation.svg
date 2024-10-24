@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns="http://www.w3.org/2000/svg" xmlns:xl="http://www.w3.org/1999/xlink" version="1.1" viewBox="-352 62 178.75 194.43664" width="178.75" height="194.43664">
+  <defs>
+    <marker orient="auto" overflow="visible" markerUnits="strokeWidth" id="FilledArrow_Marker" stroke-linejoin="miter" stroke-miterlimit="10" viewBox="-1 -4 10 8" markerWidth="10" markerHeight="8" color="black">
+      <g>
+        <path d="M 8 0 L 0 -3 L 0 3 Z" fill="currentColor" stroke="currentColor" stroke-width="1"/>
+      </g>
+    </marker>
+  </defs>
+  <g id="VM_Layout" stroke="none" stroke-dasharray="none" stroke-opacity="1" fill-opacity="1" fill="none">
+    <title>VM Layout</title>
+    <rect fill="white" x="-352" y="62" width="178.75" height="194.43664"/>
+    <g id="VM_Layout_Layer_1">
+      <title>Layer 1</title>
+      <g id="Graphic_90">
+        <path d="M -333.06953 137.2353 L -322.1736 119.54046 L -311.27764 137.2353 Z" fill="#00fa00"/>
+        <path d="M -333.06953 137.2353 L -322.1736 119.54046 L -311.27764 137.2353 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Graphic_89">
+        <circle cx="-339.5815" cy="104.19652" r="7.41852759102006" fill="#941100"/>
+        <circle cx="-339.5815" cy="104.19652" r="7.41852759102006" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Graphic_88">
+        <circle cx="-319.4124" cy="104.19652" r="7.41852759102008" fill="#ffd579"/>
+        <circle cx="-319.4124" cy="104.19652" r="7.41852759102008" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Graphic_87">
+        <circle cx="-299.2433" cy="104.19652" r="7.41852759102008" fill="#009193"/>
+        <circle cx="-299.2433" cy="104.19652" r="7.41852759102008" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Graphic_86">
+        <text transform="translate(-278.54332 97.02852)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="12" fill="black" x="0" y="11">Device (python)</tspan>
+        </text>
+      </g>
+      <g id="Graphic_85">
+        <path d="M -322.86907 145.40481 L -333.06953 155.60527 L -322.86907 165.80573 L -312.6686 155.60527 Z" fill="fuchsia"/>
+        <path d="M -322.86907 145.40481 L -333.06953 155.60527 L -322.86907 165.80573 L -312.6686 155.60527 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Graphic_84">
+        <rect x="-351.45668" y="174.50675" width="20.400918" height="20.400918" fill="white"/>
+        <text transform="translate(-346.45668 177.5392)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="12" fill="black" x="1.312459" y="11">A</tspan>
+        </text>
+      </g>
+      <g id="Graphic_83">
+        <rect x="-205.8813" y="174.50675" width="20.400918" height="20.400918" fill="white"/>
+        <text transform="translate(-200.8813 177.5392)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="12" fill="black" x="1.090459" y="11">B</tspan>
+        </text>
+      </g>
+      <g id="Line_82">
+        <line x1="-331.05576" y1="184.7072" x2="-205.8813" y2="184.7072" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="4.0,4.0" stroke-width="1"/>
+      </g>
+      <g id="Graphic_81">
+        <rect x="-296.57185" y="172.5392" width="55.12" height="24.335999" fill="white"/>
+        <text transform="translate(-291.57185 177.5392)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="12" fill="black" x="0" y="11">No Trust</tspan>
+        </text>
+      </g>
+      <g id="Graphic_80">
+        <rect x="-351.45668" y="204.28746" width="20.400918" height="20.400918" fill="white"/>
+        <text transform="translate(-346.45668 207.31992)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="12" fill="black" x="1.312459" y="11">A</tspan>
+        </text>
+      </g>
+      <g id="Graphic_79">
+        <rect x="-205.8813" y="204.28746" width="20.400918" height="20.400918" fill="white"/>
+        <text transform="translate(-200.8813 207.31992)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="12" fill="black" x="1.090459" y="11">B</tspan>
+        </text>
+      </g>
+      <g id="Line_78">
+        <line x1="-331.05576" y1="214.48792" x2="-215.7813" y2="214.48792" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="4.0,4.0" stroke-width="1"/>
+      </g>
+      <g id="Graphic_77">
+        <rect x="-302.56585" y="202.31992" width="67.108" height="24.335999" fill="white"/>
+        <text transform="translate(-297.56585 207.31992)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="12" fill="black" x="8526513e-20" y="11">Weak trust</tspan>
+        </text>
+      </g>
+      <g id="Graphic_76">
+        <rect x="-352" y="234.06818" width="20.400918" height="20.400918" fill="white"/>
+        <text transform="translate(-347 237.10064)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="12" fill="black" x="1.312459" y="11">A</tspan>
+        </text>
+      </g>
+      <g id="Graphic_75">
+        <rect x="-206.4246" y="234.06818" width="20.400918" height="20.400918" fill="white"/>
+        <text transform="translate(-201.4246 237.10064)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="12" fill="black" x="1.090459" y="11">B</tspan>
+        </text>
+      </g>
+      <g id="Line_74">
+        <line x1="-331.5991" y1="244.26864" x2="-216.3246" y2="244.26864" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Graphic_73">
+        <rect x="-306.22917" y="232.10064" width="73.348" height="24.335999" fill="white"/>
+        <text transform="translate(-301.22917 237.10064)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="12" fill="black" x="8881784e-19" y="11">Strong trust</tspan>
+        </text>
+      </g>
+      <g id="Graphic_70">
+        <circle cx="-339.5815" cy="76.60706" r="7.41852759102006" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Graphic_69">
+        <text transform="translate(-278.54332 69.43906)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="12" fill="black" x="0" y="11">Node</tspan>
+        </text>
+      </g>
+      <g id="Graphic_68">
+        <path d="M -330.30834 84.71365 L -319.4124 67.01881 L -308.51645 84.71365 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Graphic_67">
+        <path d="M -296.46136 67.01881 L -306.66182 77.21927 L -296.46136 87.41972 L -286.2609 77.21927 Z" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Graphic_66">
+        <text transform="translate(-278.54332 122.76078)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="12" fill="black" x="0" y="11">Device (MPC)</tspan>
+        </text>
+      </g>
+      <g id="Graphic_65">
+        <text transform="translate(-277.97356 148.43727)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="12" fill="black" x="0" y="11">Device (HE)</tspan>
+        </text>
+      </g>
+    </g>
+  </g>
+</svg>

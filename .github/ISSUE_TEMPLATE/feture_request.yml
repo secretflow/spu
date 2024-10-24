@@ -1,0 +1,48 @@
+name: SPU Feature Request Template
+description: To request a new feature
+title: "[Feature]: "
+body:
+  - type: dropdown
+    id: issue-type
+    attributes:
+      label: Feature Request Type
+      description: What kind of feature would you like to request?
+      multiple: false
+      options:
+        - Build/Install
+        - Performance
+        - Usability
+        - Documentation
+        - Currentness/Accuracy
+        - Others
+    validations:
+      required: true
+  - type: dropdown
+    id: head
+    attributes:
+      label: Have you searched existing issues?
+      description: To prevent duplicated reports, it is strongly suggested that you search existing issues first.
+      options: ['Yes', 'No']
+    validations:
+      required: true
+  - type: textarea
+    id: describe
+    attributes:
+      label: Is your feature request related to a problem?
+      value: A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Describe features you want to add to SPU
+      value: A clear and concise description of what you want to happen.
+    validations:
+      required: true
+  - type: textarea
+    id: alternative
+    attributes:
+      label: Describe features you want to add to SPU
+      value: A clear and concise description of any alternative solutions or features you've considered.
+    validations:
+      required: true

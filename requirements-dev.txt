@@ -1,0 +1,14 @@
+matplotlib
+tensorflow >= 2.7.0, < 2.12.0; platform_machine != "arm64"
+tensorflow-macos >= 2.7.0, < 2.12.0; platform_machine == "arm64" and platform_system == "Darwin"
+tensorflow_datasets
+pandas>=1.4.2
+flax
+keras
+scikit-learn
+# for tests
+absl-py>=1.1.0
+# for benchmark
+tabulate
+xlwt
+xlsxwriter

@@ -1,0 +1,9 @@
+{
+    "use_mock_data": true,
+    "n_samples": 500000,
+    "n_features": 100,
+    "problem_type": "classification",
+    "random_seed": 9237,
+    "hardness": 0.1,
+    "left_slice_feature_ratio": 0.5
+}

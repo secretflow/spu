@@ -1,0 +1,118 @@
+# Copyright 2022 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//bazel:spu.bzl", "spu_cc_binary", "spu_cc_library", "spu_cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+spu_cc_library(
+    name = "pphlo_executor",
+    srcs = ["pphlo_executor.cc"],
+    hdrs = ["pphlo_executor.h"],
+    deps = [
+        ":pphlo_intrinsic_executor",
+        ":pphlo_verifier",
+        "//libspu/device:executor",
+        "//libspu/dialect:pphlo_dialect",
+        "//libspu/kernel/hal:debug",
+        "//libspu/kernel/hlo:basic_binary",
+        "//libspu/kernel/hlo:basic_ternary",
+        "//libspu/kernel/hlo:basic_unary",
+        "//libspu/kernel/hlo:casting",
+        "//libspu/kernel/hlo:const",
+        "//libspu/kernel/hlo:control_flow",
+        "//libspu/kernel/hlo:convolution",
+        "//libspu/kernel/hlo:geometrical",
+        "//libspu/kernel/hlo:indexing",
+        "//libspu/kernel/hlo:rand",
+        "//libspu/kernel/hlo:reduce",
+        "//libspu/kernel/hlo:select_and_scatter",
+        "//libspu/kernel/hlo:shift",
+        "//libspu/kernel/hlo:sort",
+    ],
+)
+
+spu_cc_library(
+    name = "pphlo_intrinsic_executor",
+    srcs = ["pphlo_intrinsic_executor.cc"],
+    hdrs = ["pphlo_intrinsic_executor.h"],
+    deps = [
+        "//libspu/kernel/hlo:basic_binary",
+        "//libspu/kernel/hlo:casting",
+        "//libspu/kernel/hlo:const",
+        "//libspu/kernel/hlo:geometrical",
+        "@llvm-project//llvm:Support",
+    ],
+)
+
+spu_cc_library(
+    name = "pphlo_executor_test_runner",
+    testonly = True,
+    srcs = ["pphlo_executor_test_runner.cc"],
+    hdrs = ["pphlo_executor_test_runner.h"],
+    deps = [
+        ":pphlo_executor",
+        "//libspu/compiler:compile",
+        "//libspu/device:api",
+        "//libspu/device:io",
+        "//libspu/device:test_utils",
+        "//libspu/kernel:test_util",
+    ],
+)
+
+spu_cc_test(
+    name = "pphlo_executor_test",
+    srcs = ["pphlo_executor_test.cc"],
+    deps = [
+        ":pphlo_executor_test_runner",
+    ],
+)
+
+spu_cc_library(
+    name = "pphlo_verifier",
+    srcs = ["pphlo_verifier.cc"],
+    hdrs = ["pphlo_verifier.h"],
+    deps = [
+        "//libspu/core:value",
+        "//libspu/dialect:pphlo_dialect",
+        "//libspu/kernel/hal:public_helper",
+        "//libspu/kernel/hal:type_cast",
+        "@stablehlo//:reference_ops",
+    ],
+)
+
+spu_cc_test(
+    name = "pphlo_verifier_test",
+    srcs = ["pphlo_verifier_test.cc"],
+    deps = [
+        ":pphlo_verifier",
+        "//libspu/device:test_utils",
+        "//libspu/kernel:test_util",
+        "//libspu/mpc/utils:simulate",
+        "@llvm-project//mlir:Parser",
+    ],
+)
+
+spu_cc_binary(
+    name = "pphlo_executor_debug_runner",
+    testonly = True,
+    srcs = ["pphlo_executor_debug_runner.cc"],
+    deps = [
+        ":pphlo_executor",
+        "//libspu/device:api",
+        "//libspu/device:debug_dump_constant",
+        "//libspu/device:test_utils",
+        "@llvm-project//llvm:Support",
+    ],
+)

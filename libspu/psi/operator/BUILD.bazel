@@ -1,0 +1,122 @@
+# Copyright 2022 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//bazel:spu.bzl", "spu_cc_library", "spu_cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+spu_cc_library(
+    name = "base_operator",
+    srcs = ["base_operator.cc"],
+    hdrs = ["base_operator.h"],
+    deps = [
+        "//libspu/psi:psi_cc_proto",
+        "//libspu/psi/utils",
+        "@yacl//yacl/link",
+    ],
+)
+
+spu_cc_library(
+    name = "ecdh_3party_psi",
+    srcs = ["ecdh_3party_psi.cc"],
+    hdrs = ["ecdh_3party_psi.h"],
+    deps = [
+        ":base_operator",
+        ":factory",
+        "//libspu/psi/core:ecdh_3pc_psi",
+    ],
+    alwayslink = True,
+)
+
+spu_cc_library(
+    name = "kkrt_2party_psi",
+    srcs = ["kkrt_2party_psi.cc"],
+    hdrs = ["kkrt_2party_psi.h"],
+    deps = [
+        ":base_operator",
+        ":factory",
+        "//libspu/psi/core:kkrt_psi",
+        "@yacl//yacl/utils:parallel",
+    ],
+    alwayslink = True,
+)
+
+spu_cc_library(
+    name = "nparty_psi",
+    srcs = ["nparty_psi.cc"],
+    hdrs = ["nparty_psi.h"],
+    deps = [
+        ":base_operator",
+        ":factory",
+        ":kkrt_2party_psi",
+        "//libspu/psi/core:ecdh_psi",
+        "@yacl//yacl/utils:parallel",
+    ],
+    alwayslink = True,
+)
+
+spu_cc_test(
+    name = "nparty_psi_test",
+    srcs = ["nparty_psi_test.cc"],
+    deps = [
+        ":nparty_psi",
+        "//libspu/psi/utils:test_utils",
+    ],
+)
+
+spu_cc_library(
+    name = "factory",
+    hdrs = ["factory.h"],
+    deps = [
+        ":base_operator",
+        "//libspu/core:prelude",
+        "//libspu/psi:psi_cc_proto",
+        "@yacl//yacl/link",
+    ],
+)
+
+spu_cc_library(
+    name = "bc22_2party_psi",
+    srcs = ["bc22_2party_psi.cc"],
+    hdrs = ["bc22_2party_psi.h"],
+    deps = [
+        ":base_operator",
+        ":factory",
+        "//libspu/psi/core/bc22_psi",
+    ],
+    alwayslink = True,
+)
+
+spu_cc_library(
+    name = "dp_2party_psi",
+    srcs = ["dp_2party_psi.cc"],
+    hdrs = ["dp_2party_psi.h"],
+    deps = [
+        ":base_operator",
+        ":factory",
+        "//libspu/psi/core/dp_psi",
+    ],
+    alwayslink = True,
+)
+
+spu_cc_library(
+    name = "operator",
+    deps = [
+        ":bc22_2party_psi",
+        ":dp_2party_psi",
+        ":ecdh_3party_psi",
+        ":kkrt_2party_psi",
+        ":nparty_psi",
+    ],
+)

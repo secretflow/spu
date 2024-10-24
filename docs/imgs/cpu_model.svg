@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xl="http://www.w3.org/1999/xlink" xmlns:dc="http://purl.org/dc/elements/1.1/" version="1.1" viewBox="-88.5 663.5 239 109.086" width="239" height="109.086">
+  <defs>
+    <marker orient="auto" overflow="visible" markerUnits="strokeWidth" id="FilledArrow_Marker" stroke-linejoin="miter" stroke-miterlimit="10" viewBox="-1 -4 10 8" markerWidth="10" markerHeight="8" color="black">
+      <g>
+        <path d="M 8 0 L 0 -3 L 0 3 Z" fill="currentColor" stroke="currentColor" stroke-width="1"/>
+      </g>
+    </marker>
+    <marker orient="auto" overflow="visible" markerUnits="strokeWidth" id="FilledArrow_Marker_2" stroke-linejoin="miter" stroke-miterlimit="10" viewBox="-9 -4 10 8" markerWidth="10" markerHeight="8" color="black">
+      <g>
+        <path d="M -8 0 L 0 3 L 0 -3 Z" fill="currentColor" stroke="currentColor" stroke-width="1"/>
+      </g>
+    </marker>
+  </defs>
+  <g id="VM_Model" stroke="none" fill-opacity="1" fill="none" stroke-opacity="1" stroke-dasharray="none">
+    <title>VM Model</title>
+    <rect fill="white" x="-88.5" y="663.5" width="239" height="109.086"/>
+    <g id="VM_Model_normal">
+      <title>normal</title>
+      <g id="Group_8">
+        <title>machine</title>
+        <g id="Graphic_2">
+          <rect x="37.5" y="666" width="110.5" height="102.724" fill="white"/>
+          <rect x="37.5" y="666" width="110.5" height="102.724" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="5"/>
+          <text transform="translate(42.5 671)" fill="black">
+            <tspan font-family="Helvetica Neue" font-size="16" fill="black" x="0" y="15">CPU</tspan>
+          </text>
+        </g>
+        <g id="Graphic_7">
+          <title>Memory</title>
+          <path d="M 98.75 713.362 L 86.75 713.362 L 86.75 725.362 L 98.75 725.362 L 98.75 713.362 Z M 94.75 721.362 L 90.75 721.362 L 90.75 717.362 L 94.75 717.362 L 94.75 721.362 Z M 110.75 717.362 L 110.75 713.362 L 106.75 713.362 L 106.75 709.362 C 106.75 707.162 104.95 705.362 102.75 705.362 L 98.75 705.362 L 98.75 701.362 L 94.75 701.362 L 94.75 705.362 L 90.75 705.362 L 90.75 701.362 L 86.75 701.362 L 86.75 705.362 L 82.75 705.362 C 80.55 705.362 78.75 707.162 78.75 709.362 L 78.75 713.362 L 74.75 713.362 L 74.75 717.362 L 78.75 717.362 L 78.75 721.362 L 74.75 721.362 L 74.75 725.362 L 78.75 725.362 L 78.75 729.362 C 78.75 731.562 80.55 733.362 82.75 733.362 L 86.75 733.362 L 86.75 737.362 L 90.75 737.362 L 90.75 733.362 L 94.75 733.362 L 94.75 737.362 L 98.75 737.362 L 98.75 733.362 L 102.75 733.362 C 104.95 733.362 106.75 731.562 106.75 729.362 L 106.75 725.362 L 110.75 725.362 L 110.75 721.362 L 106.75 721.362 L 106.75 717.362 L 110.75 717.362 Z M 102.75 729.362 L 82.75 729.362 L 82.75 709.362 L 102.75 709.362 L 102.75 729.362 Z" fill="black"/>
+        </g>
+      </g>
+      <g id="Graphic_9">
+        <title>Person Outline</title>
+        <path d="M -72.5 705.162 C -70.18 705.162 -68.3 707.042 -68.3 709.362 C -68.3 711.682 -70.18 713.562 -72.5 713.562 C -74.82 713.562 -76.7 711.682 -76.7 709.362 C -76.7 707.042 -74.82 705.162 -72.5 705.162 M -72.5 723.162 C -66.56 723.162 -60.3 726.082 -60.3 727.362 L -60.3 729.562 L -84.7 729.562 L -84.7 727.362 C -84.7 726.082 -78.44 723.162 -72.5 723.162 M -72.5 701.362 C -76.92 701.362 -80.5 704.942 -80.5 709.362 C -80.5 713.782 -76.92 717.362 -72.5 717.362 C -68.08 717.362 -64.5 713.782 -64.5 709.362 C -64.5 704.942 -68.08 701.362 -72.5 701.362 Z M -72.5 719.362 C -77.84 719.362 -88.5 722.042 -88.5 727.362 L -88.5 733.362 L -56.5 733.362 L -56.5 727.362 C -56.5 722.042 -67.16 719.362 -72.5 719.362 Z" fill="black"/>
+      </g>
+      <g id="Line_16">
+        <line x1="-49.5" y1="678.362" x2="23.6" y2="678.362" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Graphic_17">
+        <rect x="-32.34297" y="664.138" width="41.712" height="28.447998" fill="white"/>
+        <text transform="translate(-27.34297 669.138)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="16" fill="black" x="0" y="15">data</tspan>
+        </text>
+      </g>
+      <g id="Line_21">
+        <line x1="-49.5" y1="698.862" x2="23.6" y2="698.862" marker-end="url(#FilledArrow_Marker)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Graphic_20">
+        <title>Label: code</title>
+        <rect x="-34.009346" y="684.638" width="45.856" height="28.447998" fill="white"/>
+        <text transform="translate(-29.009347 689.638)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="16" fill="black" x="0" y="15">code</tspan>
+        </text>
+      </g>
+      <g id="Line_23">
+        <line x1="-39.6" y1="758.362" x2="33.5" y2="758.362" marker-start="url(#FilledArrow_Marker_2)" stroke="black" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+      </g>
+      <g id="Graphic_22">
+        <rect x="-32.34297" y="744.138" width="41.712" height="28.447998" fill="white"/>
+        <text transform="translate(-27.34297 749.138)" fill="black">
+          <tspan font-family="Helvetica Neue" font-size="16" fill="black" x="0" y="15">data</tspan>
+        </text>
+      </g>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,119 @@
+# Copyright 2022 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//bazel:spu.bzl", "spu_cc_library", "spu_cc_test")
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@rules_cc//cc:defs.bzl", "cc_proto_library")
+
+package(default_visibility = ["//visibility:public"])
+
+proto_library(
+    name = "psi_proto",
+    srcs = ["psi.proto"],
+)
+
+cc_proto_library(
+    name = "psi_cc_proto",
+    deps = [":psi_proto"],
+)
+
+spu_cc_library(
+    name = "memory_psi",
+    srcs = ["memory_psi.cc"],
+    hdrs = [
+        "memory_psi.h",
+    ],
+    deps = [
+        ":prelude",
+        ":psi_cc_proto",
+        "//libspu/psi/core:ecdh_psi",
+        "//libspu/psi/operator",
+        "//libspu/psi/operator:factory",
+        "//libspu/psi/utils",
+    ],
+)
+
+spu_cc_library(
+    name = "prelude",
+    hdrs = [
+        "prelude.h",
+    ],
+    deps = [
+        ":psi_cc_proto",
+    ],
+)
+
+spu_cc_test(
+    name = "memory_psi_test",
+    srcs = ["memory_psi_test.cc"],
+    deps = [
+        ":memory_psi",
+        "//libspu/psi/utils:test_utils",
+    ],
+)
+
+spu_cc_library(
+    name = "bucket_ub_psi",
+    srcs = ["bucket_ub_psi.cc"],
+    hdrs = [
+        "bucket_ub_psi.h",
+    ],
+    deps = [
+        ":prelude",
+        ":psi_cc_proto",
+        "//libspu/psi/core:ecdh_oprf_psi",
+        "//libspu/psi/utils:batch_provider",
+        "//libspu/psi/utils:cipher_store",
+        "//libspu/psi/utils:csv_checker",
+        "//libspu/psi/utils:csv_header_analyzer",
+        "//libspu/psi/utils:progress",
+        "@com_google_absl//absl/synchronization",
+        "@com_google_absl//absl/time",
+    ],
+)
+
+spu_cc_library(
+    name = "bucket_psi",
+    srcs = ["bucket_psi.cc"],
+    hdrs = [
+        "bucket_psi.h",
+    ],
+    deps = [
+        ":bucket_ub_psi",
+        ":memory_psi",
+        ":prelude",
+        ":psi_cc_proto",
+        "//libspu/psi/utils:batch_provider",
+        "//libspu/psi/utils:cipher_store",
+        "//libspu/psi/utils:csv_checker",
+        "//libspu/psi/utils:csv_header_analyzer",
+    ],
+)
+
+spu_cc_test(
+    name = "bucket_psi_test",
+    srcs = ["bucket_psi_test.cc"],
+    deps = [
+        ":bucket_psi",
+    ],
+)
+
+spu_cc_test(
+    name = "bucket_ub_psi_test",
+    srcs = ["bucket_ub_psi_test.cc"],
+    deps = [
+        ":bucket_psi",
+        "//libspu/psi/utils:test_utils",
+    ],
+)
