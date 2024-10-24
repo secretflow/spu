@@ -78,7 +78,7 @@ class UnitTests(unittest.TestCase):
         # run
         # Larger max_iter can give higher accuracy, but it will take more time to run
         proc = proc_wrapper(
-            quantile=0.2, alpha=0.1, fit_intercept=True, lr=0.01, max_iter=100
+            quantile=0.2, alpha=0.1, fit_intercept=True, lr=0.01, max_iter=200
         )
         result, coef, intercept = spsim.sim_jax(sim, proc)(X, y)
         rmse_encrpted = jnp.sqrt(jnp.mean((y - result) ** 2))
