@@ -139,7 +139,15 @@ spu_cc_binary(
         "//libspu/mpc/albo:albo",
         "//libspu/mpc:api",
         "//libspu/mpc:ab_api",
+        "//libspu/mpc:offline_recorder",
         "//libspu/mpc/utils:simulate",
         "//libspu/core:ndarray_ref",
     ],
 )
+
+spu_cc_library(
+    name = "offline_recorder",
+    hdrs = ["offline_recorder.h"],
+    srcs = ["offline_recorder.cc"],
+)
+

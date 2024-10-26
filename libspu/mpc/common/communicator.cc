@@ -38,6 +38,7 @@ NdArrayRef getOrCreateCompactArray(const NdArrayRef& in) {
 
 NdArrayRef Communicator::allReduce(ReduceOp op, const NdArrayRef& in,
                                    std::string_view tag) {
+  SPU_ENFORCE(false);
   const auto array = getOrCreateCompactArray(in);
   yacl::ByteContainerView bv(reinterpret_cast<uint8_t const*>(array.data()),
                              in.numel() * in.elsize());
@@ -69,6 +70,7 @@ NdArrayRef Communicator::allReduce(ReduceOp op, const NdArrayRef& in,
 
 NdArrayRef Communicator::reduce(ReduceOp op, const NdArrayRef& in, size_t root,
                                 std::string_view tag) {
+  SPU_ENFORCE(false);
   SPU_ENFORCE(root < lctx_->WorldSize());
   const auto array = getOrCreateCompactArray(in);
   yacl::ByteContainerView bv(reinterpret_cast<uint8_t const*>(array.data()),
@@ -110,7 +112,7 @@ NdArrayRef Communicator::rotate(const NdArrayRef& in, std::string_view tag) {
   auto res_buf = lctx_->Recv(lctx_->NextRank(), tag);
 
   stats_.latency += 1;
-  stats_.comm += in.numel() * in.elsize();
+  stats_.comm += 2 * in.numel() * in.elsize();
 
   return NdArrayRef(stealBuffer(std::move(res_buf)), in.eltype(), in.shape(),
                     makeCompactStrides(in.shape()), kOffset);
@@ -122,11 +124,16 @@ void Communicator::sendAsync(size_t dst_rank, const NdArrayRef& in,
   yacl::ByteContainerView bv(reinterpret_cast<uint8_t const*>(array.data()),
                              in.numel() * in.elsize());
   lctx_->SendAsync(dst_rank, bv, tag);
+
+  stats_.latency += 1;
+  stats_.comm += in.numel() * in.elsize();
 }
 
 NdArrayRef Communicator::recv(size_t src_rank, const Type& eltype,
                               std::string_view tag) {
   auto buf = lctx_->Recv(src_rank, tag);
+
+  stats_.comm += buf.size();
 
   int64_t numel = buf.size() / eltype.size();
   return NdArrayRef(stealBuffer(std::move(buf)), eltype, {numel}, {1}, kOffset);

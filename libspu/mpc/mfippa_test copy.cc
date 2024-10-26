@@ -23,7 +23,7 @@
 // #define EQ_USE_BITWIDTH_16
 #define NumOutputs 3
 #define N 1
-#define M 1
+#define M 4200
 #define EXP_TIMES 100
 #define THREADS 48
 // #define RANDOM_INPUT 1
@@ -420,75 +420,41 @@ int main()
               // if (lctx.get()->Rank() == 0) checkOutput(x_p_spu.data(), x_p_ours.data(), "b2a");
             }
 
-            // // 64-fan-in
-            // {
-            //   auto input00 = p2b(sctx.get(), rand_p(sctx.get(), {M * 32, N})); // 64 -> 32
-            //   auto input01 = p2b(sctx.get(), rand_p(sctx.get(), {M * 32, N})); // 64 -> 32
-            //   auto input10 = p2b(sctx.get(), rand_p(sctx.get(), {M * 16, N})); // 32 -> 16
-            //   auto input11 = p2b(sctx.get(), rand_p(sctx.get(), {M * 16, N})); // 32 -> 16
-            //   auto input12 = p2b(sctx.get(), rand_p(sctx.get(), {M * 16, N})); // 32 -> 16
-            //   auto input13 = p2b(sctx.get(), rand_p(sctx.get(), {M * 16, N})); // 32 -> 16
-            //   auto input20 = p2b(sctx.get(), rand_p(sctx.get(), {M * 8, N} )); // 16 -> 8
-            //   auto input21 = p2b(sctx.get(), rand_p(sctx.get(), {M * 8, N} )); // 16 -> 8
-            //   auto input30 = p2b(sctx.get(), rand_p(sctx.get(), {M * 4, N} )); // 8 -> 4
-            //   auto input31 = p2b(sctx.get(), rand_p(sctx.get(), {M * 4, N} )); // 8 -> 4
-            //   auto input32 = p2b(sctx.get(), rand_p(sctx.get(), {M * 4, N} )); // 8 -> 4
-            //   auto input33 = p2b(sctx.get(), rand_p(sctx.get(), {M * 4, N} )); // 8 -> 4
-            //   auto input40 = p2b(sctx.get(), rand_p(sctx.get(), {M * 2, N} )); // 4 -> 2
-            //   auto input41 = p2b(sctx.get(), rand_p(sctx.get(), {M * 2, N} )); // 4 -> 2
-            //   auto input50 = p2b(sctx.get(), rand_p(sctx.get(), {M, N}     )); // 2 -> 1
-            //   auto input51 = p2b(sctx.get(), rand_p(sctx.get(), {M, N}     )); // 2 -> 1
-            //   auto input52 = p2b(sctx.get(), rand_p(sctx.get(), {M, N}     )); // 2 -> 1
-            //   auto input53 = p2b(sctx.get(), rand_p(sctx.get(), {M, N}     )); // 2 -> 1
+            /**
+             * ----------------------------------------------
+             *                Test: Offline.
+             * ----------------------------------------------
+             */
+            {
+              if (lctx.get()->Rank() == 0) std::cout << \
+              "##############################################\nOffline\n##############################################" \
+              << std::endl;
 
-            //   // spu naive and for 64 input
-            //   auto start = std::chrono::high_resolution_clock::now();
-            //   size_t comm = GetComm.comm;
-            //   size_t latency = GetComm.latency;
-            //   auto result0 = and_bb(sctx.get(), input00, input01);
-            //   auto result1 = and_bb(sctx.get(), input10, input11);
-            //   auto result2 = and_bb(sctx.get(), input20, input21);
-            //   auto result3 = and_bb(sctx.get(), input30, input31);
-            //   auto result4 = and_bb(sctx.get(), input40, input41);
-            //   auto result5 = and_bb(sctx.get(), input50, input51);
-            //   auto end = std::chrono::high_resolution_clock::now();
-            //   auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-            //   if (lctx.get()->Rank() == 0) std::cout << "------------------------ 64-fan-in, spu" << std::endl;
-            //   if (lctx.get()->Rank() == 0) std::cout << "64-fan-in micro seconds: " << duration.count() << std::endl;
-            //   if (lctx.get()->Rank() == 0) std::cout << "64-fan-in sent: " << GetComm.comm - comm << std::endl;
-            //   if (lctx.get()->Rank() == 0) std::cout << "64-fan-in latency: " << GetComm.latency - latency << std::endl;
+              spu::Shape newkShape = {N, M};
+              if (lctx.get()->Rank() == 0) std::cout << "Mult size: " << N * M << std::endl;
+              size_t comm = GetComm(ours).comm;
+              size_t latency = GetComm(ours).latency;
+              auto offline_start = std::chrono::high_resolution_clock::now();
+              if (lctx.get()->Rank() == 0) OfflineRecorder::StartRecorder();
 
-            //   // ours naive and for 64 input
-            //   auto input10_mss = oursnp::ResharingRss2Mss(&kectx, MyUnwrapValue(input10));
-            //   auto input11_mss = oursnp::ResharingRss2Mss(&kectx, MyUnwrapValue(input11));
-            //   auto input12_mss = oursnp::ResharingRss2Mss(&kectx, MyUnwrapValue(input12));
-            //   auto input13_mss = oursnp::ResharingRss2Mss(&kectx, MyUnwrapValue(input13));
-            //   auto input30_mss = oursnp::ResharingRss2Mss(&kectx, MyUnwrapValue(input30));
-            //   auto input31_mss = oursnp::ResharingRss2Mss(&kectx, MyUnwrapValue(input31));
-            //   auto input32_mss = oursnp::ResharingRss2Mss(&kectx, MyUnwrapValue(input32));
-            //   auto input33_mss = oursnp::ResharingRss2Mss(&kectx, MyUnwrapValue(input33));
-            //   auto input50_mss = oursnp::ResharingRss2Mss(&kectx, MyUnwrapValue(input50));
-            //   auto input51_mss = oursnp::ResharingRss2Mss(&kectx, MyUnwrapValue(input51));
-            //   auto input52_mss = oursnp::ResharingRss2Mss(&kectx, MyUnwrapValue(input52));
-            //   auto input53_mss = oursnp::ResharingRss2Mss(&kectx, MyUnwrapValue(input53));
+              auto x_test_mss = make_p(sctx_aby3.get(), static_cast<uint128_t>(1ull << 63), newkShape);
+              auto xb_test_mss = p2b(sctx_ours.get(), x_test_mss);
+              auto xb_test_rss = oursnp::ResharingMss2Rss(&kectx_ours, MyUnwrapValue(xb_test_mss));
 
-            //   start = std::chrono::high_resolution_clock::now();
-            //   comm = GetComm.comm;
-            //   latency = GetComm.latency;
-            //   auto result1_ours = oursnp::MssAnd4NoComm(&kectx, input10_mss, input11_mss, input12_mss, input13_mss);
-            //   auto result1_mss = oursnp::ResharingAss2Mss(&kectx, result1_ours);
-            //   auto result3_ours = oursnp::MssAnd4NoComm(&kectx, input30_mss, input31_mss, input32_mss, input33_mss);
-            //   auto result3_mss = oursnp::ResharingAss2Mss(&kectx, result3_ours);
-            //   auto result5_ours = oursnp::MssAnd4NoComm(&kectx, input50_mss, input51_mss, input52_mss, input53_mss);
-            //   auto result5_mss = oursnp::ResharingAss2Mss(&kectx, result5_ours);
-            //   auto end_ours = std::chrono::high_resolution_clock::now();
-            //   auto duration_ours = std::chrono::duration_cast<std::chrono::microseconds>(end_ours - start);
-            //   if (lctx.get()->Rank() == 0) std::cout << "------------------------ 64-fan-in, ours" << std::endl;
-            //   if (lctx.get()->Rank() == 0) std::cout << "64-fan-in micro seconds: " << duration_ours.count() << std::endl;
-            //   if (lctx.get()->Rank() == 0) std::cout << "64-fan-in sent: " << GetComm.comm - comm << std::endl;
-            //   if (lctx.get()->Rank() == 0) std::cout << "64-fan-in latency: " << GetComm.latency - latency << std::endl;
-            //   // oursnp::MssAnd4NoComm(&kectx, x_mss, y_mss, a_mss, b_mss);
+              spu::NdArrayRef x_b_ours;
+              for (int i = 0; i < EXP_TIMES; i++) {
+                auto xb_res_ass = oursnp::RssAnd2NoComm(&kectx_ours, xb_test_rss, xb_test_rss);
+                auto xb_res_rss = oursnp::ResharingAss2Rss(&kectx_ours, xb_res_ass);
+              }
 
-            // }
-  });
+              auto offline_ours = std::chrono::high_resolution_clock::now();
+              auto duration_ours = std::chrono::duration_cast<std::chrono::microseconds>(offline_ours - offline_start);
+              if (lctx.get()->Rank() == 0) std::cout << "------------------------ offline, ours" << std::endl;
+              if (lctx.get()->Rank() == 0) std::cout << "offline micro seconds: " << duration_ours.count() << std::endl;
+              if (lctx.get()->Rank() == 0) std::cout << "offline comm: " << GetComm(ours).comm - comm << std::endl;
+              if (lctx.get()->Rank() == 0) std::cout << "offline latency: " << GetComm(ours).latency - latency << std::endl;
+              if (lctx.get()->Rank() == 0) OfflineRecorder::StopRecorder();
+            }
+
+        });    
 }

@@ -41,7 +41,7 @@ template <typename Fn, typename... Args,
               Fn, const std::shared_ptr<yacl::link::Context>&, Args...>,
           std::enable_if_t<!std::is_same_v<R, void>, int> = 0>
 std::vector<R> simulate(size_t npc, Fn&& fn, Args&&... args) {
-  auto lctxs = yacl::link::test::SetupWorld(fmt::format("sim.{}", npc), npc);
+  auto lctxs = yacl::link::test::SetupBrpcWorld(fmt::format("sim.{}", npc), npc);
 
   std::vector<R> results;
   std::vector<std::future<R>> futures;
@@ -61,7 +61,7 @@ template <typename Fn, typename... Args,
               Fn, const std::shared_ptr<yacl::link::Context>&, Args...>,
           std::enable_if_t<std::is_same_v<R, void>, int> = 0>
 void simulate(size_t npc, Fn&& fn, Args&&... args) {
-  auto lctxs = yacl::link::test::SetupWorld(fmt::format("sim.{}", npc), npc);
+  auto lctxs = yacl::link::test::SetupBrpcWorld(fmt::format("sim.{}", npc), npc);
 
   std::vector<std::future<void>> futures;
   for (size_t rank = 0; rank < npc; rank++) {

@@ -28,7 +28,7 @@
                     "enable_hal_profile": true,
                     "fxp_exp_mode": 0,
                     "fxp_exp_iters": 5,
-                    "fxp_fraction_bits": 15,
+                    "fxp_fraction_bits": 1,
                     "trunc_allow_msb_error": true
                 }
             }

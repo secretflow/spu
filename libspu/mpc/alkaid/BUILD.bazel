@@ -227,6 +227,7 @@ spu_cc_library(
     deps = [
         ":type",
         ":value",
+        "//libspu/mpc:offline_recorder",
         "//libspu/mpc/common:communicator",
         "//libspu/mpc/common:prg_state",
         "@yacl//yacl/utils:platform_utils",

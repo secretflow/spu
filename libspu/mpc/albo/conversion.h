@@ -152,4 +152,9 @@ NdArrayRef A2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in);
 NdArrayRef B2AMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in);
 NdArrayRef PPATest(KernelEvalContext* ctx, const NdArrayRef& in);
 
+NdArrayRef MsbA2BMultiFanInForBitwidth16(KernelEvalContext* ctx, const NdArrayRef& in, size_t start_rank = 0);
+NdArrayRef A2BMultiFanInForBitwidth16(KernelEvalContext* ctx, const NdArrayRef& in);
+NdArrayRef B2AMultiFanInForBitwidth16(KernelEvalContext* ctx, const NdArrayRef& in);
+NdArrayRef PPATestForBitwidth16(KernelEvalContext* ctx, const NdArrayRef& in);
+
 }  // namespace spu::mpc::albo

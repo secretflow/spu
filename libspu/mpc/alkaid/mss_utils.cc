@@ -10,6 +10,7 @@
 #include "libspu/core/parallel_utils.h"
 #include "libspu/core/prelude.h"
 #include "libspu/core/trace.h"
+#include "libspu/mpc/offline_recorder.h"
 #include "libspu/mpc/alkaid/type.h"
 #include "libspu/mpc/alkaid/value.h"
 #include "libspu/mpc/common/communicator.h"
@@ -230,7 +231,7 @@ NdArrayRef MssXor2(KernelEvalContext* ctx, const NdArrayRef& lhs,
                                     PrgState::GenPrssCtrl::Both);
 
             // offline.
-            
+            OfflineRecorder::RecordMult(lhs.numel(), lhs.numel() * sizeof(out_el_t));
             #if !defined(EQ_USE_PRG_STATE) || !defined(EQ_USE_OFFLINE)
             std::fill(r0.begin(), r0.end(), 0);
             std::fill(r1.begin(), r1.end(), 0);
@@ -449,7 +450,7 @@ NdArrayRef ResharingAss2Mss(KernelEvalContext* ctx, const NdArrayRef& in) {
             comm->sendAsync<out_el_t>(comm->prevRank(), r1, "Resharing ASS to MSS, online, message 2");  // comm => 1, k
             r0 = comm->recv<out_el_t>(comm->prevRank(), "Resharing ASS to MSS, online, message 1");  // comm => 1, k
             r1 = comm->recv<out_el_t>(comm->nextRank(), "Resharing ASS to MSS, online, message 2");  // comm => 1, k
-            comm->addCommStatsManually(1, 2 * sizeof(out_el_t) * in.numel());
+            comm->addCommStatsManually(-1, 0);
             const std::atomic<size_t> & lctx_sent_actions = comm->lctx().get()->GetStats().get()->sent_actions;
             const std::atomic<size_t> & lctx_recv_actions = comm->lctx().get()->GetStats().get()->recv_actions;
             const_cast<std::atomic<size_t> &>(lctx_sent_actions) -= 1;

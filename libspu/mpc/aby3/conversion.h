@@ -146,4 +146,8 @@ class CommonTypeV : public Kernel {
 
   void evaluate(KernelEvalContext* ctx) const override;
 };
+
+NdArrayRef MsbA2BForBitwidth16(KernelEvalContext* ctx, const NdArrayRef& in);
+NdArrayRef B2AForBitwidth16(KernelEvalContext* ctx, const NdArrayRef& in);
+NdArrayRef A2BForBitwidth16(KernelEvalContext* ctx, const NdArrayRef& in);
 }  // namespace spu::mpc::aby3

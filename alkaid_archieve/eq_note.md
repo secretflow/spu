@@ -11,7 +11,7 @@ bazel build //libspu/mpc/alkaid:mfippa_test --jobs 32
 bazel build //libspu/mpc:mfippa_test --jobs 32
 ./bazel-out/k8-fastbuild/bin/libspu/mpc/mfippa_test
 
-# 添加新安全计算框架后重新编译。其他时候无需编译。
+# 更改cpp库后重新编译。其他时候无需编译。
 bazel build //examples/python/utils:nodectl --jobs 32
 # or: ./bazel-bin/examples/python/utils/nodectl up
 ./app/nodectl-app/nodectl up
@@ -25,14 +25,16 @@ bazel build //examples/python/ml/flax_gpt2:flax_gpt2 --jobs 32
 bazel build //examples/python/ml/flax_gpt2:pumabench --jobs 32
 ./bazel-out/k8-fastbuild/bin/examples/python/ml/flax_gpt2/pumabench
 
+bazel build //examples/python/ml/flax_gpt2:albenchmark --jobs 32
+./bazel-out/k8-fastbuild/bin/examples/python/ml/flax_gpt2/albenchmark 
+
 bazel build //libspu/mpc:mfippa_test --jobs 32
 ./bazel-out/k8-fastbuild/bin/libspu/mpc/mfippa_test
 
 export http_proxy=http://192.168.109.37:7890
 export https_proxy=http://192.168.109.37:7890
 
-unset http_proxy 
-unset https_proxy
+unset http_proxy ; unset https_proxy
 
 sh ./mytest/mynet.sh lan
 

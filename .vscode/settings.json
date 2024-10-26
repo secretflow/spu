@@ -154,6 +154,7 @@
         "latch": "cpp",
         "scoped_allocator": "cpp",
         "print": "cpp",
-        "*.def": "cpp"
+        "*.def": "cpp",
+        "execution": "cpp"
     }
 }

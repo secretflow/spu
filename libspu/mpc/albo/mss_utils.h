@@ -389,6 +389,10 @@ std::pair<NdArrayRef, NdArrayRef> unpack_2_bitvec(const NdArrayRef& in, size_t l
     });
 }
 
+/**
+ * Pack the input into a specific container, apply the function, and unpack the result.
+ * This is used to compress multiple items with non-standard bitwidth, i.e. 48 bits, into one target_nbits element.
+ */
 template<typename ShareT, size_t num_shares, typename OutShareT, size_t out_num_shares, typename UnaryOp>
 NdArrayRef bitwise_vmap(const NdArrayRef& in, size_t target_nbits, UnaryOp func, size_t in_nbits=0)
 {
@@ -454,6 +458,10 @@ NdArrayRef bitwise_vmap(const NdArrayRef& in, size_t target_nbits, UnaryOp func,
   });
 }
 
+/**
+ * Serialize the input into a byte array, apply the function, and deserialize the result.
+ * This is used to compress single item with non-standard bitwidth, i.e. an element with 48 bits.
+ */
 template<typename ShareT, size_t num_shares, typename OutShareT, size_t out_num_shares, typename UnaryOp>
 NdArrayRef bitwise_vmap_by_byte(const NdArrayRef& in, UnaryOp func, size_t in_nbits=0)
 {

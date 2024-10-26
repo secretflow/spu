@@ -33,6 +33,7 @@
 
 // TODO: it shows incorrect result that defines EQ_USE_PRG_STATE and undefines EQ_USE_OFFLINE. Fix it.
 // #define EQ_TEST_PPA
+// #define EQ_TEST_BITWIDTH_16
 
 namespace spu::mpc::aby3 {
 
@@ -82,6 +83,7 @@ NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   #ifdef EQ_TEST_PPA
   return PPATest(ctx, in);
   #else
+
   const auto field = in.eltype().as<Ring2k>()->field();
 
   auto* comm = ctx->getState<Communicator>();
@@ -96,15 +98,27 @@ NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   //   N = [(0, 0), (0, x2), (x2, 0)]
   // Then
   //   Y = PPA(M, N) as the output.
+  // #ifdef EQ_TEST_BITWIDTH_16
+  // const PtType out_btype = calcBShareBacktype(16);
+  // const auto out_ty = makeType<BShrTy>(out_btype, 16);
+  // #else
   const PtType out_btype = calcBShareBacktype(SizeOf(field) * 8);
   const auto out_ty = makeType<BShrTy>(out_btype, SizeOf(out_btype) * 8);
+  // #endif
   NdArrayRef m(out_ty, in.shape());
   NdArrayRef n(out_ty, in.shape());
 
   auto numel = in.numel();
 
   DISPATCH_ALL_FIELDS(field, [&]() {
+    // #ifdef EQ_TEST_BITWIDTH_16
+    // using ashr_t = std::array<uint16_t, 2>;
+    // ring2k_t _t = 0;
+    // _t++;
+    // #else
     using ashr_t = std::array<ring2k_t, 2>;
+    // #endif
+
     NdArrayView<ashr_t> _in(in);
 
     DISPATCH_UINT_PT_TYPES(out_btype, [&]() {
@@ -959,5 +973,279 @@ void CommonTypeV::evaluate(KernelEvalContext* ctx) const {
   const auto* rhs_v = rhs.as<Priv2kTy>();
 
   ctx->pushOutput(makeType<AShrTy>(std::max(lhs_v->field(), rhs_v->field())));
+}
+
+NdArrayRef MsbA2BForBitwidth16(KernelEvalContext* ctx, const NdArrayRef& in) {
+  const auto numel = in.numel();
+  auto* comm = ctx->getState<Communicator>();
+  auto* prg_state = ctx->getState<PrgState>();
+
+  // First construct 2 boolean shares.
+  // Let
+  //   X = [(x0, x1), (x1, x2), (x2, x0)] as input.
+  //   Z = (z0, z1, z2) as boolean zero share.
+  //
+  // Construct M, N as boolean shares,
+  //   M = [((x0+x1)^z0, z1), (z1, z2), (z2, (x0+x1)^z0)]
+  //   N = [(0,          0),  (0,  x2), (x2, 0         )]
+  //
+  // That
+  //  M + N = (x0+x1)^z0^z1^z2 + x2
+  //        = x0 + x1 + x2 = X
+  const Type bshr_type =
+      makeType<BShrTy>(calcBShareBacktype(16), 16);
+  NdArrayRef m(bshr_type, in.shape());
+  NdArrayRef n(bshr_type, in.shape());
+
+  using el_t = uint16_t;
+  using shr_t = std::array<el_t, 2>;
+
+  NdArrayView<shr_t> _in(in);
+  NdArrayView<shr_t> _m(m);
+  NdArrayView<shr_t> _n(n);
+
+  std::vector<el_t> r0(numel);
+  std::vector<el_t> r1(numel);
+  prg_state->fillPrssPair(r0.data(), r1.data(), r0.size(),
+                          PrgState::GenPrssCtrl::Both);
+
+  pforeach(0, numel, [&](int64_t idx) {
+    r0[idx] = r0[idx] ^ r1[idx];
+    if (comm->getRank() == 0) {
+      const auto& v = _in[idx];
+      r0[idx] ^= (v[0] + v[1]);
+    }
+  });
+
+  // Now, we hold ((x0+x1)^z0, z1, z2) which is stored in r0.
+
+  // 1. rotate k bits
+  r1 = comm->rotate<el_t>(r0, "m");                   // send r0 to the previous party, get r1 from the next party.
+
+  pforeach(0, numel, [&](int64_t idx) {
+    const auto& v = _in[idx];
+    _m[idx][0] = r0[idx];
+    _m[idx][1] = r1[idx];
+    _n[idx][0] = comm->getRank() == 2 ? v[0] : 0;
+    _n[idx][1] = comm->getRank() == 1 ? v[1] : 0;
+  });
+
+  // Compute the k-1'th carry bit.
+  size_t nbits = 16;
+  auto* sctx = ctx->sctx();
+
+  const Shape shape = {in.numel()};
+  auto wrap_m = WrapValue(m);
+  auto wrap_n = WrapValue(n);
+  {
+    // 2. 2k + 16 * 2 bits
+    auto carry = carry_a2b(sctx, wrap_m, wrap_n, nbits);
+
+    // Compute the k'th bit.
+    //   (m^n)[k] ^ carry
+    auto msb = xor_bb(sctx,
+                      rshift_b(sctx, xor_bb(sctx, wrap_m, wrap_n),
+                               {static_cast<int64_t>(nbits)}),
+                      carry);
+
+    return UnwrapValue(msb);
+  }
+}
+
+// Reference:
+// 5.3 Share Conversions
+// https://eprint.iacr.org/2018/403.pdf
+//
+// In the semi-honest setting, this can be further optimized by having party 2
+// provide (−x2−x3) as private input and compute
+//   [x1]B = [x]B + [-x2-x3]B
+// using a parallel prefix adder. Regardless, x1 is revealed to parties
+// 1,3 and the final sharing is defined as
+//   [x]A := (x1, x2, x3)
+// Overall, the conversion requires 1 + log k rounds and k + k log k gates.
+//
+// TODO: convert to single share, will reduce number of rotate.
+NdArrayRef B2AForBitwidth16(KernelEvalContext* ctx, const NdArrayRef& in) {
+  const auto field = ctx->getState<Z2kState>()->getDefaultField();
+  const size_t in_nbits = 16;
+
+  SPU_ENFORCE(in_nbits <= SizeOf(field) * 8, "invalid nbits={}", in_nbits);
+  const auto out_ty = makeType<AShrTy>(field);
+  NdArrayRef out(out_ty, in.shape());
+
+  auto numel = in.numel();
+
+  if (in_nbits == 0) {
+    // special case, it's known to be zero.
+    DISPATCH_ALL_FIELDS(field, [&]() {
+      NdArrayView<std::array<ring2k_t, 2>> _out(out);
+      pforeach(0, numel, [&](int64_t idx) {
+        _out[idx][0] = 0;
+        _out[idx][1] = 0;
+      });
+    });
+    return out;
+  }
+
+  auto* comm = ctx->getState<Communicator>();
+  auto* prg_state = ctx->getState<PrgState>();
+
+  DISPATCH_UINT_PT_TYPES(calcBShareBacktype(in_nbits), [&]() {
+    using bshr_t = std::array<ScalarT, 2>;
+    NdArrayView<bshr_t> _in(in);
+
+    using ashr_el_t = uint16_t;
+    using ashr_t = std::array<ashr_el_t, 2>;
+
+    // first expand b share to a share length.
+    const auto expanded_ty = makeType<BShrTy>(
+        calcBShareBacktype(16), 16);
+    NdArrayRef x(expanded_ty, in.shape());
+    NdArrayView<ashr_t> _x(x);
+
+    pforeach(0, numel, [&](int64_t idx) {
+      const auto& v = _in[idx];
+      _x[idx][0] = v[0];
+      _x[idx][1] = v[1];
+    });
+
+    // P1 & P2 local samples ra, note P0's ra is not used.
+    std::vector<ashr_el_t> ra0(numel);
+    std::vector<ashr_el_t> ra1(numel);
+    std::vector<ashr_el_t> rb0(numel);
+    std::vector<ashr_el_t> rb1(numel);
+
+    prg_state->fillPrssPair(ra0.data(), ra1.data(), ra0.size(),
+                            PrgState::GenPrssCtrl::Both);
+    prg_state->fillPrssPair(rb0.data(), rb1.data(), rb0.size(),
+                            PrgState::GenPrssCtrl::Both);
+
+    pforeach(0, numel, [&](int64_t idx) {
+      const auto zb = rb0[idx] ^ rb1[idx];
+      if (comm->getRank() == 1) {
+        rb0[idx] = zb ^ (ra0[idx] + ra1[idx]);
+      } else {
+        rb0[idx] = zb;
+      }
+    });
+    rb1 = comm->rotate<ashr_el_t>(rb0, "b2a.rand");  // comm => 1, k
+
+    // compute [x+r]B
+    NdArrayRef r(expanded_ty, in.shape());
+    NdArrayView<ashr_t> _r(r);
+    pforeach(0, numel, [&](int64_t idx) {
+      _r[idx][0] = rb0[idx];
+      _r[idx][1] = rb1[idx];
+    });
+
+    // comm => log(k) + 1, 2k(logk) + k
+    auto x_plus_r = wrap_add_bb(ctx->sctx(), x, r);
+    NdArrayView<ashr_t> _x_plus_r(x_plus_r);
+
+    // reveal
+    std::vector<ashr_el_t> x_plus_r_2(numel);
+    if (comm->getRank() == 0) {
+      x_plus_r_2 = comm->recv<ashr_el_t>(2, "reveal.x_plus_r.to.P0");
+    } else if (comm->getRank() == 2) {
+      std::vector<ashr_el_t> x_plus_r_0(numel);
+      pforeach(0, numel,
+                [&](int64_t idx) { x_plus_r_0[idx] = _x_plus_r[idx][0]; });
+      comm->sendAsync<ashr_el_t>(0, x_plus_r_0, "reveal.x_plus_r.to.P0");
+    }
+
+    // P0 hold x+r, P1 & P2 hold -r, reuse ra0 and ra1 as output
+    auto self_rank = comm->getRank();
+    pforeach(0, numel, [&](int64_t idx) {
+      if (self_rank == 0) {
+        const auto& x_r_v = _x_plus_r[idx];
+        ra0[idx] = x_r_v[0] ^ x_r_v[1] ^ x_plus_r_2[idx];
+      } else {
+        ra0[idx] = -ra0[idx];
+      }
+    });
+
+    ra1 = comm->rotate<ashr_el_t>(ra0, "b2a.rotate");
+
+    NdArrayView<ashr_t> _out(out);
+    pforeach(0, numel, [&](int64_t idx) {
+      _out[idx][0] = ra0[idx];
+      _out[idx][1] = ra1[idx];
+    });
+  });
+
+  return out;
+}
+
+// Reference:
+// ABY3: A Mixed Protocol Framework for Machine Learning
+// P16 5.3 Share Conversions, Bit Decomposition
+// https://eprint.iacr.org/2018/403.pdf
+//
+// Latency: 2 + log(nbits) from 1 rotate and 1 ppa.
+NdArrayRef A2BForBitwidth16(KernelEvalContext* ctx, const NdArrayRef& in) {
+  auto* comm = ctx->getState<Communicator>();
+  auto* prg_state = ctx->getState<PrgState>();
+
+  // Let
+  //   X = [(x0, x1), (x1, x2), (x2, x0)] as input.
+  //   Z = (z0, z1, z2) as boolean zero share.
+  //
+  // Construct
+  //   M = [((x0+x1)^z0, z1) (z1, z2), (z2, (x0+x1)^z0)]
+  //   N = [(0, 0), (0, x2), (x2, 0)]
+  // Then
+  //   Y = PPA(M, N) as the output.
+  const PtType out_btype = calcBShareBacktype(16);
+  const auto out_ty = makeType<BShrTy>(out_btype, 16);
+  // #endif
+  NdArrayRef m(out_ty, in.shape());
+  NdArrayRef n(out_ty, in.shape());
+
+  auto numel = in.numel();
+
+  using ashr_t = std::array<uint16_t, 2>;
+
+  NdArrayView<ashr_t> _in(in);
+
+  DISPATCH_UINT_PT_TYPES(out_btype, [&]() {
+    using bshr_el_t = ScalarT;
+    using bshr_t = std::array<bshr_el_t, 2>;
+
+    std::vector<bshr_el_t> r0(in.numel());
+    std::vector<bshr_el_t> r1(in.numel());
+    prg_state->fillPrssPair(r0.data(), r1.data(), r0.size(),
+                            PrgState::GenPrssCtrl::Both);
+
+    pforeach(0, numel, [&](int64_t idx) {
+      r0[idx] ^= r1[idx];
+      if (comm->getRank() == 0) {
+        const auto& v = _in[idx];
+        r0[idx] ^= v[0] + v[1];
+      }
+    });
+
+    r1 = comm->rotate<bshr_el_t>(r0, "a2b");  // comm => 1, k
+
+    NdArrayView<bshr_t> _m(m);
+    NdArrayView<bshr_t> _n(n);
+
+    pforeach(0, numel, [&](int64_t idx) {
+      _m[idx][0] = r0[idx];
+      _m[idx][1] = r1[idx];
+
+      if (comm->getRank() == 0) {
+        _n[idx][0] = 0;
+        _n[idx][1] = 0;
+      } else if (comm->getRank() == 1) {
+        _n[idx][0] = 0;
+        _n[idx][1] = _in[idx][1];
+      } else if (comm->getRank() == 2) {
+        _n[idx][0] = _in[idx][0];
+        _n[idx][1] = 0;
+      }
+    });
+  });
+
+  return wrap_add_bb(ctx->sctx(), m, n);  // comm => log(k) + 1, 2k(logk) + k
 }
 }  // namespace spu::mpc::aby3

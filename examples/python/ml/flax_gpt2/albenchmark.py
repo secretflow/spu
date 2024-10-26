@@ -39,7 +39,7 @@ copts.xla_pp_kind = 2
 # enable x / broadcast(y) -> x * broadcast(1/y)
 copts.enable_optimize_denominator_with_broadcast = True
 
-EXP_TIMES = 100
+EXP_TIMES = 1
 
 # Microbenchmark
 VECTOR_LEN = 1
@@ -284,7 +284,10 @@ def sigmoid(x):
 
 def sample_input():
     np.random.seed()
-    x = np.random.randint(-10, 10, VECTOR_LEN)
+    x = 1 << 0
+    # x = np.random.randint(-1000, 1000, VECTOR_LEN)
+    # x = np.random.randint(-10, 10, VECTOR_LEN)
+    # x = np.random.randint(0, 1, VECTOR_LEN)
     return x
 
 def exp_msb():

@@ -147,7 +147,7 @@ std::vector<T> Communicator::rotate(absl::Span<T const> in,
   auto buf = lctx_->Recv(lctx_->NextRank(), tag);
 
   stats_.latency += 1;
-  stats_.comm += in.size() * sizeof(T);
+  stats_.comm += 2 * in.size() * sizeof(T);
 
   SPU_ENFORCE(buf.size() == static_cast<int64_t>(sizeof(T) * in.size()));
   return std::vector<T>(buf.data<T>(), buf.data<T>() + in.size());
@@ -163,7 +163,7 @@ std::vector<T> Communicator::rotateR(absl::Span<T const> in,
   auto buf = lctx_->Recv(lctx_->PrevRank(), tag);
 
   stats_.latency += 1;
-  stats_.comm += in.size() * sizeof(T);
+  stats_.comm += 2 * in.size() * sizeof(T);
 
   SPU_ENFORCE(buf.size() == static_cast<int64_t>(sizeof(T) * in.size()));
   return std::vector<T>(buf.data<T>(), buf.data<T>() + in.size());
@@ -175,6 +175,9 @@ void Communicator::sendAsync(size_t dst_rank, absl::Span<T const> in,
   yacl::ByteContainerView bv(reinterpret_cast<uint8_t const*>(in.data()),
                              sizeof(T) * in.size());
   lctx_->SendAsync(dst_rank, bv, tag);
+
+  stats_.latency += 1;
+  stats_.comm += in.size() * sizeof(T);
 }
 
 template <typename T>
@@ -182,6 +185,9 @@ std::vector<T> Communicator::recv(size_t src_rank, std::string_view tag) {
   auto buf = lctx_->Recv(src_rank, tag);
   SPU_ENFORCE(buf.size() % sizeof(T) == 0);
   auto numel = buf.size() / sizeof(T);
+
+  stats_.comm += buf.size();
+
   // TODO: use a container which memory could be stolen.
   return std::vector<T>(buf.data<T>(), buf.data<T>() + numel);
 }
@@ -193,6 +199,7 @@ std::vector<T> Communicator::allReduce(absl::Span<T const> in,
                              sizeof(T) * in.size());
   std::vector<yacl::Buffer> bufs = yacl::link::AllGather(lctx_, bv, tag);
   SPU_ENFORCE(bufs.size() == getWorldSize());
+  SPU_ENFORCE(false);
 
   std::vector<T> res(in.size(), 0);
   const FN<T> fn;
@@ -215,8 +222,14 @@ std::vector<T> Communicator::bcast(absl::Span<T const> in, size_t root,
                              sizeof(T) * in.size());
   yacl::Buffer buf = yacl::link::Broadcast(lctx_, bv, root, tag);
 
-  stats_.latency += 1;
-  stats_.comm += in.size() * sizeof(T);
+  if (lctx_->Rank() == root) {
+    stats_.comm += 2 * in.size() * sizeof(T);
+    stats_.latency += 1;
+  } else {
+    stats_.comm += in.size() * sizeof(T);
+  }
+  // stats_.latency += 1;
+  // stats_.comm += in.size() * sizeof(T);
 
   // TODO: steal the buffer.
   std::vector<T> res(in.size(), 0);
@@ -231,6 +244,7 @@ std::vector<std::vector<T>> Communicator::gather(absl::Span<T const> in,
   yacl::ByteContainerView bv(reinterpret_cast<uint8_t const*>(in.data()),
                              sizeof(T) * in.size());
   std::vector<yacl::Buffer> bufs = yacl::link::Gather(lctx_, bv, root, tag);
+  SPU_ENFORCE(false);
 
   stats_.latency += 1;
   stats_.comm += in.size() * sizeof(T);
