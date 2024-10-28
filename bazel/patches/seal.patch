@@ -36,7 +36,7 @@ index 31e07441..c34d0a45 100644
              uint64_t coeff_modulus_size64 = static_cast<uint64_t>(coeff_modulus_.size());
              uint8_t scheme = static_cast<uint8_t>(scheme_);
 +			 uint8_t use_special_prime = static_cast<uint8_t>(use_special_prime);
-
+ 
              stream.write(reinterpret_cast<const char *>(&scheme), sizeof(uint8_t));
 +            stream.write(reinterpret_cast<const char *>(&use_special_prime), sizeof(uint8_t));
              stream.write(reinterpret_cast<const char *>(&poly_modulus_degree64), sizeof(uint64_t));
@@ -45,7 +45,7 @@ index 31e07441..c34d0a45 100644
 @@ -63,6 +65,10 @@ namespace seal
              // This constructor will throw if scheme is invalid
              EncryptionParameters parms(scheme);
-
+ 
 +			 uint8_t use_special_prime;
 +            stream.read(reinterpret_cast<char *>(&use_special_prime), sizeof(uint8_t));
 +			 parms.set_use_special_prime(use_special_prime);
@@ -60,27 +60,27 @@ index 31e07441..c34d0a45 100644
 -            coeff_modulus_size, plain_modulus_.uint64_count());
 +			 size_t(1), // use_special_prime
 +            coeff_modulus_size);
-
+ 
          auto param_data(allocate_uint(total_uint64_count, pool_));
          uint64_t *param_data_ptr = param_data.get();
 @@ -139,13 +146,15 @@ namespace seal
          // Write the poly_modulus_degree. Note that it will always be positive.
          *param_data_ptr++ = static_cast<uint64_t>(poly_modulus_degree_);
-
+ 
 +		 *param_data_ptr++ = static_cast<uint64_t>(use_special_prime_);
          for (const auto &mod : coeff_modulus_)
          {
              *param_data_ptr++ = mod.value();
          }
-
+ 
 -        set_uint(plain_modulus_.data(), plain_modulus_.uint64_count(), param_data_ptr);
 -        param_data_ptr += plain_modulus_.uint64_count();
 +        // NOTE(juhou): we skip the plain modulus for parms_id
 +        // set_uint(plain_modulus_.data(), plain_modulus_.uint64_count(), param_data_ptr);
 +        // param_data_ptr += plain_modulus_.uint64_count();
-
+ 
          HashFunction::hash(param_data.get(), total_uint64_count, parms_id_);
-
+ 
 diff --git a/native/src/seal/encryptionparams.h b/native/src/seal/encryptionparams.h
 index 9e1fbe48..eb71c4ac 100644
 --- a/native/src/seal/encryptionparams.h
@@ -88,7 +88,7 @@ index 9e1fbe48..eb71c4ac 100644
 @@ -266,6 +266,11 @@ namespace seal
              random_generator_ = std::move(random_generator);
          }
-
+ 
 +        inline void set_use_special_prime(bool flag)
 +        {
 +            use_special_prime_ = flag;
@@ -100,7 +100,7 @@ index 9e1fbe48..eb71c4ac 100644
 @@ -274,6 +279,11 @@ namespace seal
              return scheme_;
          }
-
+ 
 +        bool use_special_prime() const noexcept
 +        {
 +            return use_special_prime_;
@@ -110,9 +110,9 @@ index 9e1fbe48..eb71c4ac 100644
          Returns the degree of the polynomial modulus parameter.
          */
 @@ -501,6 +511,8 @@ namespace seal
-
+ 
          Modulus plain_modulus_{};
-
+ 
 +		 bool use_special_prime_ = true;
 +
          parms_id_type parms_id_ = parms_id_zero;
