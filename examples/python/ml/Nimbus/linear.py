@@ -33,7 +33,7 @@ if __name__ == "__main__":
     Please DONT commit it unless it will cause build break.
     """
 
-    with open("/state/partition/zyli/nimbus_opensource/spu/examples/python/ml/Nimbus/2pc.json", 'r') as file:
+    with open("examples/python/ml/Nimbus/2pc.json", 'r') as file:
         conf = json.load(file)
 
     ppd.init(conf["nodes"], conf["devices"])

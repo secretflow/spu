@@ -26,3 +26,14 @@ py_binary(
         "//spu/utils:distributed",
     ],
 )
+
+py_binary(
+    name = "nonlinear",
+    srcs = ["nonlinear.py"],
+    data = [
+        "//examples/python/ml/Nimbus:2pc.json",
+    ],
+    deps = [
+        "//spu/utils:distributed",
+    ],
+)
