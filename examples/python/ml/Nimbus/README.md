@@ -47,7 +47,8 @@ bazel run -c opt //examples/python/utils:nodectl -- --config `pwd`/examples/pyth
 ```
 
 ### Test the Linear Layers
-The implementation of the linear layer is based on the MPC backend called `cheetah`, which is the official code for [BumbleBee](https://eprint.iacr.org/2023/1678). The implementation can be found in the directory `/state/partition/zyli/nimbus_opensource/spu/libspu/mpc/cheetah`. 
+The implementation of the linear layer is based on the MPC backend called `cheetah`, which is the official code for [BumbleBee](https://eprint.iacr.org/2023/1678). The implementation can be found in the directory `libspu/mpc/cheetah`. 
+> Note that this branch diverged from the main branch at an earlier commit of SecretFlow/spu (around `5f9288759164998c1a1f606dcee367bf8d9c90a9`). Subsequent bug fixes and optimizations about the `cheetah` backend have not been synchronized with this branch, which may disadvantage performance comparisons.
 
 To test the linear protocol, run the following command in another container. The four numbers represent the shapes of a batched matrix multiplication (b, m, k)*(b, k, n), where the former is the weight tensor and the latter is the activation tensor. The variables m, n, and k correspond to out_dim, hidden_dim, and token_num, respectively.
 
