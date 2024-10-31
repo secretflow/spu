@@ -17,10 +17,21 @@ load("@rules_python//python:defs.bzl", "py_binary")
 package(default_visibility = ["//visibility:public"])
 
 py_binary(
-    name = "flax_bert",
-    srcs = ["flax_bert.py"],
+    name = "linear",
+    srcs = ["linear.py"],
     data = [
-        "//examples/python/ml/flax_bert:3pc.json",
+        "//examples/python/ml/Nimbus:2pc.json",
+    ],
+    deps = [
+        "//spu/utils:distributed",
+    ],
+)
+
+py_binary(
+    name = "nonlinear",
+    srcs = ["nonlinear.py"],
+    data = [
+        "//examples/python/ml/Nimbus:2pc.json",
     ],
     deps = [
         "//spu/utils:distributed",
