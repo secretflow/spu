@@ -105,7 +105,8 @@ NdArrayRef MulPriv(KernelEvalContext* ctx, const NdArrayRef& x) {
 
   // P0 sends (x+a) to P1 ; P1 sends (y+b) to P0
   comm->sendAsync(comm->nextRank(), ring_add(a_or_b, x), "(x + a) or (y + b)");
-  xa_or_yb = comm->recv(comm->prevRank(), x.eltype(), "(x + a) or (y + b)");
+  xa_or_yb = comm->recv(comm->prevRank(), x.eltype(), "(x + a) or (y + b)")
+                 .reshape(x.shape());
   // note that our rings are commutative.
   if (comm->getRank() == 0) {
     ring_add_(c, ring_mul(std::move(xa_or_yb), x));

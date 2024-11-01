@@ -71,7 +71,7 @@ std::vector<NdArrayRef> reduce(ReduceOp op,
             ring_mul_(rs[idx], t);
           }
         } else {
-          SPU_ENFORCE("not supported reduction op");
+          SPU_THROW("not supported reduction op");
         }
       }
     }
