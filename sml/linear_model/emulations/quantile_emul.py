@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import time
 
 import jax.numpy as jnp
@@ -48,15 +49,10 @@ def emul_quantile(mode=emulation.Mode.MULTIPROCESS):
     def generate_data():
         from jax import random
 
-        # 设置随机种子
         key = random.PRNGKey(42)
-        # 生成 X 数据
         key, subkey = random.split(key)
         X = random.normal(subkey, (100, 2))
-        # 生成 y 数据
-        y = (
-            5 * X[:, 0] + 2 * X[:, 1] + random.normal(key, (100,)) * 0.1
-        )  # 高相关性，带有小噪声
+        y = 5 * X[:, 0] + 2 * X[:, 1] + random.normal(key, (100,)) * 0.1
         return X, y
 
     try:

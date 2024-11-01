@@ -22,7 +22,6 @@ def _pivot_col(T, tol=1e-5):
 
     all_masked = jnp.all(mask)
 
-    # 定义根据最小值选择列的函数
     ma = jnp.where(mask, jnp.inf, T[-1, :-1])
     min_col = jnp.argmin(ma)
 
@@ -44,12 +43,10 @@ def _pivot_row(T, pivcol, phase, tol=1e-5, max_val=1e10):
 
     q = jnp.where(ma >= max_val, jnp.inf, mb / ma)
 
-    # 选择最小比值的行
     min_rows = jnp.nanargmin(q)
     all_masked = jnp.all(mask)
 
     row = min_rows
-    # 处理全被掩盖的情况
     row = jnp.where(all_masked, 0, row)
 
     return ~all_masked, row
