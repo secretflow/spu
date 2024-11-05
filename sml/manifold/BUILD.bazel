@@ -14,49 +14,24 @@
 
 load("@rules_python//python:defs.bzl", "py_library")
 
+package(default_visibility = ["//visibility:public"])
+
 py_library(
-    name = "all_intrinsics",
-    srcs = [
-        "__init__.py",
-    ],
-    visibility = [
-        "//visibility:public",
-    ],
-    deps = [
-        ":example",
-        ":example_binary",
-        ":permute",
-        # DO-NOT-EDIT:ADD_IMPORT
-    ],
+    name = "jacobi",
+    srcs = ["jacobi.py"],
 )
 
 py_library(
-    name = "example",
-    srcs = [
-        "example_impl.py",
-    ],
-    visibility = [
-        "//visibility:private",
-    ],
+    name = "dijkstra",
+    srcs = ["dijkstra.py"],
 )
 
 py_library(
-    name = "example_binary",
-    srcs = [
-        "example_binary_impl.py",
-    ],
-    visibility = [
-        "//visibility:private",
-    ],
+    name = "MDS",
+    srcs = ["MDS.py"],
 )
 
 py_library(
-    name = "permute",
-    srcs = [
-        "permute_impl.py",
-    ],
-    visibility = [
-        "//visibility:private",
-    ],
+    name = "kneighbors",
+    srcs = ["kneighbors.py"],
 )
-        
