@@ -678,6 +678,7 @@ spu::Value _apply_inv_perm_ss(SPUContext *ctx, const spu::Value &x,
   return std::move(ret[0]);
 }
 
+
 // Ref: https://eprint.iacr.org/2019/695.pdf
 // Algorithm 5: Composition of two share-vector permutations
 //
@@ -949,6 +950,8 @@ spu::Value gen_inv_perm(SPUContext *ctx, absl::Span<spu::Value const> inputs,
   return inv_perm;
 }
 
+
+
 std::vector<spu::Value> apply_inv_perm(SPUContext *ctx,
                                        absl::Span<spu::Value const> inputs,
                                        const spu::Value &perm) {
@@ -977,6 +980,8 @@ std::vector<spu::Value> apply_inv_perm(SPUContext *ctx,
     SPU_THROW("Should not be here");
   }
 }
+
+
 
 // Secure Radix Sort
 // Ref:
