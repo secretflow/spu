@@ -204,12 +204,11 @@ TEST_P(ArithmeticTest, MulA1B) {
     auto p1 = rand_p(obj.get(), conf.protocol() == ProtocolKind::CHEETAH
                                     ? Shape({200, 26})
                                     : kShape);
-    p1 = rshift_p(obj.get(), p1, {K - 1});
     auto a0 = p2a(obj.get(), p0);
     auto a1 = p2b(obj.get(), p1);
     // hint runtime this is a 1bit value.
-    a1 = lshift_b(obj.get(), a1, {K - 1});
-    a1 = rshift_b(obj.get(), a1, {K - 1});
+    // Sometimes, the underlying value is not strictly 1bit
+    a1.storage_type().as<BShare>()->setNbits(1);
 
     /* WHEN */
     auto prev = obj->prot()->getState<Communicator>()->getStats();
@@ -217,7 +216,9 @@ TEST_P(ArithmeticTest, MulA1B) {
     auto cost = obj->prot()->getState<Communicator>()->getStats() - prev;
 
     auto r_aa = a2p(obj.get(), tmp);
-    auto r_pp = mul_pp(obj.get(), p0, p1);
+    auto r_pp =
+        mul_pp(obj.get(), p0,
+               rshift_p(obj.get(), lshift_p(obj.get(), p1, {K - 1}), {K - 1}));
 
     /* THEN */
     EXPECT_VALUE_EQ(r_aa, r_pp);

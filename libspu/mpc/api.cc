@@ -173,7 +173,11 @@ Value s2v(SPUContext* ctx, const Value& x, size_t owner) {
     return a2v(ctx, x, owner);
   } else {
     SPU_ENFORCE(IsB(x));
-    return b2v(ctx, x, owner);
+    if (ctx->hasKernel("b2v")) {
+      return b2v(ctx, x, owner);
+    } else {
+      return a2v(ctx, _2a(ctx, x), owner);
+    }
   }
 }
 

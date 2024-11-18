@@ -77,6 +77,7 @@ void regSemi2kProtocol(SPUContext* ctx,
 
   if (lctx->WorldSize() == 2) {
     ctx->prot()->regKernel<semi2k::MsbA2B>();
+    ctx->prot()->regKernel<semi2k::MulA1B>();
 
     // only supports 2pc fm128 for now
     if (ctx->getField() == FieldType::FM128 &&
