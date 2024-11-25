@@ -76,7 +76,6 @@ void gfmp_inverse_impl(NdArrayRef& ret, const NdArrayRef& x) {
       _prefix_prod[i] = mul_mod(_prefix_prod[i - 1], _x[i]);
     }
 
-    ring2k_t pprod_inverse = mul_inv(_prefix_prod[numel - 1]);
     _ret[numel - 1] = mul_inv(_prefix_prod[numel - 1]);
     for(int64_t i = numel - 1; i >= 1; i--) {
       _ret[i-1] = mul_mod(_ret[i], _x[i]);

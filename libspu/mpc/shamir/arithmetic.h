@@ -24,7 +24,7 @@ class RandA : public RandKernel {
 
   Kind kind() const override { return Kind::Dynamic; }
 
-  ce::CExpr latency() const override { return ce::Const(0); }
+  ce::CExpr latency() const override { return ce::Const(1); }
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
@@ -82,19 +82,6 @@ class V2A : public UnaryKernel {
   ce::CExpr latency() const override { return ce::Const(1); }
 
   ce::CExpr comm() const override { return ce::K(); }
-
-  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
-};
-
-class NotA : public UnaryKernel {
- public:
-  static constexpr const char* kBindName() {return  "not_a"; }
-
-  Kind kind() const override { return Kind::Dynamic; }
-
-  ce::CExpr latency() const override { return ce::Const(0); }
-
-  ce::CExpr comm() const override { return ce::Const(0); }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
