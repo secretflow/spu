@@ -16,11 +16,89 @@ from typing import Tuple
 
 import jax
 import jax.numpy as jnp
+import numpy as np
 
 from sml.preprocessing.preprocessing import label_binarize
 from spu.ops.groupby import groupby, groupby_sum
 
 from .auc import binary_clf_curve, binary_roc_auc
+
+
+def confusion_matrix(y_true, y_pred, labels, sample_weight=None, normalize=None):
+    """calculate the confusion matrix"""
+    y_true = jnp.array(y_true)
+    y_pred = jnp.array(y_pred)
+
+    # Get the number of tags
+    num_labels = len(labels)
+
+    # Initialize the confusion matrix
+    cm = jnp.zeros((num_labels, num_labels), dtype=jnp.int32)
+
+    # Calculate the confusion matrix
+    for i, label in enumerate(labels):
+        # Get the true label and predicted label as the Boolean value of the current label
+        true_mask = y_true == label
+        pred_mask = y_pred == label
+
+        # Update the confusion matrix
+        for j, _ in enumerate(labels):
+            # Calculate TP, FP, FN, TN
+            cm = cm.at[i, j].set(jnp.sum(true_mask & (y_pred == j)))
+
+    return cm
+
+
+def balanced_accuracy_score(y_true, y_pred, labels, sample_weight=None, adjusted=False):
+    """calculate balanced accuracy score"""
+    C = confusion_matrix(y_true, y_pred, labels, sample_weight=sample_weight)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        per_class = jnp.diag(C) / C.sum(axis=1)
+    score = jnp.mean(per_class)
+    if adjusted:
+        n_classes = len(per_class)
+        chance = 1 / n_classes
+        score -= chance
+        score /= 1 - chance
+    return score
+
+
+def top_k_accuracy_score(
+    y_true, y_score, k=2, normalize=True, sample_weight=None, labels=None
+):
+    """
+    Top-k Accuracy classification score.
+    This metric computes the number of times when the correct label is among
+    the top `k` labels predicted (ranked by predicted scores).
+    """
+
+    y_true = jnp.asarray(y_true)
+    y_score = jnp.asarray(y_score)
+
+    if labels is not None:
+        # If labels are provided, make sure y_true and y_score are included in labels
+        labels = jnp.asarray(labels)
+        y_true = jnp.searchsorted(labels, y_true, sorter=jnp.argsort(labels))
+
+    # Compute the indices of the top k predictions for each sample
+    top_k_indices = jnp.argsort(y_score, axis=1)[:, -k:]
+
+    # Check if y_true is among the top k predictions
+    y_true_in_top_k = jnp.any(jnp.isin(y_true[:, None], top_k_indices), axis=1)
+
+    # Calculate accuracy
+    correct_predictions = jnp.sum(y_true_in_top_k)
+
+    if sample_weight is not None:
+        sample_weight = jnp.asarray(sample_weight)
+        accuracy = jnp.sum(sample_weight * y_true_in_top_k) / jnp.sum(sample_weight)
+    else:
+        accuracy = correct_predictions / len(y_true)
+
+    if normalize:
+        return accuracy
+    else:
+        return correct_predictions
 
 
 def roc_auc_score(y_true, y_pred):
