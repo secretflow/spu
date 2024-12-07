@@ -44,6 +44,14 @@ class PrgState : public State {
   uint64_t r0_counter_ = 0;  // cnt for self_seed
   uint64_t r1_counter_ = 0;  // cnt for next_seed
 
+  // /////////////////////////////////////////////
+  //  For Rep4
+  //  Pi holds ki--self, kj--next, kg--next next
+  //  ki is unknown to next party Pj
+  // //////////////////////////////////////////////
+  uint128_t next_next_seed_ = 0;
+  uint64_t r2_counter_ = 0;
+
  public:
   static constexpr const char* kBindName() { return "PrgState"; }
   static constexpr auto kAesType =
@@ -66,7 +74,7 @@ class PrgState : public State {
   // This correlation could be used to construct zero shares.
   //
   // Note: ignore_first, ignore_second is for perf improvement.
-  enum class GenPrssCtrl { Both, First, Second };
+  enum class GenPrssCtrl { Both, First, Second,  /* For Rep4 */ Third, All };
   std::pair<NdArrayRef, NdArrayRef> genPrssPair(FieldType field,
                                                 const Shape& shape,
                                                 GenPrssCtrl ctrl);
@@ -91,8 +99,53 @@ class PrgState : public State {
             kAesType, next_seed_, 0, r1_counter_, absl::MakeSpan(r1, numel));
         return;
       }
+      case GenPrssCtrl::Third:
+      case GenPrssCtrl::All: {
+        SPU_THROW("PrssPair has only 2 elements!");   
+        return;
+      }
     }
   }
+
+
+  // For Rep4
+  template <typename T>
+  void fillPrssTuple(T* r0, T* r1, T* r2, size_t numel, GenPrssCtrl ctrl) {
+    switch (ctrl) {
+      case GenPrssCtrl::First: {
+        r0_counter_ = yacl::crypto::FillPRand(
+            kAesType, self_seed_, 0, r0_counter_, absl::MakeSpan(r0, numel));
+        return;
+      }
+      case GenPrssCtrl::Second: {
+        r1_counter_ = yacl::crypto::FillPRand(
+            kAesType, next_seed_, 0, r1_counter_, absl::MakeSpan(r1, numel));
+        return;
+      }
+      case GenPrssCtrl::Both: {
+        r0_counter_ = yacl::crypto::FillPRand(
+            kAesType, self_seed_, 0, r0_counter_, absl::MakeSpan(r0, numel));
+        r1_counter_ = yacl::crypto::FillPRand(
+            kAesType, next_seed_, 0, r1_counter_, absl::MakeSpan(r1, numel));
+        return;
+      }
+      case GenPrssCtrl::Third: {
+        r2_counter_ = yacl::crypto::FillPRand(
+            kAesType, next_next_seed_, 0, r2_counter_, absl::MakeSpan(r2, numel));
+        return;
+      }
+      case GenPrssCtrl::All: {
+        r0_counter_ = yacl::crypto::FillPRand(
+            kAesType, self_seed_, 0, r0_counter_, absl::MakeSpan(r0, numel));
+        r1_counter_ = yacl::crypto::FillPRand(
+            kAesType, next_seed_, 0, r1_counter_, absl::MakeSpan(r1, numel));
+        r2_counter_ = yacl::crypto::FillPRand(
+            kAesType, next_next_seed_, 0, r2_counter_, absl::MakeSpan(r2, numel));    
+        return;
+      }
+    }
+  }
+
 
   template <typename T>
   void fillPubl(absl::Span<T> r) {

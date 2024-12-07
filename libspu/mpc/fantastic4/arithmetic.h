@@ -10,6 +10,7 @@
 
 namespace spu::mpc::fantastic4 {
 
+
 class A2P : public UnaryKernel {
  public:
   static constexpr const char* kBindName() { return "a2p"; }
@@ -145,4 +146,84 @@ class AddAA : public BinaryKernel {
 ////////////////////////////////////////////////////////////////////
 // multiply family
 ////////////////////////////////////////////////////////////////////
+class MulAP : public BinaryKernel {
+ public:
+  static constexpr const char* kBindName() { return "mul_ap"; }
+
+  ce::CExpr latency() const override { return ce::Const(0); }
+
+  ce::CExpr comm() const override { return ce::Const(0); }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                  const NdArrayRef& rhs) const override;
+};
+
+class MulAA : public BinaryKernel {
+ public:
+  static constexpr const char* kBindName() { return "mul_aa"; }
+
+  ce::CExpr latency() const override {
+    // 1 * rotate: 1
+    return ce::Const(1);
+  }
+
+  ce::CExpr comm() const override {
+    // todo:
+    // How to compute comm?
+    return 2 * ce::K();
+  }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                  const NdArrayRef& rhs) const override;
+};
+
+
+
+// ////////////////////////////////////////////////////////////////////
+// // matmul family
+// ////////////////////////////////////////////////////////////////////
+class MatMulAP : public MatmulKernel {
+ public:
+  static constexpr const char* kBindName() { return "mmul_ap"; }
+
+  ce::CExpr latency() const override { return ce::Const(0); }
+
+  ce::CExpr comm() const override { return ce::Const(0); }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                  const NdArrayRef& y) const override;
+};
+
+class MatMulAA : public MatmulKernel {
+ public:
+  static constexpr const char* kBindName() { return "mmul_aa"; }
+
+  ce::CExpr latency() const override {
+    // 1 * rotate: 1
+    return ce::Const(1);
+  }
+
+  ce::CExpr comm() const override {
+    // 1 * rotate: k
+    auto m = ce::Variable("m", "rows of lhs");
+    auto n = ce::Variable("n", "cols of rhs");
+    return ce::K() * m * n * 2;
+  }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                  const NdArrayRef& y) const override;
+};
+
+class LShiftA : public ShiftKernel {
+ public:
+  static constexpr const char* kBindName() { return "lshift_a"; }
+
+  ce::CExpr latency() const override { return ce::Const(0); }
+
+  ce::CExpr comm() const override { return ce::Const(0); }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                  const Sizes& bits) const override;
+};
+
 }

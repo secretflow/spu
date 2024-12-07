@@ -25,7 +25,7 @@ RuntimeConfig makeConfig(FieldType field) {
 //                      testing::Values(makeConfig(FieldType::FM32),    //
 //                                      makeConfig(FieldType::FM64),    //
 //                                      makeConfig(FieldType::FM128)),  //
-//                      testing::Values(3)),                            //
+//                      testing::Values(4)),                            //
 //     [](const testing::TestParamInfo<ApiTest::ParamType>& p) {
 //       return fmt::format("{}x{}", std::get<1>(p.param).field(),
 //                          std::get<2>(p.param));
@@ -37,7 +37,11 @@ INSTANTIATE_TEST_SUITE_P(
                      testing::Values(makeConfig(FieldType::FM32),    //
                                      makeConfig(FieldType::FM64),    //
                                      makeConfig(FieldType::FM128)),  //
-                     testing::Values(3)),                            //
+
+                    // /////////////////////////
+                    // npc = 4
+                    // ////////////////////////
+                     testing::Values(4)),                            //
     [](const testing::TestParamInfo<ArithmeticTest::ParamType>& p) {
       return fmt::format("{}x{}", std::get<1>(p.param).field(),
                          std::get<2>(p.param));
@@ -49,7 +53,7 @@ INSTANTIATE_TEST_SUITE_P(
 //                      testing::Values(makeConfig(FieldType::FM32),    //
 //                                      makeConfig(FieldType::FM64),    //
 //                                      makeConfig(FieldType::FM128)),  //
-//                      testing::Values(3)),                            //
+//                      testing::Values(4)),                            //
 //     [](const testing::TestParamInfo<BooleanTest::ParamType>& p) {
 //       return fmt::format("{}x{}", std::get<1>(p.param).field(),
 //                          std::get<2>(p.param));
@@ -61,7 +65,7 @@ INSTANTIATE_TEST_SUITE_P(
 //                      testing::Values(makeConfig(FieldType::FM32),    //
 //                                      makeConfig(FieldType::FM64),    //
 //                                      makeConfig(FieldType::FM128)),  //
-//                      testing::Values(3)),                            //
+//                      testing::Values(4)),                            //
 //     [](const testing::TestParamInfo<BooleanTest::ParamType>& p) {
 //       return fmt::format("{}x{}", std::get<1>(p.param).field(),
 //                          std::get<2>(p.param));

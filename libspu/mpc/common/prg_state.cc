@@ -28,6 +28,9 @@ PrgState::PrgState() {
 
   self_seed_ = 0;
   next_seed_ = 0;
+
+  // For Rep4
+  next_next_seed_ = 0;
 }
 
 PrgState::PrgState(const std::shared_ptr<yacl::link::Context>& lctx) {
@@ -52,13 +55,17 @@ PrgState::PrgState(const std::shared_ptr<yacl::link::Context>& lctx) {
   {
     self_seed_ = yacl::crypto::SecureRandSeed();
 
-    constexpr char kCommTag[] = "Random:PRSS";
+    // constexpr char kCommTag[] = "Random:PRSS";
 
     // send seed to prev party, receive seed from next party
     lctx->SendAsync(lctx->PrevRank(), yacl::SerializeUint128(self_seed_),
-                    kCommTag);
+                    "Random:PRSS next");
+    lctx->SendAsync(lctx->PrevRank(2), yacl::SerializeUint128(self_seed_),
+                    "Random:PRSS next next");                
     next_seed_ =
-        yacl::DeserializeUint128(lctx->Recv(lctx->NextRank(), kCommTag));
+        yacl::DeserializeUint128(lctx->Recv(lctx->NextRank(), "Random:PRSS next"));
+    next_next_seed_ =
+        yacl::DeserializeUint128(lctx->Recv(lctx->NextRank(2), "Random:PRSS next next"));
   }
 }
 
@@ -70,8 +77,10 @@ std::unique_ptr<State> PrgState::fork() {
 
   new_prg->priv_seed_ = yacl::crypto::SecureRandSeed();
 
-  fillPrssPair(&new_prg->self_seed_, &new_prg->next_seed_, 1,
-               PrgState::GenPrssCtrl::Both);
+  // fillPrssPair(&new_prg->self_seed_, &new_prg->next_seed_, 1,
+  //              PrgState::GenPrssCtrl::Both);
+  fillPrssTuple(&new_prg->self_seed_, &new_prg->next_seed_, &new_prg->next_next_seed_,  1,
+               PrgState::GenPrssCtrl::All);
 
   return new_prg;
 }
