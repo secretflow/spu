@@ -36,7 +36,7 @@ void regFantastic4Protocol(SPUContext* ctx,
   // register arithmetic & binary kernels
   ctx->prot()
       ->regKernel<
-          fantastic4::P2A, fantastic4::V2A, fantastic4::A2P, fantastic4::A2V,fantastic4::AddAA, fantastic4::AddAP, fantastic4::NegateA,fantastic4::MulAP, fantastic4::MulAA, fantastic4::MatMulAP, fantastic4::MatMulAA, fantastic4::LShiftA
+          fantastic4::P2A, fantastic4::V2A, fantastic4::A2P, fantastic4::A2V,fantastic4::AddAA, fantastic4::AddAP, fantastic4::NegateA,fantastic4::MulAP, fantastic4::MulAA, fantastic4::MatMulAP, fantastic4::MatMulAA, fantastic4::LShiftA, fantastic4::TruncAPr
           >();
 }
 

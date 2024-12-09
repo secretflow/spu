@@ -54,6 +54,7 @@ spu_cc_library(
         ":type",
         ":value",
         "//libspu/core:trace",
+        "//libspu/mpc:ab_api",
         "//libspu/mpc/common:communicator",
         "//libspu/mpc/common:prg_state",
     ],

@@ -10,6 +10,7 @@
 #include "libspu/mpc/common/pv2k.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
+#include "libspu/mpc/ab_api.h"
 
 namespace spu::mpc::fantastic4 {
 
@@ -20,6 +21,11 @@ namespace spu::mpc::fantastic4 {
 
 namespace {
   // Sender and Receiver jointly input a X
+  static NdArrayRef wrap_mul_aa(SPUContext* ctx, const NdArrayRef& x,
+                              const NdArrayRef& y) {
+    SPU_ENFORCE(x.shape() == y.shape());
+    return UnwrapValue(mul_aa(ctx, WrapValue(x), WrapValue(y)));
+  }
 
   size_t PrevRank(size_t rank, size_t world_size){
     return (rank + world_size -1) % world_size;
@@ -717,13 +723,13 @@ NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
         a[4][idx] = _lhs[idx][0] * _rhs[idx][2] + _lhs[idx][2] * _rhs[idx][0];                    // xi*yg + xg*yi
     });
 
-    pforeach(0, lhs.numel(), [&](int64_t idx) {
-        printf("My rank = %zu, Current input[%ld], the shares:", rank, idx+1);
-        for(int64_t i =0; i<5;i++){
-          printf("a[%ld] = %llu  ", i, (unsigned long long)a[i][idx]);
-        }
-        printf("\n");
-    });
+    // pforeach(0, lhs.numel(), [&](int64_t idx) {
+    //     printf("My rank = %zu, Current input[%ld], the shares:", rank, idx+1);
+    //     for(int64_t i =0; i<5;i++){
+    //       printf("a[%ld] = %llu  ", i, (unsigned long long)a[i][idx]);
+    //     }
+    //     printf("\n");
+    // });
 
     
 
@@ -863,6 +869,462 @@ NdArrayRef LShiftA::proc(KernelEvalContext*, const NdArrayRef& in,
     return out;
   });
 }
+
+void printBinary(unsigned long long x, size_t k) {
+    for (int i = k - 1; i >= 0; --i) {
+        unsigned long long bit = (x >> i) & 1ULL;
+        printf("%llu", bit);
+    }
+}
+
+NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t bits,
+                  SignType sign) const {
+  (void)sign;  // TODO: optimize me.
+
+  const auto field = in.eltype().as<Ring2k>()->field();
+  const size_t k = SizeOf(field) * 8;
+  auto* prg_state = ctx->getState<PrgState>();
+  auto* comm = ctx->getState<Communicator>();
+  auto rank = comm->getRank();
+
+
+
+  return DISPATCH_ALL_FIELDS(field, [&]() {
+    using el_t = ring2k_t;
+    using shr_t = std::array<el_t, 3>;
+
+    NdArrayRef out(makeType<AShrTy>(field), in.shape());
+    NdArrayView<shr_t> _out(out);
+    NdArrayView<shr_t> _in(in);
+
+    NdArrayRef rb_shr(makeType<AShrTy>(field), in.shape());
+    NdArrayView<shr_t> _rb_shr(rb_shr);
+
+    NdArrayRef rc_shr(makeType<AShrTy>(field), in.shape());
+    NdArrayView<shr_t> _rc_shr(rc_shr);
+
+    NdArrayRef masked_input(makeType<AShrTy>(field), in.shape());
+    NdArrayView<shr_t> _masked_input(masked_input);
+
+    NdArrayRef sb_shr(makeType<AShrTy>(field), in.shape());
+    NdArrayView<shr_t> _sb_shr(sb_shr);
+    NdArrayRef sc_shr(makeType<AShrTy>(field), in.shape());
+    NdArrayView<shr_t> _sc_shr(sc_shr);
+
+    NdArrayRef overflow(makeType<AShrTy>(field), in.shape());
+    NdArrayView<shr_t> _overflow(overflow);
+
+    pforeach(0, out.numel(), [&](int64_t idx) {
+          _out[idx][0] = 0;
+          _out[idx][1] = 0;
+          _out[idx][2] = 0;
+          _rb_shr[idx][0] = 0;
+          _rb_shr[idx][1] = 0;
+          _rb_shr[idx][2] = 0;
+          _rc_shr[idx][0] = 0;
+          _rc_shr[idx][1] = 0;
+          _rc_shr[idx][2] = 0;
+
+          _sb_shr[idx][0] = 0;
+          _sb_shr[idx][1] = 0;
+          _sb_shr[idx][2] = 0;
+          _sc_shr[idx][0] = 0;
+          _sc_shr[idx][1] = 0;
+          _sc_shr[idx][2] = 0;
+
+    });
+    
+
+    if(rank == (size_t)0){ 
+        // -------------------------------------
+        // Step 1: Generate r and rb, rc
+        // -------------------------------------
+        // locally compute PRG[1] (unknown to P2), PRG[2] (unknown to P3)
+        
+        // std::vector<el_t> r0(output.numel());
+        std::vector<el_t> r1(out.numel());
+        std::vector<el_t> r2(out.numel());
+
+        prg_state->fillPrssTuple<el_t>(nullptr, r1.data(), nullptr , r1.size(),
+                                PrgState::GenPrssCtrl::Second);
+        prg_state->fillPrssTuple<el_t>(nullptr, nullptr, r2.data() ,r2.size(),
+                                PrgState::GenPrssCtrl::Third);
+
+        std::vector<el_t> r(out.numel());
+        std::vector<el_t> rb(out.numel());
+        std::vector<el_t> rc(out.numel());
+        
+        printf("My rank = %zu , numel = %lu:", rank, out.numel());
+        
+        pforeach(0, out.numel(), [&](int64_t idx) {
+          // r = r_{k-1}......r_{0}
+          r[idx] = r1[idx] + r2[idx];
+          // rb = r >> k-1
+          rb[idx] = r[idx] >> (k-1);
+          // rc = r_{k-2}.....r_{m}
+          rc[idx] = (r[idx] << 1) >> (bits + 1);
+
+          printf("in[%ld] = (%llu, %llu, %llu), binary: \n", idx, (unsigned long long)_in[idx][0], (unsigned long long)_in[idx][1], (unsigned long long)_in[idx][2]); 
+          printBinary((unsigned long long)_in[idx][0], k);
+          printf("\n");
+          printf("r = ");
+          printBinary((unsigned long long)r[idx], k);
+          // printf("\n rb = ");
+          // printBinary((unsigned long long)rb[idx], k);
+
+          printf("\n r+x = %llu = ", (unsigned long long)(_in[idx][0] + r[idx]));
+          printBinary((unsigned long long)((_in[idx][0] + r[idx])), k);
+
+          // printf("\n rc = ");
+          // printBinary((unsigned long long)rc[idx], k);
+          // printf("r[%ld] = %llu, MSB = %llu, rc = %llu)", idx, (unsigned long long)r[idx], (unsigned long long)rb[idx], (unsigned long long)rc[idx]); 
+        });
+        // -------------------------------------
+        // Step 2: Generate the share of rb, rc
+        // -------------------------------------
+        JointInputArith(ctx, rb, rb_shr, 0, 1, 3, 2);
+        JointInputArith(ctx, rc, rc_shr, 0, 1, 3, 2);
+
+        // pforeach(0, out.numel(), [&](int64_t idx) {
+        //   printf("MSB = %llu, share = (%llu, %llu, %llu))", (unsigned long long)rb[idx], (unsigned long long)_rb_shr[idx][0], (unsigned long long)_rb_shr[idx][1], (unsigned long long)_rb_shr[idx][2]); 
+        // });
+
+
+        // -------------------------------------
+        // Step 3: compute [x] + [r]
+        //          [r] = r0 + r1 + r2 + r3, only r1 and r2 are non-zero
+        // -------------------------------------
+        
+        pforeach(0, out.numel(), [&](int64_t idx) {
+          _masked_input[idx][0] = _in[idx][0]; // r0 = 0
+          _masked_input[idx][1] = _in[idx][1] + r1[idx];
+          _masked_input[idx][2] = _in[idx][2] + r2[idx];
+          printf("masked_input[%ld] = (%llu, %llu, %llu) \n", idx, (unsigned long long)_masked_input[idx][0], (unsigned long long)_masked_input[idx][1], (unsigned long long)_masked_input[idx][2]); 
+          printf("rc_shr[%ld] = (%llu, %llu, %llu) \n", idx, (unsigned long long)_rc_shr[idx][0], (unsigned long long)_rc_shr[idx][1], (unsigned long long)_rc_shr[idx][2]); 
+          
+        });
+
+        // -------------------------------------
+        // Step 4: Let P2 and P3 reconstruct s = x + r
+        //         by P1 sends s1 to P2
+        //            P2 sends s2 to P3
+        // -------------------------------------
+
+
+        // -------------------------------------
+        // Step 5: compute sb = s{k-1} and sc = s{k-2}.....s{m}
+        // -------------------------------------
+        std::vector<el_t> sb(out.numel());
+        std::vector<el_t> sc(out.numel());
+        JointInputArith(ctx, sb, sb_shr, 2, 3, 0, 1);
+        JointInputArith(ctx, sc, sc_shr, 2, 3, 0, 1);
+
+        // -------------------------------------
+        // Step 6: compute sb = s{k-1} and sc = s{k-2}.....s{m}
+        // -------------------------------------
+        auto sb_mul_rb = wrap_mul_aa(ctx->sctx(), sb_shr, rb_shr);
+        NdArrayView<shr_t> _sb_mul_rb(sb_mul_rb);
+        pforeach(0, out.numel(), [&](int64_t idx) {
+          _overflow[idx][0] = _rb_shr[idx][0] + _sb_shr[idx][0] - 2*_sb_mul_rb[idx][0];
+          _overflow[idx][1] = _rb_shr[idx][1] + _sb_shr[idx][1] - 2*_sb_mul_rb[idx][1];
+          _overflow[idx][2] = _rb_shr[idx][2] + _sb_shr[idx][2] - 2*_sb_mul_rb[idx][2];
+          printf("overflow[%ld] = (%llu, %llu, %llu) \n", idx, (unsigned long long)_overflow[idx][0], (unsigned long long)_overflow[idx][1], (unsigned long long)_overflow[idx][2]); 
+          
+          _out[idx][0] = _sc_shr[idx][0] - _rc_shr[idx][0] + (_overflow[idx][0] << (k - bits - 1));
+          _out[idx][1] = _sc_shr[idx][1] - _rc_shr[idx][1] + (_overflow[idx][1] << (k - bits - 1));
+          _out[idx][2] = _sc_shr[idx][2] - _rc_shr[idx][2] + (_overflow[idx][2] << (k - bits - 1));
+
+          printf("out[%ld] = (%llu, %llu, %llu) \n", idx, (unsigned long long)_out[idx][0], (unsigned long long)_out[idx][1], (unsigned long long)_out[idx][2]); 
+          
+        });
+    }
+
+    if(rank == (size_t)1){
+        // -------------------------------------
+        // Step 1: Generate r and rb, rc
+        // -------------------------------------
+        std::vector<el_t> r1(out.numel());
+        std::vector<el_t> r2(out.numel());
+        // std::vector<el_t> r3(output.numel());
+        prg_state->fillPrssTuple<el_t>(r1.data(), nullptr, nullptr , r1.size(),
+                                PrgState::GenPrssCtrl::First);
+        prg_state->fillPrssTuple<el_t>(nullptr, r2.data(), nullptr, r2.size(),
+                                PrgState::GenPrssCtrl::Second);
+
+        std::vector<el_t> r(out.numel());
+        std::vector<el_t> rb(out.numel());
+        std::vector<el_t> rc(out.numel());
+        
+        printf("My rank = %zu, Init output:", rank);
+        
+        pforeach(0, out.numel(), [&](int64_t idx) {
+          // r = r_{k-1}......r_{0}
+          r[idx] = r1[idx] + r2[idx];
+          // rb = r >> k-1
+          rb[idx] = r[idx] >> (k-1);
+          // rc = r_{k-2}.....r_{m}
+          rc[idx] = (r[idx] << 1) >> (bits + 1);
+          
+          // printf("r = ");
+          // printBinary((unsigned long long)r[idx], k);
+          // printf("\n rb = ");
+          // printBinary((unsigned long long)rb[idx], k);
+          // printf("\n rc = ");
+          // printBinary((unsigned long long)rc[idx], k);
+          printf("r[%ld] = %llu, MSB = %llu, rc = %llu) \n", idx, (unsigned long long)r[idx], (unsigned long long)rb[idx], (unsigned long long)rc[idx]); 
+        });
+
+        // -------------------------------------
+        // Step 2: Generate the share of rb, rc
+        // -------------------------------------
+        JointInputArith(ctx, rb, rb_shr, 0, 1, 3, 2);
+        JointInputArith(ctx, rc, rc_shr, 0, 1, 3, 2);
+        // pforeach(0, out.numel(), [&](int64_t idx) {
+        //   printf("MSB = %llu, share = (%llu, %llu, %llu))", (unsigned long long)rb[idx], (unsigned long long)_rb_shr[idx][0], (unsigned long long)_rb_shr[idx][1], (unsigned long long)_rb_shr[idx][2]); 
+        // });
+
+        // -------------------------------------
+        // Step 3: compute [x] + [r]
+        //          [r] = r0 + r1 + r2 + r3, only r1 and r2 are non-zero
+        // -------------------------------------
+        std::vector<el_t> masked_input_shr_1(out.numel());
+        pforeach(0, out.numel(), [&](int64_t idx) {
+          _masked_input[idx][0] = _in[idx][0] + r1[idx];
+          _masked_input[idx][1] = _in[idx][1] + r2[idx];
+          _masked_input[idx][2] = _in[idx][2];
+          masked_input_shr_1[idx] = _masked_input[idx][0];
+          printf("masked_input[%ld] = (%llu, %llu, %llu) \n", idx, (unsigned long long)_masked_input[idx][0], (unsigned long long)_masked_input[idx][1], (unsigned long long)_masked_input[idx][2]); 
+          printf("rc_shr[%ld] = (%llu, %llu, %llu) \n", idx, (unsigned long long)_rc_shr[idx][0], (unsigned long long)_rc_shr[idx][1], (unsigned long long)_rc_shr[idx][2]); 
+          
+        });
+
+        // -------------------------------------
+        // Step 4: Let P2 and P3 reconstruct s = x + r
+        //         by P1 sends s1 to P2
+        //            P2 sends s2 to P3
+        // -------------------------------------
+        comm->sendAsync<el_t>(2, masked_input_shr_1, "masked shr 1"); 
+
+        // -------------------------------------
+        // Step 5: compute sb = s{k-1} and sc = s{k-2}.....s{m}
+        // -------------------------------------
+        std::vector<el_t> sb(out.numel());
+        std::vector<el_t> sc(out.numel());
+        JointInputArith(ctx, sb, sb_shr, 2, 3, 0, 1);
+        JointInputArith(ctx, sc, sc_shr, 2, 3, 0, 1);
+
+        // -------------------------------------
+        // Step 6: compute sb = s{k-1} and sc = s{k-2}.....s{m}
+        // -------------------------------------
+        auto sb_mul_rb = wrap_mul_aa(ctx->sctx(), sb_shr, rb_shr);
+        NdArrayView<shr_t> _sb_mul_rb(sb_mul_rb);
+        pforeach(0, out.numel(), [&](int64_t idx) {
+          _overflow[idx][0] = _rb_shr[idx][0] + _sb_shr[idx][0] - 2*_sb_mul_rb[idx][0];
+          _overflow[idx][1] = _rb_shr[idx][1] + _sb_shr[idx][1] - 2*_sb_mul_rb[idx][1];
+          _overflow[idx][2] = _rb_shr[idx][2] + _sb_shr[idx][2] - 2*_sb_mul_rb[idx][2];
+          printf("overflow[%ld] = (%llu, %llu, %llu) \n", idx, (unsigned long long)_overflow[idx][0], (unsigned long long)_overflow[idx][1], (unsigned long long)_overflow[idx][2]); 
+          
+          _out[idx][0] = _sc_shr[idx][0] - _rc_shr[idx][0] + (_overflow[idx][0] << (k - bits - 1));
+          _out[idx][1] = _sc_shr[idx][1] - _rc_shr[idx][1] + (_overflow[idx][1] << (k - bits - 1));
+          _out[idx][2] = _sc_shr[idx][2] - _rc_shr[idx][2] + (_overflow[idx][2] << (k - bits - 1));
+          printf("out[%ld] = (%llu, %llu, %llu) \n", idx, (unsigned long long)_out[idx][0], (unsigned long long)_out[idx][1], (unsigned long long)_out[idx][2]); 
+          
+        });  
+    }
+
+    if(rank == (size_t)2){
+        std::vector<el_t> r2(out.numel());
+        // std::vector<el_t> r3(out.numel());
+        // std::vector<el_t> r0(out.numel());
+        std::vector<el_t> rb(out.numel());
+        std::vector<el_t> rc(out.numel());
+        prg_state->fillPrssTuple<el_t>(r2.data(), nullptr, nullptr, r2.size(),
+                                PrgState::GenPrssCtrl::First);
+        
+        // -------------------------------------
+        // Step 2: Generate the share of rb, rc
+        // -------------------------------------
+        JointInputArith(ctx, rb, rb_shr, 0, 1, 3, 2);
+        JointInputArith(ctx, rc, rc_shr, 0, 1, 3, 2);
+
+        // printf("My rank = %zu, Init output:", rank);
+        // pforeach(0, out.numel(), [&](int64_t idx) {
+
+        //   printf("MSB = %llu, share = (%llu, %llu, %llu))", (unsigned long long)rb[idx], (unsigned long long)_rb_shr[idx][0], (unsigned long long)_rb_shr[idx][1], (unsigned long long)_rb_shr[idx][2]); 
+        // });       
+
+        // -------------------------------------
+        // Step 3: compute [x] + [r]
+        //          [r] = r0 + r1 + r2 + r3, only r1 and r2 are non-zero
+        // -------------------------------------
+        std::vector<el_t> masked_input_shr_2(out.numel());
+        pforeach(0, out.numel(), [&](int64_t idx) {
+          _masked_input[idx][0] = _in[idx][0] + r2[idx];
+          _masked_input[idx][1] = _in[idx][1];
+          _masked_input[idx][2] = _in[idx][2];
+
+          masked_input_shr_2[idx] = _masked_input[idx][0];
+        });
+
+        // -------------------------------------
+        // Step 4: Let P2 and P3 reconstruct s = x + r
+        //         by P1 sends s1 to P2
+        //            P2 sends s2 to P3
+        // -------------------------------------
+        comm->sendAsync<el_t>(3, masked_input_shr_2, "masked shr 2");
+        auto missing_shr = comm->recv<el_t>(1, "masked shr 1");
+        std::vector<el_t> s(out.numel());
+        pforeach(0, out.numel(), [&](int64_t idx) {
+          s[idx] = _masked_input[idx][0] + _masked_input[idx][1] + _masked_input[idx][2] + missing_shr[idx];
+        });
+
+        // -------------------------------------
+        // Step 5: compute sb = s{k-1} and sc = s{k-2}.....s{m}
+        // -------------------------------------
+        std::vector<el_t> sb(out.numel());
+        std::vector<el_t> sc(out.numel());
+        pforeach(0, out.numel(), [&](int64_t idx) {
+          sb[idx] = s[idx] >> (k-1);
+          sc[idx] = (s[idx] << 1) >> (bits + 1);
+        });
+        JointInputArith(ctx, sb, sb_shr, 2, 3, 0, 1);
+        JointInputArith(ctx, sc, sc_shr, 2, 3, 0, 1);
+
+        // -------------------------------------
+        // Step 6: compute sb = s{k-1} and sc = s{k-2}.....s{m}
+        // -------------------------------------
+        auto sb_mul_rb = wrap_mul_aa(ctx->sctx(), sb_shr, rb_shr);
+        NdArrayView<shr_t> _sb_mul_rb(sb_mul_rb);
+        pforeach(0, out.numel(), [&](int64_t idx) {
+          _overflow[idx][0] = _rb_shr[idx][0] + _sb_shr[idx][0] - 2*_sb_mul_rb[idx][0];
+          _overflow[idx][1] = _rb_shr[idx][1] + _sb_shr[idx][1] - 2*_sb_mul_rb[idx][1];
+          _overflow[idx][2] = _rb_shr[idx][2] + _sb_shr[idx][2] - 2*_sb_mul_rb[idx][2];
+
+          _out[idx][0] = _sc_shr[idx][0] - _rc_shr[idx][0] + (_overflow[idx][0] << (k - bits - 1));
+          _out[idx][1] = _sc_shr[idx][1] - _rc_shr[idx][1] + (_overflow[idx][1] << (k - bits - 1));
+          _out[idx][2] = _sc_shr[idx][2] - _rc_shr[idx][2] + (_overflow[idx][2] << (k - bits - 1));
+        });                 
+    }
+
+    if(rank == (size_t)3){
+        // std::vector<el_t> r3(out.numel());
+        // std::vector<el_t> r0(out.numel());
+        std::vector<el_t> r1(out.numel());
+        std::vector<el_t> rb(out.numel());
+        std::vector<el_t> rc(out.numel());
+        prg_state->fillPrssTuple<el_t>(nullptr, nullptr, r1.data(), r1.size(),
+                                PrgState::GenPrssCtrl::Third);
+
+        // -------------------------------------
+        // Step 2: Generate the share of rb, rc
+        // -------------------------------------
+        JointInputArith(ctx, rb, rb_shr, 0, 1, 3, 2);
+        JointInputArith(ctx, rc, rc_shr, 0, 1, 3, 2);
+
+        // printf("My rank = %zu, Init output:", rank);
+        // pforeach(0, out.numel(), [&](int64_t idx) {
+
+        //   printf("MSB = %llu, share = (%llu, %llu, %llu))", (unsigned long long)rb[idx], (unsigned long long)_rb_shr[idx][0], (unsigned long long)_rb_shr[idx][1], (unsigned long long)_rb_shr[idx][2]); 
+        // });
+
+        // -------------------------------------
+        // Step 3: compute [x] + [r]
+        //          [r] = r0 + r1 + r2 + r3, only r1 and r2 are non-zero
+        // -------------------------------------
+        pforeach(0, out.numel(), [&](int64_t idx) {
+          _masked_input[idx][0] = _in[idx][0];
+          _masked_input[idx][1] = _in[idx][1];
+          _masked_input[idx][2] = _in[idx][2] + r1[idx];
+        });
+
+        // -------------------------------------
+        // Step 4: Let P2 and P3 reconstruct s = x + r
+        //         by P1 sends s1 to P2
+        //            P2 sends s2 to P3
+        // -------------------------------------
+        auto missing_shr = comm->recv<el_t>(2, "masked shr 2");
+        std::vector<el_t> s(out.numel());
+        pforeach(0, out.numel(), [&](int64_t idx) {
+          s[idx] = _masked_input[idx][0] + _masked_input[idx][1] + _masked_input[idx][2] + missing_shr[idx];
+        });
+
+        // -------------------------------------
+        // Step 5: compute sb = s{k-1} and sc = s{k-2}.....s{m}
+        // -------------------------------------
+        std::vector<el_t> sb(out.numel());
+        std::vector<el_t> sc(out.numel());
+        pforeach(0, out.numel(), [&](int64_t idx) {
+          sb[idx] = s[idx] >> (k-1);
+          sc[idx] = (s[idx] << 1) >> (bits + 1);
+        });
+        JointInputArith(ctx, sb, sb_shr, 2, 3, 0, 1);
+        JointInputArith(ctx, sc, sc_shr, 2, 3, 0, 1);
+
+        // -------------------------------------
+        // Step 6: compute sb = s{k-1} and sc = s{k-2}.....s{m}
+        // -------------------------------------
+        auto sb_mul_rb = wrap_mul_aa(ctx->sctx(), sb_shr, rb_shr);
+        NdArrayView<shr_t> _sb_mul_rb(sb_mul_rb);
+        pforeach(0, out.numel(), [&](int64_t idx) {
+          _overflow[idx][0] = _rb_shr[idx][0] + _sb_shr[idx][0] - 2*_sb_mul_rb[idx][0];
+          _overflow[idx][1] = _rb_shr[idx][1] + _sb_shr[idx][1] - 2*_sb_mul_rb[idx][1];
+          _overflow[idx][2] = _rb_shr[idx][2] + _sb_shr[idx][2] - 2*_sb_mul_rb[idx][2];
+
+          _out[idx][0] = _sc_shr[idx][0] - _rc_shr[idx][0] + (_overflow[idx][0] << (k - bits - 1));
+          _out[idx][1] = _sc_shr[idx][1] - _rc_shr[idx][1] + (_overflow[idx][1] << (k - bits - 1));
+          _out[idx][2] = _sc_shr[idx][2] - _rc_shr[idx][2] + (_overflow[idx][2] << (k - bits - 1));
+        });                                    
+    }
+
+
+
+
+
+    return out;
+  });
+                  
+
+
+  // auto r_future = std::async([&] {
+  //   return prg_state->genPrssPair(field, in.shape(),
+  //                                 PrgState::GenPrssCtrl::Both);
+  // });
+
+  // // in
+  // const auto& x1 = getFirstShare(in);
+  // const auto& x2 = getSecondShare(in);
+
+  // const auto kComm = x1.elsize() * x1.numel();
+
+  // // we only record the maximum communication, we need to manually add comm
+  // comm->addCommStatsManually(1, kComm);  // comm => 1, 2
+
+  // // ret
+  // const Sizes shift_bit = {static_cast<int64_t>(bits)};
+  // switch (comm->getRank()) {
+  //   case 0: {
+  //     const auto z1 = ring_arshift(x1, shift_bit);
+  //     const auto z2 = comm->recv(1, x1.eltype(), kBindName());
+  //     return makeAShare(z1, z2, field);
+  //   }
+
+  //   case 1: {
+  //     auto r1 = r_future.get().second;
+  //     const auto z1 = ring_sub(ring_arshift(ring_add(x1, x2), shift_bit), r1);
+  //     comm->sendAsync(0, z1, kBindName());
+  //     return makeAShare(z1, r1, field);
+  //   }
+
+  //   case 2: {
+  //     const auto z2 = ring_arshift(x2, shift_bit);
+  //     return makeAShare(r_future.get().first, z2, field);
+  //   }
+
+  //   default:
+  //     SPU_THROW("Party number exceeds 3!");
+  // }
+}
+
 
 
 // NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,

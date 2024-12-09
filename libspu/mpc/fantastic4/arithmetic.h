@@ -226,4 +226,22 @@ class LShiftA : public ShiftKernel {
                   const Sizes& bits) const override;
 };
 
+class TruncAPr : public TruncAKernel {
+ public:
+  static constexpr const char* kBindName() { return "trunc_a"; }
+
+  ce::CExpr latency() const override { return ce::Const(3); }
+
+  ce::CExpr comm() const override { return 4 * ce::K(); }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t bits,
+                  SignType sign) const override;
+
+  bool hasMsbError() const override { return false; }
+
+  TruncLsbRounding lsbRounding() const override {
+    return TruncLsbRounding::Probabilistic;
+  }
+};
+
 }
