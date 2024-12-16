@@ -1,5 +1,5 @@
 pandas>=1.4.2
-flax<0.10.0
+flax<0.10.3
 scikit-learn<1.6.0
 # for tests
 absl-py>=1.1.0
