@@ -47,28 +47,28 @@ INSTANTIATE_TEST_SUITE_P(
                          std::get<2>(p.param));
     });
 
-// INSTANTIATE_TEST_SUITE_P(
-//     Fantastic4, BooleanTest,
-//     testing::Combine(testing::Values(makeFantastic4Protocol),              //
-//                      testing::Values(makeConfig(FieldType::FM32),    //
-//                                      makeConfig(FieldType::FM64),    //
-//                                      makeConfig(FieldType::FM128)),  //
-//                      testing::Values(4)),                            //
-//     [](const testing::TestParamInfo<BooleanTest::ParamType>& p) {
-//       return fmt::format("{}x{}", std::get<1>(p.param).field(),
-//                          std::get<2>(p.param));
-//     });
+INSTANTIATE_TEST_SUITE_P(
+    Fantastic4, BooleanTest,
+    testing::Combine(testing::Values(makeFantastic4Protocol),              //
+                     testing::Values(makeConfig(FieldType::FM32),    //
+                                     makeConfig(FieldType::FM64),    //
+                                     makeConfig(FieldType::FM128)),  //
+                     testing::Values(4)),                            //
+    [](const testing::TestParamInfo<BooleanTest::ParamType>& p) {
+      return fmt::format("{}x{}", std::get<1>(p.param).field(),
+                         std::get<2>(p.param));
+    });
 
-// INSTANTIATE_TEST_SUITE_P(
-//     Fantastic4, ConversionTest,
-//     testing::Combine(testing::Values(makeFantastic4Protocol),              //
-//                      testing::Values(makeConfig(FieldType::FM32),    //
-//                                      makeConfig(FieldType::FM64),    //
-//                                      makeConfig(FieldType::FM128)),  //
-//                      testing::Values(4)),                            //
-//     [](const testing::TestParamInfo<BooleanTest::ParamType>& p) {
-//       return fmt::format("{}x{}", std::get<1>(p.param).field(),
-//                          std::get<2>(p.param));
-//     });
+INSTANTIATE_TEST_SUITE_P(
+    Fantastic4, ConversionTest,
+    testing::Combine(testing::Values(makeFantastic4Protocol),              //
+                     testing::Values(makeConfig(FieldType::FM32),    //
+                                     makeConfig(FieldType::FM64),    //
+                                     makeConfig(FieldType::FM128)),  //
+                     testing::Values(4)),                            //
+    [](const testing::TestParamInfo<BooleanTest::ParamType>& p) {
+      return fmt::format("{}x{}", std::get<1>(p.param).field(),
+                         std::get<2>(p.param));
+    });
 
 }  // namespace spu::mpc::test

@@ -39,147 +39,6 @@ namespace {
     return offset;
   }
 
-  // template <typename el_t>
-  // NdArrayRef JointInputArith(KernelEvalContext* ctx, const std::vector<el_t>& input, FieldType field, Shape shape, size_t sender, size_t backup, size_t receiver, size_t outsider){
-  //   auto* comm = ctx->getState<Communicator>();
-  //   size_t world_size =  comm->getWorldSize();
-  //   auto* prg_state = ctx->getState<PrgState>();
-  //   auto myrank = comm->getRank();
-    
-  //   // SPU_ENFORCE_EQ(input.size(), output.numel());
-
-    
-  //   using shr_t = std::array<el_t, 3>;
-  //   NdArrayRef output(makeType<AShrTy>(field), shape);
-  //   NdArrayView<shr_t> _out(output);
-  //   pforeach(0, output.numel(), [&](int64_t idx) {
-  //         _out[idx][0] = 0;
-  //         _out[idx][1] = 0;
-  //         _out[idx][2] = 0;
-  //   });
-  //   pforeach(0, output.numel(), [&](int64_t idx) {
-  //     if(myrank == 0){
-  //       printf("My rank = %zu, init output shares:", myrank);
-  //       for(int64_t i =0; i<3;i++){
-          
-  //         printf("output[%ld] = %llu  ", i, (unsigned long long)_out[idx][i]);
-  //       }
-  //       printf("\n");
-  //     }
-  //   });
-    
-  //   // Receiver's Previous Party Rank
-  //   // The mask corresponds to the prev party of receiver, receiver doesn't have the correpsonding PRG of its prev party
-  //   size_t receiver_prev_rank = PrevRank(receiver, world_size);
-
-  //   // My offset from the receiver_prev_rank. 
-  //   // 0- i'm the receiver_prev_rank
-  //   // 1- i'm prev/next party of receiver_prev_rank
-  //   // 2- next next
-  //   size_t offset_from_receiver_prev = OffsetRank(myrank, receiver_prev_rank, world_size);
-  //   // size_t offset_from_receiver = OffsetRank(myrank, receiver, world_size);
-  //   size_t offset_from_outsider_prev = OffsetRank(myrank, (outsider + 4 - 1)%4 , world_size);
-
-  //   // printf("My rank = %zu, sender_rank = %zu, receiver_rank = %zu, receiver_prev = %zu, offset_from_recv_prev = %zu, offset_from_outsider_prev = %zu \n", myrank, sender, receiver, receiver_prev_rank, offset_from_receiver_prev, offset_from_outsider_prev);
-  //   if(myrank != receiver){
-  //     // Non-Interactive Random Masks Generation.
-  //     std::vector<el_t> r(output.numel());
-
-  //     if(offset_from_receiver_prev == 0){
-  //         // should use PRG[0]
-  //         prg_state->fillPrssTuple<el_t>(r.data(), nullptr, nullptr , r.size(),
-  //                             PrgState::GenPrssCtrl::First);
-  //     }
-  //     if(offset_from_receiver_prev == 1){
-  //         // should use PRG[1]
-  //         prg_state->fillPrssTuple<el_t>(nullptr, r.data(), nullptr , r.size(),
-  //                             PrgState::GenPrssCtrl::Second);
-  //     }
-  //     if(offset_from_receiver_prev == 2){
-  //         // should use PRG[2]
-  //         prg_state->fillPrssTuple<el_t>(nullptr, nullptr, r.data(), r.size(),
-  //                             PrgState::GenPrssCtrl::Third);
-  //     }
-
-  //     // For sender,backup,outsider
-  //     // the corresponding share is set to r
-  //     pforeach(0, output.numel(), [&](int64_t idx) {
-  //         _out[idx][offset_from_receiver_prev] += r[idx];
-  //         // printf("My rank = %zu, out[%zu] = %llu \n", myrank, offset_from_receiver_prev, (unsigned long long)_out[idx][offset_from_receiver_prev]);
-  //         // printf("My rank = %zu, sender_rank = %zu, receiver_rank = %zu, receiver_prev = %zu, offset_from_recv_prev = %zu, offset_from_outsider_prev = %zu, x = %llu, r = %llu, x-r = %llu \n", myrank, sender, receiver, receiver_prev_rank, offset_from_receiver_prev, offset_from_outsider_prev);
-    
-  //     }); 
-  //     pforeach(0, output.numel(), [&](int64_t idx) {
-  //     if(myrank == 0){
-  //       printf("My rank = %zu, after generate r and set r %llu:", myrank, (unsigned long long)r[idx]);
-  //       for(int64_t i =0; i<3;i++){
-          
-  //         printf("output[%ld] = %llu  ", i, (unsigned long long)_out[idx][i]);
-  //       }
-  //       printf("\n");
-  //     }
-  //     });
-  //     if(myrank != outsider){
-
-  //       std::vector<el_t> input_minus_r(output.numel());
-
-  //       // For sender, backup
-  //       // compute and set masked input x-r
-  //       pforeach(0, output.numel(), [&](int64_t idx) {
-  //         input_minus_r[idx] = (input[idx] - r[idx]);
-  //         _out[idx][offset_from_outsider_prev] +=  input_minus_r[idx];
-  //         // printf("My rank = %zu, out[%zu] = %llu \n", myrank, offset_from_outsider_prev, (unsigned long long)_out[idx][offset_from_outsider_prev]);
-    
-  //         // printf("My rank = %zu, sender_rank = %zu, receiver_rank = %zu, receiver_prev = %zu, offset_from_recv_prev = %zu, offset_from_outsider_prev = %zu, x = %llu, r = %llu, x-r = %llu \n", myrank, sender, receiver, receiver_prev_rank, offset_from_receiver_prev, offset_from_outsider_prev, (unsigned long long)input[idx], (unsigned long long)r[idx], (unsigned long long)input_minus_r[idx]);
-    
-  //       }); 
-  //       pforeach(0, output.numel(), [&](int64_t idx) {
-  //         if(myrank == 0){
-  //           printf("My rank = %zu, after compute x-r and set:", myrank);
-  //           for(int64_t i =0; i<3;i++){
-              
-  //             printf("output[%ld] = %llu  ", i, (unsigned long long)_out[idx][i]);
-  //           }
-  //           printf("\n");
-  //         }
-  //       });
-  //       // Sender send x-r to receiver
-  //       if(myrank == sender) {
-  //         comm->sendAsync<el_t>(receiver, input_minus_r, "Joint Input");
-  //       }
-
-  //       // Backup update x-r for sender-to-receiver channel
-  //       if(myrank == backup) {
-  //         // Todo:
-  //         // MAC update input_minus_r
-  //       }
-  //     }
-  //   }
-
-  //   if (myrank == receiver) {
-  //     auto input_minus_r = comm->recv<el_t>(sender, "Joint Input");
-  //     pforeach(0, output.numel(), [&](int64_t idx) {
-  //         _out[idx][offset_from_outsider_prev] += input_minus_r[idx];
-  //     }); 
-
-  //     // Todo: 
-  //     // Mac update sender-backup channel
-  //   }
-  //   pforeach(0, output.numel(), [&](int64_t idx) {
-  //     if(myrank == 0){
-  //       printf("My rank = %zu, Current input[%ld], the shares:", myrank, idx+1);
-  //       for(int64_t i =0; i<3;i++){
-          
-  //         printf("output[%ld] = %llu  ", i, (unsigned long long)_out[idx][i]);
-  //       }
-  //       printf("\n");
-  //     }
-  //   });
-    
-  //   return output;
-  // }
-
-
   template <typename el_t>
   void JointInputArith(KernelEvalContext* ctx, std::vector<el_t>& input, NdArrayRef& output, size_t sender, size_t backup, size_t receiver, size_t outsider){
     auto* comm = ctx->getState<Communicator>();
@@ -787,19 +646,19 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
     NdArrayView<shr_t> _y(y);
     NdArrayView<shr_t> _out(out);
 
-    if(rank == 0){
-      printf("My rank = %zu, Init output:", rank);
-      pforeach(0, x.shape()[0], [&](int64_t row) {
-        for(int64_t col = 0; col < x.shape()[1] ; col++ ){
-          printf("x[%ld][%ld] = (%llu, %llu, %llu)", row, col, (unsigned long long)_x[row * N + col][0], (unsigned long long)_x[row * N + col][1], (unsigned long long)_x[row * N + col][2]);
-          }
-      });
-      pforeach(0, y.shape()[0], [&](int64_t row) {
-        for(int64_t col = 0; col < y.shape()[1] ; col++ ){
-          printf("y[%ld][%ld] = (%llu, %llu, %llu)", row, col, (unsigned long long)_y[row * N + col][0], (unsigned long long)_y[row * N + col][1], (unsigned long long)_y[row * N + col][2]);
-          }
-      });
-    }
+    // if(rank == 0){
+    //   printf("My rank = %zu, Init output:", rank);
+    //   pforeach(0, x.shape()[0], [&](int64_t row) {
+    //     for(int64_t col = 0; col < x.shape()[1] ; col++ ){
+    //       printf("x[%ld][%ld] = (%llu, %llu, %llu)", row, col, (unsigned long long)_x[row * N + col][0], (unsigned long long)_x[row * N + col][1], (unsigned long long)_x[row * N + col][2]);
+    //       }
+    //   });
+    //   pforeach(0, y.shape()[0], [&](int64_t row) {
+    //     for(int64_t col = 0; col < y.shape()[1] ; col++ ){
+    //       printf("y[%ld][%ld] = (%llu, %llu, %llu)", row, col, (unsigned long long)_y[row * N + col][0], (unsigned long long)_y[row * N + col][1], (unsigned long long)_y[row * N + col][2]);
+    //       }
+    //   });
+    // }
     pforeach(0, M, [&](int64_t row) {
       for(int64_t col = 0; col < N ; col++ ){
         _out[row * N + col][0] = 0;
@@ -811,7 +670,6 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
     });
 
     std::array<std::vector<el_t>, 5> a;
-
     for (auto& vec : a) {
         vec = std::vector<el_t>(out.numel());
     }
@@ -820,7 +678,6 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
           a[i][idx] = 0;
         }
     });
-
     pforeach(0, M, [&](int64_t i) {
         for(int64_t j = 0; j < N; j++) {
           for(int64_t k = 0; k < K; k++) {
@@ -1276,166 +1133,9 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
         });                                    
     }
 
-
-
-
-
     return out;
   });
-                  
-
-
-  // auto r_future = std::async([&] {
-  //   return prg_state->genPrssPair(field, in.shape(),
-  //                                 PrgState::GenPrssCtrl::Both);
-  // });
-
-  // // in
-  // const auto& x1 = getFirstShare(in);
-  // const auto& x2 = getSecondShare(in);
-
-  // const auto kComm = x1.elsize() * x1.numel();
-
-  // // we only record the maximum communication, we need to manually add comm
-  // comm->addCommStatsManually(1, kComm);  // comm => 1, 2
-
-  // // ret
-  // const Sizes shift_bit = {static_cast<int64_t>(bits)};
-  // switch (comm->getRank()) {
-  //   case 0: {
-  //     const auto z1 = ring_arshift(x1, shift_bit);
-  //     const auto z2 = comm->recv(1, x1.eltype(), kBindName());
-  //     return makeAShare(z1, z2, field);
-  //   }
-
-  //   case 1: {
-  //     auto r1 = r_future.get().second;
-  //     const auto z1 = ring_sub(ring_arshift(ring_add(x1, x2), shift_bit), r1);
-  //     comm->sendAsync(0, z1, kBindName());
-  //     return makeAShare(z1, r1, field);
-  //   }
-
-  //   case 2: {
-  //     const auto z2 = ring_arshift(x2, shift_bit);
-  //     return makeAShare(r_future.get().first, z2, field);
-  //   }
-
-  //   default:
-  //     SPU_THROW("Party number exceeds 3!");
-  // }
 }
 
 
-
-// NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
-//                        const NdArrayRef& rhs) const {
-//   const auto field = lhs.eltype().as<Ring2k>()->field();
-//   auto* comm = ctx->getState<Communicator>();
-//   auto* prg_state = ctx->getState<PrgState>();
-//   auto rank = comm->getRank();
-//   return DISPATCH_ALL_FIELDS(field, [&]() {
-//     using el_t = ring2k_t;
-//     using shr_t = std::array<el_t, 3>;
-//     NdArrayView<shr_t> _lhs(lhs);
-//     NdArrayView<shr_t> _rhs(rhs);
-//     NdArrayRef out(makeType<AShrTy>(field), lhs.shape());
-//     NdArrayView<shr_t> _out(out);
-//     // Me and prev have a0
-//     // Me and next have a1
-//     std::array<std::vector<el_t>, 5> a;
-//     for (auto& vec : a) {
-//         vec = std::vector<el_t>(lhs.numel());
-//     }
-//     std::vector<el_t>& a0 = a[0];
-//     std::vector<el_t>& a1 = a[1];
-//     std::vector<el_t>& a2 = a[2];
-//     // std::vector<el_t>& a3 = a[3];
-//     std::vector<el_t>& a4 = a[4];
-//     // Me and next_next have cross term b
-//     std::vector<el_t> b(lhs.numel());
-//     std::vector<el_t> r0(lhs.numel());
-//     std::vector<el_t> r1(lhs.numel());
-//     std::vector<el_t> r2(lhs.numel());
-//     prg_state->fillPrssTuple<el_t>(r0.data(), r1.data(), r2.data(), r2.size(),
-//                             PrgState::GenPrssCtrl::All);
-//     // z1 = (x1 * y1) + (x1 * y2) + (x2 * y1) + (r0 - r1);
-//     pforeach(0, lhs.numel(), [&](int64_t idx) {
-//         a0[idx] = (_lhs[idx][0] + _lhs[idx][1]) * _rhs[idx][0] + _lhs[idx][0] * _rhs[idx][1] - r1[idx];  // xi*yi + xi*yj + xj*yi
-//         a1[idx] = (_lhs[idx][1] + _lhs[idx][2]) * _rhs[idx][1] + _lhs[idx][1] * _rhs[idx][2] - r2[idx];  // xj*yj + xj*yg + xg*yj
-//         a4[idx] = _lhs[idx][0] * _rhs[idx][2] + _lhs[idx][2] * _rhs[idx][0];                    // xi*yg + xg*yi
-//     });
-//     a2 = comm->rotate<el_t>(a1, "mulaa");  // comm => 1, k
-//     if (rank == 0) {
-//       // rb = PRG[2], c = PRG[1]
-//       std::vector<el_t> rb(lhs.numel());
-//       std::vector<el_t> rc(lhs.numel());
-//       prg_state->fillPrssTuple<el_t>(nullptr, nullptr, rb.data(), rb.size(),
-//                             PrgState::GenPrssCtrl::Third);
-//       prg_state->fillPrssTuple<el_t>(nullptr, rc.data(), nullptr, rc.size(),
-//                             PrgState::GenPrssCtrl::Second);
-//       pforeach(0, lhs.numel(), [&](int64_t idx) {
-//         a4[idx] = a4[idx] - rb[idx]; // b = b - r'2
-//         _out[idx][0] = a0[idx] + r0[idx] + a4[idx]; 
-//         _out[idx][1] = a1[idx] + r1[idx] + rc[idx];
-//         _out[idx][2] = a2[idx] + r2[idx] + rb[idx];
-//       });        
-//       comm->sendAsync<el_t>(3, a4, "mulaa 03");
-//     }
-//     else if (rank == 1) {
-//       // rb = PRG[0], rc = PRG[1]
-//       std::vector<el_t> rb(lhs.numel());
-//       std::vector<el_t> rc(lhs.numel());
-//       prg_state->fillPrssTuple<el_t>(rb.data(), nullptr, nullptr , rb.size(),
-//                             PrgState::GenPrssCtrl::First);
-//       prg_state->fillPrssTuple<el_t>(nullptr, rc.data(), nullptr, rc.size(),
-//                             PrgState::GenPrssCtrl::Second);
-//       pforeach(0, lhs.numel(), [&](int64_t idx) {
-//         a4[idx] = a4[idx] - rb[idx];
-//         _out[idx][0] = a0[idx] + r0[idx] + rb[idx]; 
-//         _out[idx][1] = a1[idx] + r1[idx] + rc[idx];
-//         _out[idx][2] = a2[idx] + r2[idx] + a4[idx];
-//       });
-//       comm->sendAsync<el_t>(2, a4, "mulaa 12");  // comm => 1, k  
-//     }
-//     else if (rank == 2) {
-//       // rb = PRG[0]
-//       std::vector<el_t> rb(lhs.numel());
-//       prg_state->fillPrssTuple<el_t>(rb.data(), nullptr, nullptr , rb.size(),
-//                             PrgState::GenPrssCtrl::First);
-//       auto c = comm->recv<el_t>(1, "mulaa 12"); 
-//       pforeach(0, lhs.numel(), [&](int64_t idx) {
-//         a4[idx] = a4[idx] - rb[idx]; 
-//         _out[idx][0] = a0[idx] + r0[idx] + rb[idx]; 
-//         _out[idx][1] = a1[idx] + r1[idx] + c[idx];
-//         _out[idx][2] = a2[idx] + r2[idx] + a4[idx];
-//       });  
-//     }
-//     else if (rank == 3) {
-//       // rb = PRG[2]
-//       std::vector<el_t> rb(lhs.numel());
-//       prg_state->fillPrssTuple<el_t>(nullptr, nullptr, rb.data(), rb.size(),
-//                             PrgState::GenPrssCtrl::Third);
-//       auto c = comm->recv<el_t>(0, "mulaa 03");
-//       pforeach(0, lhs.numel(), [&](int64_t idx) {
-//         a4[idx] = a4[idx] - rb[idx];  
-//         _out[idx][0] = a0[idx] + r0[idx] + a4[idx]; 
-//         _out[idx][1] = a1[idx] + r1[idx] + c[idx];
-//         _out[idx][2] = a2[idx] + r2[idx] + rb[idx];
-//       });  
-//     }
-//     return out;
-//   });
-// }
-
-
-
-
-
-
-
 } // namespace spu::mpc::fantastic4
-
-
-
-
-
