@@ -30,7 +30,7 @@
 #include "xla/service/float_support.h"
 #include "xla/service/gather_expander.h"
 #include "xla/service/gather_simplifier.h"
-#include "xla/service/gpu/dot_dimension_sorter.h"
+#include "xla/service/gpu/transforms/dot_dimension_sorter.h"
 #include "xla/service/hlo_constant_folding.h"
 #include "xla/service/hlo_cse.h"
 #include "xla/service/hlo_dce.h"

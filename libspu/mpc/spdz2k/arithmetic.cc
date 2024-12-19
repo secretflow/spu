@@ -47,9 +47,9 @@ NdArrayRef CastRing(const NdArrayRef& in, FieldType out_field) {
   const auto in_field = in_ty->field();
   auto out = ring_zeros(out_field, in.shape());
 
-  return DISPATCH_ALL_FIELDS(in_field, "_", [&]() {
+  return DISPATCH_ALL_FIELDS(in_field, [&]() {
     NdArrayView<ring2k_t> _in(in);
-    return DISPATCH_ALL_FIELDS(out_field, "_", [&]() {
+    return DISPATCH_ALL_FIELDS(out_field, [&]() {
       NdArrayView<ring2k_t> _out(out);
       pforeach(0, in.numel(), [&](int64_t idx) {
         _out[idx] = static_cast<ring2k_t>(_in[idx]);
@@ -106,7 +106,7 @@ NdArrayRef RandA::proc(KernelEvalContext* ctx, const Shape& shape) const {
   // - https://eprint.iacr.org/2019/599.pdf
   // It's safer to keep the number within [-2**(k-2), 2**(k-2)) for comparison
   // operations.
-  auto x = ring_rshift(prg_state->genPriv(field, shape), 2)
+  auto x = ring_rshift(prg_state->genPriv(field, shape), {2})
                .as(makeType<AShrTy>(field));
   auto x_mac = beaver->AuthArrayRef(x, field, k, s);
   return makeAShare(x, x_mac, field);
@@ -212,10 +212,8 @@ NdArrayRef V2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   return res;
 }
 
-NdArrayRef NotA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
+NdArrayRef NegateA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const auto field = in.eltype().as<Ring2k>()->field();
-  const auto key = ctx->getState<Spdz2kState>()->key();
-  auto* comm = ctx->getState<Communicator>();
 
   // in
   const auto& x = getValueShare(in);
@@ -224,14 +222,6 @@ NdArrayRef NotA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   // compute neg_x, neg_x_mac
   auto neg_x = ring_neg(x);
   auto neg_x_mac = ring_neg(x_mac);
-
-  // add public M-1
-  const auto& neg_ones = ring_not(ring_zeros(field, in.shape()));
-  if (comm->getRank() == 0) {
-    ring_add_(neg_x, neg_ones);
-  }
-  const auto& ones = ring_ones(field, in.shape());
-  ring_sub_(neg_x_mac, ring_mul(ones, key));
 
   return makeAShare(neg_x, neg_x_mac, field);
 }
@@ -296,7 +286,7 @@ bool SingleCheck(KernelEvalContext* ctx, const NdArrayRef& in) {
   auto* comm = ctx->getState<Communicator>();
   auto* beaver = ctx->getState<Spdz2kState>()->beaver();
   const auto key = ctx->getState<Spdz2kState>()->key();
-  const size_t k = ctx->getState<Spdz2kState>()->k();
+  const int64_t k = ctx->getState<Spdz2kState>()->k();
   const size_t s = ctx->getState<Spdz2kState>()->s();
 
   // 1. Generate a random, shared value [r]
@@ -305,8 +295,8 @@ bool SingleCheck(KernelEvalContext* ctx, const NdArrayRef& in) {
   // 2. Locally construct [y]
   const auto& x = getValueShare(in);
   const auto& x_mac = getMacShare(in);
-  auto y = ring_add(x, ring_lshift(r, k));
-  auto y_mac = ring_add(x_mac, ring_lshift(r_mac, k));
+  auto y = ring_add(x, ring_lshift(r, {k}));
+  auto y_mac = ring_add(x_mac, ring_lshift(r_mac, {k}));
 
   // 3. Open the value
   auto plain_y = comm->allReduce(ReduceOp::ADD, y, kBindName);
@@ -334,7 +324,7 @@ bool SingleCheck(KernelEvalContext* ctx, const NdArrayRef& in) {
 
 static NdArrayRef wrap_lshift_a(SPUContext* ctx, const NdArrayRef& x,
                                 size_t k) {
-  return UnwrapValue(lshift_a(ctx, WrapValue(x), k));
+  return UnwrapValue(lshift_a(ctx, WrapValue(x), {static_cast<int64_t>(k)}));
 }
 
 static NdArrayRef wrap_add_aa(SPUContext* ctx, const NdArrayRef& x,
@@ -490,7 +480,7 @@ NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
 
   // open e, f
   auto res = vmap({e, f}, [&](const NdArrayRef& s) {
-    return comm->allReduce(ReduceOp::ADD, s, kBindName);
+    return comm->allReduce(ReduceOp::ADD, s, kBindName());
   });
   auto p_e = std::move(res[0]);
   auto p_f = std::move(res[1]);
@@ -557,7 +547,7 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
 
   // open x-a & y-b
   auto res = vmap({ring_sub(x, a), ring_sub(y, b)}, [&](const NdArrayRef& s) {
-    return comm->allReduce(ReduceOp::ADD, s, kBindName);
+    return comm->allReduce(ReduceOp::ADD, s, kBindName());
   });
   auto p_e = std::move(res[0]);
   auto p_f = std::move(res[1]);
@@ -579,9 +569,8 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
 }
 
 NdArrayRef LShiftA::proc(KernelEvalContext* ctx, const NdArrayRef& in,
-                         size_t bits) const {
+                         const Sizes& bits) const {
   const auto field = in.eltype().as<Ring2k>()->field();
-  bits %= SizeOf(field) * 8;
 
   // in
   const auto& x = getValueShare(in);
@@ -617,7 +606,9 @@ NdArrayRef TruncA::proc(KernelEvalContext* ctx, const NdArrayRef& in,
       beaver->BatchOpen(ring_sub(x, r), ring_sub(x_mac, r_mac), k, s);
   SPU_ENFORCE(beaver->BatchMacCheck(x_r, check_mac, k, s));
   size_t bit_len = SizeOf(field) * 8;
-  auto tr_x_r = ring_arshift(ring_lshift(x_r, bit_len - k), bit_len - k + bits);
+  auto tr_x_r =
+      ring_arshift(ring_lshift(x_r, {static_cast<int64_t>(bit_len - k)}),
+                   {static_cast<int64_t>(bit_len - k + bits)});
   ring_bitmask_(tr_x_r, 0, k);
 
   // res = [x-r] + [r], which [*] is truncation operation.

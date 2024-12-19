@@ -40,18 +40,35 @@ inline int64_t getOwner(const NdArrayRef& x) {
   return x.eltype().as<Priv2kTy>()->owner();
 }
 
+Index ring2pv(const NdArrayRef& x) {
+  SPU_ENFORCE(x.eltype().isa<Ring2k>(), "must be ring2k_type, got={}",
+              x.eltype());
+  const auto field = x.eltype().as<Ring2k>()->field();
+  Index pv(x.numel());
+  DISPATCH_ALL_FIELDS(field, [&]() {
+    NdArrayView<ring2k_t> _x(x);
+    pforeach(0, x.numel(), [&](int64_t idx) { pv[idx] = int64_t(_x[idx]); });
+  });
+  return pv;
+}
+
 // Secure inverse permutation of x by perm_rank's permutation pv
 // The idea here is:
 // Input permutation pv, beaver generates perm pair {<A>, <B>} that
 // InversePermute(A, pv) = B. So we can get <y> = InversePermute(open(<x> -
 // <A>), pv) + <B> that y = InversePermute(x, pv).
 NdArrayRef SecureInvPerm(KernelEvalContext* ctx, const NdArrayRef& x,
-                         size_t perm_rank, absl::Span<const int64_t> pv) {
+                         const NdArrayRef& perm, size_t perm_rank) {
   const auto lctx = ctx->lctx();
   const auto field = x.eltype().as<AShrTy>()->field();
   auto* beaver = ctx->getState<Semi2kState>()->beaver();
   auto numel = x.numel();
 
+  Index pv;
+  if (perm.eltype().isa<PShare>() ||
+      (perm.eltype().isa<Private>() && isOwner(ctx, perm.eltype()))) {
+    pv = ring2pv(perm);
+  }
   auto [a_buf, b_buf] = beaver->PermPair(field, numel, perm_rank, pv);
 
   NdArrayRef a(std::make_shared<yacl::Buffer>(std::move(a_buf)), x.eltype(),
@@ -75,14 +92,11 @@ NdArrayRef SecureInvPerm(KernelEvalContext* ctx, const NdArrayRef& x,
 NdArrayRef RandPermM::proc(KernelEvalContext* ctx, const Shape& shape) const {
   NdArrayRef out(makeType<PShrTy>(), shape);
 
-  // generate a RandU64 as permutation seed
   auto* prg_state = ctx->getState<PrgState>();
-  const auto seed = prg_state->genPriv(FieldType::FM64, {1});
-  NdArrayView<uint64_t> _seed(seed);
-  const auto perm_vector = genRandomPerm(out.numel(), _seed[0]);
+  const auto perm_vector = prg_state->genPrivPerm(out.numel());
 
   const auto field = out.eltype().as<PShrTy>()->field();
-  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> _out(out);
     pforeach(0, out.numel(),
              [&](int64_t idx) { _out[idx] = ring2k_t(perm_vector[idx]); });
@@ -95,51 +109,37 @@ NdArrayRef PermAM::proc(KernelEvalContext* ctx, const NdArrayRef& in,
                         const NdArrayRef& perm) const {
   auto* comm = ctx->getState<Communicator>();
 
-  PermVector pv = ring2pv(perm);
   NdArrayRef out(in);
   for (size_t i = 0; i < comm->getWorldSize(); ++i) {
-    out = SecureInvPerm(ctx, out, i, pv);
+    out = SecureInvPerm(ctx, out, perm, i);
   }
-
   return out;
 }
 
 NdArrayRef PermAP::proc(KernelEvalContext* ctx, const NdArrayRef& in,
                         const NdArrayRef& perm) const {
-  PermVector pv = ring2pv(perm);
-  auto out = applyPerm(in, pv);
-  return out;
+  return applyPerm(in, perm);
 }
 
 NdArrayRef InvPermAM::proc(KernelEvalContext* ctx, const NdArrayRef& in,
                            const NdArrayRef& perm) const {
   auto* comm = ctx->getState<Communicator>();
-  PermVector pv = ring2pv(perm);
   NdArrayRef out(in);
-  auto inv_pv = genInversePerm(pv);
+  auto inv_perm = genInversePerm(perm);
   for (int i = comm->getWorldSize() - 1; i >= 0; --i) {
-    out = SecureInvPerm(ctx, out, i, inv_pv);
+    out = SecureInvPerm(ctx, out, inv_perm, i);
   }
-
   return out;
 }
 
 NdArrayRef InvPermAP::proc(KernelEvalContext* ctx, const NdArrayRef& in,
                            const NdArrayRef& perm) const {
-  PermVector pv = ring2pv(perm);
-  auto out = applyInvPerm(in, pv);
-  return out;
+  return applyInvPerm(in, perm);
 }
 
 NdArrayRef InvPermAV::proc(KernelEvalContext* ctx, const NdArrayRef& in,
                            const NdArrayRef& perm) const {
-  PermVector pv;
-  const auto lctx = ctx->lctx();
-  if (isOwner(ctx, perm.eltype())) {
-    pv = ring2pv(perm);
-  }
-  auto out = SecureInvPerm(ctx, in, getOwner(perm), pv);
-  return out;
+  return SecureInvPerm(ctx, in, perm, getOwner(perm));
 }
 
 }  // namespace spu::mpc::semi2k

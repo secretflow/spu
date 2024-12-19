@@ -24,7 +24,7 @@ namespace spu::mpc::cheetah {
 NdArrayRef RandA::proc(KernelEvalContext* ctx, const Shape& shape) const {
   auto* prg_state = ctx->getState<PrgState>();
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
-  return ring_rshift(prg_state->genPriv(field, shape), 2)
+  return ring_rshift(prg_state->genPriv(field, shape), {2})
       .as(makeType<AShrTy>(field));
 }
 
@@ -47,7 +47,7 @@ NdArrayRef P2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 NdArrayRef A2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const auto field = in.eltype().as<Ring2k>()->field();
   auto* comm = ctx->getState<Communicator>();
-  auto out = comm->allReduce(ReduceOp::ADD, in, kBindName);
+  auto out = comm->allReduce(ReduceOp::ADD, in, kBindName());
   return out.as(makeType<Pub2kTy>(field));
 }
 
@@ -59,7 +59,7 @@ NdArrayRef A2V::proc(KernelEvalContext* ctx, const NdArrayRef& in,
 
   auto numel = in.numel();
 
-  return DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  return DISPATCH_ALL_FIELDS(field, [&]() {
     std::vector<ring2k_t> share(numel);
     NdArrayView<ring2k_t> _in(in);
     pforeach(0, numel, [&](int64_t idx) { share[idx] = _in[idx]; });
@@ -101,13 +101,8 @@ NdArrayRef V2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   return x.as(makeType<AShrTy>(field));
 }
 
-NdArrayRef NotA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
-  auto* comm = ctx->getState<Communicator>();
+NdArrayRef NegateA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   auto res = ring_neg(in);
-  if (comm->getRank() == 0) {
-    const auto field = in.eltype().as<Ring2k>()->field();
-    ring_add_(res, ring_not(ring_zeros(field, in.shape())));
-  }
 
   return res.as(in.eltype());
 }
@@ -143,10 +138,7 @@ NdArrayRef MatMulAP::proc(KernelEvalContext*, const NdArrayRef& x,
 }
 
 NdArrayRef LShiftA::proc(KernelEvalContext*, const NdArrayRef& in,
-                         size_t bits) const {
-  const auto field = in.eltype().as<Ring2k>()->field();
-  bits %= SizeOf(field) * 8;
-
+                         const Sizes& bits) const {
   return ring_lshift(in, bits).as(in.eltype());
 }
 

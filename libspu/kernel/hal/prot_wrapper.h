@@ -44,6 +44,10 @@ Value _not_p(SPUContext* ctx, const Value& in);
 Value _not_s(SPUContext* ctx, const Value& in);
 Value _not_v(SPUContext* ctx, const Value& in);
 
+Value _negate_p(SPUContext* ctx, const Value& in);
+Value _negate_s(SPUContext* ctx, const Value& in);
+Value _negate_v(SPUContext* ctx, const Value& in);
+
 Value _msb_p(SPUContext* ctx, const Value& in);
 Value _msb_s(SPUContext* ctx, const Value& in);
 Value _msb_v(SPUContext* ctx, const Value& in);
@@ -52,17 +56,17 @@ Value _equal_pp(SPUContext* ctx, const Value& x, const Value& y);
 std::optional<Value> _equal_sp(SPUContext* ctx, const Value& x, const Value& y);
 std::optional<Value> _equal_ss(SPUContext* ctx, const Value& x, const Value& y);
 
-Value _lshift_p(SPUContext* ctx, const Value& in, size_t bits);
-Value _lshift_s(SPUContext* ctx, const Value& in, size_t bits);
-Value _lshift_v(SPUContext* ctx, const Value& in, size_t bits);
+Value _lshift_p(SPUContext* ctx, const Value& in, const Sizes& bits);
+Value _lshift_s(SPUContext* ctx, const Value& in, const Sizes& bits);
+Value _lshift_v(SPUContext* ctx, const Value& in, const Sizes& bits);
 
-Value _rshift_p(SPUContext* ctx, const Value& in, size_t bits);
-Value _rshift_s(SPUContext* ctx, const Value& in, size_t bits);
-Value _rshift_v(SPUContext* ctx, const Value& in, size_t bits);
+Value _rshift_p(SPUContext* ctx, const Value& in, const Sizes& bits);
+Value _rshift_s(SPUContext* ctx, const Value& in, const Sizes& bits);
+Value _rshift_v(SPUContext* ctx, const Value& in, const Sizes& bits);
 
-Value _arshift_p(SPUContext* ctx, const Value& in, size_t bits);
-Value _arshift_s(SPUContext* ctx, const Value& in, size_t bits);
-Value _arshift_v(SPUContext* ctx, const Value& in, size_t bits);
+Value _arshift_p(SPUContext* ctx, const Value& in, const Sizes& bits);
+Value _arshift_s(SPUContext* ctx, const Value& in, const Sizes& bits);
+Value _arshift_v(SPUContext* ctx, const Value& in, const Sizes& bits);
 
 Value _trunc_p(SPUContext* ctx, const Value& in, size_t bits, SignType sign);
 Value _trunc_s(SPUContext* ctx, const Value& in, size_t bits, SignType sign);

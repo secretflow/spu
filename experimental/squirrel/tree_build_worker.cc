@@ -230,7 +230,7 @@ void AccumulateHistogram(spu::NdArrayRef buckets_share, size_t nfeatures,
   // The buckets belong to the i-th feature is
   // `buckets[i*bucket_size:(i+1)*bucket_size]`
   auto field = buckets_share.eltype().as<RingTy>()->field();
-  DISPATCH_ALL_FIELDS(field, "AccumulateHistogram", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> histogram(buckets_share);
     for (size_t j = 0; j < nfeatures; ++j) {
       size_t start = j * bucket_size;

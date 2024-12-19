@@ -19,8 +19,8 @@
 #include "yacl/kernel/algorithms/base_ot.h"
 #include "yacl/kernel/algorithms/ferret_ote.h"
 #include "yacl/kernel/algorithms/iknp_ote.h"
-#include "yacl/kernel/algorithms/ot_store.h"
 #include "yacl/kernel/algorithms/softspoken_ote.h"
+#include "yacl/kernel/type/ot_store.h"
 
 #include "libspu/core/prelude.h"
 #include "libspu/mpc/cheetah/ot/ot_util.h"

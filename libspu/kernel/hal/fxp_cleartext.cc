@@ -57,7 +57,7 @@ Value applyFloatingPointFn(SPUContext* ctx, const Value& in, FN&& fn) {
   auto pt_type = getDecodeType(in.dtype());
 
   for (auto iter = fp_arr.begin(); iter != fp_arr.end(); ++iter) {
-    DISPATCH_FLOAT_PT_TYPES(pt_type, "pt_type", [&]() {
+    DISPATCH_FLOAT_PT_TYPES(pt_type, [&]() {
       auto* ptr = reinterpret_cast<ScalarT*>(&*iter);
       *ptr = fn(*ptr);
     });
@@ -92,9 +92,9 @@ Value applyFloatingPointFn(SPUContext* ctx, const Value& x, const Value& y,
 
   for (auto itr_x = flp_x.begin(), itr_y = flp_y.begin(); itr_x != flp_x.end();
        itr_x++, itr_y++) {
-    DISPATCH_FLOAT_PT_TYPES(x_pt_type, "x_pt_type", [&]() {
+    DISPATCH_FLOAT_PT_TYPES(x_pt_type, [&]() {
       auto* ptr_x = reinterpret_cast<ScalarT*>(&*itr_x);
-      DISPATCH_FLOAT_PT_TYPES(y_pt_type, "y_pt_type", [&]() {
+      DISPATCH_FLOAT_PT_TYPES(y_pt_type, [&]() {
         auto* ptr_y = reinterpret_cast<ScalarT*>(&*itr_y);
         *ptr_x = fn(*ptr_x, *ptr_y);
       });

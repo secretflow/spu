@@ -32,15 +32,14 @@ def PPHlo_Dialect : Dialect {
   string summary = "Privacy-Preserving HLO(PPHLO) dialect";
   string description = [{
     PPHLO represents a high level abstraction for language use by SPU.
-    It implements a subset of mlir mhlo ops with it's own privacy-preserving focused type system.
+    It implements a subset of mlir stablehlo ops with it's own privacy-preserving focused type system.
 
-    Learn more about mlir hlo at https://github.com/tensorflow/mlir-hlo
+    Learn more about mlir stablehlo at https://github.com/openxla/stablehlo
   }];
   let name = "pphlo";
   let cppNamespace = "::mlir::spu::pphlo";
   let useDefaultAttributePrinterParser = 0;
   let useDefaultTypePrinterParser = 0;
-  let usePropertiesForAttributes = 0;
   let hasConstantMaterializer = 1;
   let extraClassDeclaration = [{
     Attribute parseAttribute(DialectAsmParser & parser, Type type)

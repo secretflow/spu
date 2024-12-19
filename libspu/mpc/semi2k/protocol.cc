@@ -20,6 +20,7 @@
 #include "libspu/mpc/semi2k/arithmetic.h"
 #include "libspu/mpc/semi2k/boolean.h"
 #include "libspu/mpc/semi2k/conversion.h"
+#include "libspu/mpc/semi2k/exp.h"
 #include "libspu/mpc/semi2k/permute.h"
 #include "libspu/mpc/semi2k/state.h"
 #include "libspu/mpc/semi2k/type.h"
@@ -51,7 +52,7 @@ void regSemi2kProtocol(SPUContext* ctx,
   ctx->prot()
       ->regKernel<
           semi2k::P2A, semi2k::A2P, semi2k::A2V, semi2k::V2A,                //
-          semi2k::NotA,                                                      //
+          semi2k::NegateA,                                                   //
           semi2k::AddAP, semi2k::AddAA,                                      //
           semi2k::MulAP, semi2k::MulAA, semi2k::SquareA,                     //
           semi2k::MatMulAP, semi2k::MatMulAA,                                //
@@ -76,6 +77,13 @@ void regSemi2kProtocol(SPUContext* ctx,
 
   if (lctx->WorldSize() == 2) {
     ctx->prot()->regKernel<semi2k::MsbA2B>();
+    ctx->prot()->regKernel<semi2k::MulA1B>();
+
+    // only supports 2pc fm128 for now
+    if (ctx->getField() == FieldType::FM128 &&
+        ctx->config().experimental_enable_exp_prime()) {
+      ctx->prot()->regKernel<semi2k::ExpA>();
+    }
   }
   // ctx->prot()->regKernel<semi2k::B2A>();
 }

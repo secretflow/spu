@@ -16,8 +16,6 @@
 
 #include <future>
 
-#include "spdlog/spdlog.h"
-
 #include "libspu/core/context.h"
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/core/prelude.h"
@@ -89,7 +87,7 @@ void CheetahMulState::makeSureCacheSize(FieldType field, int64_t numel) {
                         cross.slice({num_beaver}, {2 * num_beaver}, {1})),
                ring_mul(beaver[0], beaver[1]));
 
-  DISPATCH_ALL_FIELDS(field, "makeSureCacheSize", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     for (size_t i : {0, 1, 2}) {
       auto tmp = ring_zeros(field, {num_beaver + cached_sze_});
       NdArrayView<ring2k_t> new_cache(tmp);

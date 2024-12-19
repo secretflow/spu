@@ -21,7 +21,9 @@ spu_cc_library(
     srcs = ["trusted_party.cc"],
     hdrs = ["trusted_party.h"],
     deps = [
+        "//libspu/core:type_util",
         "//libspu/mpc/common:prg_tensor",
+        "//libspu/mpc/utils:gfmp_ops",
         "//libspu/mpc/utils:permute",
         "//libspu/mpc/utils:ring_ops",
     ],

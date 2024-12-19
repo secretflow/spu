@@ -64,7 +64,7 @@ commands:
             ../devtools/bazel_cache_setup.py --in_file=../gcs.data --out_file=../gcs.json --min_download
       - run:
           name: "build"
-          command: bazel build <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning --jobs 20
+          command: bazel build <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning
       - run:
           name: "test"
           command: |
@@ -120,7 +120,7 @@ jobs:
           extra_bazel_test_args: --test_env LD_LIBRARY_PATH=/root/miniconda3/lib/
   macOS_ut:
     macos:
-      xcode: 15.4.0
+      xcode: 16.0.0
     resource_class: macos.m1.large.gen1
     steps:
       - checkout

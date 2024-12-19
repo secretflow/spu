@@ -22,6 +22,7 @@ spu_cc_library(
     hdrs = glob([
         "*.h",
     ]),
+    visibility = ["//visibility:public"],
     deps = [
         "@llvm-project//mlir:FuncDialect",
         "@llvm-project//mlir:IR",

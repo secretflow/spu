@@ -102,7 +102,7 @@ NdArrayRef ring_conv2d(const NdArrayRef &tensor, const NdArrayRef &filter,
   NdArrayRef _filter = filter.reshape(fs);
   NdArrayRef _ret = ring_zeros(field, result_shape);
 
-  DISPATCH_ALL_FIELDS(field, "ring_conv2d", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     // NOTE(juhou): valid padding so offset are always 0.
     constexpr int64_t padh = 0;
     constexpr int64_t padw = 0;
