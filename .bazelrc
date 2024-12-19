@@ -43,7 +43,7 @@ build --copt=-fstack-protector-strong
 build:linux --copt=-Wl,-z,noexecstack
 build:macos --copt=-Wa,--noexecstack
 
-test --keep_going
+build --keep_going
 test --test_output=errors
 
 build:benchmark --copt -O3
@@ -55,11 +55,12 @@ build:linux --action_env=BAZEL_LINKLIBS=-l%:libstdc++.a:-l%:libgcc.a
 
 # platform specific config
 # Bazel will automatic pick platform config since we have enable_platform_specific_config set
-build:macos --copt="-Xpreprocessor -fopenmp"
+build:macos --copt=-Xclang=-fopenmp
 build:macos --copt=-Wno-unused-command-line-argument
 build:macos --features=-supports_dynamic_linker
-build:macos --macos_minimum_os=12.0
-build:macos --host_macos_minimum_os=12.0
+build:macos --macos_minimum_os=13.0
+build:macos --host_macos_minimum_os=13.0
+build:macos --action_env MACOSX_DEPLOYMENT_TARGET=13.0
 
 build:linux --copt=-fopenmp
 build:linux --linkopt=-fopenmp

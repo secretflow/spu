@@ -63,7 +63,7 @@ void regCheetahProtocol(SPUContext* ctx,
   ctx->prot()
       ->regKernel<cheetah::P2A, cheetah::A2P, cheetah::V2A, cheetah::A2V,   //
                   cheetah::B2P, cheetah::P2B, cheetah::A2B, cheetah::B2A,   //
-                  cheetah::NotA,                                            //
+                  cheetah::NegateA,                                         //
                   cheetah::AddAP, cheetah::AddAA,                           //
                   cheetah::MulAP, cheetah::MulAA, cheetah::MulAV,           //
                   cheetah::SquareA,                                         //

@@ -245,6 +245,7 @@ TEST_BINARY_OP(xor)
   TEST_UNARY_OP_V(OP)     \
   TEST_UNARY_OP_P(OP)
 
+TEST_UNARY_OP(negate)
 TEST_UNARY_OP(not )
 TEST_UNARY_OP_V(msb)
 TEST_UNARY_OP_P(msb)
@@ -261,7 +262,7 @@ TEST_P(ApiTest, MsbS) {
 
     // SECURENN has an msb input range requirement here
     if (conf.protocol() == ProtocolKind::SECURENN) {
-      p0 = arshift_p(sctx.get(), p0, 1);
+      p0 = arshift_p(sctx.get(), p0, {1});
     }
 
     auto r_s = s2p(sctx.get(), msb_s(sctx.get(), p2s(sctx.get(), p0)));
@@ -272,88 +273,92 @@ TEST_P(ApiTest, MsbS) {
   });
 }
 
-#define TEST_UNARY_OP_WITH_BIT_S(OP)                                   \
-  TEST_P(ApiTest, OP##S) {                                             \
-    const auto factory = std::get<0>(GetParam());                      \
-    const RuntimeConfig& conf = std::get<1>(GetParam());               \
-    const size_t npc = std::get<2>(GetParam());                        \
-                                                                       \
-    utils::simulate(                                                   \
-        npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {   \
-          auto sctx = factory(conf, lctx);                             \
-                                                                       \
-          /* GIVEN */                                                  \
-          auto x_p = rand_p(sctx.get(), kShape);                       \
-          auto x_s = p2s(sctx.get(), x_p);                             \
-                                                                       \
-          for (auto bits : kShiftBits) {                               \
-            if (bits >= SizeOf(conf.field()) * 8) {                    \
-              continue;                                                \
-            }                                                          \
-            /* WHEN */                                                 \
-            auto r_s = s2p(sctx.get(), OP##_s(sctx.get(), x_s, bits)); \
-            auto r_p = OP##_p(sctx.get(), x_p, bits);                  \
-                                                                       \
-            /* THEN */                                                 \
-            EXPECT_VALUE_EQ(r_s, r_p);                                 \
-          }                                                            \
-        });                                                            \
+#define TEST_UNARY_OP_WITH_BIT_S(OP)                                          \
+  TEST_P(ApiTest, OP##S) {                                                    \
+    const auto factory = std::get<0>(GetParam());                             \
+    const RuntimeConfig& conf = std::get<1>(GetParam());                      \
+    const size_t npc = std::get<2>(GetParam());                               \
+                                                                              \
+    utils::simulate(                                                          \
+        npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {          \
+          auto sctx = factory(conf, lctx);                                    \
+                                                                              \
+          /* GIVEN */                                                         \
+          auto x_p = rand_p(sctx.get(), kShape);                              \
+          auto x_s = p2s(sctx.get(), x_p);                                    \
+                                                                              \
+          for (auto bits : kShiftBits) {                                      \
+            if (bits >= SizeOf(conf.field()) * 8) {                           \
+              continue;                                                       \
+            }                                                                 \
+            /* WHEN */                                                        \
+            auto r_s = s2p(sctx.get(), OP##_s(sctx.get(), x_s,                \
+                                              {static_cast<int64_t>(bits)})); \
+            auto r_p = OP##_p(sctx.get(), x_p, {static_cast<int64_t>(bits)}); \
+                                                                              \
+            /* THEN */                                                        \
+            EXPECT_VALUE_EQ(r_s, r_p);                                        \
+          }                                                                   \
+        });                                                                   \
   }
 
-#define TEST_UNARY_OP_WITH_BIT_V(OP)                                     \
-  TEST_P(ApiTest, OP##V) {                                               \
-    const auto factory = std::get<0>(GetParam());                        \
-    const RuntimeConfig& conf = std::get<1>(GetParam());                 \
-    const size_t npc = std::get<2>(GetParam());                          \
-                                                                         \
-    utils::simulate(                                                     \
-        npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {     \
-          auto sctx = factory(conf, lctx);                               \
-                                                                         \
-          for (size_t rank = 0; rank < npc; rank++) {                    \
-            /* GIVEN */                                                  \
-            auto x_p = rand_p(sctx.get(), kShape);                       \
-            auto x_v = p2v(sctx.get(), x_p, rank);                       \
-                                                                         \
-            for (auto bits : kShiftBits) {                               \
-              if (bits >= SizeOf(conf.field()) * 8) {                    \
-                continue;                                                \
-              }                                                          \
-              /* WHEN */                                                 \
-              auto r_v = v2p(sctx.get(), OP##_v(sctx.get(), x_v, bits)); \
-              auto r_p = OP##_p(sctx.get(), x_p, bits);                  \
-                                                                         \
-              /* THEN */                                                 \
-              EXPECT_VALUE_EQ(r_v, r_p);                                 \
-            }                                                            \
-          }                                                              \
-        });                                                              \
+#define TEST_UNARY_OP_WITH_BIT_V(OP)                                          \
+  TEST_P(ApiTest, OP##V) {                                                    \
+    const auto factory = std::get<0>(GetParam());                             \
+    const RuntimeConfig& conf = std::get<1>(GetParam());                      \
+    const size_t npc = std::get<2>(GetParam());                               \
+                                                                              \
+    utils::simulate(                                                          \
+        npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {          \
+          auto sctx = factory(conf, lctx);                                    \
+                                                                              \
+          for (size_t rank = 0; rank < npc; rank++) {                         \
+            /* GIVEN */                                                       \
+            auto x_p = rand_p(sctx.get(), kShape);                            \
+            auto x_v = p2v(sctx.get(), x_p, rank);                            \
+                                                                              \
+            for (auto bits : kShiftBits) {                                    \
+              if (bits >= SizeOf(conf.field()) * 8) {                         \
+                continue;                                                     \
+              }                                                               \
+              /* WHEN */                                                      \
+              auto r_v =                                                      \
+                  v2p(sctx.get(),                                             \
+                      OP##_v(sctx.get(), x_v, {static_cast<int64_t>(bits)})); \
+              auto r_p =                                                      \
+                  OP##_p(sctx.get(), x_p, {static_cast<int64_t>(bits)});      \
+                                                                              \
+              /* THEN */                                                      \
+              EXPECT_VALUE_EQ(r_v, r_p);                                      \
+            }                                                                 \
+          }                                                                   \
+        });                                                                   \
   }
 
-#define TEST_UNARY_OP_WITH_BIT_P(OP)                                        \
-  TEST_P(ApiTest, OP##P) {                                                  \
-    const auto factory = std::get<0>(GetParam());                           \
-    const RuntimeConfig& conf = std::get<1>(GetParam());                    \
-    const size_t npc = std::get<2>(GetParam());                             \
-                                                                            \
-    utils::simulate(npc,                                                    \
-                    [&](const std::shared_ptr<yacl::link::Context>& lctx) { \
-                      auto sctx = factory(conf, lctx);                      \
-                                                                            \
-                      /* GIVEN */                                           \
-                      auto p0 = rand_p(sctx.get(), kShape);                 \
-                                                                            \
-                      for (auto bits : kShiftBits) { /* WHEN */             \
-                        if (bits >= SizeOf(conf.field()) * 8) {             \
-                          continue;                                         \
-                        }                                                   \
-                        auto r_p = OP##_p(sctx.get(), p0, bits);            \
-                        auto r_pp = OP##_p(sctx.get(), p0, bits);           \
-                                                                            \
-                        /* THEN */                                          \
-                        EXPECT_VALUE_EQ(r_p, r_pp);                         \
-                      }                                                     \
-                    });                                                     \
+#define TEST_UNARY_OP_WITH_BIT_P(OP)                                          \
+  TEST_P(ApiTest, OP##P) {                                                    \
+    const auto factory = std::get<0>(GetParam());                             \
+    const RuntimeConfig& conf = std::get<1>(GetParam());                      \
+    const size_t npc = std::get<2>(GetParam());                               \
+                                                                              \
+    utils::simulate(                                                          \
+        npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {          \
+          auto sctx = factory(conf, lctx);                                    \
+                                                                              \
+          /* GIVEN */                                                         \
+          auto p0 = rand_p(sctx.get(), kShape);                               \
+                                                                              \
+          for (auto bits : kShiftBits) { /* WHEN */                           \
+            if (bits >= SizeOf(conf.field()) * 8) {                           \
+              continue;                                                       \
+            }                                                                 \
+            auto r_p = OP##_p(sctx.get(), p0, {static_cast<int64_t>(bits)});  \
+            auto r_pp = OP##_p(sctx.get(), p0, {static_cast<int64_t>(bits)}); \
+                                                                              \
+            /* THEN */                                                        \
+            EXPECT_VALUE_EQ(r_p, r_pp);                                       \
+          }                                                                   \
+        });                                                                   \
   }
 
 #define TEST_UNARY_OP_WITH_BIT(OP) \
@@ -379,12 +384,13 @@ TEST_P(ApiTest, TruncS) {
                                      : kShape);
 
     // TODO: here we assume has msb error, only use lowest 10 bits.
-    p0 = arshift_p(sctx.get(), p0, SizeOf(conf.field()) * 8 - 10);
+    p0 = arshift_p(sctx.get(), p0,
+                   {static_cast<int64_t>(SizeOf(conf.field()) * 8 - 10)});
 
     const size_t bits = 2;
     auto r_s = s2p(sctx.get(), trunc_s(sctx.get(), p2s(sctx.get(), p0), bits,
                                        SignType::Unknown));
-    auto r_p = arshift_p(sctx.get(), p0, bits);
+    auto r_p = arshift_p(sctx.get(), p0, {bits});
 
     /* THEN */
     EXPECT_VALUE_ALMOST_EQ(r_s, r_p, npc);

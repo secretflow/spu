@@ -68,7 +68,7 @@ TEST_P(CheetahDotTest, Basic) {
     EXPECT_EQ(expected.numel(), computed.numel());
 
     const int64_t kMaxDiff = 1;
-    DISPATCH_ALL_FIELDS(field, "_", [&]() {
+    DISPATCH_ALL_FIELDS(field, [&]() {
       auto e = NdArrayView<ring2k_t>(expected);
       auto c = NdArrayView<ring2k_t>(computed);
 
@@ -119,7 +119,7 @@ TEST_P(CheetahDotTest, BatchDot) {
 
   [[maybe_unused]] constexpr int64_t kMaxDiff = 1;
   int64_t max_diff = 0;
-  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     auto e = NdArrayView<ring2k_t>(expected);
     auto c = NdArrayView<ring2k_t>(computed);
 

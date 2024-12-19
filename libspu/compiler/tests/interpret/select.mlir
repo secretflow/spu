@@ -1,6 +1,8 @@
 // RUN: spu-translate --protocol_kind=1 --interpret -split-input-file %s
 // RUN: spu-translate --protocol_kind=2 --interpret -split-input-file %s
 // RUN: spu-translate --protocol_kind=3 --interpret -split-input-file %s
+// RUN: spu-translate --protocol_kind=4 --interpret -split-input-file %s
+// RUN: spu-translate --protocol_kind=5 --interpret -split-input-file %s
 
 func.func @select_op_test_si64() {
   %pred = pphlo.constant dense<[true, false, true]> : tensor<3xi1>

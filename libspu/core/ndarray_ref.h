@@ -20,6 +20,7 @@
 
 #include "absl/types/span.h"
 #include "fmt/ostream.h"
+#include "fmt/ranges.h"
 #include "yacl/base/buffer.h"
 
 #include "libspu/core/bit_utils.h"
@@ -409,7 +410,6 @@ struct SimdTrait<NdArrayRef> {
 NdArrayRef makeConstantArrayRef(const Type& eltype, const Shape& shape);
 
 std::ostream& operator<<(std::ostream& out, const NdArrayRef& v);
-inline auto format_as(const spu::NdArrayRef& f) { return fmt::streamed(f); }
 
 template <typename T>
 class NdArrayView {
@@ -491,3 +491,10 @@ struct std::hash<spu::NdArrayRef> {
     return std::hash<const void*>{}(r.data());
   }
 };
+
+namespace fmt {
+
+template <>
+struct formatter<spu::NdArrayRef> : ostream_formatter {};
+
+}  // namespace fmt

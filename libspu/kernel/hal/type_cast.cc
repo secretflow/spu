@@ -27,7 +27,8 @@ Value int2fxp(SPUContext* ctx, const Value& x, DataType to_type) {
   SPU_TRACE_HAL_LEAF(ctx, x);
   SPU_ENFORCE(x.isInt(), "expect integer, got {}", x.dtype());
 
-  return _lshift(ctx, x, ctx->getFxpBits()).setDtype(to_type);
+  return _lshift(ctx, x, {static_cast<int64_t>(ctx->getFxpBits())})
+      .setDtype(to_type);
 }
 
 // Casting fxp to integer.
@@ -49,12 +50,12 @@ Value fxp2int(SPUContext* ctx, const Value& x, DataType to_type) {
   SPU_TRACE_HAL_LEAF(ctx, x);
   SPU_ENFORCE(x.isFxp());
 
-  const size_t fxp_bits = ctx->getFxpBits();
+  const int64_t fxp_bits = ctx->getFxpBits();
   const Value kOneMinusEps = _constant(ctx, (1 << fxp_bits) - 1, x.shape());
 
   // (x + 0.99 * (x < 0)) >> fxp_bits
   return _arshift(ctx, _add(ctx, x, _mul(ctx, kOneMinusEps, _msb(ctx, x))),
-                  fxp_bits)
+                  {fxp_bits})
       .setDtype(to_type);
 }
 
@@ -75,6 +76,12 @@ Value reveal(SPUContext* ctx, const Value& x) {
     return _v2p(ctx, x).setDtype(x.dtype());
   }
   return _s2p(ctx, x).setDtype(x.dtype());
+}
+
+Value reveal_to(SPUContext* ctx, const Value& x, size_t rank) {
+  SPU_TRACE_HAL_LEAF(ctx, x, rank);
+  SPU_ENFORCE(x.isSecret());
+  return _s2v(ctx, x, rank).setDtype(x.dtype());
 }
 
 Value dtype_cast(SPUContext* ctx, const Value& in, DataType to_type) {

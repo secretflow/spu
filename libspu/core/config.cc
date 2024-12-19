@@ -62,6 +62,17 @@ void populateRuntimeConfig(RuntimeConfig& cfg) {
     if (cfg.fxp_exp_mode() == RuntimeConfig::EXP_DEFAULT) {
       cfg.set_fxp_exp_mode(RuntimeConfig::EXP_TAYLOR);
     }
+    if (cfg.fxp_exp_mode() == RuntimeConfig::EXP_PRIME) {
+      // 0 offset is not supported
+      if (cfg.experimental_exp_prime_offset() == 0) {
+        // For FM128 default offset is 13
+        if (cfg.field() == FieldType::FM128) {
+          cfg.set_experimental_exp_prime_offset(13);
+        }
+        // TODO: set defaults for other fields, currently only FM128 is
+        // supported
+      }
+    }
 
     if (cfg.fxp_exp_iters() == 0) {
       cfg.set_fxp_exp_iters(8);

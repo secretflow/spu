@@ -85,7 +85,7 @@ TEST_F(UtilsTest, ReduceSum) {
         const double fxp = std::pow(2., rt_config.fxp_fraction_bits());
         auto flatten = got.data().reshape({got.numel()});
 
-        DISPATCH_ALL_FIELDS(field, "check", [&]() {
+        DISPATCH_ALL_FIELDS(field, [&]() {
           using s2k = std::make_signed<ring2k_t>::type;
           NdArrayView<s2k> got(flatten);
           for (int64_t i = 0; i < expected.numel(); ++i) {
@@ -136,7 +136,7 @@ TEST_F(UtilsTest, ArgMax) {
       if (lctx->Rank() == 0) {
         auto flatten = got.data().reshape({got.numel()});
 
-        DISPATCH_ALL_FIELDS(field, "check", [&]() {
+        DISPATCH_ALL_FIELDS(field, [&]() {
           NdArrayView<ring2k_t> got(flatten);
           for (size_t i = 0; i < expected.size(); ++i) {
             ASSERT_EQ(expected(i), got[i]);

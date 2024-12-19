@@ -285,7 +285,7 @@ LogicalResult PadOp::inferReturnTypes(
     ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes,
     ::mlir::OpaqueProperties properties, ::mlir::RegionRange regions,
     ::llvm::SmallVectorImpl<::mlir::Type>& inferredReturnTypes) {
-  PadOp::Adaptor adaptor(operands, attributes, {}, regions);
+  PadOp::Adaptor adaptor(operands, attributes, properties, regions);
   return hlo::inferPadOp(location, adaptor.getOperand().getType(),
                          adaptor.getPaddingValue().getType(),
                          adaptor.getEdgePaddingLow(),
@@ -295,27 +295,27 @@ LogicalResult PadOp::inferReturnTypes(
 
 LogicalResult ConcatenateOp::inferReturnTypes(
     MLIRContext*, std::optional<Location> location, ValueRange operands,
-    DictionaryAttr attributes, OpaqueProperties, RegionRange regions,
+    DictionaryAttr attributes, OpaqueProperties properties, RegionRange regions,
     SmallVectorImpl<Type>& inferred_return_types) {
-  ConcatenateOp::Adaptor adaptor(operands, attributes, {}, regions);
+  ConcatenateOp::Adaptor adaptor(operands, attributes, properties, regions);
   return hlo::inferConcatenateOp(location, adaptor.getInputs().getTypes(),
                                  adaptor.getDimension(), inferred_return_types);
 }
 
 LogicalResult TransposeOp::inferReturnTypes(
     MLIRContext*, std::optional<Location> location, ValueRange operands,
-    DictionaryAttr attributes, OpaqueProperties, RegionRange regions,
+    DictionaryAttr attributes, OpaqueProperties properties, RegionRange regions,
     SmallVectorImpl<Type>& inferred_return_types) {
-  TransposeOp::Adaptor adaptor(operands, attributes, {}, regions);
+  TransposeOp::Adaptor adaptor(operands, attributes, properties, regions);
   return hlo::inferTransposeOp(location, adaptor.getOperand(),
                                adaptor.getPermutation(), inferred_return_types);
 }
 
 LogicalResult SliceOp::inferReturnTypes(
     MLIRContext*, std::optional<Location> location, ValueRange operands,
-    DictionaryAttr attributes, OpaqueProperties, RegionRange regions,
+    DictionaryAttr attributes, OpaqueProperties properties, RegionRange regions,
     SmallVectorImpl<Type>& inferred_return_types) {
-  SliceOp::Adaptor adaptor(operands, attributes, {}, regions);
+  SliceOp::Adaptor adaptor(operands, attributes, properties, regions);
   return hlo::inferSliceOp(location, adaptor.getOperand().getType(),
                            adaptor.getStartIndices(), adaptor.getLimitIndices(),
                            adaptor.getStrides(), inferred_return_types);
@@ -375,9 +375,9 @@ LogicalResult inferDynamicSliceOp(std::optional<Location> location,
 
 LogicalResult DynamicSliceOp::inferReturnTypes(
     MLIRContext*, std::optional<Location> location, ValueRange operands,
-    DictionaryAttr attributes, OpaqueProperties, RegionRange regions,
+    DictionaryAttr attributes, OpaqueProperties properties, RegionRange regions,
     SmallVectorImpl<Type>& inferredReturnTypes) {
-  DynamicSliceOp::Adaptor adaptor(operands, attributes, {}, regions);
+  DynamicSliceOp::Adaptor adaptor(operands, attributes, properties, regions);
   return inferDynamicSliceOp(location, adaptor.getOperand().getType(),
                              adaptor.getStartIndices().getTypes(),
                              adaptor.getSliceSizes(), inferredReturnTypes);
@@ -420,16 +420,26 @@ LogicalResult inferDynamicUpdateSliceOp(
   }
 
   // dynamic_update_slice_c1
-  inferredReturnTypes.emplace_back(RankedTensorType::get(
-      operandType.getShape(), operandType.getElementType()));
+  TypeTools tools(operand.getContext());
+  auto vis = llvm::map_to_vector(startIndices, [&](mlir::Value v) {
+    return tools.getTypeVisibility(v.getType());
+  });
+  vis.emplace_back(tools.getTypeVisibility(operand.getType()));
+  vis.emplace_back(tools.getTypeVisibility(update.getType()));
+
+  inferredReturnTypes.emplace_back(
+      RankedTensorType::get(operandType.getShape(),
+                            tools.getType(operandType.getElementType(),
+                                          tools.computeCommonVisibility(vis))));
   return success();
 }
 
 LogicalResult DynamicUpdateSliceOp::inferReturnTypes(
     MLIRContext*, std::optional<Location> location, ValueRange operands,
-    DictionaryAttr attributes, OpaqueProperties, RegionRange regions,
+    DictionaryAttr attributes, OpaqueProperties properties, RegionRange regions,
     SmallVectorImpl<Type>& inferredReturnTypes) {
-  DynamicUpdateSliceOp::Adaptor adaptor(operands, attributes, {}, regions);
+  DynamicUpdateSliceOp::Adaptor adaptor(operands, attributes, properties,
+                                        regions);
 
   return inferDynamicUpdateSliceOp(
       location, adaptor.getOperand(), adaptor.getUpdate(),

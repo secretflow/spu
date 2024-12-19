@@ -41,6 +41,7 @@ class Beaver {
     std::vector<PrgSeedBuff> encrypted_seeds;
     int64_t size;
     FieldType field;
+    ElementType eltype;
   };
 
   using Array = yacl::Buffer;
@@ -50,8 +51,11 @@ class Beaver {
   virtual ~Beaver() = default;
 
   virtual Triple Mul(FieldType field, int64_t size,
-                     ReplayDesc* x_desc = nullptr,
-                     ReplayDesc* y_desc = nullptr) = 0;
+                     ReplayDesc* x_desc = nullptr, ReplayDesc* y_desc = nullptr,
+                     ElementType eltype = ElementType::kRing) = 0;
+
+  virtual Pair MulPriv(FieldType field, int64_t size,
+                       ElementType eltype = ElementType::kRing) = 0;
 
   virtual Pair Square(FieldType field, int64_t size,
                       ReplayDesc* x_desc = nullptr) = 0;

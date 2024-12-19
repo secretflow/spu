@@ -1,6 +1,8 @@
 // RUN: spu-translate --protocol_kind=1 --interpret -split-input-file %s
 // RUN: spu-translate --protocol_kind=2 --interpret -split-input-file %s
 // RUN: spu-translate --protocol_kind=3 --interpret -split-input-file %s
+// RUN: spu-translate --protocol_kind=4 --interpret -split-input-file %s
+// RUN: spu-translate --protocol_kind=5 --interpret -split-input-file %s
 
 func.func @sort_stable() {
   %input0 = pphlo.constant dense<[[1, 2, 3], [3, 2, 1]]> : tensor<2x3xi64>
