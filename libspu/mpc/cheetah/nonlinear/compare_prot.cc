@@ -16,13 +16,11 @@
 
 #include "yacl/crypto/rand/rand.h"
 #include "yacl/crypto/tools/prg.h"
-#include "yacl/link/link.h"
 
 #include "libspu/core/type.h"
 #include "libspu/mpc/cheetah/ot/basic_ot_prot.h"
 #include "libspu/mpc/cheetah/ot/ot_util.h"
 #include "libspu/mpc/cheetah/type.h"
-#include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc::cheetah {
@@ -58,14 +56,14 @@ void SetLeafOTMsg(absl::Span<uint8_t> ot_messages, uint8_t digit,
 NdArrayRef CompareProtocol::DoCompute(const NdArrayRef& inp, bool greater_than,
                                       NdArrayRef* keep_eq, int64_t bitwidth) {
   auto field = inp.eltype().as<Ring2k>()->field();
-  int64_t num_digits = CeilDiv(bitwidth, (int64_t)compare_radix_);
+  int64_t num_digits = CeilDiv(bitwidth, static_cast<int64_t>(compare_radix_));
   size_t radix = static_cast<size_t>(1) << compare_radix_;  // one-of-N OT
   int64_t num_cmp = inp.numel();
   // init to all zero
   std::vector<uint8_t> digits(num_cmp * num_digits, 0);
 
   // Step 1 break into digits \in [0, radix)
-  DISPATCH_ALL_FIELDS(field, "break_digits", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using u2k = std::make_unsigned<ring2k_t>::type;
     const auto mask_radix = makeBitsMask<u2k>(compare_radix_);
     NdArrayView<u2k> xinp(inp);
@@ -142,7 +140,7 @@ NdArrayRef CompareProtocol::DoCompute(const NdArrayRef& inp, bool greater_than,
       ring_zeros(field, {static_cast<int64_t>(num_digits * num_cmp)})
           .as(boolean_t);
 
-  DISPATCH_ALL_FIELDS(field, "copy_leaf", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> xprev_cmp(prev_cmp);
     NdArrayView<ring2k_t> xprev_eq(prev_eq);
     pforeach(0, prev_cmp.numel(), [&](int64_t i) {

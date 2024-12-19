@@ -60,8 +60,8 @@ NdArrayRef encodeToRing(const PtBufferView& bv, FieldType field,
   }
 
   if (pt_type == PT_F32 || pt_type == PT_F64 || pt_type == PT_F16) {
-    DISPATCH_FLOAT_PT_TYPES(pt_type, "_", [&]() {
-      DISPATCH_ALL_FIELDS(field, "_", [&]() {
+    DISPATCH_FLOAT_PT_TYPES(pt_type, [&]() {
+      DISPATCH_ALL_FIELDS(field, [&]() {
         using Float = ScalarT;
         using T = std::make_signed_t<ring2k_t>;
 
@@ -100,8 +100,8 @@ NdArrayRef encodeToRing(const PtBufferView& bv, FieldType field,
     return dst;
   } else {
     // handle integer & boolean
-    DISPATCH_INT_PT_TYPES(pt_type, "_", [&]() {
-      DISPATCH_ALL_FIELDS(field, "_", [&]() {
+    DISPATCH_INT_PT_TYPES(pt_type, [&]() {
+      DISPATCH_ALL_FIELDS(field, [&]() {
         using Integer = ScalarT;
         SPU_ENFORCE(sizeof(ring2k_t) >= sizeof(Integer),
                     "integer encoding failed, ring={} could not represent {}",
@@ -138,8 +138,8 @@ void decodeFromRing(const NdArrayRef& src, DataType in_dtype, size_t fxp_bits,
     *out_pt_type = pt_type;
   }
 
-  DISPATCH_ALL_FIELDS(field, "field", [&]() {
-    DISPATCH_ALL_PT_TYPES(pt_type, "pt_type", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
+    DISPATCH_ALL_PT_TYPES(pt_type, [&]() {
       using T = std::make_signed_t<ring2k_t>;
 
       auto _src = NdArrayView<T>(src);

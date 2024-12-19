@@ -29,18 +29,6 @@
 namespace spu::kernel::hal {
 namespace detail {
 
-Value EvaluatePolynomial(SPUContext* ctx, const Value& x,
-                         absl::Span<const float> coefficients) {
-  auto poly = constant(ctx, coefficients[0], x.dtype(), x.shape());
-
-  for (size_t i = 1; i < coefficients.size(); ++i) {
-    auto c = constant(ctx, coefficients[i], x.dtype(), x.shape());
-    poly = f_mul(ctx, poly, x);
-    poly = f_add(ctx, poly, c);
-  }
-  return poly;
-}
-
 Value log_minmax_normalized(SPUContext* ctx, const Value& x) {
   static std::array<float, 9> kLogCoefficient{
       0.0,          0.9999964239,  -0.4998741238, 0.3317990258, -0.2407338084,
@@ -69,12 +57,12 @@ Value log_minmax(SPUContext* ctx, const Value& x) {
 
   // get most significant non-zero bit of x
   // we avoid direct using detail::highestOneBit for saving one _prefix_or
-  auto pre_x1 = _rshift(ctx, pre_x, 1);
+  auto pre_x1 = _rshift(ctx, pre_x, {1});
   auto msb = _xor(ctx, pre_x, pre_x1);
 
   // let x = x_norm * factor, where x in [1.0, 2.0)
   auto factor = _bitrev(ctx, msb, 0, 2 * num_fxp_bits + 1).setDtype(x.dtype());
-  detail::hintNumberOfBits(factor, 2 * num_fxp_bits + 1);
+  factor = maskNumberOfBits(ctx, factor, 2 * num_fxp_bits + 1);
   auto norm = f_mul(ctx, x, factor);
 
   // log(x) = log(x_norm * factor)
@@ -83,7 +71,7 @@ Value log_minmax(SPUContext* ctx, const Value& x) {
   auto log_norm = log_minmax_normalized(ctx, norm);
   auto log2_e =
       _lshift(ctx, _sub(ctx, k, _constant(ctx, num_fxp_bits + 1, x.shape())),
-              num_fxp_bits)
+              {static_cast<int64_t>(num_fxp_bits)})
           .setDtype(x.dtype());
   auto k_log2 = constant(ctx, std::log(2), x.dtype(), x.shape());
   auto log_e = f_mul(ctx, log2_e, k_log2);
@@ -145,7 +133,7 @@ Value log2_pade(SPUContext* ctx, const Value& x) {
   // let x = x_norm * factor, where x in [0.5, 1.0)
   auto msb = detail::highestOneBit(ctx, x);
   auto factor = _bitrev(ctx, msb, 0, 2 * num_fxp_bits).setDtype(x.dtype());
-  detail::hintNumberOfBits(factor, 2 * num_fxp_bits);
+  factor = maskNumberOfBits(ctx, factor, 2 * num_fxp_bits);
   auto norm = f_mul(ctx, x, factor);
 
   // log2(x) = log2(x_norm * factor)
@@ -154,7 +142,7 @@ Value log2_pade(SPUContext* ctx, const Value& x) {
   return _add(
              ctx, log2_pade_normalized(ctx, norm),
              _lshift(ctx, _sub(ctx, k, _constant(ctx, num_fxp_bits, x.shape())),
-                     num_fxp_bits))
+                     {static_cast<int64_t>(num_fxp_bits)}))
       .setDtype(x.dtype());
 }
 
@@ -213,6 +201,31 @@ Value exp_taylor(SPUContext* ctx, const Value& x) {
   return res;
 }
 
+Value exp_prime(SPUContext* ctx, const Value& x) {
+  auto clamped_x = x;
+  auto offset = ctx->config().experimental_exp_prime_offset();
+  auto fxp = ctx->getFxpBits();
+  if (!ctx->config().experimental_exp_prime_disable_lower_bound()) {
+    // currently the bound is tied to FM128
+    SPU_ENFORCE_EQ(ctx->getField(), FieldType::FM128);
+    auto lower_bound = (48.0 - offset - 2.0 * fxp) / M_LOG2E;
+    clamped_x = _clamp_lower(ctx, clamped_x,
+                             constant(ctx, lower_bound, x.dtype(), x.shape()))
+                    .setDtype(x.dtype());
+  }
+  if (ctx->config().experimental_exp_prime_enable_upper_bound()) {
+    // currently the bound is tied to FM128
+    SPU_ENFORCE_EQ(ctx->getField(), FieldType::FM128);
+    auto upper_bound = (124.0 - 2.0 * fxp - offset) / M_LOG2E;
+    clamped_x = _clamp_upper(ctx, clamped_x,
+                             constant(ctx, upper_bound, x.dtype(), x.shape()))
+                    .setDtype(x.dtype());
+  }
+
+  auto ret = dynDispatch<spu::Value>(ctx, "exp_a", clamped_x);
+  return ret.setDtype(x.dtype());
+}
+
 namespace {
 
 // Pade approximation of exp2(x), x is in [0, 1].
@@ -260,15 +273,18 @@ Value exp2_pade(SPUContext* ctx, const Value& x) {
   const size_t bit_width = SizeOf(ctx->getField()) * 8;
 
   const auto x_bshare = _prefer_b(ctx, x);
-  const auto x_msb = _rshift(ctx, x_bshare, bit_width - 1);
-  auto x_integer = _rshift(ctx, x_bshare, fbits);
+  const auto x_msb =
+      _rshift(ctx, x_bshare, {static_cast<int64_t>(bit_width - 1)});
+  auto x_integer = _rshift(ctx, x_bshare, {static_cast<int64_t>(fbits)});
   auto x_fraction =
-      _sub(ctx, x, _lshift(ctx, x_integer, fbits)).setDtype(x.dtype());
+      _sub(ctx, x, _lshift(ctx, x_integer, {static_cast<int64_t>(fbits)}))
+          .setDtype(x.dtype());
   auto ret = exp2_pade_normalized(ctx, x_fraction);
 
   for (size_t idx = 0; idx < int_bits; idx++) {
-    auto a = _and(ctx, _rshift(ctx, x_integer, idx), k1);
-    detail::hintNumberOfBits(a, 1);
+    auto a =
+        _and(ctx, _rshift(ctx, x_integer, {static_cast<int64_t>(idx)}), k1);
+    a = detail::maskNumberOfBits(ctx, a, 1);
     a = _prefer_a(ctx, a);
     const auto K = 1U << std::min(1UL << idx, bit_width - 2);
     ret = _mul(ctx, ret,
@@ -448,13 +464,22 @@ Value f_exp(SPUContext* ctx, const Value& x) {
     case RuntimeConfig::EXP_PADE: {
       // The valid input for exp_pade is [-kInputLimit, kInputLimit].
       // TODO(junfeng): should merge clamp into exp_pade to save msb ops.
-      const float kInputLimit = 32 / std::log2(std::exp(1));
+      const float kInputLimit = 32.0 / std::log2(std::exp(1));
       const auto clamped_x =
           _clamp(ctx, x, constant(ctx, -kInputLimit, x.dtype(), x.shape()),
                  constant(ctx, kInputLimit, x.dtype(), x.shape()))
               .setDtype(x.dtype());
       return detail::exp_pade(ctx, clamped_x);
     }
+    case RuntimeConfig::EXP_PRIME:
+      if (ctx->hasKernel("exp_a")) {
+        return detail::exp_prime(ctx, x);
+      } else {
+        SPU_THROW(
+            "exp_a is not implemented for this protocol, currently only "
+            "2pc "
+            "semi2k is supported.");
+      }
     default:
       SPU_THROW("unexpected exp approximation method {}",
                 ctx->config().fxp_exp_mode());
@@ -543,7 +568,7 @@ static Value rsqrt_init_guess(SPUContext* ctx, const Value& x, const Value& z) {
 
   // let u in [0.25, 0.5)
   auto z_rev = _bitrev(ctx, z, 0, 2 * f);
-  detail::hintNumberOfBits(z_rev, 2 * f);
+  z_rev = detail::maskNumberOfBits(ctx, z_rev, 2 * f);
 
   auto u = _trunc(ctx, _mul(ctx, x, z_rev)).setDtype(x.dtype());
 
@@ -583,17 +608,17 @@ static Value rsqrt_comp(SPUContext* ctx, const Value& x, const Value& z) {
     auto lo_mask =
         _constant(ctx, (static_cast<uint128_t>(1) << (k / 2)) - 1, x.shape());
     auto z_even = _and(ctx, z_sep, lo_mask);
-    auto z_odd = _and(ctx, _rshift(ctx, z_sep, k / 2), lo_mask);
+    auto z_odd =
+        _and(ctx, _rshift(ctx, z_sep, {static_cast<int64_t>(k / 2)}), lo_mask);
 
     // a[i] = z[2*i] ^ z[2*i+1]
     a = _xor(ctx, z_odd, z_even);
     // b ^= z[2*i]
     b = _bit_parity(ctx, z_even, k / 2);
-    detail::hintNumberOfBits(b, 1);
   }
 
   auto a_rev = _bitrev(ctx, a, 0, (f / 2) * 2);
-  detail::hintNumberOfBits(a_rev, (f / 2) * 2);
+  a_rev = detail::maskNumberOfBits(ctx, a_rev, (f / 2) * 2);
 
   // do compensation
   // Note:
@@ -623,7 +648,7 @@ static Value rsqrt_np2(SPUContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
   // let e = NP2(x), z = 2^(e+f)
-  return _lshift(ctx, detail::highestOneBit(ctx, x), 1);
+  return _lshift(ctx, detail::highestOneBit(ctx, x), {1});
 }
 
 // Reference:

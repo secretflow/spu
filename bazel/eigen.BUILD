@@ -20,6 +20,7 @@
 #   matrices, and related algorithms.
 
 load("@rules_cc//cc:defs.bzl", "cc_library")
+load("@yacl//bazel:yacl.bzl", "OMP_DEPS")
 
 licenses([
     # Note: Eigen is an MPL2 library that includes GPL v3 and LGPL v2.1+ code.
@@ -64,6 +65,7 @@ cc_library(
     ],
     includes = ["."],
     visibility = ["//visibility:public"],
+    deps = OMP_DEPS,
 )
 
 filegroup(

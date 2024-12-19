@@ -22,6 +22,7 @@ try:
     import jax.extend.linear_util as jax_lu
 except ImportError:
     import jax.linear_util as jax_lu  # fallback
+
 import jax.numpy as jnp
 import numpy as np
 from jax._src import api_util as japi_util
@@ -69,6 +70,7 @@ class Simulator(object):
             A SPU Simulator
         """
         config = spu_pb2.RuntimeConfig(protocol=prot, field=field)
+
         if prot == spu_pb2.ProtocolKind.CHEETAH:
             # config.cheetah_2pc_config.enable_mul_lsb_error = True
             # config.cheetah_2pc_config.ot_kind = spu_pb2.CheetahOtKind.YACL_Softspoken

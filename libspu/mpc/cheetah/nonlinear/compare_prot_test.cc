@@ -14,12 +14,9 @@
 
 #include "libspu/mpc/cheetah/nonlinear/compare_prot.h"
 
-#include <random>
-
 #include "gtest/gtest.h"
 
 #include "libspu/mpc/cheetah/ot/basic_ot_prot.h"
-#include "libspu/mpc/cheetah/type.h"
 #include "libspu/mpc/utils/ring_ops.h"
 #include "libspu/mpc/utils/simulate.h"
 
@@ -51,7 +48,7 @@ TEST_P(CompareProtTest, Compare) {
   inp[0] = ring_rand(field, shape);
   inp[1] = ring_rand(field, shape);
 
-  DISPATCH_ALL_FIELDS(field, "", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     auto xinp = NdArrayView<ring2k_t>(inp[0]);
     xinp[0] = 1;
     xinp[1] = 10;
@@ -60,7 +57,11 @@ TEST_P(CompareProtTest, Compare) {
     xinp = NdArrayView<ring2k_t>(inp[1]);
     xinp[0] = 1;
     xinp[1] = 9;
-    xinp[2] = 1000;
+    if constexpr (std::is_same_v<ring2k_t, uint8_t>) {
+      xinp[2] = 100;
+    } else {
+      xinp[2] = 1000;
+    }
   });
 
   NdArrayRef cmp_oup[2];
@@ -74,7 +75,7 @@ TEST_P(CompareProtTest, Compare) {
     cmp_oup[rank] = _c;
   });
 
-  DISPATCH_ALL_FIELDS(field, "", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     auto xout0 = NdArrayView<ring2k_t>(cmp_oup[0]);
     auto xout1 = NdArrayView<ring2k_t>(cmp_oup[1]);
     auto xinp0 = NdArrayView<ring2k_t>(inp[0]);
@@ -100,7 +101,7 @@ TEST_P(CompareProtTest, CompareBitWidth) {
   inp[0] = ring_rand(field, {n, 2});
   inp[1] = ring_rand(field, {n, 2});
 
-  DISPATCH_ALL_FIELDS(field, "", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     ring2k_t mask = (static_cast<ring2k_t>(1) << bw) - 1;
     auto xinp = NdArrayView<ring2k_t>(inp[0]);
     xinp[0] = 1;
@@ -111,7 +112,11 @@ TEST_P(CompareProtTest, CompareBitWidth) {
     xinp = NdArrayView<ring2k_t>(inp[1]);
     xinp[0] = 1;
     xinp[1] = 9;
-    xinp[2] = 1000;
+    if constexpr (std::is_same_v<ring2k_t, uint8_t>) {
+      xinp[2] = 100;
+    } else {
+      xinp[2] = 1000;
+    }
     pforeach(0, inp[0].numel(), [&](int64_t i) { xinp[i] &= mask; });
   });
 
@@ -142,7 +147,7 @@ TEST_P(CompareProtTest, CompareBitWidth) {
     cmp_oup[rank] = _c;
   });
 
-  DISPATCH_ALL_FIELDS(field, "", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     auto xout0 = NdArrayView<ring2k_t>(cmp_oup[0]);
     auto xout1 = NdArrayView<ring2k_t>(cmp_oup[1]);
     auto xinp0 = NdArrayView<ring2k_t>(inp[0]);
@@ -172,7 +177,7 @@ TEST_P(CompareProtTest, WithEq) {
   inp[1] = _inp[0].slice({0, 0, 0}, {10, 10, 10}, {2, 3, 2});
   shape = inp[0].shape();
 
-  DISPATCH_ALL_FIELDS(field, "", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     auto xinp = NdArrayView<ring2k_t>(inp[0]);
     xinp[0] = 1;
     xinp[1] = 10;
@@ -181,7 +186,11 @@ TEST_P(CompareProtTest, WithEq) {
     xinp = NdArrayView<ring2k_t>(inp[1]);
     xinp[0] = 1;
     xinp[1] = 9;
-    xinp[2] = 1000;
+    if constexpr (std::is_same_v<ring2k_t, uint8_t>) {
+      xinp[2] = 100;
+    } else {
+      xinp[2] = 1000;
+    }
   });
 
   NdArrayRef cmp_oup[2];
@@ -197,7 +206,7 @@ TEST_P(CompareProtTest, WithEq) {
     eq_oup[rank] = _e;
   });
 
-  DISPATCH_ALL_FIELDS(field, "", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     auto xout0 = NdArrayView<ring2k_t>(cmp_oup[0]);
     auto xout1 = NdArrayView<ring2k_t>(cmp_oup[1]);
     auto xeq0 = NdArrayView<ring2k_t>(eq_oup[0]);
@@ -229,7 +238,7 @@ TEST_P(CompareProtTest, WithEqBitWidth) {
   inp[0] = ring_rand(field, {n, 2});
   inp[1] = ring_rand(field, {n, 2});
 
-  DISPATCH_ALL_FIELDS(field, "", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     ring2k_t mask = (static_cast<ring2k_t>(1) << bw) - 1;
     auto xinp = NdArrayView<ring2k_t>(inp[0]);
     xinp[0] = 1;
@@ -240,7 +249,11 @@ TEST_P(CompareProtTest, WithEqBitWidth) {
     xinp = NdArrayView<ring2k_t>(inp[1]);
     xinp[0] = 1;
     xinp[1] = 9;
-    xinp[2] = 1000;
+    if constexpr (std::is_same_v<ring2k_t, uint8_t>) {
+      xinp[2] = 100;
+    } else {
+      xinp[2] = 1000;
+    }
     pforeach(0, inp[0].numel(), [&](int64_t i) { xinp[i] &= mask; });
   });
 
@@ -271,7 +284,7 @@ TEST_P(CompareProtTest, WithEqBitWidth) {
     eq_oup[rank] = _e;
   });
 
-  DISPATCH_ALL_FIELDS(field, "", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     auto xout0 = NdArrayView<ring2k_t>(cmp_oup[0]);
     auto xout1 = NdArrayView<ring2k_t>(cmp_oup[1]);
     auto xeq0 = NdArrayView<ring2k_t>(eq_oup[0]);

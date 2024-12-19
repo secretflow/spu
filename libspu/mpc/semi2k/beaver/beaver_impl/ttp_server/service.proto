@@ -22,8 +22,16 @@ enum ErrorCode {
   OK = 0;
   OpAdjustError = 1;
   SeedDecryptError = 2;
+  StreamAcceptError = 3;
 }
 
+// The type of element in the field.
+// Match the enum in libspu/mpc/common/prg_tensor.h
+enum ElType {
+  UNSPECIFIED = 0;
+  RING = 1;
+  GFMP = 2;
+}
 // PRG generated buffer metainfo.
 // BeaverService replay PRG to generate same buffer using each party's prg_seed
 // encrypted by server's public key. PrgBufferMeta represent {world_size}
@@ -40,6 +48,8 @@ message PrgBufferMeta {
 service BeaverService {
   // V1 adjust ops
   rpc AdjustMul(AdjustMulRequest) returns (AdjustResponse);
+
+  rpc AdjustMulPriv(AdjustMulPrivRequest) returns (AdjustResponse);
 
   rpc AdjustSquare(AdjustSquareRequest) returns (AdjustResponse);
 
@@ -68,6 +78,27 @@ message AdjustMulRequest {
   // adjust_c = ra * rb - rc
   // make
   // ra * rb = (adjust_c + rc)
+
+  // element type supported: "GFMP", "RING"
+  ElType element_type = 3;
+  // if element type is "GFMP" then all ring ops will be changed to gfmp
+}
+
+message AdjustMulPrivRequest {
+  // input 2 prg buffer
+  // first is a or b [one party holds a slice, another b slice]
+  // second is c
+  repeated PrgBufferMeta prg_inputs = 1;
+  // What field size should be used to interpret buffer content
+  uint32 field_size = 2;
+  // output
+  // adjust_c = a * b - rc
+  // make
+  // a * b = (adjust_c + rc)
+
+  // element type supported: "GFMP", "RING"
+  ElType element_type = 3;
+  // if element type is "GFMP" then all ring ops will be changed to gfmp
 }
 
 message AdjustSquareRequest {
@@ -170,8 +201,6 @@ message AdjustPermRequest {
   repeated PrgBufferMeta prg_inputs = 1;
   // What field size should be used to interpret buffer content
   uint32 field_size = 2;
-  // permutation vector
-  repeated int64 perm_vec = 3;
   // output
   // adjust_b = (apply inverse permutation perm_vec to ra) - rb
   // make
@@ -181,6 +210,4 @@ message AdjustPermRequest {
 message AdjustResponse {
   ErrorCode code = 1;
   string message = 2;
-  // Adjust output array buffer
-  repeated bytes adjust_outputs = 3;
 }

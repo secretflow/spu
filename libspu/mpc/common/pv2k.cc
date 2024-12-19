@@ -37,7 +37,7 @@ inline int64_t getOwner(const NdArrayRef& x) {
 
 class P2V : public RevealToKernel {
  public:
-  static constexpr char kBindName[] = "p2v";
+  static constexpr const char* kBindName() { return "p2v"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -58,7 +58,7 @@ class P2V : public RevealToKernel {
 
 class V2P : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "v2p";
+  static constexpr const char* kBindName() { return "v2p"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -73,7 +73,7 @@ class V2P : public UnaryKernel {
 
     auto numel = in.numel();
 
-    DISPATCH_ALL_FIELDS(field, "v2p", [&]() {
+    DISPATCH_ALL_FIELDS(field, [&]() {
       std::vector<ring2k_t> priv(numel);
       NdArrayView<ring2k_t> _in(in);
 
@@ -90,7 +90,7 @@ class V2P : public UnaryKernel {
 
 class MakeP : public Kernel {
  public:
-  static constexpr char kBindName[] = "make_p";
+  static constexpr const char* kBindName() { return "make_p"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -113,7 +113,7 @@ class MakeP : public Kernel {
                    Strides(shape.size(), 0),  // strides
                    0);
 
-    DISPATCH_ALL_FIELDS(field, "pub2k.make_p", [&]() {
+    DISPATCH_ALL_FIELDS(field, [&]() {
       arr.at<ring2k_t>(Index(shape.size(), 0)) = static_cast<ring2k_t>(init);
     });
     return Value(arr, DT_INVALID);
@@ -122,7 +122,7 @@ class MakeP : public Kernel {
 
 class RandP : public RandKernel {
  public:
-  static constexpr char kBindName[] = "rand_p";
+  static constexpr const char* kBindName() { return "rand_p"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -136,9 +136,9 @@ class RandP : public RandKernel {
   }
 };
 
-class NotP : public UnaryKernel {
+class NegateP : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "not_p";
+  static constexpr const char* kBindName() { return "negate_p"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -146,13 +146,13 @@ class NotP : public UnaryKernel {
 
   NdArrayRef proc(KernelEvalContext*, const NdArrayRef& in) const override {
     const auto field = in.eltype().as<Ring2k>()->field();
-    return ring_not(in).as(makeType<Pub2kTy>(field));
+    return ring_neg(in).as(makeType<Pub2kTy>(field));
   }
 };
 
-class NotV : public UnaryKernel {
+class NegateV : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "not_v";
+  static constexpr const char* kBindName() { return "negate_v"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -160,7 +160,7 @@ class NotV : public UnaryKernel {
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override {
     if (isOwner(ctx, in.eltype())) {
-      return ring_not(in).as(in.eltype());
+      return ring_neg(in).as(in.eltype());
     } else {
       return in;
     }
@@ -169,20 +169,21 @@ class NotV : public UnaryKernel {
 
 class MsbP : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "msb_p";
+  static constexpr const char* kBindName() { return "msb_p"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
   NdArrayRef proc(KernelEvalContext*, const NdArrayRef& in) const override {
-    return ring_rshift(in, in.elsize() * 8 - 1).as(in.eltype());
+    return ring_rshift(in, {static_cast<int64_t>(in.elsize() * 8 - 1)})
+        .as(in.eltype());
   }
 };
 
 class MsbV : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "msb_v";
+  static constexpr const char* kBindName() { return "msb_v"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -190,7 +191,8 @@ class MsbV : public UnaryKernel {
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override {
     if (isOwner(ctx, in.eltype())) {
-      return ring_rshift(in, in.elsize() * 8 - 1).as(in.eltype());
+      return ring_rshift(in, {static_cast<int64_t>(in.elsize() * 8 - 1)})
+          .as(in.eltype());
     } else {
       return in;
     }
@@ -199,7 +201,7 @@ class MsbV : public UnaryKernel {
 
 class EqualPP : public BinaryKernel {
  public:
-  static constexpr char kBindName[] = "equal_pp";
+  static constexpr const char* kBindName() { return "equal_pp"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
   ce::CExpr comm() const override { return ce::Const(0); }
@@ -215,7 +217,7 @@ class EqualPP : public BinaryKernel {
 
 class EqualVVV : public BinaryKernel {
  public:
-  static constexpr char kBindName[] = "equal_vvv";
+  static constexpr const char* kBindName() { return "equal_vvv"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
   ce::CExpr comm() const override { return ce::Const(0); }
@@ -234,15 +236,13 @@ class EqualVVV : public BinaryKernel {
 
 class EqualVP : public BinaryKernel {
  public:
-  static constexpr char kBindName[] = "equal_vp";
+  static constexpr const char* kBindName() { return "equal_vp"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
   ce::CExpr comm() const override { return ce::Const(0); }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x,
                   const NdArrayRef& y) const override {
-    SPU_ENFORCE_EQ(x.eltype(), y.eltype());
-
     if (isOwner(ctx, x.eltype())) {
       return ring_equal(x, y).as(x.eltype());
     } else {
@@ -253,7 +253,7 @@ class EqualVP : public BinaryKernel {
 
 class AddPP : public BinaryKernel {
  public:
-  static constexpr char kBindName[] = "add_pp";
+  static constexpr const char* kBindName() { return "add_pp"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
   ce::CExpr comm() const override { return ce::Const(0); }
@@ -267,7 +267,7 @@ class AddPP : public BinaryKernel {
 
 class AddVVV : public BinaryKernel {
  public:
-  static constexpr char kBindName[] = "add_vvv";
+  static constexpr const char* kBindName() { return "add_vvv"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
   ce::CExpr comm() const override { return ce::Const(0); }
@@ -286,7 +286,7 @@ class AddVVV : public BinaryKernel {
 
 class AddVP : public BinaryKernel {
  public:
-  static constexpr char kBindName[] = "add_vp";
+  static constexpr const char* kBindName() { return "add_vp"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
   ce::CExpr comm() const override { return ce::Const(0); }
@@ -303,7 +303,7 @@ class AddVP : public BinaryKernel {
 
 class MulPP : public BinaryKernel {
  public:
-  static constexpr char kBindName[] = "mul_pp";
+  static constexpr const char* kBindName() { return "mul_pp"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -318,7 +318,7 @@ class MulPP : public BinaryKernel {
 
 class MulVP : public BinaryKernel {
  public:
-  static constexpr char kBindName[] = "mul_vp";
+  static constexpr const char* kBindName() { return "mul_vp"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -336,7 +336,7 @@ class MulVP : public BinaryKernel {
 
 class MulVVV : public BinaryKernel {
  public:
-  static constexpr char kBindName[] = "mul_vvv";
+  static constexpr const char* kBindName() { return "mul_vvv"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -354,7 +354,7 @@ class MulVVV : public BinaryKernel {
 
 class MatMulPP : public MatmulKernel {
  public:
-  static constexpr char kBindName[] = "mmul_pp";
+  static constexpr const char* kBindName() { return "mmul_pp"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -369,7 +369,7 @@ class MatMulPP : public MatmulKernel {
 
 class MatMulVVV : public MatmulKernel {
  public:
-  static constexpr char kBindName[] = "mmul_vvv";
+  static constexpr const char* kBindName() { return "mmul_vvv"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -386,7 +386,7 @@ class MatMulVVV : public MatmulKernel {
 
 class MatMulVP : public MatmulKernel {
  public:
-  static constexpr char kBindName[] = "mmul_vp";
+  static constexpr const char* kBindName() { return "mmul_vp"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -402,7 +402,7 @@ class MatMulVP : public MatmulKernel {
 
 class AndPP : public BinaryKernel {
  public:
-  static constexpr char kBindName[] = "and_pp";
+  static constexpr const char* kBindName() { return "and_pp"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -417,7 +417,7 @@ class AndPP : public BinaryKernel {
 
 class AndVVV : public BinaryKernel {
  public:
-  static constexpr char kBindName[] = "and_vvv";
+  static constexpr const char* kBindName() { return "and_vvv"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -436,7 +436,7 @@ class AndVVV : public BinaryKernel {
 
 class AndVP : public BinaryKernel {
  public:
-  static constexpr char kBindName[] = "and_vp";
+  static constexpr const char* kBindName() { return "and_vp"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -454,7 +454,7 @@ class AndVP : public BinaryKernel {
 
 class XorPP : public BinaryKernel {
  public:
-  static constexpr char kBindName[] = "xor_pp";
+  static constexpr const char* kBindName() { return "xor_pp"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -469,7 +469,7 @@ class XorPP : public BinaryKernel {
 
 class XorVVV : public BinaryKernel {
  public:
-  static constexpr char kBindName[] = "xor_vvv";
+  static constexpr const char* kBindName() { return "xor_vvv"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -487,7 +487,7 @@ class XorVVV : public BinaryKernel {
 
 class XorVP : public BinaryKernel {
  public:
-  static constexpr char kBindName[] = "xor_vp";
+  static constexpr const char* kBindName() { return "xor_vp"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -505,28 +505,28 @@ class XorVP : public BinaryKernel {
 
 class LShiftP : public ShiftKernel {
  public:
-  static constexpr char kBindName[] = "lshift_p";
+  static constexpr const char* kBindName() { return "lshift_p"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
   NdArrayRef proc(KernelEvalContext*, const NdArrayRef& in,
-                  size_t bits) const override {
+                  const Sizes& bits) const override {
     return ring_lshift(in, bits).as(in.eltype());
   }
 };
 
 class LShiftV : public ShiftKernel {
  public:
-  static constexpr char kBindName[] = "lshift_v";
+  static constexpr const char* kBindName() { return "lshift_v"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
-                  size_t bits) const override {
+                  const Sizes& bits) const override {
     if (isOwner(ctx, in.eltype())) {
       return ring_lshift(in, bits).as(in.eltype());
     } else {
@@ -537,28 +537,28 @@ class LShiftV : public ShiftKernel {
 
 class RShiftP : public ShiftKernel {
  public:
-  static constexpr char kBindName[] = "rshift_p";
+  static constexpr const char* kBindName() { return "rshift_p"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
   NdArrayRef proc(KernelEvalContext*, const NdArrayRef& in,
-                  size_t bits) const override {
+                  const Sizes& bits) const override {
     return ring_rshift(in, bits).as(in.eltype());
   }
 };
 
 class RShiftV : public ShiftKernel {
  public:
-  static constexpr char kBindName[] = "rshift_v";
+  static constexpr const char* kBindName() { return "rshift_v"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
-                  size_t bits) const override {
+                  const Sizes& bits) const override {
     if (isOwner(ctx, in.eltype())) {
       return ring_rshift(in, bits).as(in.eltype());
     } else {
@@ -569,28 +569,28 @@ class RShiftV : public ShiftKernel {
 
 class ARShiftP : public ShiftKernel {
  public:
-  static constexpr char kBindName[] = "arshift_p";
+  static constexpr const char* kBindName() { return "arshift_p"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
   NdArrayRef proc(KernelEvalContext*, const NdArrayRef& in,
-                  size_t bits) const override {
+                  const Sizes& bits) const override {
     return ring_arshift(in, bits).as(in.eltype());
   }
 };
 
 class ARShiftV : public ShiftKernel {
  public:
-  static constexpr char kBindName[] = "arshift_v";
+  static constexpr const char* kBindName() { return "arshift_v"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
-                  size_t bits) const override {
+                  const Sizes& bits) const override {
     if (isOwner(ctx, in.eltype())) {
       return ring_arshift(in, bits).as(in.eltype());
     } else {
@@ -607,8 +607,8 @@ NdArrayRef rounded_arshift(const NdArrayRef& in, size_t bits) {
   // https://stackoverflow.com/questions/14008330/how-do-you-multiply-two-fixed-point-numbers
   // Under certain pattern, like sum(mul(A, B)), error can accumulate in a
   // fairly significant way
-  auto v1 = ring_arshift(in, bits);
-  auto v2 = ring_arshift(in, bits - 1);
+  auto v1 = ring_arshift(in, {static_cast<int64_t>(bits)});
+  auto v2 = ring_arshift(in, {static_cast<int64_t>(bits - 1)});
   ring_and_(v2, ring_ones(in.eltype().as<Ring2k>()->field(), in.shape()));
   ring_add_(v1, v2);
   return v1;
@@ -616,30 +616,32 @@ NdArrayRef rounded_arshift(const NdArrayRef& in, size_t bits) {
 
 class TruncP : public ShiftKernel {
  public:
-  static constexpr char kBindName[] = "trunc_p";
+  static constexpr const char* kBindName() { return "trunc_p"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
   NdArrayRef proc(KernelEvalContext*, const NdArrayRef& in,
-                  size_t bits) const override {
-    return rounded_arshift(in, bits).as(in.eltype());
+                  const Sizes& bits) const override {
+    SPU_ENFORCE(bits.size() == 1, "truncation bits should be splat");
+    return rounded_arshift(in, bits[0]).as(in.eltype());
   }
 };
 
 class TruncV : public ShiftKernel {
  public:
-  static constexpr char kBindName[] = "trunc_v";
+  static constexpr const char* kBindName() { return "trunc_v"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
-                  size_t bits) const override {
+                  const Sizes& bits) const override {
     if (isOwner(ctx, in.eltype())) {
-      return rounded_arshift(in, bits).as(in.eltype());
+      SPU_ENFORCE(bits.size() == 1, "truncation bits should be splat");
+      return rounded_arshift(in, bits[0]).as(in.eltype());
     } else {
       return in;
     }
@@ -648,7 +650,7 @@ class TruncV : public ShiftKernel {
 
 class BitrevP : public BitrevKernel {
  public:
-  static constexpr char kBindName[] = "bitrev_p";
+  static constexpr const char* kBindName() { return "bitrev_p"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -666,7 +668,7 @@ class BitrevP : public BitrevKernel {
 
 class BitrevV : public BitrevKernel {
  public:
-  static constexpr char kBindName[] = "bitrev_v";
+  static constexpr const char* kBindName() { return "bitrev_v"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -688,7 +690,7 @@ class BitrevV : public BitrevKernel {
 
 class GenInvPermP : public GenInvPermKernel {
  public:
-  static constexpr char kBindName[] = "gen_inv_perm_p";
+  static constexpr const char* kBindName() { return "gen_inv_perm_p"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -701,7 +703,7 @@ class GenInvPermP : public GenInvPermKernel {
 
     auto numel = in.numel();
 
-    DISPATCH_ALL_FIELDS(field, "gen_inv_perm_p", [&]() {
+    DISPATCH_ALL_FIELDS(field, [&]() {
       using T = std::make_signed_t<ring2k_t>;
       std::vector<T> perm(numel);
       std::iota(perm.begin(), perm.end(), 0);
@@ -722,7 +724,7 @@ class GenInvPermP : public GenInvPermKernel {
 
 class GenInvPermV : public GenInvPermKernel {
  public:
-  static constexpr char kBindName[] = "gen_inv_perm_v";
+  static constexpr const char* kBindName() { return "gen_inv_perm_v"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -735,7 +737,7 @@ class GenInvPermV : public GenInvPermKernel {
       auto numel = in.numel();
       const auto field = in.eltype().as<Ring2k>()->field();
 
-      DISPATCH_ALL_FIELDS(field, "gen_inv_perm_v", [&]() {
+      DISPATCH_ALL_FIELDS(field, [&]() {
         using T = std::make_signed_t<ring2k_t>;
         std::vector<T> perm(numel);
         std::iota(perm.begin(), perm.end(), 0);
@@ -759,7 +761,7 @@ class GenInvPermV : public GenInvPermKernel {
 
 class InvPermPP : public PermKernel {
  public:
-  static constexpr char kBindName[] = "inv_perm_pp";
+  static constexpr const char* kBindName() { return "inv_perm_pp"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
   ce::CExpr comm() const override { return ce::Const(0); }
@@ -769,7 +771,7 @@ class InvPermPP : public PermKernel {
     SPU_ENFORCE_EQ(x.eltype(), y.eltype());
     NdArrayRef z(x.eltype(), x.shape());
     const auto field = x.eltype().as<Ring2k>()->field();
-    DISPATCH_ALL_FIELDS(field, "_", [&]() {
+    DISPATCH_ALL_FIELDS(field, [&]() {
       using T = std::make_signed_t<ring2k_t>;
       NdArrayView<T> _x(x);
       NdArrayView<T> _y(y);
@@ -784,7 +786,7 @@ class InvPermPP : public PermKernel {
 
 class InvPermVV : public PermKernel {
  public:
-  static constexpr char kBindName[] = "inv_perm_vv";
+  static constexpr const char* kBindName() { return "inv_perm_vv"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
   ce::CExpr comm() const override { return ce::Const(0); }
@@ -795,7 +797,7 @@ class InvPermVV : public PermKernel {
     if (isOwner(ctx, x.eltype())) {
       NdArrayRef z(x.eltype(), x.shape());
       const auto field = x.eltype().as<Ring2k>()->field();
-      DISPATCH_ALL_FIELDS(field, "_", [&]() {
+      DISPATCH_ALL_FIELDS(field, [&]() {
         using T = std::make_signed_t<ring2k_t>;
         NdArrayView<T> _x(x);
         NdArrayView<T> _y(y);
@@ -813,7 +815,7 @@ class InvPermVV : public PermKernel {
 
 class PermPP : public PermKernel {
  public:
-  static constexpr char kBindName[] = "perm_pp";
+  static constexpr const char* kBindName() { return "perm_pp"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
   ce::CExpr comm() const override { return ce::Const(0); }
@@ -823,7 +825,7 @@ class PermPP : public PermKernel {
     SPU_ENFORCE_EQ(x.eltype(), y.eltype());
     NdArrayRef z(x.eltype(), x.shape());
     const auto field = x.eltype().as<Ring2k>()->field();
-    DISPATCH_ALL_FIELDS(field, "_", [&]() {
+    DISPATCH_ALL_FIELDS(field, [&]() {
       using T = std::make_signed_t<ring2k_t>;
       NdArrayView<T> _x(x);
       NdArrayView<T> _y(y);
@@ -838,7 +840,7 @@ class PermPP : public PermKernel {
 
 class PermVV : public PermKernel {
  public:
-  static constexpr char kBindName[] = "perm_vv";
+  static constexpr const char* kBindName() { return "perm_vv"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
   ce::CExpr comm() const override { return ce::Const(0); }
@@ -849,7 +851,7 @@ class PermVV : public PermKernel {
     if (isOwner(ctx, x.eltype())) {
       NdArrayRef z(x.eltype(), x.shape());
       const auto field = x.eltype().as<Ring2k>()->field();
-      DISPATCH_ALL_FIELDS(field, "_", [&]() {
+      DISPATCH_ALL_FIELDS(field, [&]() {
         using T = std::make_signed_t<ring2k_t>;
         NdArrayView<T> _x(x);
         NdArrayView<T> _y(y);
@@ -867,7 +869,7 @@ class PermVV : public PermKernel {
 
 class MergeKeysP : public MergeKeysKernel {
  public:
-  static constexpr char kBindName[] = "merge_keys_p";
+  static constexpr const char* kBindName() { return "merge_keys_p"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
   ce::CExpr comm() const override { return ce::Const(0); }
@@ -878,7 +880,7 @@ class MergeKeysP : public MergeKeysKernel {
     NdArrayRef out(inputs[0].eltype(), inputs[0].shape());
     const auto field = inputs[0].eltype().as<Ring2k>()->field();
     const auto numel = inputs[0].numel();
-    DISPATCH_ALL_FIELDS(field, "_", [&]() {
+    DISPATCH_ALL_FIELDS(field, [&]() {
       using T = std::make_signed_t<ring2k_t>;
       NdArrayView<T> _out(out);
       _out[0] = 0;
@@ -899,7 +901,7 @@ class MergeKeysP : public MergeKeysKernel {
 
 class MergeKeysV : public MergeKeysKernel {
  public:
-  static constexpr char kBindName[] = "merge_keys_v";
+  static constexpr const char* kBindName() { return "merge_keys_v"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
   ce::CExpr comm() const override { return ce::Const(0); }
@@ -917,7 +919,7 @@ class MergeKeysV : public MergeKeysKernel {
       NdArrayRef out(inputs[0].eltype(), inputs[0].shape());
       const auto field = inputs[0].eltype().as<Ring2k>()->field();
       const auto numel = inputs[0].numel();
-      DISPATCH_ALL_FIELDS(field, "_", [&]() {
+      DISPATCH_ALL_FIELDS(field, [&]() {
         using T = std::make_signed_t<ring2k_t>;
         NdArrayView<T> _out(out);
         _out[0] = 0;
@@ -952,7 +954,7 @@ void regPV2kTypes() {
 void regPV2kKernels(Object* obj) {
   obj->regKernel<V2P, P2V,                               //
                  MakeP, RandP,                           //
-                 NotV, NotP,                             //
+                 NegateV, NegateP,                       //
                  EqualVVV, EqualVP, EqualPP,             //
                  AddVVV, AddVP, AddPP,                   //
                  MulVVV, MulVP, MulPP,                   //

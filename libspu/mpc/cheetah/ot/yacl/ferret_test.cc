@@ -55,7 +55,7 @@ TEST_P(FerretCOTTest, ChosenCorrelationChosenChoice) {
     return static_cast<uint8_t>(uniform(rdv) & 1);
   });
 
-  DISPATCH_ALL_FIELDS(field, "", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> correlation(_correlation);
     std::vector<ring2k_t> computed[2];
     utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
@@ -87,7 +87,7 @@ TEST_P(FerretCOTTest, RndMsgRndChoice) {
   constexpr size_t bw = 2;
 
   size_t n = 10;
-  DISPATCH_ALL_FIELDS(field, "", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     std::vector<ring2k_t> msg0(n);
     std::vector<ring2k_t> msg1(n);
     ring2k_t max = static_cast<ring2k_t>(1) << bw;
@@ -125,7 +125,7 @@ TEST_P(FerretCOTTest, RndMsgChosenChoice) {
   constexpr size_t bw = 2;
 
   size_t n = 10;
-  DISPATCH_ALL_FIELDS(field, "", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     std::vector<ring2k_t> msg0(n);
     std::vector<ring2k_t> msg1(n);
     ring2k_t max = static_cast<ring2k_t>(1) << bw;
@@ -166,7 +166,7 @@ TEST_P(FerretCOTTest, ChosenMsgChosenChoice) {
   int64_t n = 1 << 10;
   auto field = std::get<0>(GetParam());
   auto use_ss = std::get<1>(GetParam());
-  DISPATCH_ALL_FIELDS(field, "", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using scalar_t = ring2k_t;
     std::default_random_engine rdv;
     std::uniform_int_distribution<uint32_t> uniform(0, -1);
@@ -210,4 +210,69 @@ TEST_P(FerretCOTTest, ChosenMsgChosenChoice) {
   });
 }
 
+template <typename T>
+T makeMask(int bw) {
+  if (bw == sizeof(T) * 8) {
+    return static_cast<T>(-1);
+  }
+  return (static_cast<T>(1) << bw) - 1;
+}
+
+TEST_P(FerretCOTTest, COT_Collapse) {
+  size_t kWorldSize = 2;
+  int64_t n = 8;
+  auto field = std::get<0>(GetParam());
+  auto use_ss = std::get<1>(GetParam());
+
+  const auto bw = SizeOf(field) * 8;
+  const int level = bw;
+
+  // generate random choices and correlation
+  const auto _correlation = ring_rand(field, {static_cast<int64_t>(n * level)});
+  const auto N = _correlation.numel();
+
+  NdArrayRef oup1 = ring_zeros(field, _correlation.shape());
+  NdArrayRef oup2 = ring_zeros(field, _correlation.shape());
+
+  std::vector<uint8_t> choices(N, 1);
+
+  DISPATCH_ALL_FIELDS(field, [&]() {
+    using u2k = std::make_unsigned<ring2k_t>::type;
+
+    auto out1_span = absl::MakeSpan(&oup1.at<u2k>(0), N);
+    auto out2_span = absl::MakeSpan(&oup2.at<u2k>(0), N);
+
+    NdArrayView<u2k> correlation(_correlation);
+
+    utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> ctx) {
+      auto conn = std::make_shared<Communicator>(ctx);
+      int rank = ctx->Rank();
+
+      YaclFerretOt ferret(conn, rank == 0, use_ss);
+      if (rank == 0) {
+        ferret.SendCAMCC_Collapse(makeConstSpan(correlation), out1_span, bw,
+                                  level);
+        ferret.Flush();
+
+      } else {
+        ferret.RecvCAMCC_Collapse(absl::MakeSpan(choices), out2_span, bw,
+                                  level);
+      }
+    });
+
+    // Sample-major order
+    //      n ||     n     || n         || .... || n
+    // k=level||k=level - 1||k=level - 2|| ....
+    for (int64_t i = 0; i < N; i += n) {
+      const auto cur_bw = bw - (i / n);
+      const auto mask = makeMask<ring2k_t>(cur_bw);
+      for (int64_t j = 0; j < n; ++j) {
+        ring2k_t c = (-out1_span[i + j] + out2_span[i + j]) & mask;
+        ring2k_t e = (choices[i + j] ? correlation[i + j] : 0) & mask;
+
+        ASSERT_EQ(c, e);
+      }
+    }
+  });
+}
 }  // namespace spu::mpc::cheetah::test

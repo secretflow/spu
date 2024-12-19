@@ -38,7 +38,7 @@ NdArrayRef RandA::proc(KernelEvalContext* ctx, const Shape& shape) const {
   // - https://eprint.iacr.org/2019/599.pdf
   // It's safer to keep the number within [-2**(k-2), 2**(k-2)) for comparison
   // operations.
-  return ring_rshift(prg_state->genPriv(field, shape), 2)
+  return ring_rshift(prg_state->genPriv(field, shape), {2})
       .as(makeType<AShrTy>(field));
 }
 
@@ -61,7 +61,7 @@ NdArrayRef P2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 NdArrayRef A2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const auto field = in.eltype().as<Ring2k>()->field();
   auto* comm = ctx->getState<Communicator>();
-  auto out = comm->allReduce(ReduceOp::ADD, in, kBindName);
+  auto out = comm->allReduce(ReduceOp::ADD, in, kBindName());
   return out.as(makeType<Pub2kTy>(field));
 }
 
@@ -73,7 +73,7 @@ NdArrayRef A2V::proc(KernelEvalContext* ctx, const NdArrayRef& in,
 
   auto numel = in.numel();
 
-  return DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  return DISPATCH_ALL_FIELDS(field, [&]() {
     std::vector<ring2k_t> share(numel);
     NdArrayView<ring2k_t> _in(in);
     pforeach(0, numel, [&](int64_t idx) { share[idx] = _in[idx]; });
@@ -116,30 +116,8 @@ NdArrayRef V2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   return x.as(makeType<AShrTy>(field));
 }
 
-NdArrayRef NotA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
-  auto* comm = ctx->getState<Communicator>();
-
-  // First, let's show negate could be locally processed.
-  //   let X = sum(Xi)     % M
-  //   let Yi = neg(Xi) = M-Xi
-  //
-  // we get
-  //   Y = sum(Yi)         % M
-  //     = n*M - sum(Xi)   % M
-  //     = -sum(Xi)        % M
-  //     = -X              % M
-  //
-  // 'not' could be processed accordingly.
-  //   not(X)
-  //     = M-1-X           # by definition, not is the complement of 2^k
-  //     = neg(X) + M-1
-  //
+NdArrayRef NegateA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   auto res = ring_neg(in);
-  if (comm->getRank() == 0) {
-    const auto field = in.eltype().as<Ring2k>()->field();
-    ring_add_(res, ring_not(ring_zeros(field, in.shape())));
-  }
-
   return res.as(in.eltype());
 }
 
@@ -289,13 +267,17 @@ NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
   auto [a, b, c, x_a, y_b] = MulOpen(ctx, x, y, false);
 
   // Zi = Ci + (X - A) * Bi + (Y - B) * Ai + <(X - A) * (Y - B)>
-  auto z = ring_add(
-      ring_add(ring_mul(std::move(b), x_a), ring_mul(std::move(a), y_b)), c);
+  ring_mul_(b, x_a);
+  ring_mul_(a, y_b);
+  ring_add_(b, a);
+  ring_add_(b, c);
+
   if (comm->getRank() == 0) {
     // z += (X-A) * (Y-B);
-    ring_add_(z, ring_mul(std::move(x_a), y_b));
+    ring_mul_(x_a, y_b);
+    ring_add_(b, x_a);
   }
-  return z.as(x.eltype());
+  return b.as(x.eltype());
 }
 
 NdArrayRef SquareA::proc(KernelEvalContext* ctx, const NdArrayRef& x) const {
@@ -340,6 +322,51 @@ NdArrayRef SquareA::proc(KernelEvalContext* ctx, const NdArrayRef& x) const {
   return z.as(x.eltype());
 }
 
+// Let x be AShrTy, y be BShrTy, nbits(y) == 1
+// (x0+x1) * (y0^y1) = (x0+x1) * (y0+y1-2y0y1)
+// we define xx0 = (1-2y0)x0, xx1 = (1-2y1)x1
+//           yy0 = y0,        yy1 = y1
+// if we can compute z0+z1 = xx0*yy1 + xx1*yy0 (which can be easily got from Mul
+// Beaver), then (x0+x1) * (y0^y1) = (z0 + z1) + (x0y0 + x1y1)
+NdArrayRef MulA1B::proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                        const NdArrayRef& y) const {
+  SPU_ENFORCE(x.eltype().as<RingTy>()->field() ==
+              y.eltype().as<RingTy>()->field());
+
+  const auto field = x.eltype().as<RingTy>()->field();
+  auto* comm = ctx->getState<Communicator>();
+
+  // IMPORTANT: the underlying value of y is not exactly 0 or 1, so we must mask
+  // it explicitly.
+  auto yy = ring_bitmask(y, 0, 1).as(makeType<RingTy>(field));
+  // To optimize memory usage, re-use xx buffer
+  auto xx = ring_ones(field, x.shape());
+  ring_sub_(xx, ring_lshift(yy, {1}));
+  ring_mul_(xx, x);
+
+  auto [a, b, c, xx_a, yy_b] = MulOpen(ctx, xx, yy, false);
+
+  // Zi = Ci + (XX - A) * Bi + (YY - B) * Ai + <(XX - A) * (YY - B)> - XXi * YYi
+  // We re-use b to compute z
+  ring_mul_(b, xx_a);
+  ring_mul_(a, yy_b);
+  ring_add_(b, a);
+  ring_add_(b, c);
+
+  ring_mul_(xx, yy);
+  ring_sub_(b, xx);
+  if (comm->getRank() == 0) {
+    // z += (XX-A) * (YY-B);
+    ring_mul_(xx_a, yy_b);
+    ring_add_(b, xx_a);
+  }
+
+  // zi += xi * yi
+  ring_add_(b, ring_mul(x, yy));
+
+  return b.as(x.eltype());
+}
+
 ////////////////////////////////////////////////////////////////////
 // matmul family
 ////////////////////////////////////////////////////////////////////
@@ -364,10 +391,7 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
 }
 
 NdArrayRef LShiftA::proc(KernelEvalContext*, const NdArrayRef& in,
-                         size_t bits) const {
-  const auto field = in.eltype().as<Ring2k>()->field();
-  bits %= SizeOf(field) * 8;
-
+                         const Sizes& bits) const {
   return ring_lshift(in, bits).as(in.eltype());
 }
 
@@ -381,7 +405,7 @@ NdArrayRef TruncA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
   if (comm->getWorldSize() == 2) {
     // SecureML, local truncation.
     // Ref: Theorem 1. https://eprint.iacr.org/2017/396.pdf
-    return ring_arshift(x, bits).as(x.eltype());
+    return ring_arshift(x, {static_cast<int64_t>(bits)}).as(x.eltype());
   } else {
     // ABY3, truncation pair method.
     // Ref: Section 5.1.2 https://eprint.iacr.org/2018/403.pdf
@@ -396,10 +420,10 @@ NdArrayRef TruncA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
                   x.shape());
 
     // open x - r
-    auto x_r = comm->allReduce(ReduceOp::ADD, ring_sub(x, r), kBindName);
+    auto x_r = comm->allReduce(ReduceOp::ADD, ring_sub(x, r), kBindName());
     auto res = rb;
     if (comm->getRank() == 0) {
-      ring_add_(res, ring_arshift(x_r, bits));
+      ring_add_(res, ring_arshift(x_r, {static_cast<int64_t>(bits)}));
     }
 
     // res = [x-r] + [r], x which [*] is truncation operation.
@@ -418,7 +442,7 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in,
 
   NdArrayRef out(in.eltype(), in.shape());
 
-  DISPATCH_ALL_FIELDS(field, "semi2k.truncpr", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using U = ring2k_t;
     auto [r, rc, rb] = beaver->TruncPr(field, numel, bits);
     SPU_ENFORCE(static_cast<size_t>(r.size()) == numel * SizeOf(field));
@@ -447,7 +471,7 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in,
         x_plus_r[idx] = x + _r[idx];
       });
       // open <x> + <r> = c
-      c = comm->allReduce<U, std::plus>(x_plus_r, kBindName);
+      c = comm->allReduce<U, std::plus>(x_plus_r, kBindName());
     }
 
     pforeach(0, numel, [&](int64_t idx) {

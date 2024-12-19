@@ -14,8 +14,6 @@
 
 #include "libspu/mpc/api.h"
 
-#include <future>
-
 #include "libspu/core/trace.h"
 #include "libspu/mpc/ab_api.h"
 
@@ -175,7 +173,11 @@ Value s2v(SPUContext* ctx, const Value& x, size_t owner) {
     return a2v(ctx, x, owner);
   } else {
     SPU_ENFORCE(IsB(x));
-    return b2v(ctx, x, owner);
+    if (ctx->hasKernel("b2v")) {
+      return b2v(ctx, x, owner);
+    } else {
+      return a2v(ctx, _2a(ctx, x), owner);
+    }
   }
 }
 
@@ -275,22 +277,42 @@ Value rand_s(SPUContext* ctx, const Shape& shape) {
   return rand_a(ctx, shape);
 }
 
-Value not_s(SPUContext* ctx, const Value& x) {
+// only works for Z2k.
+// Neg(x) = Not(x) + 1
+// Not(x) = Neg(x) - 1
+Value not_v(SPUContext* ctx, const Value& x) {
   SPU_TRACE_MPC_DISP(ctx, x);
-  TRY_DISPATCH(ctx, x);
-  // TODO: Both A&B could handle not(invert).
-  // if (x.eltype().isa<BShare>()) {
-  //  return not_b(ctx, x);
-  //} else {
-  //  SPU_ENFORCE(x.eltype().isa<AShare>());
-  //  return not_a(ctx, x);
-  //}
-  return not_a(ctx, _2a(ctx, x));
+  auto k1 = make_p(ctx, 1, x.shape());
+  return add_vp(ctx, negate_v(ctx, x), negate_p(ctx, k1));
 }
 
-Value not_v(SPUContext* ctx, const Value& x) { FORCE_DISPATCH(ctx, x); }
+Value not_p(SPUContext* ctx, const Value& x) {
+  SPU_TRACE_MPC_DISP(ctx, x);
+  auto k1 = make_p(ctx, 1, x.shape());
+  return add_pp(ctx, negate_p(ctx, x), negate_p(ctx, k1));
+}
 
-Value not_p(SPUContext* ctx, const Value& x) { FORCE_DISPATCH(ctx, x); }
+Value not_s(SPUContext* ctx, const Value& x) {
+  SPU_TRACE_MPC_DISP(ctx, x);
+  if (x.storage_type().isa<BShare>()) {
+    auto ones = make_p(ctx, -1, x.shape());
+    return xor_bp(ctx, x, ones);
+  } else {
+    SPU_ENFORCE(x.storage_type().isa<Secret>());
+    auto k1 = make_p(ctx, 1, x.shape());
+    return add_sp(ctx, negate_s(ctx, x), negate_p(ctx, k1));
+  }
+}
+
+Value negate_s(SPUContext* ctx, const Value& x) {
+  SPU_TRACE_MPC_DISP(ctx, x);
+  TRY_DISPATCH(ctx, x);
+  return negate_a(ctx, _2a(ctx, x));
+}
+
+Value negate_v(SPUContext* ctx, const Value& x) { FORCE_DISPATCH(ctx, x); }
+
+Value negate_p(SPUContext* ctx, const Value& x) { FORCE_DISPATCH(ctx, x); }
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -303,13 +325,14 @@ Value msb_s(SPUContext* ctx, const Value& x) {
 
   if (ctx->hasKernel("msb_a2b")) {
     if (IsB(x)) {
-      return rshift_b(ctx, x, SizeOf(field) * 8 - 1);
+      return rshift_b(ctx, x, {static_cast<int64_t>(SizeOf(field) * 8 - 1)});
     } else {
       // fast path, directly apply msb x AShare, result a BShare.
       return msb_a2b(ctx, x);
     }
   } else {
-    return rshift_b(ctx, _2b(ctx, x), SizeOf(field) * 8 - 1);
+    return rshift_b(ctx, _2b(ctx, x),
+                    {static_cast<int64_t>(SizeOf(field) * 8 - 1)});
   }
 }
 
@@ -601,7 +624,7 @@ Value xor_pp(SPUContext* ctx, const Value& x, const Value& y) {
 
 //////////////////////////////////////////////////////////////////////////////
 
-Value lshift_s(SPUContext* ctx, const Value& x, size_t bits) {
+Value lshift_s(SPUContext* ctx, const Value& x, const Sizes& bits) {
   SPU_TRACE_MPC_DISP(ctx, x, bits);
   TRY_DISPATCH(ctx, x, bits);
   if (IsA(x)) {
@@ -613,43 +636,43 @@ Value lshift_s(SPUContext* ctx, const Value& x, size_t bits) {
   }
 }
 
-Value lshift_v(SPUContext* ctx, const Value& x, size_t nbits) {
+Value lshift_v(SPUContext* ctx, const Value& x, const Sizes& nbits) {
   FORCE_DISPATCH(ctx, x, nbits);
 }
 
-Value lshift_p(SPUContext* ctx, const Value& x, size_t nbits) {
+Value lshift_p(SPUContext* ctx, const Value& x, const Sizes& nbits) {
   FORCE_DISPATCH(ctx, x, nbits);
 }
 
 //////////////////////////////////////////////////////////////////////////////
 
-Value rshift_s(SPUContext* ctx, const Value& x, size_t bits) {
+Value rshift_s(SPUContext* ctx, const Value& x, const Sizes& bits) {
   SPU_TRACE_MPC_DISP(ctx, x, bits);
   TRY_DISPATCH(ctx, x, bits);
   return rshift_b(ctx, _2b(ctx, x), bits);
 }
 
-Value rshift_v(SPUContext* ctx, const Value& x, size_t nbits) {
+Value rshift_v(SPUContext* ctx, const Value& x, const Sizes& nbits) {
   FORCE_DISPATCH(ctx, x, nbits);
 }
 
-Value rshift_p(SPUContext* ctx, const Value& x, size_t nbits) {
+Value rshift_p(SPUContext* ctx, const Value& x, const Sizes& nbits) {
   FORCE_DISPATCH(ctx, x, nbits);
 }
 
 //////////////////////////////////////////////////////////////////////////////
 
-Value arshift_s(SPUContext* ctx, const Value& x, size_t bits) {
+Value arshift_s(SPUContext* ctx, const Value& x, const Sizes& bits) {
   SPU_TRACE_MPC_DISP(ctx, x, bits);
   TRY_DISPATCH(ctx, x, bits);
   return arshift_b(ctx, _2b(ctx, x), bits);
 }
 
-Value arshift_v(SPUContext* ctx, const Value& x, size_t nbits) {
+Value arshift_v(SPUContext* ctx, const Value& x, const Sizes& nbits) {
   FORCE_DISPATCH(ctx, x, nbits);
 }
 
-Value arshift_p(SPUContext* ctx, const Value& x, size_t nbits) {
+Value arshift_p(SPUContext* ctx, const Value& x, const Sizes& nbits) {
   FORCE_DISPATCH(ctx, x, nbits);
 }
 
@@ -662,11 +685,15 @@ Value trunc_s(SPUContext* ctx, const Value& x, size_t bits, SignType sign) {
 }
 
 Value trunc_v(SPUContext* ctx, const Value& x, size_t nbits, SignType sign) {
-  FORCE_DISPATCH(ctx, x, nbits, sign);
+  // FIXME: trunc_v use shift kernel
+  const Sizes trunc_bits = {static_cast<int64_t>(nbits)};
+  FORCE_DISPATCH(ctx, x, trunc_bits, sign);
 }
 
 Value trunc_p(SPUContext* ctx, const Value& x, size_t nbits, SignType sign) {
-  FORCE_DISPATCH(ctx, x, nbits, sign);
+  // FIXME: trunc_p use shift kernel
+  const Sizes trunc_bits = {static_cast<int64_t>(nbits)};
+  FORCE_DISPATCH(ctx, x, trunc_bits, sign);
 }
 
 //////////////////////////////////////////////////////////////////////////////

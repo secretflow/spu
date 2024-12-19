@@ -105,9 +105,19 @@ ParseResult ConstantOp::parse(OpAsmParser& parser, OperationState& result) {
     if (parser.parseRParen()) {
       return failure();
     }
+    // Parse optional properties
+    if (succeeded(parser.parseOptionalLess()) &&
+        (failed(parser.parseAttribute(result.propertiesAttr)) ||
+         failed(parser.parseGreater()))) {
+      return failure();
+    }
+
+    // Parse optional attributes
     if (parser.parseOptionalAttrDict(result.attributes)) {
       return failure();
     }
+
+    // Parse type signature
     if (parser.parseColon() || parser.parseLParen() || parser.parseRParen() ||
         parser.parseArrow()) {
       return failure();

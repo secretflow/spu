@@ -19,7 +19,11 @@ from typing import List
 from . import libpsi  # type: ignore
 from .libpsi.libs import ProgressData
 from .libspu.link import Context  # type: ignore
-from .pir_pb2 import PirConfig, PirProtocol, PirResultReport  # type: ignore
+from .pir_pb2 import (  # type: ignore
+    ApsiReceiverConfig,
+    ApsiSenderConfig,
+    PirResultReport,
+)
 from .psi_pb2 import (  # type: ignore
     BucketPsiConfig,
     CurveType,
@@ -144,8 +148,16 @@ def ub_psi(
     return report
 
 
-def pir(config: PirProtocol, link: Context = None) -> PirResultReport:
-    report_str = libpsi.libs.pir(config.SerializeToString(), link)
+def apsi_send(config: ApsiSenderConfig, link: Context = None) -> PirResultReport:
+    report_str = libpsi.libs.apsi_send(config.SerializeToString(), link)
+
+    report = PirResultReport()
+    report.ParseFromString(report_str)
+    return report
+
+
+def apsi_receive(config: ApsiReceiverConfig, link: Context = None) -> PirResultReport:
+    report_str = libpsi.libs.apsi_receive(config.SerializeToString(), link)
 
     report = PirResultReport()
     report.ParseFromString(report_str)

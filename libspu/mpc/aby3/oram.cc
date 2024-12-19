@@ -37,7 +37,7 @@ NdArrayRef OramOneHotAA::proc(KernelEvalContext *ctx, const NdArrayRef &in,
   const auto field = eltype.as<AShrTy>()->field();
   NdArrayRef out(makeType<OShrTy>(field), {s});
 
-  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using el_t = ring2k_t;
     using shr_t = std::array<el_t, 2>;
     NdArrayView<shr_t> out_(out);
@@ -48,7 +48,7 @@ NdArrayRef OramOneHotAA::proc(KernelEvalContext *ctx, const NdArrayRef &in,
     // generate aeskey for dpf
     auto [self_aes_keys, next_aes_keys] = oram::genAesKey(ctx, 1);
 
-    auto *octx = new oram::OramContext<el_t>(s);
+    auto octx = oram::OramContext<el_t>(s);
 
     for (int64_t j = 0; j < 3; j++) {
       // in round (rank - 1), as helper
@@ -64,16 +64,16 @@ NdArrayRef OramOneHotAA::proc(KernelEvalContext *ctx, const NdArrayRef &in,
         auto target_point = dpf_rank ? target_idxs_[0][0] ^ target_idxs_[0][1]
                                      : target_idxs_[0][0];
         // dpf gen
-        octx->genDpf(ctx, static_cast<oram::DpfGenCtrl>(j), aes_key,
-                     target_point);
+        octx.genDpf(ctx, static_cast<oram::DpfGenCtrl>(j), aes_key,
+                    target_point);
         // B2A
-        octx->onehotB2A(ctx, static_cast<oram::DpfGenCtrl>(j));
+        octx.onehotB2A(ctx, static_cast<oram::DpfGenCtrl>(j));
       }
     }
 
     pforeach(0, s, [&](int64_t k) {
       for (int64_t j = 0; j < 2; j++) {
-        out_[k][j] = octx->dpf_e[j][k];
+        out_[k][j] = octx.dpf_e[j][k];
       }
     });
   });
@@ -91,7 +91,7 @@ NdArrayRef OramOneHotAP::proc(KernelEvalContext *ctx, const NdArrayRef &in,
   const auto numel = in.numel();
   NdArrayRef out(makeType<OPShrTy>(field), {s});
 
-  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using el_t = ring2k_t;
     using shr_t = std::array<el_t, 2>;
     NdArrayView<el_t> out_(out);
@@ -124,15 +124,16 @@ NdArrayRef OramOneHotAP::proc(KernelEvalContext *ctx, const NdArrayRef &in,
       comm->sendAsync<uint128_t>(dst_rank, {aes_key}, "aes_key");
       aes_key += comm->recv<uint128_t>(dst_rank, "aes_key")[0];
 
-      auto *octx = new oram::OramContext<el_t>(s);
+      auto octx = oram::OramContext<el_t>(s);
+
       // dpf gen
-      octx->genDpf(ctx, static_cast<oram::DpfGenCtrl>(1), aes_key,
-                   target_point_2pc_[0]);
+      octx.genDpf(ctx, static_cast<oram::DpfGenCtrl>(1), aes_key,
+                  target_point_2pc_[0]);
       // B2A
-      octx->onehotB2A(ctx, static_cast<oram::DpfGenCtrl>(1));
+      octx.onehotB2A(ctx, static_cast<oram::DpfGenCtrl>(1));
 
       int64_t j = comm->getRank() == 0 ? 1 : 0;
-      pforeach(0, s, [&](int64_t k) { out_[k] = octx->dpf_e[j][k]; });
+      pforeach(0, s, [&](int64_t k) { out_[k] = octx.dpf_e[j][k]; });
     }
   });
 
@@ -150,7 +151,7 @@ NdArrayRef OramReadOA::proc(KernelEvalContext *ctx, const NdArrayRef &onehot,
 
   NdArrayRef out(makeType<AShrTy>(field), {1, index_times});
 
-  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using el_t = ring2k_t;
     using shr_t = std::array<el_t, 2>;
 
@@ -187,7 +188,7 @@ NdArrayRef OramReadOA::proc(KernelEvalContext *ctx, const NdArrayRef &onehot,
 
     auto f = std::async([&] { ring_assign(o1, z1); });
     // reshare
-    ring_assign(o2, comm->rotate(z1, kBindName));
+    ring_assign(o2, comm->rotate(z1, kBindName()));
     f.get();
   });
 
@@ -208,7 +209,7 @@ NdArrayRef OramReadOP::proc(KernelEvalContext *ctx, const NdArrayRef &onehot,
   auto o2 = getSecondShare(out);
   int64_t db_numel = onehot.numel();
 
-  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using el_t = ring2k_t;
     using shr_t = std::array<el_t, 2>;
 
@@ -243,7 +244,7 @@ NdArrayRef OramReadOP::proc(KernelEvalContext *ctx, const NdArrayRef &onehot,
     ring_add_(out2pc, r.get());
 
     auto f = std::async([&] { ring_assign(o1, out2pc); });
-    ring_assign(o2, comm->rotate(out2pc, kBindName));
+    ring_assign(o2, comm->rotate(out2pc, kBindName()));
     f.get();
   });
 
@@ -286,15 +287,11 @@ Triple<std::vector<T>> genOramBeaverPrim(KernelEvalContext *ctx, int64_t num,
   std::vector<T> beaver_triple(num * 3);
 
   if (comm->getRank() == adjust_rank) {
-    prg->fillPrssPair<T>(nullptr, nullptr, num * 3,
-                         PrgState::GenPrssCtrl::None);
     prg->fillPrssPair<T>(nullptr, beaver_triple.data(), num * 3,
                          PrgState::GenPrssCtrl::Second);
   } else {
     prg->fillPrssPair<T>(beaver_triple.data(), nullptr, num * 3,
                          PrgState::GenPrssCtrl::First);
-    prg->fillPrssPair<T>(nullptr, nullptr, num * 3,
-                         PrgState::GenPrssCtrl::None);
   }
 
   std::vector<T> a(beaver_triple.begin(), beaver_triple.begin() + num);
@@ -443,14 +440,14 @@ void OramContext<T>::onehotB2A(KernelEvalContext *ctx, DpfGenCtrl ctrl) {
   const std::vector<T> v = convert_help_v[dpf_idx];
   std::for_each(e.begin(), e.end(), [&](T ele) { pm += ele; });
   std::for_each(v.begin(), v.end(), [&](T ele) { F -= ele; });
-  auto blinded_pm = pm + r[0];
+  T blinded_pm = pm + r[0];
 
   // open blinded_pm
   comm->sendAsync<T>(dst_rank, {blinded_pm}, "open(blinded_pm)");
   blinded_pm += comm->recv<T>(dst_rank, "open(blinded_pm)")[0];
 
   auto pm_mul_F = mul2pc<T>(ctx, {pm}, {F}, static_cast<size_t>(ctrl));
-  auto blinded_F = pm_mul_F[0] + r[0];
+  T blinded_F = pm_mul_F[0] + r[0];
 
   // open blinded_F
   comm->sendAsync<T>(dst_rank, {blinded_F}, "open(blinded_F)");
@@ -484,9 +481,9 @@ void OramContext<T>::genDpf(KernelEvalContext *ctx, DpfGenCtrl ctrl,
                             uint128_t aes_key, uint128_t target_point) {
   auto *comm = ctx->getState<Communicator>();
 
-  auto *odpf = new OramDpf(dpf_size_, yacl::crypto::SecureRandU128(), aes_key,
-                           static_cast<uint128_t>(target_point));
-  odpf->gen(ctx, ctrl);
+  auto odpf = OramDpf(dpf_size_, yacl::crypto::SecureRandU128(), aes_key,
+                      static_cast<uint128_t>(target_point));
+  odpf.gen(ctx, ctrl);
 
   auto dpf_rank = comm->getRank() == static_cast<size_t>(ctrl);
   int64_t dpf_idx = dpf_rank ? 0 : 1;
@@ -494,10 +491,10 @@ void OramContext<T>::genDpf(KernelEvalContext *ctx, DpfGenCtrl ctrl,
 
   // cast e and v to T type and convert v to arith
   // leave convert e outside
-  std::transform(odpf->final_e.begin(), odpf->final_e.begin() + dpf_size_,
+  std::transform(odpf.final_e.begin(), odpf.final_e.begin() + dpf_size_,
                  dpf_e[dpf_idx].begin(),
                  [&](uint8_t x) { return neg_flag * static_cast<T>(x); });
-  std::transform(odpf->final_v.begin(), odpf->final_v.begin() + dpf_size_,
+  std::transform(odpf.final_v.begin(), odpf.final_v.begin() + dpf_size_,
                  convert_help_v[dpf_idx].begin(),
                  [&](uint128_t x) { return neg_flag * static_cast<T>(x); });
 };
