@@ -66,7 +66,11 @@ class BeaverTtp final : public Beaver {
   ~BeaverTtp() override = default;
 
   Triple Mul(FieldType field, int64_t size, ReplayDesc* x_desc = nullptr,
-             ReplayDesc* y_desc = nullptr) override;
+             ReplayDesc* y_desc = nullptr,
+             ElementType eltype = ElementType::kRing) override;
+
+  Pair MulPriv(FieldType field, int64_t size,
+               ElementType eltype = ElementType::kRing) override;
 
   Pair Square(FieldType field, int64_t size,
               ReplayDesc* x_desc = nullptr) override;

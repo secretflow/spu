@@ -77,25 +77,25 @@ Value _cast_type(SPUContext* ctx, const Value& x, const Type& to) {
       SPU_THROW("unsupport unary op={} for {}", #Name, in); \
     }                                                       \
   }
-
 IMPL_UNARY_OP(_not)
+IMPL_UNARY_OP(_negate)
 IMPL_UNARY_OP(_msb)
 IMPL_UNARY_OP(_square)
 
 #undef IMPL_UNARY_OP
 
-#define IMPL_SHIFT_OP(Name)                                   \
-  Value Name(SPUContext* ctx, const Value& in, size_t bits) { \
-    SPU_TRACE_HAL_LEAF(ctx, in, bits);                        \
-    if (in.isPublic()) {                                      \
-      return Name##_p(ctx, in, bits);                         \
-    } else if (in.isSecret()) {                               \
-      return Name##_s(ctx, in, bits);                         \
-    } else if (in.isPrivate()) {                              \
-      return Name##_v(ctx, in, bits);                         \
-    } else {                                                  \
-      SPU_THROW("unsupport unary op={} for {}", #Name, in);   \
-    }                                                         \
+#define IMPL_SHIFT_OP(Name)                                         \
+  Value Name(SPUContext* ctx, const Value& in, const Sizes& bits) { \
+    SPU_TRACE_HAL_LEAF(ctx, in, bits);                              \
+    if (in.isPublic()) {                                            \
+      return Name##_p(ctx, in, bits);                               \
+    } else if (in.isSecret()) {                                     \
+      return Name##_s(ctx, in, bits);                               \
+    } else if (in.isPrivate()) {                                    \
+      return Name##_v(ctx, in, bits);                               \
+    } else {                                                        \
+      SPU_THROW("unsupport unary op={} for {}", #Name, in);         \
+    }                                                               \
   }
 
 IMPL_SHIFT_OP(_lshift)
@@ -438,13 +438,6 @@ Value _equal(SPUContext* ctx, const Value& x, const Value& y) {
               _xor(ctx, _less(ctx, y, x), _k1));
 }
 
-Value _negate(SPUContext* ctx, const Value& x) {
-  SPU_TRACE_HAL_LEAF(ctx, x);
-
-  // negate(x) = not(x) + 1
-  return _add(ctx, _not(ctx, x), _constant(ctx, 1, x.shape()));
-}
-
 Value _sign(SPUContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
@@ -479,12 +472,23 @@ Value _mux(SPUContext* ctx, const Value& pred, const Value& a, const Value& b) {
 Value _clamp(SPUContext* ctx, const Value& x, const Value& minv,
              const Value& maxv) {
   SPU_TRACE_HAL_LEAF(ctx, x, minv, maxv);
-
   // clamp lower bound, res = x < minv ? minv : x
   auto res = _mux(ctx, _less(ctx, x, minv), minv, x);
-
   // clamp upper bound, res = res < maxv ? res, maxv
   return _mux(ctx, _less(ctx, res, maxv), res, maxv);
+}
+
+// TODO: refactor polymorphic, and may use select functions in polymorphic
+Value _clamp_lower(SPUContext* ctx, const Value& x, const Value& minv) {
+  SPU_TRACE_HAL_LEAF(ctx, x, minv);
+  // clamp lower bound, res = x < minv ? minv : x
+  return _mux(ctx, _less(ctx, x, minv), minv, x);
+}
+
+Value _clamp_upper(SPUContext* ctx, const Value& x, const Value& maxv) {
+  SPU_TRACE_HAL_LEAF(ctx, x, maxv);
+  // clamp upper bound, x = x < maxv ? x, maxv
+  return _mux(ctx, _less(ctx, x, maxv), x, maxv);
 }
 
 Value _constant(SPUContext* ctx, uint128_t init, const Shape& shape) {
@@ -497,7 +501,7 @@ Value _bit_parity(SPUContext* ctx, const Value& x, size_t bits) {
   SPU_ENFORCE(absl::has_single_bit(bits), "currently only support power of 2");
   auto ret = _prefer_b(ctx, x);
   while (bits > 1) {
-    ret = _xor(ctx, ret, _rshift(ctx, ret, bits / 2));
+    ret = _xor(ctx, ret, _rshift(ctx, ret, {static_cast<int64_t>(bits / 2)}));
     bits /= 2;
   }
 
@@ -518,7 +522,7 @@ Value _popcount(SPUContext* ctx, const Value& x, size_t bits) {
   std::vector<Value> vs;
   vs.reserve(bits);
   for (size_t idx = 0; idx < bits; idx++) {
-    auto x_ = _rshift(ctx, xb, idx);
+    auto x_ = _rshift(ctx, xb, {static_cast<int64_t>(idx)});
     x_ = _and(ctx, x_, _constant(ctx, 1U, x.shape()));
 
     if (x_.storage_type().isa<BShare>()) {
@@ -547,8 +551,8 @@ Value _prefix_or(SPUContext* ctx, const Value& x) {
   auto b0 = _prefer_b(ctx, x);
   const size_t bit_width = SizeOf(ctx->getField()) * 8;
   for (int idx = 0; idx < absl::bit_width(bit_width) - 1; idx++) {
-    const size_t offset = 1UL << idx;
-    auto b1 = _rshift(ctx, b0, offset);
+    const int64_t offset = 1L << idx;
+    auto b1 = _rshift(ctx, b0, {offset});
     b0 = _or(ctx, b0, b1);
   }
   return b0;
@@ -574,8 +578,8 @@ Value _bitdeintl(SPUContext* ctx, const Value& in) {
     // out = (out & keep) ^ ((out >> shift) & move) ^ ((out & move) << shift);
     out = _xor(ctx,
                _xor(ctx, _and(ctx, out, keep),
-                    _and(ctx, _rshift(ctx, out, shift), move)),
-               _lshift(ctx, _and(ctx, out, move), shift));
+                    _and(ctx, _rshift(ctx, out, {shift}), move)),
+               _lshift(ctx, _and(ctx, out, move), {shift}));
   }
   return out;
 }

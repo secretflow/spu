@@ -29,7 +29,6 @@ def spu_deps():
     _com_github_emptoolkit_emp_tool()
     _com_github_emptoolkit_emp_ot()
     _com_github_facebook_zstd()
-    _com_github_microsoft_seal()
     _com_github_eigenteam_eigen()
     _com_github_nvidia_cutlass()
     _yacl()
@@ -40,10 +39,10 @@ def _yacl():
         http_archive,
         name = "yacl",
         urls = [
-            "https://github.com/secretflow/yacl/archive/refs/tags/0.4.5b3.tar.gz",
+            "https://github.com/secretflow/yacl/archive/refs/tags/0.4.5b8_nightly_20241014.tar.gz",
         ],
-        strip_prefix = "yacl-0.4.5b3",
-        sha256 = "bd89d63312e5e83eff5e001e2cf2135baff321c4b72a309f7d00cc53ce02e1a1",
+        strip_prefix = "yacl-0.4.5b8_nightly_20241014",
+        sha256 = "9141792f07eba507ffd21c57ec3df2ad5fdf90ce605ffb7bc1b7b4e84a9c34fa",
     )
 
 def _libpsi():
@@ -51,10 +50,10 @@ def _libpsi():
         http_archive,
         name = "psi",
         urls = [
-            "https://github.com/secretflow/psi/archive/refs/tags/v0.4.0beta.tar.gz",
+            "https://github.com/secretflow/psi/archive/refs/tags/v0.5.0.dev241115.tar.gz",
         ],
-        strip_prefix = "psi-0.4.0beta",
-        sha256 = "c2fbf486a66eca9d3ec1725a81d93a7c6e80a9206ef1c9263a1608e0bef95e1a",
+        strip_prefix = "psi-0.5.0.dev241115",
+        sha256 = "4d5ccc61282c4f887cee2c12fe3f414dfd7e916952849e92ffb1f6835d657a35",
     )
 
 def _rules_proto_grpc():
@@ -70,9 +69,9 @@ def _rules_proto_grpc():
 def _rules_cuda():
     http_archive(
         name = "rules_cuda",
-        sha256 = "2f8c8c8c85f727bec4423efecec12d3b751cb0a98bda99f0f9d351608a23b858",
-        strip_prefix = "rules_cuda-v0.2.1",
-        urls = ["https://github.com/bazel-contrib/rules_cuda/releases/download/v0.2.1/rules_cuda-v0.2.1.tar.gz"],
+        sha256 = "c92b334d769a07cd991b7675b2f6076b8b95cd3b28b14268a2f379f8baae58e0",
+        strip_prefix = "rules_cuda-v0.2.3",
+        urls = ["https://github.com/bazel-contrib/rules_cuda/releases/download/v0.2.3/rules_cuda-v0.2.3.tar.gz"],
     )
 
 def _bazel_platform():
@@ -136,8 +135,8 @@ def _bazel_skylib():
     )
 
 def _com_github_openxla_xla():
-    OPENXLA_COMMIT = "9b0dd58c9b625a2e958f4fc7787a1ff5c95dbb40"
-    OPENXLA_SHA256 = "f150c5b49e4d4497aae2c79232f1efe2baccaa72223b21dc8715be73eab74417"
+    OPENXLA_COMMIT = "64bdcc53a1b24abf19b1fe598e6f9b0fe6454470"
+    OPENXLA_SHA256 = "60918b3a0391fe9e0bd506c9b90170b7b5fa64d06de7ec1f4f0e351a303a88fa"
 
     # We need openxla to handle xla/mhlo/stablehlo
     maybe(
@@ -169,10 +168,10 @@ def _com_github_pybind11():
         http_archive,
         name = "pybind11",
         build_file = "@pybind11_bazel//:pybind11.BUILD",
-        sha256 = "51631e88960a8856f9c497027f55c9f2f9115cafb08c0005439838a05ba17bfc",
-        strip_prefix = "pybind11-2.13.1",
+        sha256 = "e08cb87f4773da97fa7b5f035de8763abc656d87d5773e62f6da0587d1f0ec20",
+        strip_prefix = "pybind11-2.13.6",
         urls = [
-            "https://github.com/pybind/pybind11/archive/refs/tags/v2.13.1.tar.gz",
+            "https://github.com/pybind/pybind11/archive/refs/tags/v2.13.6.tar.gz",
         ],
     )
 
@@ -225,27 +224,12 @@ def _com_github_emptoolkit_emp_ot():
         build_file = "@spulib//bazel:emp-ot.BUILD",
     )
 
-def _com_github_microsoft_seal():
-    maybe(
-        http_archive,
-        name = "com_github_microsoft_seal",
-        sha256 = "acc2a1a127a85d1e1ffcca3ffd148f736e665df6d6b072df0e42fff64795a13c",
-        strip_prefix = "SEAL-4.1.2",
-        type = "tar.gz",
-        patch_args = ["-p1"],
-        patches = ["@spulib//bazel:patches/seal.patch"],
-        urls = [
-            "https://github.com/microsoft/SEAL/archive/refs/tags/v4.1.2.tar.gz",
-        ],
-        build_file = "@spulib//bazel:seal.BUILD",
-    )
-
 def _com_github_eigenteam_eigen():
     EIGEN_COMMIT = "66e8f38891841bf88ee976a316c0c78a52f0cee5"
     EIGEN_SHA256 = "01fcd68409c038bbcfd16394274c2bf71e2bb6dda89a2319e23fc59a2da17210"
     maybe(
         http_archive,
-        name = "com_github_eigenteam_eigen",
+        name = "eigen_archive",
         sha256 = EIGEN_SHA256,
         build_file = "@spulib//bazel:eigen.BUILD",
         strip_prefix = "eigen-{commit}".format(commit = EIGEN_COMMIT),
@@ -257,11 +241,11 @@ def _com_github_eigenteam_eigen():
 def _com_github_nvidia_cutlass():
     maybe(
         http_archive,
-        name = "com_github_nvidia_cutlass",
-        strip_prefix = "cutlass-3.5.0",
+        name = "cutlass_archive",
+        strip_prefix = "cutlass-3.5.1",
         urls = [
-            "https://github.com/NVIDIA/cutlass/archive/refs/tags/v3.5.0.tar.gz",
+            "https://github.com/NVIDIA/cutlass/archive/refs/tags/v3.5.1.tar.gz",
         ],
-        sha256 = "ef6af8526e3ad04f9827f35ee57eec555d09447f70a0ad0cf684a2e426ccbcb6",
+        sha256 = "20b7247cda2d257cbf8ba59ba3ca40a9211c4da61a9c9913e32b33a2c5883a36",
         build_file = "@spulib//bazel:nvidia_cutlass.BUILD",
     )

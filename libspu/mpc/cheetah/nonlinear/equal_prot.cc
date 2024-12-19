@@ -16,13 +16,11 @@
 
 #include "yacl/crypto/rand/rand.h"
 #include "yacl/crypto/tools/prg.h"
-#include "yacl/link/link.h"
 
 #include "libspu/core/type.h"
 #include "libspu/mpc/cheetah/ot/basic_ot_prot.h"
 #include "libspu/mpc/cheetah/ot/ot_util.h"
 #include "libspu/mpc/cheetah/type.h"
-#include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc::cheetah {
@@ -61,7 +59,7 @@ NdArrayRef EqualProtocol::DoCompute(const NdArrayRef& inp, size_t bit_width) {
   // init to all zero
   std::vector<uint8_t> digits(num_cmp * num_digits, 0);
 
-  DISPATCH_ALL_FIELDS(field, "Equal_break_digits", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using u2k = std::make_unsigned<ring2k_t>::type;
     const auto mask_radix = makeBitsMask<u2k>(compare_radix_);
     const auto mask_remain = makeBitsMask<u2k>(remain);
@@ -133,7 +131,7 @@ NdArrayRef EqualProtocol::DoCompute(const NdArrayRef& inp, size_t bit_width) {
   // m0[1], m1[1], ..., mN[1]
   // ...
   // m0[M], m1[M], ..., mN[M]
-  DISPATCH_ALL_FIELDS(field, "Equal_transpose", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> xprev_eq(prev_eq);
     for (int64_t r = 0; r < num_cmp; ++r) {
       for (int64_t c = 0; c < num_digits; ++c) {

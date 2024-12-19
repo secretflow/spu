@@ -32,9 +32,11 @@ namespace spu::mpc::semi2k {
 
 class BeaverCache {
  public:
+  // clang-format off
   BeaverCache()
       : cache_db_(fmt::format("BeaverCache.{}.{}.{}", getpid(), fmt::ptr(this),
                               std::random_device()())) {};
+  // clang-format on
   ~BeaverCache() {
     db_.reset();
     try {

@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "llvm/ADT/Twine.h"
 #include "mlir/Support/LogicalResult.h"
 
 namespace mlir::spu {

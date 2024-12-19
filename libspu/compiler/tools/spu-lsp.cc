@@ -25,5 +25,6 @@ int main(int argc, char **argv) {
   registry.insert<mlir::mhlo::MhloDialect, mlir::stablehlo::StablehloDialect,
                   mlir::spu::pphlo::PPHloDialect, mlir::func::FuncDialect>();
   mlir::func::registerInlinerExtension(registry);
-  return mlir::failed(mlir::MlirLspServerMain(argc, argv, registry));
+  return static_cast<int>(
+      mlir::failed(mlir::MlirLspServerMain(argc, argv, registry)));
 }

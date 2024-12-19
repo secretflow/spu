@@ -52,6 +52,10 @@ spu::Value Reveal(SPUContext *ctx, const spu::Value &in) {
   return hal::reveal(ctx, in);
 }
 
+spu::Value RevealTo(SPUContext *ctx, const spu::Value &in, size_t rank) {
+  return hal::reveal_to(ctx, in, rank);
+}
+
 spu::Value Seal(SPUContext *ctx, const spu::Value &in) {
   return hal::seal(ctx, in);
 }

@@ -167,7 +167,7 @@ spu::Value MulPrivateArithWithPrivateBoolean(spu::SPUContext* ctx,
       &kctx, arith.data(),
       [&](const NdArrayRef& input,
           const std::shared_ptr<spu::mpc::cheetah::BasicOTProtocols>& base_ot) {
-        return DISPATCH_ALL_FIELDS(ft, "ot", [&]() {
+        return DISPATCH_ALL_FIELDS(ft, [&]() {
           NdArrayRef ot_out = spu::mpc::ring_zeros(ft, input.shape());
           auto inp = absl::MakeConstSpan(&input.at<ring2k_t>(0), input.numel());
           auto oup = absl::MakeSpan(&ot_out.at<ring2k_t>(0), ot_out.numel());
@@ -193,7 +193,7 @@ spu::Value MulPrivateArithWithPrivateBoolean(spu::SPUContext* ctx,
       &kctx, boolean,
       [&](absl::Span<const uint8_t> input,
           const std::shared_ptr<spu::mpc::cheetah::BasicOTProtocols>& base_ot) {
-        return DISPATCH_ALL_FIELDS(ft, "ot", [&]() {
+        return DISPATCH_ALL_FIELDS(ft, [&]() {
           NdArrayRef ot_out = spu::mpc::ring_zeros(ft, {(int64_t)input.size()});
           auto oup = absl::MakeSpan(&ot_out.at<ring2k_t>(0), input.size());
           base_ot->GetReceiverCOT()->RecvCAMCC(input, oup);
@@ -222,7 +222,7 @@ spu::Value MulArithShareWithANDBoolShare(spu::SPUContext* ctx,
           std::shared_ptr<spu::mpc::cheetah::BasicOTProtocols> base_ot) {
         NdArrayRef out(x.eltype(), x.shape());
 
-        DISPATCH_ALL_FIELDS(ft, "camcc", [&]() {
+        DISPATCH_ALL_FIELDS(ft, [&]() {
           spu::NdArrayView<const ring2k_t> _ashr(x);
           auto oup = absl::MakeSpan(&out.at<ring2k_t>(0), y.size());
           std::vector<ring2k_t> corr(y.size());

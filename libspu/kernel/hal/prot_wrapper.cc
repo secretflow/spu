@@ -30,11 +30,11 @@ namespace spu::kernel::hal {
     return mpc::NAME(ctx, in);                      \
   }
 
-#define MAP_SHIFT_OP(NAME)                                       \
-  Value _##NAME(SPUContext* ctx, const Value& in, size_t bits) { \
-    SPU_TRACE_HAL_DISP(ctx, in, bits);                           \
-    auto ret = mpc::NAME(ctx, in, bits);                         \
-    return ret;                                                  \
+#define MAP_SHIFT_OP(NAME)                                             \
+  Value _##NAME(SPUContext* ctx, const Value& in, const Sizes& bits) { \
+    SPU_TRACE_HAL_DISP(ctx, in, bits);                                 \
+    auto ret = mpc::NAME(ctx, in, bits);                               \
+    return ret;                                                        \
   }
 
 #define MAP_BITREV_OP(NAME)                                                   \
@@ -163,6 +163,10 @@ Value _s2v(SPUContext* ctx, const Value& in, int owner) {
 MAP_UNARY_OP(not_p)
 MAP_UNARY_OP(not_s)
 MAP_UNARY_OP(not_v)
+// Negate family
+MAP_UNARY_OP(negate_p)
+MAP_UNARY_OP(negate_s)
+MAP_UNARY_OP(negate_v)
 // Msb family
 MAP_UNARY_OP(msb_p)
 MAP_UNARY_OP(msb_s)

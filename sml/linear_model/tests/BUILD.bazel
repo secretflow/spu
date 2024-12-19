@@ -70,3 +70,13 @@ py_test(
         "//spu/utils:simulation",
     ],
 )
+
+py_test(
+    name = "quantile_test",
+    srcs = ["quantile_test.py"],
+    deps = [
+        "//sml/linear_model:quantile",
+        "//spu:init",
+        "//spu/utils:simulation",
+    ],
+)

@@ -17,17 +17,19 @@
 #include <algorithm>
 #include <random>
 
+#include "yacl/crypto/rand/rand.h"
+
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/core/type_util.h"
 
 namespace spu::mpc {
 
-PermVector ring2pv(const NdArrayRef& x) {
+Index ring2pv(const NdArrayRef& x) {
   SPU_ENFORCE(x.eltype().isa<Ring2k>(), "must be ring2k_type, got={}",
               x.eltype());
   const auto field = x.eltype().as<Ring2k>()->field();
-  PermVector pv(x.numel());
-  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  Index pv(x.numel());
+  DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> _x(x);
     pforeach(0, x.numel(), [&](int64_t idx) { pv[idx] = int64_t(_x[idx]); });
   });
@@ -39,7 +41,7 @@ NdArrayRef applyInvPerm(const NdArrayRef& x, absl::Span<const int64_t> pv) {
 
   NdArrayRef y(x.eltype(), x.shape());
   const auto field = x.eltype().as<Ring2k>()->field();
-  DISPATCH_ALL_FIELDS(field, kPermModule, [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> _x(x);
     NdArrayView<ring2k_t> _y(y);
     for (int64_t i = 0; i < y.numel(); i++) {
@@ -49,12 +51,32 @@ NdArrayRef applyInvPerm(const NdArrayRef& x, absl::Span<const int64_t> pv) {
   return y;
 }
 
+NdArrayRef applyInvPerm(const NdArrayRef& x, const NdArrayRef& pv) {
+  SPU_ENFORCE_EQ(x.shape().ndim(), 1U, "x should be 1-d tensor");
+  SPU_ENFORCE_EQ(x.shape(), pv.shape(), "x and pv should have same shape");
+
+  NdArrayRef y(x.eltype(), x.shape());
+  const auto field = x.eltype().as<Ring2k>()->field();
+  DISPATCH_ALL_FIELDS(field, [&]() {
+    NdArrayView<ring2k_t> _x(x);
+    NdArrayView<ring2k_t> _y(y);
+    const auto pv_field = pv.eltype().as<Ring2k>()->field();
+    DISPATCH_ALL_FIELDS(pv_field, [&]() {
+      NdArrayView<ring2k_t> _pv(pv);
+      for (int64_t i = 0; i < y.numel(); i++) {
+        _y[_pv[i]] = _x[i];
+      }
+    });
+  });
+  return y;
+}
+
 NdArrayRef applyPerm(const NdArrayRef& x, absl::Span<const int64_t> pv) {
   SPU_ENFORCE_EQ(x.shape().ndim(), 1U, "x should be 1-d tensor");
 
   NdArrayRef y(x.eltype(), x.shape());
   const auto field = x.eltype().as<Ring2k>()->field();
-  DISPATCH_ALL_FIELDS(field, kPermModule, [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> _x(x);
     NdArrayView<ring2k_t> _y(y);
     for (int64_t i = 0; i < y.numel(); i++) {
@@ -64,35 +86,58 @@ NdArrayRef applyPerm(const NdArrayRef& x, absl::Span<const int64_t> pv) {
   return y;
 }
 
-PermVector genRandomPerm(size_t size, uint64_t seed) {
-  PermVector perm(size);
-  std::iota(perm.begin(), perm.end(), 0);
-  // TODO: change PRNG to CSPRNG
-  std::mt19937 rng(seed);
-  std::shuffle(perm.begin(), perm.end(), rng);
-  return perm;
+NdArrayRef applyPerm(const NdArrayRef& x, const NdArrayRef& pv) {
+  SPU_ENFORCE_EQ(x.shape().ndim(), 1U, "x should be 1-d tensor");
+  SPU_ENFORCE_EQ(x.shape(), pv.shape(), "x and pv should have same shape");
+
+  NdArrayRef y(x.eltype(), x.shape());
+  const auto field = x.eltype().as<Ring2k>()->field();
+  DISPATCH_ALL_FIELDS(field, [&]() {
+    NdArrayView<ring2k_t> _x(x);
+    NdArrayView<ring2k_t> _y(y);
+    const auto pv_field = pv.eltype().as<Ring2k>()->field();
+    DISPATCH_ALL_FIELDS(pv_field, [&]() {
+      NdArrayView<ring2k_t> _pv(pv);
+      for (int64_t i = 0; i < y.numel(); i++) {
+        _y[i] = _x[_pv[i]];
+      }
+    });
+  });
+  return y;
 }
 
-PermVector genInversePerm(absl::Span<const int64_t> pv) {
-  PermVector ret(pv.size());
-  for (size_t i = 0; i < pv.size(); ++i) {
-    ret[pv[i]] = i;
-  }
+NdArrayRef genInversePerm(const NdArrayRef& perm) {
+  NdArrayRef ret(perm.eltype(), perm.shape());
+  auto field = perm.eltype().as<Ring2k>()->field();
+  DISPATCH_ALL_FIELDS(field, [&]() {
+    NdArrayView<ring2k_t> _ret(ret);
+    NdArrayView<ring2k_t> _perm(perm);
+    for (int64_t i = 0; i < perm.numel(); ++i) {
+      _ret[_perm[i]] = ring2k_t(i);
+    }
+  });
   return ret;
 }
 
-PermVector genPermBySort(const NdArrayRef& x) {
+Index genPermBySort(const NdArrayRef& x) {
   SPU_ENFORCE_EQ(x.shape().ndim(), 1U, "x should be 1-d tensor");
-  PermVector perm(x.shape()[0]);
+  Index perm(x.shape()[0]);
   std::iota(perm.begin(), perm.end(), 0);
   const auto field = x.eltype().as<Ring2k>()->field();
-  DISPATCH_ALL_FIELDS(field, kPermModule, [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using T = std::make_signed_t<ring2k_t>;
 
     NdArrayView<T> _x(x);
     auto cmp = [&_x](int64_t a, int64_t b) { return _x[a] < _x[b]; };
     std::stable_sort(perm.begin(), perm.end(), cmp);
   });
+  return perm;
+}
+
+Index genRandomPerm(size_t numel, uint128_t seed, uint64_t* ctr) {
+  Index perm(numel);
+  std::iota(perm.begin(), perm.end(), 0);
+  yacl::crypto::ReplayShuffle(perm.begin(), perm.end(), seed, ctr);
   return perm;
 }
 

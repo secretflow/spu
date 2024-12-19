@@ -105,7 +105,7 @@ member function and a member variable of an Object, respectively.
     // register customized kernels
     template <typename KernelT>
     void regKernel() {
-      regKernel(KernelT::kBindName, std::make_unique<KernelT>());
+      regKernel(KernelT::kBindName(), std::make_unique<KernelT>());
     }
 
     template <typename KernelT>
@@ -116,7 +116,7 @@ member function and a member variable of an Object, respectively.
     // add customized states
     template <typename StateT, typename... Args>
     void addState(Args&&... args) {
-      addState(StateT::kBindName,
+      addState(StateT::kBindName(),
               std::make_unique<StateT>(std::forward<Args>(args)...));
     }
     ...
@@ -205,7 +205,7 @@ As a result, the ABY3 developer can directly register these kernels through the 
   class AndPP : public BinaryKernel {
    public:
     // kernel name for dynamic binding
-    static constexpr char kBindName[] = "and_pp";
+    static constexpr const char* kBindName() { return "and_pp"; }
 
     // define cost model
     ce::CExpr latency() const override { return ce::Const(0); }
@@ -248,7 +248,7 @@ When kernels are implemented and registered, a new protocol is finally added.
     auto* prg_state = ctx->getState<PrgState>();
 
     // dispatch the real implementation to different fields
-    return DISPATCH_ALL_FIELDS(field, "aby3.mulAA", [&]() {
+    return DISPATCH_ALL_FIELDS(field, [&]() {
       // the real protocol implementation
       ...
     });

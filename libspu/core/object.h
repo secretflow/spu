@@ -112,7 +112,7 @@ class Object final {
 
   template <typename KernelT>
   void regKernel() {
-    regKernel(KernelT::kBindName, std::make_unique<KernelT>());
+    regKernel(KernelT::kBindName(), std::make_unique<KernelT>());
   }
 
   template <typename KernelT, typename OtherKernelT, typename... MoreKernelT>
@@ -137,14 +137,15 @@ class Object final {
 
   template <typename StateT, typename... Args>
   void addState(Args&&... args) {
-    addState(StateT::kBindName,
+    addState(StateT::kBindName(),
              std::make_unique<StateT>(std::forward<Args>(args)...));
   }
 
   template <typename StateT>
   StateT* getState() {
-    const auto& itr = states_.find(StateT::kBindName);
-    SPU_ENFORCE(itr != states_.end(), "state={} not found", StateT::kBindName);
+    const auto& itr = states_.find(StateT::kBindName());
+    SPU_ENFORCE(itr != states_.end(), "state={} not found",
+                StateT::kBindName());
     return dynamic_cast<StateT*>(itr->second.get());
   }
 

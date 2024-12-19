@@ -20,7 +20,7 @@ namespace spu::mpc::cheetah {
 
 class A2B : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "a2b";
+  static constexpr const char* kBindName() { return "a2b"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -31,7 +31,7 @@ class A2B : public UnaryKernel {
 
 class B2A : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "b2a";
+  static constexpr const char* kBindName() { return "b2a"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -42,7 +42,7 @@ class B2A : public UnaryKernel {
 
 class CommonTypeV : public Kernel {
  public:
-  static constexpr char kBindName[] = "common_type_v";
+  static constexpr const char* kBindName() { return "common_type_v"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 

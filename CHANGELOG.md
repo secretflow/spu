@@ -10,6 +10,12 @@
 >
 > please add your unreleased change here.
 
+## 20241219
+
+- [SPU] 0.9.3b0 release
+- [Improvement] Optimize exponential computation for semi2k (**experimental**)
+- [Feature] Add more send/recv actions profiling
+
 ## 20240716
 
 - [SPU] 0.9.2b0 release

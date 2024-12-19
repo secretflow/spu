@@ -240,6 +240,7 @@ message RuntimeConfig {
     EXP_DEFAULT = 0;  // Implementation defined.
     EXP_PADE = 1;     // The pade approximation.
     EXP_TAYLOR = 2;   // Taylor series approximation.
+    EXP_PRIME = 3;    // exp prime only available for some implementations
   }
 
   // The exponent approximation method.
@@ -331,6 +332,25 @@ message RuntimeConfig {
   uint64 experimental_inter_op_concurrency = 104;
   // Enable use of private type
   bool experimental_enable_colocated_optimization = 105;
+
+  // enable experimental exp prime method
+  bool experimental_enable_exp_prime = 106;
+
+  // The offset parameter for exp prime methods.
+  // control the valid range of exp prime method.
+  // valid range is:
+  // ((47 - offset - 2fxp)/log_2(e), (125 - 2fxp - offset)/log_2(e))
+  // clamp to value would be
+  //                lower bound: (48 - offset - 2fxp)/log_2(e)
+  //                higher bound: (124 - 2fxp - offset)/log_2(e)
+  // default offset is 13, 0 offset is not supported.
+  uint32 experimental_exp_prime_offset = 107;
+  // whether to apply the clamping lower bound
+  // default to enable it
+  bool experimental_exp_prime_disable_lower_bound = 108;
+  // whether to apply the clamping upper bound
+  // default to disable it
+  bool experimental_exp_prime_enable_upper_bound = 109;
 }
 
 message TTPBeaverConfig {

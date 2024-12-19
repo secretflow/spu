@@ -29,7 +29,7 @@ Value msb_a2b(SPUContext* ctx, const Value& x);
 Value rand_a(SPUContext* ctx, const Shape& shape);
 Value rand_b(SPUContext* ctx, const Shape& shape);
 
-Value not_a(SPUContext* ctx, const Value& x);
+Value negate_a(SPUContext* ctx, const Value& x);
 
 Value equal_ap(SPUContext* ctx, const Value& x, const Value& y);
 Value equal_aa(SPUContext* ctx, const Value& x, const Value& y);
@@ -46,7 +46,7 @@ OptionalAPI<Value> mul_av(SPUContext* ctx, const Value& x, const Value& y);
 Value mul_a1b(SPUContext* ctx, const Value& x, const Value& y);
 OptionalAPI<Value> mul_a1bv(SPUContext* ctx, const Value& x, const Value& y);
 
-Value lshift_a(SPUContext* ctx, const Value& x, size_t nbits);
+Value lshift_a(SPUContext* ctx, const Value& x, const Sizes& nbits);
 Value trunc_a(SPUContext* ctx, const Value& x, size_t nbits, SignType sign);
 
 Value mmul_ap(SPUContext* ctx, const Value& x, const Value& y);
@@ -72,9 +72,9 @@ Value xor_bb(SPUContext* ctx, const Value& x, const Value& y);
 OptionalAPI<Value> xor_bv(SPUContext* ctx, const Value& x,
                           const Value& y);  // TODO
 
-Value lshift_b(SPUContext* ctx, const Value& x, size_t nbits);
-Value rshift_b(SPUContext* ctx, const Value& x, size_t nbits);
-Value arshift_b(SPUContext* ctx, const Value& x, size_t nbits);
+Value lshift_b(SPUContext* ctx, const Value& x, const Sizes& nbits);
+Value rshift_b(SPUContext* ctx, const Value& x, const Sizes& nbits);
+Value arshift_b(SPUContext* ctx, const Value& x, const Sizes& nbits);
 
 // Bit reverse for binary share.
 Value bitrev_b(SPUContext* ctx, const Value& x, size_t start, size_t end);

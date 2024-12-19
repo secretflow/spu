@@ -24,7 +24,7 @@ class SecurennState : public State {
  public:
   SecurennState() = default;
 
-  static constexpr char kBindName[] = "SecurennState";
+  static constexpr const char* kBindName() { return "SecurennState"; }
 
   std::unique_ptr<State> fork() override {
     auto ret = std::unique_ptr<SecurennState>(new SecurennState);
