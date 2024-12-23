@@ -38,9 +38,6 @@ namespace {
     size_t world_size =  comm->getWorldSize();
     auto* prg_state = ctx->getState<PrgState>();
     auto myrank = comm->getRank();
-    
-    // SPU_ENFORCE_EQ(input.size(), output.numel());
-    // SPU_ENFORCE_EQ(row * col, output.numel());
 
     using shr_t = std::array<el_t, 3>;
     NdArrayView<shr_t> _out(output);
@@ -57,7 +54,6 @@ namespace {
     // size_t offset_from_receiver = OffsetRank(myrank, receiver, world_size);
     size_t offset_from_outsider_prev = OffsetRankC(myrank, (outsider + 4 - 1)%4 , world_size);
 
-    // printf("My rank = %zu, sender_rank = %zu, receiver_rank = %zu, receiver_prev = %zu, offset_from_recv_prev = %zu, offset_from_outsider_prev = %zu \n", myrank, sender, receiver, receiver_prev_rank, offset_from_receiver_prev, offset_from_outsider_prev);
     if(myrank != receiver){
       // Non-Interactive Random Masks Generation.
       std::vector<el_t> r(output.numel());
@@ -95,8 +91,6 @@ namespace {
         pforeach(0, output.numel(), [&](int64_t idx) {
           input_minus_r[idx] = (input[idx] - r[idx]);
           _out[idx][offset_from_outsider_prev] +=  input_minus_r[idx];
-          
-          // printf("My rank = %zu, sender_rank = %zu, receiver_rank = %zu, receiver_prev = %zu, offset_from_recv_prev = %zu, offset_from_outsider_prev = %zu, x = %llu, r = %llu, x-r = %llu \n", myrank, sender, receiver, receiver_prev_rank, offset_from_receiver_prev, offset_from_outsider_prev, (unsigned long long)input[idx], (unsigned long long)r[idx], (unsigned long long)input_minus_r[idx]);
         }); 
 
         // Sender send x-r to receiver
@@ -121,18 +115,6 @@ namespace {
       // Todo: 
       // Mac update sender-backup channel
     }
-
-    // pforeach(0, output.numel(), [&](int64_t idx) {
-      
-    //     printf("My rank = %zu, Current input[%ld], the shares:", myrank, idx+1);
-    //     for(int64_t i =0; i<3;i++){
-          
-    //       printf("output[%ld] = %llu  ", i, (unsigned long long)_out[idx][i]);
-    //     }
-    //     printf("\n");
-      
-    // });
-
   }
 
   template <typename el_t>

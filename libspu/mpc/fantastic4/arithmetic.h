@@ -3,10 +3,10 @@
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/mpc/kernel.h"
 
-// // Only turn mask on in debug build
-// #ifndef NDEBUG
-// #define ENABLE_MASK_DURING_FANTASTIC4_P2A
-// #endif
+// Only turn mask on in debug build
+#ifndef NDEBUG
+#define ENABLE_MASK_DURING_FANTASTIC4_P2A
+#endif
 
 namespace spu::mpc::fantastic4 {
 
@@ -94,16 +94,16 @@ class V2A : public UnaryKernel {
 
 
 
-// class RandA : public RandKernel {
-//  public:
-//   static constexpr const char* kBindName() { return "rand_a"; }
+class RandA : public RandKernel {
+ public:
+  static constexpr const char* kBindName() { return "rand_a"; }
 
-//   ce::CExpr latency() const override { return ce::Const(0); }
+  ce::CExpr latency() const override { return ce::Const(0); }
 
-//   ce::CExpr comm() const override { return ce::Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
 
-//   NdArrayRef proc(KernelEvalContext* ctx, const Shape& shape) const override;
-// };
+  NdArrayRef proc(KernelEvalContext* ctx, const Shape& shape) const override;
+};
 
 class NegateA : public UnaryKernel {
  public:

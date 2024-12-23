@@ -7,24 +7,6 @@
 
 namespace spu::mpc::fantastic4 {
 
-// The layout of Aby3 share.
-//
-// Two shares are interleaved in a array, for example, given n element and k
-// bytes per-element.
-//
-//   element          address
-//   a[0].share0      0
-//   a[0].share1      k
-//   a[1].share0      2k
-//   a[1].share1      3k
-//   ...
-//   a[n-1].share0    (n-1)*2*k+0
-//   a[n-1].share1    (n-1)*2*k+k
-//
-// you can treat aby3 share as std::complex<T>, where
-//   real(x) is the first share piece.
-//   imag(x) is the second share piece.
-
 NdArrayRef getShare(const NdArrayRef& in, int64_t share_idx);
 
 NdArrayRef getFirstShare(const NdArrayRef& in);

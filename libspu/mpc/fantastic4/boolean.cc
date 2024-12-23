@@ -33,9 +33,6 @@ namespace {
     size_t world_size =  comm->getWorldSize();
     auto* prg_state = ctx->getState<PrgState>();
     auto myrank = comm->getRank();
-    
-    // SPU_ENFORCE_EQ(input.size(), output.numel());
-    // SPU_ENFORCE_EQ(row * col, output.numel());
 
     using shr_t = std::array<el_t, 3>;
     NdArrayView<shr_t> _out(output);
@@ -90,8 +87,6 @@ namespace {
         pforeach(0, output.numel(), [&](int64_t idx) {
           input_minus_r[idx] = (input[idx] ^ r[idx]);
           _out[idx][offset_from_outsider_prev] ^=  input_minus_r[idx];
-          
-          // printf("My rank = %zu, sender_rank = %zu, receiver_rank = %zu, receiver_prev = %zu, offset_from_recv_prev = %zu, offset_from_outsider_prev = %zu, x = %llu, r = %llu, x-r = %llu \n", myrank, sender, receiver, receiver_prev_rank, offset_from_receiver_prev, offset_from_outsider_prev, (unsigned long long)input[idx], (unsigned long long)r[idx], (unsigned long long)input_minus_r[idx]);
         }); 
 
         // Sender send x-r to receiver
@@ -116,18 +111,6 @@ namespace {
       // Todo: 
       // Mac update sender-backup channel
     }
-
-    // pforeach(0, output.numel(), [&](int64_t idx) {
-      
-    //     printf("My rank = %zu, Current input[%ld], the shares:", myrank, idx+1);
-    //     for(int64_t i =0; i<3;i++){
-          
-    //       printf("output[%ld] = %llu  ", i, (unsigned long long)_out[idx][i]);
-    //     }
-    //     printf("\n");
-      
-    // });
-
   }
 }
 
@@ -228,13 +211,6 @@ NdArrayRef P2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   });
 }
 
-void printBinaryB(unsigned long long x, size_t k) {
-    for (int i = k - 1; i >= 0; --i) {
-        unsigned long long bit = (x >> i) & 1ULL;
-        printf("%llu", bit);
-    }
-}
-
 NdArrayRef XorBP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
                        const NdArrayRef& rhs) const {
   auto* comm = ctx->getState<Communicator>();                      
@@ -256,16 +232,9 @@ NdArrayRef XorBP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
       using lhs_el_t = ScalarT;
       using lhs_shr_t = std::array<lhs_el_t, 3>;
       auto rank = comm->getRank();
-      
     
       NdArrayView<lhs_shr_t> _lhs(lhs);
-    //   if(rank == 0){
-    //     printf("The plaintxt rhs is %llu, the secret is (%llu, %llu, %llu) \n", (unsigned long long)_rhs[0], (unsigned long long)_lhs[0][0], (unsigned long long)_lhs[0][1], (unsigned long long)_lhs[0][2]);
-    //   }
-    //   printBinaryB((unsigned long long)_rhs[0], out_nbits);
-    //   printf("\n");
-    //   printBinaryB((unsigned long long)(_lhs[0][0]), out_nbits);
-    //   printf("\n");
+
       return DISPATCH_UINT_PT_TYPES(out_btype, [&]() {
         using out_el_t = ScalarT;
         using out_shr_t = std::array<out_el_t, 3>;
@@ -372,7 +341,6 @@ NdArrayRef AndBP::proc(KernelEvalContext*, const NdArrayRef& lhs,
 
 NdArrayRef AndBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
                        const NdArrayRef& rhs) const {
-  // auto* prg_state = ctx->getState<PrgState>();
   auto* comm = ctx->getState<Communicator>();
   auto rank = comm->getRank();
   auto next_rank = (rank + 1) % 4;
@@ -422,14 +390,6 @@ NdArrayRef AndBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
             a[4][idx] = (_lhs[idx][0] & _rhs[idx][2]) ^ (_lhs[idx][2] & _rhs[idx][0]);                    // xi&yg ^ xg&yi
         });
 
-        // pforeach(0, lhs.numel(), [&](int64_t idx) {
-        //     printf("My rank = %zu, Current input[%ld], the shares:", rank, idx+1);
-        //     for(int64_t i =0; i<5;i++){
-        //       printf("a[%ld] = %llu  ", i, (unsigned long long)a[i][idx]);
-        //     }
-        //     printf("\n");
-        // });
-
         JointInputBool<out_el_t>(ctx, a[1], out, 0, 1, 3, 2);
         JointInputBool<out_el_t>(ctx, a[2], out, 1, 2, 0, 3);
         JointInputBool<out_el_t>(ctx, a[3], out, 2, 3, 1, 0);
@@ -438,29 +398,6 @@ NdArrayRef AndBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
         JointInputBool<out_el_t>(ctx, a[4], out, 1, 3, 2, 0);
 
         return out;
-
-        
-        // std::vector<out_el_t> r0(lhs.numel());
-        // std::vector<out_el_t> r1(lhs.numel());
-        // prg_state->fillPrssPair(r0.data(), r1.data(), r0.size(),
-        //                         PrgState::GenPrssCtrl::Both);
-
-        // // z1 = (x1 & y1) ^ (x1 & y2) ^ (x2 & y1) ^ (r0 ^ r1);
-        // pforeach(0, lhs.numel(), [&](int64_t idx) {
-        //   const auto& l = _lhs[idx];
-        //   const auto& r = _rhs[idx];
-        //   r0[idx] = (l[0] & r[0]) ^ (l[0] & r[1]) ^ (l[1] & r[0]) ^
-        //             (r0[idx] ^ r1[idx]);
-        // });
-
-        // r1 = comm->rotate<out_el_t>(r0, "andbb");  // comm => 1, k
-
-        // NdArrayView<out_shr_t> _out(out);
-        // pforeach(0, lhs.numel(), [&](int64_t idx) {
-        //   _out[idx][0] = r0[idx];
-        //   _out[idx][1] = r1[idx];
-        // });
-        // return out;
       });
     });
   });
