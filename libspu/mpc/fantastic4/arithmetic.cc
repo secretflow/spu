@@ -228,10 +228,18 @@ NdArrayRef P2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
     for (int64_t idx = 0; idx < in.numel(); idx++) {
       s0[idx] = r0[idx] - r1[idx];
       s1[idx] = r1[idx] - r2[idx];
-    }
+      }
+
     s2 = comm->rotate<ashr_el_t>(s1, "p2a.zero");
 
     for (int64_t idx = 0; idx < in.numel(); idx++) {
+      // printf(" My rank = %zu, share = (%llu, %llu, %llu)", comm->getRank(), (unsigned long long)s0[idx], (unsigned long long)s1[idx], (unsigned long long)s2[idx]);
+      // if(comm->getRank() == 0 && idx == 0){
+      //   printf(" My rank = %zu, share = %llu\n", comm->getRank(), (unsigned long long)(~(s1[idx] + s2[idx])));
+      // }
+      // if(comm->getRank() == 2 && idx == 0){
+      //   printf(" My rank = %zu, share = %llu\n", comm->getRank(), (unsigned long long)(-s1[idx] - s2[idx]));
+      // }
       _out[idx][0] += s0[idx];
       _out[idx][1] += s1[idx];
       _out[idx][2] += s2[idx];
