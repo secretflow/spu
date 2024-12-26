@@ -1,0 +1,24 @@
+
+load("@rules_python//python:defs.bzl", "py_test")
+
+package(default_visibility = ["//visibility:public"])
+
+py_test(
+    name = "jacobipca_test",
+    srcs = ["jacobipca_test.py"],
+    deps = [
+        "//sml/fyy_pca:jacobi_pca",
+        "//spu:init",
+        "//spu/utils:simulation",
+    ],
+)
+
+py_test(
+    name = "jacobievd_test",
+    srcs = ["jacobievd_test.py"],
+    deps = [
+        "//sml/fyy_pca:jacobi_evd",
+        "//spu:init",
+        "//spu/utils:simulation",
+    ],
+)

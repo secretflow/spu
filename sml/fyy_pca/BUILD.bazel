@@ -1,0 +1,16 @@
+
+
+load("@rules_python//python:defs.bzl", "py_library")
+
+package(default_visibility = ["//visibility:public"])
+
+py_library(
+    name = "jacobi_evd",
+    srcs = ["jacobi_evd.py"],
+)
+
+py_library(
+    name = "jacobi_pca",
+    srcs = ["jacobi_pca.py"],
+    deps = ["//sml/utils:extmath",":jacobi_evd"],
+)
