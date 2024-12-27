@@ -13,27 +13,28 @@
 # limitations under the License.
 
 from .distributed_impl import (  # type: ignore
-    RPC,
     PYU,
+    RPC,
+    SAMPLE_DEVICES_DEF,
+    SAMPLE_NODES_DEF,
     SPU,
     Framework,
-    init,
-    device,
-    get,
     current,
-    set_framework,
-    SAMPLE_NODES_DEF,
-    SAMPLE_DEVICES_DEF,
+    device,
     dtype_spu_to_np,
-    shape_spu_to_np,
-    save,
+    get,
+    init,
     load,
+    save,
+    set_framework,
+    shape_spu_to_np,
 )
 
 
 def main():
     import argparse
     import json
+
     from spu.utils.polyfill import Process
 
     parser = argparse.ArgumentParser(description='SPU node service.')

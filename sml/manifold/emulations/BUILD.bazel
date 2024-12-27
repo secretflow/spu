@@ -44,18 +44,5 @@ py_binary(
     ],
 )
 
-py_binary(
-    name = "test_emul",
-    srcs = ["test_emul.py"],
-    deps = [
-        "//sml/utils:emulation",
-        "//sml/manifold:jacobi",
-        "//sml/manifold:dijkstra",
-        "//sml/manifold:MDS",
-        "//sml/manifold:kneighbors",
-        "//sml/manifold:floyd",
-        "//sml/manifold:SE",
-    ],
-)
 
 

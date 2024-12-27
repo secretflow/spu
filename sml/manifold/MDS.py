@@ -16,16 +16,17 @@ import jax.numpy as jnp
 
 from sml.manifold.jacobi import Jacobi
 
+
 def mds(D, num_samples, n_components):
     D_2 = jnp.square(D)
     B = jnp.zeros((num_samples, num_samples))
     B = -0.5 * D_2
-    # 按行求和(使用英语的注释)
+    # Sum by row
     dist_2_i = jnp.sum(B, axis=1)
     dist_2_i = dist_2_i / num_samples
-    # 按列求和
+    # Sum by column
     dist_2_j = dist_2_i.T
-    # 全部求和
+    # sum all
     dist_2 = jnp.sum(dist_2_i)
     dist_2 = dist_2 / (num_samples)
     for i in range(num_samples):
@@ -33,14 +34,16 @@ def mds(D, num_samples, n_components):
             B = B.at[i, j].set(B[i][j] - dist_2_i[i] - dist_2_j[j] + dist_2)
 
     values, vectors = Jacobi(B, num_samples)
+
     values = jnp.diag(values)
     values = jnp.array(values)
     values = jnp.expand_dims(values, axis=1).repeat(vectors.shape[1], axis=1)
-    values,vectors=jax.lax.sort_key_val(values.T,vectors.T)
-    vectors=vectors[:,num_samples - n_components:num_samples]
-    values=values[0,num_samples - n_components:num_samples]
-    values = jnp.sqrt(jnp.diag(values))
-    
+    values, vectors = jax.lax.sort_key_val(values.T, vectors.T)
+    vectors = vectors[:, num_samples - n_components : num_samples]
+    values = values[0, num_samples - n_components : num_samples]
+    values = jnp.sqrt(values)
+    values = jnp.diag(values)
     ans = jnp.dot(vectors, values)
+    ans = ans[:, ::-1]
 
     return B, ans, values, vectors

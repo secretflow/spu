@@ -131,8 +131,8 @@ class UnitTests(unittest.TestCase):
         npt.assert_array_equal(cpu_labels, spu_labels)
 
     def test_jax_lr(self):
-        from examples.python.utils import dataset_utils as dsutil
         from examples.python.ml.jax_lr import jax_lr
+        from examples.python.utils import dataset_utils as dsutil
 
         x, y = dsutil.mock_classification(10000, 100, 0.0, 42)
         w, b = profile_test_point(jax_lr.run_on_spu, x, y)

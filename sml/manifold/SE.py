@@ -14,8 +14,10 @@
 import jax
 import jax.numpy as jnp
 import numpy as np
+
 import spu.intrinsic as si
 from sml.manifold.jacobi import Jacobi
+
 
 def se(X, num_samples, D, n_components):
     X, Q = Jacobi(X, num_samples)
@@ -23,16 +25,16 @@ def se(X, num_samples, D, n_components):
     X = jnp.array(X)
     # perm = jnp.argsort(X)
     X2 = jnp.expand_dims(X, axis=1).repeat(Q.shape[1], axis=1)
-    X3,ans=jax.lax.sort_key_val(X2.T,Q.T)
-    ans=ans[:,1:n_components + 1]
+    X3, ans = jax.lax.sort_key_val(X2.T, Q.T)
+    ans = ans[:, 1 : n_components + 1]
     D = jnp.diag(D)
     ans = ans.T * jnp.reciprocal(jnp.sqrt(D))
     return ans.T
 
 
 def normalization(
-    adjacency,  # 邻接矩阵
-    norm_laplacian=True,  # 如果为 True，使用对称归一化拉普拉斯矩阵；如果为 False，使用非归一化的拉普拉斯矩阵。
+    adjacency,
+    norm_laplacian=True,  # If True, use symmetric normalized Laplacian matrix; If False, use a non normalized Laplacian matrix.
 ):
     D = jnp.sum(adjacency, axis=1)
     D = jnp.diag(D)
@@ -40,7 +42,7 @@ def normalization(
     L = D - adjacency
     D2 = jnp.diag(jnp.reciprocal(jnp.sqrt(jnp.diag(D))))
     if norm_laplacian == True:
-        # 归一化
+        # normalization
         L = jnp.dot(D2, L)
         L = jnp.dot(L, D2)
     return D, L

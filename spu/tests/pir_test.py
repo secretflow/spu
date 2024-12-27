@@ -17,9 +17,10 @@ import tempfile
 import unittest
 
 import multiprocess
+from google.protobuf import json_format
+
 import spu.libspu.link as link
 import spu.psi as psi
-from google.protobuf import json_format
 from spu.tests.utils import create_link_desc
 
 
