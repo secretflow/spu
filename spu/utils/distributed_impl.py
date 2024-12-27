@@ -44,6 +44,7 @@ import multiprocess
 import numpy as np
 from termcolor import colored
 
+
 from .. import api as spu_api
 from .. import libspu  # type: ignore
 from .. import spu_pb2
@@ -727,7 +728,7 @@ class SPU(Device):
             except ImportError:
                 import jax.linear_util as lu  # fallback
             from jax._src import api_util as japi_util
-            from jax.tree_util import tree_flatten, tree_map
+            from jax.tree_util import tree_map, tree_flatten
 
             mock_args, mock_kwargs = tree_map(mock_parameters, (args, kwargs))
 
@@ -956,7 +957,7 @@ class SPU(Device):
                 fn, torch.nn.Module
             ), "currently only torch.nn.Module is supported"
 
-            from jax.tree_util import tree_flatten, tree_map
+            from jax.tree_util import tree_map, tree_flatten
 
             mock_args, mock_kwargs = tree_map(mock_parameters, (args, kwargs))
 
