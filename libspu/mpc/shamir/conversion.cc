@@ -192,6 +192,7 @@ NdArrayRef gen_zero_shares(KernelEvalContext* ctx, int64_t numel, int64_t thresh
 }
 // Ref: https://iacr.org/archive/tcc2006/38760286/38760286.pdf
 //  Page 11: Protocol RAN2
+// [Offline Phase]
 NdArrayRef rand_bits(SPUContext* ctx, int64_t numel) {
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
   NdArrayRef out(makeType<AShrTy>(field), {numel});
@@ -506,6 +507,7 @@ std::vector<NdArrayRef> bit_add(SPUContext* ctx,
 
 // Ref: https://iacr.org/archive/tcc2006/38760286/38760286.pdf
 //  Page 3.1: Solved bits
+// [Offline Phase]
 std::pair<std::vector<NdArrayRef>, NdArrayRef> solved_bits(SPUContext* ctx,
                                                            const Shape& shape) {
   const auto field = ctx->getState<Z2kState>()->getDefaultField();

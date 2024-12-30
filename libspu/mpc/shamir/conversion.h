@@ -44,8 +44,6 @@ class B2A : public UnaryKernel {
  public:
   static constexpr const char* kBindName() {return  "b2a"; }
 
-  Kind kind() const override { return Kind::Dynamic; }
-
   ce::CExpr latency() const override {
     return ce::Const(0);
   }
@@ -64,9 +62,10 @@ class TruncA : public TruncAKernel {
 
   Kind kind() const override { return Kind::Dynamic; }
 
-  ce::CExpr latency() const override { return ce::Const(1); }
+  ce::CExpr latency() const override { return ce::Const(2); }
 
-  ce::CExpr comm() const override { return ce::Const(0); }
+  // only count online for now.
+  ce::CExpr comm() const override { return ce::K() * 2; }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x, size_t bits,
                   SignType sign) const override;
@@ -85,9 +84,9 @@ class MulAATrunc : public MulTruncAKernel {
 
   Kind kind() const override { return Kind::Dynamic; }
 
-  ce::CExpr latency() const override { return ce::Const(1); }
+  ce::CExpr latency() const override { return ce::Const(2); }
 
-  ce::CExpr comm() const override { return ce::Const(0); }
+  ce::CExpr comm() const override { return ce::K() * 2; }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x, const NdArrayRef& y, size_t bits,
                   SignType sign) const override;

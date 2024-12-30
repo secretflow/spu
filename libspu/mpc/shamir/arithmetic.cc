@@ -51,6 +51,7 @@ NdArrayRef gen_zero_shares(KernelEvalContext* ctx, int64_t numel, int64_t thresh
 
 // Ref: DN'07 protocol
 //  https://www.iacr.org/archive/crypto2007/46220565/46220565.pdf
+// [Offline Phase]
 std::pair<NdArrayRef, NdArrayRef> gen_double_shares(KernelEvalContext* ctx,
                                                     int64_t numel) {
   auto* comm = ctx->getState<Communicator>();
@@ -124,6 +125,7 @@ std::pair<NdArrayRef, NdArrayRef> gen_double_shares(KernelEvalContext* ctx,
 
 // Ref: DN'07 protocol for honesty majority
 //  https://www.iacr.org/archive/crypto2007/46220565/46220565.pdf
+// [Offline Phase]
 NdArrayRef RandA::proc(KernelEvalContext* ctx, const Shape& shape) const {
   auto* prg_state = ctx->getState<PrgState>();
   auto* comm = ctx->getState<Communicator>();

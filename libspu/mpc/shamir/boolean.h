@@ -46,16 +46,14 @@ class B2P : public UnaryKernel {
  public:
   static constexpr const char* kBindName() {return  "b2p"; }
 
-  Kind kind() const override { return Kind::Dynamic; }
+  // Kind kind() const override { return Kind::Dynamic; }
 
   ce::CExpr latency() const override {
-    // rotate : 1
-    return ce::Const(1);
+    return ce::Const(2);
   }
 
   ce::CExpr comm() const override {
-    // rotate : k
-    return ce::K();
+    return ce::K() * 2;
   }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
@@ -78,7 +76,7 @@ class B2V : public RevealToKernel {
  public:
   static constexpr const char* kBindName() {return  "b2v"; }
 
-  Kind kind() const override { return Kind::Dynamic; }
+  // Kind kind() const override { return Kind::Dynamic; }
 
   ce::CExpr latency() const override {
     // 1 * send/recv: 1
@@ -113,13 +111,11 @@ class AndBB : public BinaryKernel {
   Kind kind() const override { return Kind::Dynamic; }
 
   ce::CExpr latency() const override {
-    // rotate : 1
-    return ce::Const(1);
+    return ce::Const(2);
   }
 
   ce::CExpr comm() const override {
-    // rotate : k
-    return ce::K();
+    return ce::K() * 2;
   }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
