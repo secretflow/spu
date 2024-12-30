@@ -26,7 +26,7 @@ class RandA : public RandKernel {
 
   ce::CExpr latency() const override { return ce::Const(1); }
 
-  ce::CExpr comm() const override { return ce::Const(0); }
+  ce::CExpr comm() const override { return (ce::N() - 1) * ce::K(); }
 
   NdArrayRef proc(KernelEvalContext* ctx, const Shape& shape) const override;
 };
@@ -34,8 +34,6 @@ class RandA : public RandKernel {
 class P2A : public UnaryKernel {
  public:
   static constexpr const char* kBindName() {return  "p2a"; }
-
-  Kind kind() const override { return Kind::Dynamic; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -48,11 +46,9 @@ class A2P : public UnaryKernel {
  public:
   static constexpr const char* kBindName() {return  "a2p"; }
 
-  Kind kind() const override { return Kind::Dynamic; }
+  ce::CExpr latency() const override { return ce::Const(2); }
 
-  ce::CExpr latency() const override { return ce::Const(1); }
-
-  ce::CExpr comm() const override { return ce::K() * (ce::N() - 1); }
+  ce::CExpr comm() const override { return ce::K() * 2; }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
@@ -60,9 +56,6 @@ class A2P : public UnaryKernel {
 class A2V : public RevealToKernel {
  public:
   static constexpr const char* kBindName() {return  "a2v"; }
-
-  // TODO: communication is unbalanced
-  Kind kind() const override { return Kind::Dynamic; }
 
   ce::CExpr latency() const override { return ce::Const(1); }
 
@@ -75,9 +68,6 @@ class A2V : public RevealToKernel {
 class V2A : public UnaryKernel {
  public:
   static constexpr const char* kBindName() {return  "v2a"; }
-
-  // TODO: communication is unbalanced
-  Kind kind() const override { return Kind::Dynamic; }
 
   ce::CExpr latency() const override { return ce::Const(1); }
 
@@ -145,11 +135,9 @@ class MulAA : public BinaryKernel {
  public:
   static constexpr const char* kBindName() {return  "mul_aa"; }
 
-  Kind kind() const override { return Kind::Dynamic; }
+  ce::CExpr latency() const override { return ce::Const(2); }
 
-  ce::CExpr latency() const override { return ce::Const(1); }
-
-  ce::CExpr comm() const override { return ce::K() * 2 * (ce::N() - 1); }
+  ce::CExpr comm() const override { return ce::K() * 2; }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
                   const NdArrayRef& rhs) const override;
@@ -159,11 +147,9 @@ class MulAAP : public BinaryKernel {
  public:
   static constexpr const char* kBindName() {return  "mul_aa_p"; }
 
-  Kind kind() const override { return Kind::Dynamic; }
-
   ce::CExpr latency() const override { return ce::Const(1); }
 
-  ce::CExpr comm() const override { return ce::K() * 2 * (ce::N() - 1); }
+  ce::CExpr comm() const override { return ce::K() * 2; }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
                   const NdArrayRef& rhs) const override;
@@ -188,18 +174,15 @@ class MatMulAA : public MatmulKernel {
  public:
   static constexpr const char* kBindName() {return  "mmul_aa"; }
 
-  Kind kind() const override { return Kind::Dynamic; }
-
   ce::CExpr latency() const override {
     // only count online for now.
-    return ce::Const(1);
+    return ce::Const(2);
   }
 
   ce::CExpr comm() const override {
     auto m = ce::Variable("m", "rows of lhs");
     auto n = ce::Variable("n", "cols of rhs");
-    auto k = ce::Variable("k", "cols of lhs");
-    return ce::K() * (ce::N() - 1) * (m + n) * k;
+    return ce::K() * 2 * (m * n) ;
   }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x,

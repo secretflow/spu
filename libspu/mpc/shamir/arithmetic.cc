@@ -151,6 +151,8 @@ NdArrayRef RandA::proc(KernelEvalContext* ctx, const Shape& shape) const {
       r_shrs[i] = comm->recv(i, shares_r[i].eltype(), "send r_share");
     }
   }
+  comm->addCommStatsManually(1, r.elsize() * r.numel() * (world_size - 1));
+
   r_shrs[rank] = shares_r[rank];
   return DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayRef r_t(ty, {dn_times * (world_size - th)});
@@ -230,6 +232,7 @@ NdArrayRef V2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   } else {
     out = comm->recv(owner_rank, out_ty, "v2a");
   }
+  comm->addCommStatsManually(1, in.elsize() * in.numel());
   return out.reshape(in.shape()).as(out_ty);
 }
 
