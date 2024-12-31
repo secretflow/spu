@@ -108,14 +108,15 @@ class AndBB : public BinaryKernel {
  public:
   static constexpr const char* kBindName() {return  "and_bb"; }
 
-  Kind kind() const override { return Kind::Dynamic; }
+  // Kind kind() const override { return Kind::Dynamic; }
 
   ce::CExpr latency() const override {
     return ce::Const(2);
   }
 
   ce::CExpr comm() const override {
-    return ce::K() * 2;
+    auto nBits = ce::Variable("nBits", "number of bits");
+    return ce::K() * 2 * nBits;
   }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,

@@ -82,52 +82,52 @@ bool verifyCost(Kernel* kernel, std::string_view name, FieldType field,
   return verifyCost(kernel, name, params, cost, shape.numel() /*repeated*/);
 }
 
-  // bool verifyCostDivided(Kernel* kernel, std::string_view name, const
-  // ce::Params& params,
-  //                 const Communicator::Stats& cost, size_t repeated = 1) {
-  //   if (kernel->kind() == Kernel::Kind::Dynamic) {
-  //     return true;
-  //   }
+// bool verifyCostDivided(Kernel* kernel, std::string_view name, const
+// ce::Params& params,
+//                 const Communicator::Stats& cost, size_t repeated = 1) {
+//   if (kernel->kind() == Kernel::Kind::Dynamic) {
+//     return true;
+//   }
 
-  //   auto comm = kernel->comm();
-  //   auto latency = kernel->latency();
+//   auto comm = kernel->comm();
+//   auto latency = kernel->latency();
 
-  //   bool succeed = true;
-  //   constexpr size_t kBitsPerBytes = 8;
+//   bool succeed = true;
+//   constexpr size_t kBitsPerBytes = 8;
 
-  //   auto dn_times = ce::Const(repeated - 1) / (ce::N() - ce::T()) +
-  //   ce::Const(1); const auto expectedComm = comm->eval(params) *
-  //   dn_times->eval(params); const auto realComm = cost.comm * kBitsPerBytes;
+//   auto dn_times = ce::Const(repeated - 1) / (ce::N() - ce::T()) +
+//   ce::Const(1); const auto expectedComm = comm->eval(params) *
+//   dn_times->eval(params); const auto realComm = cost.comm * kBitsPerBytes;
 
-  //   float diff;
-  //   if (expectedComm == 0) {
-  //     diff = realComm;
-  //   } else {
-  //     diff = std::abs(static_cast<float>(realComm - expectedComm)) /
-  //     expectedComm;
-  //   }
-  //   if (realComm < expectedComm || diff > kernel->getCommTolerance()) {
-  //     fmt::print("Failed: {} comm mismatch, expected={}, got={}\n", name,
-  //                expectedComm, realComm);
-  //     succeed = false;
-  //   }
+//   float diff;
+//   if (expectedComm == 0) {
+//     diff = realComm;
+//   } else {
+//     diff = std::abs(static_cast<float>(realComm - expectedComm)) /
+//     expectedComm;
+//   }
+//   if (realComm < expectedComm || diff > kernel->getCommTolerance()) {
+//     fmt::print("Failed: {} comm mismatch, expected={}, got={}\n", name,
+//                expectedComm, realComm);
+//     succeed = false;
+//   }
 
-  //   if (latency->eval(params) != cost.latency) {
-  //     fmt::print("Failed: {} latency mismatch, expected={}, got={}\n", name,
-  //                latency->eval(params), cost.latency);
-  //     succeed = false;
-  //   }
+//   if (latency->eval(params) != cost.latency) {
+//     fmt::print("Failed: {} latency mismatch, expected={}, got={}\n", name,
+//                latency->eval(params), cost.latency);
+//     succeed = false;
+//   }
 
-  //   return succeed;
-  // }
+//   return succeed;
+// }
 
-  // bool verifyCostDivided(Kernel* kernel, std::string_view name, FieldType
-  // field,
-  //                 const Shape& shape, size_t npc, size_t threshold,
-  //                 const Communicator::Stats& cost) {
-  //   ce::Params params = {{"K", SizeOf(field) * 8}, {"N", npc}, {"T",
-  //   threshold}}; return verifyCostDivided(kernel, name, params, cost);
-  // }
+// bool verifyCostDivided(Kernel* kernel, std::string_view name, FieldType
+// field,
+//                 const Shape& shape, size_t npc, size_t threshold,
+//                 const Communicator::Stats& cost) {
+//   ce::Params params = {{"K", SizeOf(field) * 8}, {"N", npc}, {"T",
+//   threshold}}; return verifyCostDivided(kernel, name, params, cost);
+// }
 }  // namespace
 
 #define TEST_ARITHMETIC_BINARY_OP_AA(OP)                                       \
@@ -621,7 +621,7 @@ TEST_P(ArithmeticTest, TruncA) {
                      {static_cast<int64_t>(SizeOf(conf.field()) * 8 - 10)});
     }
     auto v0 = p2v(obj.get(), p0, 0);
-    
+
     /* GIVEN */
     const size_t bits = 2;
     auto a0 = v2a(obj.get(), v0);
@@ -654,10 +654,9 @@ TEST_P(ArithmeticTest, MulAATrunc) {
   utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
     auto obj = factory(conf, lctx);
 
-     
     auto p0 = rand_p(obj.get(), kShape);
     auto p1 = rand_p(obj.get(), kShape);
-    
+
     auto bits_range_gap = p0.elsize() * 8 - (p0.elsize() * 8) / 2;
     p0 = arshift_p(obj.get(), p0, {static_cast<int64_t>(bits_range_gap)});
     p1 = arshift_p(obj.get(), p1, {static_cast<int64_t>(bits_range_gap)});
@@ -665,7 +664,7 @@ TEST_P(ArithmeticTest, MulAATrunc) {
 
     auto v0 = p2v(obj.get(), p0, 0);
     auto v1 = p2v(obj.get(), p1, 1);
-    
+
     /* GIVEN */
     auto a0 = v2a(obj.get(), v0);
     auto a1 = v2a(obj.get(), v1);
@@ -681,8 +680,8 @@ TEST_P(ArithmeticTest, MulAATrunc) {
 
     /* THEN */
     EXPECT_VALUE_ALMOST_EQ(r_a, r_p, npc);
-    EXPECT_TRUE(verifyCost(obj->prot()->getKernel("mul_aa_trunc"), "mul_aa_trunc",
-                           conf.field(), kShape, npc, cost));
+    EXPECT_TRUE(verifyCost(obj->prot()->getKernel("mul_aa_trunc"),
+                           "mul_aa_trunc", conf.field(), kShape, npc, cost));
   });
 }
 
@@ -734,35 +733,45 @@ TEST_P(ArithmeticTest, A2P) {
   });
 }
 
-#define TEST_BOOLEAN_BINARY_OP_BB(OP)                                          \
-  TEST_P(BooleanTest, OP##BB) {                                                \
-    const auto factory = std::get<0>(GetParam());                              \
-    const RuntimeConfig& conf = std::get<1>(GetParam());                       \
-    const size_t npc = std::get<2>(GetParam());                                \
-                                                                               \
-    utils::simulate(                                                           \
-        npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {           \
-          auto obj = factory(conf, lctx);                                      \
-                                                                               \
-          /* GIVEN */                                                          \
-          auto p0 = rand_p(obj.get(), kShape);                                 \
-          auto p1 = rand_p(obj.get(), kShape);                                 \
-                                                                               \
-          /* WHEN */                                                           \
-          auto b0 = p2b(obj.get(), p0);                                        \
-          auto b1 = p2b(obj.get(), p1);                                        \
-          auto prev = obj->prot()->getState<Communicator>()->getStats();       \
-          auto tmp = OP##_bb(obj.get(), b0, b1);                               \
-          auto cost =                                                          \
-              obj->prot()->getState<Communicator>()->getStats() - prev;        \
-          auto re = b2p(obj.get(), tmp);                                       \
-          auto rp = OP##_pp(obj.get(), p0, p1);                                \
-                                                                               \
-          /* THEN */                                                           \
-          EXPECT_VALUE_EQ(re, rp);                                             \
-          EXPECT_TRUE(verifyCost(obj->prot()->getKernel(#OP "_bb"), #OP "_bb", \
-                                 conf.field(), kShape, npc, cost));            \
-        });                                                                    \
+#define TEST_BOOLEAN_BINARY_OP_BB(OP)                                         \
+  TEST_P(BooleanTest, OP##BB) {                                               \
+    const auto factory = std::get<0>(GetParam());                             \
+    const RuntimeConfig& conf = std::get<1>(GetParam());                      \
+    const size_t npc = std::get<2>(GetParam());                               \
+                                                                              \
+    utils::simulate(                                                          \
+        npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {          \
+          auto obj = factory(conf, lctx);                                     \
+                                                                              \
+          /* GIVEN */                                                         \
+          auto p0 = rand_p(obj.get(), kShape);                                \
+          auto p1 = rand_p(obj.get(), kShape);                                \
+                                                                              \
+          /* WHEN */                                                          \
+          auto b0 = p2b(obj.get(), p0);                                       \
+          auto b1 = p2b(obj.get(), p1);                                       \
+          auto prev = obj->prot()->getState<Communicator>()->getStats();      \
+          auto tmp = OP##_bb(obj.get(), b0, b1);                              \
+          auto cost =                                                         \
+              obj->prot()->getState<Communicator>()->getStats() - prev;       \
+          auto re = b2p(obj.get(), tmp);                                      \
+          auto rp = OP##_pp(obj.get(), p0, p1);                               \
+                                                                              \
+          /* THEN */                                                          \
+          EXPECT_VALUE_EQ(re, rp);                                            \
+          if (conf.protocol() == ProtocolKind::SHAMIR) {                      \
+            const size_t nBits = GetMersennePrimeExp(conf.field());           \
+            ce::Params params = {{"K", SizeOf(conf.field()) * 8},             \
+                                 {"N", npc},                                  \
+                                 {"nBits", nBits}};                           \
+            EXPECT_TRUE(verifyCost(obj->prot()->getKernel(#OP "_bb"),         \
+                                   #OP "_aa", params, cost, kShape.numel())); \
+          } else {                                                            \
+            EXPECT_TRUE(verifyCost(obj->prot()->getKernel(#OP "_bb"),         \
+                                   #OP "_aa", conf.field(), kShape, npc,      \
+                                   cost));                                    \
+          }                                                                   \
+        });                                                                   \
   }
 
 #define TEST_BOOLEAN_BINARY_OP_BP(OP)                                          \
