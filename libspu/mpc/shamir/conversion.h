@@ -109,6 +109,23 @@ class MsbA : public UnaryKernel {
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
 
+class ReLU : public UnaryKernel {
+ public:
+  static constexpr const char* kBindName() { return "relu"; }
+
+  Kind kind() const override { return Kind::Dynamic; }
+
+  ce::CExpr latency() const override { return ce::Const(6); }
+
+  // only count online for now.
+  ce::CExpr comm() const override {
+    auto nBits = ce::Variable("nBits", "number of Bits");
+    return 4 * ce::K() + 2 * ce::K() * nBits;
+  }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
+};
+
 class CommonTypeV : public Kernel {
  public:
   static constexpr const char* kBindName() { return "common_type_v"; }

@@ -67,6 +67,10 @@ NdArrayRef wrap_mul_p(SPUContext* ctx, const NdArrayRef& x,
   return UnwrapValue(mul_aa_p(ctx, WrapValue(x), WrapValue(y)));
 }
 
+NdArrayRef wrap_mul_aaa(SPUContext* ctx, const NdArrayRef& x, const NdArrayRef& y, const NdArrayRef& z) {
+  return UnwrapValue(mul_aaa(ctx, WrapValue(x), WrapValue(y), WrapValue(z)));
+}
+
 NdArrayRef wrap_mul(SPUContext* ctx, const NdArrayRef& x, const NdArrayRef& y) {
   if (is_public(x) && is_public(y)) {
     return UnwrapValue(mul_pp(ctx, WrapValue(x), WrapValue(y)));
@@ -870,6 +874,23 @@ NdArrayRef MsbA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   auto c = bit_lt_ap(sctx, y_p_bits, r_bits);
   auto msb = wrap_xor(sctx, b, c);
   return msb;
+}
+
+NdArrayRef ReLU::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
+  auto* sctx = ctx->sctx();
+  std::vector<NdArrayRef> r_bits;
+  NdArrayRef r;
+  std::tie(r_bits, r) = solved_bits(sctx, in.shape());
+  const auto k2 = hack_make_p(sctx, 2, in.shape());
+  auto y = wrap_add(sctx, wrap_mul(sctx, in, k2), r);
+  auto y_p = wrap_a2p(sctx, y);
+
+  auto y_p_bits = bit_decompose(sctx, y_p);
+  auto b = wrap_xor(sctx, y_p_bits[0], r_bits[0]);
+  auto c = bit_lt_ap(sctx, y_p_bits, r_bits);
+  NdArrayRef b_minus_c = wrap_sub(ctx->sctx(), b, c);
+  NdArrayRef t = wrap_mul_aaa(ctx->sctx(), b_minus_c, b_minus_c, in);
+  return wrap_sub(ctx->sctx(), in, t);
 }
 
 void CommonTypeV::evaluate(KernelEvalContext* ctx) const {

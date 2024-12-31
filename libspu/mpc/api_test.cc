@@ -24,7 +24,7 @@
 namespace spu::mpc::test {
 namespace {
 
-Shape kShape = {20, 30};
+Shape kShape = {1, 2};
 const std::vector<size_t> kShiftBits = {0, 1, 2, 31, 32, 33, 64, 1000};
 
 #define EXPECT_VALUE_EQ(X, Y)                            \
@@ -270,6 +270,32 @@ TEST_P(ApiTest, MsbS) {
 
     /* THEN */
     EXPECT_VALUE_EQ(r_s, r_p);
+  });
+}
+
+TEST_P(ApiTest, ReLU) {
+  const auto factory = std::get<0>(GetParam());
+  const RuntimeConfig& conf = std::get<1>(GetParam());
+  const size_t npc = std::get<2>(GetParam());
+
+  utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+    auto sctx = factory(conf, lctx);
+
+    auto p0 = rand_p(sctx.get(), kShape);
+
+    // SECURENN has an msb input range requirement here
+    if (conf.protocol() == ProtocolKind::SECURENN) {
+      p0 = arshift_p(sctx.get(), p0, {1});
+    }
+
+    auto relu_s = relu(sctx.get(), p2s(sctx.get(), p0));
+    
+    auto r_p = msb_p(sctx.get(), p0);
+    auto d_relu = add_pp(sctx.get(), make_p(sctx.get(), 1, kShape), negate_p(sctx.get(), r_p));
+    auto relu_p = mul_pp(sctx.get(), d_relu, p0);
+
+    /* THEN */
+    EXPECT_VALUE_EQ(s2p(sctx.get(), relu_s), relu_p);
   });
 }
 
