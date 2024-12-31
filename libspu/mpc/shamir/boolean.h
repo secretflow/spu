@@ -84,7 +84,6 @@ class B2V : public RevealToKernel {
   }
 
   ce::CExpr comm() const override {
-    // 1 * rotate: k
     return ce::K();
   }
 
@@ -107,8 +106,6 @@ class AndBP : public BinaryKernel {
 class AndBB : public BinaryKernel {
  public:
   static constexpr const char* kBindName() {return  "and_bb"; }
-
-  // Kind kind() const override { return Kind::Dynamic; }
 
   ce::CExpr latency() const override {
     return ce::Const(2);

@@ -119,6 +119,7 @@ NdArrayRef wrap_xor(SPUContext* ctx, const NdArrayRef& x, const NdArrayRef& y) {
   return out;
 }
 
+// [Offline Phase]
 std::pair<std::vector<NdArrayRef>, std::vector<NdArrayRef>> gen_prefix_mult_share(SPUContext* ctx, const int64_t numel, const int64_t num_prefix) {
   // let k denote num_prefix
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
@@ -179,6 +180,7 @@ std::pair<std::vector<NdArrayRef>, std::vector<NdArrayRef>> gen_prefix_mult_shar
 }
 
 // Generate zero sharings of degree = threshold
+// [Offline Phase]
 NdArrayRef gen_zero_shares(KernelEvalContext* ctx, int64_t numel, int64_t threshold) {
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
   auto* prg_state = ctx->getState<PrgState>();

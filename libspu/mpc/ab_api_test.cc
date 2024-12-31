@@ -81,53 +81,6 @@ bool verifyCost(Kernel* kernel, std::string_view name, FieldType field,
   ce::Params params = {{"K", SizeOf(field) * 8}, {"N", npc}};
   return verifyCost(kernel, name, params, cost, shape.numel() /*repeated*/);
 }
-
-// bool verifyCostDivided(Kernel* kernel, std::string_view name, const
-// ce::Params& params,
-//                 const Communicator::Stats& cost, size_t repeated = 1) {
-//   if (kernel->kind() == Kernel::Kind::Dynamic) {
-//     return true;
-//   }
-
-//   auto comm = kernel->comm();
-//   auto latency = kernel->latency();
-
-//   bool succeed = true;
-//   constexpr size_t kBitsPerBytes = 8;
-
-//   auto dn_times = ce::Const(repeated - 1) / (ce::N() - ce::T()) +
-//   ce::Const(1); const auto expectedComm = comm->eval(params) *
-//   dn_times->eval(params); const auto realComm = cost.comm * kBitsPerBytes;
-
-//   float diff;
-//   if (expectedComm == 0) {
-//     diff = realComm;
-//   } else {
-//     diff = std::abs(static_cast<float>(realComm - expectedComm)) /
-//     expectedComm;
-//   }
-//   if (realComm < expectedComm || diff > kernel->getCommTolerance()) {
-//     fmt::print("Failed: {} comm mismatch, expected={}, got={}\n", name,
-//                expectedComm, realComm);
-//     succeed = false;
-//   }
-
-//   if (latency->eval(params) != cost.latency) {
-//     fmt::print("Failed: {} latency mismatch, expected={}, got={}\n", name,
-//                latency->eval(params), cost.latency);
-//     succeed = false;
-//   }
-
-//   return succeed;
-// }
-
-// bool verifyCostDivided(Kernel* kernel, std::string_view name, FieldType
-// field,
-//                 const Shape& shape, size_t npc, size_t threshold,
-//                 const Communicator::Stats& cost) {
-//   ce::Params params = {{"K", SizeOf(field) * 8}, {"N", npc}, {"T",
-//   threshold}}; return verifyCostDivided(kernel, name, params, cost);
-// }
 }  // namespace
 
 #define TEST_ARITHMETIC_BINARY_OP_AA(OP)                                       \

@@ -20,21 +20,16 @@ namespace spu::mpc::shamir {
 
 class A2B : public UnaryKernel {
  public:
-  static constexpr const char* kBindName() {return  "a2b"; }
+  static constexpr const char* kBindName() { return "a2b"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
-  ce::CExpr latency() const override {
-    return (Log(ce::K()) + 1)  // adder-circuit;
-           * Log(ce::N())      // tree-reduce parties.
-        ;
-  }
+  ce::CExpr latency() const override { return ce::Const(10); }
 
   ce::CExpr comm() const override {
-    return (2 * Log(ce::K()) + 1)         // KS-adder-circuit
-           * 2 * ce::K() * (ce::N() - 1)  // And gate, for nPC
-           * (ce::N() - 1)                // (no-matter tree or ring) reduce
-        ;
+    auto nBits = ce::Variable("nBits", "number of Bits");
+    auto sum = ce::Variable("sum", "sum_{i=1}^{nBits} (4i-2)");
+    return ce::K() * (2 + 6 * nBits + 2 * sum);
   }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x) const override;
@@ -42,15 +37,11 @@ class A2B : public UnaryKernel {
 
 class B2A : public UnaryKernel {
  public:
-  static constexpr const char* kBindName() {return  "b2a"; }
+  static constexpr const char* kBindName() { return "b2a"; }
 
-  ce::CExpr latency() const override {
-    return ce::Const(0);
-  }
+  ce::CExpr latency() const override { return ce::Const(0); }
 
-  ce::CExpr comm() const override {
-    return ce::Const(0);
-  }
+  ce::CExpr comm() const override { return ce::Const(0); }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x) const override;
 };
@@ -58,7 +49,7 @@ class B2A : public UnaryKernel {
 // Todo: put this kernel to arithmetic.h
 class TruncA : public TruncAKernel {
  public:
-  static constexpr const char* kBindName() {return  "trunc_a"; }
+  static constexpr const char* kBindName() { return "trunc_a"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
@@ -80,15 +71,17 @@ class TruncA : public TruncAKernel {
 
 class MulAATrunc : public MulTruncAKernel {
  public:
-  static constexpr const char* kBindName() {return  "mul_aa_trunc"; }
+  static constexpr const char* kBindName() { return "mul_aa_trunc"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
   ce::CExpr latency() const override { return ce::Const(2); }
 
+  // only count online for now.
   ce::CExpr comm() const override { return ce::K() * 2; }
 
-  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x, const NdArrayRef& y, size_t bits,
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                  const NdArrayRef& y, size_t bits,
                   SignType sign) const override;
 
   bool hasMsbError() const override { return false; }
@@ -101,20 +94,16 @@ class MulAATrunc : public MulTruncAKernel {
 
 class MsbA : public UnaryKernel {
  public:
-  static constexpr const char* kBindName() {return  "msb_a"; }
+  static constexpr const char* kBindName() { return "msb_a"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
-  ce::CExpr latency() const override {
-    // 1 * carry : log(k) + 1
-    // 1 * rotate: 1
-    return ce::Const(3);
-  }
+  ce::CExpr latency() const override { return ce::Const(6); }
 
+  // only count online for now.
   ce::CExpr comm() const override {
-    // 1 * carry : k + 2 * k + 16 * 2
-    // 1 * rotate: k
-    return ce::K() + 2 * ce::K() + ce::K() + 32;
+    auto nBits = ce::Variable("nBits", "number of Bits");
+    return 2 * ce::K() + 2 * ce::K() * nBits;
   }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
@@ -122,7 +111,7 @@ class MsbA : public UnaryKernel {
 
 class CommonTypeV : public Kernel {
  public:
-  static constexpr const char* kBindName() {return  "common_type_v"; }
+  static constexpr const char* kBindName() { return "common_type_v"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
