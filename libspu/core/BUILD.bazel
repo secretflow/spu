@@ -175,7 +175,7 @@ spu_cc_library(
         ":ndarray_ref",
         ":pt_buffer_view",
         ":shape",
-        "@com_github_xtensor_xtensor//:xtensor",
+        "@xtensor",
     ],
 )
 
@@ -218,9 +218,9 @@ spu_cc_library(
     hdrs = ["logging.h"],
     deps = [
         "//libspu/core:prelude",
-        "@com_github_brpc_brpc//:butil",
-        "@com_github_fmtlib_fmt//:fmtlib",
-        "@com_google_absl//absl/strings",
+        "@abseil-cpp//absl/strings",
+        "@brpc//:butil",
+        "@fmt",
         "@yacl//yacl/link:trace",
     ],
 )
@@ -230,7 +230,7 @@ spu_cc_library(
     srcs = ["bit_utils.cc"],
     hdrs = ["bit_utils.h"],
     deps = [
-        "@com_google_absl//absl/numeric:bits",
+        "@abseil-cpp//absl/numeric:bits",
         "@yacl//yacl/base:int128",
         "@yacl//yacl/utils:platform_utils",
     ],
@@ -251,7 +251,7 @@ spu_cc_binary(
     linkopts = ["-lm"],
     deps = [
         ":bit_utils",
-        "@com_github_google_benchmark//:benchmark_main",
+        "@google_benchmark//:benchmark_main",
     ],
 )
 

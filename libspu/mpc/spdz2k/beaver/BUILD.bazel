@@ -35,7 +35,7 @@ spu_cc_library(
         "//libspu/mpc/common:prg_tensor",
         "//libspu/mpc/spdz2k:commitment",
         "//libspu/mpc/utils:ring_ops",
-        "@com_github_microsoft_seal//:seal",
+        "@seal",
         "@yacl//yacl/crypto/block_cipher:symmetric_crypto",
         "@yacl//yacl/crypto/tools:prg",
         "@yacl//yacl/link",
@@ -51,7 +51,7 @@ spu_cc_test(
         ":beaver_tfp",
         ":beaver_tinyot",
         "//libspu/mpc/utils:simulate",
-        "@com_google_googletest//:gtest",
+        "@googletest//:gtest",
     ],
 )
 

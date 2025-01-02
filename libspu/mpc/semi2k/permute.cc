@@ -40,51 +40,58 @@ inline int64_t getOwner(const NdArrayRef& x) {
   return x.eltype().as<Priv2kTy>()->owner();
 }
 
-Index ring2pv(const NdArrayRef& x) {
-  SPU_ENFORCE(x.eltype().isa<Ring2k>(), "must be ring2k_type, got={}",
-              x.eltype());
-  const auto field = x.eltype().as<Ring2k>()->field();
-  Index pv(x.numel());
-  DISPATCH_ALL_FIELDS(field, [&]() {
-    NdArrayView<ring2k_t> _x(x);
-    pforeach(0, x.numel(), [&](int64_t idx) { pv[idx] = int64_t(_x[idx]); });
-  });
-  return pv;
-}
-
 // Secure inverse permutation of x by perm_rank's permutation pv
-// The idea here is:
-// Input permutation pv, beaver generates perm pair {<A>, <B>} that
-// InversePermute(A, pv) = B. So we can get <y> = InversePermute(open(<x> -
-// <A>), pv) + <B> that y = InversePermute(x, pv).
 NdArrayRef SecureInvPerm(KernelEvalContext* ctx, const NdArrayRef& x,
                          const NdArrayRef& perm, size_t perm_rank) {
+  // INPUT: X and private perm owned by perm_rank
   const auto lctx = ctx->lctx();
   const auto field = x.eltype().as<AShrTy>()->field();
+  auto* comm = ctx->getState<Communicator>();
   auto* beaver = ctx->getState<Semi2kState>()->beaver();
   auto numel = x.numel();
 
-  Index pv;
-  if (perm.eltype().isa<PShare>() ||
-      (perm.eltype().isa<Private>() && isOwner(ctx, perm.eltype()))) {
-    pv = ring2pv(perm);
+  if (lctx->Rank() == perm_rank) {
+    SPU_ENFORCE(perm.numel() == numel);
+    SPU_ENFORCE(perm.eltype().isa<PShare>() ||
+                (perm.eltype().isa<Private>() && isOwner(ctx, perm.eltype())));
   }
-  auto [a_buf, b_buf] = beaver->PermPair(field, numel, perm_rank, pv);
+
+  // beaver gives ai, bi, pr makes InvPerm(A, pr) = B
+  // pr is a private random permutation owned by perm_rank.
+  auto [a_buf, b_buf, pr] = beaver->PermPair(field, numel, perm_rank);
+
+  NdArrayRef po;
+  if (lctx->Rank() == perm_rank) {
+    // mask perm by random permutation pr, get po = InvPerm(perm, pr)
+    auto p = std::move(pr);
+    po = applyInvPerm(perm, p);
+    // so: InvPerm(B, po) = InvPerm(InvPerm(A, pr), po) = InvPerm(A, perm)
+  }
+  // broadcast po to all rank.
+  po = comm->broadcast(po, perm_rank, perm.eltype(), perm.shape(),
+                       "perm_open_perm");
 
   NdArrayRef a(std::make_shared<yacl::Buffer>(std::move(a_buf)), x.eltype(),
                x.shape());
   NdArrayRef b(std::make_shared<yacl::Buffer>(std::move(b_buf)), x.eltype(),
                x.shape());
 
-  auto t = wrap_a2v(ctx->sctx(), ring_sub(x, a).as(x.eltype()), perm_rank);
+  // reveal X-A to perm_rank
+  auto x_a = wrap_a2v(ctx->sctx(), ring_sub(x, a).as(x.eltype()), perm_rank);
 
   if (lctx->Rank() == perm_rank) {
-    SPU_ENFORCE(pv.size());
-    ring_add_(b, applyInvPerm(t, pv));
+    // perm_rank get InvPerm(X-A, perm) + InvPerm(bi, po)
+    b = applyInvPerm(b, po);
+    ring_add_(b, applyInvPerm(x_a, perm));
     return b.as(x.eltype());
   } else {
-    return b.as(x.eltype());
+    // others rank get InvPerm(bi, po)
+    return applyInvPerm(b, po).as(x.eltype());
   }
+  // finally get:
+  // InvPerm(X-A, perm) + ∑InvPerm(bi, po) =
+  // InvPerm(X, perm) - InvPerm(A, perm) + InvPerm(B, po) =
+  // InvPerm(X, perm)
 }
 
 }  // namespace

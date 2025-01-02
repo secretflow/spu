@@ -59,7 +59,8 @@ INSTANTIATE_TEST_SUITE_P(
     CastingTestInstances, CastingTest,
     testing::Combine(testing::Values(FieldType::FM64, FieldType::FM128),
                      testing::Values(ProtocolKind::REF2K, ProtocolKind::SEMI2K,
-                                     ProtocolKind::ABY3)),
+                                     ProtocolKind::ABY3,
+                                     ProtocolKind::CHEETAH)),
     [](const testing::TestParamInfo<CastingTest::ParamType> &p) {
       return fmt::format("{}x{}", std::get<0>(p.param), std::get<1>(p.param));
     });

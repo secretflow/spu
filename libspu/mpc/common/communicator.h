@@ -106,7 +106,8 @@ class Communicator : public State {
   std::vector<NdArrayRef> gather(const NdArrayRef& in, size_t root,
                                  std::string_view tag);
 
-  NdArrayRef broadcast(const NdArrayRef& in, size_t root, std::string_view tag);
+  NdArrayRef broadcast(const NdArrayRef& in, size_t root, const Type& eltype,
+                       const Shape& shape, std::string_view tag);
 
   NdArrayRef reduce(ReduceOp op, const NdArrayRef& in, size_t root,
                     std::string_view tag);

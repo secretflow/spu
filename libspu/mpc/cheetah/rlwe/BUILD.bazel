@@ -62,7 +62,7 @@ spu_cc_library(
     ],
     deps = [
         "//libspu/mpc/utils:ring_ops",
-        "@com_github_microsoft_seal//:seal",
+        "@seal",
     ],
 )
 

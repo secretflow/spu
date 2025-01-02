@@ -22,7 +22,7 @@ spu_cc_library(
     hdrs = ["ir_printer_config.h"],
     visibility = ["//visibility:private"],
     deps = [
-        "@com_github_fmtlib_fmt//:fmtlib",
+        "@fmt",
         "@llvm-project//mlir:Pass",
     ],
 )

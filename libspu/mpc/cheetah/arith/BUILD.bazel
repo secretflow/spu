@@ -83,7 +83,7 @@ spu_cc_test(
     srcs = ["matmat_prot_test.cc"],
     deps = [
         ":matmat_prot",
-        "@com_github_xtensor_xtensor//:xtensor",
+        "@xtensor",
     ],
 )
 
@@ -94,7 +94,7 @@ spu_cc_test(
         ":cheetah_mul",
         "//libspu/mpc/utils:ring_ops",
         "//libspu/mpc/utils:simulate",
-        "@com_github_xtensor_xtensor//:xtensor",
+        "@xtensor",
     ],
 )
 
@@ -106,7 +106,7 @@ spu_cc_test(
         ":cheetah_dot",
         "//libspu/mpc/utils:ring_ops",
         "//libspu/mpc/utils:simulate",
-        "@com_github_xtensor_xtensor//:xtensor",
+        "@xtensor",
     ],
 )
 

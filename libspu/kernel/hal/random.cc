@@ -64,7 +64,7 @@ Value random(SPUContext* ctx, Visibility vis, DataType dtype,
   if (vis == VIS_PUBLIC) {
     ret = _rand_p(ctx, shape).setDtype(dtype);
   } else if (vis == VIS_SECRET) {
-    ret = _rand_s(ctx, shape).setDtype(dtype);
+    ret = _rand_s(ctx, shape, dtype).setDtype(dtype);
   } else {
     SPU_THROW("Invalid visibility={}", vis);
   }

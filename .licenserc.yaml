@@ -43,14 +43,14 @@ header: # <1>
     - 'libspu/compiler/tests/interpret/template/**.template'
     - 'LICENSE'
     - 'NOTICE'
-    - '.bazelversion'
+    - 'MODULE.bazel.lock'
+    - '.bazeliskrc'
     - '.clang-format'
     - '.clang-tidy'
     - '.gitattributes'
     - '.gitignore'
     - '.gitmodules'
     - 'pyproject.toml'
-    - 'setup.cfg'
     - 'libspu/core/half.h' # MIT
 
   comment: never # <9>

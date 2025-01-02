@@ -1,0 +1,44 @@
+--- a/torch/__init__.py
++++ b/torch/__init__.py
+@@ -172,6 +172,41 @@
+     here = os.path.abspath(__file__)
+     lib_path = os.path.join(os.path.dirname(here), 'lib', lib_name)
+
++    import pathlib
++    torch_root = pathlib.Path(here).parent.parent
++    packages = [
++        'cublas',
++        'cudnn',
++        'cuda_nvrtc',
++        'cuda_runtime',
++        'cuda_cupti',
++        'cufft',
++        'curand',
++        'cusolver',
++        'cusparse',
++        'nccl',
++        'nvjitlink',
++        'nvtx',
++    ]
++    rules_python_prefix = 'rules_python~~pip~spu_pip_dev_311_nvidia'
++    cuda_version = 'cu12'
++    nvidia_symlink_dir = torch_root / 'nvidia'
++    nvidia_symlink_dir.mkdir(exist_ok=True)
++    for pkg in packages:
++        pkg_dirname = f'../../../{rules_python_prefix}_{pkg}_{cuda_version}'
++        dest_dir = pathlib.Path(pkg_dirname) / f"site-packages/nvidia/{pkg}"
++        symlink_loc = nvidia_symlink_dir / pkg
++        if symlink_loc.exists():
++            assert symlink_loc.is_symlink()
++            if symlink_loc.readlink() != dest_dir:
++                symlink_loc.unlink()
++        if not symlink_loc.exists():
++            symlink_loc.symlink_to(dest_dir)
++
++    # Preload the correct libnvJitLink library. The other libraries don't need
++    # this because they're loaded via relative paths.
++    ctypes.CDLL(torch_root / 'nvidia/nvjitlink/lib/libnvJitLink.so.12', mode=ctypes.RTLD_GLOBAL)
++
+     try:
+         ctypes.CDLL(lib_path, mode=ctypes.RTLD_GLOBAL)
+     except OSError as err:

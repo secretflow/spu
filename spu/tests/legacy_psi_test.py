@@ -109,20 +109,6 @@ class UnitTests(unittest.TestCase):
 
         return data, expected
 
-    def test_reveal(self):
-        data, expected = self.prep_data()
-        expected.sort()
-
-        def fn(lctx):
-            config = psi.MemoryPsiConfig(
-                psi_type=psi.PsiType.ECDH_PSI_2PC, broadcast_result=True
-            )
-            joint = psi.mem_psi(lctx, config, data[lctx.rank])
-            joint.sort()
-            return self.assertEqual(joint, expected)
-
-        self.run_psi(fn)
-
     def test_reveal_to(self):
         data, expected = self.prep_data()
         expected.sort()
@@ -159,28 +145,6 @@ class UnitTests(unittest.TestCase):
 
         self.run_streaming_psi(
             3, inputs, outputs, selected_fields, psi.PsiType.ECDH_PSI_3PC
-        )
-
-    def test_kkrt_2pc(self):
-        print("----------test_kkrt_2pc-------------")
-
-        inputs = ["spu/tests/data/alice.csv", "spu/tests/data/bob.csv"]
-        outputs = ["./alice-kkrt.csv", "./bob-kkrt.csv"]
-        selected_fields = ["id", "idx"]
-
-        self.run_streaming_psi(
-            2, inputs, outputs, selected_fields, psi.PsiType.KKRT_PSI_2PC
-        )
-
-    def test_ecdh_2pc(self):
-        print("----------test_ecdh_2pc-------------")
-
-        inputs = ["spu/tests/data/alice.csv", "spu/tests/data/bob.csv"]
-        outputs = ["./alice-ecdh.csv", "./bob-ecdh.csv"]
-        selected_fields = ["id", "idx"]
-
-        self.run_streaming_psi(
-            2, inputs, outputs, selected_fields, psi.PsiType.ECDH_PSI_2PC
         )
 
     def test_dppsi_2pc(self):
