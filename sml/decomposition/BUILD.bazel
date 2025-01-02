@@ -26,3 +26,8 @@ py_library(
     name = "nmf",
     srcs = ["nmf.py"],
 )
+
+py_library(
+    name = "jacobi_svd",
+    srcs = ["jacobi_svd.py"],
+)
