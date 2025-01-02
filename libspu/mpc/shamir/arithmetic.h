@@ -147,6 +147,18 @@ class MulAA : public BinaryKernel {
                   const NdArrayRef& rhs) const override;
 };
 
+class MulAAA : public TernaryKnernel {
+ public:
+  static constexpr const char* kBindName() { return "mul_aaa"; }
+
+  ce::CExpr latency() const override { return ce::Const(2); }
+
+  ce::CExpr comm() const override { return ce::K() * 4; }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                  const NdArrayRef& y, const NdArrayRef& z) const override;
+};
+
 class MulAAP : public BinaryKernel {
  public:
   static constexpr const char* kBindName() { return "mul_aa_p"; }

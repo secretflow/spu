@@ -41,6 +41,7 @@ OptionalAPI<Value> add_av(SPUContext* ctx, const Value& x, const Value& y);
 
 Value mul_ap(SPUContext* ctx, const Value& x, const Value& y);
 Value mul_aa(SPUContext* ctx, const Value& x, const Value& y);
+Value mul_aaa(SPUContext* ctx, const Value& x, const Value& y, const Value& z);
 Value mul_aa_p(SPUContext* ctx, const Value& x, const Value& y);
 
 Value square_a(SPUContext* ctx, const Value& x);

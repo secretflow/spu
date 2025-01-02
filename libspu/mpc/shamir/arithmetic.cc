@@ -36,6 +36,10 @@ NdArrayRef wrap_a2p(SPUContext* ctx, const NdArrayRef& x) {
   return UnwrapValue(a2p(ctx, WrapValue(x)));
 }
 
+NdArrayRef wrap_negate_a(SPUContext* ctx, const NdArrayRef& x) {
+  return UnwrapValue(negate_a(ctx, WrapValue(x)));
+}
+
 // Generate zero sharings of degree = threshold
 NdArrayRef gen_zero_shares(KernelEvalContext* ctx, int64_t numel,
                            int64_t threshold) {

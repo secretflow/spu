@@ -66,6 +66,21 @@ void BinaryKernel::evaluate(KernelEvalContext* ctx) const {
   ctx->pushOutput(WrapValue(z));
 }
 
+void TernaryKnernel::evaluate(KernelEvalContext* ctx) const {
+  const auto& x = ctx->getParam<Value>(0);
+  const auto& y = ctx->getParam<Value>(1);
+  const auto& z = ctx->getParam<Value>(2);
+
+  SPU_ENFORCE(x.shape() == y.shape(), "shape mismatch {} {}", x.shape(),
+              y.shape());
+  SPU_ENFORCE(x.shape() == z.shape(), "shape mismatch {} {}", x.shape(),
+              z.shape());
+
+  auto out = proc(ctx, UnwrapValue(x), UnwrapValue(y), UnwrapValue(z));
+
+  ctx->pushOutput(WrapValue(out));
+}
+
 void MatmulKernel::evaluate(KernelEvalContext* ctx) const {
   const auto& lhs = ctx->getParam<Value>(0);
   const auto& rhs = ctx->getParam<Value>(1);

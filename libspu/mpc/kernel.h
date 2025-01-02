@@ -52,6 +52,13 @@ class BinaryKernel : public Kernel {
                           const NdArrayRef& rhs) const = 0;
 };
 
+class TernaryKnernel : public Kernel {
+  public:
+  void evaluate(KernelEvalContext* ctx) const override;
+  virtual NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                          const NdArrayRef& y, const NdArrayRef& z) const = 0;
+};
+
 class MatmulKernel : public Kernel {
  public:
   void evaluate(KernelEvalContext* ctx) const override;

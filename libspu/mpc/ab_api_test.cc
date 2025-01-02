@@ -329,6 +329,37 @@ TEST_P(ArithmeticTest, MulAA) {
   });
 }
 
+TEST_P(ArithmeticTest, MulAAA) {
+  const auto factory = std::get<0>(GetParam());
+  const RuntimeConfig& conf = std::get<1>(GetParam());
+  const size_t npc = std::get<2>(GetParam());
+
+  utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+    auto sctx = factory(conf, lctx);
+
+    auto p0 = rand_p(sctx.get(), kShape);
+    auto p1 = rand_p(sctx.get(), kShape);
+    auto p2 = rand_p(sctx.get(), kShape);
+
+    auto v0 = p2v(sctx.get(), p0, 0);
+    auto v1 = p2v(sctx.get(), p1, 1);
+    auto v2 = p2v(sctx.get(), p2, 2);
+
+    auto a0 = v2a(sctx.get(), v0);
+    auto a1 = v2a(sctx.get(), v1);
+    auto a2 = v2a(sctx.get(), v2);
+
+    auto prod = mul_aaa(sctx.get(), a0, a1, a2);
+    auto p_prod = a2p(sctx.get(), prod);
+
+    auto s = mul_pp(sctx.get(), p0, p1);
+    auto s_prime = mul_pp(sctx.get(), s, p2);
+
+    /* THEN */
+    EXPECT_VALUE_EQ(s_prime, p_prod);
+  });
+}
+
 TEST_P(ArithmeticTest, MulAAP) {
   const auto factory = std::get<0>(GetParam());
   const RuntimeConfig& conf = std::get<1>(GetParam());
