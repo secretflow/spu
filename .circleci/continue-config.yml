@@ -53,11 +53,6 @@ commands:
           name: Checkout devtools
           command: git clone https://github.com/secretflow/devtools.git ../devtools
       - run:
-          name: "Install dependencies"
-          command: |
-            python3 -m pip install -r requirements.txt
-            python3 -m pip install -r requirements-dev.txt
-      - run:
           name: Setup GCS
           command: |
             echo ${gcs_content} > ../gcs.data
@@ -114,7 +109,6 @@ jobs:
           name: Install extra deps
           command: |
             python3 -m pip install tzdata
-            python3 -m pip install -r examples/python/ml/requirements.txt
       - build_and_test:
           targets: //examples/python/ml:ml_test
           extra_bazel_test_args: --test_env LD_LIBRARY_PATH=/root/miniconda3/lib/
@@ -134,8 +128,6 @@ jobs:
             bash ~/miniconda.sh -b -p $HOME/miniconda
             source $HOME/miniconda/bin/activate
             conda init bash zsh
-            pip install -r requirements.txt
-            pip install -r requirements-dev.txt
       - build_and_test
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows

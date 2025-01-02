@@ -31,7 +31,6 @@ echo -e "${COLOR_GREEN}Build spu-build${COLOR_END}"
 docker run --name spu-build --mount type=bind,source="$(pwd)",target=/home/admin/dev/ secretflow/ubuntu-base-ci:latest \
     sh -c "cd /home/admin/dev && \
             python3 -m pip install -U pip && \
-            python3 -m pip install -r requirements.txt && \
             bazel build //benchmark/... //examples/python/... -c opt --ui_event_filters=-info,-debug,-warning"
 
 docker commit spu-build spu-build:v1
