@@ -124,8 +124,8 @@ spu_cc_test(
     name = "gfmp_ops_test",
     srcs = ["gfmp_ops_test.cc"],
     deps = [
-        ":gfmp_ops"
-    ]
+        ":gfmp_ops",
+    ],
 )
 
 spu_cc_binary(

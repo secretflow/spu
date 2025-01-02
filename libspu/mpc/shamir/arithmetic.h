@@ -27,7 +27,8 @@ class RandA : public RandKernel {
   ce::CExpr latency() const override { return ce::Const(1); }
 
   ce::CExpr comm() const override {
-    auto dy_times = ce::Variable("D", "dynamic_times = ceil(numl / (n-t)) = [(numel – 1) / (n-t) + 1]");
+    auto dy_times = ce::Variable(
+        "D", "dynamic_times = ceil(numl / (n-t)) = [(numel – 1) / (n-t) + 1]");
     return (ce::N() - 1) * ce::K() * dy_times;
   }
 

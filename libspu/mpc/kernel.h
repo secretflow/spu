@@ -118,8 +118,9 @@ class MulTruncAKernel : public Kernel {
 
   virtual TruncLsbRounding lsbRounding() const = 0;
 
-  virtual NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs, const NdArrayRef& rhs,
-                          size_t bits, SignType sign) const = 0;
+  virtual NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                          const NdArrayRef& rhs, size_t bits,
+                          SignType sign) const = 0;
 };
 
 class BitSplitKernel : public Kernel {

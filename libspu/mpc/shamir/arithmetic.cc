@@ -37,7 +37,8 @@ NdArrayRef wrap_a2p(SPUContext* ctx, const NdArrayRef& x) {
 }
 
 // Generate zero sharings of degree = threshold
-NdArrayRef gen_zero_shares(KernelEvalContext* ctx, int64_t numel, int64_t threshold) {
+NdArrayRef gen_zero_shares(KernelEvalContext* ctx, int64_t numel,
+                           int64_t threshold) {
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
   auto* prg_state = ctx->getState<PrgState>();
   auto* comm = ctx->getState<Communicator>();
@@ -45,7 +46,8 @@ NdArrayRef gen_zero_shares(KernelEvalContext* ctx, int64_t numel, int64_t thresh
   auto r = prg_state->genPubl(field, {threshold * numel}).as(ty);
   auto coeffs = gfmp_mod(r);
   NdArrayRef zeros = ring_zeros(field, {numel}).as(makeType<GfmpTy>(field));
-  auto shares = gfmp_rand_shamir_shares(zeros, coeffs, comm->getWorldSize(), threshold);
+  auto shares =
+      gfmp_rand_shamir_shares(zeros, coeffs, comm->getWorldSize(), threshold);
   return shares[comm->getRank()].as(makeType<AShrTy>(field));
 }
 
@@ -160,9 +162,8 @@ NdArrayRef RandA::proc(KernelEvalContext* ctx, const Shape& shape) const {
     NdArrayRef r_t(ty, {dn_times * (world_size - th)});
     NdArrayView<ring2k_t> _r_t(r_t);
     auto van = GenVandermondeMatrix<ring2k_t>(world_size, world_size - th);
-    // TODO optimize me: all random shares can be done by a mmut between van^T * r_shrs
-    // van^T is a n-t by n
-    // r_shrs is a n by dn_times matrix
+    // TODO optimize me: all random shares can be done by a mmut between van^T *
+    // r_shrs van^T is a n-t by n r_shrs is a n by dn_times matrix
     pforeach(0, dn_times, [&](int64_t idx) {
       GfmpMatrix<ring2k_t> s_t(1, world_size);
       for (auto i = 0; i < world_size; ++i) {
@@ -316,16 +317,17 @@ NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
 
 // Combine MulAA and A2P in 1 round
 NdArrayRef MulAAP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
-                       const NdArrayRef& rhs) const {
+                        const NdArrayRef& rhs) const {
   SPU_ENFORCE(lhs.numel() == rhs.numel());
   SPU_ENFORCE_EQ(lhs.eltype(), rhs.eltype());
   const auto field = lhs.eltype().as<Ring2k>()->field();
 
   // local mul
   auto tmp_2t = gfmp_mul_mod(lhs, rhs).as(lhs.eltype());
-  
+
   // generate zero sharings of degree-2t
-  auto zero_shares = gen_zero_shares(ctx, lhs.numel(), ctx->sctx()->config().sss_threshold()<<1);
+  auto zero_shares = gen_zero_shares(
+      ctx, lhs.numel(), ctx->sctx()->config().sss_threshold() << 1);
 
   // add zero sharings
   NdArrayRef out(lhs.eltype(), lhs.shape());
@@ -333,8 +335,9 @@ NdArrayRef MulAAP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
     NdArrayView<ring2k_t> _zero(zero_shares);
     NdArrayView<ring2k_t> _tmp_2t(tmp_2t);
     NdArrayView<ring2k_t> _out(out);
-    pforeach(0, lhs.numel(), 
-              [&](int64_t idx){ _out[idx] = add_mod(_tmp_2t[idx], _zero[idx]); });
+    pforeach(0, lhs.numel(), [&](int64_t idx) {
+      _out[idx] = add_mod(_tmp_2t[idx], _zero[idx]);
+    });
   });
 
   return wrap_a2p(ctx->sctx(), out);

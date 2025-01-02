@@ -65,7 +65,7 @@ void gfmp_inverse_impl(NdArrayRef& ret, const NdArrayRef& x) {
   const auto numel = x.numel();
 
   NdArrayRef prefix_prod(ret.eltype(), ret.shape());
- 
+
   DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> _prefix_prod(prefix_prod);
     NdArrayView<ring2k_t> _x(x);
@@ -77,15 +77,14 @@ void gfmp_inverse_impl(NdArrayRef& ret, const NdArrayRef& x) {
     }
 
     _ret[numel - 1] = mul_inv(_prefix_prod[numel - 1]);
-    for(int64_t i = numel - 1; i >= 1; i--) {
-      _ret[i-1] = mul_mod(_ret[i], _x[i]);
+    for (int64_t i = numel - 1; i >= 1; i--) {
+      _ret[i - 1] = mul_mod(_ret[i], _x[i]);
     }
 
-    for(int64_t i = 1; i < numel; ++i) {
+    for (int64_t i = 1; i < numel; ++i) {
       _ret[i] = mul_mod(_ret[i], _prefix_prod[i - 1]);
     }
   });
-  
 }
 
 void gfmp_mul_mod_impl(NdArrayRef& ret, const NdArrayRef& x,
@@ -379,7 +378,8 @@ NdArrayRef gfmp_reconstruct_shamir_shares(absl::Span<const NdArrayRef> shares,
     NdArrayView<ring2k_t> _out(out);
     pforeach(0, numel, [&](int64_t idx) {
       ring2k_t secret = 0;
-      // TODO optimize me: the reconstruction vector for a fixed point can be pre-computed
+      // TODO optimize me: the reconstruction vector for a fixed point can be
+      // pre-computed
       for (size_t i = 0; i < shares.size(); ++i) {
         NdArrayView<ring2k_t> _share(shares[i]);
         ring2k_t y = _share[idx];

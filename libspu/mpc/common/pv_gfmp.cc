@@ -37,7 +37,7 @@ inline bool isOwner(KernelEvalContext* ctx, const Type& type) {
 
 class P2V : public RevealToKernel {
  public:
-  static constexpr const char* kBindName() {return  "p2v"; }
+  static constexpr const char* kBindName() { return "p2v"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -58,7 +58,7 @@ class P2V : public RevealToKernel {
 
 class V2P : public UnaryKernel {
  public:
-  static constexpr const char* kBindName() {return  "v2p"; }
+  static constexpr const char* kBindName() { return "v2p"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -80,7 +80,7 @@ class V2P : public UnaryKernel {
 
 class MakeP : public Kernel {
  public:
-  static constexpr const char* kBindName() {return  "make_p"; }
+  static constexpr const char* kBindName() { return "make_p"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -116,7 +116,7 @@ class MakeP : public Kernel {
 
 class RandP : public RandKernel {
  public:
-  static constexpr const char* kBindName() {return  "rand_p"; }
+  static constexpr const char* kBindName() { return "rand_p"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -133,7 +133,7 @@ class RandP : public RandKernel {
 
 class NegateP : public UnaryKernel {
  public:
-  static constexpr const char* kBindName() {return  "negate_p"; }
+  static constexpr const char* kBindName() { return "negate_p"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -155,7 +155,7 @@ class NegateP : public UnaryKernel {
 
 class NegateV : public UnaryKernel {
  public:
-  static constexpr const char* kBindName() {return  "negate_v"; }
+  static constexpr const char* kBindName() { return "negate_v"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -181,7 +181,7 @@ class NegateV : public UnaryKernel {
 
 class MsbP : public UnaryKernel {
  public:
-  static constexpr const char* kBindName() {return  "msb_p"; }
+  static constexpr const char* kBindName() { return "msb_p"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -198,7 +198,7 @@ class MsbP : public UnaryKernel {
 
 class MsbV : public UnaryKernel {
  public:
-  static constexpr const char* kBindName() {return  "msb_v"; }
+  static constexpr const char* kBindName() { return "msb_v"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -219,7 +219,7 @@ class MsbV : public UnaryKernel {
 
 class EqualPP : public BinaryKernel {
  public:
-  static constexpr const char* kBindName() {return  "equal_pp"; }
+  static constexpr const char* kBindName() { return "equal_pp"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
   ce::CExpr comm() const override { return ce::Const(0); }
@@ -235,7 +235,7 @@ class EqualPP : public BinaryKernel {
 
 class EqualVVV : public BinaryKernel {
  public:
-  static constexpr const char* kBindName() {return  "equal_vvv"; }
+  static constexpr const char* kBindName() { return "equal_vvv"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
   ce::CExpr comm() const override { return ce::Const(0); }
@@ -254,7 +254,7 @@ class EqualVVV : public BinaryKernel {
 
 class EqualVP : public BinaryKernel {
  public:
-  static constexpr const char* kBindName() {return  "equal_vp"; }
+  static constexpr const char* kBindName() { return "equal_vp"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
   ce::CExpr comm() const override { return ce::Const(0); }
@@ -273,7 +273,7 @@ class EqualVP : public BinaryKernel {
 
 class AddPP : public BinaryKernel {
  public:
-  static constexpr const char* kBindName() {return  "add_pp"; }
+  static constexpr const char* kBindName() { return "add_pp"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
   ce::CExpr comm() const override { return ce::Const(0); }
@@ -287,7 +287,7 @@ class AddPP : public BinaryKernel {
 
 class AddVVV : public BinaryKernel {
  public:
-  static constexpr const char* kBindName() {return  "add_vvv"; }
+  static constexpr const char* kBindName() { return "add_vvv"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
   ce::CExpr comm() const override { return ce::Const(0); }
@@ -306,7 +306,7 @@ class AddVVV : public BinaryKernel {
 
 class AddVP : public BinaryKernel {
  public:
-  static constexpr const char* kBindName() {return  "add_vp"; }
+  static constexpr const char* kBindName() { return "add_vp"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
   ce::CExpr comm() const override { return ce::Const(0); }
@@ -323,7 +323,7 @@ class AddVP : public BinaryKernel {
 
 class MulPP : public BinaryKernel {
  public:
-  static constexpr const char* kBindName() {return  "mul_pp"; }
+  static constexpr const char* kBindName() { return "mul_pp"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -338,7 +338,7 @@ class MulPP : public BinaryKernel {
 
 class MulVP : public BinaryKernel {
  public:
-  static constexpr const char* kBindName() {return  "mul_vp"; }
+  static constexpr const char* kBindName() { return "mul_vp"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -356,7 +356,7 @@ class MulVP : public BinaryKernel {
 
 class MulVVV : public BinaryKernel {
  public:
-  static constexpr const char* kBindName() {return  "mul_vvv"; }
+  static constexpr const char* kBindName() { return "mul_vvv"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -374,7 +374,7 @@ class MulVVV : public BinaryKernel {
 
 class MatMulPP : public MatmulKernel {
  public:
-  static constexpr const char* kBindName() {return  "mmul_pp"; }
+  static constexpr const char* kBindName() { return "mmul_pp"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -389,7 +389,7 @@ class MatMulPP : public MatmulKernel {
 
 class MatMulVVV : public MatmulKernel {
  public:
-  static constexpr const char* kBindName() {return  "mmul_vvv"; }
+  static constexpr const char* kBindName() { return "mmul_vvv"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -406,7 +406,7 @@ class MatMulVVV : public MatmulKernel {
 
 class MatMulVP : public MatmulKernel {
  public:
-  static constexpr const char* kBindName() {return  "mmul_vp"; }
+  static constexpr const char* kBindName() { return "mmul_vp"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -422,7 +422,7 @@ class MatMulVP : public MatmulKernel {
 
 class AndPP : public BinaryKernel {
  public:
-  static constexpr const char* kBindName() {return  "and_pp"; }
+  static constexpr const char* kBindName() { return "and_pp"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -437,7 +437,7 @@ class AndPP : public BinaryKernel {
 
 class AndVVV : public BinaryKernel {
  public:
-  static constexpr const char* kBindName() {return  "and_vvv"; }
+  static constexpr const char* kBindName() { return "and_vvv"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -456,7 +456,7 @@ class AndVVV : public BinaryKernel {
 
 class AndVP : public BinaryKernel {
  public:
-  static constexpr const char* kBindName() {return  "and_vp"; }
+  static constexpr const char* kBindName() { return "and_vp"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -474,7 +474,7 @@ class AndVP : public BinaryKernel {
 
 class XorPP : public BinaryKernel {
  public:
-  static constexpr const char* kBindName() {return  "xor_pp"; }
+  static constexpr const char* kBindName() { return "xor_pp"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -489,7 +489,7 @@ class XorPP : public BinaryKernel {
 
 class XorVVV : public BinaryKernel {
  public:
-  static constexpr const char* kBindName() {return  "xor_vvv"; }
+  static constexpr const char* kBindName() { return "xor_vvv"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -507,7 +507,7 @@ class XorVVV : public BinaryKernel {
 
 class XorVP : public BinaryKernel {
  public:
-  static constexpr const char* kBindName() {return  "xor_vp"; }
+  static constexpr const char* kBindName() { return "xor_vp"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -525,7 +525,7 @@ class XorVP : public BinaryKernel {
 
 class LShiftP : public ShiftKernel {
  public:
-  static constexpr const char* kBindName() {return  "lshift_p"; }
+  static constexpr const char* kBindName() { return "lshift_p"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -547,7 +547,7 @@ class LShiftP : public ShiftKernel {
 
 class LShiftV : public ShiftKernel {
  public:
-  static constexpr const char* kBindName() {return  "lshift_v"; }
+  static constexpr const char* kBindName() { return "lshift_v"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -573,7 +573,7 @@ class LShiftV : public ShiftKernel {
 
 class RShiftP : public ShiftKernel {
  public:
-  static constexpr const char* kBindName() {return  "rshift_p"; }
+  static constexpr const char* kBindName() { return "rshift_p"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -587,7 +587,7 @@ class RShiftP : public ShiftKernel {
 
 class RShiftV : public ShiftKernel {
  public:
-  static constexpr const char* kBindName() {return  "rshift_v"; }
+  static constexpr const char* kBindName() { return "rshift_v"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -605,7 +605,7 @@ class RShiftV : public ShiftKernel {
 
 class ARShiftP : public ShiftKernel {
  public:
-  static constexpr const char* kBindName() {return  "arshift_p"; }
+  static constexpr const char* kBindName() { return "arshift_p"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -619,7 +619,7 @@ class ARShiftP : public ShiftKernel {
 
 class ARShiftV : public ShiftKernel {
  public:
-  static constexpr const char* kBindName() {return  "arshift_v"; }
+  static constexpr const char* kBindName() { return "arshift_v"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -637,7 +637,7 @@ class ARShiftV : public ShiftKernel {
 
 class TruncP : public ShiftKernel {
  public:
-  static constexpr const char* kBindName() {return  "trunc_p"; }
+  static constexpr const char* kBindName() { return "trunc_p"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -652,7 +652,7 @@ class TruncP : public ShiftKernel {
 
 class TruncV : public ShiftKernel {
  public:
-  static constexpr const char* kBindName() {return  "trunc_v"; }
+  static constexpr const char* kBindName() { return "trunc_v"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -671,7 +671,7 @@ class TruncV : public ShiftKernel {
 
 class BitrevP : public BitrevKernel {
  public:
-  static constexpr const char* kBindName() {return  "bitrev_p"; }
+  static constexpr const char* kBindName() { return "bitrev_p"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -689,7 +689,7 @@ class BitrevP : public BitrevKernel {
 
 class BitrevV : public BitrevKernel {
  public:
-  static constexpr const char* kBindName() {return  "bitrev_v"; }
+  static constexpr const char* kBindName() { return "bitrev_v"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 

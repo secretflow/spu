@@ -21,7 +21,7 @@ namespace spu::mpc::shamir {
 
 class CommonTypeB : public Kernel {
  public:
-  static constexpr const char* kBindName() {return  "common_type_b"; }
+  static constexpr const char* kBindName() { return "common_type_b"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -32,7 +32,7 @@ class CommonTypeB : public Kernel {
 
 class CastTypeB : public CastTypeKernel {
  public:
-  static constexpr const char* kBindName() {return  "cast_type_b"; }
+  static constexpr const char* kBindName() { return "cast_type_b"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -44,24 +44,20 @@ class CastTypeB : public CastTypeKernel {
 
 class B2P : public UnaryKernel {
  public:
-  static constexpr const char* kBindName() {return  "b2p"; }
+  static constexpr const char* kBindName() { return "b2p"; }
 
   // Kind kind() const override { return Kind::Dynamic; }
 
-  ce::CExpr latency() const override {
-    return ce::Const(2);
-  }
+  ce::CExpr latency() const override { return ce::Const(2); }
 
-  ce::CExpr comm() const override {
-    return ce::K() * 2;
-  }
+  ce::CExpr comm() const override { return ce::K() * 2; }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
 
 class P2B : public UnaryKernel {
  public:
-  static constexpr const char* kBindName() {return  "p2b"; }
+  static constexpr const char* kBindName() { return "p2b"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
@@ -74,7 +70,7 @@ class P2B : public UnaryKernel {
 
 class B2V : public RevealToKernel {
  public:
-  static constexpr const char* kBindName() {return  "b2v"; }
+  static constexpr const char* kBindName() { return "b2v"; }
 
   // Kind kind() const override { return Kind::Dynamic; }
 
@@ -83,9 +79,7 @@ class B2V : public RevealToKernel {
     return ce::Const(1);
   }
 
-  ce::CExpr comm() const override {
-    return ce::K();
-  }
+  ce::CExpr comm() const override { return ce::K(); }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
                   size_t rank) const override;
@@ -93,7 +87,7 @@ class B2V : public RevealToKernel {
 
 class AndBP : public BinaryKernel {
  public:
-  static constexpr const char* kBindName() {return  "and_bp"; }
+  static constexpr const char* kBindName() { return "and_bp"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -105,11 +99,9 @@ class AndBP : public BinaryKernel {
 
 class AndBB : public BinaryKernel {
  public:
-  static constexpr const char* kBindName() {return  "and_bb"; }
+  static constexpr const char* kBindName() { return "and_bb"; }
 
-  ce::CExpr latency() const override {
-    return ce::Const(2);
-  }
+  ce::CExpr latency() const override { return ce::Const(2); }
 
   ce::CExpr comm() const override {
     auto nBits = ce::Variable("nBits", "number of bits");
@@ -122,7 +114,7 @@ class AndBB : public BinaryKernel {
 
 class XorBP : public BinaryKernel {
  public:
-  static constexpr const char* kBindName() {return  "xor_bp"; }
+  static constexpr const char* kBindName() { return "xor_bp"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -134,7 +126,7 @@ class XorBP : public BinaryKernel {
 
 class XorBB : public BinaryKernel {
  public:
-  static constexpr const char* kBindName() {return  "xor_bb"; }
+  static constexpr const char* kBindName() { return "xor_bb"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
@@ -148,7 +140,7 @@ class XorBB : public BinaryKernel {
 
 class LShiftB : public ShiftKernel {
  public:
-  static constexpr const char* kBindName() {return  "lshift_b"; }
+  static constexpr const char* kBindName() { return "lshift_b"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -160,7 +152,7 @@ class LShiftB : public ShiftKernel {
 
 class RShiftB : public ShiftKernel {
  public:
-  static constexpr const char* kBindName() {return  "rshift_b"; }
+  static constexpr const char* kBindName() { return "rshift_b"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -172,7 +164,7 @@ class RShiftB : public ShiftKernel {
 
 class ARShiftB : public ShiftKernel {
  public:
-  static constexpr const char* kBindName() {return  "arshift_b"; }
+  static constexpr const char* kBindName() { return "arshift_b"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -184,7 +176,7 @@ class ARShiftB : public ShiftKernel {
 
 class BitrevB : public BitrevKernel {
  public:
-  static constexpr const char* kBindName() {return  "bitrev_b"; }
+  static constexpr const char* kBindName() { return "bitrev_b"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -196,7 +188,7 @@ class BitrevB : public BitrevKernel {
 
 class BitIntlB : public BitSplitKernel {
  public:
-  static constexpr const char* kBindName() {return  "bitintl_b"; }
+  static constexpr const char* kBindName() { return "bitintl_b"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -208,7 +200,7 @@ class BitIntlB : public BitSplitKernel {
 
 class BitDeintlB : public BitSplitKernel {
  public:
-  static constexpr const char* kBindName() {return  "bitdeintl_b"; }
+  static constexpr const char* kBindName() { return "bitdeintl_b"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 

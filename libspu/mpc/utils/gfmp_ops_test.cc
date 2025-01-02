@@ -13,45 +13,44 @@
 // limitations under the License.
 
 #include "libspu/mpc/utils/gfmp_ops.h"
-#include "libspu/mpc/utils/ring_ops.h"
 
 #include <random>
 
 #include "gtest/gtest.h"
 
+#include "libspu/mpc/utils/ring_ops.h"
+
 namespace spu::mpc {
 
 class GfmpArrayRefTest
-    : public ::testing::TestWithParam<
-            std::tuple<FieldType,
-                        int64_t,
-                        int64_t>> {};
+    : public ::testing::TestWithParam<std::tuple<FieldType, int64_t, int64_t>> {
+};
 
 static NdArrayRef makeRandomArray(FieldType field, int64_t numel,
-                                    int64_t stride) {
-    const Type ty = makeType<GfmpTy>(field);
-    const size_t buf_size = SizeOf(field) * numel * stride;
+                                  int64_t stride) {
+  const Type ty = makeType<GfmpTy>(field);
+  const size_t buf_size = SizeOf(field) * numel * stride;
 
-    auto buf = std::make_shared<yacl::Buffer>(buf_size);
-    {
-        size_t numOfInts = buf_size / sizeof(int32_t);
-        auto* begin = buf->data<int32_t>();
-        for(size_t idx = 0; idx < numOfInts; idx++) {
-            *(begin + idx) = std::rand();
-        }
+  auto buf = std::make_shared<yacl::Buffer>(buf_size);
+  {
+    size_t numOfInts = buf_size / sizeof(int32_t);
+    auto* begin = buf->data<int32_t>();
+    for (size_t idx = 0; idx < numOfInts; idx++) {
+      *(begin + idx) = std::rand();
     }
-    return gfmp_mod(NdArrayRef(buf, ty, {numel}, {stride}, 0));
+  }
+  return gfmp_mod(NdArrayRef(buf, ty, {numel}, {stride}, 0));
 }
 
 INSTANTIATE_TEST_SUITE_P(
     GfmpArrayRefTestSuite, GfmpArrayRefTest,
     testing::Combine(testing::Values(FM32, FM64, FM128),  //
-                     testing::Values(1, 3, 10000),         // size of parameters
+                     testing::Values(1, 3, 10000),        // size of parameters
                      testing::Values(1, 3)  // stride of first param
                      ),
     [](const testing::TestParamInfo<GfmpArrayRefTest::ParamType>& p) {
-      return fmt::format("{}x{}x{}", std::get<0>(p.param),
-                         std::get<1>(p.param), std::get<2>(p.param));
+      return fmt::format("{}x{}x{}", std::get<0>(p.param), std::get<1>(p.param),
+                         std::get<2>(p.param));
     });
 
 TEST_P(GfmpArrayRefTest, BatchInverse) {
@@ -64,7 +63,7 @@ TEST_P(GfmpArrayRefTest, BatchInverse) {
   const NdArrayRef y = makeRandomArray(field, numel, stride);
   DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> _y(y);
-    pforeach(0, numel, [&](int64_t idx) {_y[idx]=idx+1;});
+    pforeach(0, numel, [&](int64_t idx) { _y[idx] = idx + 1; });
   });
 
   NdArrayRef x = gfmp_batch_inverse(y);
@@ -76,4 +75,4 @@ TEST_P(GfmpArrayRefTest, BatchInverse) {
   EXPECT_TRUE(ring_all_equal(z, ones));
 }
 
-}
+}  // namespace spu::mpc
