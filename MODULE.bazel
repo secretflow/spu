@@ -136,7 +136,6 @@ bazel_dep(name = "stablehlo", version = "20240808.0-24d1807")
 bazel_dep(name = "xla", version = "20240814.0-64bdcc5")
 bazel_dep(name = "yacl", version = "20241212.0-871832a")
 bazel_dep(name = "psi")
-
 git_override(
     module_name = "psi",
     commit = "8ead92f1bb10329c7e7e56d541fecb3dcd47ee03",
