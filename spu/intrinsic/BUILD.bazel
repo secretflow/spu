@@ -25,6 +25,7 @@ py_library(
     deps = [
         ":example",
         ":example_binary",
+        ":permute",
         # DO-NOT-EDIT:ADD_IMPORT
     ],
 )
@@ -48,3 +49,15 @@ py_library(
         "//visibility:private",
     ],
 )
+
+py_library(
+    name = "permute",
+    srcs = [
+        "permute_impl.py",
+    ],
+    visibility = [
+        "//visibility:private",
+    ],
+)
+        
+        

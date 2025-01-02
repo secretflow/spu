@@ -1,4 +1,4 @@
-# Copyright 2023 Ant Group Co., Ltd.
+# Copyright 2024 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,12 +17,31 @@ load("@rules_python//python:defs.bzl", "py_library")
 package(default_visibility = ["//visibility:public"])
 
 py_library(
-    name = "pca",
-    srcs = ["pca.py"],
-    deps = ["//sml/utils:extmath"],
+    name = "jacobi",
+    srcs = ["jacobi.py"],
 )
 
 py_library(
-    name = "nmf",
-    srcs = ["nmf.py"],
+    name = "dijkstra",
+    srcs = ["dijkstra.py"],
+)
+
+py_library(
+    name = "MDS",
+    srcs = ["MDS.py"],
+)
+
+py_library(
+    name = "kneighbors",
+    srcs = ["kneighbors.py"],
+)
+
+py_library(
+    name = "floyd",
+    srcs = ["floyd.py"],
+)
+
+py_library(
+    name = "SE",
+    srcs = ["SE.py"],
 )
