@@ -43,12 +43,12 @@ class UnitTests(unittest.TestCase):
             "role": "ROLE_SERVER",
             "cache_path": "{self.tempdir_.name}/spu_test_ub_psi_server_cache",
             "input_config": {{
+                "type" : "IO_TYPE_FILE_CSV",
                 "path": "spu/tests/data/alice.csv"
             }},
             "keys": [
                 "id"
-            ],
-            "server_secret_key_path": "{self.tempdir_.name}/spu_test_ub_psi_server_secret_key.key"
+            ]
         }}
         '''
 
@@ -59,15 +59,6 @@ class UnitTests(unittest.TestCase):
             "cache_path": "{self.tempdir_.name}/spu_test_ub_psi_client_cache"
         }}
         '''
-
-        with open(
-            f"{self.tempdir_.name}/spu_test_ub_psi_server_secret_key.key", 'wb'
-        ) as f:
-            f.write(
-                bytes.fromhex(
-                    "000102030405060708090a0b0c0d0e0ff0e0d0c0b0a090807060504030201000"
-                )
-            )
 
         configs = [
             json_format.ParseDict(json.loads(server_offline_config), psi.UbPsiConfig()),
@@ -95,8 +86,10 @@ class UnitTests(unittest.TestCase):
         {{
             "mode": "MODE_ONLINE",
             "role": "ROLE_SERVER",
-            "server_secret_key_path": "{self.tempdir_.name}/spu_test_ub_psi_server_secret_key.key",
-            "cache_path": "{self.tempdir_.name}/spu_test_ub_psi_server_cache"
+            "cache_path": "{self.tempdir_.name}/spu_test_ub_psi_server_cache",
+            "output_config": {{
+                "type" : "IO_TYPE_FILE_CSV"
+            }}
         }}
         '''
 
@@ -105,9 +98,11 @@ class UnitTests(unittest.TestCase):
             "mode": "MODE_ONLINE",
             "role": "ROLE_CLIENT",
             "input_config": {{
+                "type" : "IO_TYPE_FILE_CSV",
                 "path": "spu/tests/data/bob.csv"
             }},
             "output_config": {{
+                "type" : "IO_TYPE_FILE_CSV",
                 "path": "{self.tempdir_.name}/spu_test_ubpsi_bob_psi_ouput.csv"
             }},
             "keys": [

@@ -14,6 +14,7 @@
 
 #include "libspu/mpc/common/communicator.h"
 
+#include "libspu/mpc/utils/gfmp_ops.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc {
@@ -53,7 +54,11 @@ NdArrayRef Communicator::allReduce(ReduceOp op, const NdArrayRef& in,
     auto arr = NdArrayRef(stealBuffer(std::move(bufs[idx])), in.eltype(),
                           in.shape(), makeCompactStrides(in.shape()), kOffset);
     if (op == ReduceOp::ADD) {
-      ring_add_(res, arr);
+      if (in.eltype().isa<GfmpTy>()) {
+        gfmp_add_mod_(res, arr);
+      } else {
+        ring_add_(res, arr);
+      }
     } else if (op == ReduceOp::XOR) {
       ring_xor_(res, arr);
     } else {
@@ -86,7 +91,11 @@ NdArrayRef Communicator::reduce(ReduceOp op, const NdArrayRef& in, size_t root,
           NdArrayRef(stealBuffer(std::move(bufs[idx])), in.eltype(), in.shape(),
                      makeCompactStrides(in.shape()), kOffset);
       if (op == ReduceOp::ADD) {
-        ring_add_(res, arr);
+        if (in.eltype().isa<GfmpTy>()) {
+          gfmp_add_mod_(res, arr);
+        } else {
+          ring_add_(res, arr);
+        }
       } else if (op == ReduceOp::XOR) {
         ring_xor_(res, arr);
       } else {
@@ -94,7 +103,6 @@ NdArrayRef Communicator::reduce(ReduceOp op, const NdArrayRef& in, size_t root,
       }
     }
   }
-
   stats_.latency += 1;
   stats_.comm += in.numel() * in.elsize();
 

@@ -472,12 +472,23 @@ Value _mux(SPUContext* ctx, const Value& pred, const Value& a, const Value& b) {
 Value _clamp(SPUContext* ctx, const Value& x, const Value& minv,
              const Value& maxv) {
   SPU_TRACE_HAL_LEAF(ctx, x, minv, maxv);
-
   // clamp lower bound, res = x < minv ? minv : x
   auto res = _mux(ctx, _less(ctx, x, minv), minv, x);
-
   // clamp upper bound, res = res < maxv ? res, maxv
   return _mux(ctx, _less(ctx, res, maxv), res, maxv);
+}
+
+// TODO: refactor polymorphic, and may use select functions in polymorphic
+Value _clamp_lower(SPUContext* ctx, const Value& x, const Value& minv) {
+  SPU_TRACE_HAL_LEAF(ctx, x, minv);
+  // clamp lower bound, res = x < minv ? minv : x
+  return _mux(ctx, _less(ctx, x, minv), minv, x);
+}
+
+Value _clamp_upper(SPUContext* ctx, const Value& x, const Value& maxv) {
+  SPU_TRACE_HAL_LEAF(ctx, x, maxv);
+  // clamp upper bound, x = x < maxv ? x, maxv
+  return _mux(ctx, _less(ctx, x, maxv), x, maxv);
 }
 
 Value _constant(SPUContext* ctx, uint128_t init, const Shape& shape) {

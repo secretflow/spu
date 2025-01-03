@@ -20,6 +20,7 @@
 #include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/type_cast.h"
 #include "libspu/kernel/test_util.h"
+#include "libspu/mpc/utils/simulate.h"
 
 namespace spu::kernel::hal {
 
@@ -78,10 +79,35 @@ TEST(FxpTest, ExponentialPade) {
       << y;
 }
 
+TEST(FxpTest, ExponentialPrime) {
+  std::cout << "test exp_prime" << std::endl;
+  spu::mpc::utils::simulate(2, [&](std::shared_ptr<yacl::link::Context> lctx) {
+    RuntimeConfig conf;
+    conf.set_protocol(ProtocolKind::SEMI2K);
+    conf.set_field(FieldType::FM128);
+    conf.set_fxp_fraction_bits(40);
+    conf.set_experimental_enable_exp_prime(true);
+    SPUContext ctx = test::makeSPUContext(conf, lctx);
+
+    auto offset = ctx.config().experimental_exp_prime_offset();
+    auto fxp = ctx.getFxpBits();
+    auto lower_bound = (48.0 - offset - 2.0 * fxp) / M_LOG2E;
+    auto upper_bound = (124.0 - 2.0 * fxp - offset) / M_LOG2E;
+
+    xt::xarray<float> x = xt::linspace<float>(lower_bound, upper_bound, 4000);
+
+    Value a = test::makeValue(&ctx, x, VIS_SECRET);
+    Value c = detail::exp_prime(&ctx, a);
+    auto y = dump_public_as<float>(&ctx, reveal(&ctx, c));
+    EXPECT_TRUE(xt::allclose(xt::exp(x), y, 0.01, 0.001))
+        << xt::exp(x) << std::endl
+        << y;
+  });
+}
+
 TEST(FxpTest, Log) {
   // GIVEN
   SPUContext ctx = test::makeSPUContext();
-
   xt::xarray<float> x = {{0.05, 0.5}, {5, 50}};
   // public log
   {

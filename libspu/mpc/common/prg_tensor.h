@@ -15,6 +15,7 @@
 #pragma once
 
 #include "libspu/core/ndarray_ref.h"
+#include "libspu/mpc/utils/gfmp_ops.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc {
@@ -22,28 +23,46 @@ namespace spu::mpc {
 using PrgSeed = uint128_t;
 using PrgCounter = uint64_t;
 
+// Gfmp is regarded as word
+// standing for Galois Field with Mersenne Prime.
+enum class ElementType { kRing, kGfmp };
+
 struct PrgArrayDesc {
   Shape shape;
   FieldType field;
   PrgCounter prg_counter;
+  ElementType eltype;
 };
 
 inline NdArrayRef prgCreateArray(FieldType field, const Shape& shape,
                                  PrgSeed seed, PrgCounter* counter,
-                                 PrgArrayDesc* desc) {
+                                 PrgArrayDesc* desc,
+                                 ElementType eltype = ElementType::kRing) {
   if (desc != nullptr) {
-    *desc = {Shape(shape.begin(), shape.end()), field, *counter};
+    *desc = {Shape(shape.begin(), shape.end()), field, *counter, eltype};
   }
-  return ring_rand(field, shape, seed, counter);
+  if (eltype == ElementType::kGfmp) {
+    return gfmp_rand(field, shape, seed, counter);
+  } else {
+    return ring_rand(field, shape, seed, counter);
+  }
 }
 
 inline NdArrayRef prgReplayArray(PrgSeed seed, const PrgArrayDesc& desc) {
   PrgCounter counter = desc.prg_counter;
-  return ring_rand(desc.field, desc.shape, seed, &counter);
+  if (desc.eltype == ElementType::kGfmp) {
+    return gfmp_rand(desc.field, desc.shape, seed, &counter);
+  } else {
+    return ring_rand(desc.field, desc.shape, seed, &counter);
+  }
 }
 
 inline NdArrayRef prgReplayArrayMutable(PrgSeed seed, PrgArrayDesc& desc) {
-  return ring_rand(desc.field, desc.shape, seed, &desc.prg_counter);
+  if (desc.eltype == ElementType::kGfmp) {
+    return gfmp_rand(desc.field, desc.shape, seed, &desc.prg_counter);
+  } else {
+    return ring_rand(desc.field, desc.shape, seed, &desc.prg_counter);
+  }
 }
 
 }  // namespace spu::mpc

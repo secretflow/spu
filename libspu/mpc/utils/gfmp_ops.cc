@@ -162,6 +162,7 @@ NdArrayRef gfmp_rand(FieldType field, const Shape& shape) {
 
 // FIXME: this function is not strictly correct as the probability among the
 // range [0, p-1] is not uniform.
+
 NdArrayRef gfmp_rand(FieldType field, const Shape& shape, uint128_t prg_seed,
                      uint64_t* prg_counter) {
   constexpr yacl::crypto::SymmetricCrypto::CryptoType kCryptoType =

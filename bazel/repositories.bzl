@@ -39,10 +39,10 @@ def _yacl():
         http_archive,
         name = "yacl",
         urls = [
-            "https://github.com/secretflow/yacl/archive/refs/tags/0.4.5b7_nightly_20240930.tar.gz",
+            "https://github.com/secretflow/yacl/archive/refs/tags/0.4.5b8_nightly_20241014.tar.gz",
         ],
-        strip_prefix = "yacl-0.4.5b7_nightly_20240930",
-        sha256 = "cf8dc7cceb9c5d05df00f1c086feec99d554db3e3cbe101253cf2a5a1adb9072",
+        strip_prefix = "yacl-0.4.5b8_nightly_20241014",
+        sha256 = "9141792f07eba507ffd21c57ec3df2ad5fdf90ce605ffb7bc1b7b4e84a9c34fa",
     )
 
 def _libpsi():
@@ -50,10 +50,10 @@ def _libpsi():
         http_archive,
         name = "psi",
         urls = [
-            "https://github.com/secretflow/psi/archive/refs/tags/v0.4.3.dev240919.tar.gz",
+            "https://github.com/secretflow/psi/archive/refs/tags/v0.5.0.dev241115.tar.gz",
         ],
-        strip_prefix = "psi-0.4.3.dev240919",
-        sha256 = "1ee34fbbd9a8f36dea8f7c45588a858e8c31f3a38e60e1fc67cb428ea79334e3",
+        strip_prefix = "psi-0.5.0.dev241115",
+        sha256 = "4d5ccc61282c4f887cee2c12fe3f414dfd7e916952849e92ffb1f6835d657a35",
     )
 
 def _rules_proto_grpc():
@@ -242,10 +242,10 @@ def _com_github_nvidia_cutlass():
     maybe(
         http_archive,
         name = "cutlass_archive",
-        strip_prefix = "cutlass-3.5.1",
+        strip_prefix = "cutlass-3.6.0",
         urls = [
-            "https://github.com/NVIDIA/cutlass/archive/refs/tags/v3.5.1.tar.gz",
+            "https://github.com/NVIDIA/cutlass/archive/refs/tags/v3.6.0.tar.gz",
         ],
-        sha256 = "20b7247cda2d257cbf8ba59ba3ca40a9211c4da61a9c9913e32b33a2c5883a36",
+        sha256 = "7576f3437b90d0de5923560ccecebaa1357e5d72f36c0a59ad77c959c9790010",
         build_file = "@spulib//bazel:nvidia_cutlass.BUILD",
     )

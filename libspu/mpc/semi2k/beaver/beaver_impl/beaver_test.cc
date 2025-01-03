@@ -24,6 +24,7 @@
 #include "libspu/mpc/semi2k/beaver/beaver_impl/beaver_tfp.h"
 #include "libspu/mpc/semi2k/beaver/beaver_impl/beaver_ttp.h"
 #include "libspu/mpc/semi2k/beaver/beaver_impl/ttp_server/beaver_server.h"
+#include "libspu/mpc/utils/gfmp.h"
 #include "libspu/mpc/utils/permute.h"
 #include "libspu/mpc/utils/ring_ops.h"
 #include "libspu/mpc/utils/simulate.h"
@@ -158,6 +159,60 @@ std::vector<NdArrayRef> open_buffer(std::vector<T>& in_buffers,
   }
   return ret;
 }
+
+template <class T>
+std::vector<NdArrayRef> open_buffer_gfmp(std::vector<T>& in_buffers,
+                                         FieldType k_field,
+                                         const std::vector<Shape>& shapes,
+                                         size_t k_world_size, bool add_open) {
+  std::vector<NdArrayRef> ret;
+
+  auto reduce = [&](NdArrayRef& r, yacl::Buffer& b) {
+    if (b.size() == 0) {
+      return;
+    }
+    EXPECT_EQ(b.size(), r.shape().numel() * SizeOf(k_field));
+    NdArrayRef a(std::make_shared<yacl::Buffer>(std::move(b)), ret[0].eltype(),
+                 r.shape());
+    auto Ta = r.eltype();
+    gfmp_add_mod_(r, a.as(Ta));
+  };
+  if constexpr (std::is_same_v<T, Beaver::Triple>) {
+    ret.resize(3);
+    SPU_ENFORCE(shapes.size() == 3);
+    for (size_t i = 0; i < shapes.size(); i++) {
+      ret[i] = gfmp_zeros(k_field, shapes[i]);
+    }
+    for (Rank r = 0; r < k_world_size; r++) {
+      auto& [a_buf, b_buf, c_buf] = in_buffers[r];
+      reduce(ret[0], a_buf);
+      reduce(ret[1], b_buf);
+      reduce(ret[2], c_buf);
+    }
+  } else if constexpr (std::is_same_v<T, Beaver::Pair>) {
+    ret.resize(2);
+    SPU_ENFORCE(shapes.size() == 2);
+    for (size_t i = 0; i < shapes.size(); i++) {
+      ret[i] = gfmp_zeros(k_field, shapes[i]);
+    }
+    for (Rank r = 0; r < k_world_size; r++) {
+      auto& [a_buf, b_buf] = in_buffers[r];
+      reduce(ret[0], a_buf);
+      reduce(ret[1], b_buf);
+    }
+  } else if constexpr (std::is_same_v<T, Beaver::Array>) {
+    ret.resize(1);
+    SPU_ENFORCE(shapes.size() == 1);
+    for (size_t i = 0; i < shapes.size(); i++) {
+      ret[i] = gfmp_zeros(k_field, shapes[i]);
+    }
+    for (Rank r = 0; r < k_world_size; r++) {
+      auto& a_buf = in_buffers[r];
+      reduce(ret[0], a_buf);
+    }
+  }
+  return ret;
+}
 }  // namespace
 
 TEST_P(BeaverTest, Mul_large) {
@@ -215,11 +270,11 @@ TEST_P(BeaverTest, Mul_large) {
 
     DISPATCH_ALL_FIELDS(kField, [&]() {
       NdArrayView<ring2k_t> _a(open[0]);
-      NdArrayView<ring2k_t> _cache_a(x_cache);
+      NdArrayView<ring2k_t> _a_cache(x_cache);
       NdArrayView<ring2k_t> _b(open[1]);
       NdArrayView<ring2k_t> _c(open[2]);
       for (auto idx = 0; idx < _a.numel(); idx++) {
-        EXPECT_EQ(_cache_a[idx], _a[idx]);
+        EXPECT_EQ(_a_cache[idx], _a[idx]);
         auto t = _a[idx] * _b[idx];
         auto err = t > _c[idx] ? t - _c[idx] : _c[idx] - t;
         EXPECT_LE(err, kMaxDiff);
@@ -242,10 +297,10 @@ TEST_P(BeaverTest, Mul_large) {
     DISPATCH_ALL_FIELDS(kField, [&]() {
       NdArrayView<ring2k_t> _a(open[0]);
       NdArrayView<ring2k_t> _b(open[1]);
-      NdArrayView<ring2k_t> _cache_b(y_cache);
+      NdArrayView<ring2k_t> _b_cache(y_cache);
       NdArrayView<ring2k_t> _c(open[2]);
       for (auto idx = 0; idx < _a.numel(); idx++) {
-        EXPECT_EQ(_cache_b[idx], _b[idx]);
+        EXPECT_EQ(_b_cache[idx], _b[idx]);
         auto t = _a[idx] * _b[idx];
         auto err = t > _c[idx] ? t - _c[idx] : _c[idx] - t;
         EXPECT_LE(err, kMaxDiff);
@@ -269,12 +324,12 @@ TEST_P(BeaverTest, Mul_large) {
     DISPATCH_ALL_FIELDS(kField, [&]() {
       NdArrayView<ring2k_t> _a(open[0]);
       NdArrayView<ring2k_t> _b(open[1]);
-      NdArrayView<ring2k_t> _cache_a(x_cache);
-      NdArrayView<ring2k_t> _cache_b(y_cache);
+      NdArrayView<ring2k_t> _a_cache(x_cache);
+      NdArrayView<ring2k_t> _b_cache(y_cache);
       NdArrayView<ring2k_t> _c(open[2]);
       for (auto idx = 0; idx < _a.numel(); idx++) {
-        EXPECT_EQ(_cache_a[idx], _a[idx]);
-        EXPECT_EQ(_cache_b[idx], _b[idx]);
+        EXPECT_EQ(_a_cache[idx], _a[idx]);
+        EXPECT_EQ(_b_cache[idx], _b[idx]);
         auto t = _a[idx] * _b[idx];
         auto err = t > _c[idx] ? t - _c[idx] : _c[idx] - t;
         EXPECT_LE(err, kMaxDiff);
@@ -299,14 +354,14 @@ TEST_P(BeaverTest, Mul_large) {
     DISPATCH_ALL_FIELDS(kField, [&]() {
       NdArrayView<ring2k_t> _a(open[0]);
       NdArrayView<ring2k_t> _b(open[1]);
-      NdArrayView<ring2k_t> _cache_a(x_cache);
-      NdArrayView<ring2k_t> _cache_b(y_cache);
+      NdArrayView<ring2k_t> _a_cache(x_cache);
+      NdArrayView<ring2k_t> _b_cache(y_cache);
       NdArrayView<ring2k_t> _c(open[2]);
       for (auto idx = 0; idx < _a.numel(); idx++) {
         // mul not support transpose.
         // enforce ne
-        EXPECT_NE(_cache_a[idx], _a[idx]);
-        EXPECT_NE(_cache_b[idx], _b[idx]);
+        EXPECT_NE(_a_cache[idx], _a[idx]);
+        EXPECT_NE(_b_cache[idx], _b[idx]);
         auto t = _a[idx] * _b[idx];
         auto err = t > _c[idx] ? t - _c[idx] : _c[idx] - t;
         EXPECT_LE(err, kMaxDiff);
@@ -370,11 +425,11 @@ TEST_P(BeaverTest, Mul) {
 
     DISPATCH_ALL_FIELDS(kField, [&]() {
       NdArrayView<ring2k_t> _a(open[0]);
-      NdArrayView<ring2k_t> _cache_a(x_cache);
+      NdArrayView<ring2k_t> _a_cache(x_cache);
       NdArrayView<ring2k_t> _b(open[1]);
       NdArrayView<ring2k_t> _c(open[2]);
       for (auto idx = 0; idx < _a.numel(); idx++) {
-        EXPECT_EQ(_cache_a[idx], _a[idx]);
+        EXPECT_EQ(_a_cache[idx], _a[idx]);
         auto t = _a[idx] * _b[idx];
         auto err = t > _c[idx] ? t - _c[idx] : _c[idx] - t;
         EXPECT_LE(err, kMaxDiff);
@@ -397,10 +452,10 @@ TEST_P(BeaverTest, Mul) {
     DISPATCH_ALL_FIELDS(kField, [&]() {
       NdArrayView<ring2k_t> _a(open[0]);
       NdArrayView<ring2k_t> _b(open[1]);
-      NdArrayView<ring2k_t> _cache_b(y_cache);
+      NdArrayView<ring2k_t> _b_cache(y_cache);
       NdArrayView<ring2k_t> _c(open[2]);
       for (auto idx = 0; idx < _a.numel(); idx++) {
-        EXPECT_EQ(_cache_b[idx], _b[idx]);
+        EXPECT_EQ(_b_cache[idx], _b[idx]);
         auto t = _a[idx] * _b[idx];
         auto err = t > _c[idx] ? t - _c[idx] : _c[idx] - t;
         EXPECT_LE(err, kMaxDiff);
@@ -424,12 +479,12 @@ TEST_P(BeaverTest, Mul) {
     DISPATCH_ALL_FIELDS(kField, [&]() {
       NdArrayView<ring2k_t> _a(open[0]);
       NdArrayView<ring2k_t> _b(open[1]);
-      NdArrayView<ring2k_t> _cache_a(x_cache);
-      NdArrayView<ring2k_t> _cache_b(y_cache);
+      NdArrayView<ring2k_t> _a_cache(x_cache);
+      NdArrayView<ring2k_t> _b_cache(y_cache);
       NdArrayView<ring2k_t> _c(open[2]);
       for (auto idx = 0; idx < _a.numel(); idx++) {
-        EXPECT_EQ(_cache_a[idx], _a[idx]);
-        EXPECT_EQ(_cache_b[idx], _b[idx]);
+        EXPECT_EQ(_a_cache[idx], _a[idx]);
+        EXPECT_EQ(_b_cache[idx], _b[idx]);
         auto t = _a[idx] * _b[idx];
         auto err = t > _c[idx] ? t - _c[idx] : _c[idx] - t;
         EXPECT_LE(err, kMaxDiff);
@@ -454,17 +509,187 @@ TEST_P(BeaverTest, Mul) {
     DISPATCH_ALL_FIELDS(kField, [&]() {
       NdArrayView<ring2k_t> _a(open[0]);
       NdArrayView<ring2k_t> _b(open[1]);
-      NdArrayView<ring2k_t> _cache_a(x_cache);
-      NdArrayView<ring2k_t> _cache_b(y_cache);
+      NdArrayView<ring2k_t> _a_cache(x_cache);
+      NdArrayView<ring2k_t> _b_cache(y_cache);
       NdArrayView<ring2k_t> _c(open[2]);
       for (auto idx = 0; idx < _a.numel(); idx++) {
         // mul not support transpose.
         // enforce ne
-        EXPECT_NE(_cache_a[idx], _a[idx]);
-        EXPECT_NE(_cache_b[idx], _b[idx]);
+        EXPECT_NE(_a_cache[idx], _a[idx]);
+        EXPECT_NE(_b_cache[idx], _b[idx]);
         auto t = _a[idx] * _b[idx];
         auto err = t > _c[idx] ? t - _c[idx] : _c[idx] - t;
         EXPECT_LE(err, kMaxDiff);
+      }
+    });
+  }
+}
+
+TEST_P(BeaverTest, MulGfmp) {
+  const auto factory = std::get<0>(GetParam()).first;
+  const size_t kWorldSize = std::get<1>(GetParam());
+  const FieldType kField = std::get<2>(GetParam());
+  const int64_t kMaxDiff = std::get<3>(GetParam());
+  const size_t adjust_rank = std::get<4>(GetParam());
+  const int64_t kNumel = 7;
+
+  std::vector<Triple> triples(kWorldSize);
+
+  std::vector<Beaver::ReplayDesc> x_desc(kWorldSize);
+  std::vector<Beaver::ReplayDesc> y_desc(kWorldSize);
+  NdArrayRef x_cache;
+  NdArrayRef y_cache;
+  {
+    utils::simulate(
+        kWorldSize, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+          auto beaver = factory(lctx, ttp_options_, adjust_rank);
+          triples[lctx->Rank()] =
+              beaver->Mul(kField, kNumel, &x_desc[lctx->Rank()],
+                          &y_desc[lctx->Rank()], ElementType::kGfmp);
+          yacl::link::Barrier(lctx, "BeaverUT");
+        });
+
+    auto open = open_buffer_gfmp(
+        triples, kField, std::vector<Shape>(3, {kNumel}), kWorldSize, true);
+
+    DISPATCH_ALL_FIELDS(kField, [&]() {
+      NdArrayView<ring2k_t> _a(open[0]);
+      NdArrayView<ring2k_t> _b(open[1]);
+      NdArrayView<ring2k_t> _c(open[2]);
+      for (auto idx = 0; idx < _a.numel(); idx++) {
+        auto prime = ScalarTypeToPrime<ring2k_t>::prime;
+        auto t = mul_mod(_a[idx], _b[idx]);
+        auto err = t > _c[idx] ? t - _c[idx] : _c[idx] - t;
+        auto error_mod_p = static_cast<ring2k_t>(err) % prime;
+        EXPECT_LE(error_mod_p, kMaxDiff);
+      }
+    });
+
+    x_cache = open[0];
+    y_cache = open[1];
+  }
+  {
+    utils::simulate(kWorldSize,
+                    [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+                      auto beaver = factory(lctx, ttp_options_, adjust_rank);
+                      x_desc[lctx->Rank()].status = Beaver::Replay;
+                      triples[lctx->Rank()] =
+                          beaver->Mul(kField, kNumel, &x_desc[lctx->Rank()],
+                                      nullptr, ElementType::kGfmp);
+                      yacl::link::Barrier(lctx, "BeaverUT");
+                    });
+
+    auto open = open_buffer_gfmp(
+        triples, kField, std::vector<Shape>(3, {kNumel}), kWorldSize, true);
+
+    DISPATCH_ALL_FIELDS(kField, [&]() {
+      NdArrayView<ring2k_t> _a(open[0]);
+      NdArrayView<ring2k_t> _a_cache(x_cache);
+      NdArrayView<ring2k_t> _b(open[1]);
+      NdArrayView<ring2k_t> _c(open[2]);
+      for (auto idx = 0; idx < _a.numel(); idx++) {
+        auto prime = ScalarTypeToPrime<ring2k_t>::prime;
+        EXPECT_EQ(_a_cache[idx], _a[idx]);
+        auto t = mul_mod(_a[idx], _b[idx]) % prime;
+        auto err = t > _c[idx] ? t - _c[idx] : _c[idx] - t;
+        auto error_mod_p = static_cast<ring2k_t>(err) % prime;
+        EXPECT_LE(error_mod_p, kMaxDiff);
+      }
+    });
+  }
+  {
+    utils::simulate(
+        kWorldSize, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+          auto beaver = factory(lctx, ttp_options_, adjust_rank);
+          y_desc[lctx->Rank()].status = Beaver::Replay;
+          triples[lctx->Rank()] =
+              beaver->Mul(kField, kNumel, nullptr, &y_desc[lctx->Rank()],
+                          ElementType::kGfmp);
+          yacl::link::Barrier(lctx, "BeaverUT");
+        });
+
+    auto open = open_buffer_gfmp(
+        triples, kField, std::vector<Shape>(3, {kNumel}), kWorldSize, true);
+
+    DISPATCH_ALL_FIELDS(kField, [&]() {
+      NdArrayView<ring2k_t> _a(open[0]);
+      NdArrayView<ring2k_t> _b(open[1]);
+      NdArrayView<ring2k_t> _b_cache(y_cache);
+      NdArrayView<ring2k_t> _c(open[2]);
+      for (auto idx = 0; idx < _a.numel(); idx++) {
+        EXPECT_EQ(_b_cache[idx], _b[idx]);
+        auto t = mul_mod(_a[idx], _b[idx]);
+        auto err = t > _c[idx] ? t - _c[idx] : _c[idx] - t;
+        auto prime = ScalarTypeToPrime<ring2k_t>::prime;
+        auto error_mod_p = static_cast<ring2k_t>(err) % prime;
+        EXPECT_LE(error_mod_p, kMaxDiff);
+      }
+    });
+  }
+  {
+    utils::simulate(
+        kWorldSize, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+          auto beaver = factory(lctx, ttp_options_, adjust_rank);
+          x_desc[lctx->Rank()].status = Beaver::Replay;
+          y_desc[lctx->Rank()].status = Beaver::Replay;
+          triples[lctx->Rank()] =
+              beaver->Mul(kField, kNumel, &x_desc[lctx->Rank()],
+                          &y_desc[lctx->Rank()], ElementType::kGfmp);
+          yacl::link::Barrier(lctx, "BeaverUT");
+        });
+
+    auto open = open_buffer_gfmp(
+        triples, kField, std::vector<Shape>(3, {kNumel}), kWorldSize, true);
+
+    DISPATCH_ALL_FIELDS(kField, [&]() {
+      NdArrayView<ring2k_t> _a(open[0]);
+      NdArrayView<ring2k_t> _b(open[1]);
+      NdArrayView<ring2k_t> _a_cache(x_cache);
+      NdArrayView<ring2k_t> _b_cache(y_cache);
+      NdArrayView<ring2k_t> _c(open[2]);
+      for (auto idx = 0; idx < _a.numel(); idx++) {
+        EXPECT_EQ(_a_cache[idx], _a[idx]);
+        EXPECT_EQ(_b_cache[idx], _b[idx]);
+        auto t = mul_mod(_a[idx], _b[idx]);
+        auto err = t > _c[idx] ? t - _c[idx] : _c[idx] - t;
+        auto prime = ScalarTypeToPrime<ring2k_t>::prime;
+        auto error_mod_p = static_cast<ring2k_t>(err) % prime;
+        EXPECT_LE(error_mod_p, kMaxDiff);
+      }
+    });
+  }
+  {
+    utils::simulate(
+        kWorldSize, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+          auto beaver = factory(lctx, ttp_options_, adjust_rank);
+          x_desc[lctx->Rank()].status = Beaver::TransposeReplay;
+          y_desc[lctx->Rank()].status = Beaver::TransposeReplay;
+          // mul not support transpose.
+          triples[lctx->Rank()] =
+              beaver->Mul(kField, kNumel, &x_desc[lctx->Rank()],
+                          &y_desc[lctx->Rank()], ElementType::kGfmp);
+          yacl::link::Barrier(lctx, "BeaverUT");
+        });
+
+    auto open = open_buffer_gfmp(
+        triples, kField, std::vector<Shape>(3, {kNumel}), kWorldSize, true);
+
+    DISPATCH_ALL_FIELDS(kField, [&]() {
+      NdArrayView<ring2k_t> _a(open[0]);
+      NdArrayView<ring2k_t> _b(open[1]);
+      NdArrayView<ring2k_t> _a_cache(x_cache);
+      NdArrayView<ring2k_t> _b_cache(y_cache);
+      NdArrayView<ring2k_t> _c(open[2]);
+      for (auto idx = 0; idx < _a.numel(); idx++) {
+        // mul not support transpose.
+        // enforce ne
+        EXPECT_NE(_a_cache[idx], _a[idx]);
+        EXPECT_NE(_b_cache[idx], _b[idx]);
+        auto t = mul_mod(_a[idx], _b[idx]);
+        auto err = t > _c[idx] ? t - _c[idx] : _c[idx] - t;
+        auto prime = ScalarTypeToPrime<ring2k_t>::prime;
+        auto error_mod_p = static_cast<ring2k_t>(err) % prime;
+        EXPECT_LE(error_mod_p, kMaxDiff);
       }
     });
   }
@@ -566,11 +791,11 @@ TEST_P(BeaverTest, Dot) {
     auto res = ring_mmul(x_cache, open[1]);
     DISPATCH_ALL_FIELDS(kField, [&]() {
       NdArrayView<ring2k_t> _a(open[0]);
-      NdArrayView<ring2k_t> _cache_a(x_cache);
+      NdArrayView<ring2k_t> _a_cache(x_cache);
       NdArrayView<ring2k_t> _r(res);
       NdArrayView<ring2k_t> _c(open[2]);
       for (auto idx = 0; idx < res.numel(); idx++) {
-        EXPECT_EQ(_cache_a[idx], _a[idx]);
+        EXPECT_EQ(_a_cache[idx], _a[idx]);
         auto err = _r[idx] > _c[idx] ? _r[idx] - _c[idx] : _c[idx] - _r[idx];
         EXPECT_LE(err, kMaxDiff);
       }
@@ -593,11 +818,11 @@ TEST_P(BeaverTest, Dot) {
     auto res = ring_mmul(open[0], y_cache);
     DISPATCH_ALL_FIELDS(kField, [&]() {
       NdArrayView<ring2k_t> _b(open[1]);
-      NdArrayView<ring2k_t> _cache_b(y_cache);
+      NdArrayView<ring2k_t> _b_cache(y_cache);
       NdArrayView<ring2k_t> _r(res);
       NdArrayView<ring2k_t> _c(open[2]);
       for (auto idx = 0; idx < res.numel(); idx++) {
-        EXPECT_EQ(_cache_b[idx], _b[idx]);
+        EXPECT_EQ(_b_cache[idx], _b[idx]);
         auto err = _r[idx] > _c[idx] ? _r[idx] - _c[idx] : _c[idx] - _r[idx];
         EXPECT_LE(err, kMaxDiff);
       }
@@ -621,14 +846,14 @@ TEST_P(BeaverTest, Dot) {
     auto res = ring_mmul(x_cache, y_cache);
     DISPATCH_ALL_FIELDS(kField, [&]() {
       NdArrayView<ring2k_t> _a(open[0]);
-      NdArrayView<ring2k_t> _cache_a(x_cache);
+      NdArrayView<ring2k_t> _a_cache(x_cache);
       NdArrayView<ring2k_t> _b(open[1]);
-      NdArrayView<ring2k_t> _cache_b(y_cache);
+      NdArrayView<ring2k_t> _b_cache(y_cache);
       NdArrayView<ring2k_t> _r(res);
       NdArrayView<ring2k_t> _c(open[2]);
       for (auto idx = 0; idx < res.numel(); idx++) {
-        EXPECT_EQ(_cache_a[idx], _a[idx]);
-        EXPECT_EQ(_cache_b[idx], _b[idx]);
+        EXPECT_EQ(_a_cache[idx], _a[idx]);
+        EXPECT_EQ(_b_cache[idx], _b[idx]);
         auto err = _r[idx] > _c[idx] ? _r[idx] - _c[idx] : _c[idx] - _r[idx];
         EXPECT_LE(err, kMaxDiff);
       }
@@ -653,16 +878,16 @@ TEST_P(BeaverTest, Dot) {
     DISPATCH_ALL_FIELDS(kField, [&]() {
       auto transpose_a = open[0].transpose();
       NdArrayView<ring2k_t> _a(transpose_a);
-      NdArrayView<ring2k_t> _cache_a(y_cache);
+      NdArrayView<ring2k_t> _a_cache(y_cache);
       auto transpose_b = open[1].transpose();
       NdArrayView<ring2k_t> _b(transpose_b);
-      NdArrayView<ring2k_t> _cache_b(x_cache);
+      NdArrayView<ring2k_t> _b_cache(x_cache);
       auto transpose_r = res.transpose();
       NdArrayView<ring2k_t> _r(transpose_r);
       NdArrayView<ring2k_t> _c(open[2]);
       for (auto idx = 0; idx < res.numel(); idx++) {
-        EXPECT_EQ(_cache_a[idx], _a[idx]);
-        EXPECT_EQ(_cache_b[idx], _b[idx]);
+        EXPECT_EQ(_a_cache[idx], _a[idx]);
+        EXPECT_EQ(_b_cache[idx], _b[idx]);
         auto err = _r[idx] > _c[idx] ? _r[idx] - _c[idx] : _c[idx] - _r[idx];
         EXPECT_LE(err, kMaxDiff);
       }
@@ -685,11 +910,11 @@ TEST_P(BeaverTest, Dot) {
 
     DISPATCH_ALL_FIELDS(kField, [&]() {
       NdArrayView<ring2k_t> _a(open[0]);
-      NdArrayView<ring2k_t> _cache_a(x_cache);
+      NdArrayView<ring2k_t> _a_cache(x_cache);
       NdArrayView<ring2k_t> _b(open[1]);
       NdArrayView<ring2k_t> _c(open[2]);
       for (auto idx = 0; idx < _a.numel(); idx++) {
-        EXPECT_EQ(_cache_a[idx], _a[idx]);
+        EXPECT_EQ(_a_cache[idx], _a[idx]);
         auto t = _a[idx] * _b[idx];
         auto err = t > _c[idx] ? t - _c[idx] : _c[idx] - t;
         EXPECT_LE(err, kMaxDiff);

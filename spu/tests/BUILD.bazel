@@ -178,7 +178,6 @@ py_binary(
     srcs = ["jnp_debug.py"],
     deps = [
         "//spu:api",
-        "//spu/intrinsic:all_intrinsics",
         "//spu/utils:simulation",
     ],
 )

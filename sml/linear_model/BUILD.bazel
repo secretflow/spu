@@ -54,3 +54,11 @@ py_binary(
         "//sml/linear_model/utils:solver",
     ],
 )
+
+py_library(
+    name = "quantile",
+    srcs = ["quantile.py"],
+    deps = [
+        "//sml/linear_model/utils:_linprog_simplex",
+    ],
+)

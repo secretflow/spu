@@ -24,6 +24,7 @@
 
 #include "libspu/mpc/common/prg_tensor.h"
 #include "libspu/mpc/semi2k/beaver/beaver_impl/ttp_server/beaver_stream.h"
+#include "libspu/mpc/utils/gfmp_ops.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
 namespace brpc {
@@ -41,7 +42,8 @@ inline size_t CeilDiv(size_t a, size_t b) { return (a + b - 1) / b; }
 
 void FillReplayDesc(Beaver::ReplayDesc* desc, FieldType field, int64_t size,
                     const std::vector<Beaver::PrgSeedBuff>& encrypted_seeds,
-                    PrgCounter counter, PrgSeed self_seed) {
+                    PrgCounter counter, PrgSeed self_seed,
+                    ElementType eltype = ElementType::kRing) {
   if (desc == nullptr || desc->status != Beaver::Init) {
     return;
   }
@@ -50,6 +52,7 @@ void FillReplayDesc(Beaver::ReplayDesc* desc, FieldType field, int64_t size,
   desc->prg_counter = counter;
   desc->encrypted_seeds = encrypted_seeds;
   desc->seed = self_seed;
+  desc->eltype = eltype;
 }
 
 template <class AdjustRequest>
@@ -61,11 +64,15 @@ AdjustRequest BuildAdjustRequest(
   SPU_ENFORCE(!descs.empty());
 
   uint32_t field_size;
+  ElementType eltype = ElementType::kRing;
+
   for (size_t i = 0; i < descs.size(); i++) {
     const auto& desc = descs[i];
     auto* input = ret.add_prg_inputs();
     input->set_prg_count(desc.prg_counter);
     field_size = SizeOf(desc.field);
+    eltype = desc.eltype;
+
     input->set_buffer_len(desc.shape.numel() * SizeOf(desc.field));
 
     absl::Span<const yacl::Buffer> seeds;
@@ -83,6 +90,14 @@ AdjustRequest BuildAdjustRequest(
                                 beaver::ttp_server::AdjustAndRequest>) {
     ret.set_field_size(field_size);
   }
+  if constexpr (std::is_same_v<AdjustRequest,
+                               beaver::ttp_server::AdjustMulRequest> ||
+                std::is_same_v<AdjustRequest,
+                               beaver::ttp_server::AdjustMulPrivRequest>) {
+    if (eltype == ElementType::kGfmp)
+      ret.set_element_type(beaver::ttp_server::ElType::GFMP);
+  }
+
   return ret;
 }
 
@@ -225,6 +240,10 @@ std::vector<NdArrayRef> RpcCall(
     stub.AdjustMul(&cntl, &req, &rsp, nullptr);
   } else if constexpr (std::is_same_v<
                            AdjustRequest,
+                           beaver::ttp_server::AdjustMulPrivRequest>) {
+    stub.AdjustMulPriv(&cntl, &req, &rsp, nullptr);
+  } else if constexpr (std::is_same_v<
+                           AdjustRequest,
                            beaver::ttp_server::AdjustSquareRequest>) {
     stub.AdjustSquare(&cntl, &req, &rsp, nullptr);
   } else if constexpr (std::is_same_v<AdjustRequest,
@@ -340,15 +359,18 @@ BeaverTtp::BeaverTtp(std::shared_ptr<yacl::link::Context> lctx, Options ops)
                                            "BEAVER_TTP:SYNC_ENCRYPTED_SEEDS");
 }
 
+// TODO: kGfmp supports more operations
 BeaverTtp::Triple BeaverTtp::Mul(FieldType field, int64_t size,
-                                 ReplayDesc* x_desc, ReplayDesc* y_desc) {
+                                 ReplayDesc* x_desc, ReplayDesc* y_desc,
+                                 ElementType eltype) {
   std::vector<PrgArrayDesc> descs(3);
   std::vector<absl::Span<const PrgSeedBuff>> descs_seed(3, encrypted_seeds_);
   Shape shape({size, 1});
 
   auto if_replay = [&](const ReplayDesc* replay_desc, size_t idx) {
     if (replay_desc == nullptr || replay_desc->status != Beaver::Replay) {
-      return prgCreateArray(field, shape, seed_, &counter_, &descs[idx]);
+      return prgCreateArray(field, shape, seed_, &counter_, &descs[idx],
+                            eltype);
     } else {
       SPU_ENFORCE(replay_desc->field == field);
       SPU_ENFORCE(replay_desc->size == size);
@@ -356,33 +378,69 @@ BeaverTtp::Triple BeaverTtp::Mul(FieldType field, int64_t size,
       if (lctx_->Rank() == options_.adjust_rank) {
         descs_seed[idx] = replay_desc->encrypted_seeds;
         descs[idx].field = field;
+        descs[idx].eltype = eltype;
         descs[idx].shape = shape;
         descs[idx].prg_counter = replay_desc->prg_counter;
       }
       PrgCounter tmp_counter = replay_desc->prg_counter;
       return prgCreateArray(field, shape, replay_desc->seed, &tmp_counter,
-                            &descs[idx]);
+                            &descs[idx], eltype);
     }
   };
 
-  FillReplayDesc(x_desc, field, size, encrypted_seeds_, counter_, seed_);
+  FillReplayDesc(x_desc, field, size, encrypted_seeds_, counter_, seed_,
+                 eltype);
   auto a = if_replay(x_desc, 0);
-  FillReplayDesc(y_desc, field, size, encrypted_seeds_, counter_, seed_);
+  FillReplayDesc(y_desc, field, size, encrypted_seeds_, counter_, seed_,
+                 eltype);
   auto b = if_replay(y_desc, 1);
-  auto c = prgCreateArray(field, shape, seed_, &counter_, &descs[2]);
+  auto c = prgCreateArray(field, shape, seed_, &counter_, &descs[2], eltype);
 
   if (lctx_->Rank() == options_.adjust_rank) {
     auto req = BuildAdjustRequest<beaver::ttp_server::AdjustMulRequest>(
         descs, descs_seed);
     auto adjusts = RpcCall(channel_, req, field);
     SPU_ENFORCE_EQ(adjusts.size(), 1U);
-    ring_add_(c, adjusts[0].reshape(shape));
+    if (eltype == ElementType::kGfmp) {
+      auto T = c.eltype();
+      gfmp_add_mod_(c, adjusts[0].reshape(shape).as(T));
+    } else {
+      ring_add_(c, adjusts[0].reshape(shape));
+    }
   }
 
   Triple ret;
   std::get<0>(ret) = std::move(*a.buf());
   std::get<1>(ret) = std::move(*b.buf());
   std::get<2>(ret) = std::move(*c.buf());
+
+  return ret;
+}
+
+BeaverTtp::Pair BeaverTtp::MulPriv(FieldType field, int64_t size,
+                                   ElementType eltype) {
+  std::vector<PrgArrayDesc> descs(2);
+  std::vector<absl::Span<const PrgSeedBuff>> descs_seed(2, encrypted_seeds_);
+  Shape shape({size, 1});
+  auto a_or_b =
+      prgCreateArray(field, shape, seed_, &counter_, &descs[0], eltype);
+  auto c = prgCreateArray(field, shape, seed_, &counter_, &descs[1], eltype);
+  if (lctx_->Rank() == options_.adjust_rank) {
+    auto req = BuildAdjustRequest<beaver::ttp_server::AdjustMulPrivRequest>(
+        descs, descs_seed);
+    auto adjusts = RpcCall(channel_, req, field);
+    SPU_ENFORCE_EQ(adjusts.size(), 1U);
+    if (eltype == ElementType::kGfmp) {
+      auto T = c.eltype();
+      gfmp_add_mod_(c, adjusts[0].reshape(shape).as(T));
+    } else {
+      ring_add_(c, adjusts[0].reshape(shape));
+    }
+  }
+
+  Pair ret;
+  std::get<0>(ret) = std::move(*a_or_b.buf());
+  std::get<1>(ret) = std::move(*c.buf());
 
   return ret;
 }

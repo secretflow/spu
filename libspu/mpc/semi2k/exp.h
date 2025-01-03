@@ -12,12 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#define SPU_VERSION "0.9.4.dev$$DATE$$"
+#pragma once
 
-#include <string_view>
+#include "libspu/mpc/kernel.h"
 
-namespace spu {
+namespace spu::mpc::semi2k {
 
-inline std::string_view getVersionStr() { return SPU_VERSION; }
+// Given [x*2^fxp] mod 2k for x
+// compute [exp(x) * 2^fxp] mod 2^k
+// Example:
+// spu::mpc::semi2k::ExpA exp;
+// outp = exp.proc(&kcontext, ring2k_shr);
+class ExpA : public UnaryKernel {
+ public:
+  static constexpr const char* kBindName() { return "exp_a"; }
 
-}  // namespace spu
+  ce::CExpr latency() const override { return ce::Const(2); }
+
+  ce::CExpr comm() const override { return 2 * ce::K(); }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
+};
+
+}  // namespace spu::mpc::semi2k

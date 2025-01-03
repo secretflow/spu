@@ -28,7 +28,9 @@ class CompilationContext;
 
 class HloImporter final {
 public:
+  // clang-format off
   explicit HloImporter(CompilationContext *context) : context_(context) {};
+  // clang-format on
 
   /// Load a xla module and returns a mlir-hlo module
   mlir::OwningOpRef<mlir::ModuleOp>

@@ -88,6 +88,11 @@ Value _mux(SPUContext* ctx, const Value& pred, const Value& a, const Value& b);
 // TODO: test me
 Value _clamp(SPUContext* ctx, const Value& x, const Value& minv,
              const Value& maxv);
+
+Value _clamp_lower(SPUContext* ctx, const Value& x, const Value& minv);
+
+Value _clamp_upper(SPUContext* ctx, const Value& x, const Value& maxv);
+
 // Make a public value from uint128_t init value.
 //
 // If the current working field has less than 128bit, the lower sizeof(field)

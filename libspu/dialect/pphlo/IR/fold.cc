@@ -49,6 +49,14 @@ OpFoldResult ReverseOp::fold(FoldAdaptor) {
           dims, [&](int64_t dim) { return shapedType.getDimSize(dim) == 1; })) {
     return input;
   }
+
+  // reverse(reverse(x, dims), dims) = x
+  if (auto prev = input.getDefiningOp<ReverseOp>()) {
+    if (prev.getDimensions() == dims) {
+      return prev.getOperand();
+    }
+  }
+
   return {};
 }
 

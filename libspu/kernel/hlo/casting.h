@@ -29,6 +29,8 @@ spu::Value Bitcast(SPUContext *ctx, const spu::Value &in, DataType dst_dtype);
 
 spu::Value Reveal(SPUContext *ctx, const spu::Value &in);
 
+spu::Value RevealTo(SPUContext *ctx, const spu::Value &in, size_t rank);
+
 spu::Value Seal(SPUContext *ctx, const spu::Value &in);
 
 }  // namespace spu::kernel::hlo

@@ -14,22 +14,32 @@
 
 #include "libspu/mpc/semi2k/beaver/beaver_impl/trusted_party/trusted_party.h"
 
+#include "libspu/core/type_util.h"
+#include "libspu/mpc/common/prg_tensor.h"
+#include "libspu/mpc/utils/gfmp_ops.h"
 #include "libspu/mpc/utils/permute.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc::semi2k {
 namespace {
 
+enum class ReduceOp : uint8_t {
+  ADD = 0,
+  XOR = 1,
+  MUL = 2,
+};
+
 enum class RecOp : uint8_t {
   ADD = 0,
   XOR = 1,
 };
 
-std::vector<NdArrayRef> reconstruct(RecOp op,
-                                    absl::Span<TrustedParty::Operand> ops) {
+std::vector<NdArrayRef> reduce(ReduceOp op,
+                               absl::Span<TrustedParty::Operand> ops) {
   std::vector<NdArrayRef> rs(ops.size());
 
   const auto world_size = ops[0].seeds.size();
+
   for (size_t rank = 0; rank < world_size; rank++) {
     for (size_t idx = 0; idx < ops.size(); idx++) {
       // FIXME: TTP adjuster server and client MUST have same endianness.
@@ -43,12 +53,25 @@ std::vector<NdArrayRef> reconstruct(RecOp op,
       if (rank == 0) {
         rs[idx] = t;
       } else {
-        if (op == RecOp::ADD) {
-          ring_add_(rs[idx], t);
-        } else if (op == RecOp::XOR) {
+        if (op == ReduceOp::ADD) {
+          if (ops[idx].desc.eltype == ElementType::kGfmp) {
+            // TODO: generalize the reduction
+            gfmp_add_mod_(rs[idx], t);
+          } else {
+            ring_add_(rs[idx], t);
+          }
+        } else if (op == ReduceOp::XOR) {
+          // gfmp has no xor implementation
           ring_xor_(rs[idx], t);
+        } else if (op == ReduceOp::MUL) {
+          if (ops[idx].desc.eltype == ElementType::kGfmp) {
+            // TODO: generalize the reduction
+            gfmp_mul_mod_(rs[idx], t);
+          } else {
+            ring_mul_(rs[idx], t);
+          }
         } else {
-          SPU_ENFORCE("not supported reconstruct op");
+          SPU_THROW("not supported reduction op");
         }
       }
     }
@@ -57,11 +80,17 @@ std::vector<NdArrayRef> reconstruct(RecOp op,
   return rs;
 }
 
+std::vector<NdArrayRef> reconstruct(RecOp op,
+                                    absl::Span<TrustedParty::Operand> ops) {
+  return reduce(ReduceOp(op), ops);
+}
+
 void checkOperands(absl::Span<const TrustedParty::Operand> ops,
                    bool skip_shape = false, bool allow_transpose = false) {
   for (size_t idx = 1; idx < ops.size(); idx++) {
     SPU_ENFORCE(skip_shape || ops[0].desc.shape == ops[idx].desc.shape);
     SPU_ENFORCE(allow_transpose || ops[0].transpose == false);
+    SPU_ENFORCE(ops[0].desc.eltype == ops[idx].desc.eltype);
     SPU_ENFORCE(ops[0].desc.field == ops[idx].desc.field);
     SPU_ENFORCE(ops[0].seeds.size() == ops[idx].seeds.size(), "{} <> {}",
                 ops[0].seeds.size(), ops[idx].seeds.size());
@@ -70,13 +99,43 @@ void checkOperands(absl::Span<const TrustedParty::Operand> ops,
 
 }  // namespace
 
+// TODO: gfmp support more operations
 NdArrayRef TrustedParty::adjustMul(absl::Span<Operand> ops) {
   SPU_ENFORCE_EQ(ops.size(), 3U);
   checkOperands(ops);
 
   auto rs = reconstruct(RecOp::ADD, ops);
   // adjust = rs[0] * rs[1] - rs[2];
-  return ring_sub(ring_mul(rs[0], rs[1]), rs[2]);
+  if (ops[0].desc.eltype == ElementType::kGfmp) {
+    return gfmp_sub_mod(gfmp_mul_mod(rs[0], rs[1]), rs[2]);
+  } else {
+    ring_mul_(rs[0], rs[1]);
+    ring_sub_(rs[0], rs[2]);
+    return rs[0];
+  }
+}
+
+// ops are [a_or_b, c]
+// P0 generate a, c0
+// P1 generate b, c1
+// The adjustment is ab - (c0 + c1),
+// which only needs to be sent to adjust party, e.g. P0.
+// P0 with adjust is ab - c1 = ab - (c0 + c1) + c0
+// Therefore,
+// P0 holds: a, ab - c1
+// P1 holds: b, c1
+NdArrayRef TrustedParty::adjustMulPriv(absl::Span<Operand> ops) {
+  SPU_ENFORCE_EQ(ops.size(), 2U);
+  checkOperands(ops);
+
+  auto ab = reduce(ReduceOp::MUL, ops.subspan(0, 1))[0];
+  auto c = reconstruct(RecOp::ADD, ops.subspan(1, 1))[0];
+  // adjust = ab - c;
+  if (ops[0].desc.eltype == ElementType::kGfmp) {
+    return gfmp_sub_mod(ab, c);
+  } else {
+    return ring_sub(ab, c);
+  }
 }
 
 NdArrayRef TrustedParty::adjustSquare(absl::Span<Operand> ops) {
@@ -84,7 +143,9 @@ NdArrayRef TrustedParty::adjustSquare(absl::Span<Operand> ops) {
 
   auto rs = reconstruct(RecOp::ADD, ops);
   // adjust = rs[0] * rs[0] - rs[1];
-  return ring_sub(ring_mul(rs[0], rs[0]), rs[1]);
+  ring_mul_(rs[0], rs[0]);
+  ring_sub_(rs[0], rs[1]);
+  return rs[0];
 }
 
 NdArrayRef TrustedParty::adjustDot(absl::Span<Operand> ops) {
@@ -101,7 +162,9 @@ NdArrayRef TrustedParty::adjustDot(absl::Span<Operand> ops) {
   }
 
   // adjust = rs[0] dot rs[1] - rs[2];
-  return ring_sub(ring_mmul(rs[0], rs[1]), rs[2]);
+  auto dot = ring_mmul(rs[0], rs[1]);
+  ring_sub_(dot, rs[2]);
+  return dot;
 }
 
 NdArrayRef TrustedParty::adjustAnd(absl::Span<Operand> ops) {
@@ -110,7 +173,9 @@ NdArrayRef TrustedParty::adjustAnd(absl::Span<Operand> ops) {
 
   auto rs = reconstruct(RecOp::XOR, ops);
   // adjust = (rs[0] & rs[1]) ^ rs[2];
-  return ring_xor(ring_and(rs[0], rs[1]), rs[2]);
+  ring_and_(rs[0], rs[1]);
+  ring_xor_(rs[0], rs[2]);
+  return rs[0];
 }
 
 NdArrayRef TrustedParty::adjustTrunc(absl::Span<Operand> ops, size_t bits) {
@@ -119,7 +184,9 @@ NdArrayRef TrustedParty::adjustTrunc(absl::Span<Operand> ops, size_t bits) {
 
   auto rs = reconstruct(RecOp::ADD, ops);
   // adjust = (rs[0] >> bits) - rs[1];
-  return ring_sub(ring_arshift(rs[0], {static_cast<int64_t>(bits)}), rs[1]);
+  ring_arshift_(rs[0], {static_cast<int64_t>(bits)});
+  ring_sub_(rs[0], rs[1]);
+  return rs[0];
 }
 
 std::pair<NdArrayRef, NdArrayRef> TrustedParty::adjustTruncPr(
@@ -131,15 +198,14 @@ std::pair<NdArrayRef, NdArrayRef> TrustedParty::adjustTruncPr(
   auto rs = reconstruct(RecOp::ADD, ops);
 
   // adjust1 = ((rs[0] << 1) >> (bits + 1)) - rs[1];
-  auto adjust1 = ring_sub(
-      ring_rshift(ring_lshift(rs[0], {1}), {static_cast<int64_t>(bits + 1)}),
-      rs[1]);
+  auto adjust1 = ring_lshift(rs[0], {1});
+  ring_rshift_(adjust1, {static_cast<int64_t>(bits + 1)});
+  ring_sub_(adjust1, rs[1]);
 
   // adjust2 = (rs[0] >> (k - 1)) - rs[2];
   const size_t k = SizeOf(ops[0].desc.field) * 8;
-  auto adjust2 =
-      ring_sub(ring_rshift(rs[0], {static_cast<int64_t>(k - 1)}), rs[2]);
-
+  auto adjust2 = ring_rshift(rs[0], {static_cast<int64_t>(k - 1)});
+  ring_sub_(adjust2, rs[2]);
   return {adjust1, adjust2};
 }
 
@@ -148,7 +214,9 @@ NdArrayRef TrustedParty::adjustRandBit(absl::Span<Operand> ops) {
   auto rs = reconstruct(RecOp::ADD, ops);
 
   // adjust = bitrev - rs[0];
-  return ring_sub(ring_randbit(ops[0].desc.field, ops[0].desc.shape), rs[0]);
+  auto randbits = ring_randbit(ops[0].desc.field, ops[0].desc.shape);
+  ring_sub_(randbits, rs[0]);
+  return randbits;
 }
 
 NdArrayRef TrustedParty::adjustEqz(absl::Span<Operand> ops) {

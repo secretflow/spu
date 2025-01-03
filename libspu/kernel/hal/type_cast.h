@@ -35,4 +35,9 @@ Value seal(SPUContext* ctx, const Value& x);
 // @param in, the input value
 Value reveal(SPUContext* ctx, const Value& x);
 
+/// reveal a secret to a specific party
+// @param in, the input value
+// @param rank, the rank of the party to reveal to
+Value reveal_to(SPUContext* ctx, const Value& x, size_t rank);
+
 }  // namespace spu::kernel::hal
