@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-SPU_VERSION = "0.9.4.dev20250102"
+SPU_VERSION = "0.9.4.dev20250103"
 
 def _spu_version_gen(ctx):
     ctx.actions.expand_template(
