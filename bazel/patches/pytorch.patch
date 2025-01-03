@@ -3,7 +3,7 @@
 @@ -172,6 +172,41 @@
      here = os.path.abspath(__file__)
      lib_path = os.path.join(os.path.dirname(here), 'lib', lib_name)
-
+ 
 +    import pathlib
 +    torch_root = pathlib.Path(here).parent.parent
 +    packages = [

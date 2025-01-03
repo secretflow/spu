@@ -8,13 +8,13 @@ index 301a04656..b4d953fd2 100644
  load("//build_defs:cpp_opts.bzl", "COPTS", "LINK_OPTS")
 -load(":protobuf.bzl", "internal_objc_proto_library", "internal_php_proto_library", "internal_py_proto_library")
 +load(":protobuf.bzl", "adapt_proto_library", "internal_objc_proto_library", "internal_php_proto_library", "internal_py_proto_library")
-
+ 
  licenses(["notice"])
-
+ 
 @@ -192,6 +192,25 @@ cc_library(
      visibility = ["//visibility:public"],
  )
-
+ 
 +adapt_proto_library(
 +    name = "cc_wkt_protos_genproto",
 +    visibility = ["//visibility:public"],
@@ -50,30 +50,30 @@ index 7db5146a0..a0e05d4d2 100644
      else:
 -        import_flags += ["-I."]
 +        import_flags.append("-I.")
-
+ 
      has_generated = any([not src.is_source for src in srcs])
      if has_generated:
 -        import_flags += ["-I" + gen_dir]
 +        import_flags.append("-I" + gen_dir)
-
+ 
      if ctx.attr.includes:
          for include in ctx.attr.includes:
 -            import_flags += ["-I" + _GetPath(ctx, include)]
 +            import_flags.append("-I" + _GetPath(ctx, include))
-
+ 
      import_flags = depset(direct = import_flags)
-
+ 
 @@ -153,7 +153,7 @@ def _proto_gen_impl(ctx):
                  outs.extend(_RubyOuts([src.basename]))
-
+ 
              # Otherwise, rely on user-supplied outs.
 -            args += [("--%s_out=" + path_tpl) % (lang, gen_dir)]
 +            args.append(("--%s_out=" + path_tpl) % (lang, gen_dir))
-
+ 
          if ctx.attr.outs:
              outs.extend(ctx.attr.outs)
 @@ -174,8 +174,8 @@ def _proto_gen_impl(ctx):
-
+ 
              if ctx.attr.plugin_options:
                  outdir = ",".join(ctx.attr.plugin_options) + ":" + outdir
 -            args += [("--plugin=protoc-gen-%s=" + path_tpl) % (lang, plugin.path)]
@@ -81,7 +81,7 @@ index 7db5146a0..a0e05d4d2 100644
 +            args.append(("--plugin=protoc-gen-%s=" + path_tpl) % (lang, plugin.path))
 +            args.append("--%s_out=%s" % (lang, outdir))
              tools.append(plugin)
-
+ 
          if not in_gen_dir:
 @@ -765,3 +765,261 @@ def check_protobuf_required_bazel_version():
      copied filegroup. (Fixed in bazel 0.5.4)
