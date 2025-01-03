@@ -12,16 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_python//python:defs.bzl", "py_binary")
+load("@spu_pip_dev//:requirements.bzl", "all_requirements")
+load("//bazel:spu.bzl", "spu_py_binary", "spu_py_library")
 
 package(default_visibility = ["//visibility:public"])
 
-py_library(
+spu_py_library(
     name = "models",
     srcs = ["models.py"],
 )
 
-py_binary(
+spu_py_binary(
     name = "stax_nn",
     srcs = ["stax_nn.py"],
     data = [
@@ -32,5 +33,5 @@ py_binary(
         "//examples/python/utils:dataset_utils",
         "//examples/python/utils:optimizers",
         "//spu/utils:distributed",
-    ],
+    ] + all_requirements,
 )

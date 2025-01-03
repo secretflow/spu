@@ -18,12 +18,14 @@
 #include <utility>
 
 #include "yacl/crypto/rand/rand.h"
+#include "yacl/link/algorithm/broadcast.h"
 #include "yacl/link/algorithm/gather.h"
 #include "yacl/utils/serialize.h"
 
 #include "libspu/mpc/common/prg_tensor.h"
 #include "libspu/mpc/semi2k/beaver/beaver_impl/trusted_party/trusted_party.h"
 #include "libspu/mpc/utils/gfmp_ops.h"
+#include "libspu/mpc/utils/permute.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc::semi2k {
@@ -373,40 +375,46 @@ BeaverTfpUnsafe::Array BeaverTfpUnsafe::RandBit(FieldType field, int64_t size) {
   return std::move(*a.buf());
 }
 
-BeaverTfpUnsafe::Pair BeaverTfpUnsafe::PermPair(
-    FieldType field, int64_t size, size_t perm_rank,
-    absl::Span<const int64_t> perm_vec) {
+BeaverTfpUnsafe::PremTriple BeaverTfpUnsafe::PermPair(FieldType field,
+                                                      int64_t size,
+                                                      size_t perm_rank) {
   constexpr char kTag[] = "BEAVER_TFP:PERM";
+  SPU_ENFORCE(perm_rank < lctx_->WorldSize(), "TODO");
 
   std::vector<TrustedParty::Operand> ops(2);
   Shape shape({size});
 
   auto a = prgCreateArray(field, shape, seed_, &counter_, &ops[0].desc);
   auto b = prgCreateArray(field, shape, seed_, &counter_, &ops[1].desc);
+  Index pi;
+
+  if (lctx_->Rank() == perm_rank) {
+    pi = genRandomPerm(size, seed_, &counter_);
+  }
 
   if (lctx_->Rank() == 0) {
     for (auto& op : ops) {
       op.seeds = seeds_;
     }
-    if (perm_rank != lctx_->Rank()) {
-      auto pv_buf = lctx_->Recv(perm_rank, kTag);
-
-      ring_add_(b, TrustedParty::adjustPerm(
-                       absl::MakeSpan(ops),
-                       absl::MakeSpan(pv_buf.data<int64_t>(),
-                                      pv_buf.size() / sizeof(int64_t))));
+    if (perm_rank != 0) {
+      auto pi = genRandomPerm(size, seeds_[perm_rank], &counter_);
+      ring_add_(b, TrustedParty::adjustPerm(absl::MakeSpan(ops), pi));
     } else {
-      ring_add_(b, TrustedParty::adjustPerm(absl::MakeSpan(ops), perm_vec));
+      ring_add_(b, TrustedParty::adjustPerm(absl::MakeSpan(ops), pi));
     }
-  } else if (perm_rank == lctx_->Rank()) {
-    lctx_->SendAsync(
-        0, yacl::Buffer(perm_vec.data(), perm_vec.size() * sizeof(int64_t)),
-        kTag);
   }
 
-  Pair ret;
-  ret.first = std::move(*a.buf());
-  ret.second = std::move(*b.buf());
+  auto new_counter_buf = yacl::link::Broadcast(
+      lctx_, yacl::SerializeVars<PrgCounter>(counter_), perm_rank, kTag);
+
+  counter_ = yacl::DeserializeVars<PrgCounter>(new_counter_buf);
+
+  PremTriple ret;
+  std::get<0>(ret) = std::move(*a.buf());
+  std::get<1>(ret) = std::move(*b.buf());
+  if (lctx_->Rank() == perm_rank) {
+    std::get<2>(ret) = std::move(pi);
+  }
 
   return ret;
 }

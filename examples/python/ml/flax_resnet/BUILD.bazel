@@ -12,28 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_python//python:defs.bzl", "py_binary", "py_library")
+load("@spu_pip_dev//:requirements.bzl", "all_requirements")
+load("//bazel:spu.bzl", "spu_py_binary")
 
 package(default_visibility = ["//visibility:public"])
 
-py_library(
-    name = "models",
-    srcs = ["models.py"],
-)
-
-py_binary(
+spu_py_binary(
     name = "flax_resnet_training",
-    srcs = ["flax_resnet_training.py"],
+    srcs = [
+        "flax_resnet_training.py",
+        "models.py",
+    ],
     data = [
         "//examples/python/ml/flax_resnet:3pc.json",
     ],
     deps = [
-        ":models",
         "//spu/utils:distributed",
-    ],
+    ] + all_requirements,
 )
 
-py_binary(
+spu_py_binary(
     name = "flax_resnet_inference",
     srcs = ["flax_resnet_inference.py"],
     data = [
@@ -41,5 +39,5 @@ py_binary(
     ],
     deps = [
         "//spu/utils:distributed",
-    ],
+    ] + all_requirements,
 )

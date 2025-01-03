@@ -38,8 +38,8 @@ pip install spu
 - At the root of repo, run
 
 ```bash
-python setup.py bdist_wheel
-pip install dist/*.whl --force-reinstall
+bazel build //:spu_wheel -c opt
+pip install bazel-bin/spu-*.whl --force-reinstall
 ```
 
 - Once GCC/bazel/python/Xcode version or other environment settings have changed, please run the following command to ensure a clean build
@@ -51,5 +51,15 @@ bazel clean --expunge
 #### Build with GPU support
 
 ```bash
-export ENABLE_GPU_BUILD=1 && python setup.py bdist_wheel
+bazel build //:spu_wheel -c opt --config=gpu
+```
+
+#### Build with specified python version
+
+```bash
+# build with python 3.10
+bazel build //:spu_wheel -c opt --@rules_python//python/config_settings:python_version=3.10
+
+# build with python 3.11
+bazel build //:spu_wheel -c opt --@rules_python//python/config_settings:python_version=3.11
 ```

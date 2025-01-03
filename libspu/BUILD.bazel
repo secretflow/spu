@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@protobuf//bazel:py_proto_library.bzl", "py_proto_library")
 load("@rules_cc//cc:defs.bzl", "cc_proto_library")
 load("@rules_proto//proto:defs.bzl", "proto_library")
-load("@rules_proto_grpc//python:defs.bzl", "python_proto_compile")
+load("//:version.bzl", "spu_version_gen")
 load("//bazel:spu.bzl", "spu_cc_library")
 
 package(default_visibility = ["//visibility:public"])
@@ -29,14 +30,18 @@ cc_proto_library(
     deps = [":spu_proto"],
 )
 
-python_proto_compile(
+py_proto_library(
     name = "spu_py_proto",
-    output_mode = "NO_PREFIX",
-    prefix_path = "..",
-    protos = ["//libspu:spu_proto"],
+    deps = ["//libspu:spu_proto"],
 )
 
 spu_cc_library(
     name = "version",
-    hdrs = ["version.h"],
+    hdrs = [":spu_version"],
+)
+
+spu_version_gen(
+    name = "spu_version",
+    out = "version.h",
+    template = "version.h.in",
 )

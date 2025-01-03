@@ -270,10 +270,14 @@ Value rand_p(SPUContext* ctx, const Shape& shape) {
   FORCE_DISPATCH(ctx, shape);
 }
 
-Value rand_s(SPUContext* ctx, const Shape& shape) {
+Value rand_s(SPUContext* ctx, const Shape& shape, DataType dtype) {
   SPU_TRACE_MPC_DISP(ctx, shape);
   TRY_DISPATCH(ctx, shape);
-  // always return random a share
+  // can only get random bit share now.
+  if (dtype == DT_I1) {
+    return rand_b(ctx, shape);
+  }
+  // else, return random a share
   return rand_a(ctx, shape);
 }
 

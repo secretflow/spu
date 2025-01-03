@@ -44,6 +44,129 @@ inline bool _has_same_owner(const Value &x, const Value &y) {
   return _get_owner(x) == _get_owner(y);
 }
 
+hal::CompFn _get_cmp_func(SPUContext *ctx, int64_t num_keys,
+                          SortDirection direction, bool append_rand = false) {
+  hal::CompFn comp_fn = [ctx, num_keys, direction, append_rand](
+                            absl::Span<const spu::Value> values) -> spu::Value {
+    auto scalar_cmp = [direction](spu::SPUContext *ctx, const spu::Value &lhs,
+                                  const spu::Value &rhs) {
+      if (direction == SortDirection::Ascending) {
+        return hal::less(ctx, lhs, rhs);
+      }
+      return hal::greater(ctx, lhs, rhs);
+    };
+
+    spu::Value k1 = hal::constant(ctx, true, DT_I1, values[0].shape());
+    spu::Value pre_equal = k1;
+    spu::Value result = scalar_cmp(ctx, values[0], values[1]);
+    // the idea here is that if the two values of the last key is equal,
+    // than we compare the two values of the current key, and iteratively to
+    // update the result which indicates whether to swap values
+    int64_t idx;
+    for (idx = 2; idx < num_keys * 2; idx += 2) {
+      pre_equal = hal::bitwise_and(
+          ctx, pre_equal, hal::equal(ctx, values[idx - 2], values[idx - 1]));
+      auto current = scalar_cmp(ctx, values[idx], values[idx + 1]);
+      current = hal::bitwise_and(ctx, pre_equal, current);
+      result = hal::bitwise_or(ctx, result, current);
+    }
+
+    // append rand value to avoid the same key "pitfall" in partition-based
+    // algorithms (e.g. quick-sort, quick-select).
+    if (append_rand) {
+      // must use secret bits here, otherwise some infos will leak
+      auto rand_bits = hal::random(ctx, VIS_SECRET, DT_I1, values[0].shape());
+
+      // equal has better performance for aby3
+      // cmp+andbb has better performance for semi2k now
+      pre_equal = hal::bitwise_and(
+          ctx, pre_equal, hal::equal(ctx, values[idx - 2], values[idx - 1]));
+      auto current = hal::bitwise_and(ctx, pre_equal, rand_bits);
+      result = hal::bitwise_or(ctx, result, current);
+    }
+
+    return result;
+  };
+
+  return comp_fn;
+}
+
+bool _check_method_require(SPUContext *ctx, RuntimeConfig::SortMethod method) {
+  bool pass = false;
+  switch (method) {
+    case RuntimeConfig::SORT_RADIX:
+      pass = ctx->hasKernel("rand_perm_m") && ctx->hasKernel("perm_am") &&
+             ctx->hasKernel("perm_ap") && ctx->hasKernel("inv_perm_am") &&
+             ctx->hasKernel("inv_perm_ap");
+      break;
+    case RuntimeConfig::SORT_QUICK:
+      // quick sort only requires small subsets of shuffle kernels, but need
+      // rand_b kernel to avoid calling of a2b.
+      pass = ctx->hasKernel("rand_perm_m") && ctx->hasKernel("perm_am") &&
+             ctx->hasKernel("rand_b");
+      break;
+    case RuntimeConfig::SORT_NETWORK:
+      // sort network is a general method which can be used for all MPC
+      // protocols.
+      pass = true;
+      break;
+    default:
+      SPU_THROW("Should not reach here");
+  }
+
+  return pass;
+}
+
+RuntimeConfig::SortMethod select_sort_method(
+    SPUContext *ctx, RuntimeConfig::SortMethod preferred_method) {
+  SPU_ENFORCE(preferred_method != RuntimeConfig::SORT_DEFAULT);
+
+  // if the preferred method is not supported, fall back to sorting network now.
+  const RuntimeConfig::SortMethod fallback_method = RuntimeConfig::SORT_NETWORK;
+
+  switch (preferred_method) {
+    case RuntimeConfig::SORT_RADIX:
+      if (internal::_check_method_require(ctx, RuntimeConfig::SORT_RADIX)) {
+        return preferred_method;
+      }
+      break;
+
+    case RuntimeConfig::SORT_QUICK:
+      if (internal::_check_method_require(ctx, RuntimeConfig::SORT_QUICK)) {
+        return preferred_method;
+      }
+      break;
+
+    case RuntimeConfig::SORT_NETWORK:
+      // always true now.
+      if (internal::_check_method_require(ctx, RuntimeConfig::SORT_NETWORK)) {
+        return preferred_method;
+      }
+      SPU_THROW("should not reach here");
+      break;
+
+    default:
+      SPU_THROW("should not reach here");
+  }
+
+  return fallback_method;
+}
+
+std::vector<spu::Value> fallback_sort1d(SPUContext *ctx,
+                                        absl::Span<spu::Value const> inputs,
+                                        int64_t num_keys,
+                                        SortDirection direction) {
+  auto comp_fn = _get_cmp_func(ctx, num_keys, direction);
+  Visibility vis = std::all_of(inputs.begin(), inputs.begin() + num_keys,
+                               [](const spu::Value &v) { return v.isPublic(); })
+                       ? VIS_PUBLIC
+                       : VIS_SECRET;
+  // currently, general sort1d only supports odd-even sorting network which is
+  // an unstable sort method.
+  auto ret = sort1d(ctx, inputs, comp_fn, vis, false);
+  return ret;
+}
+
 void _hint_nbits(const Value &a, size_t nbits) {
   if (a.storage_type().isa<BShare>()) {
     const_cast<Type &>(a.storage_type()).as<BShare>()->setNbits(nbits);
@@ -216,6 +339,290 @@ void HandleSmallArray(SPUContext *ctx, const CompFn &comparator_body,
   if (hi == lo + 1) {
     CompSwapSingle(ctx, comparator_body, arr, lo, hi, config);
   }
+}
+
+std::vector<Value> _construct_cmp_values(
+    SPUContext *ctx, const std::vector<std::pair<int64_t, int64_t>> &intervals,
+    absl::Span<spu::Value const> arr, const int64_t quick_sort_thres,
+    const int64_t num_keys) {
+  int64_t lo;
+  int64_t hi;
+  int64_t left;
+  int64_t right;
+
+  std::vector<std::vector<Value>> cmp_values(2 * num_keys);
+  for (auto &values : cmp_values) {
+    values.reserve(intervals.size());
+  }
+
+  for (const auto &interval : intervals) {
+    std::tie(lo, hi) = interval;
+
+    if (hi - lo <= quick_sort_thres) {
+      continue;
+    }
+
+    left = lo + 1;
+    right = hi;
+
+    for (int64_t i = 0; i < num_keys; i++) {
+      // pivot
+      cmp_values[2 * i].push_back(broadcast_to(
+          ctx, slice_scalar_at(ctx, arr[i], {lo}), {right - left + 1}));
+      // others
+      cmp_values[2 * i + 1].push_back(slice(ctx, arr[i], {left}, {right + 1}));
+    }
+  }
+
+  // no need to quick sort
+  if (cmp_values[0].empty()) {
+    return {};
+  }
+
+  std::vector<Value> ret;
+  ret.reserve(2 * num_keys);
+
+  for (int64_t i = 0; i < 2 * num_keys; i++) {
+    ret.push_back(concatenate(ctx, cmp_values[i], 0));
+  }
+
+  return ret;
+}
+
+bool Partition(SPUContext *ctx, const int64_t num_keys,
+               const CompFn &comparator_body, absl::Span<spu::Value> arr,
+               std::vector<std::pair<int64_t, int64_t>> &intervals) {
+  if (intervals.empty()) {
+    return false;
+  }
+
+  int64_t quick_sort_thres = ctx->config().quick_sort_threshold();
+
+  int64_t lo;  // left end of current interval
+  int64_t hi;  // right end of current interval
+
+  int64_t left;   // location of left pointer
+  int64_t right;  // location of right pointer
+  int64_t mid;    // location of pivot element after partition
+
+  auto values =
+      _construct_cmp_values(ctx, intervals, arr, quick_sort_thres, num_keys);
+
+  if (values.empty()) {
+    return false;
+  }
+
+  auto predicate = comparator_body(values);
+  auto _predicate = dump_public_as<bool>(ctx, hal::reveal(ctx, predicate));
+
+  Index lhs_indices;
+  Index rhs_indices;
+  Index pivot_indices;
+  Index mid_indices;
+  // save partition output, i.e. (lo, mid, hi), where mid is the location of
+  // pivot after partition.
+  std::vector<std::tuple<int64_t, int64_t, int64_t>> pos;
+  // save the intervals that do not need quick sort anymore.
+  std::vector<std::pair<int64_t, int64_t>> pass_vec;
+
+  int64_t length = 0;
+  for (auto item : intervals) {
+    std::tie(lo, hi) = item;
+
+    if (hi - lo <= quick_sort_thres) {
+      pass_vec.emplace_back(lo, hi);
+      continue;
+    }
+
+    left = lo + 1;
+    right = hi;
+
+    auto offset = left;
+    // use two pointer for partition
+    for (;;) {
+      while (right >= left && !_predicate[left - offset + length]) {
+        left++;
+      }
+      while (right >= left && _predicate[right - offset + length]) {
+        right--;
+      }
+      if (right < left) {
+        break;
+      }
+
+      lhs_indices.emplace_back(left);
+      rhs_indices.emplace_back(right);
+
+      left++;
+      right--;
+    }
+    length += (hi - lo);
+
+    pivot_indices.emplace_back(lo);
+    mid_indices.emplace_back(right);
+    pos.emplace_back(lo, right, hi);
+  }
+  Swap(arr, lhs_indices, rhs_indices);
+  // swap the pivot
+  Swap(arr, pivot_indices, mid_indices);
+
+  intervals.swap(pass_vec);
+  intervals.reserve(2 * intervals.size());
+
+  while (!pos.empty()) {
+    std::tie(lo, mid, hi) = pos.back();
+    pos.pop_back();
+    if (lo < mid) {
+      intervals.emplace_back(lo, mid - 1);
+    }
+    if (mid < hi) {
+      intervals.emplace_back(mid + 1, hi);
+    }
+  }
+
+  return true;
+}
+
+// this algorithm is mainly adopted from odd-even mergesort, but we can reveal
+// the comparison because of shuffling
+void mergesort(SPUContext *ctx, const CompFn &comparator_body,
+               absl::Span<spu::Value> arr,
+               std::vector<std::pair<int64_t, int64_t>> &intervals) {
+  const auto N = arr.front().numel();
+  int64_t logn = Log2Ceil(N);
+  // max depth for odd-even merge network
+  int64_t depth = ((logn + 1) * logn) / 2;
+
+  std::vector<Index> lhs_indices(depth);
+  std::vector<Index> rhs_indices(depth);
+
+  int64_t lo;
+  int64_t hi;
+  for (auto item : intervals) {
+    std::tie(lo, hi) = item;
+    if (hi - lo <= 0) {
+      continue;
+    }
+
+    int64_t n = hi - lo + 1;
+    int64_t cnt = 0;
+    for (int64_t max_gap_in_stage = 1; max_gap_in_stage < n;
+         max_gap_in_stage += max_gap_in_stage) {
+      for (int64_t step = max_gap_in_stage; step > 0; step /= 2) {
+        for (int64_t j = step % max_gap_in_stage; j + step < n;
+             j += step + step) {
+          auto range = max_gap_in_stage + max_gap_in_stage;
+
+          for (int64_t i = 0; i < step; i++) {
+            auto lhs_idx = i + j;
+            auto rhs_idx = i + j + step;
+
+            if (rhs_idx >= n) {
+              break;
+            }
+
+            if (lhs_idx / range == rhs_idx / range) {
+              lhs_indices[cnt].emplace_back(lhs_idx + lo);
+              rhs_indices[cnt].emplace_back(rhs_idx + lo);
+            }
+          }
+        }
+        cnt += 1;
+      }
+    }
+  }
+
+  size_t num_operands = arr.size();
+  for (size_t i = 0; i < lhs_indices.size(); i++) {
+    if (lhs_indices[i].empty()) {
+      continue;
+    }
+
+    Index lhs_indice;
+    Index rhs_indice;
+
+    std::vector<spu::Value> values;
+    values.reserve(2 * num_operands);
+
+    for (size_t j = 0; j < num_operands; ++j) {
+      values.emplace_back(arr[j].data().linear_gather(lhs_indices[i]),
+                          arr[j].dtype());
+      values.emplace_back(arr[j].data().linear_gather(rhs_indices[i]),
+                          arr[j].dtype());
+    }
+    auto predicate = comparator_body(values);
+    auto _predicate = dump_public_as<bool>(ctx, hal::reveal(ctx, predicate));
+    for (size_t k = 0; k < _predicate.size(); k++) {
+      if (!_predicate[k]) {
+        lhs_indice.emplace_back(lhs_indices[i][k]);
+        rhs_indice.emplace_back(rhs_indices[i][k]);
+      }
+    }
+    Swap(arr, lhs_indice, rhs_indice);
+  }
+}
+
+std::vector<spu::Value> QuickMergesort(SPUContext *ctx, const int64_t num_keys,
+                                       const CompFn &quick_comp,
+                                       const CompFn &merge_comp,
+                                       absl::Span<spu::Value const> inputs) {
+  // we do not need to copy or _2s here because of the secret shuffling.
+  std::vector<spu::Value> ret(inputs.begin(), inputs.end());
+
+  const auto n = inputs.front().numel();
+  std::vector<std::pair<int64_t, int64_t>> intervals;
+  intervals.emplace_back(0, n - 1);
+  int64_t quicksort_num = 0;
+  // set max depth to avoid infinite loop
+  int64_t depth = 1000;
+  bool need_quick_sort = true;
+
+  while (!intervals.empty()) {
+    need_quick_sort =
+        Partition(ctx, num_keys, quick_comp, absl::MakeSpan(ret), intervals);
+    quicksort_num += 1;
+
+    if (!need_quick_sort || (quicksort_num == depth)) {
+      break;
+    }
+  }
+
+  if (intervals.empty()) {
+    return ret;
+  }
+
+  mergesort(ctx, merge_comp, absl::MakeSpan(ret), intervals);
+
+  return ret;
+}
+
+std::vector<spu::Value> PrepareSort(SPUContext *ctx,
+                                    absl::Span<spu::Value const> inputs) {
+  std::vector<spu::Value> inp;
+  inp.reserve(inputs.size());
+
+  auto rand_perm = _rand_perm_s(ctx, inputs.front().shape());
+  // use a random permutation to break link of values, such that the following
+  // comparison can be revealed without loss of information.
+  for (const auto &input : inputs) {
+    inp.emplace_back(
+        std::move(_perm_ss(ctx, input, rand_perm).setDtype(input.dtype())));
+  }
+
+  return inp;
+}
+
+std::vector<spu::Value> quick_sort(SPUContext *ctx,
+                                   absl::Span<spu::Value const> inputs,
+                                   int64_t num_keys, SortDirection direction) {
+  auto inp = PrepareSort(ctx, inputs);
+  // quick sort will append extra random key
+  auto quick_comp = _get_cmp_func(ctx, num_keys, direction, true);
+  // in merge sort stage, only normal keys are used for comparison
+  auto merge_comp = _get_cmp_func(ctx, num_keys, direction);
+  auto ret = QuickMergesort(ctx, num_keys, quick_comp, merge_comp,
+                            absl::MakeSpan(inp));
+  return ret;
 }
 
 void TwoWayPartition(SPUContext *ctx, const CompFn &comparator_body,
@@ -684,9 +1091,11 @@ spu::Value _apply_inv_perm_ss(SPUContext *ctx, const spu::Value &x,
 // Compose is actually a special case of apply_perm where both inputs are
 // permutations. So to be more general, we use the name _apply_perm_ss
 // rather than _compose_ss here
-spu::Value _apply_perm_ss(SPUContext *ctx, const Value &x, const Value &perm) {
+std::vector<spu::Value> _apply_perm_ss(SPUContext *ctx,
+                                       absl::Span<spu::Value const> x,
+                                       const Value &perm) {
   // 1. <SP> = secure shuffle <perm>
-  auto shuffle_perm = hal::_rand_perm_s(ctx, x.shape());
+  auto shuffle_perm = hal::_rand_perm_s(ctx, x[0].shape());
   auto sp = hal::_perm_ss(ctx, perm, shuffle_perm);
 
   // 2. M = reveal(<SP>)
@@ -694,12 +1103,26 @@ spu::Value _apply_perm_ss(SPUContext *ctx, const Value &x, const Value &perm) {
   SPU_ENFORCE_EQ(m.shape().ndim(), 1U, "perm should be 1-d tensor");
 
   // 3. sx = apply_perm(x,m)
-  auto sx = hal::_perm_sp(ctx, x, m);
+  std::vector<spu::Value> sx;
+  sx.reserve(x.size());
+  for (const auto &item : x) {
+    sx.emplace_back(hal::_perm_sp(ctx, item, m));
+  }
 
   // 4. ret = unshuffle(<sx>)
-  auto ret = hal::_inv_perm_ss(ctx, sx, shuffle_perm);
+  std::vector<spu::Value> ret;
+  ret.reserve(x.size());
+  for (const auto &item : sx) {
+    ret.emplace_back(hal::_inv_perm_ss(ctx, item, shuffle_perm));
+  }
 
   return ret;
+}
+
+spu::Value _apply_perm_ss(SPUContext *ctx, const Value &x, const Value &perm) {
+  std::vector<spu::Value> inputs{x};
+  auto ret = _apply_perm_ss(ctx, inputs, perm);
+  return std::move(ret[0]);
 }
 
 // Find mergeable keys from keys. Consecutive public/private(belong to one
@@ -768,10 +1191,37 @@ spu::Value _apply_inv_perm_sv(SPUContext *ctx, const Value &in,
   }
 }
 
-#define MAP_APPLY_PERM_OP(NAME)                             \
-  spu::Value _apply##NAME(SPUContext *ctx, const Value &in, \
-                          const Value &perm) {              \
-    return hal::NAME(ctx, in, perm);                        \
+std::vector<Value> _apply_inv_perm_sv(SPUContext *ctx,
+                                      absl::Span<Value const> inputs,
+                                      const Value &perm) {
+  if (ctx->hasKernel("inv_perm_av")) {
+    std::vector<spu::Value> ret;
+    ret.reserve(inputs.size());
+    for (const auto &input : inputs) {
+      ret.emplace_back(
+          _apply_inv_perm_sv(ctx, input, perm).setDtype(input.dtype()));
+    }
+    return ret;
+  } else {
+    return _apply_inv_perm_ss(ctx, inputs, _2s(ctx, perm));
+  }
+}
+
+#define MAP_APPLY_PERM_OP(NAME)                                             \
+  spu::Value _apply##NAME(SPUContext *ctx, const Value &in,                 \
+                          const Value &perm) {                              \
+    return hal::NAME(ctx, in, perm);                                        \
+  }                                                                         \
+                                                                            \
+  std::vector<Value> _apply##NAME(                                          \
+      SPUContext *ctx, absl::Span<Value const> inputs, const Value &perm) { \
+    std::vector<Value> ret;                                                 \
+    ret.reserve(inputs.size());                                             \
+    for (const auto &input : inputs) {                                      \
+      ret.emplace_back(                                                     \
+          _apply##NAME(ctx, input, perm).setDtype(input.dtype()));          \
+    }                                                                       \
+    return ret;                                                             \
   }
 
 MAP_APPLY_PERM_OP(_perm_pp);
@@ -781,40 +1231,86 @@ MAP_APPLY_PERM_OP(_inv_perm_pp);
 MAP_APPLY_PERM_OP(_inv_perm_vv);
 MAP_APPLY_PERM_OP(_inv_perm_sp);
 
+#define MAP_VEC_CONVERT_OP(NAME)                                             \
+  std::vector<Value> NAME(SPUContext *ctx, absl::Span<Value const> inputs) { \
+    std::vector<Value> ret;                                                  \
+    ret.reserve(inputs.size());                                              \
+    for (const auto &input : inputs) {                                       \
+      ret.emplace_back(hal::NAME(ctx, input).setDtype(input.dtype()));       \
+    }                                                                        \
+    return ret;                                                              \
+  }
+
+MAP_VEC_CONVERT_OP(_p2s);
+MAP_VEC_CONVERT_OP(_v2s);
+
+#undef MAP_VEC_CONVERT_OP
+
+std::vector<Value> _p2v(SPUContext *ctx, absl::Span<Value const> inputs,
+                        int owner) {
+  std::vector<Value> ret;
+  ret.reserve(inputs.size());
+  for (const auto &input : inputs) {
+    ret.emplace_back(hal::_p2v(ctx, input, owner).setDtype(input.dtype()));
+  }
+  return ret;
+}
+
 // Given a permutation, apply (inverse) permutation on a 1-d array input
-#define MAP_PERM_OP(NAME)                                                \
-  spu::Value NAME(SPUContext *ctx, const Value &in, const Value &perm) { \
-    SPU_TRACE_HAL_DISP(ctx, in, perm);                                   \
-    if (in.isPublic() && perm.isPublic()) { /*PP*/                       \
-      return NAME##_pp(ctx, in, perm);                                   \
-    } else if (in.isPublic() && perm.isSecret()) { /*PS*/                \
-      return NAME##_ss(ctx, _p2s(ctx, in), perm);                        \
-    } else if (in.isPublic() && perm.isPrivate()) { /*PV*/               \
-      return NAME##_vv(ctx, _p2v(ctx, in, _get_owner(perm)), perm);      \
-    } else if (in.isPrivate() && perm.isPrivate()) { /*VV*/              \
-      if (_has_same_owner(in, perm)) {                                   \
-        return NAME##_vv(ctx, in, perm);                                 \
-      } else {                                                           \
-        return NAME##_sv(ctx, _v2s(ctx, in), perm);                      \
-      }                                                                  \
-    } else if (in.isPrivate() && perm.isPublic()) { /*VP*/               \
-      return NAME##_vv(ctx, in, _p2v(ctx, perm, _get_owner(in)));        \
-    } else if (in.isPrivate() && perm.isSecret()) { /*VS*/               \
-      return NAME##_ss(ctx, _v2s(ctx, in), perm);                        \
-    } else if (in.isSecret() && perm.isSecret()) { /*SS*/                \
-      return NAME##_ss(ctx, in, perm);                                   \
-    } else if (in.isSecret() && perm.isPublic()) { /*SP*/                \
-      return NAME##_sp(ctx, in, perm);                                   \
-    } else if (in.isSecret() && perm.isPrivate()) { /*SV*/               \
-      return NAME##_sv(ctx, in, perm);                                   \
-    } else {                                                             \
-      SPU_THROW("should not be here");                                   \
-    }                                                                    \
+#define MAP_PERM_OP(NAME)                                                   \
+  std::vector<Value> NAME(SPUContext *ctx, absl::Span<Value const> in,      \
+                          const Value &perm) {                              \
+    SPU_ENFORCE(!in.empty(), "Inputs should not be empty");                 \
+    SPU_ENFORCE(std::all_of(in.begin(), in.end(),                           \
+                            [&in](const spu::Value &v) {                    \
+                              return v.vtype() == in[0].vtype();            \
+                            }),                                             \
+                "Inputs visibility mismatched");                            \
+    if (in[0].isPrivate()) {                                                \
+      SPU_ENFORCE(std::all_of(in.begin(), in.end(),                         \
+                              [&in](const spu::Value &v) {                  \
+                                return internal::_has_same_owner(v, in[0]); \
+                              }),                                           \
+                  "Inputs owner mismatched");                               \
+    }                                                                       \
+    SPU_TRACE_HAL_DISP(ctx, in[0], perm);                                   \
+    if (in[0].isPublic() && perm.isPublic()) { /*PP*/                       \
+      return NAME##_pp(ctx, in, perm);                                      \
+    } else if (in[0].isPublic() && perm.isSecret()) { /*PS*/                \
+      return NAME##_ss(ctx, _p2s(ctx, in), perm);                           \
+    } else if (in[0].isPublic() && perm.isPrivate()) { /*PV*/               \
+      return NAME##_vv(ctx, _p2v(ctx, in, _get_owner(perm)), perm);         \
+    } else if (in[0].isPrivate() && perm.isPrivate()) { /*VV*/              \
+      if (_has_same_owner(in[0], perm)) {                                   \
+        return NAME##_vv(ctx, in, perm);                                    \
+      } else {                                                              \
+        return NAME##_sv(ctx, _v2s(ctx, in), perm);                         \
+      }                                                                     \
+    } else if (in[0].isPrivate() && perm.isPublic()) { /*VP*/               \
+      return NAME##_vv(ctx, in, hal::_p2v(ctx, perm, _get_owner(in[0])));   \
+    } else if (in[0].isPrivate() && perm.isSecret()) { /*VS*/               \
+      return NAME##_ss(ctx, _v2s(ctx, in), perm);                           \
+    } else if (in[0].isSecret() && perm.isSecret()) { /*SS*/                \
+      return NAME##_ss(ctx, in, perm);                                      \
+    } else if (in[0].isSecret() && perm.isPublic()) { /*SP*/                \
+      return NAME##_sp(ctx, in, perm);                                      \
+    } else if (in[0].isSecret() && perm.isPrivate()) { /*SV*/               \
+      return NAME##_sv(ctx, in, perm);                                      \
+    } else {                                                                \
+      SPU_THROW("should not be here");                                      \
+    }                                                                       \
   }
 
 // Inverse permute 1-D array x with a permutation perm
 // ret[perm[i]] = x[i]
 MAP_PERM_OP(_apply_inv_perm)
+
+spu::Value _apply_inv_perm(SPUContext *ctx, const spu::Value &x,
+                           const spu::Value &perm) {
+  std::vector<spu::Value> inputs{x};
+  auto ret = _apply_inv_perm(ctx, inputs, perm);
+  return std::move(ret[0]);
+}
 
 // Given a permutation, generate its inverse permutation
 // ret[perm[i]] = i
@@ -829,13 +1325,26 @@ spu::Value _apply_perm_sv(SPUContext *ctx, const Value &in, const Value &perm) {
   if (ctx->hasKernel("inv_perm_av")) {
     return hal::_inv_perm_sv(ctx, in, _inverse(ctx, perm));
   } else {
-    return _apply_inv_perm_ss(ctx, in, _v2s(ctx, _inverse(ctx, perm)));
+    return _apply_inv_perm_ss(ctx, in, hal::_v2s(ctx, _inverse(ctx, perm)));
   }
+}
+
+std::vector<Value> _apply_perm_sv(SPUContext *ctx,
+                                  absl::Span<Value const> inputs,
+                                  const Value &perm) {
+  return _apply_inv_perm_sv(ctx, inputs, _inverse(ctx, perm));
 }
 
 // Permute 1-D array x with a permutation perm
 // ret[i] = x[perm[i]]
 MAP_PERM_OP(_apply_perm)
+
+spu::Value _apply_perm(SPUContext *ctx, const spu::Value &x,
+                       const spu::Value &perm) {
+  std::vector<spu::Value> inputs{x};
+  auto ret = _apply_perm(ctx, inputs, perm);
+  return std::move(ret[0]);
+}
 
 // Compose two permutations into one permutation
 // If we have two permutations x and y, we want to get a permutation z from x
@@ -843,6 +1352,8 @@ MAP_PERM_OP(_apply_perm)
 spu::Value _compose_perm(SPUContext *ctx, const Value &x, const Value &y) {
   return _apply_perm(ctx, y, x);
 }
+
+#undef MAP_PERM_OP
 
 spu::Value _merge_keys(SPUContext *ctx, absl::Span<Value const> inputs,
                        bool is_ascending) {
@@ -1065,58 +1576,84 @@ std::vector<spu::Value> simple_sort1d(SPUContext *ctx,
   SPU_ENFORCE(num_keys > 0 && num_keys <= static_cast<int64_t>(inputs.size()),
               "num_keys {} is not valid", num_keys);
 
-  bool fallback = false;
-  // if all keys are public, fallback to public sort
+  std::vector<spu::Value> ret;
+  const auto sort_method = ctx->config().sort_method();
+
+  // There are multiple sort methods supported by SPU, we will try to seek the
+  // best method in the following order if the user does not specify the method
+  // manually.
+  //   1. If all keys are Public, then fallback to the plaintext sort.
+  //   2. Else, sequentially check if it supports radix sort or quick sort. If a
+  //   match is found, execute the corresponding algorithm; otherwise, the
+  //   default sorting network algorithm will be executed.
+  //
+  // Some takeaways about the above algorithm:
+  //   1. Radix sort is currently the only STABLE sorting algorithm, so we
+  //   choose it as the highest priority algorithm (as long as it is supported
+  //   by the underlying MPC protocol).
+  //   2. It's worth to know that quick sort is indeed faster than radix
+  //   sort when the field is FM64 or FM128 (When in FM32, radix sort is always
+  //   faster).
+  //   3. However, radix sort can be significantly accelerated if you set
+  //   the valid_bits when you know exactly the ranges of the keys.
+  //   4. Radix sort and quick sort are more friendly to multiple payloads but
+  //   not to multiple keys. Increasing one payload only adds one secret
+  //   shuffle; however, for n additional keys, the communication/time can be
+  //   roughly considered to multiply by n.
+  //   5. Quick sort is more adaptable to the expansion of the ring. When the
+  //   ring size doubles, the communication volume of quick sort nearly doubles,
+  //   and the number of rounds increases (poly) logarithmically. In contrast,
+  //   when the ring size doubles in radix sort, the communication （roughly）
+  //   quadruples and the number of rounds doubles.
+  //
+
+  // if all keys are public, fallback to plaintext sort.
   if (std::all_of(inputs.begin(), inputs.begin() + num_keys,
                   [](const spu::Value &v) { return v.isPublic(); })) {
-    fallback = true;
+    return internal::fallback_sort1d(ctx, inputs, num_keys, direction);
   }
-  // If the protocol supports secret shuffle and unshuffle, we can use radix
-  // sort for fast 1-D sort. Otherwise, we fallback to generic sort1d
-  if (!fallback &&
-      !(ctx->hasKernel("rand_perm_m") && ctx->hasKernel("perm_am") &&
-        ctx->hasKernel("perm_ap") && ctx->hasKernel("inv_perm_am") &&
-        ctx->hasKernel("inv_perm_ap"))) {
-    fallback = true;
-  }
-  if (!fallback) {
-    auto ret =
-        internal::radix_sort(ctx, inputs, direction, num_keys, valid_bits);
-    return ret;
-  } else {
-    auto scalar_cmp = [direction](spu::SPUContext *ctx, const spu::Value &lhs,
-                                  const spu::Value &rhs) {
-      if (direction == SortDirection::Ascending) {
-        return hal::less(ctx, lhs, rhs);
-      }
-      return hal::greater(ctx, lhs, rhs);
-    };
 
-    hal::CompFn comp_fn =
-        [ctx, num_keys,
-         &scalar_cmp](absl::Span<const spu::Value> values) -> spu::Value {
-      spu::Value pre_equal = hal::constant(ctx, true, DT_I1, values[0].shape());
-      spu::Value result = scalar_cmp(ctx, values[0], values[1]);
-      // the idea here is that if the two values of the last key is equal, than
-      // we compare the two values of the current key, and iteratively to update
-      // the result which indicates whether to swap values
-      for (int64_t idx = 2; idx < num_keys * 2; idx += 2) {
-        pre_equal = hal::bitwise_and(
-            ctx, pre_equal, hal::equal(ctx, values[idx - 2], values[idx - 1]));
-        auto current = scalar_cmp(ctx, values[idx], values[idx + 1]);
-        current = hal::bitwise_and(ctx, pre_equal, current);
-        result = hal::bitwise_or(ctx, result, current);
-      }
-      return result;
-    };
-    Visibility vis =
-        std::all_of(inputs.begin(), inputs.begin() + num_keys,
-                    [](const spu::Value &v) { return v.isPublic(); })
-            ? VIS_PUBLIC
-            : VIS_SECRET;
-    auto ret = sort1d(ctx, inputs, comp_fn, vis, false);
-    return ret;
+  // if use default sort method, trying to find the most best method
+  // currently, radix sort -> quick sort -> sorting network
+  if (sort_method == RuntimeConfig::SORT_DEFAULT) {
+    if (internal::_check_method_require(ctx, RuntimeConfig::SORT_RADIX)) {
+      ret = internal::radix_sort(ctx, inputs, direction, num_keys, valid_bits);
+    } else if (internal::_check_method_require(ctx,
+                                               RuntimeConfig::SORT_QUICK)) {
+      ret = internal::quick_sort(ctx, inputs, num_keys, direction);
+    } else if (internal::_check_method_require(
+                   ctx,
+                   RuntimeConfig::SORT_NETWORK)) {  // always true now.
+      ret = internal::fallback_sort1d(ctx, inputs, num_keys, direction);
+    } else {
+      SPU_THROW("should not reach here");
+    }
+  } else {
+    auto selected_method = internal::select_sort_method(ctx, sort_method);
+    if (selected_method != sort_method) {
+      SPDLOG_WARN(
+          "Manually set method: {}, which is not supported, falling back to "
+          "{}.",
+          sort_method, selected_method);
+    }
+
+    switch (selected_method) {
+      case RuntimeConfig::SORT_RADIX:
+        ret =
+            internal::radix_sort(ctx, inputs, direction, num_keys, valid_bits);
+        break;
+      case RuntimeConfig::SORT_QUICK:
+        ret = internal::quick_sort(ctx, inputs, num_keys, direction);
+        break;
+      case RuntimeConfig::SORT_NETWORK:
+        ret = internal::fallback_sort1d(ctx, inputs, num_keys, direction);
+        break;
+      default:
+        SPU_THROW("should not reach here");
+    }
   }
+
+  return ret;
 }
 
 std::vector<spu::Value> permute(SPUContext *ctx,
@@ -1290,6 +1827,24 @@ std::vector<Value> topk_1d(SPUContext *ctx, const spu::Value &input,
 
     return sorted;
   }
+}
+
+std::vector<spu::Value> apply_inv_permute_1d(
+    SPUContext *ctx, absl::Span<const spu::Value> inputs,
+    const spu::Value &perm) {
+  // Note: the kernel `inv_perm_am` in MPC layer is exactly the `unshuffle`
+  // semantics, and we implement `apply_inv_perm_ss` in HAL layer. So we wrap
+  // the `apply_inv_perm` to deal with the all inv_perm stuffs.
+  return internal::_apply_inv_perm(ctx, inputs, perm);
+}
+
+std::vector<spu::Value> apply_permute_1d(SPUContext *ctx,
+                                         absl::Span<const spu::Value> inputs,
+                                         const spu::Value &perm) {
+  // Note: the kernel `perm_am` in MPC layer is exactly the `shuffle`
+  // semantics, and we implement `apply_perm_ss` in HAL layer. So we wrap the
+  // `apply_perm` to deal with the all inv_perm stuffs.
+  return internal::_apply_perm(ctx, inputs, perm);
 }
 
 }  // namespace spu::kernel::hal

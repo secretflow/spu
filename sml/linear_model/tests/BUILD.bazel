@@ -27,6 +27,8 @@ py_test(
         "//sml/linear_model:sgd_classifier",
         "//spu:init",
         "//spu/utils:simulation",
+        "@spu_pip//jax:pkg",
+        "@spu_pip_dev//scikit_learn:pkg",
     ],
 )
 
@@ -37,6 +39,8 @@ py_test(
         "//sml/linear_model:logistic",
         "//spu:init",
         "//spu/utils:simulation",
+        "@spu_pip_dev//pandas:pkg",
+        "@spu_pip_dev//scikit_learn:pkg",
     ],
 )
 
@@ -48,6 +52,7 @@ py_test(
         "//sml/linear_model:ridge",
         "//spu:init",
         "//spu/utils:simulation",
+        "@spu_pip_dev//scikit_learn:pkg",
     ],
 )
 
@@ -58,6 +63,9 @@ py_test(
         "//sml/linear_model:pla",
         "//spu:init",
         "//spu/utils:simulation",
+        "@spu_pip//jax:pkg",
+        "@spu_pip_dev//pandas:pkg",
+        "@spu_pip_dev//scikit_learn:pkg",
     ],
 )
 
@@ -68,6 +76,7 @@ py_test(
         "//sml/linear_model:glm",
         "//spu:init",
         "//spu/utils:simulation",
+        "@spu_pip_dev//scikit_learn:pkg",
     ],
 )
 
@@ -78,5 +87,8 @@ py_test(
         "//sml/linear_model:quantile",
         "//spu:init",
         "//spu/utils:simulation",
+        "@spu_pip//jax:pkg",
+        "@spu_pip_dev//pandas:pkg",
+        "@spu_pip_dev//scikit_learn:pkg",
     ],
 )

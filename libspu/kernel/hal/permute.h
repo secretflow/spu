@@ -79,4 +79,14 @@ std::vector<Value> topk_1d(SPUContext *ctx, const spu::Value &input,
                            const SimpleCompFn &scalar_cmp,
                            const TopKConfig &config);
 
+// For each input x, we get y = perm^{-1} (x), i.e. y[i] = x[perm^{-1}(i)]
+std::vector<spu::Value> apply_inv_permute_1d(
+    SPUContext *ctx, absl::Span<const spu::Value> inputs,
+    const spu::Value &perm);
+
+// For each input x, we get y = perm(x), i.e. y[i] = x[perm(i)]
+std::vector<spu::Value> apply_permute_1d(SPUContext *ctx,
+                                         absl::Span<const spu::Value> inputs,
+                                         const spu::Value &perm);
+
 }  // namespace spu::kernel::hal

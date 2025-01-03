@@ -12,12 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#define SPU_VERSION "0.9.4.dev$$DATE$$"
+#include "libspu/kernel/hlo/soprf.h"
 
-#include <string_view>
+#include "libspu/kernel/hlo/geometrical.h"
 
-namespace spu {
+namespace spu::kernel::hlo {
 
-inline std::string_view getVersionStr() { return SPU_VERSION; }
+Value SoPrf(SPUContext* ctx, const Value& x) { return hal::soprf(ctx, x); }
 
-}  // namespace spu
+Value SoPrf(SPUContext* ctx, absl::Span<const spu::Value> inputs) {
+  return hal::soprf(ctx, inputs);
+}
+
+}  // namespace spu::kernel::hlo

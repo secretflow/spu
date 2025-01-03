@@ -12,33 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_python//python:defs.bzl", "py_library")
+load("@spu_pip_dev//:requirements.bzl", "all_requirements")
+load("//bazel:spu.bzl", "spu_py_binary", "spu_py_library")
 
 package(default_visibility = ["//visibility:public"])
 
-py_library(
+spu_py_library(
     name = "appr_sigmoid",
     srcs = ["appr_sigmoid.py"],
 )
 
-py_library(
+spu_py_library(
     name = "dataset_utils",
     srcs = ["dataset_utils.py"],
 )
 
-py_library(
+spu_py_library(
     name = "stax_utils",
     srcs = ["stax_utils.py"],
     deps = [
     ],
 )
 
-py_library(
+spu_py_library(
     name = "optimizers",
     srcs = ["optimizers.py"],
 )
 
-py_binary(
+spu_py_binary(
     name = "nodectl",
     srcs = ["nodectl.py"],
     data = [
@@ -47,5 +48,5 @@ py_binary(
     deps = [
         ":dataset_utils",  # server dependent.
         "//spu/utils:distributed",
-    ],
+    ] + all_requirements,
 )

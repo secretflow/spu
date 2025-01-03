@@ -225,4 +225,12 @@ class DisassembleKernel : public Kernel {
                                        const NdArrayRef& in) const = 0;
 };
 
+class MultiKeyLowMcKernel : public Kernel {
+ public:
+  void evaluate(KernelEvalContext* ctx) const override;
+
+  virtual NdArrayRef proc(KernelEvalContext* ctx,
+                          const std::vector<NdArrayRef>& inputs) const = 0;
+};
+
 }  // namespace spu::mpc

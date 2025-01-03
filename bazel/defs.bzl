@@ -4,7 +4,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+#   http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -12,22 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@spulib//bazel:spu.bzl", "spu_cc_library")
+load("//bazel:repositories.bzl", "spu_deps")
 
-package(default_visibility = ["//visibility:public"])
+def _non_module_dependencies_impl(_ctx):
+    spu_deps()
 
-filegroup(
-    name = "all",
-    srcs = glob(["**"]),
-)
-
-spu_cc_library(
-    name = "cutlass",
-    srcs = [],
-    hdrs = glob([
-        "include/**/*.h",
-        "include/**/*.hpp",
-    ]),
-    strip_include_prefix = "include",
-    visibility = ["//visibility:public"],
+non_module_dependencies = module_extension(
+    implementation = _non_module_dependencies_impl,
 )

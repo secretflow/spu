@@ -25,6 +25,7 @@ _build
 
 # bazel
 /bazel-*
+MODULE.bazel.lock
 
 # cmake related
 abseil-cpp

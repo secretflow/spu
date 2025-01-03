@@ -112,6 +112,7 @@ spu_cc_library(
         ":boolean",
         ":conversion",
         ":exp",
+        ":lowmc",
         ":permute",
         ":state",
         "//libspu/mpc/common:prg_state",
@@ -130,6 +131,8 @@ spu_cc_test(
         "//libspu/mpc:ab_api_test",
         "//libspu/mpc:api_test",
         "//libspu/mpc/semi2k/beaver/beaver_impl/ttp_server:beaver_server",
+        "//libspu/mpc/utils:lowmc",
+        "@yacl//yacl/utils:elapsed_timer",
     ],
 )
 
@@ -182,5 +185,19 @@ spu_cc_library(
         "//libspu/mpc:kernel",
         "//libspu/mpc/common:communicator",
         "//libspu/mpc/utils:ring_ops",
+    ],
+)
+
+spu_cc_library(
+    name = "lowmc",
+    srcs = ["lowmc.cc"],
+    hdrs = ["lowmc.h"],
+    deps = [
+        ":type",
+        "//libspu/mpc:ab_api",
+        "//libspu/mpc:kernel",
+        "//libspu/mpc/common:prg_state",
+        "//libspu/mpc/common:pv2k",
+        "//libspu/mpc/utils:lowmc",
     ],
 )

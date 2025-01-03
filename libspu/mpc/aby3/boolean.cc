@@ -64,6 +64,36 @@ NdArrayRef CastTypeB::proc(KernelEvalContext*, const NdArrayRef& in,
   return out;
 }
 
+NdArrayRef RandB::proc(KernelEvalContext* ctx, const Shape& shape) const {
+  auto* prg_state = ctx->getState<PrgState>();
+  const auto field = ctx->getState<Z2kState>()->getDefaultField();
+
+  return DISPATCH_ALL_FIELDS(field, [&]() {
+    auto [r0, r1] =
+        prg_state->genPrssPair(field, shape, PrgState::GenPrssCtrl::Both);
+    // only rand bit is supported
+    const size_t nbits = 1;
+    const PtType btype = calcBShareBacktype(nbits);
+
+    NdArrayView<ring2k_t> _r0(r0);
+    NdArrayView<ring2k_t> _r1(r1);
+    return DISPATCH_UINT_PT_TYPES(btype, [&]() {
+      using bshr_el_t = ScalarT;
+      using bshr_t = std::array<bshr_el_t, 2>;
+
+      NdArrayRef out(makeType<BShrTy>(btype, nbits), shape);
+      NdArrayView<bshr_t> _out(out);
+
+      pforeach(0, shape.numel(), [&](int64_t idx) {
+        _out[idx][0] = static_cast<bshr_el_t>(_r0[idx] & 1);
+        _out[idx][1] = static_cast<bshr_el_t>(_r1[idx] & 1);
+      });
+
+      return out;
+    });
+  });
+}
+
 NdArrayRef B2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   auto* comm = ctx->getState<Communicator>();
   const PtType btype = in.eltype().as<BShrTy>()->getBacktype();

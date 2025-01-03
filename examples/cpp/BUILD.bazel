@@ -31,7 +31,7 @@ spu_cc_binary(
         "//libspu/kernel/hlo:casting",
         "//libspu/kernel/hlo:const",
         "//libspu/kernel/hlo:geometrical",
-        "@com_google_absl//absl/strings",
+        "@abseil-cpp//absl/strings",
         "@llvm-project//llvm:Support",
         "@yacl//yacl/link:factory",
     ],
@@ -43,7 +43,7 @@ spu_cc_library(
     hdrs = ["utils.h"],
     deps = [
         "//libspu/core:context",
-        "@com_google_absl//absl/strings",
+        "@abseil-cpp//absl/strings",
         "@llvm-project//llvm:Support",
         "@yacl//yacl/link:factory",
     ],

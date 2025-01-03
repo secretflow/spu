@@ -27,7 +27,14 @@
 #include "libspu/kernel/hlo/casting.h"
 #include "libspu/kernel/hlo/const.h"
 #include "libspu/kernel/test_util.h"
+#include "libspu/mpc/utils/simulate.h"
 
+// to print method name
+std::ostream &operator<<(std::ostream &os,
+                         spu::RuntimeConfig_SortMethod method) {
+  os << spu::RuntimeConfig::SortMethod_Name(method);
+  return os;
+}
 namespace spu::kernel::hlo {
 
 TEST(SortTest, Simple) {
@@ -228,34 +235,125 @@ TEST(SortTest, LargeNumel) {
   }
 }
 
-TEST(SimpleSortTest, MultiOperands) {
-  SPUContext ctx = test::makeSPUContext();
-  xt::xarray<float> k1 = {7, 6, 5, 5, 4, 4, 4, 1, 3, 3};
-  xt::xarray<float> k2 = {1, 2, 3, 6, 7, 6, 5, 2, 1, 2};
+class SimpleSortTest
+    : public ::testing::TestWithParam<std::tuple<
+          size_t, FieldType, ProtocolKind, RuntimeConfig::SortMethod>> {};
 
-  xt::xarray<float> sorted_k1 = {1, 3, 3, 4, 4, 4, 5, 5, 6, 7};
-  xt::xarray<float> sorted_k2 = {2, 1, 2, 5, 6, 7, 3, 6, 2, 1};
+TEST_P(SimpleSortTest, MultiOperands) {
+  size_t npc = std::get<0>(GetParam());
+  FieldType field = std::get<1>(GetParam());
+  ProtocolKind prot = std::get<2>(GetParam());
+  RuntimeConfig::SortMethod method = std::get<3>(GetParam());
 
-  Value k1_v = test::makeValue(&ctx, k1, VIS_SECRET);
-  Value k2_v = test::makeValue(&ctx, k2, VIS_SECRET);
+  mpc::utils::simulate(
+      npc, [&](const std::shared_ptr<yacl::link::Context> &lctx) {
+        RuntimeConfig cfg;
+        cfg.set_protocol(prot);
+        cfg.set_field(field);
+        cfg.set_enable_action_trace(false);
+        cfg.set_sort_method(method);
+        SPUContext ctx = test::makeSPUContext(cfg, lctx);
 
-  std::vector<spu::Value> rets =
-      SimpleSort(&ctx, {k1_v, k2_v}, 0, hal::SortDirection::Ascending, 2);
+        xt::xarray<float> k1 = {7, 6, 5, 5, 4, 4, 4, 1, 3, 3};
+        xt::xarray<float> k2 = {1, 2, 3, 6, 7, 6, 5, 2, 1, 2};
 
-  EXPECT_EQ(rets.size(), 2);
+        xt::xarray<float> sorted_k1 = {1, 3, 3, 4, 4, 4, 5, 5, 6, 7};
+        xt::xarray<float> sorted_k2 = {2, 1, 2, 5, 6, 7, 3, 6, 2, 1};
 
-  auto sorted_k1_hat =
-      hal::dump_public_as<float>(&ctx, hal::reveal(&ctx, rets[0]));
-  auto sorted_k2_hat =
-      hal::dump_public_as<float>(&ctx, hal::reveal(&ctx, rets[1]));
+        Value k1_v = test::makeValue(&ctx, k1, VIS_SECRET);
+        Value k2_v = test::makeValue(&ctx, k2, VIS_SECRET);
 
-  EXPECT_TRUE(xt::allclose(sorted_k1, sorted_k1_hat, 0.01, 0.001))
-      << sorted_k1 << std::endl
-      << sorted_k1_hat << std::endl;
+        std::vector<spu::Value> rets =
+            SimpleSort(&ctx, {k1_v, k2_v}, 0, hal::SortDirection::Ascending, 2);
 
-  EXPECT_TRUE(xt::allclose(sorted_k2, sorted_k2_hat, 0.01, 0.001))
-      << sorted_k2 << std::endl
-      << sorted_k2_hat << std::endl;
+        EXPECT_EQ(rets.size(), 2);
+
+        auto sorted_k1_hat =
+            hal::dump_public_as<float>(&ctx, hal::reveal(&ctx, rets[0]));
+        auto sorted_k2_hat =
+            hal::dump_public_as<float>(&ctx, hal::reveal(&ctx, rets[1]));
+
+        EXPECT_TRUE(xt::allclose(sorted_k1, sorted_k1_hat, 0.01, 0.001))
+            << sorted_k1 << std::endl
+            << sorted_k1_hat << std::endl;
+
+        EXPECT_TRUE(xt::allclose(sorted_k2, sorted_k2_hat, 0.01, 0.001))
+            << sorted_k2 << std::endl
+            << sorted_k2_hat << std::endl;
+      });
 }
+
+TEST_P(SimpleSortTest, SingleKeyWithPayload) {
+  size_t npc = std::get<0>(GetParam());
+  FieldType field = std::get<1>(GetParam());
+  ProtocolKind prot = std::get<2>(GetParam());
+  RuntimeConfig::SortMethod method = std::get<3>(GetParam());
+
+  mpc::utils::simulate(
+      npc, [&](const std::shared_ptr<yacl::link::Context> &lctx) {
+        RuntimeConfig cfg;
+        cfg.set_protocol(prot);
+        cfg.set_field(field);
+        cfg.set_enable_action_trace(false);
+        cfg.set_sort_method(method);
+        SPUContext ctx = test::makeSPUContext(cfg, lctx);
+
+        xt::xarray<float> k1 = {7, 6, 5, 4, 1, 3, 2};
+        xt::xarray<float> k2 = {1, 2, 3, 6, 7, 6, 5};
+
+        xt::xarray<float> sorted_k1 = {1, 2, 3, 4, 5, 6, 7};
+        xt::xarray<float> sorted_k2 = {7, 5, 6, 6, 3, 2, 1};
+
+        Value k1_v = test::makeValue(&ctx, k1, VIS_SECRET);
+        Value k2_v = test::makeValue(&ctx, k2, VIS_SECRET);
+
+        std::vector<spu::Value> rets =
+            SimpleSort(&ctx, {k1_v, k2_v}, 0, hal::SortDirection::Ascending, 1);
+
+        EXPECT_EQ(rets.size(), 2);
+
+        auto sorted_k1_hat =
+            hal::dump_public_as<float>(&ctx, hal::reveal(&ctx, rets[0]));
+        auto sorted_k2_hat =
+            hal::dump_public_as<float>(&ctx, hal::reveal(&ctx, rets[1]));
+
+        EXPECT_TRUE(xt::allclose(sorted_k1, sorted_k1_hat, 0.01, 0.001))
+            << sorted_k1 << std::endl
+            << sorted_k1_hat << std::endl;
+
+        EXPECT_TRUE(xt::allclose(sorted_k2, sorted_k2_hat, 0.01, 0.001))
+            << sorted_k2 << std::endl
+            << sorted_k2_hat << std::endl;
+      });
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    SimpleSort2PCTestInstances, SimpleSortTest,
+    testing::Combine(
+        testing::Values(2), testing::Values(FieldType::FM32, FieldType::FM64),
+        testing::Values(ProtocolKind::SEMI2K, ProtocolKind::CHEETAH),
+        testing::Values(RuntimeConfig::SORT_DEFAULT, RuntimeConfig::SORT_RADIX,
+                        RuntimeConfig::SORT_QUICK,
+                        RuntimeConfig::SORT_NETWORK)),
+    [](const testing::TestParamInfo<SimpleSortTest::ParamType> &p) {
+      return fmt::format("{}x{}x{}x{}", std::get<0>(p.param),
+                         std::get<1>(p.param), std::get<2>(p.param),
+                         std::get<3>(p.param));
+    });
+
+INSTANTIATE_TEST_SUITE_P(
+    SimpleSort3PCTestInstances, SimpleSortTest,
+    testing::Combine(testing::Values(3),
+                     testing::Values(FieldType::FM32, FieldType::FM64),
+                     testing::Values(ProtocolKind::SEMI2K, ProtocolKind::ABY3),
+                     testing::Values(RuntimeConfig::SORT_DEFAULT,
+                                     RuntimeConfig::SORT_RADIX,
+                                     RuntimeConfig::SORT_QUICK,
+                                     RuntimeConfig::SORT_NETWORK)),
+    [](const testing::TestParamInfo<SimpleSortTest::ParamType> &p) {
+      return fmt::format("{}x{}x{}x{}", std::get<0>(p.param),
+                         std::get<1>(p.param), std::get<2>(p.param),
+                         std::get<3>(p.param));
+    });
 
 }  // namespace spu::kernel::hlo

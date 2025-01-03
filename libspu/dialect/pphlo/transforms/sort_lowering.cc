@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "mlir/IR/Matchers.h"
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
@@ -69,6 +70,99 @@ struct SortConversion : public OpRewritePattern<SortOp> {
         return success();
       }
     }
+
+    // pattern for jax.lax.sort lowering
+    if (comp.hasOneBlock()) {
+      auto &first_inst = comp.front().front();
+      bool match_less = matchPattern(&first_inst, m_Op<pphlo::LessOp>());
+      bool match_greater = matchPattern(&first_inst, m_Op<pphlo::GreaterOp>());
+      if (match_less || match_greater) {
+        SortDirectionAttr direction;
+
+        if (match_greater) {
+          // descent
+          direction =
+              SortDirectionAttr::get(op->getContext(), SortDirection::DES);
+        } else {
+          // ascent
+          direction =
+              SortDirectionAttr::get(op->getContext(), SortDirection::ASC);
+        }
+
+        size_t key_nums = 0;
+        const auto comp_name = first_inst.getName().getStringRef();
+        // save the result for each instruction for following check.
+        std::vector<mlir::Value> results;
+        for (auto &instr : comp.front().without_terminator()) {
+          if (matchPattern(&instr, m_Op(comp_name))) {
+            key_nums++;
+          }
+          results.push_back(instr.getResult(0));
+        }
+
+        // idx of and/or blocks
+        size_t lhs_idx = 2 * key_nums - 3;
+        size_t rhs_idx = 2 * key_nums - 2;
+        for (auto [i, instr] :
+             llvm::enumerate(comp.front().without_terminator())) {
+          if (i <= 2 * key_nums - 2) {
+            auto lhs_arg =
+                mlir::dyn_cast<mlir::BlockArgument>(instr.getOperand(0));
+            auto rhs_arg =
+                mlir::dyn_cast<mlir::BlockArgument>(instr.getOperand(1));
+
+            if (lhs_arg == nullptr || rhs_arg == nullptr) {
+              return failure();
+            }
+
+            auto lhs_idx = lhs_arg.getArgNumber();
+            auto rhs_idx = rhs_arg.getArgNumber();
+
+            // less + equal blocks
+            if ((i & 1) == 0 && matchPattern(&instr, m_Op(comp_name))) {
+              if (lhs_idx != i || rhs_idx != (i + 1)) {
+                return failure();
+              }
+            }
+            // equal op
+            if ((i & 1) == 1 && matchPattern(&instr, m_Op<pphlo::EqualOp>())) {
+              if (lhs_idx != (i - 1) || rhs_idx != i) {
+                return failure();
+              }
+            }
+          } else {
+            // check the operands of and/or
+            auto lhs = instr.getOperand(0);
+            auto rhs = instr.getOperand(1);
+            bool pass = (lhs == results[lhs_idx] && rhs == results[rhs_idx]) ||
+                        (lhs == results[rhs_idx] && rhs == results[lhs_idx]);
+
+            // and blocks
+            if ((i & 1) == 1 && matchPattern(&instr, m_Op<pphlo::AndOp>())) {
+              if (!pass) {
+                return failure();
+              }
+            }
+
+            // or blocks
+            if ((i & 1) == 0 && matchPattern(&instr, m_Op<pphlo::OrOp>())) {
+              if (!pass) {
+                return failure();
+              }
+            }
+
+            lhs_idx--;
+            rhs_idx++;
+          }
+        }
+
+        rewriter.replaceOpWithNewOp<pphlo::SimpleSortOp>(
+            op, op.getResultTypes(), op.getOperands(), op.getDimensionAttr(),
+            rewriter.getI64IntegerAttr(key_nums), direction);
+        return success();
+      }
+    }
+
     return failure();
   }
 };

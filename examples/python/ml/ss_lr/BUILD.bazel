@@ -13,6 +13,7 @@
 # limitations under the License.
 
 load("@rules_python//python:defs.bzl", "py_binary")
+load("@spu_pip_dev//:requirements.bzl", "all_requirements")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -26,5 +27,5 @@ py_binary(
         "//examples/python/utils:appr_sigmoid",
         "//examples/python/utils:dataset_utils",
         "//spu/utils:distributed",
-    ],
+    ] + all_requirements,
 )

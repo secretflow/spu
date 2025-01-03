@@ -88,9 +88,9 @@ Value _rand_p(SPUContext* ctx, const Shape& shape) {
   return rnd;
 }
 
-Value _rand_s(SPUContext* ctx, const Shape& shape) {
+Value _rand_s(SPUContext* ctx, const Shape& shape, DataType dtype) {
   SPU_TRACE_HAL_DISP(ctx, shape);
-  auto rnd = mpc::rand_s(ctx, shape);
+  auto rnd = mpc::rand_s(ctx, shape, dtype);
   return rnd;
 }
 

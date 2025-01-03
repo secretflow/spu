@@ -305,3 +305,12 @@ spu_cc_test(
         "//libspu/kernel:test_util",
     ],
 )
+
+spu_cc_library(
+    name = "soprf",
+    srcs = ["soprf.cc"],
+    hdrs = ["soprf.h"],
+    deps = [
+        ":ring",
+    ],
+)
