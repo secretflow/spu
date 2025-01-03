@@ -59,7 +59,7 @@ commands:
             ../devtools/bazel_cache_setup.py --in_file=../gcs.data --out_file=../gcs.json --min_download
       - run:
           name: "build"
-          command: bazel --version && python3 --version && bazel build <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning
+          command: bazel --version && python3 --version && bazel run //:requirements-dev.update && bazel build <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning
       - run:
           name: "test"
           command: |
