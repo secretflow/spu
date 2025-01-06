@@ -139,7 +139,7 @@ bazel_dep(name = "psi")
 git_override(
     module_name = "psi",
     commit = "8ead92f1bb10329c7e7e56d541fecb3dcd47ee03",
-    remote = "git@github.com:secretflow/psi.git",
+    remote = "https://github.com/secretflow/psi.git",
 )
 
 spu_dependencies = use_extension("//bazel:defs.bzl", "non_module_dependencies")
