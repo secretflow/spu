@@ -21,7 +21,7 @@ plotnine
 jraph
 optax
 torch==2.3.0
-torch_xla==2.3.0
+# torch_xla==2.3.0 # aarch64 unspport and only torch frontend needs
 torchvision
 tensorflow_datasets
 keras
