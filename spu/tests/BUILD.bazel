@@ -311,8 +311,14 @@ spu_py_test(
     deps = [
         "//spu:init",
         "//spu/utils:frontend",
-        "@spu_pip_dev//tensorflow_cpu:pkg",
-    ],
+    ] + select({
+        "@bazel_tools//src/conditions:linux_x86_64": [
+            "@spu_pip_dev//tensorflow_cpu:pkg",
+        ],
+        "//conditions:default": [
+            "@spu_pip_dev//tensorflow:pkg",
+        ],
+    }),
 )
 
 spu_py_test(
@@ -328,8 +334,14 @@ spu_py_test(
         "//spu:init",
         "//spu/utils:distributed",
         "@spu_pip_dev//grpcio:pkg",
-        "@spu_pip_dev//tensorflow_cpu:pkg",
-    ],
+    ] + select({
+        "@bazel_tools//src/conditions:linux_x86_64": [
+            "@spu_pip_dev//tensorflow_cpu:pkg",
+        ],
+        "//conditions:default": [
+            "@spu_pip_dev//tensorflow:pkg",
+        ],
+    }),
 )
 
 spu_py_test(

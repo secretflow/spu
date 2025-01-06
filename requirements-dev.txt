@@ -13,6 +13,7 @@ scikit-learn<1.6.0
 # for tests
 absl-py>=1.1.0
 tensorflow-cpu>=2.12.0; sys_platform == "linux" and platform_machine == 'x86_64'
+tensorflow>=2.12.0; sys_platform != "linux" or platform_machine != 'x86_64'
 h5py!=3.11.0; platform_machine == 'aarch64'
 
 # for examples
