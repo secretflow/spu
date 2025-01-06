@@ -16,7 +16,9 @@
 
 #include <cstddef>
 
+#ifndef __APPLE__
 #define EIGEN_HAS_OPENMP
+#endif
 
 #include "Eigen/Core"
 
