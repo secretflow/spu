@@ -24,10 +24,10 @@ spu_cc_library(
         "//libspu/mpc/common:prg_tensor",
         "//libspu/mpc/semi2k/beaver:beaver_interface",
         "//libspu/mpc/semi2k/beaver/beaver_impl/trusted_party",
-        "//libspu/mpc/semi2k/beaver/beaver_impl/ttp_server:beaver_stream",
         "//libspu/mpc/utils:gfmp_ops",
+        "//libspu/mpc/utils:permute",
         "//libspu/mpc/utils:ring_ops",
-        "@com_github_microsoft_seal//:seal",
+        "@seal",
         "@yacl//yacl/link",
         "@yacl//yacl/utils:parallel",
     ],
@@ -44,7 +44,7 @@ spu_cc_test(
         "//libspu/mpc/utils:gfmp",
         "//libspu/mpc/utils:permute",
         "//libspu/mpc/utils:simulate",
-        "@com_google_googletest//:gtest",
+        "@googletest//:gtest",
     ],
 )
 
@@ -55,9 +55,9 @@ spu_cc_library(
     deps = [
         "//libspu/mpc/common:prg_tensor",
         "//libspu/mpc/semi2k/beaver:beaver_interface",
-        "//libspu/mpc/semi2k/beaver/beaver_impl/ttp_server:beaver_stream",
         "//libspu/mpc/semi2k/beaver/beaver_impl/ttp_server:service_cc_proto",
         "//libspu/mpc/utils:gfmp_ops",
+        "//libspu/mpc/utils:permute",
         "//libspu/mpc/utils:ring_ops",
         "@yacl//yacl/crypto/pke:sm2_enc",
         "@yacl//yacl/link",

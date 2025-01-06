@@ -35,7 +35,7 @@ spu_cc_library(
         ":io_interface",
         "//libspu/mpc/utils:ring_ops",
         "//libspu/mpc/utils:simulate",
-        "@com_google_googletest//:gtest",
+        "@googletest//:gtest",
     ],
     alwayslink = True,
 )
@@ -96,7 +96,7 @@ spu_cc_library(
         "//libspu/mpc:kernel",
         "//libspu/mpc/common:communicator",
         "//libspu/mpc/utils:simulate",
-        "@com_google_googletest//:gtest",
+        "@googletest//:gtest",
     ],
     alwayslink = True,
 )
@@ -122,7 +122,7 @@ spu_cc_library(
         "//libspu/mpc:api_test_params",
         "//libspu/mpc/common:communicator",
         "//libspu/mpc/utils:simulate",
-        "@com_google_googletest//:gtest",
+        "@googletest//:gtest",
     ],
     alwayslink = True,
 )

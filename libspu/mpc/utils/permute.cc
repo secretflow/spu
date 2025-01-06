@@ -20,6 +20,7 @@
 #include "yacl/crypto/rand/rand.h"
 
 #include "libspu/core/ndarray_ref.h"
+#include "libspu/core/parallel_utils.h"
 #include "libspu/core/type_util.h"
 
 namespace spu::mpc {
@@ -44,9 +45,7 @@ NdArrayRef applyInvPerm(const NdArrayRef& x, absl::Span<const int64_t> pv) {
   DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> _x(x);
     NdArrayView<ring2k_t> _y(y);
-    for (int64_t i = 0; i < y.numel(); i++) {
-      _y[pv[i]] = _x[i];
-    }
+    pforeach(0, y.numel(), [&](int64_t i) { _y[pv[i]] = _x[i]; });
   });
   return y;
 }
@@ -63,9 +62,7 @@ NdArrayRef applyInvPerm(const NdArrayRef& x, const NdArrayRef& pv) {
     const auto pv_field = pv.eltype().as<Ring2k>()->field();
     DISPATCH_ALL_FIELDS(pv_field, [&]() {
       NdArrayView<ring2k_t> _pv(pv);
-      for (int64_t i = 0; i < y.numel(); i++) {
-        _y[_pv[i]] = _x[i];
-      }
+      pforeach(0, y.numel(), [&](int64_t i) { _y[_pv[i]] = _x[i]; });
     });
   });
   return y;
@@ -79,9 +76,7 @@ NdArrayRef applyPerm(const NdArrayRef& x, absl::Span<const int64_t> pv) {
   DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> _x(x);
     NdArrayView<ring2k_t> _y(y);
-    for (int64_t i = 0; i < y.numel(); i++) {
-      _y[i] = _x[pv[i]];
-    }
+    pforeach(0, y.numel(), [&](int64_t i) { _y[i] = _x[pv[i]]; });
   });
   return y;
 }
@@ -98,9 +93,7 @@ NdArrayRef applyPerm(const NdArrayRef& x, const NdArrayRef& pv) {
     const auto pv_field = pv.eltype().as<Ring2k>()->field();
     DISPATCH_ALL_FIELDS(pv_field, [&]() {
       NdArrayView<ring2k_t> _pv(pv);
-      for (int64_t i = 0; i < y.numel(); i++) {
-        _y[i] = _x[_pv[i]];
-      }
+      pforeach(0, y.numel(), [&](int64_t i) { _y[i] = _x[_pv[i]]; });
     });
   });
   return y;
@@ -112,9 +105,7 @@ NdArrayRef genInversePerm(const NdArrayRef& perm) {
   DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> _ret(ret);
     NdArrayView<ring2k_t> _perm(perm);
-    for (int64_t i = 0; i < perm.numel(); ++i) {
-      _ret[_perm[i]] = ring2k_t(i);
-    }
+    pforeach(0, perm.numel(), [&](int64_t i) { _ret[_perm[i]] = ring2k_t(i); });
   });
   return ret;
 }

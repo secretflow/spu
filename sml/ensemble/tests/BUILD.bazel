@@ -23,6 +23,7 @@ py_test(
         "//sml/ensemble:adaboost",
         "//spu:init",
         "//spu/utils:simulation",
+        "@spu_pip_dev//scikit_learn:pkg",
     ],
 )
 
@@ -33,5 +34,6 @@ py_test(
         "//sml/ensemble:forest",
         "//spu:init",
         "//spu/utils:simulation",
+        "@spu_pip_dev//scikit_learn:pkg",
     ],
 )

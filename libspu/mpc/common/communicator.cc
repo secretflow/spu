@@ -147,17 +147,29 @@ std::vector<NdArrayRef> Communicator::gather(const NdArrayRef& in, size_t root,
 }
 
 NdArrayRef Communicator::broadcast(const NdArrayRef& in, size_t root,
+                                   const Type& eltype, const Shape& shape,
                                    std::string_view tag) {
-  const auto array = getOrCreateCompactArray(in);
-  yacl::ByteContainerView bv(reinterpret_cast<uint8_t const*>(array.data()),
-                             array.elsize() * array.numel());
-  auto buf = yacl::link::Broadcast(lctx_, bv, root, tag);
-
   stats_.latency += 1;
   stats_.comm += in.elsize() * in.numel();
 
-  return NdArrayRef(stealBuffer(std::move(buf)), in.eltype(), in.shape(),
-                    makeCompactStrides(in.shape()), kOffset);
+  yacl::Buffer buf;
+  if (lctx_->Rank() == root) {
+    const auto array = getOrCreateCompactArray(in);
+    yacl::ByteContainerView bv(reinterpret_cast<uint8_t const*>(array.data()),
+                               array.elsize() * array.numel());
+    auto buf = yacl::link::Broadcast(lctx_, bv, root, tag);
+    return NdArrayRef(stealBuffer(std::move(buf)), in.eltype(), in.shape(),
+                      makeCompactStrides(in.shape()), kOffset);
+  } else {
+    // for yacl::link::Broadcast need a legal ByteContainerView
+    // But the data is not actually used
+    std::array<uint8_t, 1> dummy;
+    auto buf = yacl::link::Broadcast(lctx_, dummy, root, tag);
+    SPU_ENFORCE(static_cast<size_t>(buf.size()) ==
+                shape.numel() * eltype.size());
+    return NdArrayRef(stealBuffer(std::move(buf)), eltype, shape,
+                      makeCompactStrides(shape), kOffset);
+  }
 }
 
 void Communicator::sendAsync(size_t dst_rank, const NdArrayRef& in,

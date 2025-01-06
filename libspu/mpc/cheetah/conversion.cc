@@ -59,6 +59,10 @@ NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& x) const {
 
 NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& x) const {
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
+  const auto numel = x.numel();
+  if (numel == 0) {  // for empty input
+    return NdArrayRef(makeType<AShrTy>(field), x.shape());
+  }
   return TiledDispatchOTFunc(
              ctx, x,
              [&](const NdArrayRef& input,

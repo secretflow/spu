@@ -18,6 +18,8 @@
 
 #include "gtest/gtest.h"
 #include "yacl/crypto/key_utils.h"
+#include "yacl/crypto/rand/rand.h"
+#include "yacl/utils/elapsed_timer.h"
 
 #include "libspu/mpc/ab_api.h"
 #include "libspu/mpc/ab_api_test.h"
@@ -26,10 +28,13 @@
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/semi2k/beaver/beaver_impl/ttp_server/beaver_server.h"
 #include "libspu/mpc/semi2k/exp.h"
+#include "libspu/mpc/semi2k/lowmc.h"
 #include "libspu/mpc/semi2k/prime_utils.h"
 #include "libspu/mpc/semi2k/state.h"
 #include "libspu/mpc/semi2k/type.h"
 #include "libspu/mpc/utils/gfmp.h"
+#include "libspu/mpc/utils/lowmc.h"
+#include "libspu/mpc/utils/lowmc_utils.h"
 #include "libspu/mpc/utils/ring_ops.h"
 #include "libspu/mpc/utils/simulate.h"
 
@@ -76,7 +81,8 @@ std::unique_ptr<SPUContext> makeTTPSemi2kProtocol(
   ttp->set_adjust_rank(lctx->WorldSize() - 1);
   ttp->set_server_host(server_host);
   ttp->set_asym_crypto_schema("SM2");
-  ttp->set_server_public_key(key_pair.first.data(), key_pair.first.size());
+  ttp->set_server_public_key(key_pair.first.data<char>(),
+                             key_pair.first.size());
 
   return makeSemi2kProtocol(ttp_rt, lctx);
 }
@@ -554,9 +560,6 @@ TEST_P(BeaverCacheTest, ExpA) {
 
     bytes = lctx->GetStats()->sent_bytes - bytes;
     action = lctx->GetStats()->sent_actions - action;
-    SPDLOG_INFO("ExpA ({}) for n = {}, sent {} MiB ({} B per), actions {}",
-                field, numel, bytes * 1. / 1024. / 1024., bytes * 1. / numel,
-                action);
   });
   assert(outp[0].eltype() == ring2k_shr[0].eltype());
   auto got = ring_add(outp[0], outp[1]);
@@ -571,16 +574,112 @@ TEST_P(BeaverCacheTest, ExpA) {
       expected = static_cast<double>(std::round((expected * (1L << fxp)))) /
                  (1L << fxp);
       double got = static_cast<double>(got_view[i]) / (1L << fxp);
-      // cout left here for future improvement
-      std::cout << "expected: " << fmt::format("{0:f}", expected)
-                << ", got: " << fmt::format("{0:f}", got) << std::endl;
-      std::cout << "expected: "
-                << fmt::format("{0:b}",
-                               static_cast<ring2k_t>(expected * (1L << fxp)))
-                << ", got: " << fmt::format("{0:b}", got_view[i]) << std::endl;
       max_err = std::max(max_err, std::abs(expected - got));
     }
     ASSERT_LE(max_err, 1e-0);
   });
 }
+
+using LowMCTestParams =
+    std::tuple<CreateObjectFn, RuntimeConfig, FieldType, size_t>;
+
+class LowMCTest : public ::testing::TestWithParam<LowMCTestParams> {};
+
+INSTANTIATE_TEST_SUITE_P(
+    Semi2k, LowMCTest,
+    testing::Combine(
+        testing::Values(CreateObjectFn(makeSemi2kProtocol, "tfp"),
+                        CreateObjectFn(makeTTPSemi2kProtocol,
+                                       "ttp")),         // TFP or TTP
+        testing::Values(makeConfig(FieldType::FM32),    // Global Field
+                        makeConfig(FieldType::FM64),    //
+                        makeConfig(FieldType::FM128)),  //
+        testing::Values(FM32, FM64, FM128),             // LowMC runtime Field
+        testing::Values(2)),                            // npc
+    [](const testing::TestParamInfo<LowMCTest::ParamType>& p) {
+      return fmt::format("{}x{}x{}x{}", std::get<0>(p.param).name(),
+                         std::get<1>(p.param).field(), std::get<2>(p.param),
+                         std::get<3>(p.param));
+      ;
+    });
+
+TEST_P(LowMCTest, EncryptCorrect) {
+  const auto factory = std::get<0>(GetParam());
+  const RuntimeConfig& conf = std::get<1>(GetParam());
+
+  // Global Field can be different from LowMC runtime Field
+  const auto field = std::get<2>(GetParam());
+  const size_t npc = std::get<3>(GetParam());
+
+  const Shape shape = {10, 5};
+  // const Shape shape = {1000, 1000};
+
+  const auto bty = makeType<spu::mpc::semi2k::BShrTy>(field);
+  const auto numel = shape.numel();
+
+  // sharing of x
+  NdArrayRef x[2];
+  x[0] = ring_rand(field, shape).as(bty);
+  x[1] = ring_rand(field, shape).as(bty);
+  auto pub_x = ring_xor(x[0], x[1]);
+
+  // sharing of key
+  uint128_t key[2];
+  key[0] = yacl::crypto::SecureRandSeed();
+  key[1] = yacl::crypto::SecureRandSeed();
+  auto pub_key = key[0] ^ key[1];
+
+  uint128_t seed = 0;
+
+  NdArrayRef out[2];
+  utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lcxt) {
+    auto obj = factory(conf, lcxt);
+    KernelEvalContext kcontext(obj.get());
+
+    int rank = lcxt->Rank();
+
+    // test for kernel registration
+    SPU_ENFORCE(obj->hasKernel("lowmc_b"));
+    spu::mpc::semi2k::LowMcB cipher;
+
+    size_t b0 = lcxt->GetStats()->sent_bytes;
+    size_t r0 = lcxt->GetStats()->sent_actions;
+    yacl::ElapsedTimer pack_timer;
+
+    // To test the correctness, we use the inner api
+    out[rank] = cipher.encrypt(&kcontext, x[rank], key[rank], seed);
+
+    double pack_time = pack_timer.CountMs() * 1.0;
+    size_t b1 = lcxt->GetStats()->sent_bytes;
+    size_t r1 = lcxt->GetStats()->sent_actions;
+
+    SPDLOG_INFO(
+        "LowMC ({}) for n = {}, elapsed {} ms, sent {} MiB ({} B per), "
+        "actions {}.",
+        field, numel, pack_time, (b1 - b0) * 1. / 1024. / 1024.,
+        (b1 - b0) * 1. / numel, r1 - r0);
+  });
+
+  SPU_ENFORCE(out[0].eltype().isa<semi2k::BShrTy>());
+  SPU_ENFORCE(out[1].eltype().isa<semi2k::BShrTy>());
+
+  auto got = ring_xor(out[0], out[1]);
+  DISPATCH_ALL_FIELDS(field, [&]() {  //
+    NdArrayView<ring2k_t> _got(got);
+
+    auto block_cipher = LowMC(field, seed, get_data_complexity(numel));
+    block_cipher.set_key(pub_key);
+
+    auto c = block_cipher.encrypt(pub_x);
+    NdArrayView<ring2k_t> _exp(c);
+
+    for (int64_t i = 0; i < numel; ++i) {
+      auto got_val = _got[i];
+      auto exp_val = _exp[i];
+
+      EXPECT_EQ(got_val, exp_val);
+    }
+  });
+}
+
 }  // namespace spu::mpc::test

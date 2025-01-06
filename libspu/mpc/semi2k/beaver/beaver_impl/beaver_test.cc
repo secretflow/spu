@@ -1093,22 +1093,20 @@ TEST_P(BeaverTest, PermPair) {
   const size_t kWorldSize = std::get<1>(GetParam());
   const FieldType kField = std::get<2>(GetParam());
   const size_t adjust_rank = std::get<4>(GetParam());
-  const int64_t kNumel = 10;
-  std::random_device rd;
-  uint128_t seed = rd();
-  uint64_t ctr = rd();
-  const auto r_perm = genRandomPerm(kNumel, seed, &ctr);
+  const int64_t kNumel = 666 * 1024 + 1;
 
   for (size_t r = 0; r < kWorldSize; ++r) {
-    std::vector<Pair> pairs(kWorldSize);
+    std::vector<Beaver::Pair> pairs(kWorldSize);
+    Index perm;
     utils::simulate(
         kWorldSize, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
           auto beaver = factory(lctx, ttp_options_, adjust_rank);
           auto rank = lctx->Rank();
+          auto PermPair = beaver->PermPair(kField, kNumel, r);
+          pairs[lctx->Rank()].first = std::move(std::get<0>(PermPair));
+          pairs[lctx->Rank()].second = std::move(std::get<1>(PermPair));
           if (rank == r) {
-            pairs[lctx->Rank()] = beaver->PermPair(kField, kNumel, r, r_perm);
-          } else {
-            pairs[lctx->Rank()] = beaver->PermPair(kField, kNumel, r, {});
+            perm = std::move(std::get<2>(PermPair));
           }
           yacl::link::Barrier(lctx, "BeaverUT");
         });
@@ -1116,7 +1114,7 @@ TEST_P(BeaverTest, PermPair) {
     EXPECT_EQ(pairs.size(), kWorldSize);
     auto open = open_buffer(pairs, kField, std::vector<Shape>(2, {kNumel}),
                             kWorldSize, true);
-    EXPECT_TRUE(ring_all_equal(applyInvPerm(open[0], r_perm), open[1], 0));
+    EXPECT_TRUE(ring_all_equal(applyInvPerm(open[0], perm), open[1], 0));
   }
 }
 

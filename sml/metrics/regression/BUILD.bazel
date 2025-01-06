@@ -12,26 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("//bazel:spu.bzl", "spu_py_binary", "spu_py_library", "spu_py_test")
 
 package(default_visibility = ["//visibility:public"])
 
-py_library(
+spu_py_library(
     name = "regression",
     srcs = ["regression.py"],
 )
 
-py_test(
+spu_py_test(
     name = "regression_test",
     srcs = ["regression_test.py"],
     deps = [
         ":regression",
         "//spu:init",
         "//spu/utils:simulation",
+        "@spu_pip_dev//scikit_learn:pkg",
     ],
 )
 
-py_binary(
+spu_py_binary(
     name = "regression_emul",
     srcs = ["regression_emul.py"],
     deps = [

@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@grpc//bazel:python_rules.bzl", "py_grpc_library", "py_proto_library")
 load("@rules_proto//proto:defs.bzl", "proto_library")
-load("@rules_proto_grpc//python:defs.bzl", "python_grpc_compile")
-load("@rules_python//python:defs.bzl", "py_library")
+load("//bazel:spu.bzl", "spu_py_library")
 
 package(default_visibility = ["//visibility:public"])
 
-py_library(
+spu_py_library(
     name = "simulation",
     srcs = ["simulation.py"],
     deps = [
@@ -32,14 +32,19 @@ proto_library(
     srcs = ["distributed.proto"],
 )
 
-python_grpc_compile(
-    name = "distributed_py_proto_grpc",
-    output_mode = "NO_PREFIX",
-    prefix_path = "../..",
-    protos = ["distributed_proto"],
+py_proto_library(
+    name = "distributed_py_proto",
+    deps = [":distributed_proto"],
 )
 
-py_library(
+py_grpc_library(
+    name = "distributed_py_proto_grpc",
+    srcs = [":distributed_proto"],
+    strip_prefixes = ["../.."],
+    deps = [":distributed_py_proto"],
+)
+
+spu_py_library(
     name = "distributed_impl",
     srcs = [
         "distributed_impl.py",
@@ -52,7 +57,7 @@ py_library(
     ],
 )
 
-py_library(
+spu_py_library(
     name = "distributed",
     srcs = [
         "distributed.py",
@@ -63,7 +68,7 @@ py_library(
     ],
 )
 
-py_library(
+spu_py_library(
     name = "frontend",
     srcs = ["frontend.py"],
     deps = [
@@ -71,7 +76,7 @@ py_library(
     ],
 )
 
-py_library(
+spu_py_library(
     name = "polyfill",
     srcs = ["polyfill.py"],
 )

@@ -66,8 +66,7 @@ class BeaverTfpUnsafe final : public Beaver {
 
   Array RandBit(FieldType field, int64_t size) override;
 
-  Pair PermPair(FieldType field, int64_t size, size_t perm_rank,
-                absl::Span<const int64_t> perm_vec) override;
+  PremTriple PermPair(FieldType field, int64_t size, size_t perm_rank) override;
 
   std::unique_ptr<Beaver> Spawn() override;
 

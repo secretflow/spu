@@ -275,4 +275,16 @@ void OramReadKernel::evaluate(KernelEvalContext* ctx) const {
       WrapValue(proc(ctx, UnwrapValue(onehot), UnwrapValue(db), offset)));
 }
 
+void MultiKeyLowMcKernel::evaluate(KernelEvalContext* ctx) const {
+  const auto& in = ctx->getParam<std::vector<Value>>(0);
+  std::vector<NdArrayRef> inputs;
+  inputs.reserve(in.size());
+  for (const auto& item : in) {
+    inputs.push_back(UnwrapValue(item));
+  }
+  auto y = proc(ctx, inputs);
+
+  ctx->pushOutput(WrapValue(y));
+}
+
 }  // namespace spu::mpc

@@ -15,6 +15,10 @@
 common --experimental_repo_remote_exec
 common --experimental_cc_shared_library
 
+common --registry=https://raw.githubusercontent.com/secretflow/bazel-registry/main
+common --registry=https://bcr.bazel.build
+common --registry=https://baidu.github.io/babylon/registry
+
 # Required by OpenXLA
 build --nocheck_visibility
 
@@ -64,3 +68,6 @@ build:macos --action_env MACOSX_DEPLOYMENT_TARGET=13.0
 
 build:linux --copt=-fopenmp
 build:linux --linkopt=-fopenmp
+
+# NOTE: fix build on linux_aarch64, since `build:linux_aarch64` works only if `--config linux_aarch64` option included.
+build:linux --cxxopt=-Wno-mismatched-new-delete
