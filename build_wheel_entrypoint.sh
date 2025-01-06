@@ -17,6 +17,7 @@
 
 
 # FIXME: add build option `--config=avx` if building on x86_64 platform
+if [ ! -e "/usr/bin/python3" ]; then ln -s `which python3` /usr/bin/python3; fi
 bazel build //:spu_wheel -c opt
 
 # Ensure binary safety
