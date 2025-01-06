@@ -21,7 +21,7 @@ plotnine
 jraph
 optax
 torch==2.3.0
-torch_xla==2.3.0
+torch_xla==2.3.0; sys_platform == "linux" and platform_machine == 'x86_64'
 torchvision
 tensorflow_datasets
 keras
