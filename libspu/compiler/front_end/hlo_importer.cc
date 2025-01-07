@@ -107,12 +107,9 @@ void runHloPasses(xla::HloModule *module) {
   // After canonicalization, there may be more batch dots that can be
   // simplified.
   pipeline.AddPass<BatchDotSimplification>();
-  auto cost_model = [](HloInstruction *) {
-    // No cost module for SPU.
-    return false;
-  };
   pipeline.AddPass<ConvolutionGroupConverter>(
-      /*should_expand=*/[](HloInstruction *) { return true; }, cost_model,
+      /*should_expand*/ [](HloInstruction *) { return true; },
+      /*is_cost_viable*/ [](HloInstruction *) { return true; },
       /*convert_batch_groups_only=*/false);
   pipeline.AddPass<BatchNormExpander>(
       /*rewrite_training_op=*/true,
