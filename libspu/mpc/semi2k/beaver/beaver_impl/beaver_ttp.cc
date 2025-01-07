@@ -210,7 +210,8 @@ class ProgressiveReader : public brpc::ProgressiveReader {
 
  private:
   size_t copy_to_flags(const void* data, size_t length) {
-    size_t cp_size = std::min(static_cast<size_t>(flags_.size() - flags_pos_), length);
+    size_t cp_size =
+        std::min(static_cast<size_t>(flags_.size() - flags_pos_), length);
     std::memcpy(flags_.data() + flags_pos_, data, cp_size);
     flags_pos_ += cp_size;
     if (flags_pos_ == flags_.size()) {
@@ -254,7 +255,8 @@ class ProgressiveReader : public brpc::ProgressiveReader {
         SPU_THROW("response size mismatch, outof index");
       }
       auto& buffer = receive_buffers_[current_buffer_idx_];
-      auto cp_size = std::min(length, static_cast<size_t>(buffer.size() - current_buffer_pos_));
+      auto cp_size = std::min(
+          length, static_cast<size_t>(buffer.size() - current_buffer_pos_));
       std::memcpy(buffer.data<uint8_t>() + current_buffer_pos_,
                   reinterpret_cast<const uint8_t*>(data) + data_pos, cp_size);
       current_buffer_pos_ += cp_size;
