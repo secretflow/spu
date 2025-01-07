@@ -92,4 +92,7 @@ struct formatter<spu::RuntimeConfig_SigmoidMode> : ostream_formatter {};
 template <>
 struct formatter<spu::SourceIRType> : ostream_formatter {};
 
+template <>
+struct formatter<spu::RuntimeConfig_SortMethod> : ostream_formatter {};
+
 }  // namespace fmt

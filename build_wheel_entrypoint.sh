@@ -15,9 +15,9 @@
 # limitations under the License.
 #
 
-pip install numpy
 
-python setup.py bdist_wheel
+# FIXME: add build option `--config=avx` if building on x86_64 platform
+bazel build //:spu_wheel -c opt
 
 # Ensure binary safety
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then

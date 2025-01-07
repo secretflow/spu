@@ -12,27 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_python//python:defs.bzl", "py_library")
+load("//bazel:spu.bzl", "spu_py_library")
 
 package(default_visibility = ["//visibility:public"])
 
-py_library(
+spu_py_library(
     name = "link",
     srcs = ["link.py"],
 )
 
-py_library(
+spu_py_library(
     name = "loss",
     srcs = ["loss.py"],
     deps = [":link"],
 )
 
-py_library(
+spu_py_library(
     name = "solver",
     srcs = ["solver.py"],
 )
 
-py_library(
+spu_py_library(
     name = "_linprog_simplex",
     srcs = ["_linprog_simplex.py"],
 )

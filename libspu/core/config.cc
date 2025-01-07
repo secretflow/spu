@@ -57,6 +57,11 @@ void populateRuntimeConfig(RuntimeConfig& cfg) {
     cfg.set_fxp_div_goldschmidt_iters(2);
   }
 
+  // sort
+  if (cfg.quick_sort_threshold() == 0) {
+    cfg.set_quick_sort_threshold(32);
+  }
+
   // fxp exponent config
   {
     if (cfg.fxp_exp_mode() == RuntimeConfig::EXP_DEFAULT) {

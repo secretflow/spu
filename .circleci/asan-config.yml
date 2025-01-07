@@ -47,10 +47,6 @@ jobs:
           name: Checkout devtools
           command: git clone https://github.com/secretflow/devtools.git ../devtools
       - run:
-          name: "Install dependencies"
-          command: |
-            python3 -m pip install numpy
-      - run:
           name: "test"
           command: |
             set +e

@@ -61,6 +61,22 @@ NdArrayRef CastTypeB::proc(KernelEvalContext*, const NdArrayRef& in,
   return in.as(to_type);
 }
 
+NdArrayRef RandB::proc(KernelEvalContext* ctx, const Shape& shape) const {
+  auto* prg_state = ctx->getState<PrgState>();
+  const auto field = ctx->getState<Z2kState>()->getDefaultField();
+
+  return DISPATCH_ALL_FIELDS(field, [&]() {
+    auto r = prg_state->genPriv(field, shape);
+    // only rand bit is supported
+    const size_t nbits = 1;
+    NdArrayView<ring2k_t> _r(r);
+
+    pforeach(0, shape.numel(), [&](int64_t idx) { _r[idx] = _r[idx] & 1; });
+
+    return makeBShare(r, field, nbits);
+  });
+}
+
 NdArrayRef B2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const auto field = in.eltype().as<Ring2k>()->field();
   auto* comm = ctx->getState<Communicator>();

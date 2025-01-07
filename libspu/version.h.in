@@ -12,20 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#define SPU_VERSION "@SPU_VERSION@"
 
-#include <cstdint>
+#include <string_view>
 
-namespace spu::mpc::semi2k::beaver::ttp_server {
+namespace spu {
 
-constexpr size_t kReplayChunkSize = 50 * 1024 * 1024;  // bytes
+inline std::string_view getVersionStr() { return SPU_VERSION; }
 
-constexpr size_t kUpStreamChunkSize = 50 * 1024 * 1024;    // bytes
-constexpr size_t kDownStreamChunkSize = 50 * 1024 * 1024;  // bytes
-
-// A list of buffer streams
-struct BeaverDownStreamMeta {
-  int32_t err_code = 0;
-};
-
-}  // namespace spu::mpc::semi2k::beaver::ttp_server
+}  // namespace spu

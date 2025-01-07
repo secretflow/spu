@@ -80,7 +80,14 @@ Value reveal(SPUContext* ctx, const Value& x) {
 
 Value reveal_to(SPUContext* ctx, const Value& x, size_t rank) {
   SPU_TRACE_HAL_LEAF(ctx, x, rank);
-  SPU_ENFORCE(x.isSecret());
+  SPU_ENFORCE(!x.isPublic());
+  if (x.isPrivate()) {
+    if (x.owner() == static_cast<int64_t>(rank)) {
+      return x;
+    } else {
+      return _s2v(ctx, _v2s(ctx, x), rank).setDtype(x.dtype());
+    }
+  }
   return _s2v(ctx, x, rank).setDtype(x.dtype());
 }
 

@@ -15,6 +15,7 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 
 #include "brpc/server.h"
 #include "yacl/base/buffer.h"
@@ -26,8 +27,8 @@ struct ServerOptions {
   // asym_crypto_schema: support ["SM2"]
   // Will support 25519 in the future, after yacl supported it.
   std::string asym_crypto_schema;
-  // TODO: Remote Attestation
   yacl::Buffer server_private_key;
+  std::optional<brpc::ServerSSLOptions> brpc_ssl_options;
 };
 
 std::unique_ptr<brpc::Server> RunServer(const ServerOptions& options);

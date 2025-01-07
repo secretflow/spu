@@ -42,7 +42,7 @@ spu_cc_library(
     copts = AES_COPT_FLAGS + ["-Wno-ignored-attributes"],
     deps = [
         "//libspu/core:prelude",
-        "@com_github_emptoolkit_emp_tool//:emp-tool",
+        "@emp-tool//:emp-tool",
         "@yacl//yacl/crypto/hash:hash_interface",
         "@yacl//yacl/crypto/hash:hash_utils",
         "@yacl//yacl/crypto/tools:crhash",
@@ -66,7 +66,7 @@ spu_cc_library(
         "//libspu/mpc/spdz2k:commitment",
         "//libspu/mpc/spdz2k/ot:kos_ote",
         "//libspu/mpc/utils:ring_ops",
-        "@com_github_emptoolkit_emp_tool//:emp-tool",
+        "@emp-tool//:emp-tool",
         "@yacl//yacl/crypto/tools:prg",
         "@yacl//yacl/kernel/type:ot_store",
         "@yacl//yacl/link",

@@ -67,6 +67,13 @@ class Value final {
   bool isPublic() const { return vtype() == VIS_PUBLIC; }
   bool isSecret() const { return vtype() == VIS_SECRET; }
   bool isPrivate() const { return vtype() == VIS_PRIVATE; }
+  int64_t owner() const {
+    if (isPrivate()) {
+      return storage_type().as<Private>()->owner();
+    } else {
+      return -1;
+    }
+  }
 
   // Get dtype.
   DataType dtype() const { return dtype_; }

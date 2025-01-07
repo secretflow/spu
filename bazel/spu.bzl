@@ -17,6 +17,8 @@ warpper bazel cc_xx to modify flags.
 """
 
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
+load("@rules_python//python:defs.bzl", "py_binary", "py_library", "py_test")
+load("@spu_pip//:requirements.bzl", pip_dep = "all_requirements")
 load("@yacl//bazel:yacl.bzl", "yacl_cmake_external")
 
 WARNING_FLAGS = [
@@ -59,7 +61,7 @@ def spu_cc_library(
         linkopts = linkopts,
         copts = _spu_copts() + copts,
         deps = deps + [
-            "@com_github_gabime_spdlog//:spdlog",
+            "@spdlog//:spdlog",
         ],
         local_defines = local_defines + [
             "SPU_BUILD",
@@ -96,12 +98,36 @@ def spu_cc_test(
         # -lm for tcmalloc
         linkopts = linkopts + ["-lm"],
         copts = _spu_copts() + copts,
-        deps = deps + [
-            "@com_google_googletest//:gtest_main",
-        ],
+        deps = [
+            "@googletest//:gtest_main",
+        ] + deps,
         local_defines = local_defines + [
             "SPU_BUILD",
         ],
         linkstatic = True,
+        **kwargs
+    )
+
+def spu_py_binary(
+        deps = [],
+        **kwargs):
+    py_binary(
+        deps = deps + pip_dep,
+        **kwargs
+    )
+
+def spu_py_library(
+        deps = [],
+        **kwargs):
+    py_library(
+        deps = deps + pip_dep,
+        **kwargs
+    )
+
+def spu_py_test(
+        deps = [],
+        **kwargs):
+    py_test(
+        deps = deps + pip_dep,
         **kwargs
     )

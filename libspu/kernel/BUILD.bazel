@@ -27,6 +27,6 @@ spu_cc_library(
         "//libspu/kernel/hal:prot_wrapper",  # BAD
         "//libspu/kernel/hal:public_helper",  # BAD
         "//libspu/mpc:factory",
-        "@com_google_googletest//:gtest",
+        "@googletest//:gtest",
     ],
 )

@@ -22,7 +22,6 @@ enum ErrorCode {
   OK = 0;
   OpAdjustError = 1;
   SeedDecryptError = 2;
-  StreamAcceptError = 3;
 }
 
 // The type of element in the field.
@@ -42,6 +41,13 @@ message PrgBufferMeta {
   uint64 buffer_len = 2;
   repeated bytes encrypted_seeds = 3;
   bool transpose = 4;
+}
+
+message PrgRandPermMeta {
+  uint64 prg_count = 1;
+  // permutation size
+  int64 size = 2;
+  bytes encrypted_seeds = 3;
 }
 
 // TTP Beaver service for semi2k only.
@@ -201,13 +207,12 @@ message AdjustPermRequest {
   repeated PrgBufferMeta prg_inputs = 1;
   // What field size should be used to interpret buffer content
   uint32 field_size = 2;
+  // Rand permutation
+  PrgRandPermMeta perm = 3;
   // output
-  // adjust_b = (apply inverse permutation perm_vec to ra) - rb
+  // adjust_b = (apply inverse permutation perm to ra) - rb
   // make
-  // (adjust_b + rb) = apply inverse permutation perm_vec to ra
+  // (adjust_b + rb) = apply inverse permutation perm to ra
 }
 
-message AdjustResponse {
-  ErrorCode code = 1;
-  string message = 2;
-}
+message AdjustResponse {}

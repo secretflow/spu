@@ -120,7 +120,7 @@ Value _bitrev_v(SPUContext* ctx, const Value& in, size_t start, size_t end);
 Value _make_p(SPUContext* ctx, uint128_t init, const Shape& shape);
 
 Value _rand_p(SPUContext* ctx, const Shape& shape);
-Value _rand_s(SPUContext* ctx, const Shape& shape);
+Value _rand_s(SPUContext* ctx, const Shape& shape, DataType dtype);
 
 // FIXME: temporary API, formalize later
 Value _rand_perm_s(SPUContext* ctx, const Shape& shape);

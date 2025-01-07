@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel:spu.bzl", "spu_cc_library", "spu_cc_test")
+load("//bazel:spu.bzl", "spu_cc_library")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -25,7 +25,7 @@ spu_cc_library(
         "//libspu/core:ndarray_ref",
         "//libspu/core:shape",
         "//libspu/mpc/common:prg_tensor",
-        "@com_github_google_leveldb//:leveldb",
+        "@leveldb",
     ],
 )
 
