@@ -25,14 +25,15 @@ def spu_deps():
     _com_github_openxla_xla()
     _com_github_pybind11_bazel()
     _com_github_pybind11()
-    _com_intel_hexl()
+
+    # _com_intel_hexl()
     _com_github_emptoolkit_emp_tool()
     _com_github_emptoolkit_emp_ot()
     _com_github_facebook_zstd()
     _com_github_eigenteam_eigen()
     _com_github_nvidia_cutlass()
+    _com_github_microsoft_seal()
     _yacl()
-    _libpsi()
 
 def _yacl():
     maybe(
@@ -43,17 +44,6 @@ def _yacl():
         ],
         strip_prefix = "yacl-0.4.5b7_nightly_20240930",
         sha256 = "cf8dc7cceb9c5d05df00f1c086feec99d554db3e3cbe101253cf2a5a1adb9072",
-    )
-
-def _libpsi():
-    maybe(
-        http_archive,
-        name = "psi",
-        urls = [
-            "https://github.com/secretflow/psi/archive/refs/tags/v0.4.3.dev240919.tar.gz",
-        ],
-        strip_prefix = "psi-0.4.3.dev240919",
-        sha256 = "1ee34fbbd9a8f36dea8f7c45588a858e8c31f3a38e60e1fc67cb428ea79334e3",
     )
 
 def _rules_proto_grpc():
@@ -175,20 +165,20 @@ def _com_github_pybind11():
         ],
     )
 
-def _com_intel_hexl():
-    maybe(
-        http_archive,
-        name = "com_intel_hexl",
-        type = "tar.gz",
-        strip_prefix = "hexl-1.2.5",
-        sha256 = "3692e6e6183dbc49253e51e86c3e52e7affcac925f57db0949dbb4d34b558a9a",
-        build_file = "@spulib//bazel:hexl.BUILD",
-        urls = [
-            "https://github.com/intel/hexl/archive/refs/tags/v1.2.5.tar.gz",
-        ],
-        patch_args = ["-p1"],
-        patches = ["@spulib//bazel:patches/hexl.patch"],
-    )
+# def _com_intel_hexl():
+#     maybe(
+#         http_archive,
+#         name = "com_intel_hexl",
+#         type = "tar.gz",
+#         strip_prefix = "hexl-1.2.5",
+#         sha256 = "3692e6e6183dbc49253e51e86c3e52e7affcac925f57db0949dbb4d34b558a9a",
+#         build_file = "@spulib//bazel:hexl.BUILD",
+#         urls = [
+#             "https://github.com/intel/hexl/archive/refs/tags/v1.2.5.tar.gz",
+#         ],
+#         patch_args = ["-p1"],
+#         patches = ["@spulib//bazel:patches/hexl.patch"],
+#     )
 
 def _com_github_emptoolkit_emp_tool():
     maybe(
@@ -248,4 +238,19 @@ def _com_github_nvidia_cutlass():
         ],
         sha256 = "20b7247cda2d257cbf8ba59ba3ca40a9211c4da61a9c9913e32b33a2c5883a36",
         build_file = "@spulib//bazel:nvidia_cutlass.BUILD",
+    )
+
+def _com_github_microsoft_seal():
+    maybe(
+        http_archive,
+        name = "com_github_microsoft_seal",
+        sha256 = "af9bf0f0daccda2a8b7f344f13a5692e0ee6a45fea88478b2b90c35648bf2672",
+        strip_prefix = "SEAL-4.1.1",
+        type = "tar.gz",
+        patch_args = ["-p1"],
+        patches = ["@spulib//bazel:patches/seal.patch"],
+        urls = [
+            "https://github.com/microsoft/SEAL/archive/refs/tags/v4.1.1.tar.gz",
+        ],
+        build_file = "@spulib//bazel:seal.BUILD",
     )

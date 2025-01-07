@@ -11,7 +11,5 @@ IncludeCategories:
     Priority: 6
   - Regex: '^"libspu.*'
     Priority: 4
-  - Regex: '^"psi.*'
-    Priority: 5
   - Regex: '^".*'
     Priority: 3

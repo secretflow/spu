@@ -27,10 +27,6 @@ load("@yacl//bazel:repositories.bzl", "yacl_deps")
 
 yacl_deps()
 
-load("@psi//bazel:repositories.bzl", "psi_deps")
-
-psi_deps()
-
 load("@rules_python//python:repositories.bzl", "py_repositories")
 
 py_repositories()
@@ -88,10 +84,3 @@ load("@rules_proto_grpc//:repositories.bzl", "rules_proto_grpc_repos", "rules_pr
 rules_proto_grpc_toolchains()
 
 rules_proto_grpc_repos()
-
-#
-# boost
-#
-load("@com_github_nelhage_rules_boost//:boost/boost.bzl", "boost_deps")
-
-boost_deps()
