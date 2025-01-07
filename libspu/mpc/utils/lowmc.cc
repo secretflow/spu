@@ -43,7 +43,7 @@ uint64_t rank_of_matrix(const NdArrayRef& matrix) {
 
     // can be `block_size_` or `key_size_`, column size of matrix
     const size_t size = sizeof(block_type) * 8;
-    const auto max_rank = std::min(static_cast<size_t>(n_rows), size);
+    const auto max_rank = std::min<size_t>(n_rows, size);
 
     // we try to transform matrix to its upper triangular form
     for (uint64_t col = 1; col <= size; ++col) {
