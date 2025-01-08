@@ -23,5 +23,6 @@ py_test(
         "//sml/preprocessing",
         "//spu:init",
         "//spu/utils:simulation",
+        "@spu_pip_dev//scikit_learn:pkg",
     ],
 )

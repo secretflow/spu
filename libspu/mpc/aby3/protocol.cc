@@ -67,7 +67,7 @@ void regAby3Protocol(SPUContext* ctx,
           aby3::XorBP, aby3::XorBB,                             // Xor
           aby3::BitrevB,                                        // bitreverse
           aby3::BitIntlB, aby3::BitDeintlB,  // bit(de)interleave
-          aby3::RandA,                       // rand
+          aby3::RandA, aby3::RandB,          // rand
 #ifdef ENABLE_PRECISE_ABY3_TRUNCPR
           aby3::TruncAPr,  // Trunc
 #else

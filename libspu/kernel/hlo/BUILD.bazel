@@ -305,6 +305,7 @@ spu_cc_test(
         ":sort",
         "//libspu/kernel:test_util",
         "//libspu/kernel/hal:polymorphic",
+        "//libspu/mpc/utils:simulate",
     ],
 )
 
@@ -347,5 +348,48 @@ spu_cc_test(
     deps = [
         ":shuffle",
         "//libspu/kernel:test_util",
+    ],
+)
+
+spu_cc_library(
+    name = "soprf",
+    srcs = ["soprf.cc"],
+    hdrs = ["soprf.h"],
+    deps = [
+        ":geometrical",
+        "//libspu/kernel/hal:soprf",
+    ],
+)
+
+spu_cc_test(
+    name = "soprf_test",
+    srcs = ["soprf_test.cc"],
+    deps = [
+        ":casting",
+        ":const",
+        ":soprf",
+        "//libspu/kernel:test_util",
+        "//libspu/mpc/utils:simulate",
+    ],
+)
+
+spu_cc_library(
+    name = "permute",
+    srcs = ["permute.cc"],
+    hdrs = ["permute.h"],
+    deps = [
+        "//libspu/kernel/hal:permute",
+    ],
+)
+
+spu_cc_test(
+    name = "permute_test",
+    srcs = ["permute_test.cc"],
+    deps = [
+        ":casting",
+        ":const",
+        ":permute",
+        "//libspu/kernel:test_util",
+        "//libspu/mpc/utils:simulate",
     ],
 )

@@ -127,12 +127,13 @@ NdArrayRef encodeToRing(const PtBufferView& bv, FieldType field,
 void decodeFromRing(const NdArrayRef& src, DataType in_dtype, size_t fxp_bits,
                     PtBufferView* out_bv, PtType* out_pt_type) {
   const Type& src_type = src.eltype();
+
+  SPU_ENFORCE(src_type.isa<Ring2k>(), "source must be ring2k, got={}",
+              src_type);
+
   const FieldType field = src_type.as<Ring2k>()->field();
   const PtType pt_type = getDecodeType(in_dtype);
   const size_t numel = src.numel();
-
-  SPU_ENFORCE(src_type.isa<RingTy>(), "source must be ring_type, got={}",
-              src_type);
 
   if (out_pt_type != nullptr) {
     *out_pt_type = pt_type;

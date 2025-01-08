@@ -14,18 +14,25 @@
 
 #include "libspu/mpc/semi2k/beaver/beaver_impl/beaver_ttp.h"
 
+#include <condition_variable>
 #include <future>
+#include <mutex>
 #include <utility>
 #include <vector>
 
+#include "brpc/progressive_reader.h"
 #include "yacl/crypto/pke/sm2_enc.h"
 #include "yacl/crypto/rand/rand.h"
 #include "yacl/link/algorithm/allgather.h"
+#include "yacl/link/algorithm/broadcast.h"
+#include "yacl/utils/serialize.h"
 
 #include "libspu/mpc/common/prg_tensor.h"
-#include "libspu/mpc/semi2k/beaver/beaver_impl/ttp_server/beaver_stream.h"
 #include "libspu/mpc/utils/gfmp_ops.h"
+#include "libspu/mpc/utils/permute.h"
 #include "libspu/mpc/utils/ring_ops.h"
+
+#include "libspu/mpc/semi2k/beaver/beaver_impl/ttp_server/service.pb.h"
 
 namespace brpc {
 
@@ -63,7 +70,7 @@ AdjustRequest BuildAdjustRequest(
 
   SPU_ENFORCE(!descs.empty());
 
-  uint32_t field_size;
+  uint32_t field_size = 0;
   ElementType eltype = ElementType::kRing;
 
   for (size_t i = 0; i < descs.size(); i++) {
@@ -104,98 +111,6 @@ AdjustRequest BuildAdjustRequest(
 template <class T>
 struct dependent_false : std::false_type {};
 
-class StreamReader : public brpc::StreamInputHandler {
- public:
-  enum class Status : int8_t {
-    kNotFinished,
-    kNormalFinished,
-    kAbnormalFinished,
-    kStreamFailed,
-  };
-
-  StreamReader(int32_t num_buf, size_t buf_len) {
-    SPU_ENFORCE(num_buf > 0);
-    SPU_ENFORCE(buf_len > 0);
-    buf_vec_.resize(num_buf);
-    buf_len_ = buf_len;
-    future_finished_ = promise_finished_.get_future();
-    future_closed_ = promise_closed_.get_future();
-  }
-
-  int on_received_messages(brpc::StreamId id, butil::IOBuf* const messages[],
-                           size_t size) override {
-    SPDLOG_DEBUG("on_received_messages, stream id: {}", id);
-    for (size_t i = 0; i < size; ++i) {
-      if (status_ != Status::kNotFinished) {
-        SPDLOG_ERROR("unexpected messages received");
-        return -1;
-      }
-
-      SPDLOG_DEBUG("receive buf size: {}", messages[i]->size());
-      const auto& message = messages[i];
-      beaver::ttp_server::BeaverDownStreamMeta meta;
-      message->copy_to(&meta, sizeof(meta));
-      message->pop_front(sizeof(meta));
-      if (meta.err_code != 0) {
-        SPDLOG_ERROR("response error from server, err_code: {}, err_text: {}",
-                     meta.err_code, message->to_string());
-        status_ = Status::kAbnormalFinished;
-        promise_finished_.set_value(status_);
-        return -2;
-      }
-
-      SPU_ENFORCE(message->length() % buf_vec_.size() == 0);
-      size_t msg_len = message->length() / buf_vec_.size();
-      for (size_t buf_idx = 0; buf_idx < buf_vec_.size(); ++buf_idx) {
-        message->append_to(&buf_vec_[buf_idx], msg_len, buf_idx * msg_len);
-      }
-
-      SPU_ENFORCE(buf_vec_[0].length() <= buf_len_,
-                  "unexpected bytes received");
-      if (buf_vec_[0].length() == buf_len_) {
-        status_ = Status::kNormalFinished;
-        promise_finished_.set_value(status_);
-      }
-    }
-    return 0;
-  }
-
-  void on_idle_timeout(brpc::StreamId id) override {
-    SPDLOG_WARN("Stream {} idle timeout", id);
-  }
-
-  void on_closed(brpc::StreamId id) override {
-    SPDLOG_DEBUG("Stream {} closed", id);
-    promise_closed_.set_value();
-  }
-
-  void on_failed(brpc::StreamId id, int error_code,
-                 const std::string& error_text) override {
-    SPDLOG_ERROR("Stream {} failed, error_code: {}, error_text: {}", id,
-                 error_code, error_text);
-    status_ = Status::kStreamFailed;
-    promise_finished_.set_value(status_);
-  }
-
-  const auto& GetBufVecRef() const {
-    SPU_ENFORCE(status_ == Status::kNormalFinished);
-    return buf_vec_;
-  }
-
-  Status WaitFinished() { return future_finished_.get(); };
-
-  void WaitClosed() { future_closed_.wait(); }
-
- private:
-  std::vector<butil::IOBuf> buf_vec_;
-  size_t buf_len_;
-  Status status_ = Status::kNotFinished;
-  std::promise<Status> promise_finished_;
-  std::promise<void> promise_closed_;
-  std::future<Status> future_finished_;
-  std::future<void> future_closed_;
-};
-
 // Obtain a tuple containing num_buf and buf_len
 template <class AdjustRequest>
 std::tuple<int32_t, int64_t> GetBufferLength(const AdjustRequest& req) {
@@ -214,26 +129,188 @@ std::tuple<int32_t, int64_t> GetBufferLength(const AdjustRequest& req) {
   }
 }
 
+class ProgressiveReader : public brpc::ProgressiveReader {
+ public:
+  ProgressiveReader(int32_t num_buf, int64_t buf_len)
+      : buffer_remain_size_(buf_len * num_buf),
+
+        receive_buffers_(num_buf) {
+    for (auto& b : receive_buffers_) {
+      b.resize(buf_len);
+    }
+  }
+
+  butil::Status OnReadOnePart(const void* data, size_t length) final {
+    size_t consumed = 0;
+    try {
+      while (consumed < length) {
+        const auto* consume_data =
+            reinterpret_cast<const uint8_t*>(data) + consumed;
+        size_t remain_length = length - consumed;
+
+        if (current_state_ == ReadFlags) {
+          consumed += copy_to_flags(consume_data, remain_length);
+        } else if (current_state_ == ReadChunk) {
+          consumed += copy_to_buffer(consume_data, remain_length);
+        } else if (current_state_ == ReadError) {
+          consumed += copy_to_error(consume_data, remain_length);
+        } else if (current_state_ == End) {
+          return butil::Status(
+              -1, "response size mismatch, receive data after end");
+        }
+      }
+      if (current_state_ == End && !server_error_msg_.empty()) {
+        return butil::Status(
+            -1,
+            fmt::format("server side error code {}, msg {}",
+                        beaver::ttp_server::ErrorCode_Name(server_error_code_),
+                        server_error_msg_));
+      }
+    } catch (const std::exception& e) {
+      return butil::Status(-1, fmt::format("unexpected error {}", e.what()));
+    }
+
+    return butil::Status::OK();
+  }
+
+  void OnEndOfMessage(const butil::Status& status) final {
+    {
+      std::lock_guard lk(lock_);
+      if (current_state_ == End) {
+        // received all data.
+        read_status_ = status;
+      } else if (status.ok()) {
+        // rpc streaming finished, but we expected more data
+        read_status_ =
+            butil::Status(-1, "response size mismatch, need more data");
+      } else {
+        // some error happend in network or OnReadOnePart
+        read_status_ = status;
+      }
+    }
+    cond_.notify_all();
+  }
+
+  void Wait() {
+    {
+      std::unique_lock lk(lock_);
+      cond_.wait(lk, [this] { return read_status_.has_value(); });
+    }
+    SPU_ENFORCE(read_status_->ok(), "Beaver Streaming data err: {}",
+                read_status_->error_str());
+  }
+
+  std::vector<yacl::Buffer> PopBuffer() {
+    {
+      std::lock_guard lk(lock_);
+      SPU_ENFORCE(current_state_ == End, "pls wait streaming finished");
+    }
+    return std::move(receive_buffers_);
+  }
+
+ private:
+  size_t copy_to_flags(const void* data, size_t length) {
+    size_t cp_size = std::min<size_t>(flags_.size() - flags_pos_, length);
+    std::memcpy(flags_.data() + flags_pos_, data, cp_size);
+    flags_pos_ += cp_size;
+    if (flags_pos_ == flags_.size()) {
+      flags_pos_ = 0;
+      int64_t chunk_size = 0;
+      std::memcpy(&chunk_size, &flags_[1], sizeof(int64_t));
+      chunk_remain_size_ = chunk_size;
+      if (flags_[0] == 0) {
+        current_state_ = ReadChunk;
+      } else if (beaver::ttp_server::ErrorCode_IsValid(flags_[0])) {
+        server_error_code_ =
+            static_cast<beaver::ttp_server::ErrorCode>(flags_[0]);
+        current_state_ = ReadError;
+      } else {
+        SPU_THROW("unexpected flags[0] {}", flags_[0]);
+      }
+    }
+
+    return cp_size;
+  }
+
+  size_t copy_to_buffer(const void* data, size_t length) {
+    length = std::min(length, chunk_remain_size_);
+    chunk_remain_size_ -= length;
+    if (chunk_remain_size_ == 0) {
+      current_state_ = ReadFlags;
+    }
+
+    if (length > buffer_remain_size_) {
+      SPU_THROW("response size mismatch, too many data for buffer");
+    }
+
+    buffer_remain_size_ -= length;
+    if (buffer_remain_size_ == 0) {
+      current_state_ = End;
+    }
+
+    size_t data_pos = 0;
+    while (data_pos < length) {
+      if (current_buffer_idx_ >= receive_buffers_.size()) {
+        SPU_THROW("response size mismatch, outof index");
+      }
+      auto& buffer = receive_buffers_[current_buffer_idx_];
+      auto cp_size =
+          std::min<size_t>(length, buffer.size() - current_buffer_pos_);
+      std::memcpy(buffer.data<uint8_t>() + current_buffer_pos_,
+                  reinterpret_cast<const uint8_t*>(data) + data_pos, cp_size);
+      current_buffer_pos_ += cp_size;
+      if (current_buffer_pos_ == static_cast<size_t>(buffer.size())) {
+        current_buffer_pos_ = 0;
+        current_buffer_idx_ += 1;
+      }
+      data_pos += cp_size;
+    }
+
+    return length;
+  }
+
+  size_t copy_to_error(const void* data, size_t length) {
+    length = std::min(length, chunk_remain_size_);
+    chunk_remain_size_ -= length;
+    if (chunk_remain_size_ == 0) {
+      current_state_ = End;
+    }
+
+    server_error_msg_.append(reinterpret_cast<const char*>(data), length);
+    return length;
+  }
+
+ private:
+  enum State : uint8_t {
+    ReadFlags = 0,
+    ReadChunk = 1,
+    ReadError = 2,
+    End = 3,
+  };
+  State current_state_{ReadFlags};
+  size_t flags_pos_{};
+  std::array<uint8_t, 1 + sizeof(int64_t)> flags_;
+  size_t chunk_remain_size_{};
+  std::string server_error_msg_;
+  beaver::ttp_server::ErrorCode server_error_code_;
+
+  size_t buffer_remain_size_;
+  size_t current_buffer_idx_{};
+  size_t current_buffer_pos_{};
+  std::vector<yacl::Buffer> receive_buffers_;
+
+  std::mutex lock_;
+  std::condition_variable cond_;
+  std::optional<butil::Status> read_status_;
+};
+
 template <class AdjustRequest>
-std::vector<NdArrayRef> RpcCall(
-    brpc::Channel& channel, AdjustRequest req, FieldType ret_field,
-    const std::vector<butil::IOBuf>* upstream_messages = nullptr) {
-  brpc::Controller cntl;
+std::vector<NdArrayRef> RpcCall(brpc::Channel& channel,
+                                const AdjustRequest& req, FieldType ret_field) {
   beaver::ttp_server::BeaverService::Stub stub(&channel);
   beaver::ttp_server::AdjustResponse rsp;
-
-  auto [num_buf, buf_len] = GetBufferLength(req);
-  StreamReader reader(num_buf, buf_len);
-  brpc::StreamOptions stream_options;
-  stream_options.max_buf_size = 2 * beaver::ttp_server::kUpStreamChunkSize;
-  stream_options.handler = &reader;
-  brpc::StreamId stream_id;
-  SPU_ENFORCE_EQ(brpc::StreamCreate(&stream_id, cntl, &stream_options), 0,
-                 "Failed to create stream");
-  auto cleanup = absl::MakeCleanup([&stream_id, &reader]() {
-    SPU_ENFORCE(brpc::StreamClose(stream_id) == 0);
-    reader.WaitClosed();
-  });
+  brpc::Controller cntl;
+  cntl.response_will_be_read_progressively();
 
   if constexpr (std::is_same_v<AdjustRequest,
                                beaver::ttp_server::AdjustMulRequest>) {
@@ -276,35 +353,21 @@ std::vector<NdArrayRef> RpcCall(
 
   SPU_ENFORCE(!cntl.Failed(), "Adjust RpcCall failed, code={} error={}",
               cntl.ErrorCode(), cntl.ErrorText());
-  SPU_ENFORCE(rsp.code() == beaver::ttp_server::ErrorCode::OK,
-              "Adjust server failed code={}, error={}",
-              ErrorCode_Name(rsp.code()), rsp.message());
 
-  if (upstream_messages != nullptr) {
-    for (const auto& message : *upstream_messages) {
-      int ret = brpc::StreamWrite(stream_id, message);
-      if (ret == EAGAIN) {
-        SPU_ENFORCE_EQ(brpc::StreamWait(stream_id, nullptr), 0);
-        ret = brpc::StreamWrite(stream_id, message);
-      }
-      SPU_ENFORCE_EQ(ret, 0, "Write stream failed");
-      SPDLOG_DEBUG("write buf size {} to stream id {}", message.length(),
-                   stream_id);
-    }
-  }
+  auto [num_buf, buf_len] = GetBufferLength(req);
+  ProgressiveReader reader(num_buf, buf_len);
+  cntl.ReadProgressiveAttachmentBy(&reader);
+  reader.Wait();
+  auto buffers = reader.PopBuffer();
 
-  auto status = reader.WaitFinished();
-  SPU_ENFORCE(status == StreamReader::Status::kNormalFinished,
-              "Stream reader finished abnormally, status: {}",
-              static_cast<int32_t>(status));
   std::vector<NdArrayRef> ret;
-  for (const auto& buf : reader.GetBufVecRef()) {
-    SPU_ENFORCE(buf.length() % SizeOf(ret_field) == 0);
-    int64_t size = buf.length() / SizeOf(ret_field);
+  for (auto& buf : buffers) {
+    SPU_ENFORCE(buf.size() % SizeOf(ret_field) == 0);
+    int64_t size = buf.size() / SizeOf(ret_field);
     // FIXME: change beaver interface: change return type to buffer.
-    NdArrayRef array(makeType<RingTy>(ret_field), {size});
     // FIXME: TTP adjuster server and client MUST have same endianness.
-    buf.copy_to(array.data());
+    NdArrayRef array(std::make_shared<yacl::Buffer>(std::move(buf)),
+                     makeType<RingTy>(ret_field), {size});
     ret.push_back(std::move(array));
   }
 
@@ -325,15 +388,18 @@ BeaverTtp::BeaverTtp(std::shared_ptr<yacl::link::Context> lctx, Options ops)
   SPU_ENFORCE(lctx_);
   {
     brpc::ChannelOptions brc_options;
+    SPU_ENFORCE(options_.brpc_channel_protocol == "http" ||
+                    options_.brpc_channel_protocol == "h2",
+                "beaver only support http 1.1 or http 2");
     brc_options.protocol = options_.brpc_channel_protocol;
-    brc_options.connection_type = options_.brpc_channel_connection_type;
     brc_options.timeout_ms = options_.brpc_timeout_ms;
     brc_options.max_retry = options_.brpc_max_retry;
-    // TODO TLS
 
-    if (channel_.Init(options_.server_host.c_str(),
-                      options_.brpc_load_balancer_name.c_str(),
-                      &brc_options) != 0) {
+    if (options_.brpc_ssl_options) {
+      *brc_options.mutable_ssl_options() = options_.brpc_ssl_options.value();
+    }
+
+    if (channel_.Init(options_.server_host.c_str(), &brc_options) != 0) {
       SPU_THROW("Fail to initialize channel for BeaverTtp, server_host {}",
                 options_.server_host);
     }
@@ -654,9 +720,9 @@ BeaverTtp::Array BeaverTtp::RandBit(FieldType field, int64_t size) {
   return std::move(*a.buf());
 }
 
-BeaverTtp::Pair BeaverTtp::PermPair(FieldType field, int64_t size,
-                                    size_t perm_rank,
-                                    absl::Span<const int64_t> perm_vec) {
+BeaverTtp::PremTriple BeaverTtp::PermPair(FieldType field, int64_t size,
+                                          size_t perm_rank) {
+  constexpr char kTag[] = "BEAVER_TFP:PERM";
   std::vector<PrgArrayDesc> descs(2);
   std::vector<absl::Span<const PrgSeedBuff>> descs_seed(1, encrypted_seeds_);
   Shape shape({size, 1});
@@ -664,30 +730,34 @@ BeaverTtp::Pair BeaverTtp::PermPair(FieldType field, int64_t size,
   auto a = prgCreateArray(field, shape, seed_, &counter_, descs.data());
   auto b = prgCreateArray(field, shape, seed_, &counter_, &descs[1]);
 
-  if (lctx_->Rank() == perm_rank) {
+  if (lctx_->Rank() == options_.adjust_rank) {
     auto req = BuildAdjustRequest<beaver::ttp_server::AdjustPermRequest>(
         descs, descs_seed);
-    std::vector<butil::IOBuf> stream_data;
-    size_t left_buf_size = perm_vec.size() * sizeof(int64_t);
-    size_t chunk_idx = 0;
-    while (left_buf_size > 0) {
-      using beaver::ttp_server::kUpStreamChunkSize;
-      size_t cur_chunk_size = std::min(left_buf_size, kUpStreamChunkSize);
-      stream_data.emplace_back();
-      stream_data.back().append(reinterpret_cast<const char*>(perm_vec.data()) +
-                                    (chunk_idx * kUpStreamChunkSize),
-                                cur_chunk_size);
-      ++chunk_idx;
-      left_buf_size -= cur_chunk_size;
-    }
-    auto adjusts = RpcCall(channel_, req, field, &stream_data);
+    auto* perm_meta = req.mutable_perm();
+    perm_meta->set_prg_count(counter_);
+    perm_meta->set_size(size);
+    auto& perm_seed = encrypted_seeds_[perm_rank];
+    perm_meta->set_encrypted_seeds(perm_seed.data(), perm_seed.size());
+    auto adjusts = RpcCall(channel_, req, field);
     SPU_ENFORCE_EQ(adjusts.size(), 1U);
     ring_add_(b, adjusts[0].reshape(b.shape()));
   }
 
-  Pair ret;
-  ret.first = std::move(*a.buf());
-  ret.second = std::move(*b.buf());
+  Index pi;
+  if (lctx_->Rank() == perm_rank) {
+    pi = genRandomPerm(size, seed_, &counter_);
+  }
+
+  auto new_counter_buf = yacl::link::Broadcast(
+      lctx_, yacl::SerializeVars<PrgCounter>(counter_), perm_rank, kTag);
+
+  counter_ = yacl::DeserializeVars<PrgCounter>(new_counter_buf);
+
+  PremTriple ret;
+  std::get<0>(ret) = std::move(*a.buf());
+  std::get<1>(ret) = std::move(*b.buf());
+  std::get<2>(ret) = std::move(pi);
+
   return ret;
 }
 

@@ -39,6 +39,17 @@ class CastTypeB : public CastTypeKernel {
                   const Type& to_type) const override;
 };
 
+class RandB : public RandKernel {
+ public:
+  static constexpr const char* kBindName() { return "rand_b"; };
+
+  ce::CExpr latency() const override { return ce::Const(0); }
+
+  ce::CExpr comm() const override { return ce::Const(0); }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const Shape& shape) const override;
+};
+
 class B2P : public UnaryKernel {
  public:
   static constexpr const char* kBindName() { return "b2p"; }
