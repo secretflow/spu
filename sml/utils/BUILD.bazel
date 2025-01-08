@@ -20,7 +20,7 @@ spu_py_library(
     name = "emulation",
     srcs = [
         "emulation.py",
-        "//libspu:spu_py_proto",
+        "@spulib//libspu:spu_py_proto",
     ],
     data = [
         "//examples/python/conf",  # FIXME

@@ -40,7 +40,7 @@ header: # <1>
     - '**/*.mlir'
     - '**/*.csv'
     - '**/*.tmpl'
-    - 'libspu/compiler/tests/interpret/template/**.template'
+    - 'src/libspu/compiler/tests/interpret/template/**.template'
     - 'LICENSE'
     - 'NOTICE'
     - 'MODULE.bazel.lock'
@@ -51,7 +51,8 @@ header: # <1>
     - '.gitignore'
     - '.gitmodules'
     - 'pyproject.toml'
-    - 'libspu/core/half.h' # MIT
+    - 'src/libspu/core/half.h' # MIT
+    - '.bazelignore'
 
   comment: never # <9>
 

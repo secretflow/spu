@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel:spu.bzl", "spu_cc_binary", "spu_cc_library")
+load("@spulib//bazel:spu.bzl", "spu_cc_binary", "spu_cc_library")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -24,15 +24,15 @@ spu_cc_binary(
     ],
     deps = [
         ":utils",
-        "//libspu/device:io",
-        "//libspu/kernel/hal:public_helper",
-        "//libspu/kernel/hlo:basic_binary",
-        "//libspu/kernel/hlo:basic_unary",
-        "//libspu/kernel/hlo:casting",
-        "//libspu/kernel/hlo:const",
-        "//libspu/kernel/hlo:geometrical",
         "@abseil-cpp//absl/strings",
         "@llvm-project//llvm:Support",
+        "@spulib//libspu/device:io",
+        "@spulib//libspu/kernel/hal:public_helper",
+        "@spulib//libspu/kernel/hlo:basic_binary",
+        "@spulib//libspu/kernel/hlo:basic_unary",
+        "@spulib//libspu/kernel/hlo:casting",
+        "@spulib//libspu/kernel/hlo:const",
+        "@spulib//libspu/kernel/hlo:geometrical",
         "@yacl//yacl/link:factory",
     ],
 )
@@ -42,9 +42,9 @@ spu_cc_library(
     srcs = ["utils.cc"],
     hdrs = ["utils.h"],
     deps = [
-        "//libspu/core:context",
         "@abseil-cpp//absl/strings",
         "@llvm-project//llvm:Support",
+        "@spulib//libspu/core:context",
         "@yacl//yacl/link:factory",
     ],
 )
@@ -54,9 +54,9 @@ spu_cc_binary(
     srcs = ["simple_pphlo.cc"],
     deps = [
         ":utils",
-        "//libspu/device:api",
-        "//libspu/device:io",
-        "//libspu/device/pphlo:pphlo_executor",
         "@llvm-project//llvm:Support",
+        "@spulib//libspu/device:api",
+        "@spulib//libspu/device:io",
+        "@spulib//libspu/device/pphlo:pphlo_executor",
     ],
 )

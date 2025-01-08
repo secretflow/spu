@@ -7,7 +7,7 @@
 SPU has been tested with the following settings:
 
 - Ubuntu 22.04
-- python3.10
+- python3.8
 - 8c16g
 
 ### MacOS
@@ -28,6 +28,11 @@ You could install SPU via the [official PyPI package](https://pypi.org/project/s
 ```bash
 pip install spu
 ```
+
+
+
+
+
 
 ### From Source
 
