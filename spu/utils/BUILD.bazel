@@ -39,6 +39,8 @@ python_proto_library(
 
 python_grpc_library(
     name = "distributed_py_proto_grpc",
+    output_mode = "NO_PREFIX",
+    prefix_path = "../..",
     protos = [":distributed_proto"],
     deps = [":distributed_py_proto"],
 )
