@@ -15,7 +15,6 @@
 import jax.numpy as jnp
 import numpy as np
 
-import spu.intrinsic as si
 import spu.spu_pb2 as spu_pb2
 import spu.utils.simulation as ppsim
 
@@ -31,9 +30,9 @@ if __name__ == "__main__":
     copts.disable_div_sqrt_rewrite = True
 
     x = np.random.randn(3, 4)
-    y = np.random.randn(5, 6)
-    fn = lambda x, y: si.example_binary(x, y)
-    # fn = lambda x, y: jnp.matmul(x, y)
+    y = np.random.randn(4, 5)
+    fn = lambda x, y: jnp.matmul(x, y)
+
     spu_fn = ppsim.sim_jax(sim, fn, copts=copts)
     z = spu_fn(x, y)
 

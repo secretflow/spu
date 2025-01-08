@@ -77,6 +77,7 @@ Value v2a(SPUContext* ctx, const Value& x) {
 }
 
 Value msb_a2b(SPUContext* ctx, const Value& x) { TILED_DISPATCH(ctx, x); }
+Value msb_a(SPUContext* ctx, const Value& x) { TILED_DISPATCH(ctx, x); }
 
 Value rand_a(SPUContext* ctx, const Shape& shape) {
   FORCE_DISPATCH(ctx, shape);
@@ -117,6 +118,14 @@ Value mul_aa(SPUContext* ctx, const Value& x, const Value& y) {
   TILED_DISPATCH(ctx, x, y);
 }
 
+Value mul_aaa(SPUContext* ctx, const Value& x, const Value& y, const Value& z) {
+  TILED_DISPATCH(ctx, x, y, z);
+}
+
+Value mul_aa_p(SPUContext* ctx, const Value& x, const Value& y) {
+  TILED_DISPATCH(ctx, x, y);
+}
+
 Value square_a(SPUContext* ctx, const Value& x) { TILED_DISPATCH(ctx, x); }
 
 OptionalAPI<Value> mul_av(SPUContext* ctx, const Value& x, const Value& y) {
@@ -139,6 +148,11 @@ Value lshift_a(SPUContext* ctx, const Value& x, const Sizes& nbits) {
 
 Value trunc_a(SPUContext* ctx, const Value& x, size_t nbits, SignType sign) {
   TILED_DISPATCH(ctx, x, nbits, sign);
+}
+
+Value mul_aa_trunc(SPUContext* ctx, const Value& x, const Value& y,
+                   size_t nbits, SignType sign) {
+  TILED_DISPATCH(ctx, x, y, nbits, sign);
 }
 
 Value mmul_ap(SPUContext* ctx, const Value& x, const Value& y) {

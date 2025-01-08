@@ -66,6 +66,21 @@ void BinaryKernel::evaluate(KernelEvalContext* ctx) const {
   ctx->pushOutput(WrapValue(z));
 }
 
+void TernaryKnernel::evaluate(KernelEvalContext* ctx) const {
+  const auto& x = ctx->getParam<Value>(0);
+  const auto& y = ctx->getParam<Value>(1);
+  const auto& z = ctx->getParam<Value>(2);
+
+  SPU_ENFORCE(x.shape() == y.shape(), "shape mismatch {} {}", x.shape(),
+              y.shape());
+  SPU_ENFORCE(x.shape() == z.shape(), "shape mismatch {} {}", x.shape(),
+              z.shape());
+
+  auto out = proc(ctx, UnwrapValue(x), UnwrapValue(y), UnwrapValue(z));
+
+  ctx->pushOutput(WrapValue(out));
+}
+
 void MatmulKernel::evaluate(KernelEvalContext* ctx) const {
   const auto& lhs = ctx->getParam<Value>(0);
   const auto& rhs = ctx->getParam<Value>(1);
@@ -103,6 +118,17 @@ void TruncAKernel::evaluate(KernelEvalContext* ctx) const {
   SignType sign = ctx->getParam<SignType>(2);
 
   auto z = proc(ctx, UnwrapValue(in), bits, sign);
+
+  ctx->pushOutput(WrapValue(z));
+}
+
+void MulTruncAKernel::evaluate(KernelEvalContext* ctx) const {
+  const auto& lhs = ctx->getParam<Value>(0);
+  const auto& rhs = ctx->getParam<Value>(1);
+  size_t bits = ctx->getParam<size_t>(2);
+  SignType sign = ctx->getParam<SignType>(3);
+
+  auto z = proc(ctx, UnwrapValue(lhs), UnwrapValue(rhs), bits, sign);
 
   ctx->pushOutput(WrapValue(z));
 }
@@ -273,6 +299,18 @@ void OramReadKernel::evaluate(KernelEvalContext* ctx) const {
 
   ctx->pushOutput(
       WrapValue(proc(ctx, UnwrapValue(onehot), UnwrapValue(db), offset)));
+}
+
+void MultiKeyLowMcKernel::evaluate(KernelEvalContext* ctx) const {
+  const auto& in = ctx->getParam<std::vector<Value>>(0);
+  std::vector<NdArrayRef> inputs;
+  inputs.reserve(in.size());
+  for (const auto& item : in) {
+    inputs.push_back(UnwrapValue(item));
+  }
+  auto y = proc(ctx, inputs);
+
+  ctx->pushOutput(WrapValue(y));
 }
 
 }  // namespace spu::mpc

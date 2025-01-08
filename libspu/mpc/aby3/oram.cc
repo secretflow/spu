@@ -188,7 +188,7 @@ NdArrayRef OramReadOA::proc(KernelEvalContext *ctx, const NdArrayRef &onehot,
 
     auto f = std::async([&] { ring_assign(o1, z1); });
     // reshare
-    ring_assign(o2, comm->rotate(z1, kBindName));
+    ring_assign(o2, comm->rotate(z1, kBindName()));
     f.get();
   });
 
@@ -244,7 +244,7 @@ NdArrayRef OramReadOP::proc(KernelEvalContext *ctx, const NdArrayRef &onehot,
     ring_add_(out2pc, r.get());
 
     auto f = std::async([&] { ring_assign(o1, out2pc); });
-    ring_assign(o2, comm->rotate(out2pc, kBindName));
+    ring_assign(o2, comm->rotate(out2pc, kBindName()));
     f.get();
   });
 
@@ -440,14 +440,14 @@ void OramContext<T>::onehotB2A(KernelEvalContext *ctx, DpfGenCtrl ctrl) {
   const std::vector<T> v = convert_help_v[dpf_idx];
   std::for_each(e.begin(), e.end(), [&](T ele) { pm += ele; });
   std::for_each(v.begin(), v.end(), [&](T ele) { F -= ele; });
-  auto blinded_pm = pm + r[0];
+  T blinded_pm = pm + r[0];
 
   // open blinded_pm
   comm->sendAsync<T>(dst_rank, {blinded_pm}, "open(blinded_pm)");
   blinded_pm += comm->recv<T>(dst_rank, "open(blinded_pm)")[0];
 
   auto pm_mul_F = mul2pc<T>(ctx, {pm}, {F}, static_cast<size_t>(ctrl));
-  auto blinded_F = pm_mul_F[0] + r[0];
+  T blinded_F = pm_mul_F[0] + r[0];
 
   // open blinded_F
   comm->sendAsync<T>(dst_rank, {blinded_F}, "open(blinded_F)");

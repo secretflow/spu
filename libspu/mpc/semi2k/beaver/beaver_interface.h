@@ -18,6 +18,7 @@
 
 #include "yacl/base/buffer.h"
 
+#include "libspu/core/shape.h"
 #include "libspu/mpc/common/prg_tensor.h"
 
 #include "libspu/spu.pb.h"
@@ -41,17 +42,22 @@ class Beaver {
     std::vector<PrgSeedBuff> encrypted_seeds;
     int64_t size;
     FieldType field;
+    ElementType eltype;
   };
 
   using Array = yacl::Buffer;
   using Triple = std::tuple<Array, Array, Array>;
+  using PremTriple = std::tuple<Array, Array, Index>;
   using Pair = std::pair<Array, Array>;
 
   virtual ~Beaver() = default;
 
   virtual Triple Mul(FieldType field, int64_t size,
-                     ReplayDesc* x_desc = nullptr,
-                     ReplayDesc* y_desc = nullptr) = 0;
+                     ReplayDesc* x_desc = nullptr, ReplayDesc* y_desc = nullptr,
+                     ElementType eltype = ElementType::kRing) = 0;
+
+  virtual Pair MulPriv(FieldType field, int64_t size,
+                       ElementType eltype = ElementType::kRing) = 0;
 
   virtual Pair Square(FieldType field, int64_t size,
                       ReplayDesc* x_desc = nullptr) = 0;
@@ -81,20 +87,21 @@ class Beaver {
 
   // Generate share permutation pair.
   /*
-          ┌───────────────────────┐
-          │                       │   A i
-  Perm    │      Permutation      ├─────►
-  ───────►│                       │   B i
-          │    Pair  Generator    ├─────►
-          │                       │
+          ┌───────────────────────┐   A i
+          │                       ├─────►
+  size    │      Permutation      │   B i
+ ────────►│                       ├─────►
+          │    Pair  Generator    │   π
+          │                       ├─────►
           └───────────────────────┘
 
-                InversePerm(A) = B
+           InversePermute(A, π) = B
 
-  if perm_rank == lctx->Rank(); perm not empty.
+  if rank == perm_rank ret[2] is π, otherwise, ret[2] is empty.
+  perm_rank should use ret[2] as a Span<const int64_t>(buffer, size) view.
   */
-  virtual Pair PermPair(FieldType field, int64_t size, size_t perm_rank,
-                        absl::Span<const int64_t> perm_vec) = 0;
+  virtual PremTriple PermPair(FieldType field, int64_t size,
+                              size_t perm_rank) = 0;
 
   virtual std::unique_ptr<Beaver> Spawn() = 0;
 

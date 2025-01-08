@@ -15,6 +15,7 @@
 #pragma once
 
 #include "absl/types/span.h"
+#include "yacl/crypto/rand/rand.h"
 #include "yacl/crypto/tools/prg.h"
 #include "yacl/link/context.h"
 
@@ -45,7 +46,7 @@ class PrgState : public State {
   uint64_t r1_counter_ = 0;  // cnt for next_seed
 
  public:
-  static constexpr char kBindName[] = "PrgState";
+  static constexpr const char* kBindName() { return "PrgState"; }
   static constexpr auto kAesType =
       yacl::crypto::SymmetricCrypto::CryptoType::AES128_CTR;
 
@@ -59,6 +60,11 @@ class PrgState : public State {
   NdArrayRef genPriv(FieldType field, const Shape& shape);
 
   NdArrayRef genPubl(FieldType field, const Shape& shape);
+
+  Index genPrivPerm(size_t numel);
+
+  // Generate a random permutation pair (p0, p1).
+  std::pair<Index, Index> genPrssPermPair(size_t numel);
 
   // Generate a random pair (r0, r1), where
   //   r1 = next_party.r0

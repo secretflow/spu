@@ -1263,10 +1263,9 @@ class HloToPPHloOpConverter<stablehlo::DynamicUpdateSliceOp>
     Type result_type = typetools_.getType(
         this->getTypeConverter()->convertType(op.getType()), result_vis);
 
-    auto materialized = materializeInputs(op, op->getOperands());
+    auto materialized = materializeInputs(op, adaptor.getOperands());
     rewriter.replaceOpWithNewOp<pphlo::DynamicUpdateSliceOp>(
-        op, result_type, materialized[0], materialized[1],
-        adaptor.getStartIndices());
+        op, TypeRange{result_type}, materialized);
 
     return success();
   }

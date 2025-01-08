@@ -20,6 +20,8 @@
 #include "libspu/mpc/semi2k/arithmetic.h"
 #include "libspu/mpc/semi2k/boolean.h"
 #include "libspu/mpc/semi2k/conversion.h"
+#include "libspu/mpc/semi2k/exp.h"
+#include "libspu/mpc/semi2k/lowmc.h"
 #include "libspu/mpc/semi2k/permute.h"
 #include "libspu/mpc/semi2k/state.h"
 #include "libspu/mpc/semi2k/type.h"
@@ -50,22 +52,24 @@ void regSemi2kProtocol(SPUContext* ctx,
   ctx->prot()->addState<Semi2kState>(ctx->config(), lctx);
   ctx->prot()
       ->regKernel<
-          semi2k::P2A, semi2k::A2P, semi2k::A2V, semi2k::V2A,                //
-          semi2k::NegateA,                                                   //
-          semi2k::AddAP, semi2k::AddAA,                                      //
-          semi2k::MulAP, semi2k::MulAA, semi2k::SquareA,                     //
-          semi2k::MatMulAP, semi2k::MatMulAA,                                //
-          semi2k::LShiftA, semi2k::LShiftB, semi2k::RShiftB,                 //
-          semi2k::ARShiftB,                                                  //
-          semi2k::CommonTypeB, semi2k::CommonTypeV, semi2k::CastTypeB,       //
-          semi2k::B2P, semi2k::P2B,                                          //
-          semi2k::A2B, semi2k::B2A_Randbit, semi2k::B2A_Disassemble,         //
-          semi2k::AndBP, semi2k::AndBB, semi2k::XorBP, semi2k::XorBB,        //
-          semi2k::BitrevB,                                                   //
-          semi2k::BitIntlB, semi2k::BitDeintlB,                              //
-          semi2k::RandA, semi2k::RandPermM, semi2k::PermAM, semi2k::PermAP,  //
-          semi2k::InvPermAM, semi2k::InvPermAP, semi2k::InvPermAV,           //
-          semi2k::EqualAA, semi2k::EqualAP,                                  //
+          semi2k::P2A, semi2k::A2P, semi2k::A2V,
+          semi2k::V2A,                                                  //
+          semi2k::NegateA,                                              //
+          semi2k::AddAP, semi2k::AddAA,                                 //
+          semi2k::MulAP, semi2k::MulAA, semi2k::SquareA,                //
+          semi2k::MatMulAP, semi2k::MatMulAA,                           //
+          semi2k::LShiftA, semi2k::LShiftB, semi2k::RShiftB,            //
+          semi2k::ARShiftB,                                             //
+          semi2k::CommonTypeB, semi2k::CommonTypeV, semi2k::CastTypeB,  //
+          semi2k::B2P, semi2k::P2B,                                     //
+          semi2k::A2B, semi2k::B2A_Randbit, semi2k::B2A_Disassemble,    //
+          semi2k::AndBP, semi2k::AndBB, semi2k::XorBP, semi2k::XorBB,   //
+          semi2k::BitrevB,                                              //
+          semi2k::BitIntlB, semi2k::BitDeintlB,                         //
+          semi2k::RandA, semi2k::RandB,                                 //
+          semi2k::RandPermM, semi2k::PermAM, semi2k::PermAP,            //
+          semi2k::InvPermAM, semi2k::InvPermAP, semi2k::InvPermAV,      //
+          semi2k::EqualAA, semi2k::EqualAP,                             //
           semi2k::BeaverCacheKernel>();
 
   if (ctx->config().trunc_allow_msb_error()) {
@@ -76,8 +80,17 @@ void regSemi2kProtocol(SPUContext* ctx,
 
   if (lctx->WorldSize() == 2) {
     ctx->prot()->regKernel<semi2k::MsbA2B>();
+    ctx->prot()->regKernel<semi2k::MulA1B>();
+
+    // only supports 2pc fm128 for now
+    if (ctx->getField() == FieldType::FM128 &&
+        ctx->config().experimental_enable_exp_prime()) {
+      ctx->prot()->regKernel<semi2k::ExpA>();
+    }
   }
   // ctx->prot()->regKernel<semi2k::B2A>();
+  ctx->prot()->regKernel<semi2k::LowMcB>();
+  ctx->prot()->regKernel<semi2k::MultiKeyLowMcB>();
 }
 
 std::unique_ptr<SPUContext> makeSemi2kProtocol(

@@ -78,6 +78,19 @@ Value reveal(SPUContext* ctx, const Value& x) {
   return _s2p(ctx, x).setDtype(x.dtype());
 }
 
+Value reveal_to(SPUContext* ctx, const Value& x, size_t rank) {
+  SPU_TRACE_HAL_LEAF(ctx, x, rank);
+  SPU_ENFORCE(!x.isPublic());
+  if (x.isPrivate()) {
+    if (x.owner() == static_cast<int64_t>(rank)) {
+      return x;
+    } else {
+      return _s2v(ctx, _v2s(ctx, x), rank).setDtype(x.dtype());
+    }
+  }
+  return _s2v(ctx, x, rank).setDtype(x.dtype());
+}
+
 Value dtype_cast(SPUContext* ctx, const Value& in, DataType to_type) {
   SPU_TRACE_HAL_DISP(ctx, in, to_type);
 

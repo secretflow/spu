@@ -18,7 +18,7 @@
 #include "yacl/base/exception.h"
 #include "yacl/link/context.h"
 
-#include "psi/launch.h"
+#include "psi/apps/psi_launcher/launch.h"
 #include "psi/legacy/memory_psi.h"
 #include "psi/utils/progress.h"
 

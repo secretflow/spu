@@ -52,6 +52,13 @@ class BinaryKernel : public Kernel {
                           const NdArrayRef& rhs) const = 0;
 };
 
+class TernaryKnernel : public Kernel {
+  public:
+  void evaluate(KernelEvalContext* ctx) const override;
+  virtual NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                          const NdArrayRef& y, const NdArrayRef& z) const = 0;
+};
+
 class MatmulKernel : public Kernel {
  public:
   void evaluate(KernelEvalContext* ctx) const override;
@@ -104,6 +111,23 @@ class TruncAKernel : public Kernel {
 
   virtual NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
                           size_t bits, SignType sign) const = 0;
+};
+
+class MulTruncAKernel : public Kernel {
+ public:
+  void evaluate(KernelEvalContext* ctx) const override;
+
+  // For protocol like SecureML, the most significant bit may have error with
+  // low probability, which lead to huge calculation error.
+  //
+  // Return true if the protocol has this kind of error.
+  virtual bool hasMsbError() const = 0;
+
+  virtual TruncLsbRounding lsbRounding() const = 0;
+
+  virtual NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                          const NdArrayRef& rhs, size_t bits,
+                          SignType sign) const = 0;
 };
 
 class BitSplitKernel : public Kernel {
@@ -223,6 +247,14 @@ class DisassembleKernel : public Kernel {
 
   virtual std::vector<NdArrayRef> proc(KernelEvalContext* ctx,
                                        const NdArrayRef& in) const = 0;
+};
+
+class MultiKeyLowMcKernel : public Kernel {
+ public:
+  void evaluate(KernelEvalContext* ctx) const override;
+
+  virtual NdArrayRef proc(KernelEvalContext* ctx,
+                          const std::vector<NdArrayRef>& inputs) const = 0;
 };
 
 }  // namespace spu::mpc

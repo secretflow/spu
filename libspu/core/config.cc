@@ -57,10 +57,26 @@ void populateRuntimeConfig(RuntimeConfig& cfg) {
     cfg.set_fxp_div_goldschmidt_iters(2);
   }
 
+  // sort
+  if (cfg.quick_sort_threshold() == 0) {
+    cfg.set_quick_sort_threshold(32);
+  }
+
   // fxp exponent config
   {
     if (cfg.fxp_exp_mode() == RuntimeConfig::EXP_DEFAULT) {
       cfg.set_fxp_exp_mode(RuntimeConfig::EXP_TAYLOR);
+    }
+    if (cfg.fxp_exp_mode() == RuntimeConfig::EXP_PRIME) {
+      // 0 offset is not supported
+      if (cfg.experimental_exp_prime_offset() == 0) {
+        // For FM128 default offset is 13
+        if (cfg.field() == FieldType::FM128) {
+          cfg.set_experimental_exp_prime_offset(13);
+        }
+        // TODO: set defaults for other fields, currently only FM128 is
+        // supported
+      }
     }
 
     if (cfg.fxp_exp_iters() == 0) {
@@ -97,6 +113,11 @@ void populateRuntimeConfig(RuntimeConfig& cfg) {
 
   if (cfg.sigmoid_mode() == RuntimeConfig::SIGMOID_DEFAULT) {
     cfg.set_sigmoid_mode(RuntimeConfig::SIGMOID_REAL);
+  }
+
+  // shamir threshold
+  if (cfg.protocol() == ProtocolKind::SHAMIR && cfg.sss_threshold() == 0) {
+    SPU_THROW("shamir secret sharing threshold must be set");
   }
 
   // MPC related configurations

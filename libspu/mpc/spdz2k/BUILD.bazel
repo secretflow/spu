@@ -197,7 +197,7 @@ spu_cc_library(
         "//libspu/mpc/common:communicator",
         "//libspu/mpc/common:pv2k",
         "//libspu/mpc/utils:simulate",
-        "@com_google_googletest//:gtest",
+        "@googletest//:gtest",
     ],
     alwayslink = True,
 )

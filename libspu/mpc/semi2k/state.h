@@ -33,7 +33,7 @@ class Semi2kState : public State {
   Semi2kState() = default;
 
  public:
-  static constexpr char kBindName[] = "Semi2kState";
+  static constexpr const char* kBindName() { return "Semi2kState"; }
 
   explicit Semi2kState(const RuntimeConfig& conf,
                        const std::shared_ptr<yacl::link::Context>& lctx) {
@@ -50,7 +50,22 @@ class Semi2kState : public State {
         const auto& key = conf.ttp_beaver_config().server_public_key();
         ops.server_public_key = yacl::Buffer(key.data(), key.size());
       }
-      // TODO: TLS & brpc options.
+      if (!conf.ttp_beaver_config().transport_protocol().empty()) {
+        ops.brpc_channel_protocol =
+            conf.ttp_beaver_config().transport_protocol();
+      }
+      if (conf.ttp_beaver_config().has_ssl_config()) {
+        brpc::ChannelSSLOptions ssl_options;
+        ssl_options.verify.ca_file_path =
+            conf.ttp_beaver_config().ssl_config().ca_file_path();
+        ssl_options.verify.verify_depth =
+            conf.ttp_beaver_config().ssl_config().verify_depth();
+        ssl_options.client_cert.certificate =
+            conf.ttp_beaver_config().ssl_config().certificate();
+        ssl_options.client_cert.private_key =
+            conf.ttp_beaver_config().ssl_config().private_key();
+        ops.brpc_ssl_options = std::move(ssl_options);
+      }
       beaver_ = std::make_unique<semi2k::BeaverTtp>(lctx, std::move(ops));
     } else {
       SPU_THROW("unsupported beaver type {}", conf.beaver_type());

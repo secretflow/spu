@@ -127,6 +127,7 @@ spu_cc_test(
     deps = [
         ":fxp_approx",
         "//libspu/kernel:test_util",
+        "//libspu/mpc/utils:simulate",
     ],
 )
 
@@ -232,7 +233,6 @@ spu_cc_library(
     hdrs = ["utils.h"],
     deps = [
         ":constants",
-        ":polymorphic",
         ":ring",
         ":shape_ops",
         "//libspu/core:prelude",
@@ -303,5 +303,14 @@ spu_cc_test(
     deps = [
         ":shape_ops",
         "//libspu/kernel:test_util",
+    ],
+)
+
+spu_cc_library(
+    name = "soprf",
+    srcs = ["soprf.cc"],
+    hdrs = ["soprf.h"],
+    deps = [
+        ":ring",
     ],
 )

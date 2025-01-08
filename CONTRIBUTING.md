@@ -62,17 +62,10 @@ docker exec -it spu-dev-$(whoami) bash
 Install gcc>=11.2, cmake>=3.26, ninja, nasm>=2.15, python>=3.9, bazelisk, xxd, lld
 ```
 
-About the commands used to install the above dependencies, you can follow [Ubuntu docker file](https://github.com/secretflow/devtools/blob/main/dockerfiles/ubuntu-base-ci.DockerFile).
-
-```sh
-python3 -m pip install -r requirements.txt
-python3 -m pip install -r requirements-dev.txt
-```
-
 #### macOS
 
 ```sh
-# macOS >= 12.0, Xcode >= 14.0
+# macOS >= 13.0, Xcode >= 15.0
 
 # Install Xcode
 https://apps.apple.com/us/app/xcode/id497799835?mt=12
@@ -90,10 +83,6 @@ brew install bazelisk cmake ninja libomp wget
 
 # For Intel mac only
 brew install nasm
-
-# Install python dependencies
-pip install -r requirements.txt
-pip install -r requirements-dev.txt
 ```
 
 ### Build & UnitTest
@@ -117,6 +106,7 @@ bazel test //... --features=ubsan
 
 - `--define gperf=on` enable gperf
 - `--define tracelog=on` enable link trace log.
+- `--@rules_python//python/config_settings:python_version=3.10` set the Python version as 3.10, the default version is 3.11
 
 ### Build docs
 

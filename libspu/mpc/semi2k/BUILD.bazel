@@ -47,6 +47,34 @@ spu_cc_library(
 )
 
 spu_cc_library(
+    name = "prime_utils",
+    srcs = ["prime_utils.cc"],
+    hdrs = ["prime_utils.h"],
+    deps = [
+        ":state",
+        ":type",
+        "//libspu/mpc:kernel",
+        "//libspu/mpc/common:communicator",
+        "//libspu/mpc/utils:gfmp",
+        "//libspu/mpc/utils:ring_ops",
+    ],
+)
+
+spu_cc_library(
+    name = "exp",
+    srcs = ["exp.cc"],
+    hdrs = ["exp.h"],
+    deps = [
+        ":prime_utils",
+        ":state",
+        ":type",
+        "//libspu/mpc:kernel",
+        "//libspu/mpc/utils:gfmp",
+        "//libspu/mpc/utils:ring_ops",
+    ],
+)
+
+spu_cc_library(
     name = "conversion",
     srcs = ["conversion.cc"],
     hdrs = ["conversion.h"],
@@ -83,6 +111,8 @@ spu_cc_library(
         ":arithmetic",
         ":boolean",
         ":conversion",
+        ":exp",
+        ":lowmc",
         ":permute",
         ":state",
         "//libspu/mpc/common:prg_state",
@@ -94,10 +124,15 @@ spu_cc_test(
     name = "protocol_test",
     srcs = ["protocol_test.cc"],
     deps = [
+        ":exp",
+        ":prime_utils",
         ":protocol",
+        ":type",
         "//libspu/mpc:ab_api_test",
         "//libspu/mpc:api_test",
         "//libspu/mpc/semi2k/beaver/beaver_impl/ttp_server:beaver_server",
+        "//libspu/mpc/utils:lowmc",
+        "@yacl//yacl/utils:elapsed_timer",
     ],
 )
 
@@ -150,5 +185,19 @@ spu_cc_library(
         "//libspu/mpc:kernel",
         "//libspu/mpc/common:communicator",
         "//libspu/mpc/utils:ring_ops",
+    ],
+)
+
+spu_cc_library(
+    name = "lowmc",
+    srcs = ["lowmc.cc"],
+    hdrs = ["lowmc.h"],
+    deps = [
+        ":type",
+        "//libspu/mpc:ab_api",
+        "//libspu/mpc:kernel",
+        "//libspu/mpc/common:prg_state",
+        "//libspu/mpc/common:pv2k",
+        "//libspu/mpc/utils:lowmc",
     ],
 )

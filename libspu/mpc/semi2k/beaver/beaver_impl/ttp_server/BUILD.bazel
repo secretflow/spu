@@ -28,6 +28,16 @@ proto_library(
     srcs = ["service.proto"],
 )
 
+cc_proto_library(
+    name = "config_cc_proto",
+    deps = [":config_proto"],
+)
+
+proto_library(
+    name = "config_proto",
+    srcs = ["config.proto"],
+)
+
 spu_cc_library(
     name = "beaver_server",
     srcs = ["beaver_server.cc"],
@@ -35,8 +45,8 @@ spu_cc_library(
     deps = [
         ":service_cc_proto",
         "//libspu/mpc/semi2k/beaver/beaver_impl/trusted_party",
-        "@com_github_brpc_brpc//:brpc",
-        "@yacl//yacl/crypto/pke:asymmetric_sm2_crypto",
+        "@brpc",
+        "@yacl//yacl/crypto/pke:sm2_enc",
     ],
 )
 
@@ -45,6 +55,7 @@ spu_cc_binary(
     srcs = ["beaver_server_main.cc"],
     deps = [
         ":beaver_server",
+        ":config_cc_proto",
         "//libspu/core:logging",
     ],
 )

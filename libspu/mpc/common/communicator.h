@@ -50,7 +50,7 @@ enum class ReduceOp {
 // gap.
 class Communicator : public State {
  public:
-  static constexpr char kBindName[] = "Communicator";
+  static constexpr const char* kBindName() { return "Communicator"; }
 
   struct Stats {
     //
@@ -102,6 +102,12 @@ class Communicator : public State {
   size_t nextRank() const { return lctx_->NextRank(); }
 
   NdArrayRef allReduce(ReduceOp op, const NdArrayRef& in, std::string_view tag);
+
+  std::vector<NdArrayRef> gather(const NdArrayRef& in, size_t root,
+                                 std::string_view tag);
+
+  NdArrayRef broadcast(const NdArrayRef& in, size_t root, const Type& eltype,
+                       const Shape& shape, std::string_view tag);
 
   NdArrayRef reduce(ReduceOp op, const NdArrayRef& in, size_t root,
                     std::string_view tag);

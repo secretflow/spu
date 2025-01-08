@@ -57,7 +57,11 @@ TEST_P(CompareProtTest, Compare) {
     xinp = NdArrayView<ring2k_t>(inp[1]);
     xinp[0] = 1;
     xinp[1] = 9;
-    xinp[2] = 1000;
+    if constexpr (std::is_same_v<ring2k_t, uint8_t>) {
+      xinp[2] = 100;
+    } else {
+      xinp[2] = 1000;
+    }
   });
 
   NdArrayRef cmp_oup[2];
@@ -108,7 +112,11 @@ TEST_P(CompareProtTest, CompareBitWidth) {
     xinp = NdArrayView<ring2k_t>(inp[1]);
     xinp[0] = 1;
     xinp[1] = 9;
-    xinp[2] = 1000;
+    if constexpr (std::is_same_v<ring2k_t, uint8_t>) {
+      xinp[2] = 100;
+    } else {
+      xinp[2] = 1000;
+    }
     pforeach(0, inp[0].numel(), [&](int64_t i) { xinp[i] &= mask; });
   });
 
@@ -178,7 +186,11 @@ TEST_P(CompareProtTest, WithEq) {
     xinp = NdArrayView<ring2k_t>(inp[1]);
     xinp[0] = 1;
     xinp[1] = 9;
-    xinp[2] = 1000;
+    if constexpr (std::is_same_v<ring2k_t, uint8_t>) {
+      xinp[2] = 100;
+    } else {
+      xinp[2] = 1000;
+    }
   });
 
   NdArrayRef cmp_oup[2];
@@ -237,7 +249,11 @@ TEST_P(CompareProtTest, WithEqBitWidth) {
     xinp = NdArrayView<ring2k_t>(inp[1]);
     xinp[0] = 1;
     xinp[1] = 9;
-    xinp[2] = 1000;
+    if constexpr (std::is_same_v<ring2k_t, uint8_t>) {
+      xinp[2] = 100;
+    } else {
+      xinp[2] = 1000;
+    }
     pforeach(0, inp[0].numel(), [&](int64_t i) { xinp[i] &= mask; });
   });
 

@@ -1,4 +1,4 @@
-# Copyright 2022 Ant Group Co., Ltd.
+# Copyright 2024 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,18 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@spulib//bazel:spu.bzl", "spu_cmake_external")
-
-package(default_visibility = ["//visibility:public"])
+load("@rules_foreign_cc//foreign_cc:defs.bzl", "cmake")
 
 filegroup(
     name = "all_srcs",
     srcs = glob(["**"]),
 )
 
-spu_cmake_external(
+cmake(
     name = "xtensor",
+    generate_args = ["-GNinja"],
     lib_source = ":all_srcs",
     out_headers_only = True,
-    deps = ["@com_github_xtensor_xtl//:xtl"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "@xtl",
+    ],
 )

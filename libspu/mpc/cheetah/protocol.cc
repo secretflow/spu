@@ -79,7 +79,7 @@ void regCheetahProtocol(SPUContext* ctx,
                   cheetah::CommonTypeB, cheetah::CommonTypeV,               //
                   cheetah::CastTypeB, cheetah::AndBP, cheetah::AndBB,       //
                   cheetah::XorBP, cheetah::XorBB,                           //
-                  cheetah::RandA>();
+                  cheetah::RandA, cheetah::RandB>();
 }
 
 std::unique_ptr<SPUContext> makeCheetahProtocol(

@@ -25,6 +25,7 @@ Value a2v(SPUContext* ctx, const Value& x, size_t owner);
 Value v2a(SPUContext* ctx, const Value& x);
 
 Value msb_a2b(SPUContext* ctx, const Value& x);
+Value msb_a(SPUContext* ctx, const Value& x);
 
 Value rand_a(SPUContext* ctx, const Shape& shape);
 Value rand_b(SPUContext* ctx, const Shape& shape);
@@ -40,6 +41,9 @@ OptionalAPI<Value> add_av(SPUContext* ctx, const Value& x, const Value& y);
 
 Value mul_ap(SPUContext* ctx, const Value& x, const Value& y);
 Value mul_aa(SPUContext* ctx, const Value& x, const Value& y);
+Value mul_aaa(SPUContext* ctx, const Value& x, const Value& y, const Value& z);
+Value mul_aa_p(SPUContext* ctx, const Value& x, const Value& y);
+
 Value square_a(SPUContext* ctx, const Value& x);
 OptionalAPI<Value> mul_av(SPUContext* ctx, const Value& x, const Value& y);
 
@@ -48,6 +52,8 @@ OptionalAPI<Value> mul_a1bv(SPUContext* ctx, const Value& x, const Value& y);
 
 Value lshift_a(SPUContext* ctx, const Value& x, const Sizes& nbits);
 Value trunc_a(SPUContext* ctx, const Value& x, size_t nbits, SignType sign);
+Value mul_aa_trunc(SPUContext* ctx, const Value& x, const Value& y,
+                   size_t nbits, SignType sign);
 
 Value mmul_ap(SPUContext* ctx, const Value& x, const Value& y);
 Value mmul_aa(SPUContext* ctx, const Value& x, const Value& y);

@@ -35,6 +35,21 @@ spu_cc_library(
         ":io_interface",
         "//libspu/mpc/utils:ring_ops",
         "//libspu/mpc/utils:simulate",
+        "@googletest//:gtest",
+    ],
+    alwayslink = True,
+)
+
+spu_cc_library(
+    name = "io_shamir_test",
+    testonly = 1,
+    srcs = ["io_shamir_test.cc"],
+    hdrs = ["io_shamir_test.h"],
+    deps = [
+        ":io_interface",
+        "//libspu/mpc/utils:gfmp_ops",
+        "//libspu/mpc/utils:ring_ops",
+        "//libspu/mpc/utils:simulate",
         "@com_google_googletest//:gtest",
     ],
     alwayslink = True,
@@ -96,7 +111,7 @@ spu_cc_library(
         "//libspu/mpc:kernel",
         "//libspu/mpc/common:communicator",
         "//libspu/mpc/utils:simulate",
-        "@com_google_googletest//:gtest",
+        "@googletest//:gtest",
     ],
     alwayslink = True,
 )
@@ -122,7 +137,7 @@ spu_cc_library(
         "//libspu/mpc:api_test_params",
         "//libspu/mpc/common:communicator",
         "//libspu/mpc/utils:simulate",
-        "@com_google_googletest//:gtest",
+        "@googletest//:gtest",
     ],
     alwayslink = True,
 )

@@ -89,7 +89,7 @@ Value make_p(SPUContext* ctx, uint128_t init, const Shape& shape);
 
 // parties random a public together.
 Value rand_p(SPUContext* ctx, const Shape& shape);
-Value rand_s(SPUContext* ctx, const Shape& shape);
+Value rand_s(SPUContext* ctx, const Shape& shape, DataType dtype);
 
 // Compute bitwise not of a value.
 Value not_p(SPUContext* ctx, const Value& x);
@@ -104,6 +104,8 @@ Value negate_v(SPUContext* ctx, const Value& x);
 Value msb_p(SPUContext* ctx, const Value& x);
 Value msb_s(SPUContext* ctx, const Value& x);
 Value msb_v(SPUContext* ctx, const Value& x);
+
+Value relu(SPUContext* ctx, const Value& x);
 
 Value equal_pp(SPUContext* ctx, const Value& x, const Value& y);
 OptionalAPI<Value> equal_sp(SPUContext* ctx, const Value& x, const Value& y);

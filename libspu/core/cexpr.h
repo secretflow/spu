@@ -43,6 +43,7 @@ CExpr Variable(std::string name, std::string desc);
 // Expose common used parameters.
 inline CExpr K() { return Variable("K", "Number of bits of a mod 2^k ring"); }
 inline CExpr N() { return Variable("N", "Represent number of parties."); }
+inline CExpr T() { return Variable("T", "Threshold"); }
 
 CExpr Log(const CExpr& x);
 CExpr Log(Value x);
@@ -58,5 +59,9 @@ CExpr operator-(Value x, const CExpr& y);
 CExpr operator*(const CExpr& x, const CExpr& y);
 CExpr operator*(const CExpr& x, Value y);
 CExpr operator*(Value x, const CExpr& y);
+
+CExpr operator/(const CExpr& x, const CExpr& y);
+CExpr operator/(const CExpr& x, Value y);
+CExpr operator/(Value x, const CExpr& y);
 
 }  // namespace spu::ce

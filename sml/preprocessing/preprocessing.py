@@ -340,7 +340,7 @@ class MinMaxScaler:
 
         contain_nan : bool, default=False
             Set to True to handle the nan value.
-            This option desiced whether to use nanmin and nanmax to compute the minimum
+            This option decides whether to use nanmin and nanmax to compute the minimum
             and maximum.
         """
         self._reset()
@@ -364,7 +364,7 @@ class MinMaxScaler:
 
         contain_nan : bool, default=False
             Set to True to handle the nan value.
-            This option desiced whether to use nanmin and nanmax to compute the minimum
+            This option decides whether to use nanmin and nanmax to compute the minimum
             and maximum.
         """
         feature_range = self.feature_range
@@ -434,7 +434,7 @@ class MinMaxScaler:
 
         contain_nan : bool, default=False
             Set to True to handle the nan value.
-            This option desiced whether to use nanmin and nanmax to compute the minimum
+            This option decides whether to use nanmin and nanmax to compute the minimum
             and maximum.
 
         Returns
@@ -495,7 +495,7 @@ class MaxAbsScaler:
 
         contain_nan : bool, default=False
             Set to True to handle the nan value.
-            This option desiced whether to use nanmin and nanmax to compute the minimum
+            This option decides whether to use nanmin and nanmax to compute the minimum
             and maximum.
         """
         self._reset()
@@ -519,7 +519,7 @@ class MaxAbsScaler:
 
         contain_nan : bool, default=False
             Set to True to handle the nan value.
-            This option desiced whether to use nanmin and nanmax to compute the minimum
+            This option decides whether to use nanmin and nanmax to compute the minimum
             and maximum.
         """
         first_pass = not hasattr(self, "n_samples_seen_")
@@ -569,7 +569,7 @@ class MaxAbsScaler:
 
         contain_nan : bool, default=False
             Set to True to handle the nan value.
-            This option desiced whether to use nanmin and nanmax to compute the minimum
+            This option decides whether to use nanmin and nanmax to compute the minimum
             and maximum.
 
         Returns
@@ -687,9 +687,9 @@ def _remove_bin_func(bin_edges, remove_ref):
 class KBinsDiscretizer:
     """Bin continuous data into intervals.
 
-    Attribute encode is not implemented, since there is currently no onehotencoder
+    Attribute encode is not implemented, since there is currently no OneHotEncoder
     in sml.
-    Attribute subsample is not implemented, since random choise in SPU runtime does
+    Attribute subsample is not implemented, since random choice in SPU runtime does
     not work as expected.
 
     Parameters
@@ -744,7 +744,7 @@ class KBinsDiscretizer:
         Note that there is currently no support for handling constant values in a feature
         , since it introduces much redundant boolean computation because dynamic shape is
         not supported.
-        In sklarn, feature with constant value will be replaced with 0 after transformation.
+        In sklearn, feature with constant value will be replaced with 0 after transformation.
         (see https://github.com/scikit-learn/scikit-learn/blob/d139ff234b0f8ec30287e26e0bc801bdafdfbb1a/sklearn/preprocessing/tests/test_discretization.py#L192)
 
         Parameters

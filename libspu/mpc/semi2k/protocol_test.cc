@@ -18,6 +18,8 @@
 
 #include "gtest/gtest.h"
 #include "yacl/crypto/key_utils.h"
+#include "yacl/crypto/rand/rand.h"
+#include "yacl/utils/elapsed_timer.h"
 
 #include "libspu/mpc/ab_api.h"
 #include "libspu/mpc/ab_api_test.h"
@@ -25,7 +27,14 @@
 #include "libspu/mpc/api_test.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/semi2k/beaver/beaver_impl/ttp_server/beaver_server.h"
+#include "libspu/mpc/semi2k/exp.h"
+#include "libspu/mpc/semi2k/lowmc.h"
+#include "libspu/mpc/semi2k/prime_utils.h"
 #include "libspu/mpc/semi2k/state.h"
+#include "libspu/mpc/semi2k/type.h"
+#include "libspu/mpc/utils/gfmp.h"
+#include "libspu/mpc/utils/lowmc.h"
+#include "libspu/mpc/utils/lowmc_utils.h"
 #include "libspu/mpc/utils/ring_ops.h"
 #include "libspu/mpc/utils/simulate.h"
 
@@ -36,6 +45,12 @@ RuntimeConfig makeConfig(FieldType field) {
   RuntimeConfig conf;
   conf.set_protocol(ProtocolKind::SEMI2K);
   conf.set_field(field);
+  if (field == FieldType::FM64) {
+    conf.set_fxp_fraction_bits(17);
+  } else if (field == FieldType::FM128) {
+    conf.set_fxp_fraction_bits(40);
+  }
+  conf.set_experimental_enable_exp_prime(true);
   return conf;
 }
 
@@ -66,7 +81,8 @@ std::unique_ptr<SPUContext> makeTTPSemi2kProtocol(
   ttp->set_adjust_rank(lctx->WorldSize() - 1);
   ttp->set_server_host(server_host);
   ttp->set_asym_crypto_schema("SM2");
-  ttp->set_server_public_key(key_pair.first.data(), key_pair.first.size());
+  ttp->set_server_public_key(key_pair.first.data<char>(),
+                             key_pair.first.size());
 
   return makeSemi2kProtocol(ttp_rt, lctx);
 }
@@ -400,6 +416,268 @@ TEST_P(BeaverCacheTest, SquareA) {
       // square(a1), no cache
       no_cache = test({a_a1}, {p_a1});
       EXPECT_NE(0, no_cache.comm);
+    }
+  });
+}
+
+TEST_P(BeaverCacheTest, priv_mul_test) {
+  const auto factory = std::get<0>(GetParam());
+  const RuntimeConfig& conf = std::get<1>(GetParam());
+  const size_t npc = std::get<2>(GetParam());
+  // only supports 2 party (not counting beaver)
+  if (npc != 2) {
+    return;
+  }
+  NdArrayRef ring2k_shr[2];
+
+  int64_t numel = 1;
+  FieldType field = conf.field();
+
+  std::vector<double> real_vec(numel);
+  for (int64_t i = 0; i < numel; ++i) {
+    real_vec[i] = 2;
+  }
+
+  auto rnd_msg = gfmp_zeros(field, {numel});
+
+  DISPATCH_ALL_FIELDS(field, [&]() {
+    using sT = std::make_signed<ring2k_t>::type;
+    NdArrayView<sT> xmsg(rnd_msg);
+    pforeach(0, numel, [&](int64_t i) { xmsg[i] = std::round(real_vec[i]); });
+  });
+
+  ring2k_shr[0] = rnd_msg;
+  ring2k_shr[1] = rnd_msg;
+
+  NdArrayRef input, outp_pub;
+  NdArrayRef outp[2];
+
+  utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+    auto obj = factory(conf, lctx);
+
+    KernelEvalContext kcontext(obj.get());
+
+    int rank = lctx->Rank();
+
+    outp[rank] = spu::mpc::semi2k::MulPrivModMP(&kcontext, ring2k_shr[rank]);
+  });
+  auto got = gfmp_add_mod(outp[0], outp[1]);
+  DISPATCH_ALL_FIELDS(field, [&]() {
+    using sT = std::make_signed<ring2k_t>::type;
+    NdArrayView<sT> got_view(got);
+
+    double max_err = 0.0;
+    double min_err = 99.0;
+    for (int64_t i = 0; i < numel; ++i) {
+      double expected = real_vec[i] * real_vec[i];
+      double got = static_cast<double>(got_view[i]);
+      max_err = std::max(max_err, std::abs(expected - got));
+      min_err = std::min(min_err, std::abs(expected - got));
+    }
+    ASSERT_LE(min_err, 1e-3);
+    ASSERT_LE(max_err, 1e-3);
+  });
+}
+
+TEST_P(BeaverCacheTest, exp_mod_test) {
+  const RuntimeConfig& conf = std::get<1>(GetParam());
+  FieldType field = conf.field();
+
+  DISPATCH_ALL_FIELDS(field, [&]() {
+    // exponents < 32
+    ring2k_t exponents[5] = {10, 21, 27};
+
+    for (ring2k_t exponent : exponents) {
+      ring2k_t y = exp_mod<ring2k_t>(2, exponent);
+      ring2k_t prime = ScalarTypeToPrime<ring2k_t>::prime;
+      ring2k_t prime_minus_one = (prime - 1);
+      ring2k_t shifted_bit = 1;
+      shifted_bit <<= exponent;
+      EXPECT_EQ(y, shifted_bit % prime_minus_one);
+    }
+  });
+}
+
+TEST_P(BeaverCacheTest, ExpA) {
+  const auto factory = std::get<0>(GetParam());
+  const RuntimeConfig& conf = std::get<1>(GetParam());
+  const size_t npc = std::get<2>(GetParam());
+  // exp only supports 2 party (not counting beaver)
+  // only supports FM128 for now
+  // note not using ctx->hasKernel("exp_a") because we are testing kernel
+  // registration as well.
+  if (npc != 2 || conf.field() != FieldType::FM128) {
+    return;
+  }
+  auto fxp = conf.fxp_fraction_bits();
+
+  NdArrayRef ring2k_shr[2];
+
+  int64_t numel = 100;
+  FieldType field = conf.field();
+
+  // how to define and achieve high pricision for e^20
+  std::uniform_real_distribution<double> dist(-18.0, 15.0);
+  std::default_random_engine rd;
+  std::vector<double> real_vec(numel);
+  for (int64_t i = 0; i < numel; ++i) {
+    // make the input a fixed point number, eliminate the fixed point encoding
+    // error
+    real_vec[i] =
+        static_cast<double>(std::round((dist(rd) * (1L << fxp)))) / (1L << fxp);
+  }
+
+  auto rnd_msg = ring_zeros(field, {numel});
+
+  DISPATCH_ALL_FIELDS(field, [&]() {
+    using sT = std::make_signed<ring2k_t>::type;
+    NdArrayView<sT> xmsg(rnd_msg);
+    pforeach(0, numel, [&](int64_t i) {
+      xmsg[i] = std::round(real_vec[i] * (1L << fxp));
+    });
+  });
+
+  ring2k_shr[0] = ring_rand(field, rnd_msg.shape())
+                      .as(makeType<spu::mpc::semi2k::AShrTy>(field));
+  ring2k_shr[1] = ring_sub(rnd_msg, ring2k_shr[0])
+                      .as(makeType<spu::mpc::semi2k::AShrTy>(field));
+
+  NdArrayRef outp_pub;
+  NdArrayRef outp[2];
+
+  utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+    auto obj = factory(conf, lctx);
+
+    KernelEvalContext kcontext(obj.get());
+
+    int rank = lctx->Rank();
+
+    size_t bytes = lctx->GetStats()->sent_bytes;
+    size_t action = lctx->GetStats()->sent_actions;
+
+    spu::mpc::semi2k::ExpA exp;
+    outp[rank] = exp.proc(&kcontext, ring2k_shr[rank]);
+
+    bytes = lctx->GetStats()->sent_bytes - bytes;
+    action = lctx->GetStats()->sent_actions - action;
+  });
+  assert(outp[0].eltype() == ring2k_shr[0].eltype());
+  auto got = ring_add(outp[0], outp[1]);
+  ring_print(got, "exp result");
+  DISPATCH_ALL_FIELDS(field, [&]() {
+    using sT = std::make_signed<ring2k_t>::type;
+    NdArrayView<sT> got_view(got);
+
+    double max_err = 0.0;
+    for (int64_t i = 0; i < numel; ++i) {
+      double expected = std::exp(real_vec[i]);
+      expected = static_cast<double>(std::round((expected * (1L << fxp)))) /
+                 (1L << fxp);
+      double got = static_cast<double>(got_view[i]) / (1L << fxp);
+      max_err = std::max(max_err, std::abs(expected - got));
+    }
+    ASSERT_LE(max_err, 1e-0);
+  });
+}
+
+using LowMCTestParams =
+    std::tuple<CreateObjectFn, RuntimeConfig, FieldType, size_t>;
+
+class LowMCTest : public ::testing::TestWithParam<LowMCTestParams> {};
+
+INSTANTIATE_TEST_SUITE_P(
+    Semi2k, LowMCTest,
+    testing::Combine(
+        testing::Values(CreateObjectFn(makeSemi2kProtocol, "tfp"),
+                        CreateObjectFn(makeTTPSemi2kProtocol,
+                                       "ttp")),         // TFP or TTP
+        testing::Values(makeConfig(FieldType::FM32),    // Global Field
+                        makeConfig(FieldType::FM64),    //
+                        makeConfig(FieldType::FM128)),  //
+        testing::Values(FM32, FM64, FM128),             // LowMC runtime Field
+        testing::Values(2)),                            // npc
+    [](const testing::TestParamInfo<LowMCTest::ParamType>& p) {
+      return fmt::format("{}x{}x{}x{}", std::get<0>(p.param).name(),
+                         std::get<1>(p.param).field(), std::get<2>(p.param),
+                         std::get<3>(p.param));
+      ;
+    });
+
+TEST_P(LowMCTest, EncryptCorrect) {
+  const auto factory = std::get<0>(GetParam());
+  const RuntimeConfig& conf = std::get<1>(GetParam());
+
+  // Global Field can be different from LowMC runtime Field
+  const auto field = std::get<2>(GetParam());
+  const size_t npc = std::get<3>(GetParam());
+
+  const Shape shape = {10, 5};
+  // const Shape shape = {1000, 1000};
+
+  const auto bty = makeType<spu::mpc::semi2k::BShrTy>(field);
+  const auto numel = shape.numel();
+
+  // sharing of x
+  NdArrayRef x[2];
+  x[0] = ring_rand(field, shape).as(bty);
+  x[1] = ring_rand(field, shape).as(bty);
+  auto pub_x = ring_xor(x[0], x[1]);
+
+  // sharing of key
+  uint128_t key[2];
+  key[0] = yacl::crypto::SecureRandSeed();
+  key[1] = yacl::crypto::SecureRandSeed();
+  auto pub_key = key[0] ^ key[1];
+
+  uint128_t seed = 0;
+
+  NdArrayRef out[2];
+  utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lcxt) {
+    auto obj = factory(conf, lcxt);
+    KernelEvalContext kcontext(obj.get());
+
+    int rank = lcxt->Rank();
+
+    // test for kernel registration
+    SPU_ENFORCE(obj->hasKernel("lowmc_b"));
+    spu::mpc::semi2k::LowMcB cipher;
+
+    size_t b0 = lcxt->GetStats()->sent_bytes;
+    size_t r0 = lcxt->GetStats()->sent_actions;
+    yacl::ElapsedTimer pack_timer;
+
+    // To test the correctness, we use the inner api
+    out[rank] = cipher.encrypt(&kcontext, x[rank], key[rank], seed);
+
+    double pack_time = pack_timer.CountMs() * 1.0;
+    size_t b1 = lcxt->GetStats()->sent_bytes;
+    size_t r1 = lcxt->GetStats()->sent_actions;
+
+    SPDLOG_INFO(
+        "LowMC ({}) for n = {}, elapsed {} ms, sent {} MiB ({} B per), "
+        "actions {}.",
+        field, numel, pack_time, (b1 - b0) * 1. / 1024. / 1024.,
+        (b1 - b0) * 1. / numel, r1 - r0);
+  });
+
+  SPU_ENFORCE(out[0].eltype().isa<semi2k::BShrTy>());
+  SPU_ENFORCE(out[1].eltype().isa<semi2k::BShrTy>());
+
+  auto got = ring_xor(out[0], out[1]);
+  DISPATCH_ALL_FIELDS(field, [&]() {  //
+    NdArrayView<ring2k_t> _got(got);
+
+    auto block_cipher = LowMC(field, seed, get_data_complexity(numel));
+    block_cipher.set_key(pub_key);
+
+    auto c = block_cipher.encrypt(pub_x);
+    NdArrayView<ring2k_t> _exp(c);
+
+    for (int64_t i = 0; i < numel; ++i) {
+      auto got_val = _got[i];
+      auto exp_val = _exp[i];
+
+      EXPECT_EQ(got_val, exp_val);
     }
   });
 }

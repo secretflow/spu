@@ -173,7 +173,11 @@ Value s2v(SPUContext* ctx, const Value& x, size_t owner) {
     return a2v(ctx, x, owner);
   } else {
     SPU_ENFORCE(IsB(x));
-    return b2v(ctx, x, owner);
+    if (ctx->hasKernel("b2v")) {
+      return b2v(ctx, x, owner);
+    } else {
+      return a2v(ctx, _2a(ctx, x), owner);
+    }
   }
 }
 
@@ -266,10 +270,14 @@ Value rand_p(SPUContext* ctx, const Shape& shape) {
   FORCE_DISPATCH(ctx, shape);
 }
 
-Value rand_s(SPUContext* ctx, const Shape& shape) {
+Value rand_s(SPUContext* ctx, const Shape& shape, DataType dtype) {
   SPU_TRACE_MPC_DISP(ctx, shape);
   TRY_DISPATCH(ctx, shape);
-  // always return random a share
+  // can only get random bit share now.
+  if (dtype == DT_I1) {
+    return rand_b(ctx, shape);
+  }
+  // else, return random a share
   return rand_a(ctx, shape);
 }
 
@@ -326,6 +334,8 @@ Value msb_s(SPUContext* ctx, const Value& x) {
       // fast path, directly apply msb x AShare, result a BShare.
       return msb_a2b(ctx, x);
     }
+  } else if (ctx->hasKernel("msb_a") && IsA(x)) {
+    return msb_a(ctx, x);
   } else {
     return rshift_b(ctx, _2b(ctx, x),
                     {static_cast<int64_t>(SizeOf(field) * 8 - 1)});
@@ -335,6 +345,8 @@ Value msb_s(SPUContext* ctx, const Value& x) {
 Value msb_v(SPUContext* ctx, const Value& x) { FORCE_DISPATCH(ctx, x); }
 
 Value msb_p(SPUContext* ctx, const Value& x) { FORCE_DISPATCH(ctx, x); }
+
+Value relu(SPUContext* ctx, const Value& x) {FORCE_DISPATCH(ctx, x); }
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -623,12 +635,10 @@ Value xor_pp(SPUContext* ctx, const Value& x, const Value& y) {
 Value lshift_s(SPUContext* ctx, const Value& x, const Sizes& bits) {
   SPU_TRACE_MPC_DISP(ctx, x, bits);
   TRY_DISPATCH(ctx, x, bits);
-  if (IsA(x)) {
+  if (IsA(x) && ctx->hasKernel("lshift_a")) {
     return lshift_a(ctx, x, bits);
-  } else if (IsB(x)) {
-    return lshift_b(ctx, x, bits);
   } else {
-    SPU_THROW("Unsupported type {}", x.storage_type());
+    return lshift_b(ctx, _2b(ctx, x), bits);
   }
 }
 

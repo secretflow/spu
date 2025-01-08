@@ -10,6 +10,16 @@
 >
 > please add your unreleased change here.
 
+- [SPU] Migrating to Bazel Modules and update minimum Python version to 3.10.
+- [Feature] Add soPRF (LowMC cipher) for SEMI2K
+- [API] Add Permute/InvPermute support in HLO
+- [Feature] Add SSL configuration to the TTP server
+- [Feature] Support quick sort for semi2k and aby3
+
+## 20241219
+
+- [SPU] 0.9.3b0 release
+- [Improvement] Optimize exponential computation for semi2k (**experimental**)
 - [Feature] Add more send/recv actions profiling
 
 ## 20240716

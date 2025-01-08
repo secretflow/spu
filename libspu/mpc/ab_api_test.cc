@@ -81,7 +81,6 @@ bool verifyCost(Kernel* kernel, std::string_view name, FieldType field,
   ce::Params params = {{"K", SizeOf(field) * 8}, {"N", npc}};
   return verifyCost(kernel, name, params, cost, shape.numel() /*repeated*/);
 }
-
 }  // namespace
 
 #define TEST_ARITHMETIC_BINARY_OP_AA(OP)                                       \
@@ -204,12 +203,11 @@ TEST_P(ArithmeticTest, MulA1B) {
     auto p1 = rand_p(obj.get(), conf.protocol() == ProtocolKind::CHEETAH
                                     ? Shape({200, 26})
                                     : kShape);
-    p1 = rshift_p(obj.get(), p1, {K - 1});
     auto a0 = p2a(obj.get(), p0);
     auto a1 = p2b(obj.get(), p1);
     // hint runtime this is a 1bit value.
-    a1 = lshift_b(obj.get(), a1, {K - 1});
-    a1 = rshift_b(obj.get(), a1, {K - 1});
+    // Sometimes, the underlying value is not strictly 1bit
+    a1.storage_type().as<BShare>()->setNbits(1);
 
     /* WHEN */
     auto prev = obj->prot()->getState<Communicator>()->getStats();
@@ -217,7 +215,9 @@ TEST_P(ArithmeticTest, MulA1B) {
     auto cost = obj->prot()->getState<Communicator>()->getStats() - prev;
 
     auto r_aa = a2p(obj.get(), tmp);
-    auto r_pp = mul_pp(obj.get(), p0, p1);
+    auto r_pp =
+        mul_pp(obj.get(), p0,
+               rshift_p(obj.get(), lshift_p(obj.get(), p1, {K - 1}), {K - 1}));
 
     /* THEN */
     EXPECT_VALUE_EQ(r_aa, r_pp);
@@ -300,6 +300,90 @@ TEST_P(ArithmeticTest, MulA1BV) {
     EXPECT_VALUE_EQ(r_aa, r_pp);
     EXPECT_TRUE(verifyCost(obj->prot()->getKernel("mul_a1bv"), "mul_a1bv",
                            conf.field(), kShape, npc, cost));
+  });
+}
+
+TEST_P(ArithmeticTest, MulAA) {
+  const auto factory = std::get<0>(GetParam());
+  const RuntimeConfig& conf = std::get<1>(GetParam());
+  const size_t npc = std::get<2>(GetParam());
+
+  utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+    auto sctx = factory(conf, lctx);
+
+    auto p0 = rand_p(sctx.get(), kShape);
+    auto p1 = rand_p(sctx.get(), kShape);
+
+    auto v0 = p2v(sctx.get(), p0, 0);
+    auto v1 = p2v(sctx.get(), p1, 1);
+
+    auto a0 = v2a(sctx.get(), v0);
+    auto a1 = v2a(sctx.get(), v1);
+
+    auto prod = mul_aa(sctx.get(), a0, a1);
+    auto p_prod = a2p(sctx.get(), prod);
+
+    auto s = mul_pp(sctx.get(), p0, p1);
+
+    /* THEN */
+    EXPECT_VALUE_EQ(s, p_prod);
+  });
+}
+
+TEST_P(ArithmeticTest, MulAAA) {
+  const auto factory = std::get<0>(GetParam());
+  const RuntimeConfig& conf = std::get<1>(GetParam());
+  const size_t npc = std::get<2>(GetParam());
+
+  utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+    auto sctx = factory(conf, lctx);
+
+    auto p0 = rand_p(sctx.get(), kShape);
+    auto p1 = rand_p(sctx.get(), kShape);
+    auto p2 = rand_p(sctx.get(), kShape);
+
+    auto v0 = p2v(sctx.get(), p0, 0);
+    auto v1 = p2v(sctx.get(), p1, 1);
+    auto v2 = p2v(sctx.get(), p2, 2);
+
+    auto a0 = v2a(sctx.get(), v0);
+    auto a1 = v2a(sctx.get(), v1);
+    auto a2 = v2a(sctx.get(), v2);
+
+    auto prod = mul_aaa(sctx.get(), a0, a1, a2);
+    auto p_prod = a2p(sctx.get(), prod);
+
+    auto s = mul_pp(sctx.get(), p0, p1);
+    auto s_prime = mul_pp(sctx.get(), s, p2);
+
+    /* THEN */
+    EXPECT_VALUE_EQ(s_prime, p_prod);
+  });
+}
+
+TEST_P(ArithmeticTest, MulAAP) {
+  const auto factory = std::get<0>(GetParam());
+  const RuntimeConfig& conf = std::get<1>(GetParam());
+  const size_t npc = std::get<2>(GetParam());
+
+  utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+    auto sctx = factory(conf, lctx);
+
+    auto p0 = rand_p(sctx.get(), kShape);
+    auto p1 = rand_p(sctx.get(), kShape);
+
+    auto v0 = p2v(sctx.get(), p0, 0);
+    auto v1 = p2v(sctx.get(), p1, 1);
+
+    auto a0 = v2a(sctx.get(), v0);
+    auto a1 = v2a(sctx.get(), v1);
+
+    auto prod = mul_aa_p(sctx.get(), a0, a1);
+
+    auto s = mul_pp(sctx.get(), p0, p1);
+
+    /* THEN */
+    EXPECT_VALUE_EQ(s, prod);
   });
 }
 
@@ -470,7 +554,9 @@ TEST_P(ArithmeticTest, LShiftA) {
 
   utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
     auto obj = factory(conf, lctx);
-
+    if (!obj->prot()->hasKernel("lshift_a")) {
+      return;
+    }
     /* GIVEN */
     auto p0 = rand_p(obj.get(), kShape);
     auto a0 = p2a(obj.get(), p0);
@@ -519,10 +605,12 @@ TEST_P(ArithmeticTest, TruncA) {
       p0 = arshift_p(obj.get(), p0,
                      {static_cast<int64_t>(SizeOf(conf.field()) * 8 - 10)});
     }
+    auto v0 = p2v(obj.get(), p0, 0);
 
     /* GIVEN */
     const size_t bits = 2;
-    auto a0 = p2a(obj.get(), p0);
+    auto a0 = v2a(obj.get(), v0);
+    // auto a0 = p2a(obj.get(), p0);
 
     /* WHEN */
     auto prev = obj->prot()->getState<Communicator>()->getStats();
@@ -536,6 +624,49 @@ TEST_P(ArithmeticTest, TruncA) {
     EXPECT_VALUE_ALMOST_EQ(r_a, r_p, npc);
     EXPECT_TRUE(verifyCost(obj->prot()->getKernel("trunc_a"), "trunc_a",
                            conf.field(), kShape, npc, cost));
+  });
+}
+
+TEST_P(ArithmeticTest, MulAATrunc) {
+  const auto factory = std::get<0>(GetParam());
+  const RuntimeConfig& conf = std::get<1>(GetParam());
+  const size_t npc = std::get<2>(GetParam());
+
+  // ArrayRef p0_large =
+  //     ring_rand_range(conf.field(), kShape, -(1 << 28), -(1 << 27));
+  // ArrayRef p0_small = ring_rand_range(conf.field(), kShape, 1, 10000);
+
+  utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+    auto obj = factory(conf, lctx);
+
+    auto p0 = rand_p(obj.get(), kShape);
+    auto p1 = rand_p(obj.get(), kShape);
+
+    auto bits_range_gap = p0.elsize() * 8 - (p0.elsize() * 8) / 2;
+    p0 = arshift_p(obj.get(), p0, {static_cast<int64_t>(bits_range_gap)});
+    p1 = arshift_p(obj.get(), p1, {static_cast<int64_t>(bits_range_gap)});
+    auto prod = mul_pp(obj.get(), p0, p1);
+
+    auto v0 = p2v(obj.get(), p0, 0);
+    auto v1 = p2v(obj.get(), p1, 1);
+
+    /* GIVEN */
+    auto a0 = v2a(obj.get(), v0);
+    auto a1 = v2a(obj.get(), v1);
+
+    /* WHEN */
+    const size_t bits = 2;
+    auto prev = obj->prot()->getState<Communicator>()->getStats();
+    auto prod_a = mul_aa_trunc(obj.get(), a0, a1, bits, SignType::Unknown);
+    auto cost = obj->prot()->getState<Communicator>()->getStats() - prev;
+
+    auto r_a = a2p(obj.get(), prod_a);
+    auto r_p = arshift_p(obj.get(), prod, {static_cast<int64_t>(bits)});
+
+    /* THEN */
+    EXPECT_VALUE_ALMOST_EQ(r_a, r_p, npc);
+    EXPECT_TRUE(verifyCost(obj->prot()->getKernel("mul_aa_trunc"),
+                           "mul_aa_trunc", conf.field(), kShape, npc, cost));
   });
 }
 
@@ -587,35 +718,45 @@ TEST_P(ArithmeticTest, A2P) {
   });
 }
 
-#define TEST_BOOLEAN_BINARY_OP_BB(OP)                                          \
-  TEST_P(BooleanTest, OP##BB) {                                                \
-    const auto factory = std::get<0>(GetParam());                              \
-    const RuntimeConfig& conf = std::get<1>(GetParam());                       \
-    const size_t npc = std::get<2>(GetParam());                                \
-                                                                               \
-    utils::simulate(                                                           \
-        npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {           \
-          auto obj = factory(conf, lctx);                                      \
-                                                                               \
-          /* GIVEN */                                                          \
-          auto p0 = rand_p(obj.get(), kShape);                                 \
-          auto p1 = rand_p(obj.get(), kShape);                                 \
-                                                                               \
-          /* WHEN */                                                           \
-          auto b0 = p2b(obj.get(), p0);                                        \
-          auto b1 = p2b(obj.get(), p1);                                        \
-          auto prev = obj->prot()->getState<Communicator>()->getStats();       \
-          auto tmp = OP##_bb(obj.get(), b0, b1);                               \
-          auto cost =                                                          \
-              obj->prot()->getState<Communicator>()->getStats() - prev;        \
-          auto re = b2p(obj.get(), tmp);                                       \
-          auto rp = OP##_pp(obj.get(), p0, p1);                                \
-                                                                               \
-          /* THEN */                                                           \
-          EXPECT_VALUE_EQ(re, rp);                                             \
-          EXPECT_TRUE(verifyCost(obj->prot()->getKernel(#OP "_bb"), #OP "_bb", \
-                                 conf.field(), kShape, npc, cost));            \
-        });                                                                    \
+#define TEST_BOOLEAN_BINARY_OP_BB(OP)                                         \
+  TEST_P(BooleanTest, OP##BB) {                                               \
+    const auto factory = std::get<0>(GetParam());                             \
+    const RuntimeConfig& conf = std::get<1>(GetParam());                      \
+    const size_t npc = std::get<2>(GetParam());                               \
+                                                                              \
+    utils::simulate(                                                          \
+        npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {          \
+          auto obj = factory(conf, lctx);                                     \
+                                                                              \
+          /* GIVEN */                                                         \
+          auto p0 = rand_p(obj.get(), kShape);                                \
+          auto p1 = rand_p(obj.get(), kShape);                                \
+                                                                              \
+          /* WHEN */                                                          \
+          auto b0 = p2b(obj.get(), p0);                                       \
+          auto b1 = p2b(obj.get(), p1);                                       \
+          auto prev = obj->prot()->getState<Communicator>()->getStats();      \
+          auto tmp = OP##_bb(obj.get(), b0, b1);                              \
+          auto cost =                                                         \
+              obj->prot()->getState<Communicator>()->getStats() - prev;       \
+          auto re = b2p(obj.get(), tmp);                                      \
+          auto rp = OP##_pp(obj.get(), p0, p1);                               \
+                                                                              \
+          /* THEN */                                                          \
+          EXPECT_VALUE_EQ(re, rp);                                            \
+          if (conf.protocol() == ProtocolKind::SHAMIR) {                      \
+            const size_t nBits = GetMersennePrimeExp(conf.field());           \
+            ce::Params params = {{"K", SizeOf(conf.field()) * 8},             \
+                                 {"N", npc},                                  \
+                                 {"nBits", nBits}};                           \
+            EXPECT_TRUE(verifyCost(obj->prot()->getKernel(#OP "_bb"),         \
+                                   #OP "_aa", params, cost, kShape.numel())); \
+          } else {                                                            \
+            EXPECT_TRUE(verifyCost(obj->prot()->getKernel(#OP "_bb"),         \
+                                   #OP "_aa", conf.field(), kShape, npc,      \
+                                   cost));                                    \
+          }                                                                   \
+        });                                                                   \
   }
 
 #define TEST_BOOLEAN_BINARY_OP_BP(OP)                                          \
@@ -670,6 +811,10 @@ TEST_BOOLEAN_BINARY_OP(xor)
           auto b0 = p2b(obj.get(), p0);                                        \
                                                                                \
           for (auto bits : kShiftBits) {                                       \
+            if (conf.protocol() == ProtocolKind::SHAMIR &&                     \
+                bits >= GetMersennePrimeExp(conf.field())) {                   \
+              continue;                                                        \
+            }                                                                  \
             if (bits >= p0.elsize() * 8) {                                     \
               continue;                                                        \
             }                                                                  \

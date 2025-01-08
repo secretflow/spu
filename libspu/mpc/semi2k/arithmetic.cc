@@ -61,7 +61,7 @@ NdArrayRef P2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 NdArrayRef A2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const auto field = in.eltype().as<Ring2k>()->field();
   auto* comm = ctx->getState<Communicator>();
-  auto out = comm->allReduce(ReduceOp::ADD, in, kBindName);
+  auto out = comm->allReduce(ReduceOp::ADD, in, kBindName());
   return out.as(makeType<Pub2kTy>(field));
 }
 
@@ -267,13 +267,17 @@ NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
   auto [a, b, c, x_a, y_b] = MulOpen(ctx, x, y, false);
 
   // Zi = Ci + (X - A) * Bi + (Y - B) * Ai + <(X - A) * (Y - B)>
-  auto z = ring_add(
-      ring_add(ring_mul(std::move(b), x_a), ring_mul(std::move(a), y_b)), c);
+  ring_mul_(b, x_a);
+  ring_mul_(a, y_b);
+  ring_add_(b, a);
+  ring_add_(b, c);
+
   if (comm->getRank() == 0) {
     // z += (X-A) * (Y-B);
-    ring_add_(z, ring_mul(std::move(x_a), y_b));
+    ring_mul_(x_a, y_b);
+    ring_add_(b, x_a);
   }
-  return z.as(x.eltype());
+  return b.as(x.eltype());
 }
 
 NdArrayRef SquareA::proc(KernelEvalContext* ctx, const NdArrayRef& x) const {
@@ -316,6 +320,51 @@ NdArrayRef SquareA::proc(KernelEvalContext* ctx, const NdArrayRef& x) const {
     ring_add_(z, ring_mul(x_a, x_a));
   }
   return z.as(x.eltype());
+}
+
+// Let x be AShrTy, y be BShrTy, nbits(y) == 1
+// (x0+x1) * (y0^y1) = (x0+x1) * (y0+y1-2y0y1)
+// we define xx0 = (1-2y0)x0, xx1 = (1-2y1)x1
+//           yy0 = y0,        yy1 = y1
+// if we can compute z0+z1 = xx0*yy1 + xx1*yy0 (which can be easily got from Mul
+// Beaver), then (x0+x1) * (y0^y1) = (z0 + z1) + (x0y0 + x1y1)
+NdArrayRef MulA1B::proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                        const NdArrayRef& y) const {
+  SPU_ENFORCE(x.eltype().as<RingTy>()->field() ==
+              y.eltype().as<RingTy>()->field());
+
+  const auto field = x.eltype().as<RingTy>()->field();
+  auto* comm = ctx->getState<Communicator>();
+
+  // IMPORTANT: the underlying value of y is not exactly 0 or 1, so we must mask
+  // it explicitly.
+  auto yy = ring_bitmask(y, 0, 1).as(makeType<RingTy>(field));
+  // To optimize memory usage, re-use xx buffer
+  auto xx = ring_ones(field, x.shape());
+  ring_sub_(xx, ring_lshift(yy, {1}));
+  ring_mul_(xx, x);
+
+  auto [a, b, c, xx_a, yy_b] = MulOpen(ctx, xx, yy, false);
+
+  // Zi = Ci + (XX - A) * Bi + (YY - B) * Ai + <(XX - A) * (YY - B)> - XXi * YYi
+  // We re-use b to compute z
+  ring_mul_(b, xx_a);
+  ring_mul_(a, yy_b);
+  ring_add_(b, a);
+  ring_add_(b, c);
+
+  ring_mul_(xx, yy);
+  ring_sub_(b, xx);
+  if (comm->getRank() == 0) {
+    // z += (XX-A) * (YY-B);
+    ring_mul_(xx_a, yy_b);
+    ring_add_(b, xx_a);
+  }
+
+  // zi += xi * yi
+  ring_add_(b, ring_mul(x, yy));
+
+  return b.as(x.eltype());
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -371,7 +420,7 @@ NdArrayRef TruncA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
                   x.shape());
 
     // open x - r
-    auto x_r = comm->allReduce(ReduceOp::ADD, ring_sub(x, r), kBindName);
+    auto x_r = comm->allReduce(ReduceOp::ADD, ring_sub(x, r), kBindName());
     auto res = rb;
     if (comm->getRank() == 0) {
       ring_add_(res, ring_arshift(x_r, {static_cast<int64_t>(bits)}));
@@ -422,7 +471,7 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in,
         x_plus_r[idx] = x + _r[idx];
       });
       // open <x> + <r> = c
-      c = comm->allReduce<U, std::plus>(x_plus_r, kBindName);
+      c = comm->allReduce<U, std::plus>(x_plus_r, kBindName());
     }
 
     pforeach(0, numel, [&](int64_t idx) {

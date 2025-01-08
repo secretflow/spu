@@ -15,6 +15,7 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 
 #include "brpc/channel.h"
 #include "yacl/base/buffer.h"
@@ -34,17 +35,15 @@ class BeaverTtp final : public Beaver {
     // asym_crypto_schema: support ["SM2"]
     // Will support 25519 in the future, after yacl supported it.
     std::string asym_crypto_schema;
-    // TODO: Remote Attestation
     yacl::Buffer server_public_key;
     size_t adjust_rank;
 
-    std::string brpc_channel_protocol = "baidu_std";
-    std::string brpc_channel_connection_type = "single";
-    std::string brpc_load_balancer_name;
-    int32_t brpc_timeout_ms = 10 * 1000;
+    std::string brpc_channel_protocol = "http";
+    int32_t brpc_connect_timeout_ms = 10 * 1000;
+    int32_t brpc_timeout_ms = 300 * 1000;
     int32_t brpc_max_retry = 5;
 
-    // TODO: TLS ops for client/server two-way authentication
+    std::optional<brpc::ChannelSSLOptions> brpc_ssl_options;
   };
 
  private:
@@ -66,7 +65,11 @@ class BeaverTtp final : public Beaver {
   ~BeaverTtp() override = default;
 
   Triple Mul(FieldType field, int64_t size, ReplayDesc* x_desc = nullptr,
-             ReplayDesc* y_desc = nullptr) override;
+             ReplayDesc* y_desc = nullptr,
+             ElementType eltype = ElementType::kRing) override;
+
+  Pair MulPriv(FieldType field, int64_t size,
+               ElementType eltype = ElementType::kRing) override;
 
   Pair Square(FieldType field, int64_t size,
               ReplayDesc* x_desc = nullptr) override;
@@ -83,8 +86,7 @@ class BeaverTtp final : public Beaver {
 
   Array RandBit(FieldType field, int64_t size) override;
 
-  Pair PermPair(FieldType field, int64_t size, size_t perm_rank,
-                absl::Span<const int64_t> perm_vec) override;
+  PremTriple PermPair(FieldType field, int64_t size, size_t perm_rank) override;
 
   std::unique_ptr<Beaver> Spawn() override;
 
