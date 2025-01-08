@@ -14,15 +14,18 @@
 
 #include "libspu/mpc/swift/protocol.h"
 
-#include "yacl/link/link.h"
+#include <mutex>
 
-#include "libspu/mpc/swift/protocol_single_test.h"
+#include "libspu/mpc/ab_api_test.h"
+#include "libspu/mpc/api_test.h"
+// #include "libspu/mpc/swift/protocol_single_test.h"
 
 namespace spu::mpc::test {
 namespace {
 
 RuntimeConfig makeConfig(FieldType field) {
   RuntimeConfig conf;
+  conf.set_protocol(ProtocolKind::SWIFT);
   conf.set_field(field);
   return conf;
 }
@@ -53,4 +56,27 @@ INSTANTIATE_TEST_SUITE_P(
                          std::get<2>(p.param));
     });
 
+INSTANTIATE_TEST_SUITE_P(
+    SwiftTest, ConversionTest,
+    testing::Combine(testing::Values(makeSwiftProtocol),  //
+                     testing::Values(makeConfig(FieldType::FM32),
+                                     makeConfig(FieldType::FM64),
+                                     makeConfig(FieldType::FM128)),  //
+                     testing::Values(3)),                            //
+    [](const testing::TestParamInfo<ConversionTest::ParamType>& p) {
+      return fmt::format("{}x{}", std::get<1>(p.param).field(),
+                         std::get<2>(p.param));
+    });
+
+INSTANTIATE_TEST_SUITE_P(
+    SwiftTest, ApiTest,
+    testing::Combine(testing::Values(makeSwiftProtocol),             //
+                     testing::Values(makeConfig(FieldType::FM32),    //
+                                     makeConfig(FieldType::FM64),    //
+                                     makeConfig(FieldType::FM128)),  //
+                     testing::Values(3)),                            //
+    [](const testing::TestParamInfo<ApiTest::ParamType>& p) {
+      return fmt::format("{}x{}x{}", std::get<0>(p.param).name(),
+                         std::get<1>(p.param).field(), std::get<2>(p.param));
+    });
 }  // namespace spu::mpc::test

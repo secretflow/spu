@@ -68,9 +68,9 @@ class A2P : public UnaryKernel {
  public:
   static constexpr const char* kBindName() { return "a2p"; }
 
-  ce::CExpr latency() const override { return ce::Const(1); }
+  ce::CExpr latency() const override { return ce::Const(0); }
 
-  ce::CExpr comm() const override { return ce::K(); }
+  ce::CExpr comm() const override { return ce::Const(0); }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
@@ -81,15 +81,9 @@ class A2V : public RevealToKernel {
 
   Kind kind() const override { return Kind::Dynamic; }
 
-  ce::CExpr latency() const override {
-    // 1 * send/recv: 1
-    return ce::Const(1);
-  }
+  ce::CExpr latency() const override { return ce::Const(0); }
 
-  ce::CExpr comm() const override {
-    // 1 * rotate: k
-    return ce::K();
-  }
+  ce::CExpr comm() const override { return ce::Const(0); }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
                   size_t rank_dst) const override;
@@ -101,15 +95,9 @@ class V2A : public UnaryKernel {
 
   Kind kind() const override { return Kind::Dynamic; }
 
-  ce::CExpr latency() const override {
-    // 1 * rotate: 1
-    return ce::Const(1);
-  }
+  ce::CExpr latency() const override { return ce::Const(0); }
 
-  ce::CExpr comm() const override {
-    // 1 * rotate: k
-    return ce::K();
-  }
+  ce::CExpr comm() const override { return ce::Const(0); }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
@@ -253,9 +241,9 @@ class TruncA : public TruncAKernel {
  public:
   static constexpr const char* kBindName() { return "trunc_a"; }
 
-  ce::CExpr latency() const override { return ce::Const(1); }
+  ce::CExpr latency() const override { return ce::Const(0); }
 
-  ce::CExpr comm() const override { return ce::K(); }
+  ce::CExpr comm() const override { return ce::Const(0); }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t bits,
                   SignType sign) const override;
@@ -266,7 +254,8 @@ class TruncA : public TruncAKernel {
     return TruncLsbRounding::Random;
   }
 
-  std::pair<NdArrayRef, NdArrayRef> Trgen(KernelEvalContext* ctx, int64_t bits, FieldType field, int64_t numel) const;
+  std::pair<NdArrayRef, NdArrayRef> Trgen(KernelEvalContext* ctx, int64_t bits,
+                                          FieldType field, int64_t numel) const;
 };
 
 }  // namespace spu::mpc::swift

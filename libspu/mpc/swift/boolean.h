@@ -19,15 +19,14 @@
 namespace spu::mpc::swift {
 
 class B2P : public UnaryKernel {
-public:
-	static constexpr const char* kBindName() {return "b2p";}
+ public:
+  static constexpr const char* kBindName() { return "b2p"; }
 
-	ce::CExpr latency() const override { return ce::Const(1); }
+  ce::CExpr latency() const override { return ce::Const(0); }
 
-	ce::CExpr comm() const override { return ce::K() * (ce::N() - 1); }
+  ce::CExpr comm() const override { return ce::Const(0); }
 
-	NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
-
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
 
 class P2B : public UnaryKernel {
@@ -81,9 +80,9 @@ class AndBB : public BinaryKernel {
  public:
   static constexpr const char* kBindName() { return "and_bb"; }
 
-  ce::CExpr latency() const override { return ce::Const(1); }
+  ce::CExpr latency() const override { return ce::Const(0); }
 
-  ce::CExpr comm() const override { return ce::K() * 2 * (ce::N() - 1); }
+  ce::CExpr comm() const override { return ce::Const(0); }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
                   const NdArrayRef& rhs) const override;
@@ -161,4 +160,4 @@ class BitDeintlB : public BitSplitKernel {
                   size_t stride) const override;
 };
 
-} // namespace spu::mpc::swift
+}  // namespace spu::mpc::swift

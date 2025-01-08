@@ -9,4 +9,6 @@ class ArithmeticTest : public ::testing::TestWithParam<OpTestParams> {};
 
 class BooleanTest : public ::testing::TestWithParam<OpTestParams> {};
 
+class ConversionTest : public ::testing::TestWithParam<OpTestParams> {};
+
 }  // namespace spu::mpc::test

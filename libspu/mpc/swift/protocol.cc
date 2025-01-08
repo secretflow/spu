@@ -19,6 +19,7 @@
 #include "libspu/mpc/common/pv2k.h"
 #include "libspu/mpc/swift/arithmetic.h"
 #include "libspu/mpc/swift/boolean.h"
+#include "libspu/mpc/swift/conversion.h"
 #include "libspu/mpc/swift/protocol.h"
 #include "libspu/mpc/swift/type.h"
 #include "libspu/mpc/swift/value.h"
@@ -45,13 +46,19 @@ void regSwiftProtocol(SPUContext* ctx,
   regStandardShapeOps(ctx);
 
   ctx->prot()
-      ->regKernel<swift::P2A, swift::A2P, swift::UnaryTest1, swift::NegateA,
-                  swift::RandA, swift::AddAP, swift::AddAA, swift::MulAP,
-                  swift::MulAA_semi, swift::MulAA, swift::MatMulAP, swift::MatMulAA, 
-                  swift::LShiftA, swift::TruncA, swift::P2B, swift::B2P, swift::XorBP, 
-                  swift::XorBB, swift::AndBP, swift::AndBB,
-                  swift::LShiftB, swift::RShiftB, swift::ARShiftB,
-                  swift::BitrevB, swift::BitIntlB, swift::BitDeintlB>();
+      ->regKernel<
+          swift::P2A, swift::A2P, swift::UnaryTest1, swift::NegateA, swift::V2A,
+          swift::A2V, swift::RandA, swift::AddAP, swift::AddAA, swift::MulAP,
+          swift::MulAA_semi, swift::MulAA, swift::MatMulAP, swift::MatMulAA,
+          swift::LShiftA, swift::TruncA, swift::P2B, swift::B2P, swift::XorBP,
+          swift::XorBB, swift::AndBP, swift::AndBB, swift::LShiftB,
+          swift::RShiftB, swift::ARShiftB, swift::BitrevB, swift::BitIntlB,
+          swift::BitDeintlB, swift::A2B, swift::MsbA2B, swift::B2A>();
+
+  // if (!(ctx->getField() == FieldType::FM32 ||
+  //       ctx->getField() == FieldType::FM64)) {
+  //   SPU_THROW("The malicious protocol for MulAA only support FM32 and FM64");
+  // }
 }
 
 std::unique_ptr<SPUContext> makeSwiftProtocol(
