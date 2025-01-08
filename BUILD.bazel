@@ -44,6 +44,7 @@ compile_pip_requirements_3_11(
 compile_pip_requirements(
     name = "requirements-dev",
     src = "requirements-dev.txt",
+    requirements_darwin = "requirements_dev_darwin_lock.txt",
     requirements_txt = "requirements_dev_lock.txt",
     tags = ["manual"],
 )
