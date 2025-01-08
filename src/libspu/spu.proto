@@ -81,12 +81,12 @@ enum PtType {
   PT_U128 = 10;    // uint128_t
   PT_I1 = 11;      // bool
 
-  PT_F16 = 30;     // half
-  PT_F32 = 31;     // float
-  PT_F64 = 32;     // double
+  PT_F16 = 30;  // half
+  PT_F32 = 31;  // float
+  PT_F64 = 32;  // double
 
-  PT_CF32 = 50;    // complex float
-  PT_CF64 = 51;    // complex double
+  PT_CF32 = 50;  // complex float
+  PT_CF64 = 51;  // complex double
 }
 
 // A security parameter type.
@@ -373,7 +373,8 @@ message RuntimeConfig {
 message ClientSSLConfig {
   // Certificate in PEM format, supported both file path and raw string
   string certificate = 1;
-  // Private key in PEM format, supported both file path and raw string based on prefix
+  // Private key in PEM format, supported both file path and raw string based on
+  // prefix
   string private_key = 2;
   // The trusted CA file to verify the peer's certificate
   // If empty, use the system default CA files

@@ -29,11 +29,6 @@ You could install SPU via the [official PyPI package](https://pypi.org/project/s
 pip install spu
 ```
 
-
-
-
-
-
 ### From Source
 
 - Install dependencies listed [here](https://github.com/secretflow/spu/blob/main/CONTRIBUTING.md#prerequisite).
