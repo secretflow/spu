@@ -37,3 +37,4 @@ func.func @main(%arg0: tensor<3x4x!pphlo.secret<f32>>, %arg1: tensor<3x4x!pphlo.
     }) {dimension = 1 : i64, is_stable = true} : (tensor<3x4x!pphlo.secret<f32>>, tensor<3x4x!pphlo.secret<f32>>, tensor<3x4x!pphlo.secret<f32>>) -> (tensor<3x4x!pphlo.secret<f32>>, tensor<3x4x!pphlo.secret<f32>>, tensor<3x4x!pphlo.secret<f32>>)
     return %0#0, %0#1, %0#2 : tensor<3x4x!pphlo.secret<f32>>, tensor<3x4x!pphlo.secret<f32>>, tensor<3x4x!pphlo.secret<f32>>
   }
+
