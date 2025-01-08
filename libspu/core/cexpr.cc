@@ -121,6 +121,12 @@ CExpr Mul(const CExpr& x, const CExpr& y) {
   return std::make_shared<MulExpr>(x, y);
 }
 
+CExpr Div(const CExpr& x, const CExpr& y) {
+  static char kMulName[] = "/";
+  using DivExpr = BinaryExpr<std::divides<>, kMulName, 2>;
+  return std::make_shared<DivExpr>(x, y);
+}
+
 }  // namespace
 
 CExpr Const(Value v) { return std::make_unique<ConstantExpr>(v); }
@@ -142,5 +148,9 @@ CExpr operator-(Value x, const CExpr& y) { return Sub(Const(x), y); }
 CExpr operator*(const CExpr& x, const CExpr& y) { return Mul(x, y); }
 CExpr operator*(const CExpr& x, Value y) { return Mul(x, Const(y)); }
 CExpr operator*(Value x, const CExpr& y) { return Mul(Const(x), y); }
+
+CExpr operator/(const CExpr& x, const CExpr& y) { return Div(x, y); }
+CExpr operator/(const CExpr& x, Value y) { return Div(x, Const(y)); }
+CExpr operator/(Value x, const CExpr& y) { return Div(Const(x), y); }
 
 }  // namespace spu::ce

@@ -41,6 +41,21 @@ spu_cc_library(
 )
 
 spu_cc_library(
+    name = "io_shamir_test",
+    testonly = 1,
+    srcs = ["io_shamir_test.cc"],
+    hdrs = ["io_shamir_test.h"],
+    deps = [
+        ":io_interface",
+        "//libspu/mpc/utils:gfmp_ops",
+        "//libspu/mpc/utils:ring_ops",
+        "//libspu/mpc/utils:simulate",
+        "@com_google_googletest//:gtest",
+    ],
+    alwayslink = True,
+)
+
+spu_cc_library(
     name = "factory",
     srcs = ["factory.cc"],
     hdrs = ["factory.h"],
