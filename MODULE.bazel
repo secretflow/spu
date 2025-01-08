@@ -97,6 +97,7 @@ use_repo(pip, "spu_pip")
 pip.parse(
     hub_name = "spu_pip_dev",
     python_version = DEFAULT_PYTHON_VERSION,
+    requirements_darwin = "//:requirements_dev_darwin_lock.txt",
     requirements_lock = "//:requirements_dev_lock.txt",
 )
 pip.override(
