@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@grpc//bazel:python_rules.bzl", "py_grpc_library", "py_proto_library")
 load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@rules_proto_grpc_python//:defs.bzl", "python_grpc_library", "python_proto_library")
 load("//bazel:spu.bzl", "spu_py_library")
 
 package(default_visibility = ["//visibility:public"])
@@ -32,15 +32,16 @@ proto_library(
     srcs = ["distributed.proto"],
 )
 
-py_proto_library(
+python_proto_library(
     name = "distributed_py_proto",
-    deps = [":distributed_proto"],
+    protos = [":distributed_proto"],
 )
 
-py_grpc_library(
+python_grpc_library(
     name = "distributed_py_proto_grpc",
-    srcs = [":distributed_proto"],
-    strip_prefixes = ["../.."],
+    output_mode = "NO_PREFIX",
+    prefix_path = "../..",
+    protos = [":distributed_proto"],
     deps = [":distributed_py_proto"],
 )
 
