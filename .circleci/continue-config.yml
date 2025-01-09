@@ -59,15 +59,30 @@ commands:
             ../devtools/bazel_cache_setup.py --in_file=../gcs.data --out_file=../gcs.json --min_download
       - run:
           name: "build"
-          command: bazel --version && python3 --version && bazel run //:requirements-dev.update && bazel build <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning
+          command: |
+            bazel --version && python3 --version && bazel run //:requirements-dev.update
+
+            # build module spulib
+            cd src && bazel build <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning
+
+            # build module spu
+            cd - && bazel build <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning
       - run:
           name: "test"
           command: |
             set +e
             declare -i test_status
-            bazel test <<parameters.extra_bazel_test_args>> <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors| tee test_result.log; test_status=${PIPESTATUS[0]}
 
+            pushd src
+            bazel test <<parameters.extra_bazel_test_args>> <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors | tee test_result.log; test_status=${PIPESTATUS[0]}
+            sh ../../devtools/rename-junit-xml.sh
+            popd
+
+            bazel test <<parameters.extra_bazel_test_args>> <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors | tee -a test_result.log; test_status=${PIPESTATUS[0]}
             sh ../devtools/rename-junit-xml.sh
+
+            cp -r src/test-results/ test-results/
+            cp -r src/test-testlogs/ test-testlogs/
             find bazel-testlogs/ -type f -name "test.log"  -print0 | xargs -0 tar -cvzf test_logs.tar.gz
 
             exit ${test_status}

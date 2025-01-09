@@ -53,7 +53,8 @@ commands:
             conda activate build
 
             if [ ! -e "/usr/bin/python3" ]; then ln -s `which python3` /usr/bin/python3; fi
-            bazel build //:spu_wheel -c opt --@rules_python//python/config_settings:python_version=<< parameters.python_ver >>
+            cd src && bazel build //... -c opt --ui_event_filters=-info,-debug,-warning
+            cd - && bazel build //:spu_wheel -c opt --@rules_python//python/config_settings:python_version=<< parameters.python_ver >>
 
             python3 -m pip install twine
             ls bazel-bin/spu*.whl
