@@ -75,7 +75,7 @@ commands:
 
             cd src && bazel test <<parameters.extra_bazel_test_args>> <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors | tee test_result.log; test_status=${PIPESTATUS[0]}
 
-            sh ../devtools/rename-junit-xml.sh
+            sh ../../devtools/rename-junit-xml.sh
             find bazel-testlogs/ -type f -name "test.log"  -print0 | xargs -0 tar -cvzf test_logs.tar.gz
 
             exit ${test_status}
@@ -95,6 +95,7 @@ commands:
           path: test-results
       - store_artifacts:
           path: test_logs.tar.gz
+          path: src/test_logs.tar.gz
 
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
