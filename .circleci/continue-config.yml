@@ -66,15 +66,26 @@ commands:
             cd src && bazel build <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning
 
             # build module spu
-            cd - && bazel build //:spu_wheel <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning
+            cd - && bazel build <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning
       - run:
-          name: "test"
+          name: "test-libspu"
           command: |
             set +e
             declare -i test_status
 
             cd src && bazel test <<parameters.extra_bazel_test_args>> <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors | tee test_result.log; test_status=${PIPESTATUS[0]}
-            cd - && bazel test <<parameters.extra_bazel_test_args>> <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors | tee -a test_result.log; test_status=${PIPESTATUS[0]}
+
+            sh ../devtools/rename-junit-xml.sh
+            find bazel-testlogs/ -type f -name "test.log"  -print0 | xargs -0 tar -cvzf test_logs.tar.gz
+
+            exit ${test_status}
+      - run:
+          name: "test-spu"
+          command: |
+            set +e
+            declare -i test_status
+
+            bazel test <<parameters.extra_bazel_test_args>> <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors | tee test_result.log; test_status=${PIPESTATUS[0]}
 
             sh ../devtools/rename-junit-xml.sh
             find bazel-testlogs/ -type f -name "test.log"  -print0 | xargs -0 tar -cvzf test_logs.tar.gz
