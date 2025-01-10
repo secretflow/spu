@@ -60,19 +60,24 @@ commands:
       - run:
           name: "build"
           command: |
-            bazel --version && python3 --version && bazel run //:requirements-dev.update
+            set +e
+            declare -i build_status
+
+            bazel --version && python3 --version && bazel run //:requirements-dev.update; build_status=${PIPESTATUS[0]}
 
             # build module spulib
             pushd src
             bazel query <<parameters.targets>>; if [ $? -eq 0 ]; then
-              bazel build <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning
+              bazel build <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning; build_status=${PIPESTATUS[0]}
             fi
             popd
 
             # build module spu
             bazel query <<parameters.targets>>; if [ $? -eq 0 ]; then
-              bazel build <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning
+              bazel build <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning; build_status=${PIPESTATUS[0]}
             fi
+
+            exit ${build_status}
       - run:
           name: "test"
           command: |
