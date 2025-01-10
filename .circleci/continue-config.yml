@@ -74,7 +74,7 @@ commands:
             declare -i test_status
 
             pushd src
-            bazel query <<parameters.extra_bazel_test_args>>; if [ $? -eq 0 ]; then
+            bazel query <<parameters.targets>>; if [ $? -eq 0 ]; then
               bazel test <<parameters.extra_bazel_test_args>> <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors | tee test_result.log; test_status=${PIPESTATUS[0]}
               sh ../../devtools/rename-junit-xml.sh
               cp -r test-results/ ../test-results/
@@ -82,7 +82,7 @@ commands:
             fi
             popd
 
-            bazel query <<parameters.extra_bazel_test_args>>; if [ $? -eq 0 ]; then
+            bazel query <<parameters.targets>>; if [ $? -eq 0 ]; then
               bazel test <<parameters.extra_bazel_test_args>> <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors | tee -a test_result.log; test_status=${PIPESTATUS[0]}
               sh ../devtools/rename-junit-xml.sh
             fi
@@ -162,8 +162,4 @@ workflows:
       - linux_ml_ut:
           requires:
             - linux_ut-2xlarge+
-          filters:
-            branches:
-              only:
-                - main
       - macOS_ut
