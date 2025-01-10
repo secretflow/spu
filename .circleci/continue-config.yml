@@ -74,15 +74,19 @@ commands:
             declare -i test_status
 
             pushd src
-            bazel test <<parameters.extra_bazel_test_args>> <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors | tee test_result.log; test_status=${PIPESTATUS[0]}
-            sh ../../devtools/rename-junit-xml.sh
+            bazel query <<parameters.extra_bazel_test_args>>; if [ $? -eq 0 ]; then
+              bazel test <<parameters.extra_bazel_test_args>> <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors | tee test_result.log; test_status=${PIPESTATUS[0]}
+              sh ../../devtools/rename-junit-xml.sh
+              cp -r test-results/ ../test-results/
+              cp -r test-testlogs/ ../ttest-testlogs/
+            fi
             popd
 
-            bazel test <<parameters.extra_bazel_test_args>> <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors | tee -a test_result.log; test_status=${PIPESTATUS[0]}
-            sh ../devtools/rename-junit-xml.sh
+            bazel query <<parameters.extra_bazel_test_args>>; if [ $? -eq 0 ]; then
+              bazel test <<parameters.extra_bazel_test_args>> <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors | tee -a test_result.log; test_status=${PIPESTATUS[0]}
+              sh ../devtools/rename-junit-xml.sh
+            fi
 
-            cp -r src/test-results/ test-results/
-            cp -r src/test-testlogs/ test-testlogs/
             find bazel-testlogs/ -type f -name "test.log"  -print0 | xargs -0 tar -cvzf test_logs.tar.gz
 
             exit ${test_status}
