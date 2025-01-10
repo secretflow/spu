@@ -63,10 +63,16 @@ commands:
             bazel --version && python3 --version && bazel run //:requirements-dev.update
 
             # build module spulib
-            cd src && bazel build <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning
+            pushd src
+            bazel query <<parameters.targets>>; if [ $? -eq 0 ]; then
+              bazel build <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning
+            fi
+            popd
 
             # build module spu
-            cd - && bazel build <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning
+            bazel query <<parameters.targets>>; if [ $? -eq 0 ]; then
+              bazel build <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning
+            fi
       - run:
           name: "test"
           command: |
