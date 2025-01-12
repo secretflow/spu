@@ -50,21 +50,24 @@ jobs:
           name: "test"
           command: |
             set +e
-            declare -i test_status
+
+            declare -i status0=0
+            declare -i status1=0
 
             pushd src
-            bazel test //... --features=asan --test_timeout=500 --ui_event_filters=-info,-debug,-warning --test_output=errors | tee test_result.log; test_status=${PIPESTATUS[0]}
+            bazel test //... --features=asan --test_timeout=500 --ui_event_filters=-info,-debug,-warning --test_output=errors | tee test_result.log; status0=${PIPESTATUS[0]}
             sh ../../devtools/rename-junit-xml.sh
+            cp -r test-results/ ../test-results/
+            cp -r test-testlogs/ ../test-testlogs/
             popd
 
-            bazel test //... --features=asan --test_timeout=500 --ui_event_filters=-info,-debug,-warning --test_output=errors | tee -a test_result.log; test_status=${PIPESTATUS[0]}
+            bazel test //... --features=asan --test_timeout=500 --ui_event_filters=-info,-debug,-warning --test_output=errors | tee -a test_result.log; status1=${PIPESTATUS[0]}
             sh ../devtools/rename-junit-xml.sh
 
-            cp -r src/test-results/ test-results/
-            cp -r src/test-testlogs/ test-testlogs/
             find bazel-testlogs/ -type f -name "test.log"  -print0 | xargs -0 tar -cvzf test_logs.tar.gz
 
-            exit ${test_status}
+            status=$((${status0} + ${status1}))
+            exit ${status}
       - store_test_results:
           path: test-results
       - store_artifacts:
