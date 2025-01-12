@@ -89,7 +89,6 @@ commands:
 
             declare -i status0=0
             declare -i status1=0
-            
             mkdir test-results
             mkdir test-testlogs
 
