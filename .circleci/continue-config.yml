@@ -57,6 +57,9 @@ commands:
           command: |
             echo ${gcs_content} > ../gcs.data
             ../devtools/bazel_cache_setup.py --in_file=../gcs.data --out_file=../gcs.json --min_download
+            pushd src
+            ../../devtools/bazel_cache_setup.py --in_file=../../gcs.data --out_file=../../gcs.json --min_download
+            popd
       - run:
           name: "build"
           command: |
