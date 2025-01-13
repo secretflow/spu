@@ -91,57 +91,116 @@ TYPED_TEST(FloatEncodingTest, Works) {
   constexpr FieldType kField = FieldT();
   constexpr size_t kFxpBits = 18;
 
-  // GIVEN
-  std::array<FloatT, 6> samples = {
-      -std::numeric_limits<FloatT>::infinity(),
-      std::numeric_limits<FloatT>::infinity(),
-      -1.0,
-      0.0,
-      1.0,
-      3.1415926,
-  };
+  // ring encoding
+  {
+    // GIVEN
+    std::array<FloatT, 6> samples = {
+        -std::numeric_limits<FloatT>::infinity(),
+        std::numeric_limits<FloatT>::infinity(),
+        -1.0,
+        0.0,
+        1.0,
+        3.1415926,
+    };
 
-  NdArrayRef frm(makePtType(PtTypeToEnum<FloatT>::value), {samples.size()});
-  std::copy(samples.begin(), samples.end(), &frm.at<FloatT>({0}));
+    NdArrayRef frm(makePtType(PtTypeToEnum<FloatT>::value), {samples.size()});
+    std::copy(samples.begin(), samples.end(), &frm.at<FloatT>({0}));
 
-  PtBufferView frm_pv(static_cast<const void*>(frm.data()),
-                      PtTypeToEnum<FloatT>::value, frm.shape(), frm.strides());
+    PtBufferView frm_pv(static_cast<const void*>(frm.data()),
+                        PtTypeToEnum<FloatT>::value, frm.shape(),
+                        frm.strides());
 
-  DataType encoded_dtype_by_pv;
-  auto encoded_by_pv =
-      encodeToRing(frm_pv, kField, kFxpBits, &encoded_dtype_by_pv);
+    DataType encoded_dtype_by_pv;
+    auto encoded_by_pv =
+        encodeToRing(frm_pv, kField, kFxpBits, &encoded_dtype_by_pv);
 
-  if constexpr (std::is_same_v<FloatT, float>) {
-    EXPECT_EQ(encoded_dtype_by_pv, DT_F32);
-  } else {
-    EXPECT_EQ(encoded_dtype_by_pv, DT_F64);
+    if constexpr (std::is_same_v<FloatT, float>) {
+      EXPECT_EQ(encoded_dtype_by_pv, DT_F32);
+    } else {
+      EXPECT_EQ(encoded_dtype_by_pv, DT_F64);
+    }
+
+    PtType out_pt_type_by_pv;
+    NdArrayRef decoded_by_pv(makePtType(PtTypeToEnum<FloatT>::value),
+                             {samples.size()});
+    PtBufferView decoded_pv(static_cast<void*>(decoded_by_pv.data()),
+                            PtTypeToEnum<FloatT>::value, decoded_by_pv.shape(),
+                            decoded_by_pv.strides());
+    decodeFromRing(encoded_by_pv, encoded_dtype_by_pv, kFxpBits, &decoded_pv,
+                   &out_pt_type_by_pv);
+
+    if constexpr (std::is_same_v<FloatT, float>) {
+      EXPECT_EQ(out_pt_type_by_pv, PT_F32);
+    } else {
+      EXPECT_EQ(out_pt_type_by_pv, PT_F64);
+    }
+    auto* out_ptr_by_pv = &decoded_by_pv.at<FloatT>({0});
+    const int64_t kReprBits = SizeOf(kField) * 8 - 2;
+    const int64_t kScale = 1LL << kFxpBits;
+    EXPECT_EQ(out_ptr_by_pv[0],
+              -static_cast<FloatT>((1LL << kReprBits)) / kScale);
+    EXPECT_EQ(out_ptr_by_pv[1],
+              static_cast<FloatT>((1LL << kReprBits) - 1) / kScale);
+    EXPECT_EQ(out_ptr_by_pv[2], -1.0);
+    EXPECT_EQ(out_ptr_by_pv[3], 0.0);
+    EXPECT_EQ(out_ptr_by_pv[4], 1.0);
+    EXPECT_NEAR(out_ptr_by_pv[5], 3.1415926, 0.00001F);
   }
+  // gfmp encoding
+  {
+    // GIVEN
+    std::array<FloatT, 6> samples = {
+        -std::numeric_limits<FloatT>::infinity(),
+        std::numeric_limits<FloatT>::infinity(),
+        -1.0,
+        0.0,
+        1.0,
+        3.1415926,
+    };
 
-  PtType out_pt_type_by_pv;
-  NdArrayRef decoded_by_pv(makePtType(PtTypeToEnum<FloatT>::value),
-                           {samples.size()});
-  PtBufferView decoded_pv(static_cast<void*>(decoded_by_pv.data()),
-                          PtTypeToEnum<FloatT>::value, decoded_by_pv.shape(),
-                          decoded_by_pv.strides());
-  decodeFromRing(encoded_by_pv, encoded_dtype_by_pv, kFxpBits, &decoded_pv,
-                 &out_pt_type_by_pv);
+    NdArrayRef frm(makePtType(PtTypeToEnum<FloatT>::value), {samples.size()});
+    std::copy(samples.begin(), samples.end(), &frm.at<FloatT>({0}));
 
-  if constexpr (std::is_same_v<FloatT, float>) {
-    EXPECT_EQ(out_pt_type_by_pv, PT_F32);
-  } else {
-    EXPECT_EQ(out_pt_type_by_pv, PT_F64);
+    PtBufferView frm_pv(static_cast<const void*>(frm.data()),
+                        PtTypeToEnum<FloatT>::value, frm.shape(),
+                        frm.strides());
+
+    DataType encoded_dtype_by_pv;
+    auto encoded_by_pv =
+        encodeToGfmp(frm_pv, kField, kFxpBits, &encoded_dtype_by_pv);
+
+    if constexpr (std::is_same_v<FloatT, float>) {
+      EXPECT_EQ(encoded_dtype_by_pv, DT_F32);
+    } else {
+      EXPECT_EQ(encoded_dtype_by_pv, DT_F64);
+    }
+
+    PtType out_pt_type_by_pv;
+    NdArrayRef decoded_by_pv(makePtType(PtTypeToEnum<FloatT>::value),
+                             {samples.size()});
+    PtBufferView decoded_pv(static_cast<void*>(decoded_by_pv.data()),
+                            PtTypeToEnum<FloatT>::value, decoded_by_pv.shape(),
+                            decoded_by_pv.strides());
+    decodeFromGfmp(encoded_by_pv, encoded_dtype_by_pv, kFxpBits, &decoded_pv,
+                   &out_pt_type_by_pv);
+
+    if constexpr (std::is_same_v<FloatT, float>) {
+      EXPECT_EQ(out_pt_type_by_pv, PT_F32);
+    } else {
+      EXPECT_EQ(out_pt_type_by_pv, PT_F64);
+    }
+    auto* out_ptr_by_pv = &decoded_by_pv.at<FloatT>({0});
+    const int64_t kReprBits = GetMersennePrimeExp(kField) - 1;
+    const int64_t kScale = 1LL << kFxpBits;
+    EXPECT_EQ(out_ptr_by_pv[0],
+              -static_cast<FloatT>((1LL << kReprBits)) / kScale);
+    EXPECT_EQ(out_ptr_by_pv[1],
+              static_cast<FloatT>((1LL << kReprBits) - 1) / kScale);
+    EXPECT_EQ(out_ptr_by_pv[2], -1.0);
+    EXPECT_EQ(out_ptr_by_pv[3], 0.0);
+    EXPECT_EQ(out_ptr_by_pv[4], 1.0);
+    EXPECT_NEAR(out_ptr_by_pv[5], 3.1415926, 0.00001F);
   }
-  auto* out_ptr_by_pv = &decoded_by_pv.at<FloatT>({0});
-  const int64_t kReprBits = SizeOf(kField) * 8 - 2;
-  const int64_t kScale = 1LL << kFxpBits;
-  EXPECT_EQ(out_ptr_by_pv[0],
-            -static_cast<FloatT>((1LL << kReprBits)) / kScale);
-  EXPECT_EQ(out_ptr_by_pv[1],
-            static_cast<FloatT>((1LL << kReprBits) - 1) / kScale);
-  EXPECT_EQ(out_ptr_by_pv[2], -1.0);
-  EXPECT_EQ(out_ptr_by_pv[3], 0.0);
-  EXPECT_EQ(out_ptr_by_pv[4], 1.0);
-  EXPECT_NEAR(out_ptr_by_pv[5], 3.1415926, 0.00001F);
 }
 
 template <typename S>
@@ -155,41 +214,99 @@ TYPED_TEST(IntEncodingTest, Works) {
   constexpr FieldType kField = FieldT();
   constexpr size_t kFxpBits = 18;
 
-  // GIVEN
-  std::array<IntT, 6> samples = {
-      std::numeric_limits<IntT>::min(),
-      std::numeric_limits<IntT>::max(),
-      static_cast<IntT>(-1),
-      0,
-      1,
-  };
+  // ring encoding
+  {
+    // GIVEN
+    std::array<IntT, 6> samples = {
+        std::numeric_limits<IntT>::min(),
+        std::numeric_limits<IntT>::max(),
+        static_cast<IntT>(-1),
+        0,
+        1,
+    };
 
-  NdArrayRef frm(makePtType(PtTypeToEnum<IntT>::value), {samples.size()});
-  std::copy(samples.begin(), samples.end(), &frm.at<IntT>({0}));
+    NdArrayRef frm(makePtType(PtTypeToEnum<IntT>::value), {samples.size()});
+    std::copy(samples.begin(), samples.end(), &frm.at<IntT>({0}));
 
-  DataType encoded_dtype;
-  PtBufferView frm_pv(static_cast<const void*>(frm.data()),
-                      PtTypeToEnum<IntT>::value, frm.shape(), frm.strides());
-  auto encoded_by_pv = encodeToRing(frm_pv, kField, kFxpBits, &encoded_dtype);
-  EXPECT_EQ(encoded_dtype, getEncodeType(frm_pt_type));
+    PtBufferView frm_pv(static_cast<const void*>(frm.data()),
+                        PtTypeToEnum<IntT>::value, frm.shape(), frm.strides());
 
-  PtType out_pt_type;
+    DataType ring_encoded_dtype;
+    auto ring_encoded_by_pv =
+        encodeToRing(frm_pv, kField, kFxpBits, &ring_encoded_dtype);
+    EXPECT_EQ(ring_encoded_dtype, getEncodeType(frm_pt_type));
 
-  NdArrayRef decoded_by_pv(makePtType(PtTypeToEnum<IntT>::value),
-                           {samples.size()});
-  PtBufferView decoded_pv(static_cast<void*>(decoded_by_pv.data()),
-                          PtTypeToEnum<IntT>::value, decoded_by_pv.shape(),
-                          decoded_by_pv.strides());
-  decodeFromRing(encoded_by_pv, encoded_dtype, kFxpBits, &decoded_pv,
-                 &out_pt_type);
-  EXPECT_EQ(out_pt_type, frm_pt_type);
+    PtType out_pt_type;
 
-  IntT* out_ptr_by_pv = &decoded_by_pv.at<IntT>({0});
-  EXPECT_EQ(out_ptr_by_pv[0], samples[0]);
-  EXPECT_EQ(out_ptr_by_pv[1], samples[1]);
-  EXPECT_EQ(out_ptr_by_pv[2], static_cast<IntT>(-1));
-  EXPECT_EQ(out_ptr_by_pv[3], 0);
-  EXPECT_EQ(out_ptr_by_pv[4], 1);
+    NdArrayRef decoded_by_pv(makePtType(PtTypeToEnum<IntT>::value),
+                             {samples.size()});
+    PtBufferView decoded_pv(static_cast<void*>(decoded_by_pv.data()),
+                            PtTypeToEnum<IntT>::value, decoded_by_pv.shape(),
+                            decoded_by_pv.strides());
+    decodeFromRing(ring_encoded_by_pv, ring_encoded_dtype, kFxpBits,
+                   &decoded_pv, &out_pt_type);
+    EXPECT_EQ(out_pt_type, frm_pt_type);
+
+    IntT* out_ptr_by_pv = &decoded_by_pv.at<IntT>({0});
+    EXPECT_EQ(out_ptr_by_pv[0], samples[0]);
+    EXPECT_EQ(out_ptr_by_pv[1], samples[1]);
+    EXPECT_EQ(out_ptr_by_pv[2], static_cast<IntT>(-1));
+    EXPECT_EQ(out_ptr_by_pv[3], 0);
+    EXPECT_EQ(out_ptr_by_pv[4], 1);
+  }
+  // gfmp encoding
+  {
+    size_t mp_exp = GetMersennePrimeExp(kField);
+    int128_t p = (static_cast<int128_t>(1) << mp_exp) - 1;
+    int128_t max_positve = p >> 1;
+    int128_t min_negetive = -max_positve;
+
+    // clamp to the range of the Prime fie
+    int128_t int_min = std::max(
+        static_cast<int128_t>(std::numeric_limits<IntT>::min()), min_negetive);
+    int128_t int_max = std::min(
+        static_cast<int128_t>(std::numeric_limits<IntT>::max()), max_positve);
+
+    // GIVEN
+    std::array<IntT, 6> samples = {
+        static_cast<IntT>(int_min),
+        static_cast<IntT>(int_max),
+        static_cast<IntT>(-1),
+        0,
+        1,
+    };
+
+    NdArrayRef frm(makePtType(PtTypeToEnum<IntT>::value), {samples.size()});
+    std::copy(samples.begin(), samples.end(), &frm.at<IntT>({0}));
+
+    PtBufferView frm_pv(static_cast<const void*>(frm.data()),
+                        PtTypeToEnum<IntT>::value, frm.shape(), frm.strides());
+
+    DataType gfmp_encoded_dtype;
+    auto gfmp_encoded_by_pv =
+        encodeToGfmp(frm_pv, kField, kFxpBits, &gfmp_encoded_dtype);
+
+    EXPECT_EQ(gfmp_encoded_dtype, getEncodeType(frm_pt_type));
+
+    PtType out_pt_type;
+
+    NdArrayRef decoded_by_pv(makePtType(PtTypeToEnum<IntT>::value),
+                             {samples.size()});
+    PtBufferView decoded_pv(static_cast<void*>(decoded_by_pv.data()),
+                            PtTypeToEnum<IntT>::value, decoded_by_pv.shape(),
+                            decoded_by_pv.strides());
+    decodeFromGfmp(gfmp_encoded_by_pv, gfmp_encoded_dtype, kFxpBits,
+                   &decoded_pv, &out_pt_type);
+    EXPECT_EQ(out_pt_type, frm_pt_type);
+
+    IntT* out_ptr_by_pv = &decoded_by_pv.at<IntT>({0});
+
+    EXPECT_EQ(out_ptr_by_pv[0], samples[0]);
+    EXPECT_EQ(out_ptr_by_pv[1], samples[1]);
+    EXPECT_EQ(out_ptr_by_pv[2], static_cast<IntT>(-1));
+    EXPECT_EQ(out_ptr_by_pv[3], 0);
+    EXPECT_EQ(out_ptr_by_pv[4], 1);
+  }
 }
 
 }  // namespace spu
