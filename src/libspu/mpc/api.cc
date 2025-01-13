@@ -331,6 +331,11 @@ Value msb_s(SPUContext* ctx, const Value& x) {
     } else {
       return msb_s(ctx, _2b(ctx, x));
     }
+  } else if (ctx->hasKernel("msb_a") && IsA(x)) {
+    return msb_a(ctx, x);
+  } else {
+    return rshift_b(ctx, _2b(ctx, x),
+                    {static_cast<int64_t>(SizeOf(field) * 8 - 1)});
   }
 
   // BShare
@@ -341,6 +346,8 @@ Value msb_s(SPUContext* ctx, const Value& x) {
 Value msb_v(SPUContext* ctx, const Value& x) { FORCE_DISPATCH(ctx, x); }
 
 Value msb_p(SPUContext* ctx, const Value& x) { FORCE_DISPATCH(ctx, x); }
+
+Value relu(SPUContext* ctx, const Value& x) {FORCE_DISPATCH(ctx, x); }
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -629,12 +636,10 @@ Value xor_pp(SPUContext* ctx, const Value& x, const Value& y) {
 Value lshift_s(SPUContext* ctx, const Value& x, const Sizes& bits) {
   SPU_TRACE_MPC_DISP(ctx, x, bits);
   TRY_DISPATCH(ctx, x, bits);
-  if (IsA(x)) {
+  if (IsA(x) && ctx->hasKernel("lshift_a")) {
     return lshift_a(ctx, x, bits);
-  } else if (IsB(x)) {
-    return lshift_b(ctx, x, bits);
   } else {
-    SPU_THROW("Unsupported type {}", x.storage_type());
+    return lshift_b(ctx, _2b(ctx, x), bits);
   }
 }
 
