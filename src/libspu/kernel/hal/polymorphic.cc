@@ -266,8 +266,12 @@ Value bitwise_or(SPUContext* ctx, const Value& x, const Value& y) {
 
 Value bitwise_not(SPUContext* ctx, const Value& in) {
   SPU_TRACE_HAL_DISP(ctx, in);
-
-  return _not(ctx, in).setDtype(in.dtype());
+  if (ctx->config().protocol() == ProtocolKind::SHAMIR) {
+    // Fixme: we use Mersenne prime here, bitwise_not zero is not right
+    return _negate(ctx, in).setDtype(in.dtype());
+  } else {
+    return _not(ctx, in).setDtype(in.dtype());
+  }
 }
 
 Value logistic(SPUContext* ctx, const Value& in) {
