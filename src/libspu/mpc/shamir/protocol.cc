@@ -47,21 +47,21 @@ void regShamirProtocol(SPUContext* ctx,
 
   // register arithmetic & binary kernels
   ctx->prot()
-      ->regKernel<
-          shamir::P2A, shamir::A2P, shamir::A2V, shamir::V2A,
-          shamir::RandA,                                                 //
-          shamir::NegateA,                                               //
-          shamir::AddAP, shamir::AddAA,                                  //
-          shamir::MulAP, shamir::MulAA, shamir::MulAAP, shamir::MulAAA,  //
-          shamir::MatMulAP, shamir::MatMulAA,                            //
-          shamir::LShiftB, shamir::RShiftB, shamir::ARShiftB,
-          shamir::CommonTypeB, shamir::CastTypeB,         //
-          shamir::CommonTypeV, shamir::A2B, shamir::B2A,  //
-          shamir::AndBP, shamir::XorBP,                   //
-          shamir::P2B, shamir::B2P, shamir::B2V, shamir::XorBB, shamir::AndBB,
-          shamir::BitrevB, shamir::TruncA, shamir::MulAATrunc,
-          shamir::MsbA, shamir::ReLU,  //
-          shamir::BitIntlB, shamir::BitDeintlB>();
+      ->regKernel<shamir::P2A, shamir::A2P, shamir::A2V, shamir::V2A,
+                  shamir::RandA,                 //
+                  shamir::NegateA,               //
+                  shamir::AddAP, shamir::AddAA,  //
+                  shamir::MulAP, shamir::MulAA, shamir::MulAAP,
+                  shamir::MulAAA,                      //
+                  shamir::MatMulAP, shamir::MatMulAA,  //
+                  shamir::LShiftB, shamir::RShiftB, shamir::ARShiftB,
+                  shamir::CommonTypeB, shamir::CastTypeB,         //
+                  shamir::CommonTypeV, shamir::A2B, shamir::B2A,  //
+                  shamir::AndBP, shamir::XorBP,                   //
+                  shamir::P2B, shamir::B2P, shamir::B2V, shamir::XorBB,
+                  shamir::AndBB, shamir::BitrevB, shamir::TruncA,
+                  shamir::MulAATrunc, shamir::MsbA, shamir::ReLU,  //
+                  shamir::BitIntlB, shamir::BitDeintlB>();
 }
 
 std::unique_ptr<SPUContext> makeShamirProtocol(

@@ -321,7 +321,8 @@ NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
 
 // Two Layer Multiplication with only 1 round
 // Ref: ATLAS
-NdArrayRef MulAAA::proc(KernelEvalContext* ctx, const NdArrayRef& x, const NdArrayRef& y, const NdArrayRef& z) const {
+NdArrayRef MulAAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                        const NdArrayRef& y, const NdArrayRef& z) const {
   SPU_ENFORCE(x.numel() == y.numel());
   SPU_ENFORCE(x.numel() == z.numel());
   SPU_ENFORCE_EQ(x.eltype(), y.eltype());
@@ -330,11 +331,14 @@ NdArrayRef MulAAA::proc(KernelEvalContext* ctx, const NdArrayRef& x, const NdArr
   NdArrayRef r_t;
   NdArrayRef r_2t;
   auto numel = x.numel();
-  std::tie(r_t, r_2t) = gen_double_shares(ctx, numel<<1);
+  std::tie(r_t, r_2t) = gen_double_shares(ctx, numel << 1);
 
   const auto field = x.eltype().as<Ring2k>()->field();
   auto xy_2t = gfmp_mul_mod(x, y).as(x.eltype());
-  auto minus_rz_2t = gfmp_mul_mod(r_t.slice({0}, {numel}, {}).reshape(z.shape()), wrap_negate_a(ctx->sctx(), z)).as(x.eltype());
+  auto minus_rz_2t =
+      gfmp_mul_mod(r_t.slice({0}, {numel}, {}).reshape(z.shape()),
+                   wrap_negate_a(ctx->sctx(), z))
+          .as(x.eltype());
 
   NdArrayRef out(x.eltype(), x.shape());
   DISPATCH_ALL_FIELDS(field, [&]() {
@@ -344,11 +348,10 @@ NdArrayRef MulAAA::proc(KernelEvalContext* ctx, const NdArrayRef& x, const NdArr
     NdArrayView<ring2k_t> _rz_2t(minus_rz_2t);
     NdArrayView<ring2k_t> _z(z);
     NdArrayView<ring2k_t> _out(out);
-    NdArrayRef d(x.eltype(), {x.numel()<<1});
+    NdArrayRef d(x.eltype(), {x.numel() << 1});
     NdArrayView<ring2k_t> _d(d);
-    pforeach(0, numel, [&](int64_t idx) {
-      _d[idx] = add_mod(_xy_2t[idx], _r_2t[idx]);
-    });
+    pforeach(0, numel,
+             [&](int64_t idx) { _d[idx] = add_mod(_xy_2t[idx], _r_2t[idx]); });
     pforeach(0, numel, [&](int64_t idx) {
       _d[idx + numel] = add_mod(_rz_2t[idx], _r_2t[idx + numel]);
     });
@@ -356,7 +359,8 @@ NdArrayRef MulAAA::proc(KernelEvalContext* ctx, const NdArrayRef& x, const NdArr
     NdArrayView<ring2k_t> _u(u);
 
     pforeach(0, numel, [&](int64_t idx) {
-      _out[idx] = add_mod(mul_mod(_u[idx], _z[idx]), add_mod(_u[numel + idx], add_inv(_r_t[numel + idx])));
+      _out[idx] = add_mod(mul_mod(_u[idx], _z[idx]),
+                          add_mod(_u[numel + idx], add_inv(_r_t[numel + idx])));
     });
   });
   return out;
