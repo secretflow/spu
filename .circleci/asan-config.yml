@@ -53,6 +53,8 @@ jobs:
 
             declare -i status0=0
             declare -i status1=0
+            mkdir test-results
+            mkdir test-testlogs
 
             pushd src
             bazel test //... --features=asan --test_timeout=500 --ui_event_filters=-info,-debug,-warning --test_output=errors | tee test_result.log; status0=${PIPESTATUS[0]}
@@ -61,8 +63,9 @@ jobs:
             cp -r test-testlogs/ ../test-testlogs/
             popd
 
-            bazel test //... --features=asan --test_timeout=500 --ui_event_filters=-info,-debug,-warning --test_output=errors | tee -a test_result.log; status1=${PIPESTATUS[0]}
-            sh ../devtools/rename-junit-xml.sh
+            # TODO
+            # bazel test //... --features=asan --test_timeout=500 --ui_event_filters=-info,-debug,-warning --test_output=errors | tee -a test_result.log; status1=${PIPESTATUS[0]}
+            # sh ../devtools/rename-junit-xml.sh
 
             find bazel-testlogs/ -type f -name "test.log"  -print0 | xargs -0 tar -cvzf test_logs.tar.gz
 

@@ -488,7 +488,8 @@ std::unique_ptr<brpc::Server> RunServer(const ServerOptions& options) {
     return nullptr;
   }
 
-  brpc::ServerOptions brpc_options;
+  // workaround fix
+  brpc::ServerOptions brpc_options = server->options();
 
   if (options.brpc_ssl_options) {
     *brpc_options.mutable_ssl_options() = options.brpc_ssl_options.value();
