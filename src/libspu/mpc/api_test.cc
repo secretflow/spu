@@ -289,9 +289,10 @@ TEST_P(ApiTest, ReLU) {
     }
 
     auto relu_s = relu(sctx.get(), p2s(sctx.get(), p0));
-    
+
     auto r_p = msb_p(sctx.get(), p0);
-    auto d_relu = add_pp(sctx.get(), make_p(sctx.get(), 1, kShape), negate_p(sctx.get(), r_p));
+    auto d_relu = add_pp(sctx.get(), make_p(sctx.get(), 1, kShape),
+                         negate_p(sctx.get(), r_p));
     auto relu_p = mul_pp(sctx.get(), d_relu, p0);
 
     /* THEN */

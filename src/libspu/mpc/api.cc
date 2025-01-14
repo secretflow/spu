@@ -347,7 +347,7 @@ Value msb_v(SPUContext* ctx, const Value& x) { FORCE_DISPATCH(ctx, x); }
 
 Value msb_p(SPUContext* ctx, const Value& x) { FORCE_DISPATCH(ctx, x); }
 
-Value relu(SPUContext* ctx, const Value& x) {FORCE_DISPATCH(ctx, x); }
+Value relu(SPUContext* ctx, const Value& x) { FORCE_DISPATCH(ctx, x); }
 
 //////////////////////////////////////////////////////////////////////////////
 

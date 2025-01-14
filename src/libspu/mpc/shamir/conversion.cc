@@ -67,7 +67,8 @@ NdArrayRef wrap_mul_p(SPUContext* ctx, const NdArrayRef& x,
   return UnwrapValue(mul_aa_p(ctx, WrapValue(x), WrapValue(y)));
 }
 
-NdArrayRef wrap_mul_aaa(SPUContext* ctx, const NdArrayRef& x, const NdArrayRef& y, const NdArrayRef& z) {
+NdArrayRef wrap_mul_aaa(SPUContext* ctx, const NdArrayRef& x,
+                        const NdArrayRef& y, const NdArrayRef& z) {
   return UnwrapValue(mul_aaa(ctx, WrapValue(x), WrapValue(y), WrapValue(z)));
 }
 
