@@ -59,5 +59,4 @@ std::vector<NdArrayRef> gfmp_rand_shamir_shares(const NdArrayRef& x,
 NdArrayRef gfmp_reconstruct_shamir_shares(absl::Span<const NdArrayRef> shares,
                                           size_t world_size, size_t threshold);
 
-
 }  // namespace spu::mpc
