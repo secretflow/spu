@@ -33,7 +33,6 @@ with open("examples/python/conf/3pc.json", 'r') as file:
 
 logger = logging.getLogger(ppd_impl.__name__)
 logger.setLevel(level=logging.WARN)
-
 _test_perf_table = pd.DataFrame({'name': [], 'duration': []})
 
 

@@ -57,20 +57,62 @@ commands:
           command: |
             echo ${gcs_content} > ../gcs.data
             ../devtools/bazel_cache_setup.py --in_file=../gcs.data --out_file=../gcs.json --min_download
+            pushd src
+            ../../devtools/bazel_cache_setup.py --in_file=../../gcs.data --out_file=../../gcs.json --min_download
+            popd
       - run:
           name: "build"
-          command: bazel --version && python3 --version && bazel run //:requirements-dev.update && bazel build <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning
+          command: |
+            set +e
+
+            declare -i status0=0
+            declare -i status1=0
+            declare -i status2=0
+
+            bazel --version && python3 --version && bazel run //:requirements-dev.update; status0=${PIPESTATUS[0]}
+
+            # build module spulib
+            pushd src
+            bazel query <<parameters.targets>>; if [ $? -eq 0 ]; then
+              bazel build <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning; status1=${PIPESTATUS[0]}
+            fi
+            popd
+
+            # build module spu
+            bazel query <<parameters.targets>>; if [ $? -eq 0 ]; then
+              bazel build <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning; status2=${PIPESTATUS[0]}
+            fi
+
+            status=$((${status0} + ${status1} + ${status2}))
+            exit ${status}
       - run:
           name: "test"
           command: |
             set +e
-            declare -i test_status
-            bazel test <<parameters.extra_bazel_test_args>> <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors| tee test_result.log; test_status=${PIPESTATUS[0]}
 
-            sh ../devtools/rename-junit-xml.sh
+            declare -i status0=0
+            declare -i status1=0
+            mkdir test-results
+            mkdir test-testlogs
+
+            pushd src
+            bazel query <<parameters.targets>>; if [ $? -eq 0 ]; then
+              bazel test <<parameters.extra_bazel_test_args>> <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors | tee test_result.log; status0=${PIPESTATUS[0]}
+              sh ../../devtools/rename-junit-xml.sh
+              cp -r test-results/ ../test-results/
+              cp -r test-testlogs/ ../test-testlogs/
+            fi
+            popd
+
+            bazel query <<parameters.targets>>; if [ $? -eq 0 ]; then
+              bazel test <<parameters.extra_bazel_test_args>> <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors | tee -a test_result.log; status1=${PIPESTATUS[0]}
+              sh ../devtools/rename-junit-xml.sh
+            fi
+
             find bazel-testlogs/ -type f -name "test.log"  -print0 | xargs -0 tar -cvzf test_logs.tar.gz
 
-            exit ${test_status}
+            status=$((${status0} + ${status1}))
+            exit ${status}
       - store_test_results:
           path: test-results
       - store_artifacts:

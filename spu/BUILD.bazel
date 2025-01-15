@@ -41,13 +41,13 @@ pybind_extension(
     deps = [
         ":exported_symbols.lds",
         ":version_script.lds",
-        "//libspu:version",
-        "//libspu/compiler:compile",
-        "//libspu/compiler/common:compilation_context",
-        "//libspu/core:logging",
-        "//libspu/device:api",
-        "//libspu/device:io",
-        "//libspu/device/pphlo:pphlo_executor",
+        "@spulib//libspu:version",
+        "@spulib//libspu/compiler:compile",
+        "@spulib//libspu/compiler/common:compilation_context",
+        "@spulib//libspu/core:logging",
+        "@spulib//libspu/device:api",
+        "@spulib//libspu/device:io",
+        "@spulib//libspu/device/pphlo:pphlo_executor",
         "@yacl//yacl/link",
     ],
 )
@@ -77,7 +77,7 @@ spu_py_library(
     srcs = [
         "api.py",
         "spu_pb2.py",
-        "//libspu:spu_py_proto",
+        "@spulib//libspu:spu_py_proto",
     ],
     data = [
         ":libspu.so",
