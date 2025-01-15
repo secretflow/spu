@@ -79,8 +79,8 @@ spu_cc_library(
     hdrs = ["arithmetic.h"],
     deps = [
         ":type",
-        "value",
-        "commitment",
+        ":value",
+        ":commitment",
         "//libspu/core:vectorize",
         "//libspu/mpc:kernel",
         "//libspu/mpc/common:communicator",
