@@ -18,13 +18,13 @@
 
 namespace spu::mpc::swift {
 
-
 // rank_send : send msg
 // rank_hash : send H(msg)
 // rank_recv : receiver
 // P_send, P_hash -> P_recv : msg
-NdArrayRef JointMessagePassing(KernelEvalContext* ctx, const NdArrayRef& msg, size_t rank_send,
-                  size_t rank_hash, size_t rank_recv, std::string_view tag);
+NdArrayRef JointMessagePassing(KernelEvalContext* ctx, const NdArrayRef& msg,
+                               size_t rank_send, size_t rank_hash,
+                               size_t rank_recv, std::string_view tag);
 
 // Pi, Pj jonit generate share of a value that is known to both
 NdArrayRef JointSharing(KernelEvalContext* ctx, const NdArrayRef& msg,
