@@ -1,4 +1,4 @@
-# Copyright 2021 Ant Group Co., Ltd.
+# Copyright 2024 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -108,33 +108,9 @@ spu_cc_test(
     srcs = ["protocol_test.cc"],
     deps = [
         ":protocol",
-#        ":protocol_single_test",
         "//libspu/mpc:ab_api_test",
         "//libspu/mpc:api_test",
     ],
-)
-
-spu_cc_library(
-    name = "protocol_single_test",
-    testonly = 1,
-    srcs = ["protocol_single_test.cc"],
-    hdrs = ["protocol_single_test.h"],
-    deps = [
-        ":arithmetic",
-        ":boolean",
-        ":conversion",
-        ":type",
-        ":value",
-        "//libspu/mpc:ab_api",
-        "//libspu/mpc:api",
-        "//libspu/mpc:api_test_params",
-        "//libspu/core:context",
-        "//libspu/mpc:kernel",
-        "//libspu/mpc/common:communicator",
-        "//libspu/mpc/utils:simulate",
-        "@com_google_googletest//:gtest",
-    ],
-    alwayslink = True,
 )
 
 spu_cc_library(
@@ -169,6 +145,7 @@ spu_cc_library(
     hdrs = ["conversion.h"],
     deps = [
         ":arithmetic",
+        ":boolean",
         ":value",
         ":type",
         "//libspu/core:vectorize",

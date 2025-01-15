@@ -1,4 +1,4 @@
-// Copyright 2023 Ant Group Co., Ltd.
+// Copyright 2024 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,9 +23,5 @@ std::string commit(size_t send_player, absl::string_view msg,
                    absl::string_view r, size_t hash_len = 32,
                    yacl::crypto::HashAlgorithm hash_type =
                        yacl::crypto::HashAlgorithm::BLAKE3);
-
-bool commit_and_open(const std::shared_ptr<yacl::link::Context>& lctx,
-                     const std::string& z_str,
-                     std::vector<std::string>* z_strs);
 
 }  // namespace spu::mpc

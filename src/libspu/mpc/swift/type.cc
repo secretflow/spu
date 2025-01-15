@@ -1,4 +1,4 @@
-// Copyright 2021 Ant Group Co., Ltd.
+// Copyright 2024 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,19 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "libspu/mpc/swift/type.h"
 
-#include "yacl/link/context.h"
+#include <mutex>
 
-#include "libspu/core/context.h"
+#include "libspu/mpc/common/pv2k.h"
 
-namespace spu::mpc {
+namespace spu::mpc::swift {
 
-void regSwiftProtocol(SPUContext* ctx,
-                      const std::shared_ptr<yacl::link::Context>& lctx);
+void registerTypes() {
+  regPV2kTypes();
 
-std::unique_ptr<SPUContext> makeSwiftProtocol(
-    const RuntimeConfig& conf,
-    const std::shared_ptr<yacl::link::Context>& lctx);
+  static std::once_flag flag;
+  std::call_once(flag, []() {
+    TypeContext::getTypeContext()->addTypes<AShrTy, BShrTy, PShrTy>();
+  });
+}
 
-}  // namespace spu::mpc
+}  // namespace spu::mpc::swift

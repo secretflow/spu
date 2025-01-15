@@ -1,4 +1,4 @@
-// Copyright 2021 Ant Group Co., Ltd.
+// Copyright 2024 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -71,7 +71,7 @@ class PShrTy : public TypeImpl<PShrTy, RingTy, Secret, PShare> {
  public:
   using Base::Base;
   static std::string_view getStaticId() { return "swift.PShr"; }
-  explicit PShrTy() { field_ = FieldType::FM64; }
+  PShrTy() { field_ = FieldType::FM64; }
 };
 
 void registerTypes();

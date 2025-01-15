@@ -1,4 +1,4 @@
-// Copyright 2021 Ant Group Co., Ltd.
+// Copyright 2024 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,40 +18,17 @@
 
 namespace spu::mpc::swift {
 
-class Jmp {
- public:
-  // rank_i : send msg
-  // rank_j : send H(msg)
-  // rank_k : receive
-  // Pi, Pj -> Pj : msg
-  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& msg, size_t rank_i,
-                  size_t rank_j, size_t rank_k, std::string_view tag);
-};
 
-class Sharing {
- public:
-  // owner shares msg to parties
-  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& msg, size_t owner,
-                  std::string_view tag);
-};
+// rank_send : send msg
+// rank_hash : send H(msg)
+// rank_recv : receiver
+// P_send, P_hash -> P_recv : msg
+NdArrayRef JointMessagePassing(KernelEvalContext* ctx, const NdArrayRef& msg, size_t rank_send,
+                  size_t rank_hash, size_t rank_recv, std::string_view tag);
 
-class JointSharing {
- public:
-  // Pi, Pj jonit generate share of a value that is known to both
-  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& msg, size_t rank_i,
-                  size_t rank_j, std::string_view tag);
-};
-
-class UnaryTest1 : public UnaryKernel {
- public:
-  static constexpr const char* kBindName() { return "negate_a_tmp"; }
-
-  ce::CExpr latency() const override { return ce::Const(0); }
-
-  ce::CExpr comm() const override { return ce::Const(0); }
-
-  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
-};
+// Pi, Pj jonit generate share of a value that is known to both
+NdArrayRef JointSharing(KernelEvalContext* ctx, const NdArrayRef& msg,
+                        size_t rank_i, size_t rank_j, std::string_view tag);
 
 class P2A : public UnaryKernel {
  public:
@@ -186,6 +163,8 @@ class MulAA : public BinaryKernel {
 
   ce::CExpr comm() const override { return ce::K(); }
 
+  Kind kind() const override { return Kind::Dynamic; }
+
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
                   const NdArrayRef& rhs) const override;
 };
@@ -221,6 +200,8 @@ class MatMulAA : public MatmulKernel {
     return ce::K() * m * n;
   }
 
+  Kind kind() const override { return Kind::Dynamic; }
+
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x,
                   const NdArrayRef& y) const override;
 };
@@ -249,6 +230,8 @@ class TruncA : public TruncAKernel {
                   SignType sign) const override;
 
   bool hasMsbError() const override { return true; }
+
+  Kind kind() const override { return Kind::Dynamic; }
 
   TruncLsbRounding lsbRounding() const override {
     return TruncLsbRounding::Random;

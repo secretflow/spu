@@ -1,4 +1,4 @@
-// Copyright 2021 Ant Group Co., Ltd.
+// Copyright 2024 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pv2k.h"
 #include "libspu/mpc/swift/arithmetic.h"
+#include "libspu/mpc/swift/boolean.h"
 #include "libspu/mpc/swift/type.h"
 #include "libspu/mpc/swift/value.h"
 #include "libspu/mpc/utils/ring_ops.h"
@@ -148,6 +149,16 @@ NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   //   ring_print(spu::mpc::swift::getSecondShare(v0), "(B) P2: Second Share");
   //   ring_print(spu::mpc::swift::getThirdShare(v0), "(B) P2: Third Share");
   // }
+
+  // test
+  // auto a2p = A2P();
+  // auto b2p = B2P();
+  // auto input_rec = a2p.proc(ctx, in);
+  // auto output_rec = b2p.proc(ctx, res);
+  // if (rank == 0) {
+  //   ring_print(input_rec, "A2B: input");
+  //   ring_print(output_rec, "A2B: get output");
+  // }
   return res.as(bty);
 }
 
@@ -179,18 +190,31 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
   const int64_t nbits = in.eltype().as<BShare>()->nbits();
   SPU_ENFORCE((size_t)nbits <= SizeOf(field) * 8, "invalid nbits = {}", nbits);
+
+  auto res = NdArrayRef(makeType<AShrTy>(field), in.shape());
+  auto numel = in.numel();
+
   if (nbits == 0) {
     // special case, it's known to be zero
-    return ring_zeros(field, in.shape()).as(makeType<AShrTy>(field));
+    DISPATCH_ALL_FIELDS(field, [&]() {
+      using el_t = ring2k_t;
+      using ashr_t = std::array<el_t, 3>;
+
+      NdArrayView<ashr_t> _res(res);
+      pforeach(0, numel, [&](int64_t idx) {
+        _res[idx][0] = el_t(0);
+        _res[idx][1] = el_t(0);
+        _res[idx][2] = el_t(0);
+      });
+    });
+    return res.as(makeType<AShrTy>(field));
   }
 
-  auto jsh = JointSharing();
   auto mult = MulAA();
   auto add = AddAA();
   auto neg = NegateA();
   auto a2p = A2P();
 
-  auto numel = in.numel();
   auto decompose_numel = numel * static_cast<int64_t>(nbits);
 
   auto decompose_in = NdArrayRef(makeType<AShrTy>(field), {decompose_numel});
@@ -239,13 +263,13 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   }
 
   // P0, P1 joint share alpha_b1
-  alpha_b1 = jsh.proc(ctx, alpha_b1, 0, 1, "alpha_b1");
+  alpha_b1 = JointSharing(ctx, alpha_b1, 0, 1, "alpha_b1");
 
   // P0, P2 joint share alpha_b2
-  alpha_b2 = jsh.proc(ctx, alpha_b2, 0, 2, "alpha_b2");
+  alpha_b2 = JointSharing(ctx, alpha_b2, 0, 2, "alpha_b2");
 
   // P1, P2 joint share beta_b
-  beta_b = jsh.proc(ctx, beta_b, 1, 2, "beta_b");
+  beta_b = JointSharing(ctx, beta_b, 1, 2, "beta_b");
 
   // auto alpha_b1_reconstruct = a2p.proc(ctx, alpha_b1);
   // auto alpha_b2_reconstruct = a2p.proc(ctx, alpha_b2);
@@ -284,8 +308,6 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   //   ring_print(b_reconstruct, "(b_reconstruct)");
   // }
 
-  auto res = NdArrayRef(makeType<AShrTy>(field), in.shape());
-
   DISPATCH_ALL_FIELDS(field, [&]() {
     using el_t = ring2k_t;
     using ashr_t = std::array<el_t, 3>;
@@ -313,6 +335,15 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
       _res[idx][2] = tmp_sum2;
     });
   });
+
+  // test
+  // auto b2p = B2P();
+  // auto input_rec = b2p.proc(ctx, in);
+  // auto output_rec = a2p.proc(ctx, res);
+  // if (rank == 0) {
+  //   ring_print(input_rec, "B2A: input");
+  //   ring_print(output_rec, "B2A: get output");
+  // }
   return res.as(makeType<AShrTy>(field));
 }
 

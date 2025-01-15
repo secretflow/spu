@@ -1,4 +1,4 @@
-// Copyright 2021 Ant Group Co., Ltd.
+// Copyright 2024 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,6 +26,8 @@ class A2B : public UnaryKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
+  Kind kind() const override { return Kind::Dynamic; }
+
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
 
@@ -37,6 +39,8 @@ class MsbA2B : public UnaryKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
+  Kind kind() const override { return Kind::Dynamic; }
+
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
 
@@ -47,6 +51,8 @@ class B2A : public UnaryKernel {
   ce::CExpr latency() const override { return ce::Const(0); }
 
   ce::CExpr comm() const override { return ce::Const(0); }
+
+  Kind kind() const override { return Kind::Dynamic; }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };

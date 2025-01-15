@@ -1,4 +1,4 @@
-// Copyright 2021 Ant Group Co., Ltd.
+// Copyright 2024 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -35,7 +35,7 @@ NdArrayRef getShare(const NdArrayRef& in, int64_t share_idx) {
     return NdArrayRef(
         in.buf(), ty, in.shape(), new_strides,
         in.offset() + share_idx * static_cast<int64_t>(ty.size()));
-  } else if(in.eltype().isa<BShrTy>()){
+  } else if (in.eltype().isa<BShrTy>()) {
     const auto field = in.eltype().as<BShrTy>()->field();
     const auto ty = makeType<RingTy>(field);
 
@@ -64,9 +64,11 @@ NdArrayRef makeAShare(const NdArrayRef& s1, const NdArrayRef& s2,
                       const NdArrayRef& s3, FieldType field) {
   const Type ty = makeType<AShrTy>(field);
 
-  SPU_ENFORCE(s2.eltype().as<Ring2k>()->field() == field);
   SPU_ENFORCE(s1.eltype().as<Ring2k>()->field() == field);
+  SPU_ENFORCE(s2.eltype().as<Ring2k>()->field() == field);
+  SPU_ENFORCE(s3.eltype().as<Ring2k>()->field() == field);
   SPU_ENFORCE(s1.shape() == s2.shape(), "got s1={}, s2={}", s1, s2);
+  SPU_ENFORCE(s1.shape() == s3.shape(), "got s1={}, s3={}", s1, s3);
   SPU_ENFORCE(ty.size() == 3 * s1.elsize());
 
   NdArrayRef res(ty, s1.shape());

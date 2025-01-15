@@ -1,4 +1,4 @@
-// Copyright 2021 Ant Group Co., Ltd.
+// Copyright 2024 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -46,14 +46,15 @@ void regSwiftProtocol(SPUContext* ctx,
   regStandardShapeOps(ctx);
 
   ctx->prot()
-      ->regKernel<
-          swift::P2A, swift::A2P, swift::UnaryTest1, swift::NegateA, swift::V2A,
-          swift::A2V, swift::RandA, swift::AddAP, swift::AddAA, swift::MulAP,
-          swift::MulAA_semi, swift::MulAA, swift::MatMulAP, swift::MatMulAA,
-          swift::LShiftA, swift::TruncA, swift::P2B, swift::B2P, swift::XorBP,
-          swift::XorBB, swift::AndBP, swift::AndBB, swift::LShiftB,
-          swift::RShiftB, swift::ARShiftB, swift::BitrevB, swift::BitIntlB,
-          swift::BitDeintlB, swift::A2B, swift::MsbA2B, swift::B2A>();
+      ->regKernel<swift::P2A, swift::A2P, swift::NegateA, swift::V2A,
+                  swift::A2V, swift::RandA, swift::AddAP, swift::AddAA,
+                  swift::MulAP, swift::MulAA_semi, swift::MulAA,
+                  swift::MatMulAP, swift::MatMulAA, swift::LShiftA,
+                  swift::TruncA, swift::CommonTypeB, swift::CastTypeB,
+                  swift::P2B, swift::B2P, swift::XorBP, swift::XorBB,
+                  swift::AndBP, swift::AndBB, swift::LShiftB, swift::RShiftB,
+                  swift::ARShiftB, swift::BitrevB, swift::BitIntlB,
+                  swift::BitDeintlB, swift::A2B, swift::MsbA2B, swift::B2A>();
 
   // if (!(ctx->getField() == FieldType::FM32 ||
   //       ctx->getField() == FieldType::FM64)) {
