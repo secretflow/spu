@@ -78,9 +78,9 @@ spu_cc_library(
     srcs = ["arithmetic.cc"],
     hdrs = ["arithmetic.h"],
     deps = [
+        ":commitment",
         ":type",
         ":value",
-        ":commitment",
         "//libspu/core:vectorize",
         "//libspu/mpc:kernel",
         "//libspu/mpc/common:communicator",
@@ -146,8 +146,8 @@ spu_cc_library(
     deps = [
         ":arithmetic",
         ":boolean",
-        ":value",
         ":type",
+        ":value",
         "//libspu/core:vectorize",
         "//libspu/mpc:ab_api",
         "//libspu/mpc:kernel",
