@@ -18,7 +18,6 @@
 
 #include "libspu/mpc/ab_api_test.h"
 #include "libspu/mpc/api_test.h"
-// #include "libspu/mpc/swift/protocol_single_test.h"
 
 namespace spu::mpc::test {
 namespace {

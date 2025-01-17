@@ -132,33 +132,6 @@ NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   res = wrap_add_bb(ctx->sctx(), v0, v1);
   res = wrap_add_bb(ctx->sctx(), res, v2);
 
-  // if (rank == 0) {
-  //   ring_print(spu::mpc::swift::getFirstShare(v0), "(B) P0: First Share");
-  //   ring_print(spu::mpc::swift::getSecondShare(v0), "(B) P0: Second Share");
-  //   ring_print(spu::mpc::swift::getThirdShare(v0), "(B) P0: Third Share");
-  // }
-
-  // if (rank == 1) {
-  //   ring_print(spu::mpc::swift::getFirstShare(v0), "(B) P1: First Share");
-  //   ring_print(spu::mpc::swift::getSecondShare(v0), "(B) P1: Second Share");
-  //   ring_print(spu::mpc::swift::getThirdShare(v0), "(B) P1: Third Share");
-  // }
-
-  // if (rank == 2) {
-  //   ring_print(spu::mpc::swift::getFirstShare(v0), "(B) P2: First Share");
-  //   ring_print(spu::mpc::swift::getSecondShare(v0), "(B) P2: Second Share");
-  //   ring_print(spu::mpc::swift::getThirdShare(v0), "(B) P2: Third Share");
-  // }
-
-  // test
-  // auto a2p = A2P();
-  // auto b2p = B2P();
-  // auto input_rec = a2p.proc(ctx, in);
-  // auto output_rec = b2p.proc(ctx, res);
-  // if (rank == 0) {
-  //   ring_print(input_rec, "A2B: input");
-  //   ring_print(output_rec, "A2B: get output");
-  // }
   return res.as(bty);
 }
 
@@ -271,16 +244,6 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   // P1, P2 joint share beta_b
   beta_b = JointSharing(ctx, beta_b, 1, 2, "beta_b");
 
-  // auto alpha_b1_reconstruct = a2p.proc(ctx, alpha_b1);
-  // auto alpha_b2_reconstruct = a2p.proc(ctx, alpha_b2);
-  // auto beta_b_reconstruct = a2p.proc(ctx, beta_b);
-
-  // if (rank == 0) {
-  //   ring_print(alpha_b1_reconstruct, "( alpha_b1_reconstruct)");
-  //   ring_print(alpha_b2_reconstruct, "( alpha_b2_reconstruct)");
-  //   ring_print(beta_b_reconstruct, "( beta_b_reconstruct)");
-  // }
-
   // Step1: alpha_b = (alpha_b1 ^ alpha_b2)
   //                = alpha_b1 + alpha_b2 - 2 * alpha_b1 * alpha_b2
   auto tmp = mult.proc(ctx, alpha_b1, alpha_b2);
@@ -289,11 +252,6 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   auto neg_tmp = neg.proc(ctx, tmp);
   alpha_b = add.proc(ctx, alpha_b, neg_tmp);
   alpha_b = add.proc(ctx, alpha_b, neg_tmp);
-
-  // auto alpha_b_reconstruct = a2p.proc(ctx, alpha_b);
-  // if (rank == 0) {
-  //   ring_print(alpha_b_reconstruct, "(alpha_b_reconstruct)");
-  // }
 
   // Step2: b = (beta_b ^ alpha_b)
   //          = beta_b + alpha_b - 2 * beta_b * alpha_b
@@ -304,9 +262,6 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   decompose_out = add.proc(ctx, decompose_out, neg_tmp);
 
   auto b_reconstruct = a2p.proc(ctx, decompose_out);
-  // if (rank == 0) {
-  //   ring_print(b_reconstruct, "(b_reconstruct)");
-  // }
 
   DISPATCH_ALL_FIELDS(field, [&]() {
     using el_t = ring2k_t;
@@ -336,14 +291,6 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
     });
   });
 
-  // test
-  // auto b2p = B2P();
-  // auto input_rec = b2p.proc(ctx, in);
-  // auto output_rec = a2p.proc(ctx, res);
-  // if (rank == 0) {
-  //   ring_print(input_rec, "B2A: input");
-  //   ring_print(output_rec, "B2A: get output");
-  // }
   return res.as(makeType<AShrTy>(field));
 }
 

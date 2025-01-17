@@ -35,7 +35,6 @@ size_t getNumBits(const NdArrayRef& in) {
                                [&]() { return maxBitWidth<ring2k_t>(in); });
   } else if (in.eltype().isa<BShrTy>()) {
     return in.eltype().as<BShrTy>()->nbits();
-    // return in.eltype().as<BShare>()->nbits();
   } else {
     SPU_THROW("should not be here, {}", in.eltype());
   }
@@ -550,22 +549,6 @@ NdArrayRef AndBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
       pforeach(0, numel,
                [&](int64_t idx) { _out[idx][2] = _beta_plus_gamma_z[idx]; });
     }
-
-    // test
-    // auto b2p = B2P();
-    // auto lhs_rec = b2p.proc(ctx, lhs);
-    // auto rhs_rec = b2p.proc(ctx, rhs);
-    // auto output_rec = b2p.proc(ctx, out);
-    // if (rank == 1) {
-    //   std::cout << "lhs_rec_nbits = " << getNumBits(lhs_rec)
-    //             << ", rhs_rec_nbits = " << getNumBits(rhs_rec)
-    //             << ", out_rec_nbits = " << getNumBits(output_rec)
-    //             << ", calculate out_nbits = " << out_nbits << std::endl;
-    //   ring_print(lhs_rec, "lhs_rec");
-    //   ring_print(rhs_rec, "rhs_rec");
-    //   ring_print(ring_and(lhs_rec, rhs_rec), "andBB need output");
-    //   ring_print(output_rec, "andBB get output");
-    // }
 
     return out.as(makeType<BShrTy>(field, out_nbits));
   });

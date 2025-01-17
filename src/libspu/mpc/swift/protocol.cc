@@ -55,11 +55,6 @@ void regSwiftProtocol(SPUContext* ctx,
                   swift::AndBP, swift::AndBB, swift::LShiftB, swift::RShiftB,
                   swift::ARShiftB, swift::BitrevB, swift::BitIntlB,
                   swift::BitDeintlB, swift::A2B, swift::MsbA2B, swift::B2A>();
-
-  // if (!(ctx->getField() == FieldType::FM32 ||
-  //       ctx->getField() == FieldType::FM64)) {
-  //   SPU_THROW("The malicious protocol for MulAA only support FM32 and FM64");
-  // }
 }
 
 std::unique_ptr<SPUContext> makeSwiftProtocol(

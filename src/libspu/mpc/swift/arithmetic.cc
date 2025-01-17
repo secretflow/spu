@@ -50,36 +50,34 @@ NdArrayRef JointMessagePassing(KernelEvalContext* ctx, const NdArrayRef& msg,
   auto rank = comm->getRank();
 
   if (rank == rank_send) {
-    // send v to P_k
+    // send v to P_recv
     comm->sendAsync(rank_recv, msg, tag);
 
     res = msg;
 
-    // malicious action 1 : P_i send wrong msg
+    // malicious action 1 : P_send send wrong msg
     // comm->sendAsync(rank_recv, ring_neg(msg), tag);
 
-    // recv inconsistent_bit from P_k
+    // recv inconsistent_bit from P_recv
     auto recv_b_from_pk = comm->recv<bool>(rank_recv, tag);
     inconsistent_bit = recv_b_from_pk[0];
 
-    // exchange inconsistent bit between P_i and P_j
-    // reset inconsistent bit to b_i || b_j
+    // exchange inconsistent bit between P_send and P_hash
+    // reset inconsistent bit to b_send || b_hash
     std::array<bool, 1> send_b;
     send_b[0] = inconsistent_bit;
 
-    // malicious action 2 : P_i send wrong inconsistent bit
+    // malicious action 2 : P_send send wrong inconsistent bit
     // send_b[0] = inconsistent_bit ^ true;
 
     auto recv_b_from_pj = comm->recv<bool>(rank_hash, tag);
     comm->sendAsync<bool>(rank_hash, absl::MakeSpan(send_b), tag);
     inconsistent_bit = recv_b_from_pk[0] || recv_b_from_pj[0];
 
-    // std::cout << "consistent_bit of P_i: " << inconsistent_bit << std::endl;
-
     // broadcast Hash(v)
     // without considering the situation that some party is silent
     // which means the inconsistent bit of each party is all true or false
-    if (inconsistent_bit == true) {
+    if (inconsistent_bit) {
       std::string broadcast_msg(getOrCreateCompactArray(msg).data<char>(),
                                 msg.numel() * msg.elsize());
       auto broadcast_msg_hash = commit(0, broadcast_msg, tag);
@@ -93,11 +91,6 @@ NdArrayRef JointMessagePassing(KernelEvalContext* ctx, const NdArrayRef& msg,
         all_hash[i] =
             std::string(reinterpret_cast<const char*>(all_hash_bytes[i].data()),
                         all_hash_bytes[i].size());
-
-        // for (unsigned char c : all_hash[i]) {
-        //   std::cout << std::hex << std::uppercase << std::setfill('0')
-        //             << std::setw(2) << static_cast<int>(c);
-        // }
       }
       if (all_hash[rank_send] != all_hash[rank_hash]) {
         SPDLOG_INFO(
@@ -117,11 +110,11 @@ NdArrayRef JointMessagePassing(KernelEvalContext* ctx, const NdArrayRef& msg,
   if (rank == rank_hash) {
     res = msg;
 
-    // send hash(v) to P_k
+    // send hash(v) to P_recv
     std::string msg_str(getOrCreateCompactArray(msg).data<char>(),
                         msg.numel() * msg.elsize());
 
-    // malicious action 1 : P_j send wrong hash
+    // malicious action 1 : P_hash send wrong hash
     // std::string msg_str(getOrCreateCompactArray(ring_neg(msg)).data<char>(),
     //                     msg.numel() * msg.elsize());
 
@@ -132,19 +125,17 @@ NdArrayRef JointMessagePassing(KernelEvalContext* ctx, const NdArrayRef& msg,
     comm->sendAsync<std::uint8_t>(rank_recv, absl::MakeSpan(msg_hash_bytes),
                                   tag);
 
-    // recv inconsistent_bit from P_k
+    // recv inconsistent_bit from P_recv
     auto recv_b_from_pk = comm->recv<bool>(rank_recv, tag);
     inconsistent_bit = recv_b_from_pk[0];
 
-    // exchange inconsistent bit between P_i and P_j
-    // reset inconsistent bit to b_i || b_j
+    // exchange inconsistent bit between P_send and P_hash
+    // reset inconsistent bit to b_send || b_hash
     std::array<bool, 1> send_b;
     send_b[0] = inconsistent_bit;
     comm->sendAsync<bool>(rank_send, absl::MakeSpan(send_b), tag);
     auto recv_b_from_pi = comm->recv<bool>(rank_send, tag);
     inconsistent_bit = recv_b_from_pk[0] || recv_b_from_pi[0];
-
-    // std::cout << "consistent_bit of P_j: " << inconsistent_bit << std::endl;
 
     // broadcast Hash(v)
     // without considering the situation that some party is silent
@@ -163,11 +154,6 @@ NdArrayRef JointMessagePassing(KernelEvalContext* ctx, const NdArrayRef& msg,
         all_hash[i] =
             std::string(reinterpret_cast<const char*>(all_hash_bytes[i].data()),
                         all_hash_bytes[i].size());
-
-        // for (unsigned char c : all_hash[i]) {
-        //   std::cout << std::hex << std::uppercase << std::setfill('0')
-        //             << std::setw(2) << static_cast<int>(c);
-        // }
       }
       if (all_hash[rank_send] != all_hash[rank_hash]) {
         SPDLOG_INFO(
@@ -185,7 +171,7 @@ NdArrayRef JointMessagePassing(KernelEvalContext* ctx, const NdArrayRef& msg,
     }
   }
   if (rank == rank_recv) {
-    // recv v and H_v from P_i and P_j respectively
+    // recv v and H_v from P_send and P_hash respectively
     auto res_v = comm->recv(rank_send, msg.eltype(), tag);
     res_v = res_v.reshape(msg.shape());
 
@@ -204,29 +190,23 @@ NdArrayRef JointMessagePassing(KernelEvalContext* ctx, const NdArrayRef& msg,
       inconsistent_bit = true;
     }
 
-    if (inconsistent_bit == false) {
-      // send inconsistent_bit to P_i and P_j
+    if (!inconsistent_bit) {
+      // send inconsistent_bit to P_send and P_hash
       std::array<bool, 1> send_b;
       send_b[0] = inconsistent_bit;
 
       comm->sendAsync<bool>(rank_hash, absl::MakeSpan(send_b), tag);
       comm->sendAsync<bool>(rank_send, absl::MakeSpan(send_b), tag);
-
-      // std::cout << "consistent_bit of P_k: " << inconsistent_bit <<
-      // std::endl;
     } else {
       SPDLOG_INFO("commit check fail for tag {}", tag);
       inconsistent_bit = true;
 
-      // send inconsistent_bit to P_i and P_j
+      // send inconsistent_bit to P_send and P_hash
       std::array<bool, 1> send_b;
       send_b[0] = inconsistent_bit;
 
       comm->sendAsync<bool>(rank_hash, absl::MakeSpan(send_b), tag);
       comm->sendAsync<bool>(rank_send, absl::MakeSpan(send_b), tag);
-
-      // std::cout << "consistent_bit of P_k: " << inconsistent_bit <<
-      // std::endl;
 
       // broadcast Hash(v)
       // without considering the situation that some party is silent
@@ -244,11 +224,6 @@ NdArrayRef JointMessagePassing(KernelEvalContext* ctx, const NdArrayRef& msg,
         all_hash[i] =
             std::string(reinterpret_cast<const char*>(all_hash_bytes[i].data()),
                         all_hash_bytes[i].size());
-
-        // for (unsigned char c : all_hash[i]) {
-        //   std::cout << std::hex << std::uppercase << std::setfill('0')
-        //             << std::setw(2) << static_cast<int>(c);
-        // }
       }
 
       if (all_hash[rank_send] != all_hash[rank_hash]) {
@@ -642,11 +617,8 @@ NdArrayRef A2V::proc(KernelEvalContext* ctx, const NdArrayRef& in,
 }
 
 NdArrayRef V2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
-  // auto* comm = ctx->getState<Communicator>();
-  // auto* prg_state = ctx->getState<PrgState>();
   const auto* in_ty = in.eltype().as<Priv2kTy>();
   const auto field = in_ty->field();
-  // auto ty = makeType<RingTy>(field);
 
   size_t owner_rank = in_ty->owner();
 
@@ -655,78 +627,6 @@ NdArrayRef V2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   auto res = Sharing(ctx, tmp, owner_rank, "v2a");
 
   return res;
-
-  // return DISPATCH_ALL_FIELDS(field, [&]() {
-  //   using ashr_el_t = ring2k_t;
-  //   using ashr_t = std::array<ashr_el_t, 3>;
-
-  //   NdArrayRef out(makeType<AShrTy>(field), in.shape());
-  //   NdArrayRef alpha1(ty, in.shape());
-  //   NdArrayRef alpha2(ty, in.shape());
-  //   NdArrayRef beta(ty, in.shape());
-  //   NdArrayRef gamma(ty, in.shape());
-
-  //   if (owner_rank == 0) {
-  //     // P0, Pj together sample random alpha_j
-  //     auto [r0, r1] = prg_state->genPrssPair(field, in.shape(),
-  //                                            PrgState::GenPrssCtrl::Both);
-  //     if (rank == 0) {
-  //       alpha2 = r0;
-  //       alpha1 = r1;
-  //     }
-  //     if (rank == 1) {
-  //       alpha1 = r0;
-  //     }
-  //     if (rank == 2) {
-  //       alpha2 = r1;
-  //     }
-
-  //     // parties sample random gamma
-  //     auto r2 = prg_state->genPubl(field, in.shape());
-  //     gamma = r2;
-
-  //     // P0 send beta = v + alpha to P1
-  //     if (rank == 0) {
-  //       beta = ring_add(in, ring_add(alpha1, alpha2));
-  //       comm->sendAsync(1, beta, "v2a_01");
-  //     }
-  //     if (rank == 1) {
-  //       beta = comm->recv(0, ty, "v2a_01");
-  //     }
-
-  //     // P0 and P1 jmp-send beta to P2
-  //     beta = JointMessagePassing(ctx, beta, 0, 1, 2, "v2a_012");
-  //   }
-
-  //   NdArrayView<ashr_el_t> _alpha1(alpha1);
-  //   NdArrayView<ashr_el_t> _alpha2(alpha2);
-  //   NdArrayView<ashr_el_t> _beta(beta);
-  //   NdArrayView<ashr_el_t> _gamma(gamma);
-  //   NdArrayView<ashr_t> _out(out);
-
-  //   if (rank == 0) {
-  //     pforeach(0, in.numel(), [&](int64_t idx) {
-  //       _out[idx][0] = _alpha1[idx];
-  //       _out[idx][1] = _alpha2[idx];
-  //       _out[idx][2] = _beta[idx] + _gamma[idx];
-  //     });
-  //   }
-  //   if (rank == 1) {
-  //     pforeach(0, in.numel(), [&](int64_t idx) {
-  //       _out[idx][0] = _alpha1[idx];
-  //       _out[idx][1] = _beta[idx];
-  //       _out[idx][2] = _gamma[idx];
-  //     });
-  //   }
-  //   if (rank == 2) {
-  //     pforeach(0, in.numel(), [&](int64_t idx) {
-  //       _out[idx][0] = _alpha2[idx];
-  //       _out[idx][1] = _beta[idx];
-  //       _out[idx][2] = _gamma[idx];
-  //     });
-  //   }
-  //   return out;
-  // });
 }
 
 NdArrayRef NegateA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
@@ -1162,7 +1062,6 @@ NdArrayRef RingChange(KernelEvalContext* ctx, const NdArrayRef& in,
 NdArrayRef MulPre(KernelEvalContext* ctx, const NdArrayRef& lhs,
                   const NdArrayRef& rhs) {
   const auto field = lhs.eltype().as<Ring2k>()->field();
-  // auto* comm = ctx->getState<Communicator>();
   auto* prg_state = ctx->getState<PrgState>();
   auto numel = lhs.numel();
   // if (!(field == FieldType::FM32 || field == FieldType::FM64)) {
@@ -1341,50 +1240,6 @@ NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
     // p1, p2 : Phi = f2 - gamma_x * gamma_y
     auto f = MulPre(ctx, d, e);
 
-    // Debug : correctness of Mulpre
-    // auto open_d = RSS_A2P(ctx, d);
-    // auto open_e = RSS_A2P(ctx, e);
-    // auto open_f = RSS_A2P(ctx, f);
-    // SPU_ENFORCE(ring_all_equal(ring_mul(open_d, open_e), open_f),
-    //             "MulPre error");
-
-    // if (rank == 1) {
-    //   NdArrayRef gamma_x(ty, shape);
-    //   NdArrayRef gamma_y(ty, shape);
-    //   NdArrayView<el_t> _gamma_x(gamma_x);
-    //   NdArrayView<el_t> _gamma_y(gamma_y);
-    //   pforeach(0, numel, [&](int64_t idx) {
-    //     _gamma_x[idx] = _lhs[idx][2];
-    //     _gamma_y[idx] = _rhs[idx][2];
-    //   });
-    //   comm->sendAsync(0, gamma_x, "gamma_x");
-    //   comm->sendAsync(0, gamma_y, "gamma_y");
-    // }
-    // if (rank == 0) {
-    //   auto gamma_x = comm->recv(1, ty, "gamma_x");
-    //   auto gamma_y = comm->recv(1, ty, "gamma_y");
-    //   NdArrayRef alpha_x(ty, shape);
-    //   NdArrayRef alpha_y(ty, shape);
-    //   NdArrayView<el_t> _alpha_x(alpha_x);
-    //   NdArrayView<el_t> _alpha_y(alpha_y);
-    //   pforeach(0, numel, [&](int64_t idx) {
-    //     _alpha_x[idx] = _lhs[idx][0] + _lhs[idx][1];
-    //     _alpha_y[idx] = _rhs[idx][0] + _rhs[idx][1];
-    //   });
-    //   auto d_tmp = ring_add(gamma_x, alpha_x);
-    //   auto e_tmp = ring_add(gamma_y, alpha_y);
-    //   auto f_tmp = ring_mul(d_tmp, e_tmp);
-    //   fmt::print("gamma_x\n");
-    //   ring_print(gamma_x);
-    //   fmt::print("d_tmp\n");
-    //   ring_print(d_tmp);
-    //   fmt::print("open_d\n");
-    //   ring_print(open_d);
-    //   SPU_ENFORCE(ring_all_equal(d_tmp, open_d), "d_tmp != open_d");
-    //   SPU_ENFORCE(ring_all_equal(e_tmp, open_e), "e_tmp != open_e");
-    //   SPU_ENFORCE(ring_all_equal(f_tmp, open_f), "f_tmp != open_f");
-    // }
-
     NdArrayView<shr_t> _f(f);
     NdArrayView<el_t> _chi_1(chi_1);
     NdArrayView<el_t> _chi_2(chi_2);
@@ -1405,23 +1260,6 @@ NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
         _Phi[idx] = _f[idx][0] - _lhs[idx][2] * _rhs[idx][2];
       });
     }
-
-    // Debug: chi_1 + chi_2 + Phi =? f - gamma_x * gamma_y
-    // all send to P1
-    // {
-    //   if (rank == 0) {
-    //     comm->sendAsync(1, chi_2, "chi_2");
-    //   }
-    //   if (rank == 1) {
-    //     chi_2 = comm->recv(0, ty, "chi_2");
-    //     auto test1 = ring_add(ring_add(chi_1, chi_2), Phi);
-    //     auto test2 =
-    //         ring_sub(open_f, ring_mul(getThirdShare(lhs),
-    //         getThirdShare(rhs)));
-    //     SPU_ENFORCE(ring_all_equal(test1, test2),
-    //                 "chi_1 + chi_2 + Phi != f - gamma_x * gamma_y");
-    //   }
-    // }
 
     NdArrayView<el_t> _beta_z1_start(beta_z1_start);
     NdArrayView<el_t> _beta_z2_start(beta_z2_start);
@@ -1474,16 +1312,6 @@ NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
                [&](int64_t idx) { _out[idx][2] = _beta_plus_gamma_z[idx]; });
     }
 
-    // test
-    // auto input_rec = a2p.proc(ctx, x);
-    // auto a2p = A2P();
-    // auto lhs_rec = a2p.proc(ctx, lhs);
-    // auto rhs_rec = a2p.proc(ctx, rhs);
-    // auto output_rec = a2p.proc(ctx, out);
-    // if (rank == 0) {
-    //   ring_print(ring_mul(lhs_rec, rhs_rec), "mulAA need output");
-    //   ring_print(output_rec, "mulAA get output");
-    // }
     return out;
   });
 }
@@ -1557,15 +1385,12 @@ NdArrayRef MatRssMul_semi(KernelEvalContext* ctx, const NdArrayRef& lhs,
 NdArrayRef MatMulPre(KernelEvalContext* ctx, const NdArrayRef& lhs,
                      const NdArrayRef& rhs) {
   const auto field = lhs.eltype().as<Ring2k>()->field();
-  // auto* comm = ctx->getState<Communicator>();
   auto* prg_state = ctx->getState<PrgState>();
   auto M = lhs.shape()[0];
   auto N = rhs.shape()[1];
   // if (!(field == FieldType::FM32 || field == FieldType::FM64)) {
   //   SPU_THROW("malicious MulPre only support FM32 and FM64");
   // }
-  // SPU_ENFORCE(field == FieldType::FM32 || field == FieldType::FM64,
-  //             "malicious MulPre only support FM32 and FM64");
 
   FieldType field_sigma_plus_k, field_sigma_mask;
 
@@ -1745,8 +1570,6 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
   // [beta*_z] = -(beta_x + gamma_x)[alpha_y] - (beta_y + gamma_y)[alpha_x]
   //             +[alpha_z] + [chi]
   if (rank == 0) {
-    // auto tmp2 = ring_neg(ring_mmul(x2, y0));
-    // auto tmp3 = ring_neg(ring_mmul(x0, y2));
     beta_z1_start = ring_sum(
         {ring_neg(ring_mmul(x2, y0)), ring_neg(ring_mmul(x0, y2)), z0, chi_1});
     beta_z2_start = ring_sum(
@@ -1830,12 +1653,8 @@ std::pair<NdArrayRef, NdArrayRef> TruncA::Trgen(KernelEvalContext* ctx,
 
   NdArrayRef public_const1(ty_ring, {k - bits});
   NdArrayRef public_const2(ty_ring, {k});
-  // NdArrayRef x(ashrty, {1, k - bits});
-  // NdArrayRef y(ashrty, {k - bits, 1});
   NdArrayRef X(ashrty, {numel, k - bits});
   NdArrayRef Y(ashrty, {numel, k - bits});
-  // NdArrayRef p(ashrty, {1, k});
-  // NdArrayRef q(ashrty, {k, 1});
   NdArrayRef P(ashrty, {numel, k});
   NdArrayRef Q(ashrty, {numel, k});
   NdArrayRef tmp(ashrty, {numel, numel});
@@ -1920,7 +1739,6 @@ std::pair<NdArrayRef, NdArrayRef> TruncA::Trgen(KernelEvalContext* ctx,
       _public_const2[i] = (static_cast<ring2k_t>(1) << (i + 1));
     }
 
-    // NdArrayView<shr_t> _tmp(tmp);
     NdArrayView<shr_t> _A(A);
     NdArrayView<shr_t> _B(B);
     pforeach(0, numel, [&](int64_t idx) {
@@ -1950,27 +1768,6 @@ std::pair<NdArrayRef, NdArrayRef> TruncA::Trgen(KernelEvalContext* ctx,
         _Q[idx * k + i][1] = _r2_bits_share[idx * k + i][1];
         _Q[idx * k + i][2] = _r2_bits_share[idx * k + i][2];
       }
-
-      // TODO:
-      // use matrix to handle x \cdot y and p \cdot q
-      // such as: X.shape = {numel, k - bits}
-      // to avoid too much rounds
-
-      // x \cdot y
-      // x.reshape({1, k - bits});
-      // y.reshape({k - bits, 1});
-      // tmp = dotp.proc(ctx, x, y);
-      // _A[idx][0] = _tmp[0][0];
-      // _A[idx][1] = _tmp[0][1];
-      // _A[idx][2] = _tmp[0][2];
-
-      // p \cdot q
-      // p.reshape({1, k});
-      // q.reshape({k, 1});
-      // tmp = dotp.proc(ctx, p, q);
-      // _B[idx][0] = _tmp[0][0];
-      // _B[idx][1] = _tmp[0][1];
-      // _B[idx][2] = _tmp[0][2];
     });
     Y = Y.transpose();
     Q = Q.transpose();
@@ -2079,17 +1876,6 @@ NdArrayRef TruncA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
     });
   });
 
-  // res = (x - r)^d + r^d
-  // test
-  // auto input_rec = a2p.proc(ctx, x);
-  // auto output_rec = a2p.proc(ctx, out);
-  // if (rank == 0) {
-  //   std::cout << "trunc bits = " << bits << std::endl;
-  //   ring_print(input_rec, "input");
-  //   ring_print(ring_arshift(input_rec, {static_cast<int64_t>(bits)}),
-  //              "need output");
-  //   ring_print(output_rec, "get output");
-  // }
   return out.as(x.eltype());
 }
 
