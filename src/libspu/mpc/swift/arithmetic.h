@@ -26,7 +26,7 @@ NdArrayRef JointMessagePassing(KernelEvalContext* ctx, const NdArrayRef& msg,
                                size_t rank_send, size_t rank_hash,
                                size_t rank_recv, std::string_view tag);
 
-// Pi, Pj jonit generate share of a value that is known to both
+// Pi, Pj jonit generate share of a value which is known to both
 NdArrayRef JointSharing(KernelEvalContext* ctx, const NdArrayRef& msg,
                         size_t rank_i, size_t rank_j, std::string_view tag);
 
