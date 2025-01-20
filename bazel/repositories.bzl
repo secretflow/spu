@@ -46,6 +46,10 @@ def spu_deps():
         name = "yacl",
         commit = YACL_COMMIT_ID,
         remote = "{}/yacl.git".format(SECRETFLOW_GIT),
+        patch_args = ["-p1"],
+        patches = [
+            "@spulib//bazel:patches/yacl.patch",
+        ],
     )
 
     # Add homebrew openmp for macOS, somehow..homebrew installs to different location on Apple Silcon/Intel macs.. so we need two rules here
