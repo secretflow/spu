@@ -22,6 +22,8 @@ from .distributed_impl import (  # type: ignore
     get,
     current,
     set_framework,
+    print_status,
+    clear_status,
     SAMPLE_NODES_DEF,
     SAMPLE_DEVICES_DEF,
     dtype_spu_to_np,

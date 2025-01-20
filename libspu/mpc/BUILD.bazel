@@ -151,3 +151,14 @@ spu_cc_library(
     srcs = ["offline_recorder.cc"],
 )
 
+spu_cc_library(
+    name = "context_log",
+    hdrs = ["context_log.h"],
+    srcs = ["context_log.cc"],
+    deps = [
+        "//libspu/core:context",
+        "//libspu/mpc:offline_recorder",
+        "//libspu/mpc/common:communicator",
+    ],
+)
+

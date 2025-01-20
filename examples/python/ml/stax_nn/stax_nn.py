@@ -158,24 +158,37 @@ def train_mnist(model, run_on_spu: bool = False):
 
     init_fun, predict_fun = model()
 
-    start = time.perf_counter()
-    params = train(
-        train_x,
-        train_y,
-        init_fun,
-        predict_fun,
-        epochs,
-        batch_size,
-        run_on_spu,
-    )
-    end = time.perf_counter()
+    # start = time.perf_counter()
+    # params = train(
+    #     train_x,
+    #     train_y,
+    #     init_fun,
+    #     predict_fun,
+    #     epochs,
+    #     batch_size,
+    #     run_on_spu,
+    # )
+    # end = time.perf_counter(）
 
-    env = 'spu' if run_on_spu else 'cpu'
-    print(f"train({env}) elapsed time: {end - start:0.4f} seconds")
-    test_x, test_y = test_ds['image'], test_ds['label']
-    predict_y = predict_fun(params, test_x)
+    # env = 'spu' if run_on_spu else 'cpu'
+
+    test_x, test_y = test_ds['image'][:1], test_ds['label'][:1]
+    key = jax.random.PRNGKey(42)
+    input_shape = tuple(
+        [-1 if idx == 0 else i for idx, i in enumerate(list(test_x.shape))]
+    )
+    _, params = init_fun(key, input_shape)
+    # predict_y = predict_fun(params, test_x)
+    test_x_spu = ppd.device("P1")(lambda x: x)(test_x)
+    params_spu = ppd.device("P2")(lambda x: x)(params)
+    predict_y_spu = ppd.device("SPU")(predict_fun)(
+        params_spu, test_x_spu
+    )
+    predict_y = ppd.get(predict_y_spu)
+    ppd.print_status()
+    ppd.clear_status()
     score = accuracy_score(np.argmax(predict_y, axis=1), test_y)
-    print(f'accuracy({env}): {score}')
+    print(f'accuracy(): {score}')
     return score
 
 

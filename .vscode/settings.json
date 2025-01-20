@@ -43,6 +43,7 @@
     },
     "mlir.server_path": "bazel-bin/libspu/compiler/tools/pphlo-lsp",
     "files.associations": {
+        "*.h": "cpp",
         "array": "cpp",
         "span": "cpp",
         "string_span": "cpp",
@@ -155,6 +156,8 @@
         "scoped_allocator": "cpp",
         "print": "cpp",
         "*.def": "cpp",
-        "execution": "cpp"
+        "execution": "cpp",
+        "pointers": "cpp",
+        "propagate_const": "cpp"
     }
 }

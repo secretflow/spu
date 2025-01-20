@@ -26,7 +26,7 @@ import flax.linen as nn
 import jax
 import jax.nn as jnn
 import jax.numpy as jnp
-from EasyLM.models.llama.llama_model import FlaxLLaMAForCausalLM, LLaMAConfig
+from EasyLM.models.llama.llama_model import FlaxLLaMAForCausalLM, LLaMAConfiguratorurator
 from flax.linen.linear import Array
 from transformers import LlamaTokenizer
 
@@ -56,7 +56,7 @@ model_path = args.model_path
 
 tokenizer = LlamaTokenizer.from_pretrained(model_path)
 tokenizer.pad_token_id = tokenizer.eos_token_id
-config = LLaMAConfig()
+config = LLaMAConfigurator()
 pretrained_model = FlaxLLaMAForCausalLM.from_pretrained(model_path, config=config)
 
 
@@ -139,7 +139,7 @@ def hack_silu_context(msg: str, enabled: bool = True):
 # greedy search
 # ref: https://huggingface.co/blog/how-to-generate
 def text_generation(input_ids, params, token_num=1):
-    config = LLaMAConfig()
+    config = LLaMAConfigurator()
     model = FlaxLLaMAForCausalLM(config=config)
     for _ in range(token_num):
         outputs = model(input_ids=input_ids, params=params)

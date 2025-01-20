@@ -545,8 +545,8 @@ def builtin_spu_init(
         logger.info(f"spu-runtime ({name}) already exist, reuse it")
         return
     desc = libspu.link.Desc()
-    desc.recv_timeout_ms = 100 * 1000  # 100 seconds
-    desc.http_max_payload_size = 32 * 1024 * 1024  # Default set link payload to 32M
+    desc.recv_timeout_ms = 1000 * 1000  # 100 seconds
+    desc.http_max_payload_size = 1024 * 1024 * 1024  # Default set link payload to 32M
     for rank, addr in enumerate(addrs):
         desc.add_party(f"r{rank}", addr)
     link = libspu.link.create_brpc(desc, my_rank)
@@ -609,6 +609,14 @@ def builtin_spu_run(
         rt.del_var(name)
 
     return rets
+
+def builtin_spu_print_status(server, name: str):
+    if f"{name}-rt" in server._locals:
+        server._locals[f"{name}-rt"].print_status()
+
+def builtin_spu_clear_status(server, name: str):
+    if f"{name}-rt" in server._locals:
+        server._locals[f"{name}-rt"].clear_status()
 
 
 from spu import spu_pb2
@@ -1076,6 +1084,30 @@ class SPU(Device):
             SPU.Object(self, refs, meta.shape, meta.dtype, meta.vtype)
             for refs, meta in zip(refs_for_spu_objects, spu_object_metatdata)
         ]
+        
+    def print_status(self):
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            futures = [
+                executor.submit(
+                    self.node_clients[idx].run,
+                    builtin_spu_print_status,
+                    self.name,
+                )
+                for idx, _ in enumerate(self.node_clients)
+            ]
+        results = [future.result() for future in futures]
+    
+    def clear_status(self):
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            futures = [
+                executor.submit(
+                    self.node_clients[idx].run,
+                    builtin_spu_clear_status,
+                    self.name,
+                )
+                for idx, _ in enumerate(self.node_clients)
+            ]
+        results = [future.result() for future in futures]
 
 
 class HostContext:
@@ -1155,7 +1187,16 @@ class HostContext:
         except:
             # Just ignore it, not good for production but enough for demonstration.
             pass
+        
+    def print_status(self):
+        for name, device in self.devices.items():
+            if isinstance(device, SPU):
+                device.print_status()
 
+    def clear_status(self):
+        for name, device in self.devices.items():
+            if isinstance(device, SPU):
+                device.clear_status()
 
 class Framework(Enum):
     JAX = 1
@@ -1195,6 +1236,11 @@ def init(nodes_def, devices_def, framework=Framework.JAX):
             )
         )
 
+def print_status():
+    _CONTEXT.print_status()
+    
+def clear_status():
+    _CONTEXT.clear_status()
 
 def current():
     """Get the current device context"""

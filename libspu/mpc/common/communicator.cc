@@ -125,7 +125,7 @@ void Communicator::sendAsync(size_t dst_rank, const NdArrayRef& in,
                              in.numel() * in.elsize());
   lctx_->SendAsync(dst_rank, bv, tag);
 
-  stats_.latency += 1;
+  // stats_.latency += 1;
   stats_.comm += in.numel() * in.elsize();
 }
 

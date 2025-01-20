@@ -1,3 +1,4 @@
+#pragma once
 #include <iostream>
 
 /**
@@ -21,8 +22,8 @@ public:
       std::cout << "OfflineRecorder instance created" << std::endl;
       instance = new OfflineRecorder();
     } else {
-      std::cout << "OfflineRecorder instance already exists" << std::endl;
-      throw "OfflineRecorder instance already exists";
+      std::cout << "[Warning] OfflineRecorder instance already exists." << std::endl;
+      std::cout << "[Warning] If you are using different protocols that both rely on OfflineRecorder, this may cause unexpected behavior." << std::endl;
     }
   }
 
@@ -32,8 +33,7 @@ public:
       delete instance;
       instance = nullptr;
     } else {
-      std::cout << "OfflineRecorder instance does not exist" << std::endl;
-      throw "OfflineRecorder instance does not exist";
+      std::cout << "[Warning] OfflineRecorder instance does not exist. Unable to stop OfflineRecorder." << std::endl;
     }
   }
 
@@ -61,6 +61,15 @@ public:
       std::cout << "  Totals: " << std::endl;
       std::cout << "    Comm: " << instance->mult_comm + instance->async_comm_size << std::endl;
 
+    }
+  }
+
+  static void ClearRecord() {
+    if (instance != nullptr) {
+      instance->mult_count = 0;
+      instance->mult_comm = 0;
+      instance->async_comm_count = 0;
+      instance->async_comm_size = 0;
     }
   }
 

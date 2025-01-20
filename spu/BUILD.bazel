@@ -48,6 +48,7 @@ pybind_extension(
         "//libspu/device:api",
         "//libspu/device:io",
         "//libspu/device/pphlo:pphlo_executor",
+        "//libspu/mpc:context_log",
         "@yacl//yacl/link",
     ],
 )

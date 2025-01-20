@@ -270,7 +270,7 @@ void SetUpMode() {
     SPU_ENFORCE(host_ips.size() == BenchInteral::bench_npc);
 
     yacl::link::ContextDesc lctx_desc;
-    lctx_desc.recv_timeout_ms = 120 * 1000;
+    lctx_desc.recv_timeout_ms = 1200 * 1000;
     for (size_t i = 0; i < BenchInteral::bench_npc; i++) {
       const std::string id = fmt::format("party{}", i);
       lctx_desc.parties.push_back({id, host_ips[i]});

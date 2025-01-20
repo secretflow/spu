@@ -35,7 +35,7 @@ import spu.spu_pb2 as spu_pb2
 Array = Any
 copts = spu_pb2.CompilerOptions()
 copts.enable_pretty_print = False
-copts.xla_pp_kind = 2
+copts.xla_pp_kind = 2  
 # enable x / broadcast(y) -> x * broadcast(1/y)
 copts.enable_optimize_denominator_with_broadcast = True
 
@@ -91,13 +91,10 @@ def hack_softmax(x: Array,
 
     x_max = jnp.max(x, axis, where=where, initial=initial, keepdims=True)
     x = x - x_max
-
     # exp on large negative is clipped to zero
     b = x > -14
     nexp = jnp.exp(x) * b
-
     divisor = jnp.sum(nexp, axis, where=where, keepdims=True)
-
     return nexp / divisor
 
 @contextmanager
@@ -211,42 +208,42 @@ Primitive test.
 def msb(x):
     ret = []
     for _ in range(EXP_TIMES):
-        y = sample_input() + x
+        y = sample_input_int() + x
         ret.append(y > 0)
     return ret
 
 def a2b(x):
     ret = []
     for _ in range(EXP_TIMES):
-        y = sample_input() + x
+        y = sample_input_int() + x
         ret.append(y ^ 1)
     return ret
     
 def b2a(x):
     ret = []
     for _ in range(EXP_TIMES):
-        y = sample_input() + x
+        y = sample_input_int() + x
         ret.append((y ^ 1) + 1)
     return ret
 
 def ab_conversion(x):
     ret = []
     for _ in range(EXP_TIMES):
-        y = sample_input() + x
+        y = sample_input_int() + x
         ret.append((y ^ 1) + 1)
     return ret
 
 def exp(x):
     ret = []
     for _ in range(EXP_TIMES):
-        y = jnp.exp(x)
-        ret.append(y)
+        y = sample_input_float() + x
+        ret.append(jnp.exp(y))
     return ret
     
 def relu(x):
     ret = []
     for _ in range(EXP_TIMES):
-        y = sample_input() + x
+        y = sample_input_float() + x
         ret.append(jnn.relu(y))
     return ret  
 
@@ -254,7 +251,7 @@ def gelu(x):
     with hack_gelu_context("hijack jax gelu", enabled=True):
         ret = []
         for _ in range(EXP_TIMES):
-            y = sample_input() + x
+            y = sample_input_float() + x
             ret.append(jnn.gelu(y))
     return ret
 
@@ -262,7 +259,7 @@ def silu(x):
     with hack_silu_context("hijack silu softmax", enabled=True):
         ret = []
         for _ in range(EXP_TIMES):
-            y = sample_input().astype(np.float64) + x
+            y = sample_input_float().astype(np.float64) + x
             ret.append(jnn.silu(y))
     return ret
 
@@ -270,7 +267,7 @@ def softmax(x):
     with hack_softmax_context("hijack jax softmax", enabled=True):
         ret = []
         for _ in range(EXP_TIMES):
-            y = sample_input() + x
+            y = np.random.random((1, VECTOR_LEN)) + x
             ret.append(jnn.softmax(y))
     return ret
 
@@ -278,102 +275,109 @@ def sigmoid(x):
     with hack_sigmoid_context("hijack jax sigmoid", enabled=True):
         ret = []
         for _ in range(EXP_TIMES):
-            y = sample_input().astype(np.float64) + x
+            y = sample_input_float().astype(np.float64) + x
             ret.append(jnn.sigmoid(y))
     return ret
 
-def sample_input():
+def sample_input_int():
     np.random.seed()
-    x = 1 << 0
-    # x = np.random.randint(-1000, 1000, VECTOR_LEN)
-    # x = np.random.randint(-10, 10, VECTOR_LEN)
-    # x = np.random.randint(0, 1, VECTOR_LEN)
+    x = np.random.randint(-1000, 1000, VECTOR_LEN)
+    return x
+
+def sample_input_float():
+    np.random.seed()
+    x = np.random.random(VECTOR_LEN)
     return x
 
 def exp_msb():
     print("this is exp_msb.")
-    x = sample_input()
+    x = sample_input_int()
     x_spu = ppd.device("P1")(lambda x: x)(x)
     msb_spu = ppd.device("SPU")(msb)(x_spu)
-    msb_spu = ppd.get(msb_spu)
-
-# def exp_eqz():
-#     x = sample_input()
-#     x_spu = ppd.device("P1")(lambda x: x)(x)
-#     eqz_spu = ppd.device("SPU")(eqz)(x_spu)
+    # msb_spu = ppd.get(msb_spu)
 
 # def exp_b2a():
 #     print("this is exp_b2a.")
-#     x = sample_input()
+#     x = sample_input_int()
 #     x_spu = ppd.device("P1")(lambda x: x)(x)
 #     b2a_spu = ppd.device("SPU")(b2a)(x_spu)
 #     b2a_spu = ppd.get(b2a_spu)
 
 # def exp_a2b():
 #     print("this is exp_a2b.")
-#     x = sample_input()
+#     x = sample_input_int()
 #     x_spu = ppd.device("P1")(lambda x: x)(x)
 #     a2b_spu = ppd.device("SPU")(a2b)(x_spu)
 #     a2b_spu = ppd.get(a2b_spu)
 
 def exp_abconversion():
     print("this is ab conversion")
-    x = sample_input()
+    x = sample_input_int()
     x_spu = ppd.device("P1")(lambda x: x)(x)
     abc_spu = ppd.device("SPU")(ab_conversion)(x_spu)
-    abc_spu = ppd.get(abc_spu)
+    # abc_spu = ppd.get(abc_spu)
     
 # def exp_exp():
 #     print("this is exp_exp.")
-#     x = sample_input()
+#     x = sample_input_float()
 #     x_spu = ppd.device("P1")(lambda x: x)(x)
 #     exp_spu = ppd.device("SPU")(exp)(x_spu)
-#     exp_spu = ppd.get(exp_spu)
-#     show_l2(exp_spu, jnp.exp(x))
+    # exp_spu = ppd.get(exp_spu)
+    # show_l2(exp_spu, jnp.exp(x))
     
 def exp_relu():
     print("this is exp_relu.")
-    x = sample_input()
+    x = sample_input_float()
+    # x = np.ones(VECTOR_LEN)
     x_spu = ppd.device("P1")(lambda x: x)(x)
     relu_spu = ppd.device("SPU")(relu)(x_spu)
-    relu_spu = ppd.get(relu_spu)
+    # relu_spu = ppd.get(relu_spu)
     
 def exp_gelu():
     print("this is exp_gelu.")
-    x = sample_input()
+    x = sample_input_float()
     x_spu = ppd.device("P1")(lambda x: x)(x)
     gelu_spu = ppd.device("SPU")(gelu)(x_spu)
-    gelu_spu = ppd.get(gelu_spu)
+    # gelu_spu = ppd.get(gelu_spu)
     
 def exp_silu():
     print("this is exp_silu.")
-    x = sample_input().astype(np.float64)
+    x = sample_input_float()
     x_spu = ppd.device("P1")(lambda x: x)(x)
     silu_spu = ppd.device("SPU")(silu)(x_spu)
-    silu_spu = ppd.get(silu_spu)
+    # silu_spu = ppd.get(silu_spu)
     
 def exp_softmax():
     print("this is exp_softmax.")
-    x = sample_input()
+    x = np.random.random((1, VECTOR_LEN))
     x_spu = ppd.device("P1")(lambda x: x)(x)
-    softmax_spu = ppd.device("SPU")(softmax)(x_spu)
-    softmax_spu = ppd.get(softmax_spu)
+    softmax_spu = ppd.device("SPU")(softmax,copts=copts)(x_spu)
+    # softmax_spu = ppd.get(softmax_spu)
     
 def exp_sigmoid():
     print("this is exp_sigmoid.")
-    x = sample_input().astype(np.float64)
+    x = sample_input_float()
     x_spu = ppd.device("P1")(lambda x: x)(x)
     sigmoid_spu = ppd.device("SPU")(sigmoid)(x_spu)
-    sigmoid_spu = ppd.get(sigmoid_spu)
+    # sigmoid_spu = ppd.get(sigmoid_spu)
 
 if __name__ == '__main__':
-    
-    exp_msb()
-    exp_abconversion()
+        
+    # exp_abconversion()
 
-    # exp_relu()
-    # exp_gelu()
-    # exp_silu()
-    # exp_softmax()
-    # exp_sigmoid()
+    exp_relu()
+    ppd.print_status()
+    ppd.clear_status()
+    
+    exp_gelu()
+    ppd.print_status()
+    ppd.clear_status()
+    
+    exp_softmax()
+    ppd.print_status()
+    ppd.clear_status()
+    
+    exp_sigmoid()
+    ppd.print_status()
+    ppd.clear_status()
     

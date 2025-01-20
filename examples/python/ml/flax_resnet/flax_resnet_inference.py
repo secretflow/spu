@@ -76,7 +76,9 @@ def run_on_cpu(inputs, model):
 
 
 if __name__ == "__main__":
-    print("Run on CPU\n------\n")
-    run_on_cpu(inputs, model)
+    # print("Run on CPU\n------\n")
+    # run_on_cpu(inputs, model)
     print("Run on SPU\n------\n")
     run_on_spu(inputs, model)
+    ppd.print_status()
+    ppd.clear_status()

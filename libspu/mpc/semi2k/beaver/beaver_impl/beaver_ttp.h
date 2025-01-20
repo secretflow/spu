@@ -41,7 +41,7 @@ class BeaverTtp final : public Beaver {
     std::string brpc_channel_protocol = "baidu_std";
     std::string brpc_channel_connection_type = "single";
     std::string brpc_load_balancer_name;
-    int32_t brpc_timeout_ms = 10 * 1000;
+    int32_t brpc_timeout_ms = 10000 * 1000;
     int32_t brpc_max_retry = 5;
 
     // TODO: TLS ops for client/server two-way authentication

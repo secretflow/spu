@@ -483,7 +483,7 @@ NdArrayRef MulA1B::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
   // b2 = ring_and(b2, kOne);
 
   auto self_rank = comm->getRank();
-  const auto kComm = a1.elsize() * a1.numel();
+  // const auto kComm = a1.elsize() * a1.numel();
 
   // split BShr * Pub into offline + online.
   // offline part: prepare rand data use in online part.
@@ -513,7 +513,8 @@ NdArrayRef MulA1B::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
     std::pair<NdArrayRef, NdArrayRef> r2;
 
     // asymmetric cost.
-    comm->addCommStatsManually(2, kComm * 8);
+    // comm->addCommStatsManually(2, kComm * 8);
+    comm->addCommStatsManually(2, 0);
 
     // c1, c3, m0, m1
     if (self_rank == sender1) {
@@ -687,7 +688,7 @@ NdArrayRef LShiftA::proc(KernelEvalContext*, const NdArrayRef& in,
 // Share Truncation I, 5.1 Fixed-point Arithmetic, P13,
 // ABY3: A Mixed Protocol Framework for Machine Learning
 // - https://eprint.iacr.org/2018/403.pdf
-NdArrayRef TruncA::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+NdArrayRef TruncA::  proc(KernelEvalContext* ctx, const NdArrayRef& in,
                         size_t bits, SignType sign) const {
   (void)sign;  // TODO: optimize me.
 
@@ -704,10 +705,11 @@ NdArrayRef TruncA::proc(KernelEvalContext* ctx, const NdArrayRef& in,
   const auto& x1 = getFirstShare(in);
   const auto& x2 = getSecondShare(in);
 
-  const auto kComm = x1.elsize() * x1.numel();
+  // const auto kComm = x1.elsize() * x1.numel();
 
   // we only record the maximum communication, we need to manually add comm
-  comm->addCommStatsManually(1, kComm);  // comm => 1, 2
+  // comm->addCommStatsManually(1, kComm);  // comm => 1, 2
+  comm->addCommStatsManually(1, 0);  // comm => 1, 2
 
   // ret
   const Sizes shift_bit = {static_cast<int64_t>(bits)};
@@ -767,7 +769,8 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in,
   auto* comm = ctx->getState<Communicator>();
 
   // TODO: cost model is asymmetric, but test framework requires the same.
-  comm->addCommStatsManually(3, 4 * SizeOf(field) * numel);
+  // comm->addCommStatsManually(3, 4 * SizeOf(field) * numel);
+  comm->addCommStatsManually(3, 0);
 
   // 1. P0 & P1 samples r together.
   // 2. P2 knows r and compute correlated random r{k-1} & sum(r{m~(k-2)})

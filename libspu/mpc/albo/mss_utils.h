@@ -1,5 +1,6 @@
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/mpc/kernel.h"
+#include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/albo/value.h"
 
 // #define EQ_USE_OFFLINE
@@ -518,5 +519,8 @@ NdArrayRef bitwise_vmap_by_byte(const NdArrayRef& in, UnaryOp func, size_t in_nb
       });
   });
 }
+
+void AddRounds(KernelEvalContext* ctx, size_t rounds, bool reduce_spu=true, bool reduce_yacl=true);
+void SubRounds(KernelEvalContext* ctx, size_t rounds, bool reduce_spu=true, bool reduce_yacl=true);
 
 } // namespace spu::mpc::albo

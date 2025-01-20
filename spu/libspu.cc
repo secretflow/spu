@@ -37,6 +37,7 @@
 #include "libspu/device/pphlo/pphlo_executor.h"
 #include "libspu/device/symbol_table.h"
 #include "libspu/mpc/factory.h"
+#include "libspu/mpc/context_log.h"
 #include "libspu/version.h"
 
 #ifdef CHECK_AVX
@@ -358,7 +359,10 @@ class RuntimeWrapper {
     if (max_chunk_size_ == 0) {
       max_chunk_size_ = 128UL * 1024 * 1024;
     }
+    spu::mpc::wrapStartRecorder(sctx_.get());
   }
+
+  // ~RuntimeWrapper() { spu::mpc::wrapStopRecorder(sctx_.get()); }
 
   void Run(const py::bytes& exec_pb) {
     spu::ExecutableProto exec;
@@ -387,6 +391,10 @@ class RuntimeWrapper {
   void DelVar(const std::string& name) { env_.delVar(name); }
 
   void Clear() { env_.clear(); }
+
+  void PrintStatus() const { spu::mpc::printStatus(sctx_.get()); }
+
+  void ClearStatus() const { spu::mpc::clearStatus(sctx_.get()); }
 };
 
 // numpy type naming:
@@ -650,7 +658,9 @@ PYBIND11_MODULE(libspu, m) {
       .def("GetVar", &RuntimeWrapper::GetVar)
       .def("GetVarChunksCount", &RuntimeWrapper::GetVarChunksCount)
       .def("GetVarMeta", &RuntimeWrapper::GetVarMeta)
-      .def("DelVar", &RuntimeWrapper::DelVar);
+      .def("DelVar", &RuntimeWrapper::DelVar)
+      .def("PrintStatus", &RuntimeWrapper::PrintStatus)
+      .def("ClearStatus", &RuntimeWrapper::ClearStatus);
 
   // bind spu io suite.
   py::class_<IoWrapper>(m, "IoWrapper", "SPU VM IO")

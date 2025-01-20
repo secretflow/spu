@@ -30,18 +30,8 @@ py_test(
     deps = [
         "//examples/python/ml/flax_mlp",
         "//examples/python/ml/flax_vae",
-        "//examples/python/ml/haiku_lstm",
-        "//examples/python/ml/jax_kmeans",
-        "//examples/python/ml/jax_lr",
-        "//examples/python/ml/jax_svm",
-        "//examples/python/ml/jraph_gnn",
-        "//examples/python/ml/ss_lr",
-        "//examples/python/ml/ss_xgb",
         "//examples/python/ml/stax_mnist_classifier",
         "//examples/python/ml/stax_nn",
-        "//examples/python/ml/tf_experiment",
-        "//examples/python/ml/torch_lr_experiment",
-        "//examples/python/ml/torch_resnet_experiment",
         "//spu/utils:distributed",
     ],
 )

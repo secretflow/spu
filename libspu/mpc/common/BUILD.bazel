@@ -43,6 +43,7 @@ spu_cc_library(
     deps = [
         "//libspu/core:object",
         "//libspu/mpc/utils:ring_ops",
+        "//libspu/mpc:offline_recorder",
         "@yacl//yacl/link:context",
         "@yacl//yacl/link/algorithm:allgather",
         "@yacl//yacl/link/algorithm:broadcast",

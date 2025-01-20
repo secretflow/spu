@@ -375,8 +375,7 @@ int main()
               spu::Value x_a;
               for (int i = 0; i < EXP_TIMES; i++) {
                 #ifdef EQ_USE_BITWIDTH_16
-                auto x_a_ref = aby3np::PPAForBitwidth16(&kectx_aby3, MyUnwrapValue(x_sb_aby3), MyUnwrapValue(x_sb_aby3));
-                x_a = MyWrapValue(x_a_ref);
+                x_a = add_bb(sctx_aby3.get(), x_sb_aby3, x_sb_aby3);
                 #else
                 x_a = add_bb(sctx_aby3.get(), x_sb_aby3, x_sb_aby3);
                 #endif
@@ -437,7 +436,7 @@ int main()
               auto offline_start = std::chrono::high_resolution_clock::now();
               if (lctx.get()->Rank() == 0) OfflineRecorder::StartRecorder();
 
-              auto x_test_mss = make_p(sctx_aby3.get(), static_cast<uint128_t>(1ull << 63), newkShape);
+              auto x_test_mss = make_p(sctx_aby3.get(), static_cast<uint128_t>(1ull << 7), newkShape);
               auto xb_test_mss = p2b(sctx_ours.get(), x_test_mss);
               auto xb_test_rss = oursnp::ResharingMss2Rss(&kectx_ours, MyUnwrapValue(xb_test_mss));
 

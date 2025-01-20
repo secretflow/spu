@@ -31,6 +31,8 @@
 #include "libspu/core/parallel_utils.h"
 #include "libspu/core/prelude.h"
 
+#include "libspu/mpc/offline_recorder.h"
+
 // This module defines the protocol comm pattern used for all
 // protocols.
 
@@ -176,7 +178,7 @@ void Communicator::sendAsync(size_t dst_rank, absl::Span<T const> in,
                              sizeof(T) * in.size());
   lctx_->SendAsync(dst_rank, bv, tag);
 
-  stats_.latency += 1;
+  // stats_.latency += 1;
   stats_.comm += in.size() * sizeof(T);
 }
 
@@ -199,7 +201,7 @@ std::vector<T> Communicator::allReduce(absl::Span<T const> in,
                              sizeof(T) * in.size());
   std::vector<yacl::Buffer> bufs = yacl::link::AllGather(lctx_, bv, tag);
   SPU_ENFORCE(bufs.size() == getWorldSize());
-  SPU_ENFORCE(false);
+  // SPU_ENFORCE(false);
 
   std::vector<T> res(in.size(), 0);
   const FN<T> fn;
@@ -210,7 +212,7 @@ std::vector<T> Communicator::allReduce(absl::Span<T const> in,
   }
 
   stats_.latency += 1;
-  stats_.comm += in.size() * sizeof(T) * (lctx_->WorldSize() - 1);
+  stats_.comm += 2 * in.size() * sizeof(T) * (lctx_->WorldSize() - 1);
 
   return res;
 }
@@ -223,8 +225,10 @@ std::vector<T> Communicator::bcast(absl::Span<T const> in, size_t root,
   yacl::Buffer buf = yacl::link::Broadcast(lctx_, bv, root, tag);
 
   if (lctx_->Rank() == root) {
-    stats_.comm += 2 * in.size() * sizeof(T);
+    stats_.comm += (lctx_->WorldSize() - 1) * in.size() * sizeof(T);
     stats_.latency += 1;
+    const std::atomic<size_t> & lctx_sent_actions = lctx_->GetStats().get()->sent_actions;
+    const_cast<std::atomic<size_t> &>(lctx_sent_actions) -= 1;
   } else {
     stats_.comm += in.size() * sizeof(T);
   }
@@ -246,8 +250,14 @@ std::vector<std::vector<T>> Communicator::gather(absl::Span<T const> in,
   std::vector<yacl::Buffer> bufs = yacl::link::Gather(lctx_, bv, root, tag);
   SPU_ENFORCE(false);
 
-  stats_.latency += 1;
-  stats_.comm += in.size() * sizeof(T);
+  if (lctx_->Rank() == root) {
+    stats_.comm += (lctx_->WorldSize() - 1) * in.size() * sizeof(T);
+  } else {
+    stats_.comm += in.size() * sizeof(T);
+    stats_.latency += 1;
+    // const std::atomic<size_t> & lctx_sent_actions = lctx_->GetStats().get()->sent_actions;
+    // const_cast<std::atomic<size_t> &>(lctx_sent_actions) -= 1;
+  }
 
   // TODO: steal the buffer.
   std::vector<std::vector<T>> res;

@@ -12,7 +12,6 @@
 #include "libspu/core/trace.h"
 #include "libspu/mpc/albo/type.h"
 #include "libspu/mpc/albo/value.h"
-#include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pv2k.h"
 #include "libspu/mpc/offline_recorder.h"
@@ -228,23 +227,22 @@ NdArrayRef MssAnd2NoComm(KernelEvalContext* ctx, const NdArrayRef& lhs,
         prg_state->fillPrssPair(r0.data(), r1.data(), r0.size(),
                                 PrgState::GenPrssCtrl::Both);
 
-        // offline.
-        if (comm->getRank() == 0)
-          OfflineRecorder::RecordMult(lhs.numel(), lhs.numel() * out_nbits / 8);
-#if !defined(EQ_USE_PRG_STATE) || !defined(EQ_USE_OFFLINE)
-        std::fill(r0.begin(), r0.end(), 0);
-        std::fill(r1.begin(), r1.end(), 0);
-        comm->addCommStatsManually(0, 0);  // deal with unused-variable warning.
-#endif
-#ifdef EQ_USE_OFFLINE
-        // dxy = dx & dy = (dx0 & dy0) ^ (dx0 & dy1) ^ (dx1 & dy0);
-        // r0 is dxy0, r1 is dxy1.
-        pforeach(0, lhs.numel(), [&](int64_t idx) {
-          const auto& l = _lhs[idx];
-          const auto& r = _rhs[idx];
-          r0[idx] = (l[1] & r[1]) ^ (l[1] & r[2]) ^ (l[2] & r[1]) ^
-                    (r0[idx] ^ r1[idx]);
-        });
+            // offline.
+            if (comm->getRank() == 0) OfflineRecorder::RecordMult(lhs.numel(), lhs.numel() * ((out_nbits + 7) / 8));
+            #if !defined(EQ_USE_PRG_STATE) || !defined(EQ_USE_OFFLINE)
+            std::fill(r0.begin(), r0.end(), 0);
+            std::fill(r1.begin(), r1.end(), 0);
+            comm->addCommStatsManually(0, 0);     // deal with unused-variable warning. 
+            #endif
+            #ifdef EQ_USE_OFFLINE
+            // dxy = dx & dy = (dx0 & dy0) ^ (dx0 & dy1) ^ (dx1 & dy0);
+            // r0 is dxy0, r1 is dxy1.
+            pforeach(0, lhs.numel(), [&](int64_t idx) {
+            const auto& l = _lhs[idx];
+            const auto& r = _rhs[idx];
+            r0[idx] = (l[1] & r[1]) ^ (l[1] & r[2]) ^ (l[2] & r[1]) ^
+                        (r0[idx] ^ r1[idx]);
+            });
 
         r1 = comm->rotate<out_el_t>(r0, "MssAndBB, offline");  // comm => 1, k
 // comm->addCommStatsManually(-1, -r0.size() * sizeof(out_el_t));
@@ -447,29 +445,18 @@ NdArrayRef ResharingAss2Mss(KernelEvalContext* ctx, const NdArrayRef& in) {
         r1[idx] = i[0];
       });
 
-      // TODO: not safe. should add a mask to r1.
-      // r0 = comm->rotateR<out_el_t>(r0, "Resharing ASS to MSS, online, message
-      // 1");  // comm => 1, k r1 = comm->rotate<out_el_t>(r1, "Resharing ASS to
-      // MSS, online, message 2");  // comm => 1, k
-      comm->sendAsync<out_el_t>(
-          comm->nextRank(), r0,
-          "Resharing ASS to MSS, online, message 1");  // comm => 1, k
-      comm->sendAsync<out_el_t>(
-          comm->prevRank(), r1,
-          "Resharing ASS to MSS, online, message 2");  // comm => 1, k
-      r0 = comm->recv<out_el_t>(
-          comm->prevRank(),
-          "Resharing ASS to MSS, online, message 1");  // comm => 1, k
-      r1 = comm->recv<out_el_t>(
-          comm->nextRank(),
-          "Resharing ASS to MSS, online, message 2");  // comm => 1, k
-      comm->addCommStatsManually(-1, 0);
-      const std::atomic<size_t>& lctx_sent_actions =
-          comm->lctx().get()->GetStats().get()->sent_actions;
-      const std::atomic<size_t>& lctx_recv_actions =
-          comm->lctx().get()->GetStats().get()->recv_actions;
-      const_cast<std::atomic<size_t>&>(lctx_sent_actions) -= 1;
-      const_cast<std::atomic<size_t>&>(lctx_recv_actions) -= 1;
+            // TODO: not safe. should add a mask to r1.
+            // r0 = comm->rotateR<out_el_t>(r0, "Resharing ASS to MSS, online, message 1");  // comm => 1, k
+            // r1 = comm->rotate<out_el_t>(r1, "Resharing ASS to MSS, online, message 2");  // comm => 1, k
+            comm->sendAsync<out_el_t>(comm->nextRank(), r0, "Resharing ASS to MSS, online, message 1");  // comm => 1, k
+            comm->sendAsync<out_el_t>(comm->prevRank(), r1, "Resharing ASS to MSS, online, message 2");  // comm => 1, k
+            r0 = comm->recv<out_el_t>(comm->prevRank(), "Resharing ASS to MSS, online, message 1");  // comm => 1, k
+            r1 = comm->recv<out_el_t>(comm->nextRank(), "Resharing ASS to MSS, online, message 2");  // comm => 1, k
+            comm->addCommStatsManually(1, 0);
+            const std::atomic<size_t> & lctx_sent_actions = comm->lctx().get()->GetStats().get()->sent_actions;
+            const std::atomic<size_t> & lctx_recv_actions = comm->lctx().get()->GetStats().get()->recv_actions;
+            const_cast<std::atomic<size_t> &>(lctx_sent_actions) -= 1;
+            const_cast<std::atomic<size_t> &>(lctx_recv_actions) -= 1;
 
       pforeach(0, in.numel(), [&](int64_t idx) {
         in_shr_t& i = _in[idx];
@@ -657,4 +644,34 @@ std::pair<NdArrayRef, NdArrayRef> unpack_2_bitvec_mss(const NdArrayRef& in) {
     });
   });
 }
-}  // namespace spu::mpc::albo
+
+void AddRounds(KernelEvalContext* ctx, size_t rounds, bool reduce_spu, bool reduce_yacl)
+{
+  auto* comm = ctx->getState<Communicator>();
+  if (reduce_yacl)
+  {
+    const std::atomic<size_t> & lctx_sent_actions = comm->lctx().get()->GetStats().get()->sent_actions;
+    const_cast<std::atomic<size_t> &>(lctx_sent_actions) += rounds;
+  }
+  
+  if (reduce_spu)
+  {
+    comm->addCommStatsManually(rounds, 0);
+  }
+}
+
+void SubRounds(KernelEvalContext* ctx, size_t rounds, bool reduce_spu, bool reduce_yacl)
+{
+  auto* comm = ctx->getState<Communicator>();
+  if (reduce_yacl)
+  {
+    const std::atomic<size_t> & lctx_sent_actions = comm->lctx().get()->GetStats().get()->sent_actions;
+    const_cast<std::atomic<size_t> &>(lctx_sent_actions) -= rounds;
+  }
+  
+  if (reduce_spu)
+  {
+    comm->addCommStatsManually(-rounds, 0);
+  }
+}
+} // namespace spu::mpc::albo

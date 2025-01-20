@@ -28,17 +28,6 @@ py_binary(
 )
 
 py_binary(
-    name = "primitive_test",
-    srcs = ["primitive_test.py"],
-    data = [
-        "//examples/python/ml/flax_gpt2:3pc.json",
-    ],
-    deps = [
-        "//spu/utils:distributed",
-    ],
-)
-
-py_binary(
     name = "pumabench",
     srcs = ["pumabench.py"],
     data = [

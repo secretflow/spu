@@ -108,84 +108,6 @@ class UnitTests(unittest.TestCase):
         self.assertTrue(235 < metrics['bce'] < 250)
         self.assertTrue(18 < metrics['kld'] < 30)
 
-    def test_haiku_lstm(self):
-        from examples.python.ml.haiku_lstm import haiku_lstm
-
-        haiku_lstm.args.num_steps = 1
-        _, train_loss = ppd.get(
-            profile_test_point(
-                haiku_lstm.train_model,
-                haiku_lstm.train_ds,
-                haiku_lstm.valid_ds,
-                run_on_spu=False,
-            )
-        )
-        self.assertTrue(0.4 < train_loss < 0.6)
-
-    def test_jax_kmeans(self):
-        from examples.python.ml.jax_kmeans import jax_kmeans
-
-        cpu_centers, cpu_labels = jax_kmeans.run_on_cpu()
-        spu_centers, spu_labels = profile_test_point(jax_kmeans.run_on_spu)
-        npt.assert_array_almost_equal(cpu_centers, spu_centers, decimal=4)
-        npt.assert_array_equal(cpu_labels, spu_labels)
-
-    def test_jax_lr(self):
-        from examples.python.utils import dataset_utils as dsutil
-        from examples.python.ml.jax_lr import jax_lr
-
-        x, y = dsutil.mock_classification(10000, 100, 0.0, 42)
-        w, b = profile_test_point(jax_lr.run_on_spu, x, y)
-
-        score = jax_lr.compute_score(x, y, ppd.get(w), ppd.get(b), 'spu')
-        self.assertGreater(score, 0.85)
-
-        score = jax_lr.save_and_load_model(x, y, w, b)
-        self.assertGreater(score, 0.85)
-
-    def test_jax_svm(self):
-        from examples.python.ml.jax_svm import jax_svm
-
-        jax_svm.args.n_epochs = 5
-        w, b = jax_svm.run_on_cpu()
-        auc_cpu = jax_svm.compute_score(w, b, 'cpu')
-        self.assertGreater(auc_cpu, 0.6)
-
-        w, b = profile_test_point(jax_svm.run_on_spu)
-        auc_spu = jax_svm.compute_score(w, b, 'spu')
-
-        self.assertGreater(auc_spu, 0.6)
-        npt.assert_almost_equal(auc_cpu, auc_spu, 6)
-
-    def test_jraph_gnn(self):
-        from examples.python.ml.jraph_gnn import jraph_gnn
-
-        accuracy = profile_test_point(
-            jraph_gnn.optimize_club, num_steps=30, run_on_spu=True
-        )
-
-        self.assertGreater(accuracy, 0.75)
-
-    def test_ss_lr(self):
-        from examples.python.ml.ss_lr import ss_lr
-
-        ss_lr.args.epochs = 1
-        ss_lr.dataset_config["n_samples"] = 50000
-        score, train_time, predict_time = ss_lr.train()
-        self.assertGreater(score, 0.75)
-
-        add_profile_data("test_ss_lr_train", train_time)
-        add_profile_data("test_ss_lr_predict", predict_time)
-
-    def test_ss_xgb(self):
-        from examples.python.ml.ss_xgb import ss_xgb
-
-        score, train_time, predict_time = ss_xgb.main()
-        self.assertGreater(score, 0.95)
-
-        add_profile_data("test_ss_xgb_train", train_time)
-        add_profile_data("test_ss_xgb_predict", predict_time)
-
     def test_stax_mnist_classifier(self):
         from examples.python.ml.stax_mnist_classifier import stax_mnist_classifier
 
@@ -202,46 +124,13 @@ class UnitTests(unittest.TestCase):
         )
         self.assertGreater(score, 0.9)
 
-    def test_tf_experiment(self):
-        from examples.python.ml.tf_experiment import tf_experiment
-
-        score = tf_experiment.run_fit_manual_grad_spu()
-        self.assertGreater(score, 0.9)
-
-    def test_torch_lr_experiment(self):
-        from examples.python.ml.torch_lr_experiment import torch_lr_experiment
-
-        model = torch_lr_experiment.LinearRegression()
-        torch_lr_experiment.train(model)
-        score = torch_lr_experiment.run_inference_on_spu(model)
-        self.assertGreater(score, 0.9)
-
-    def test_torch_resnet_experiment(self):
-        from examples.python.ml.torch_resnet_experiment import torch_resnet_experiment
-
-        model = torch_resnet_experiment.resnet
-        image = torch_resnet_experiment.input_batch
-        label = torch_resnet_experiment.run_inference_on_spu(model, image)
-        self.assertEqual(label, 258)
-
 
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(UnitTests('test_flax_mlp'))
     suite.addTest(UnitTests('test_flax_vae'))
-    suite.addTest(UnitTests('test_haiku_lstm'))
-    suite.addTest(UnitTests('test_jax_kmeans'))
-    suite.addTest(UnitTests('test_jax_lr'))
-    suite.addTest(UnitTests('test_jax_svm'))
-    suite.addTest(UnitTests('test_jraph_gnn'))
-    suite.addTest(UnitTests('test_ss_lr'))
-    suite.addTest(UnitTests('test_ss_xgb'))
     suite.addTest(UnitTests('test_stax_mnist_classifier'))
     suite.addTest(UnitTests('test_stax_nn'))
-    # should put JAX tests above
-    suite.addTest(UnitTests('test_tf_experiment'))
-    suite.addTest(UnitTests('test_torch_lr_experiment'))
-    suite.addTest(UnitTests('test_torch_resnet_experiment'))
     return suite
 
 

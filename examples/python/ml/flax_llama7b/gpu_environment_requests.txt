@@ -1,0 +1,16 @@
+jax[cuda12]==0.4.28
+flax==0.8.3
+optax==0.2.2
+transformers==4.41.0
+torch==2.3.0
+sentencepiece
+datasets
+mlxu >= 0.1.13
+einops
+gcsfs
+requests
+lm-eval
+pydantic
+fastapi
+uvicorn
+gradio

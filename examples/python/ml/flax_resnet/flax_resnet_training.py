@@ -219,10 +219,12 @@ ppd.init(conf["nodes"], conf["devices"])
 
 
 def main():
-    print("Run on CPU\n------\n")
-    train(run_on_spu=False, args=args)
+    # print("Run on CPU\n------\n")
+    # train(run_on_spu=False, args=args)
     print("Run on SPU\n------\n")
     train(run_on_spu=True, args=args)
+    ppd.print_status()
+    ppd.clear_status()
 
 
 if __name__ == "__main__":

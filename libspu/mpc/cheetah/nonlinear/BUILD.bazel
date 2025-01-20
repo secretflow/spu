@@ -75,6 +75,17 @@ spu_cc_test(
     ],
 )
 
+
+spu_cc_test(
+    name = "trun_bm",
+    srcs = ["trun_bm.cc"],
+    deps = [
+        ":truncate_prot",
+        "//libspu/mpc/utils:simulate",
+    ],
+)
+
+
 spu_cc_test(
     name = "equal_prot_test",
     srcs = ["equal_prot_test.cc"],

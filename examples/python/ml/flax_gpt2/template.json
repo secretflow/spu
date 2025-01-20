@@ -34,7 +34,9 @@
                     "enable_hal_profile": true,
                     "fxp_exp_mode": 0,
                     "fxp_exp_iters": 5,
-                    "trunc_allow_msb_error": true
+                    "trunc_allow_msb_error": true,
+                    "enable_action_trace": true,
+                    "enable_pphlo_trace": true
                 }
             }
         },

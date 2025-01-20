@@ -99,6 +99,14 @@ class Runtime(object):
     def clear(self) -> None:
         """Delete all SPU values."""
         self._vm.Clear()
+        
+    def print_status(self) -> None:
+        """Print runtime status."""
+        self._vm.PrintStatus()
+        
+    def clear_status(self) -> None:
+        """Clear runtime status."""
+        self._vm.ClearStatus()
 
 
 class Io(object):
