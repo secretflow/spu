@@ -28,7 +28,7 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 from flax.training import train_state
 from jax import random
-from models import ResNet18
+from examples.python.ml.flax_resnet.models import ResNet18
 
 NUM_CLASSES = 10
 IMAGE_SIZE = 32

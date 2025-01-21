@@ -25,7 +25,7 @@ py_binary(
     deps = [
         ":dataset_utils",  # server dependent.
         "//spu/utils:distributed",
-    ],
+    ] + all_requirements,
 )
 
 py_library(

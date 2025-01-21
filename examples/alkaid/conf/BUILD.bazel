@@ -21,4 +21,5 @@ filegroup(
         "alkaid.json",
         "albo.json"
     ],
+
 )

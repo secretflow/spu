@@ -13,6 +13,7 @@
 # limitations under the License.
 
 load("@rules_python//python:defs.bzl", "py_test")
+load("@spu_pip_dev//:requirements.bzl", "all_requirements")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -33,5 +34,5 @@ py_test(
         "//examples/python/ml/stax_mnist_classifier",
         "//examples/python/ml/stax_nn",
         "//spu/utils:distributed",
-    ],
+    ] + all_requirements,
 )
