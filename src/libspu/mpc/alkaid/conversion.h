@@ -27,7 +27,7 @@ namespace spu::mpc::alkaid {
 // Latency: 2 + log(nbits) from 2 rotate and 1 ppa.
 class A2B : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "a2b";
+  static constexpr const char* kBindName() { return "a2b"; }
 
   ce::CExpr latency() const override {
     // 1 * AddBB : log(k) + 1
@@ -47,7 +47,7 @@ class A2B : public UnaryKernel {
 
 class B2ASelector : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "b2a";
+  static constexpr const char* kBindName() { return "b2a"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
@@ -59,7 +59,7 @@ class B2ASelector : public UnaryKernel {
 // https://encrypto.de/papers/DSZ15.pdf
 class B2AByPPA : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "b2a";
+  static constexpr const char* kBindName() { return "b2a"; }
 
   ce::CExpr latency() const override {
     // 2 * rotate   : 2
@@ -82,7 +82,7 @@ class B2AByPPA : public UnaryKernel {
 // https://eprint.iacr.org/2018/403.pdf
 class B2AByOT : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "b2a";
+  static constexpr const char* kBindName() { return "b2a"; }
 
   ce::CExpr latency() const override { return ce::Const(2); }
 
@@ -101,7 +101,7 @@ class B2AByOT : public UnaryKernel {
 
 class MsbA2B : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "msb_a2b";
+  static constexpr const char* kBindName() { return "msb_a2b"; }
 
   ce::CExpr latency() const override {
     // 1 * carry : log(k) + 1
@@ -120,7 +120,7 @@ class MsbA2B : public UnaryKernel {
 
 class EqualAA : public BinaryKernel {
  public:
-  static constexpr char kBindName[] = "equal_aa";
+  static constexpr const char* kBindName() { return "equal_aa"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
@@ -130,7 +130,7 @@ class EqualAA : public BinaryKernel {
 
 class EqualAP : public BinaryKernel {
  public:
-  static constexpr char kBindName[] = "equal_ap";
+  static constexpr const char* kBindName() { return "equal_ap"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
@@ -140,36 +140,15 @@ class EqualAP : public BinaryKernel {
 
 class CommonTypeV : public Kernel {
  public:
-  static constexpr char kBindName[] = "common_type_v";
+  static constexpr const char* kBindName() { return "common_type_v"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
   void evaluate(KernelEvalContext* ctx) const override;
 };
 
-NdArrayRef AssXor2(KernelEvalContext* ctx, const NdArrayRef& lhs,
-                       const NdArrayRef& rhs);
-NdArrayRef RssXor2(KernelEvalContext* ctx, const NdArrayRef& lhs,
-                       const NdArrayRef& rhs);
-NdArrayRef MssXor2(KernelEvalContext* ctx, const NdArrayRef& lhs,
-                        const NdArrayRef& rhs);
-
-NdArrayRef RssAnd2NoComm(KernelEvalContext* ctx, const NdArrayRef& lhs,
-                       const NdArrayRef& rhs);
-NdArrayRef MssAnd2NoComm(KernelEvalContext* ctx, const NdArrayRef& lhs,
-                       const NdArrayRef& rhs);
-NdArrayRef MssAnd3NoComm(KernelEvalContext* ctx, const NdArrayRef& op1,
-                       const NdArrayRef& op2, const NdArrayRef& op3);
-NdArrayRef MssAnd4NoComm(KernelEvalContext* ctx, const NdArrayRef& op1,
-                       const NdArrayRef& op2, const NdArrayRef& op3, const NdArrayRef& op4);
-
-NdArrayRef ResharingAss2Rss(KernelEvalContext* ctx, const NdArrayRef& in);
-NdArrayRef ResharingAss2Mss(KernelEvalContext* ctx, const NdArrayRef& in);
-NdArrayRef ResharingRss2Mss(KernelEvalContext* ctx, const NdArrayRef& in);
-NdArrayRef ResharingMss2Rss(KernelEvalContext* ctx, const NdArrayRef& in);
-NdArrayRef ResharingRss2Ass(KernelEvalContext* ctx, const NdArrayRef& in);
-
-NdArrayRef MsbA2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in, size_t start_rank = 0);
+NdArrayRef MsbA2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in,
+                            size_t start_rank = 0);
 NdArrayRef A2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in);
 NdArrayRef B2AMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in);
 

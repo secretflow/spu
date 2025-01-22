@@ -115,13 +115,13 @@ class BShrTy : public TypeImpl<BShrTy, TypeObject, Secret, BShare> {
   }
 };
 
-class BShrTyMss : public TypeImpl<BShrTyMss, TypeObject, Secret, BShare> {
-  using Base = TypeImpl<BShrTyMss, TypeObject, Secret, BShare>;
+class BShrTyMrss : public TypeImpl<BShrTyMrss, TypeObject, Secret, BShare> {
+  using Base = TypeImpl<BShrTyMrss, TypeObject, Secret, BShare>;
   PtType back_type_ = PT_INVALID;
 
  public:
   using Base::Base;
-  explicit BShrTyMss(PtType back_type, size_t nbits) {
+  explicit BShrTyMrss(PtType back_type, size_t nbits) {
     SPU_ENFORCE(SizeOf(back_type) * 8 >= nbits,
                 "backtype={} has not enough bits={}", back_type, nbits);
     back_type_ = back_type;
@@ -130,7 +130,7 @@ class BShrTyMss : public TypeImpl<BShrTyMss, TypeObject, Secret, BShare> {
 
   PtType getBacktype() const { return back_type_; }
 
-  static std::string_view getStaticId() { return "aby3.BShrMss"; }
+  static std::string_view getStaticId() { return "aby3.BShrMrss"; }
 
   void fromString(std::string_view detail) override {
     auto comma = detail.find_first_of(',');

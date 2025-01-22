@@ -31,9 +31,9 @@
 #include "libspu/mpc/common/pv2k.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
-// TODO: it shows incorrect result that defines EQ_USE_PRG_STATE and undefines EQ_USE_OFFLINE. Fix it.
-// #define EQ_TEST_PPA
-// #define EQ_TEST_BITWIDTH_16
+// TODO: it shows incorrect result that defines ALKAID_USE_PRG_STATE and
+// undefines ALKAID_USE_OFFLINE. Fix it. #define ALKAID_TEST_PPA #define
+// ALKAID_TEST_BITWIDTH_16
 
 namespace spu::mpc::aby3 {
 
@@ -57,7 +57,7 @@ NdArrayRef PPATest(KernelEvalContext* ctx, const NdArrayRef& in) {
     using el_t = ring2k_t;
     using rss_shr_t = std::array<el_t, 2>;
 
-    NdArrayView<rss_shr_t> _in(in);          
+    NdArrayView<rss_shr_t> _in(in);
     NdArrayView<rss_shr_t> _m(m);
     NdArrayView<rss_shr_t> _n(n);
 
@@ -70,7 +70,7 @@ NdArrayRef PPATest(KernelEvalContext* ctx, const NdArrayRef& in) {
     });
 
     return wrap_add_bb(ctx->sctx(), m, n);
-  });  
+  });
 }
 
 // Reference:
@@ -80,9 +80,9 @@ NdArrayRef PPATest(KernelEvalContext* ctx, const NdArrayRef& in) {
 //
 // Latency: 2 + log(nbits) from 1 rotate and 1 ppa.
 NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
-  #ifdef EQ_TEST_PPA
+#ifdef ALKAID_TEST_PPA
   return PPATest(ctx, in);
-  #else
+#else
 
   const auto field = in.eltype().as<Ring2k>()->field();
 
@@ -98,7 +98,7 @@ NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   //   N = [(0, 0), (0, x2), (x2, 0)]
   // Then
   //   Y = PPA(M, N) as the output.
-  // #ifdef EQ_TEST_BITWIDTH_16
+  // #ifdef ALKAID_TEST_BITWIDTH_16
   // const PtType out_btype = calcBShareBacktype(16);
   // const auto out_ty = makeType<BShrTy>(out_btype, 16);
   // #else
@@ -111,7 +111,7 @@ NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   auto numel = in.numel();
 
   DISPATCH_ALL_FIELDS(field, [&]() {
-    // #ifdef EQ_TEST_BITWIDTH_16
+    // #ifdef ALKAID_TEST_BITWIDTH_16
     // using ashr_t = std::array<uint16_t, 2>;
     // ring2k_t _t = 0;
     // _t++;
@@ -162,7 +162,7 @@ NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   });
 
   return wrap_add_bb(ctx->sctx(), m, n);  // comm => log(k) + 1, 2k(logk) + k
-  #endif
+#endif
 }
 
 NdArrayRef B2ASelector::proc(KernelEvalContext* ctx,
@@ -601,7 +601,7 @@ NdArrayRef B2AByOT::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 }
 
 NdArrayRef MsbA2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
-  #ifndef EQ_USE_ALKAID
+#ifndef ALKAID_USE_ALKAID
   const auto field = in.eltype().as<AShrTy>()->field();
   const auto numel = in.numel();
   auto* comm = ctx->getState<Communicator>();
@@ -647,7 +647,8 @@ NdArrayRef MsbA2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
     // Now, we hold ((x0+x1)^z0, z1, z2) which is stored in r0.
 
     // 1. rotate k bits
-    r1 = comm->rotate<el_t>(r0, "m");                   // send r0 to the previous party, get r1 from the next party.
+    r1 = comm->rotate<el_t>(
+        r0, "m");  // send r0 to the previous party, get r1 from the next party.
 
     pforeach(0, numel, [&](int64_t idx) {
       const auto& v = _in[idx];
@@ -678,9 +679,9 @@ NdArrayRef MsbA2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
     return UnwrapValue(msb);
   }
-  #else
+#else
   return MsbA2BMultiFanIn(ctx, in);
-  #endif
+#endif
 }
 
 // Reference:
@@ -992,8 +993,7 @@ NdArrayRef MsbA2BForBitwidth16(KernelEvalContext* ctx, const NdArrayRef& in) {
   // That
   //  M + N = (x0+x1)^z0^z1^z2 + x2
   //        = x0 + x1 + x2 = X
-  const Type bshr_type =
-      makeType<BShrTy>(calcBShareBacktype(16), 16);
+  const Type bshr_type = makeType<BShrTy>(calcBShareBacktype(16), 16);
   NdArrayRef m(bshr_type, in.shape());
   NdArrayRef n(bshr_type, in.shape());
 
@@ -1020,7 +1020,8 @@ NdArrayRef MsbA2BForBitwidth16(KernelEvalContext* ctx, const NdArrayRef& in) {
   // Now, we hold ((x0+x1)^z0, z1, z2) which is stored in r0.
 
   // 1. rotate k bits
-  r1 = comm->rotate<el_t>(r0, "m");                   // send r0 to the previous party, get r1 from the next party.
+  r1 = comm->rotate<el_t>(
+      r0, "m");  // send r0 to the previous party, get r1 from the next party.
 
   pforeach(0, numel, [&](int64_t idx) {
     const auto& v = _in[idx];
@@ -1098,8 +1099,7 @@ NdArrayRef B2AForBitwidth16(KernelEvalContext* ctx, const NdArrayRef& in) {
     using ashr_t = std::array<ashr_el_t, 2>;
 
     // first expand b share to a share length.
-    const auto expanded_ty = makeType<BShrTy>(
-        calcBShareBacktype(16), 16);
+    const auto expanded_ty = makeType<BShrTy>(calcBShareBacktype(16), 16);
     NdArrayRef x(expanded_ty, in.shape());
     NdArrayView<ashr_t> _x(x);
 
@@ -1149,7 +1149,7 @@ NdArrayRef B2AForBitwidth16(KernelEvalContext* ctx, const NdArrayRef& in) {
     } else if (comm->getRank() == 2) {
       std::vector<ashr_el_t> x_plus_r_0(numel);
       pforeach(0, numel,
-                [&](int64_t idx) { x_plus_r_0[idx] = _x_plus_r[idx][0]; });
+               [&](int64_t idx) { x_plus_r_0[idx] = _x_plus_r[idx][0]; });
       comm->sendAsync<ashr_el_t>(0, x_plus_r_0, "reveal.x_plus_r.to.P0");
     }
 

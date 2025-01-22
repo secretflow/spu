@@ -32,7 +32,7 @@ Type AlboIo::getShareType(Visibility vis, int owner_rank) const {
     if (owner_rank >= 0 && owner_rank <= 2) {
       return makeType<Priv2kTy>(field_, owner_rank);
     } else {
-      return makeType<AShrTyMss>(field_);
+      return makeType<AShrTyMrss>(field_);
     }
   }
 
@@ -84,7 +84,7 @@ std::vector<NdArrayRef> AlboIo::toShares(const NdArrayRef& raw, Visibility vis,
 }
 
 size_t AlboIo::getBitSecretShareSize(size_t numel) const {
-  const auto type = makeType<BShrTyMss>(PT_U8, 1);
+  const auto type = makeType<BShrTyMrss>(PT_U8, 1);
   return numel * type.size();
 }
 
@@ -97,7 +97,7 @@ std::vector<NdArrayRef> AlboIo::makeBitSecret(const PtBufferView& in) const {
     in_pt_type = PT_U8;
   }
 
-  const auto out_type = makeType<BShrTyMss>(PT_U8, /* out_nbits */ 1);
+  const auto out_type = makeType<BShrTyMrss>(PT_U8, /* out_nbits */ 1);
   const size_t numel = in.shape.numel();
 
   std::vector<NdArrayRef> shares = {NdArrayRef(out_type, in.shape),
@@ -146,7 +146,7 @@ NdArrayRef AlboIo::fromShares(const std::vector<NdArrayRef>& shares) const {
     SPU_ENFORCE(field_ == eltype.as<Ring2k>()->field());
     const size_t owner = eltype.as<Private>()->owner();
     return shares[owner].as(makeType<RingTy>(field_));
-  } else if (eltype.isa<AShrTyMss>()) {
+  } else if (eltype.isa<AShrTyMrss>()) {
     SPU_ENFORCE(field_ == eltype.as<Ring2k>()->field());
     NdArrayRef out(makeType<Pub2kTy>(field_), shares[0].shape());
 
@@ -165,13 +165,13 @@ NdArrayRef AlboIo::fromShares(const std::vector<NdArrayRef>& shares) const {
       }
     });
     return out;
-  } else if (eltype.isa<BShrTyMss>()) {
+  } else if (eltype.isa<BShrTyMrss>()) {
     NdArrayRef out(makeType<Pub2kTy>(field_), shares[0].shape());
 
     DISPATCH_ALL_FIELDS(field_, [&]() {
       NdArrayView<ring2k_t> _out(out);
 
-      DISPATCH_UINT_PT_TYPES(eltype.as<BShrTyMss>()->getBacktype(), [&] {
+      DISPATCH_UINT_PT_TYPES(eltype.as<BShrTyMrss>()->getBacktype(), [&] {
         using shr_t = std::array<ScalarT, 3>;
         for (size_t si = 0; si < shares.size(); si++) {
           NdArrayView<shr_t> _s(shares[si]);

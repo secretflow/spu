@@ -743,7 +743,7 @@ bool BeaverTinyOt::BatchMacCheck(const NdArrayRef& open_value,
 // the last kth bits in open_val is valid
 std::pair<NdArrayRef, NdArrayRef> BeaverTinyOt::BatchOpen(
     const NdArrayRef& value, const NdArrayRef& mac, size_t k, size_t s) {
-  static constexpr char kBindName[] = "batch_open";
+  static constexpr const char* kBindName() { return "batch_open"; }
   SPU_ENFORCE(value.shape() == mac.shape());
   const auto field = value.eltype().as<Ring2k>()->field();
   size_t field_bits = std::min<size_t>(SizeOf(field) * 8, 64);
@@ -758,7 +758,7 @@ std::pair<NdArrayRef, NdArrayRef> BeaverTinyOt::BatchOpen(
 
   // Because we would use Maccheck to confirm the open value.
   // Thus, we don't need commit them.
-  auto open_val = comm_->allReduce(ReduceOp::ADD, masked_val, kBindName);
+  auto open_val = comm_->allReduce(ReduceOp::ADD, masked_val, kBindName());
   return {open_val, masked_mac};
 }
 

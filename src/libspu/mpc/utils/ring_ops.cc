@@ -31,7 +31,7 @@ namespace {
   SPU_ENFORCE((x).eltype().isa<Ring2k>(), "expect ring type, got={}", \
               (x).eltype());
 
-#define ENFORCE_EQ_ELSIZE_AND_SHAPE(lhs, rhs)                                  \
+#define ENFORCE_ALKAID_ELSIZE_AND_SHAPE(lhs, rhs)                              \
   SPU_ENFORCE((lhs).eltype().as<Ring2k>()->field() ==                          \
                   (rhs).eltype().as<Ring2k>()->field(),                        \
               "type mismatch lhs={}, rhs={}", (lhs).eltype(), (rhs).eltype()); \
@@ -40,7 +40,7 @@ namespace {
 
 #define DEF_UNARY_RING_OP(NAME, OP)                                     \
   void NAME##_impl(NdArrayRef& ret, const NdArrayRef& x) {              \
-    ENFORCE_EQ_ELSIZE_AND_SHAPE(ret, x);                                \
+    ENFORCE_ALKAID_ELSIZE_AND_SHAPE(ret, x);                            \
     const auto field = x.eltype().as<Ring2k>()->field();                \
     const int64_t numel = ret.numel();                                  \
     return DISPATCH_ALL_FIELDS(field, [&]() {                           \
@@ -59,8 +59,8 @@ DEF_UNARY_RING_OP(ring_neg, -);
 #define DEF_BINARY_RING_OP(NAME, OP)                                  \
   void NAME##_impl(NdArrayRef& ret, const NdArrayRef& x,              \
                    const NdArrayRef& y) {                             \
-    ENFORCE_EQ_ELSIZE_AND_SHAPE(ret, x);                              \
-    ENFORCE_EQ_ELSIZE_AND_SHAPE(ret, y);                              \
+    ENFORCE_ALKAID_ELSIZE_AND_SHAPE(ret, x);                          \
+    ENFORCE_ALKAID_ELSIZE_AND_SHAPE(ret, y);                          \
     const auto field = x.eltype().as<Ring2k>()->field();              \
     const int64_t numel = ret.numel();                                \
     return DISPATCH_ALL_FIELDS(field, [&]() {                         \
@@ -84,7 +84,7 @@ DEF_BINARY_RING_OP(ring_xor, ^);
 
 void ring_arshift_impl(NdArrayRef& ret, const NdArrayRef& x,
                        const Sizes& bits) {
-  ENFORCE_EQ_ELSIZE_AND_SHAPE(ret, x);
+  ENFORCE_ALKAID_ELSIZE_AND_SHAPE(ret, x);
   bool is_splat = bits.size() == 1;
   SPU_ENFORCE(static_cast<int64_t>(bits.size()) == x.numel() || is_splat,
               "mismatched numel {} vs {}", bits.size(), x.numel());
@@ -103,7 +103,7 @@ void ring_arshift_impl(NdArrayRef& ret, const NdArrayRef& x,
 }
 
 void ring_rshift_impl(NdArrayRef& ret, const NdArrayRef& x, const Sizes& bits) {
-  ENFORCE_EQ_ELSIZE_AND_SHAPE(ret, x);
+  ENFORCE_ALKAID_ELSIZE_AND_SHAPE(ret, x);
   bool is_splat = bits.size() == 1;
   SPU_ENFORCE(static_cast<int64_t>(bits.size()) == x.numel() || is_splat,
               "mismatched numel {} vs {}", bits.size(), x.numel());
@@ -120,7 +120,7 @@ void ring_rshift_impl(NdArrayRef& ret, const NdArrayRef& x, const Sizes& bits) {
 }
 
 void ring_lshift_impl(NdArrayRef& ret, const NdArrayRef& x, const Sizes& bits) {
-  ENFORCE_EQ_ELSIZE_AND_SHAPE(ret, x);
+  ENFORCE_ALKAID_ELSIZE_AND_SHAPE(ret, x);
   bool is_splat = bits.size() == 1;
   SPU_ENFORCE(static_cast<int64_t>(bits.size()) == x.numel() || is_splat,
               "mismatched numel {} vs {}", bits.size(), x.numel());
@@ -137,7 +137,7 @@ void ring_lshift_impl(NdArrayRef& ret, const NdArrayRef& x, const Sizes& bits) {
 
 void ring_bitrev_impl(NdArrayRef& ret, const NdArrayRef& x, size_t start,
                       size_t end) {
-  ENFORCE_EQ_ELSIZE_AND_SHAPE(ret, x);
+  ENFORCE_ALKAID_ELSIZE_AND_SHAPE(ret, x);
 
   const auto field = x.eltype().as<Ring2k>()->field();
   const auto numel = ret.numel();
@@ -166,7 +166,7 @@ void ring_bitrev_impl(NdArrayRef& ret, const NdArrayRef& x, size_t start,
 
 void ring_bitmask_impl(NdArrayRef& ret, const NdArrayRef& x, size_t low,
                        size_t high) {
-  ENFORCE_EQ_ELSIZE_AND_SHAPE(ret, x);
+  ENFORCE_ALKAID_ELSIZE_AND_SHAPE(ret, x);
 
   const auto field = x.eltype().as<Ring2k>()->field();
   const auto numel = ret.numel();
@@ -263,7 +263,7 @@ NdArrayRef ring_rand_range(FieldType field, const Shape& shape, uint128_t min,
 
 void ring_assign(NdArrayRef& x, const NdArrayRef& y) {
   SPU_ENFORCE_RING(x);
-  ENFORCE_EQ_ELSIZE_AND_SHAPE(x, y);
+  ENFORCE_ALKAID_ELSIZE_AND_SHAPE(x, y);
 
   const auto numel = x.numel();
 
@@ -353,7 +353,7 @@ NdArrayRef ring_mul(const NdArrayRef& x, const NdArrayRef& y) {
 void ring_mul_(NdArrayRef& x, const NdArrayRef& y) { ring_mul_impl(x, x, y); }
 
 void ring_mul_impl(NdArrayRef& ret, const NdArrayRef& x, uint128_t y) {
-  ENFORCE_EQ_ELSIZE_AND_SHAPE(ret, x);
+  ENFORCE_ALKAID_ELSIZE_AND_SHAPE(ret, x);
 
   const auto numel = x.numel();
   const auto field = x.eltype().as<Ring2k>()->field();
@@ -518,7 +518,7 @@ NdArrayRef ring_sum(absl::Span<NdArrayRef const> arrs) {
 }
 
 bool ring_all_equal(const NdArrayRef& x, const NdArrayRef& y, size_t abs_err) {
-  ENFORCE_EQ_ELSIZE_AND_SHAPE(x, y);
+  ENFORCE_ALKAID_ELSIZE_AND_SHAPE(x, y);
 
   auto numel = x.numel();
 
@@ -561,7 +561,7 @@ std::vector<uint8_t> ring_cast_boolean(const NdArrayRef& x) {
 
 NdArrayRef ring_select(const std::vector<uint8_t>& c, const NdArrayRef& x,
                        const NdArrayRef& y) {
-  ENFORCE_EQ_ELSIZE_AND_SHAPE(x, y);
+  ENFORCE_ALKAID_ELSIZE_AND_SHAPE(x, y);
   SPU_ENFORCE(x.numel() == y.numel());
   SPU_ENFORCE(x.numel() == static_cast<int64_t>(c.size()));
 

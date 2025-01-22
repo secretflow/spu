@@ -27,8 +27,8 @@ NdArrayRef getShare(const NdArrayRef& in, int64_t share_idx) {
   std::transform(new_strides.cbegin(), new_strides.cend(), new_strides.begin(),
                  [](int64_t s) { return 3 * s; });
 
-  if (in.eltype().isa<AShrTyMss>()) {
-    const auto field = in.eltype().as<AShrTyMss>()->field();
+  if (in.eltype().isa<AShrTyMrss>()) {
+    const auto field = in.eltype().as<AShrTyMrss>()->field();
     const auto ty = makeType<RingTy>(field);
 
     return NdArrayRef(
@@ -41,8 +41,8 @@ NdArrayRef getShare(const NdArrayRef& in, int64_t share_idx) {
     return NdArrayRef(
         in.buf(), ty, in.shape(), new_strides,
         in.offset() + share_idx * static_cast<int64_t>(ty.size()));
-  } else if (in.eltype().isa<BShrTyMss>()) {
-    const auto stype = in.eltype().as<BShrTyMss>()->getBacktype();
+  } else if (in.eltype().isa<BShrTyMrss>()) {
+    const auto stype = in.eltype().as<BShrTyMrss>()->getBacktype();
     const auto ty = makeType<PtTy>(stype);
     return NdArrayRef(
         in.buf(), ty, in.shape(), new_strides,
@@ -63,14 +63,15 @@ NdArrayRef getFirstShare(const NdArrayRef& in) { return getShare(in, 0); }
 
 NdArrayRef getSecondShare(const NdArrayRef& in) { return getShare(in, 1); }
 
-NdArrayRef makeAShare(const NdArrayRef& s1, const NdArrayRef& s2, const NdArrayRef& s3,
-                      FieldType field) {
-  const Type ty = makeType<AShrTyMss>(field);
+NdArrayRef makeAShare(const NdArrayRef& s1, const NdArrayRef& s2,
+                      const NdArrayRef& s3, FieldType field) {
+  const Type ty = makeType<AShrTyMrss>(field);
 
   SPU_ENFORCE(s3.eltype().as<Ring2k>()->field() == field);
   SPU_ENFORCE(s2.eltype().as<Ring2k>()->field() == field);
   SPU_ENFORCE(s1.eltype().as<Ring2k>()->field() == field);
-  SPU_ENFORCE((s1.shape() == s2.shape()) & (s1.shape() == s3.shape()), "got s1={}, s2={}, s3={}", s1, s2, s3);
+  SPU_ENFORCE((s1.shape() == s2.shape()) & (s1.shape() == s3.shape()),
+              "got s1={}, s2={}, s3={}", s1, s2, s3);
   SPU_ENFORCE(ty.size() == 3 * s1.elsize());
 
   NdArrayRef res(ty, s1.shape());

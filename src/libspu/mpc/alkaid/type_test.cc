@@ -29,8 +29,28 @@ TEST(AShrTy, Simple) {
     EXPECT_FALSE(ty.isa<Public>());
     EXPECT_TRUE(ty.isa<AShare>());
     EXPECT_FALSE(ty.isa<BShare>());
+    EXPECT_FALSE(ty.isa<MrssShare>());
 
     EXPECT_EQ(ty.toString(), "alkaid.AShr<FM32>");
+
+    EXPECT_EQ(Type::fromString(ty.toString()), ty);
+  }
+}
+
+TEST(AShrTyMrss, Simple) {
+  registerTypes();
+  {
+    Type ty = makeType<AShrTyMrss>(FM32);
+    EXPECT_EQ(ty.size(), 4 * 3);
+
+    EXPECT_TRUE(ty.isa<Secret>());
+    EXPECT_TRUE(ty.isa<Ring2k>());
+    EXPECT_FALSE(ty.isa<Public>());
+    EXPECT_TRUE(ty.isa<AShare>());
+    EXPECT_FALSE(ty.isa<BShare>());
+    EXPECT_TRUE(ty.isa<MrssShare>());
+
+    EXPECT_EQ(ty.toString(), "alkaid.AShrMrss<FM32>");
 
     EXPECT_EQ(Type::fromString(ty.toString()), ty);
   }
@@ -47,6 +67,7 @@ TEST(BShrTy, Simple) {
     EXPECT_FALSE(ty.isa<Public>());
     EXPECT_FALSE(ty.isa<AShare>());
     EXPECT_TRUE(ty.isa<BShare>());
+    EXPECT_FALSE(ty.isa<MrssShare>());
 
     EXPECT_EQ(ty.toString(), "alkaid.BShr<PT_U8,7>");
 
@@ -59,8 +80,39 @@ TEST(BShrTy, Simple) {
     EXPECT_FALSE(cty.isa<Public>());
     EXPECT_FALSE(cty.isa<AShare>());
     EXPECT_TRUE(cty.isa<BShare>());
+    EXPECT_FALSE(cty.isa<MrssShare>());
 
     EXPECT_EQ(cty.toString(), "alkaid.BShr<PT_U8,7>");
+  }
+}
+
+TEST(BShrTyMrss, Simple) {
+  Type ty = makeType<BShrTyMrss>();
+  // alkaid::BShr constructor with field and nbits.
+  {
+    Type ty = makeType<BShrTyMrss>(PT_U8, 7);
+    EXPECT_EQ(ty.size(), SizeOf(PT_U8) * 3);
+
+    EXPECT_TRUE(ty.isa<Secret>());
+    EXPECT_FALSE(ty.isa<Public>());
+    EXPECT_FALSE(ty.isa<AShare>());
+    EXPECT_TRUE(ty.isa<BShare>());
+    EXPECT_TRUE(ty.isa<MrssShare>());
+
+    EXPECT_EQ(ty.toString(), "alkaid.BShrMrss<PT_U8,7>");
+
+    EXPECT_EQ(Type::fromString(ty.toString()), ty);
+
+    // clone
+    Type cty = ty;  // NOLINT: Test clone
+    EXPECT_EQ(cty, ty);
+    EXPECT_TRUE(cty.isa<Secret>());
+    EXPECT_FALSE(cty.isa<Public>());
+    EXPECT_FALSE(cty.isa<AShare>());
+    EXPECT_TRUE(cty.isa<BShare>());
+    EXPECT_TRUE(cty.isa<MrssShare>());
+
+    EXPECT_EQ(cty.toString(), "alkaid.BShrMrss<PT_U8,7>");
   }
 }
 

@@ -30,14 +30,14 @@ class AShrTy : public TypeImpl<AShrTy, RingTy, Secret, AShare> {
   size_t size() const override { return SizeOf(GetStorageType(field_)) * 2; }
 };
 
-class AShrTyMss : public TypeImpl<AShrTyMss, RingTy, Secret, AShare> {
-  using Base = TypeImpl<AShrTyMss, RingTy, Secret, AShare>;
+class AShrTyMrss : public TypeImpl<AShrTyMrss, RingTy, Secret, AShare> {
+  using Base = TypeImpl<AShrTyMrss, RingTy, Secret, AShare>;
 
  public:
   using Base::Base;
-  static std::string_view getStaticId() { return "albo.AShrMss"; }
+  static std::string_view getStaticId() { return "albo.AShrMrss"; }
 
-  explicit AShrTyMss(FieldType field) { field_ = field; }
+  explicit AShrTyMrss(FieldType field) { field_ = field; }
 
   size_t size() const override { return SizeOf(GetStorageType(field_)) * 3; }
 };
@@ -127,13 +127,13 @@ class BShrTy : public TypeImpl<BShrTy, TypeObject, Secret, BShare> {
   }
 };
 
-class BShrTyMss : public TypeImpl<BShrTyMss, TypeObject, Secret, BShare> {
-  using Base = TypeImpl<BShrTyMss, TypeObject, Secret, BShare>;
+class BShrTyMrss : public TypeImpl<BShrTyMrss, TypeObject, Secret, BShare> {
+  using Base = TypeImpl<BShrTyMrss, TypeObject, Secret, BShare>;
   PtType back_type_ = PT_INVALID;
 
  public:
   using Base::Base;
-  explicit BShrTyMss(PtType back_type, size_t nbits) {
+  explicit BShrTyMrss(PtType back_type, size_t nbits) {
     SPU_ENFORCE(SizeOf(back_type) * 8 >= nbits,
                 "backtype={} has not enough bits={}", back_type, nbits);
     back_type_ = back_type;
@@ -142,7 +142,7 @@ class BShrTyMss : public TypeImpl<BShrTyMss, TypeObject, Secret, BShare> {
 
   PtType getBacktype() const { return back_type_; }
 
-  static std::string_view getStaticId() { return "albo.BShrMss"; }
+  static std::string_view getStaticId() { return "albo.BShrMrss"; }
 
   void fromString(std::string_view detail) override {
     auto comma = detail.find_first_of(',');
@@ -160,7 +160,7 @@ class BShrTyMss : public TypeImpl<BShrTyMss, TypeObject, Secret, BShare> {
   size_t size() const override { return SizeOf(back_type_) * 3; }
 
   bool equals(TypeObject const* other) const override {
-    auto const* derived_other = dynamic_cast<BShrTyMss const*>(other);
+    auto const* derived_other = dynamic_cast<BShrTyMrss const*>(other);
     SPU_ENFORCE(derived_other);
     return getBacktype() == derived_other->getBacktype() &&
            nbits() == derived_other->nbits();

@@ -67,7 +67,7 @@ void regAlkaidProtocol(SPUContext* ctx,
           alkaid::XorBP, alkaid::XorBB,                               // Xor
           alkaid::BitrevB,                                            // bitreverse
           alkaid::BitIntlB, alkaid::BitDeintlB,                       // bit(de)interleave
-          alkaid::RandA,                                              // rand
+          alkaid::RandA, alkaid::RandB,                               // rand
 #ifdef ENABLE_PRECISE_ALKAID_TRUNCPR
           alkaid::TruncAPr,  // Trunc
 #else

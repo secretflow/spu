@@ -14,6 +14,7 @@
 
 load("@rules_python//python:defs.bzl", "py_binary")
 load("@spu_pip_dev//:requirements.bzl", "all_requirements")
+load("@spulib//bazel:spu.bzl", "spu_cc_binary")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -43,14 +44,14 @@ spu_cc_binary(
     name = "microbm",
     srcs = ["microbenchmark.cc"],
     deps = [
-        "//libspu/core:context",
-        "//libspu/mpc/aby3:aby3",
-        "//libspu/mpc/alkaid:alkaid",
-        "//libspu/mpc/albo:albo",
-        "//libspu/mpc:api",
-        "//libspu/mpc:ab_api",
-        "//libspu/mpc:offline_recorder",
-        "//libspu/mpc/utils:simulate",
-        "//libspu/core:ndarray_ref",
+        "@spulib//libspu/core:context",
+        "@spulib//libspu/mpc/aby3:aby3",
+        "@spulib//libspu/mpc/alkaid:alkaid",
+        "@spulib//libspu/mpc/albo:albo",
+        "@spulib//libspu/mpc:api",
+        "@spulib//libspu/mpc:ab_api",
+        "@spulib//libspu/mpc:offline_recorder",
+        "@spulib//libspu/mpc/utils:simulate",
+        "@spulib//libspu/core:ndarray_ref",
     ],
 )

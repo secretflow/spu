@@ -35,9 +35,9 @@
 #include "libspu/mpc/offline_recorder.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
-// #define EQ_USE_OFFLINE
-// #define EQ_USE_PRG_STATE
-#define EQ_PACK_SINGLE_BIT
+// #define ALKAID_USE_OFFLINE
+// #define ALKAID_USE_PRG_STATE
+#define ALKAID_PACK_SINGLE_BIT
 
 namespace spu::mpc::alkaid {
 
@@ -544,20 +544,20 @@ NdArrayRef eqz(KernelEvalContext* ctx, const NdArrayRef& in) {
       }
 
       // Alkaid.
-      zero_flag = ResharingRss2Mss(ctx, zero_flag);
+      zero_flag = ResharingRss2Mrss(ctx, zero_flag);
       auto cur_bits = SizeOf(field) * 8;
       while (cur_bits > 1) {
         NdArrayRef op[4];
-        std::tie(op[0], op[2]) = bit_split<BShrTyMss, 3>(zero_flag);
-        std::tie(op[0], op[1]) = bit_split<BShrTyMss, 3>(op[0]);
-        std::tie(op[2], op[3]) = bit_split<BShrTyMss, 3>(op[2]);
+        std::tie(op[0], op[2]) = bit_split<BShrTyMrss, 3>(zero_flag);
+        std::tie(op[0], op[1]) = bit_split<BShrTyMrss, 3>(op[0]);
+        std::tie(op[2], op[3]) = bit_split<BShrTyMrss, 3>(op[2]);
         cur_bits /= 4;
         if (cur_bits > 1)
-          zero_flag = ResharingAss2Mss(
-              ctx, MssAnd4NoComm(ctx, op[0], op[1], op[2], op[3]));
+          zero_flag = ResharingAss2Mrss(
+              ctx, MrssAnd4NoComm(ctx, op[0], op[1], op[2], op[3]));
         else
           out = ResharingAss2Rss(
-              ctx, MssAnd4NoComm(ctx, op[0], op[1], op[2], op[3]));
+              ctx, MrssAnd4NoComm(ctx, op[0], op[1], op[2], op[3]));
       }
     });
   });
@@ -927,7 +927,7 @@ NdArrayRef MsbA2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in,
   const Type rss_ashr_type = makeType<AShrTy>(field);
   const Type rss_bshr_type = makeType<BShrTy>(PtType::PT_U8, 1);
   const Type mss_bshr_type =
-      makeType<BShrTyMss>(GetStorageType(field), SizeOf(field) * 8);
+      makeType<BShrTyMrss>(GetStorageType(field), SizeOf(field) * 8);
   // const Type out_rss_bshr_type =
   //     makeType<BShrTy>(PtType::PT_U8, 1);
 
@@ -958,7 +958,7 @@ NdArrayRef MsbA2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in,
 
     prg_state->fillPrssPair(r0.data(), r1.data(), r0.size(),
                             PrgState::GenPrssCtrl::Both);
-#if !defined(EQ_USE_OFFLINE) || !defined(EQ_USE_PRG_STATE)
+#if !defined(ALKAID_USE_OFFLINE) || !defined(ALKAID_USE_PRG_STATE)
     std::fill(r0.begin(), r0.end(), 0);
     std::fill(r1.begin(), r1.end(), 0);
 #endif
@@ -995,14 +995,17 @@ NdArrayRef MsbA2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in,
     });
 
     // rotate k bits
-    r0 = comm->bcast<el_t>(r1, start_rank, "MsbA2B, special resharing from ASS to MSS, broadcast Dm");
-    if (comm->getRank() == start_rank) 
-    {
-      r0 = comm->recv<el_t>(start_rank_next, "MsbA2B, special resharing from ASS to MSS, get dn2");
-    }
-    else if (comm->getRank() == start_rank_next) 
-    {
-      comm->sendAsync<el_t>(start_rank, r1, "MsbA2B, special resharing from ASS to MSS, send dn2");
+    r0 = comm->bcast<el_t>(
+        r1, start_rank,
+        "MsbA2B, special resharing from ASS to MSS, broadcast Dm");
+    if (comm->getRank() == start_rank) {
+      r0 = comm->recv<el_t>(
+          start_rank_next,
+          "MsbA2B, special resharing from ASS to MSS, get dn2");
+    } else if (comm->getRank() == start_rank_next) {
+      comm->sendAsync<el_t>(
+          start_rank, r1,
+          "MsbA2B, special resharing from ASS to MSS, send dn2");
     }
 
     // compute external value Dm, Dn
@@ -1017,11 +1020,11 @@ NdArrayRef MsbA2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in,
     });
 
     // 4. generate signal p and g.
-    // auto m_rss = ResharingMss2Rss(ctx, m);
-    // auto n_rss = ResharingMss2Rss(ctx, n);
-    // g = ResharingAss2Mss(ctx, RssAnd2NoComm(ctx, m_rss, n_rss));
-    g = ResharingRss2Mss(ctx, MssAnd2NoComm(ctx, m, n));
-    p = MssXor2(ctx, m, n);
+    // auto m_rss = ResharingMrss2Rss(ctx, m);
+    // auto n_rss = ResharingMrss2Rss(ctx, n);
+    // g = ResharingAss2Mrss(ctx, RssAnd2NoComm(ctx, m_rss, n_rss));
+    g = ResharingRss2Mrss(ctx, MrssAnd2NoComm(ctx, m, n));
+    p = MrssXor2(ctx, m, n);
     NdArrayView<mss_shr_t> _p(p);
     NdArrayView<mss_shr_t> _g(g);
 
@@ -1046,36 +1049,39 @@ NdArrayRef MsbA2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in,
       NdArrayRef pops[4];
       NdArrayRef gops[4];
 
-      auto [g_hi, g_lo] = bit_split<BShrTyMss, 3>(g);
-      std::tie(gops[3], gops[1]) = bit_split<BShrTyMss, 3>(g_hi);
-      std::tie(gops[2], gops[0]) = bit_split<BShrTyMss, 3>(g_lo);
-      auto [p_hi, p_lo] = bit_split<BShrTyMss, 3>(p);
-      std::tie(pops[3], pops[1]) = bit_split<BShrTyMss, 3>(p_hi);
-      std::tie(pops[2], pops[0]) = bit_split<BShrTyMss, 3>(p_lo);
+      auto [g_hi, g_lo] = bit_split<BShrTyMrss, 3>(g);
+      std::tie(gops[3], gops[1]) = bit_split<BShrTyMrss, 3>(g_hi);
+      std::tie(gops[2], gops[0]) = bit_split<BShrTyMrss, 3>(g_lo);
+      auto [p_hi, p_lo] = bit_split<BShrTyMrss, 3>(p);
+      std::tie(pops[3], pops[1]) = bit_split<BShrTyMrss, 3>(p_hi);
+      std::tie(pops[2], pops[0]) = bit_split<BShrTyMrss, 3>(p_lo);
 
-      auto p23_rss    = MssAnd2NoComm(ctx, pops[2], pops[3]);
-      auto p01_rss    = MssAnd2NoComm(ctx, pops[0], pops[1]);
-      auto g0_p1_rss  = MssAnd2NoComm(ctx, gops[0], pops[1]);
-      auto g1_rss     = ResharingMss2Rss(ctx, gops[1]);
-      auto g2_rss     = ResharingMss2Rss(ctx, gops[2]);
-      auto p3_rss     = ResharingMss2Rss(ctx, pops[3]);
-      auto p_res      = RssAnd2NoComm(ctx, p01_rss, p23_rss);
-      auto g_res_0    = RssAnd2NoComm(ctx, g0_p1_rss, p23_rss);
-      auto g_res_1    = RssAnd2NoComm(ctx, g1_rss, p23_rss);
-      auto g_res_2    = RssAnd2NoComm(ctx, g2_rss, p3_rss);
-      auto g_res_3    = ResharingRss2Ass(ctx, ResharingMss2Rss(ctx, gops[3]));
-      auto g_combined = AssXor2(ctx, AssXor2(ctx, g_res_0, g_res_1), AssXor2(ctx, g_res_2, g_res_3));      
+      auto p23_rss = MrssAnd2NoComm(ctx, pops[2], pops[3]);
+      auto p01_rss = MrssAnd2NoComm(ctx, pops[0], pops[1]);
+      auto g0_p1_rss = MrssAnd2NoComm(ctx, gops[0], pops[1]);
+      auto g1_rss = ResharingMrss2Rss(ctx, gops[1]);
+      auto g2_rss = ResharingMrss2Rss(ctx, gops[2]);
+      auto p3_rss = ResharingMrss2Rss(ctx, pops[3]);
+      auto p_res = RssAnd2NoComm(ctx, p01_rss, p23_rss);
+      auto g_res_0 = RssAnd2NoComm(ctx, g0_p1_rss, p23_rss);
+      auto g_res_1 = RssAnd2NoComm(ctx, g1_rss, p23_rss);
+      auto g_res_2 = RssAnd2NoComm(ctx, g2_rss, p3_rss);
+      auto g_res_3 = ResharingRss2Ass(ctx, ResharingMrss2Rss(ctx, gops[3]));
+      auto g_combined = AssXor2(ctx, AssXor2(ctx, g_res_0, g_res_1),
+                                AssXor2(ctx, g_res_2, g_res_3));
 
       // online communication
       k /= 4;
       if (k > 1) {
         // auto pg = pack_2_bitvec<BShrTy, 1>(p_res, g_combined);
-        // pg = ResharingAss2Mss(ctx, pg);
-        // std::tie(g, p) = unpack_2_bitvec<BShrTyMss, 3>(pg);
-        std::vector<NdArrayRef> pg = spu::vmap({p_res, g_combined}, [&](NdArrayRef a) {return ResharingAss2Mss(ctx, a);});
+        // pg = ResharingAss2Mrss(ctx, pg);
+        // std::tie(g, p) = unpack_2_bitvec<BShrTyMrss, 3>(pg);
+        std::vector<NdArrayRef> pg =
+            spu::vmap({p_res, g_combined},
+                      [&](NdArrayRef a) { return ResharingAss2Mrss(ctx, a); });
         g = std::move(pg[1]), p = std::move(pg[0]);
       } else {
-#ifndef EQ_PACK_SINGLE_BIT
+#ifndef ALKAID_PACK_SINGLE_BIT
         g = ResharingAss2Rss(ctx, g_combined);
 #else
         g = bitwise_vmap<BShrTy, 1, BShrTy, 2>(g_combined, 8, [&](NdArrayRef x) {return ResharingAss2Rss(ctx, x);});
@@ -1088,7 +1094,8 @@ NdArrayRef MsbA2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in,
       _out[idx][0] ^= (static_cast<uint8_t>(_g_rss[idx][0]));
       _out[idx][1] ^= (static_cast<uint8_t>(_g_rss[idx][1]));
     });
-    // if (comm->getRank() == 0) std::cout << "MSB: out." << (int)_out[0][0] << " " << (int)_out[1][0] << " " << (int)_out[2][0] << std::endl;
+    // if (comm->getRank() == 0) std::cout << "MSB: out." << (int)_out[0][0] <<
+    // " " << (int)_out[1][0] << " " << (int)_out[2][0] << std::endl;
     return out;
   });
 }
@@ -1137,14 +1144,14 @@ std::pair<NdArrayRef, NdArrayRef> PGCell_4FanIn4Out(
    *  gr3_ass -> gr3_mss, gr2_ass -> gr2_mss, gr1_rss -> gr1_mss          (up)
    */
 
-  NdArrayRef p3_rss = ResharingMss2Rss(ctx, p3);
-  NdArrayRef p2_rss = ResharingMss2Rss(ctx, p2);
-  NdArrayRef g2_rss = ResharingMss2Rss(ctx, g2);
-  NdArrayRef g1_rss = ResharingMss2Rss(ctx, g1);
+  NdArrayRef p3_rss = ResharingMrss2Rss(ctx, p3);
+  NdArrayRef p2_rss = ResharingMrss2Rss(ctx, p2);
+  NdArrayRef g2_rss = ResharingMrss2Rss(ctx, g2);
+  NdArrayRef g1_rss = ResharingMrss2Rss(ctx, g1);
 
-  NdArrayRef p01_rss = MssAnd2NoComm(ctx, p0, p1);
-  NdArrayRef p23_rss = MssAnd2NoComm(ctx, p2, p3);
-  NdArrayRef g0p1_rss = MssAnd2NoComm(ctx, g0, p1);
+  NdArrayRef p01_rss = MrssAnd2NoComm(ctx, p0, p1);
+  NdArrayRef p23_rss = MrssAnd2NoComm(ctx, p2, p3);
+  NdArrayRef g0p1_rss = MrssAnd2NoComm(ctx, g0, p1);
 
   NdArrayRef p0123_ass = RssAnd2NoComm(ctx, p01_rss, p23_rss);
   NdArrayRef p012_ass = RssAnd2NoComm(ctx, p01_rss, p2_rss);
@@ -1153,27 +1160,27 @@ std::pair<NdArrayRef, NdArrayRef> PGCell_4FanIn4Out(
   NdArrayRef g0p123_ass = RssAnd2NoComm(ctx, g0p1_rss, p23_rss);
   NdArrayRef g1p2_ass = RssAnd2NoComm(ctx, g1_rss, p2_rss);
   NdArrayRef g0p12_ass = RssAnd2NoComm(ctx, g0p1_rss, p2_rss);
-  
+
   // gr3 = g3 ^ gr3_ass
-  NdArrayRef gr3_ass = AssXor2(ctx, g2p3_ass, AssXor2(ctx, g1p23_ass, g0p123_ass));
+  NdArrayRef gr3_ass =
+      AssXor2(ctx, g2p3_ass, AssXor2(ctx, g1p23_ass, g0p123_ass));
   NdArrayRef gr2_ass = AssXor2(ctx, g1p2_ass, g0p12_ass);
   NdArrayRef gr1_ass = ResharingRss2Ass(ctx, g0p1_rss);
-  NdArrayRef gr0_ass = ResharingRss2Ass(ctx, ResharingMss2Rss(ctx, g0));
+  NdArrayRef gr0_ass = ResharingRss2Ass(ctx, ResharingMrss2Rss(ctx, g0));
 
   NdArrayRef p3_ass = std::move(p0123_ass);
   NdArrayRef p2_ass = std::move(p012_ass);
   NdArrayRef p1_ass = ResharingRss2Ass(ctx, p01_rss);
-  NdArrayRef p0_ass = ResharingRss2Ass(ctx, ResharingMss2Rss(ctx, p0));
-  NdArrayRef g3_ass = AssXor2(ctx, 
-      gr3_ass, ResharingRss2Ass(ctx, ResharingMss2Rss(ctx, g3)));
-  NdArrayRef g2_ass = AssXor2(ctx,
-      gr2_ass, ResharingRss2Ass(ctx, g2_rss));
-  NdArrayRef g1_ass = AssXor2(ctx,
-      gr1_ass, ResharingRss2Ass(ctx, g1_rss));
+  NdArrayRef p0_ass = ResharingRss2Ass(ctx, ResharingMrss2Rss(ctx, p0));
+  NdArrayRef g3_ass =
+      AssXor2(ctx, gr3_ass, ResharingRss2Ass(ctx, ResharingMrss2Rss(ctx, g3)));
+  NdArrayRef g2_ass = AssXor2(ctx, gr2_ass, ResharingRss2Ass(ctx, g2_rss));
+  NdArrayRef g1_ass = AssXor2(ctx, gr1_ass, ResharingRss2Ass(ctx, g1_rss));
   NdArrayRef g0_ass = std::move(gr0_ass);
 
-  // 3 3, 2 2, 1 1, 0 0 -> 3 3 1 1, 2 2 0 0 -> 3 1 3 1, 2 0 2 0 -> 3 1 3 1 2 0 2 0 -> 3 2 1 0 3 2 1 0 
-  NdArrayRef g_packed_ass = bit_interleave<BShrTy, 1>(pack_2_bitvec<BShrTy, 1>( 
+  // 3 3, 2 2, 1 1, 0 0 -> 3 3 1 1, 2 2 0 0 -> 3 1 3 1, 2 0 2 0 -> 3 1 3 1 2 0 2
+  // 0 -> 3 2 1 0 3 2 1 0
+  NdArrayRef g_packed_ass = bit_interleave<BShrTy, 1>(pack_2_bitvec<BShrTy, 1>(
       bit_interleave<BShrTy, 1>(pack_2_bitvec<BShrTy, 1>(g0_ass, g2_ass)),
       bit_interleave<BShrTy, 1>(pack_2_bitvec<BShrTy, 1>(g1_ass, g3_ass))));
   NdArrayRef p_packed_ass = bit_interleave<BShrTy, 1>(pack_2_bitvec<BShrTy, 1>(
@@ -1182,8 +1189,8 @@ std::pair<NdArrayRef, NdArrayRef> PGCell_4FanIn4Out(
 
   NdArrayRef gr3_mss, pr3_mss;
   NdArrayRef gp = pack_2_bitvec<BShrTy, 1>(p_packed_ass, g_packed_ass);
-  NdArrayRef gp_mss = ResharingAss2Mss(ctx, gp);
-  std::tie(pr3_mss, gr3_mss) = unpack_2_bitvec<BShrTyMss, 3>(gp_mss);
+  NdArrayRef gp_mss = ResharingAss2Mrss(ctx, gp);
+  std::tie(pr3_mss, gr3_mss) = unpack_2_bitvec<BShrTyMrss, 3>(gp_mss);
   return std::make_pair(gr3_mss, pr3_mss);
 }
 
@@ -1224,23 +1231,24 @@ std::pair<NdArrayRef, NdArrayRef> PGCell_4FanIn1Out(
    *  p01_rss -> p01_mss, p012_ass -> p012_mss, p0123_ass -> p0123_mss    (up)
    *  gr3_ass -> gr3_mss, gr2_ass -> gr2_mss, gr1_rss -> gr1_mss          (up)
    */
-  NdArrayRef p3_rss = ResharingMss2Rss(ctx, p3);
-  NdArrayRef g2_rss = ResharingMss2Rss(ctx, g2);
-  NdArrayRef g1_rss = ResharingMss2Rss(ctx, g1);
+  NdArrayRef p3_rss = ResharingMrss2Rss(ctx, p3);
+  NdArrayRef g2_rss = ResharingMrss2Rss(ctx, g2);
+  NdArrayRef g1_rss = ResharingMrss2Rss(ctx, g1);
 
-  NdArrayRef p01_rss = MssAnd2NoComm(ctx, p0, p1);
-  NdArrayRef p23_rss = MssAnd2NoComm(ctx, p2, p3);
-  NdArrayRef g0p1_rss = MssAnd2NoComm(ctx, g0, p1);
+  NdArrayRef p01_rss = MrssAnd2NoComm(ctx, p0, p1);
+  NdArrayRef p23_rss = MrssAnd2NoComm(ctx, p2, p3);
+  NdArrayRef g0p1_rss = MrssAnd2NoComm(ctx, g0, p1);
 
   NdArrayRef p0123_ass = RssAnd2NoComm(ctx, p01_rss, p23_rss);
   NdArrayRef g2p3_ass = RssAnd2NoComm(ctx, g2_rss, p3_rss);
   NdArrayRef g1p23_ass = RssAnd2NoComm(ctx, g1_rss, p23_rss);
   NdArrayRef g0p123_ass = RssAnd2NoComm(ctx, g0p1_rss, p23_rss);
 
-  NdArrayRef g3_ass = ResharingRss2Ass(ctx, ResharingMss2Rss(ctx, g3));
-  
+  NdArrayRef g3_ass = ResharingRss2Ass(ctx, ResharingMrss2Rss(ctx, g3));
+
   // gr3 = g3 ^ gr3_ass
-  NdArrayRef gr3_ass = AssXor2(ctx, AssXor2(ctx, g3_ass, g2p3_ass), AssXor2(ctx, g1p23_ass, g0p123_ass));
+  NdArrayRef gr3_ass = AssXor2(ctx, AssXor2(ctx, g3_ass, g2p3_ass),
+                               AssXor2(ctx, g1p23_ass, g0p123_ass));
   // NdArrayRef& pr3_ass = p0123_ass;
 
   return std::make_pair(std::move(gr3_ass), std::move(p0123_ass));
@@ -1249,8 +1257,8 @@ std::pair<NdArrayRef, NdArrayRef> PGCell_4FanIn1Out(
 NdArrayRef PPAFromABY2(KernelEvalContext* ctx, const NdArrayRef& x,
                        const NdArrayRef& y) {
   const auto numel = x.numel();
-  const size_t in_nbits = std::max(x.eltype().as<BShrTyMss>()->nbits(),
-                                   y.eltype().as<BShrTyMss>()->nbits());
+  const size_t in_nbits = std::max(x.eltype().as<BShrTyMrss>()->nbits(),
+                                   y.eltype().as<BShrTyMrss>()->nbits());
   const auto in_shape = x.shape();
 
   SPU_ENFORCE(x.numel() == y.numel(),
@@ -1259,7 +1267,7 @@ NdArrayRef PPAFromABY2(KernelEvalContext* ctx, const NdArrayRef& x,
   const Type rss_bshr_type =
       makeType<BShrTy>(calcBShareBacktype(in_nbits), in_nbits);
   const Type mss_bshr_type =
-      makeType<BShrTyMss>(calcBShareBacktype(in_nbits), in_nbits);
+      makeType<BShrTyMrss>(calcBShareBacktype(in_nbits), in_nbits);
 
   NdArrayRef p(mss_bshr_type, in_shape);
   NdArrayRef g(mss_bshr_type, in_shape);
@@ -1277,8 +1285,8 @@ NdArrayRef PPAFromABY2(KernelEvalContext* ctx, const NdArrayRef& x,
     NdArrayView<rss_shr_t> _out(out);
 
     // 1. Compute signal g and p.
-    auto sig_g_rss = MssAnd2NoComm(ctx, x, y);
-    auto sig_g_mss = ResharingRss2Mss(ctx, sig_g_rss);
+    auto sig_g_rss = MrssAnd2NoComm(ctx, x, y);
+    auto sig_g_mss = ResharingRss2Mrss(ctx, sig_g_rss);
     NdArrayView<mss_shr_t> _g_mss(sig_g_mss);
     // if (comm->getRank() == 0) std::cout << "PPA: sig_g_mss " << _g_mss[0][0]
     // << " " << _g_mss[1][0] << std::endl;
@@ -1313,12 +1321,12 @@ NdArrayRef PPAFromABY2(KernelEvalContext* ctx, const NdArrayRef& x,
       NdArrayRef pops[4];
       NdArrayRef gops[4];
 
-      auto [g_hi, g_lo] = bit_split<BShrTyMss, 3>(g);
-      std::tie(gops[3], gops[1]) = bit_split<BShrTyMss, 3>(g_hi);
-      std::tie(gops[2], gops[0]) = bit_split<BShrTyMss, 3>(g_lo);
-      auto [p_hi, p_lo] = bit_split<BShrTyMss, 3>(p);
-      std::tie(pops[3], pops[1]) = bit_split<BShrTyMss, 3>(p_hi);
-      std::tie(pops[2], pops[0]) = bit_split<BShrTyMss, 3>(p_lo);
+      auto [g_hi, g_lo] = bit_split<BShrTyMrss, 3>(g);
+      std::tie(gops[3], gops[1]) = bit_split<BShrTyMrss, 3>(g_hi);
+      std::tie(gops[2], gops[0]) = bit_split<BShrTyMrss, 3>(g_lo);
+      auto [p_hi, p_lo] = bit_split<BShrTyMrss, 3>(p);
+      std::tie(pops[3], pops[1]) = bit_split<BShrTyMrss, 3>(p_hi);
+      std::tie(pops[2], pops[0]) = bit_split<BShrTyMrss, 3>(p_lo);
 
       std::tie(g, p) =
           PGCell_4FanIn4Out(ctx, pops[0], pops[1], pops[2], pops[3], gops[0],
@@ -1331,7 +1339,7 @@ NdArrayRef PPAFromABY2(KernelEvalContext* ctx, const NdArrayRef& x,
       // << _g[1][0] << std::endl;
     }
 
-    const Type mss_bshr_type_16 = makeType<BShrTyMss>(PtType::PT_U16, 16);
+    const Type mss_bshr_type_16 = makeType<BShrTyMrss>(PtType::PT_U16, 16);
 
     // Level 1. Use 4 fan-in and 1 output cell.
     // p3, p2, p1, p0 -> p3 & p2 & p1 & p0
@@ -1341,16 +1349,16 @@ NdArrayRef PPAFromABY2(KernelEvalContext* ctx, const NdArrayRef& x,
       NdArrayRef gops[4];
       NdArrayRef p_sel, g_sel;
 
-      std::tie(p_sel, std::ignore) = bit_split<BShrTyMss, 3>(p);
-      std::tie(p_sel, std::ignore) = bit_split<BShrTyMss, 3>(p_sel);
-      std::tie(g_sel, std::ignore) = bit_split<BShrTyMss, 3>(g);
-      std::tie(g_sel, std::ignore) = bit_split<BShrTyMss, 3>(g_sel);
+      std::tie(p_sel, std::ignore) = bit_split<BShrTyMrss, 3>(p);
+      std::tie(p_sel, std::ignore) = bit_split<BShrTyMrss, 3>(p_sel);
+      std::tie(g_sel, std::ignore) = bit_split<BShrTyMrss, 3>(g);
+      std::tie(g_sel, std::ignore) = bit_split<BShrTyMrss, 3>(g_sel);
       NdArrayView<std::array<uint16_t, 3>> _p_sel(p_sel);
       NdArrayView<std::array<uint16_t, 3>> _g_sel(g_sel);
 
       for (int i = 0; i < 4; i++) {
-        pops[i] = lshift_fixed_bitwidth<BShrTyMss, 3>(p_sel, 3 - i);
-        gops[i] = lshift_fixed_bitwidth<BShrTyMss, 3>(g_sel, 3 - i);
+        pops[i] = lshift_fixed_bitwidth<BShrTyMrss, 3>(p_sel, 3 - i);
+        gops[i] = lshift_fixed_bitwidth<BShrTyMrss, 3>(g_sel, 3 - i);
       }
 
       std::tie(gops[0], pops[0]) =
@@ -1358,8 +1366,8 @@ NdArrayRef PPAFromABY2(KernelEvalContext* ctx, const NdArrayRef& x,
                             gops[1], gops[2], gops[3]);
 
       auto gp = pack_2_bitvec<BShrTy, 1>(pops[0], gops[0]);
-      auto gp_mss = ResharingAss2Mss(ctx, gp);
-      std::tie(gops[0], pops[0]) = unpack_2_bitvec<BShrTyMss, 3>(gp_mss);
+      auto gp_mss = ResharingAss2Mrss(ctx, gp);
+      std::tie(gops[0], pops[0]) = unpack_2_bitvec<BShrTyMrss, 3>(gp_mss);
 
       pops[1] = NdArrayRef(mss_bshr_type, in_shape);
       gops[1] = NdArrayRef(mss_bshr_type, in_shape);
@@ -1377,10 +1385,10 @@ NdArrayRef PPAFromABY2(KernelEvalContext* ctx, const NdArrayRef& x,
         _gops1[idx][2] = static_cast<uint64_t>(_gops0[idx][2]) << 48;
       });
 
-      pops[1] = bit_interleave<BShrTyMss, 3>(pops[1]);
-      pops[1] = bit_interleave<BShrTyMss, 3>(pops[1]);
-      gops[1] = bit_interleave<BShrTyMss, 3>(gops[1]);
-      gops[1] = bit_interleave<BShrTyMss, 3>(gops[1]);
+      pops[1] = bit_interleave<BShrTyMrss, 3>(pops[1]);
+      pops[1] = bit_interleave<BShrTyMrss, 3>(pops[1]);
+      gops[1] = bit_interleave<BShrTyMrss, 3>(gops[1]);
+      gops[1] = bit_interleave<BShrTyMrss, 3>(gops[1]);
 
       NdArrayView<std::array<uint64_t, 3>> _pops(pops[1]);
       NdArrayView<std::array<uint64_t, 3>> _gops(gops[1]);
@@ -1408,16 +1416,16 @@ NdArrayRef PPAFromABY2(KernelEvalContext* ctx, const NdArrayRef& x,
       NdArrayRef gops[4];
       NdArrayRef p_sel, g_sel;
 
-      std::tie(p_sel, std::ignore) = bit_split<BShrTyMss, 3>(p);
-      std::tie(p_sel, std::ignore) = bit_split<BShrTyMss, 3>(p_sel);
-      std::tie(g_sel, std::ignore) = bit_split<BShrTyMss, 3>(g);
-      std::tie(g_sel, std::ignore) = bit_split<BShrTyMss, 3>(g_sel);
+      std::tie(p_sel, std::ignore) = bit_split<BShrTyMrss, 3>(p);
+      std::tie(p_sel, std::ignore) = bit_split<BShrTyMrss, 3>(p_sel);
+      std::tie(g_sel, std::ignore) = bit_split<BShrTyMrss, 3>(g);
+      std::tie(g_sel, std::ignore) = bit_split<BShrTyMrss, 3>(g_sel);
       NdArrayView<std::array<uint16_t, 3>> _p_sel(p_sel);
       NdArrayView<std::array<uint16_t, 3>> _g_sel(g_sel);
 
       for (int i = 0; i < 4; i++) {
-        pops[i] = lshift_fixed_bitwidth<BShrTyMss, 3>(p_sel, 4 * (3 - i));
-        gops[i] = lshift_fixed_bitwidth<BShrTyMss, 3>(g_sel, 4 * (3 - i));
+        pops[i] = lshift_fixed_bitwidth<BShrTyMrss, 3>(p_sel, 4 * (3 - i));
+        gops[i] = lshift_fixed_bitwidth<BShrTyMrss, 3>(g_sel, 4 * (3 - i));
 
         // pops[i] = NdArrayRef(mss_bshr_type_16, in_shape);
         // gops[i] = NdArrayRef(mss_bshr_type_16, in_shape);
@@ -1439,8 +1447,8 @@ NdArrayRef PPAFromABY2(KernelEvalContext* ctx, const NdArrayRef& x,
                             gops[1], gops[2], gops[3], false);
       // pops[1] = NdArrayRef(mss_bshr_type, in_shape);
       auto gp = pack_2_bitvec<BShrTy, 1>(pops[0], gops[0]);
-      auto gp_mss = ResharingAss2Mss(ctx, gp);
-      std::tie(gops[0], pops[0]) = unpack_2_bitvec<BShrTyMss, 3>(gp_mss);
+      auto gp_mss = ResharingAss2Mrss(ctx, gp);
+      std::tie(gops[0], pops[0]) = unpack_2_bitvec<BShrTyMrss, 3>(gp_mss);
       gops[1] = NdArrayRef(mss_bshr_type, in_shape);
 
       // NdArrayView<std::array<uint16_t, 3>> _pops0(pops[0]);
@@ -1456,10 +1464,10 @@ NdArrayRef PPAFromABY2(KernelEvalContext* ctx, const NdArrayRef& x,
         _gops1[idx][2] = static_cast<uint64_t>(_gops0[idx][2]) << 48;
       });
 
-      // pops[1] = bit_interleave<BShrTyMss, 3>(pops[1]);
-      // pops[1] = bit_interleave<BShrTyMss, 3>(pops[1]);
-      gops[1] = bit_interleave<BShrTyMss, 3>(gops[1]);
-      gops[1] = bit_interleave<BShrTyMss, 3>(gops[1]);
+      // pops[1] = bit_interleave<BShrTyMrss, 3>(pops[1]);
+      // pops[1] = bit_interleave<BShrTyMrss, 3>(pops[1]);
+      gops[1] = bit_interleave<BShrTyMrss, 3>(gops[1]);
+      gops[1] = bit_interleave<BShrTyMrss, 3>(gops[1]);
 
       // NdArrayView<std::array<uint64_t, 3>> _pops(pops[1]);
       NdArrayView<std::array<uint64_t, 3>> _gops(gops[1]);
@@ -1508,8 +1516,8 @@ NdArrayRef PPAFromABY2(KernelEvalContext* ctx, const NdArrayRef& x,
         _pops[idx][2] = SelectAndRotate(_p[idx][2], 0x7777777777777777ull, 0);
       });
 
-      auto c = RssXor2(ctx, ResharingMss2Rss(ctx, gops1),
-                       MssAnd2NoComm(ctx, gops0, pops));
+      auto c = RssXor2(ctx, ResharingMrss2Rss(ctx, gops1),
+                       MrssAnd2NoComm(ctx, gops0, pops));
       NdArrayView<rss_shr_t> _c(c);
       pforeach(0, numel, [&](int64_t idx) {
         _out[idx][0] ^= _c[idx][0] << 1;
@@ -1523,8 +1531,8 @@ NdArrayRef PPAFromABY2(KernelEvalContext* ctx, const NdArrayRef& x,
 NdArrayRef PPASklanky(KernelEvalContext* ctx, const NdArrayRef& x,
                       const NdArrayRef& y) {
   const auto numel = x.numel();
-  const size_t in_nbits = std::max(x.eltype().as<BShrTyMss>()->nbits(),
-                                   y.eltype().as<BShrTyMss>()->nbits());
+  const size_t in_nbits = std::max(x.eltype().as<BShrTyMrss>()->nbits(),
+                                   y.eltype().as<BShrTyMrss>()->nbits());
   const auto in_shape = x.shape();
 
   SPU_ENFORCE(x.numel() == y.numel(),
@@ -1533,7 +1541,7 @@ NdArrayRef PPASklanky(KernelEvalContext* ctx, const NdArrayRef& x,
   const Type rss_bshr_type =
       makeType<BShrTy>(calcBShareBacktype(in_nbits), in_nbits);
   const Type mss_bshr_type =
-      makeType<BShrTyMss>(calcBShareBacktype(in_nbits), in_nbits);
+      makeType<BShrTyMrss>(calcBShareBacktype(in_nbits), in_nbits);
 
   NdArrayRef p(mss_bshr_type, in_shape);
   NdArrayRef g(mss_bshr_type, in_shape);
@@ -1549,13 +1557,13 @@ NdArrayRef PPASklanky(KernelEvalContext* ctx, const NdArrayRef& x,
     NdArrayView<ass_shr_t> _out(out);
 
     // 1. Compute signal g and p.
-    // auto x_rss = ResharingMss2Rss(ctx, x);
-    // auto y_rss = ResharingMss2Rss(ctx, y);
+    // auto x_rss = ResharingMrss2Rss(ctx, x);
+    // auto y_rss = ResharingMrss2Rss(ctx, y);
     // auto sig_g_ass = RssAnd2NoComm(ctx, x_rss, y_rss);
-    // g = ResharingAss2Mss(ctx, sig_g_ass);
-    auto sig_g_rss = MssAnd2NoComm(ctx, x, y);
-    g = ResharingRss2Mss(ctx, sig_g_rss);
-    p = MssXor2(ctx, x, y);
+    // g = ResharingAss2Mrss(ctx, sig_g_ass);
+    auto sig_g_rss = MrssAnd2NoComm(ctx, x, y);
+    g = ResharingRss2Mrss(ctx, sig_g_rss);
+    p = MrssXor2(ctx, x, y);
 
     // if (comm->getRank() == 0) std::cout << "PPA: generate signal p and signal
     // g." << std::endl; if (comm->getRank() == 0) std::cout << "PPA: signal p."
@@ -1566,48 +1574,44 @@ NdArrayRef PPASklanky(KernelEvalContext* ctx, const NdArrayRef& x,
     // 2. PPA.
     // we dont use the carryout circuit from aby 2.0. By limitting p's msb to be
     // 1 and g's msb to be 0, we could build a simpler carryout circuit.
-    pforeach(0, numel, [&](int64_t idx) {
-      _out[idx][0] = _p[idx][0] ^ _p[idx][1];
-    });
+    pforeach(0, numel,
+             [&](int64_t idx) { _out[idx][0] = _p[idx][0] ^ _p[idx][1]; });
 
     // Construnction from aby 2.0. See https://eprint.iacr.org/2020/1225
     // Level 0. Use 4 fan-in and 4 outputs cell.
     // p3, p2, p1, p0 -> p3 & p2 & p1 & p0, p2 & p1 & p0, p1 & p0, p0
     // g works in the same way.
     {
-      auto gops = sklanky_split<bshr_el_t, 3, BShrTyMss>(g, 0);
-      auto pops = sklanky_split<bshr_el_t, 3, BShrTyMss>(p, 0);
+      auto gops = sklanky_split<bshr_el_t, 3, BShrTyMrss>(g, 0);
+      auto pops = sklanky_split<bshr_el_t, 3, BShrTyMrss>(p, 0);
 
       for (size_t i = 0; i < 4; i++) {
-        gops[i] = bit_split_2<BShrTyMss, 3>(bit_split_2<BShrTyMss, 3>(gops[i]));
-        gops[i] = rshift<BShrTyMss, 3>(gops[i], 16);
-        pops[i] = bit_split_2<BShrTyMss, 3>(bit_split_2<BShrTyMss, 3>(pops[i]));
-        pops[i] = rshift<BShrTyMss, 3>(pops[i], 16);
+        gops[i] =
+            bit_split_2<BShrTyMrss, 3>(bit_split_2<BShrTyMrss, 3>(gops[i]));
+        gops[i] = rshift<BShrTyMrss, 3>(gops[i], 16);
+        pops[i] =
+            bit_split_2<BShrTyMrss, 3>(bit_split_2<BShrTyMrss, 3>(pops[i]));
+        pops[i] = rshift<BShrTyMrss, 3>(pops[i], 16);
       }
 
       std::tie(g, p) =
           PGCell_4FanIn1Out(ctx, pops[0], pops[1], pops[2], pops[3], gops[0],
                             gops[1], gops[2], gops[3]);
 
-      #ifdef EQ_PACK_SINGLE_BIT
+#ifdef ALKAID_PACK_SINGLE_BIT
+      auto res = spu::vmap({p, g}, [&](const NdArrayRef& a) {
+        return bitwise_vmap_by_byte<BShrTy, 1, BShrTyMrss, 3>(
+            a, [&](NdArrayRef x) { return ResharingAss2Mrss(ctx, x); });
+      });
+#else
       auto res = spu::vmap(
         {p, g}, 
-        [&](const NdArrayRef &a) {
-          return bitwise_vmap_by_byte<BShrTy, 1, BShrTyMss, 3>(
-            a,
-            [&](NdArrayRef x) {return ResharingAss2Mss(ctx, x);}
-          );
-        }
+        [&](NdArrayRef x) {return ResharingAss2Mrss(ctx, x);}
       );
-      #else
-      auto res = spu::vmap(
-        {p, g}, 
-        [&](NdArrayRef x) {return ResharingAss2Mss(ctx, x);}
-      );
-      #endif   
+#endif
       g = std::move(res[1]), p = std::move(res[0]);
-      g = lshift<BShrTyMss, 3>(g, 16);
-      p = lshift<BShrTyMss, 3>(p, 16);
+      g = lshift<BShrTyMrss, 3>(g, 16);
+      p = lshift<BShrTyMrss, 3>(p, 16);
 
       // if (comm->getRank() == 0) std::cout << "PPA: generate signal p and
       // signal g." << std::endl; if (comm->getRank() == 0) std::cout << "PPA:
@@ -1620,38 +1624,35 @@ NdArrayRef PPASklanky(KernelEvalContext* ctx, const NdArrayRef& x,
     // p3, p2, p1, p0 -> p3 & p2 & p1 & p0
     // g works in the same way.
     {
-      auto gops = sklanky_split<bshr_el_t, 3, BShrTyMss>(g, 1);
-      auto pops = sklanky_split<bshr_el_t, 3, BShrTyMss>(p, 1);
+      auto gops = sklanky_split<bshr_el_t, 3, BShrTyMrss>(g, 1);
+      auto pops = sklanky_split<bshr_el_t, 3, BShrTyMrss>(p, 1);
       for (size_t i = 0; i < 4; i++) {
-        gops[i] = bit_split_2<BShrTyMss, 3>(bit_split_2<BShrTyMss, 3>(gops[i]));
-        gops[i] = rshift<BShrTyMss, 3>(gops[i], 16);
-        pops[i] = bit_split_2<BShrTyMss, 3>(bit_split_2<BShrTyMss, 3>(pops[i]));
-        pops[i] = rshift<BShrTyMss, 3>(pops[i], 16);
+        gops[i] =
+            bit_split_2<BShrTyMrss, 3>(bit_split_2<BShrTyMrss, 3>(gops[i]));
+        gops[i] = rshift<BShrTyMrss, 3>(gops[i], 16);
+        pops[i] =
+            bit_split_2<BShrTyMrss, 3>(bit_split_2<BShrTyMrss, 3>(pops[i]));
+        pops[i] = rshift<BShrTyMrss, 3>(pops[i], 16);
       }
 
       std::tie(g, p) =
           PGCell_4FanIn1Out(ctx, pops[0], pops[1], pops[2], pops[3], gops[0],
                             gops[1], gops[2], gops[3]);
 
-      #ifdef EQ_PACK_SINGLE_BIT
+#ifdef ALKAID_PACK_SINGLE_BIT
+      auto res = spu::vmap({p, g}, [&](const NdArrayRef& a) {
+        return bitwise_vmap_by_byte<BShrTy, 1, BShrTyMrss, 3>(
+            a, [&](NdArrayRef x) { return ResharingAss2Mrss(ctx, x); });
+      });
+#else
       auto res = spu::vmap(
         {p, g}, 
-        [&](const NdArrayRef &a) {
-          return bitwise_vmap_by_byte<BShrTy, 1, BShrTyMss, 3>(
-            a,
-            [&](NdArrayRef x) {return ResharingAss2Mss(ctx, x);}
-          );
-        }
+        [&](NdArrayRef x) {return ResharingAss2Mrss(ctx, x);}
       );
-      #else
-      auto res = spu::vmap(
-        {p, g}, 
-        [&](NdArrayRef x) {return ResharingAss2Mss(ctx, x);}
-      );
-      #endif
+#endif
       g = std::move(res[1]), p = std::move(res[0]);
-      g = lshift<BShrTyMss, 3>(g, 16);
-      p = lshift<BShrTyMss, 3>(p, 16);
+      g = lshift<BShrTyMrss, 3>(g, 16);
+      p = lshift<BShrTyMrss, 3>(p, 16);
 
       // if (comm->getRank() == 0) std::cout << "PPA: generate signal p and
       // signal g." << std::endl; if (comm->getRank() == 0) std::cout << "PPA:
@@ -1664,21 +1665,23 @@ NdArrayRef PPASklanky(KernelEvalContext* ctx, const NdArrayRef& x,
     // p3, p2, p1, p0 -> p3 & p2 & p1 & p0
     // g works in the same way.
     {
-      auto gops = sklanky_split<bshr_el_t, 3, BShrTyMss>(g, 2);
-      auto pops = sklanky_split<bshr_el_t, 3, BShrTyMss>(p, 2);
+      auto gops = sklanky_split<bshr_el_t, 3, BShrTyMrss>(g, 2);
+      auto pops = sklanky_split<bshr_el_t, 3, BShrTyMrss>(p, 2);
 
       for (size_t i = 0; i < 4; i++) {
-        gops[i] = bit_split_2<BShrTyMss, 3>(bit_split_2<BShrTyMss, 3>(gops[i]));
-        gops[i] = rshift<BShrTyMss, 3>(gops[i], 16);
-        pops[i] = bit_split_2<BShrTyMss, 3>(bit_split_2<BShrTyMss, 3>(pops[i]));
-        pops[i] = rshift<BShrTyMss, 3>(pops[i], 16);
+        gops[i] =
+            bit_split_2<BShrTyMrss, 3>(bit_split_2<BShrTyMrss, 3>(gops[i]));
+        gops[i] = rshift<BShrTyMrss, 3>(gops[i], 16);
+        pops[i] =
+            bit_split_2<BShrTyMrss, 3>(bit_split_2<BShrTyMrss, 3>(pops[i]));
+        pops[i] = rshift<BShrTyMrss, 3>(pops[i], 16);
       }
 
       std::tie(g, p) =
           PGCell_4FanIn1Out(ctx, pops[0], pops[1], pops[2], pops[3], gops[0],
                             gops[1], gops[2], gops[3], false);
 
-      // #ifdef EQ_PACK_SINGLE_BIT
+      // #ifdef ALKAID_PACK_SINGLE_BIT
       // g = bitwise_vmap_by_byte<BShrTy, 1, BShrTy, 2>(
       //   g,
       //   [&](NdArrayRef x) {return ResharingAss2Rss(ctx, x);}
@@ -1726,7 +1729,7 @@ NdArrayRef A2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in) {
   const Type rss_bshr_type =
       makeType<BShrTy>(GetStorageType(field), SizeOf(field) * 8);
   const Type mss_bshr_type =
-      makeType<BShrTyMss>(GetStorageType(field), SizeOf(field) * 8);
+      makeType<BShrTyMrss>(GetStorageType(field), SizeOf(field) * 8);
 
   NdArrayRef m(mss_bshr_type, in.shape());
   NdArrayRef n(mss_bshr_type, in.shape());
@@ -1752,7 +1755,7 @@ NdArrayRef A2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in) {
     std::vector<el_t> r1(numel, 0);
     prg_state->fillPrssPair(r0.data(), r1.data(), r0.size(),
                             PrgState::GenPrssCtrl::Both);
-#if !defined(EQ_USE_OFFLINE) || !defined(EQ_USE_PRG_STATE)
+#if !defined(ALKAID_USE_OFFLINE) || !defined(ALKAID_USE_PRG_STATE)
     std::fill(r0.begin(), r0.end(), 0);
     std::fill(r1.begin(), r1.end(), 0);
 #endif
@@ -1789,14 +1792,14 @@ NdArrayRef A2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in) {
     });
 
     // rotate k bits
-    r0 = comm->bcast<el_t>(r1, 0, "MsbA2B, special resharing from ASS to MSS, broadcast Dm");
-    if (comm->getRank() == 0) 
-    {
-      r0 = comm->recv<el_t>(1, "MsbA2B, special resharing from ASS to MSS, get dn2");
-    }
-    else if (comm->getRank() == 1) 
-    {
-      comm->sendAsync<el_t>(0, r1, "MsbA2B, special resharing from ASS to MSS, send dn2");
+    r0 = comm->bcast<el_t>(
+        r1, 0, "MsbA2B, special resharing from ASS to MSS, broadcast Dm");
+    if (comm->getRank() == 0) {
+      r0 = comm->recv<el_t>(
+          1, "MsbA2B, special resharing from ASS to MSS, get dn2");
+    } else if (comm->getRank() == 1) {
+      comm->sendAsync<el_t>(
+          0, r1, "MsbA2B, special resharing from ASS to MSS, send dn2");
     }
 
     // compute external value Dm, Dn
@@ -1811,16 +1814,14 @@ NdArrayRef A2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in) {
     });
 
     auto ppa_result = PPASklanky(ctx, m, n);
-    #ifdef EQ_PACK_SINGLE_BIT
+#ifdef ALKAID_PACK_SINGLE_BIT
     out = bitwise_vmap_by_byte<BShrTy, 1, BShrTy, 2>(
-      ppa_result,
-      [&](NdArrayRef x) {return ResharingAss2Rss(ctx, x);}
-    );
-    #else
+        ppa_result, [&](NdArrayRef x) { return ResharingAss2Rss(ctx, x); });
+#else
     out = ResharingAss2Rss(ctx, ppa_result);
-    #endif
+#endif
     return out;
-  });  
+  });
 }
 
 // Alkaid's B2A. RSS input, RSS output.
@@ -1828,7 +1829,7 @@ NdArrayRef A2BMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in) {
 // P0 computes ra0 = rb0 xor rb1 - ra1 and sends it to P2.
 // Now, (0, (rb0, rb1, 0)) and (0, (ra0, ra1, 0)) come to MRSS(-r).
 // We invoke a PPA to compute z = x + r where r = rb0 xor rb1.
-// Notice that a ResharingAss2Mss is invoked while computing signal g.
+// Notice that a ResharingAss2Mrss is invoked while computing signal g.
 // Then, we reveal z to P1 and P2. (-ra0, -ra1, z) is what we want.
 // Online: log2(k) + 1 rounds.
 NdArrayRef B2AMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in) {
@@ -1838,12 +1839,12 @@ NdArrayRef B2AMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in) {
 
   SPU_ENFORCE(in_nbits <= SizeOf(field) * 8, "invalid nbits={}", in_nbits);
   const Type rss_ashr_type = makeType<AShrTy>(field);
-  const Type mss_ashr_type = makeType<AShrTyMss>(field);
+  const Type mss_ashr_type = makeType<AShrTyMrss>(field);
   const int field_bit_width = SizeOf(field) * 8;
   const Type rss_bshr_type =
       makeType<BShrTy>(calcBShareBacktype(field_bit_width), field_bit_width);
-  const Type mss_bshr_type =
-      makeType<BShrTyMss>(calcBShareBacktype(field_bit_width), field_bit_width);
+  const Type mss_bshr_type = makeType<BShrTyMrss>(
+      calcBShareBacktype(field_bit_width), field_bit_width);
 
   NdArrayRef dabit_a(mss_ashr_type, in.shape());
   NdArrayRef dabit_b(mss_bshr_type, in.shape());
@@ -1881,7 +1882,8 @@ NdArrayRef B2AMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in) {
         using rss_shr_t = std::array<bshr_el_t, 2>;
         // using ass_shr_t = std::array<bshr_el_t, 1>;
 
-        const auto expanded_type = makeType<BShrTy>(calcBShareBacktype(field_bit_width), field_bit_width);
+        const auto expanded_type = makeType<BShrTy>(
+            calcBShareBacktype(field_bit_width), field_bit_width);
         NdArrayRef in_expanded(expanded_type, in.shape());
         NdArrayView<rss_shr_t> _ine(in_expanded);
         NdArrayView<input_rss_shr_t> _in(in);
@@ -1891,7 +1893,7 @@ NdArrayRef B2AMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in) {
           _ine[idx][1] = v[1];
         });
 
-        auto in_mss = ResharingRss2Mss(ctx, in_expanded);
+        auto in_mss = ResharingRss2Mrss(ctx, in_expanded);
 
         NdArrayView<std::array<ashr_el_t, 3>> _dabit_a(dabit_a);
         NdArrayView<mss_shr_t> _dabit_b(dabit_b);
@@ -1907,17 +1909,17 @@ NdArrayRef B2AMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in) {
 
           // sample rb1, ra1 with p1
           prg_state->fillPrssPair<ashr_el_t>({}, r_arith_1.data(), numel,
-                                            PrgState::GenPrssCtrl::Second);
+                                             PrgState::GenPrssCtrl::Second);
           prg_state->fillPrssPair<bshr_el_t>({}, r_bool_1.data(), numel,
-                                            PrgState::GenPrssCtrl::Second);
+                                             PrgState::GenPrssCtrl::Second);
           // sample rb0 with p2
           prg_state->fillPrssPair<bshr_el_t>(r_bool_0.data(), {}, numel,
-                                            PrgState::GenPrssCtrl::First);
-          #if !defined(EQ_USE_OFFLINE) || !defined(EQ_USE_PRG_STATE)
+                                             PrgState::GenPrssCtrl::First);
+#if !defined(ALKAID_USE_OFFLINE) || !defined(ALKAID_USE_PRG_STATE)
           std::fill(r_bool_0.begin(), r_bool_0.end(), 0);
           std::fill(r_arith_1.begin(), r_arith_1.end(), 0);
           std::fill(r_bool_1.begin(), r_bool_1.end(), 0);
-          #endif
+#endif
 
           // send rb0 = (ra0 + ra1) ^ rb1 to P2
           std::vector<ashr_el_t> r_arith_0(numel, 0);
@@ -1933,7 +1935,9 @@ NdArrayRef B2AMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in) {
             _out[idx][1] = -r_arith_1[idx];
           });
           // comm->sendAsync<ashr_el_t>(2, r_arith_0, "r_arith");
-          if (comm->getRank() == 0) OfflineRecorder::RecordAsyncComm(r_arith_0.size(), r_arith_0.size() * sizeof(ashr_el_t));
+          if (comm->getRank() == 0)
+            OfflineRecorder::RecordAsyncComm(
+                r_arith_0.size(), r_arith_0.size() * sizeof(ashr_el_t));
         } else {
           // std::vector<ashr_el_t> a_s(numel);
           std::vector<ashr_el_t> r_arith(numel, 0);
@@ -1942,13 +1946,13 @@ NdArrayRef B2AMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in) {
           if (comm->getRank() == 1) {
             // sample rb1, ra1 with p0
             prg_state->fillPrssPair<ashr_el_t>(r_arith.data(), {}, numel,
-                                              PrgState::GenPrssCtrl::First);
+                                               PrgState::GenPrssCtrl::First);
             prg_state->fillPrssPair<bshr_el_t>(r_bool.data(), {}, numel,
-                                              PrgState::GenPrssCtrl::First);
-            #if !defined(EQ_USE_OFFLINE) || !defined(EQ_USE_PRG_STATE)
+                                               PrgState::GenPrssCtrl::First);
+#if !defined(ALKAID_USE_OFFLINE) || !defined(ALKAID_USE_PRG_STATE)
             std::fill(r_arith.begin(), r_arith.end(), 0);
             std::fill(r_bool.begin(), r_bool.end(), 0);
-            #endif
+#endif
             pforeach(0, numel, [&](int64_t idx) {
               _dabit_a[idx][0] = 0;
               _dabit_a[idx][1] = r_arith[idx];
@@ -1961,14 +1965,15 @@ NdArrayRef B2AMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in) {
             });
           } else {
             prg_state->fillPrssPair<bshr_el_t>({}, r_bool.data(), numel,
-                                              PrgState::GenPrssCtrl::Second);
-            #if !defined(EQ_USE_OFFLINE) || !defined(EQ_USE_PRG_STATE)
+                                               PrgState::GenPrssCtrl::Second);
+#if !defined(ALKAID_USE_OFFLINE) || !defined(ALKAID_USE_PRG_STATE)
             std::fill(r_arith.begin(), r_arith.end(), 0);
             std::fill(r_bool.begin(), r_bool.end(), 0);
-            #endif
+#endif
             // EQ: offline.
-            // r_arith = comm->recv<ashr_el_t>(0, "r_arith");   
-            // OfflineRecorder::RecordAsyncComm(r_arith.size(), r_arith.size() * sizeof(ashr_el_t));
+            // r_arith = comm->recv<ashr_el_t>(0, "r_arith");
+            // OfflineRecorder::RecordAsyncComm(r_arith.size(), r_arith.size() *
+            // sizeof(ashr_el_t));
 
             pforeach(0, numel, [&](int64_t idx) {
               _dabit_a[idx][0] = 0;
@@ -1979,20 +1984,21 @@ NdArrayRef B2AMultiFanIn(KernelEvalContext* ctx, const NdArrayRef& in) {
               _dabit_b[idx][2] = r_bool[idx];
               _out[idx][0] = 0;
               _out[idx][1] = -r_arith[idx];
-            }); 
+            });
           }
         }
 
-        auto ppa_result = ResharingAss2Rss(ctx, PPASklanky(ctx, in_mss, dabit_b));
+        auto ppa_result =
+            ResharingAss2Rss(ctx, PPASklanky(ctx, in_mss, dabit_b));
         NdArrayView<rss_shr_t> _z(ppa_result);
 
         pforeach(0, numel, [&](int64_t idx) {
-            _out[idx][0] += _z[idx][0];
-            _out[idx][1] += _z[idx][1];
+          _out[idx][0] += _z[idx][0];
+          _out[idx][1] += _z[idx][1];
         });
 
         return out;
-      });  
+      });
     });
   });
 }

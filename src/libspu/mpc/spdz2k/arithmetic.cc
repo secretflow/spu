@@ -280,7 +280,7 @@ NdArrayRef AddAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
 // SPDZ2k: Efficient MPC mod 2k for Dishonest Majority
 // - https://eprint.iacr.org/2018/482.pdf
 bool SingleCheck(KernelEvalContext* ctx, const NdArrayRef& in) {
-  static constexpr char kBindName[] = "single_check";
+  static constexpr const char* kBindName() { return "single_check"; }
 
   const auto field = in.eltype().as<Ring2k>()->field();
   auto* comm = ctx->getState<Communicator>();
@@ -299,7 +299,7 @@ bool SingleCheck(KernelEvalContext* ctx, const NdArrayRef& in) {
   auto y_mac = ring_add(x_mac, ring_lshift(r_mac, {k}));
 
   // 3. Open the value
-  auto plain_y = comm->allReduce(ReduceOp::ADD, y, kBindName);
+  auto plain_y = comm->allReduce(ReduceOp::ADD, y, kBindName());
 
   // 4. Check the consistency of y
   auto z = ring_sub(y_mac, ring_mul(plain_y, key));
@@ -341,7 +341,7 @@ static NdArrayRef wrap_add_aa(SPUContext* ctx, const NdArrayRef& x,
 // TODO: 1. maybe all shared values using one check is better
 // 2. use DISPATCH_ALL_FIELDS to improve performance
 bool BatchCheck(KernelEvalContext* ctx, const std::vector<NdArrayRef>& ins) {
-  static constexpr char kBindName[] = "batch_check";
+  static constexpr const char* kBindName() { return "batch_check"; }
 
   SPU_ENFORCE(!ins.empty());
   const auto field = ins[0].eltype().as<Ring2k>()->field();
@@ -376,7 +376,7 @@ bool BatchCheck(KernelEvalContext* ctx, const std::vector<NdArrayRef>& ins) {
   std::vector<NdArrayRef> plain_x_hat_v;
   vmap(x_hat_v.begin(), x_hat_v.end(), std::back_inserter(plain_x_hat_v),
        [&](const NdArrayRef& s) {
-         return comm->allReduce(ReduceOp::ADD, s, kBindName);
+         return comm->allReduce(ReduceOp::ADD, s, kBindName());
        });
 
   // 5. get l public random values, compute plain y

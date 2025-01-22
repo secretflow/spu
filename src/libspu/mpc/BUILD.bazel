@@ -52,7 +52,7 @@ spu_cc_library(
         "//libspu/mpc/securenn",
         "//libspu/mpc/semi2k",
         "//libspu/mpc/alkaid",
-        "//libspu/mpc/albo",
+        # "//libspu/mpc/albo",
     ],
 )
 
@@ -136,7 +136,7 @@ spu_cc_binary(
         "//libspu/core:context",
         "//libspu/mpc/aby3:aby3",
         "//libspu/mpc/alkaid:alkaid",
-        "//libspu/mpc/albo:albo",
+        # "//libspu/mpc/albo:albo",
         "//libspu/mpc:api",
         "//libspu/mpc:ab_api",
         "//libspu/mpc:offline_recorder",

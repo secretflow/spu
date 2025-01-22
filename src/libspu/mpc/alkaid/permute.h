@@ -20,7 +20,7 @@ namespace spu::mpc::alkaid {
 
 class RandPermM : public RandKernel {
  public:
-  static constexpr char kBindName[] = "rand_perm_m";
+  static constexpr const char* kBindName() { return "rand_perm_m"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -31,7 +31,7 @@ class RandPermM : public RandKernel {
 
 class PermAM : public PermKernel {
  public:
-  static constexpr char kBindName[] = "perm_am";
+  static constexpr const char* kBindName() { return "perm_am"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
@@ -41,7 +41,7 @@ class PermAM : public PermKernel {
 
 class PermAP : public PermKernel {
  public:
-  static constexpr char kBindName[] = "perm_ap";
+  static constexpr const char* kBindName() { return "perm_ap"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -53,7 +53,7 @@ class PermAP : public PermKernel {
 
 class InvPermAM : public PermKernel {
  public:
-  static constexpr char kBindName[] = "inv_perm_am";
+  static constexpr const char* kBindName() { return "inv_perm_am"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
@@ -63,7 +63,7 @@ class InvPermAM : public PermKernel {
 
 class InvPermAP : public PermKernel {
  public:
-  static constexpr char kBindName[] = "inv_perm_ap";
+  static constexpr const char* kBindName() { return "inv_perm_ap"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 

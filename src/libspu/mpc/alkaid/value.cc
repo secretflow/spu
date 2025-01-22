@@ -21,47 +21,76 @@
 namespace spu::mpc::alkaid {
 
 NdArrayRef getShare(const NdArrayRef& in, int64_t share_idx) {
-  SPU_ENFORCE(share_idx == 0 || share_idx == 1);
-
   auto new_strides = in.strides();
-  std::transform(new_strides.cbegin(), new_strides.cend(), new_strides.begin(),
-                 [](int64_t s) { return 2 * s; });
 
-  if (in.eltype().isa<AShrTy>()) {
-    const auto field = in.eltype().as<AShrTy>()->field();
-    const auto ty = makeType<RingTy>(field);
+  if (in.eltype().isa<MrssShare>()) {
+    SPU_ENFORCE(share_idx == 0 || share_idx == 1 || share_idx == 2,
+                "unsupported share_idx {} for share type {}", share_idx,
+                in.eltype());
 
-    return NdArrayRef(
-        in.buf(), ty, in.shape(), new_strides,
-        in.offset() + share_idx * static_cast<int64_t>(ty.size()));
-  } else if (in.eltype().isa<OShrTy>()) {
-    const auto field = in.eltype().as<OShrTy>()->field();
-    const auto ty = makeType<RingTy>(field);
-    
-    return NdArrayRef(
-        in.buf(), ty, in.shape(), new_strides,
-        in.offset() + share_idx * static_cast<int64_t>(ty.size()));
-  } else if (in.eltype().isa<BShrTy>()) {
-    const auto stype = in.eltype().as<BShrTy>()->getBacktype();
-    const auto ty = makeType<PtTy>(stype);
-    return NdArrayRef(
-        in.buf(), ty, in.shape(), new_strides,
-        in.offset() + share_idx * static_cast<int64_t>(ty.size()));
-  } else if (in.eltype().isa<PShrTy>()) {
-    const auto field = in.eltype().as<PShrTy>()->field();
-    const auto ty = makeType<RingTy>(field);
+    std::transform(new_strides.cbegin(), new_strides.cend(),
+                   new_strides.begin(), [](int64_t s) { return 3 * s; });
+    if (in.eltype().isa<AShrTyMrss>()) {
+      const auto field = in.eltype().as<AShrTyMrss>()->field();
+      const auto ty = makeType<RingTy>(field);
 
-    return NdArrayRef(
-        in.buf(), ty, in.shape(), new_strides,
-        in.offset() + share_idx * static_cast<int64_t>(ty.size()));
+      return NdArrayRef(
+          in.buf(), ty, in.shape(), new_strides,
+          in.offset() + share_idx * static_cast<int64_t>(ty.size()));
+    } else if (in.eltype().isa<BShrTyMrss>()) {
+      const auto stype = in.eltype().as<BShrTyMrss>()->getBacktype();
+      const auto ty = makeType<PtTy>(stype);
+      return NdArrayRef(
+          in.buf(), ty, in.shape(), new_strides,
+          in.offset() + share_idx * static_cast<int64_t>(ty.size()));
+    } else {
+      SPU_THROW("unsupported type {}", in.eltype());
+    }
   } else {
-    SPU_THROW("unsupported type {}", in.eltype());
+    SPU_ENFORCE(share_idx == 0 || share_idx == 1,
+                "unsupported share_idx {} for share type {}", share_idx,
+                in.eltype());
+
+    std::transform(new_strides.cbegin(), new_strides.cend(),
+                   new_strides.begin(), [](int64_t s) { return 2 * s; });
+    if (in.eltype().isa<AShrTy>()) {
+      const auto field = in.eltype().as<AShrTy>()->field();
+      const auto ty = makeType<RingTy>(field);
+
+      return NdArrayRef(
+          in.buf(), ty, in.shape(), new_strides,
+          in.offset() + share_idx * static_cast<int64_t>(ty.size()));
+    } else if (in.eltype().isa<OShrTy>()) {
+      const auto field = in.eltype().as<OShrTy>()->field();
+      const auto ty = makeType<RingTy>(field);
+
+      return NdArrayRef(
+          in.buf(), ty, in.shape(), new_strides,
+          in.offset() + share_idx * static_cast<int64_t>(ty.size()));
+    } else if (in.eltype().isa<BShrTy>()) {
+      const auto stype = in.eltype().as<BShrTy>()->getBacktype();
+      const auto ty = makeType<PtTy>(stype);
+      return NdArrayRef(
+          in.buf(), ty, in.shape(), new_strides,
+          in.offset() + share_idx * static_cast<int64_t>(ty.size()));
+    } else if (in.eltype().isa<PShrTy>()) {
+      const auto field = in.eltype().as<PShrTy>()->field();
+      const auto ty = makeType<RingTy>(field);
+
+      return NdArrayRef(
+          in.buf(), ty, in.shape(), new_strides,
+          in.offset() + share_idx * static_cast<int64_t>(ty.size()));
+    } else {
+      SPU_THROW("unsupported type {}", in.eltype());
+    }
   }
 }
 
 NdArrayRef getFirstShare(const NdArrayRef& in) { return getShare(in, 0); }
 
 NdArrayRef getSecondShare(const NdArrayRef& in) { return getShare(in, 1); }
+
+NdArrayRef getThirdShare(const NdArrayRef& in) { return getShare(in, 2); }
 
 NdArrayRef makeAShare(const NdArrayRef& s1, const NdArrayRef& s2,
                       FieldType field) {
@@ -78,6 +107,32 @@ NdArrayRef makeAShare(const NdArrayRef& s1, const NdArrayRef& s2,
     auto res_s1 = getFirstShare(res);
     auto res_s2 = getSecondShare(res);
 
+    ring_assign(res_s1, s1);
+    ring_assign(res_s2, s2);
+  }
+
+  return res;
+}
+
+NdArrayRef makeAShare(const NdArrayRef& m, const NdArrayRef& s1,
+                      const NdArrayRef& s2, FieldType field) {
+  const Type ty = makeType<AShrTyMrss>(field);
+
+  SPU_ENFORCE(m.eltype().as<Ring2k>()->field() == field);
+  SPU_ENFORCE(s2.eltype().as<Ring2k>()->field() == field);
+  SPU_ENFORCE(s1.eltype().as<Ring2k>()->field() == field);
+  SPU_ENFORCE(m.shape() == s1.shape() && m.shape() == s2.shape(), 
+              "got m={}, s1={}, s2={}", m, s1, s2);
+  SPU_ENFORCE(ty.size() == 3 * m.elsize());
+
+  NdArrayRef res(ty, m.shape());
+
+  if (res.numel() != 0) {
+    auto res_m = getFirstShare(res);
+    auto res_s1 = getSecondShare(res);
+    auto res_s2 = getThirdShare(res);
+
+    ring_assign(res_m, m);
     ring_assign(res_s1, s1);
     ring_assign(res_s2, s2);
   }

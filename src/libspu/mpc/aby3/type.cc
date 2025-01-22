@@ -26,7 +26,7 @@ void registerTypes() {
   static std::once_flag flag;
   std::call_once(flag, []() {
     TypeContext::getTypeContext()
-        ->addTypes<AShrTy, BShrTy, BShrTyMss, OShrTy, OPShrTy, PShrTy>();
+        ->addTypes<AShrTy, BShrTy, BShrTyMrss, OShrTy, OPShrTy, PShrTy>();
   });
 }
 

@@ -16,10 +16,10 @@
 
 #include <future>
 
+#include "libspu/mpc/albo/mss_utils.h"
 #include "libspu/mpc/albo/ot.h"
 #include "libspu/mpc/albo/type.h"
 #include "libspu/mpc/albo/value.h"
-#include "libspu/mpc/albo/mss_utils.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pv2k.h"
@@ -122,7 +122,7 @@ NdArrayRef RandA::proc(KernelEvalContext* ctx, const Shape& shape) const {
   auto* prg_state = ctx->getState<PrgState>();
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
 
-  NdArrayRef out(makeType<AShrTyMss>(field), shape);
+  NdArrayRef out(makeType<AShrTyMrss>(field), shape);
 
   DISPATCH_ALL_FIELDS(field, [&]() {
     using el_t = ring2k_t;
@@ -148,7 +148,7 @@ NdArrayRef RandA::proc(KernelEvalContext* ctx, const Shape& shape) const {
 
 NdArrayRef A2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   auto* comm = ctx->getState<Communicator>();
-  const auto field = in.eltype().as<AShrTyMss>()->field();
+  const auto field = in.eltype().as<AShrTyMrss>()->field();
   auto numel = in.numel();
 
   return DISPATCH_ALL_FIELDS(field, [&]() {
@@ -167,7 +167,7 @@ NdArrayRef A2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
     auto x3 = comm->rotate<ashr_el_t>(x2, "a2p");  // comm => 1, k
 
     pforeach(0, numel, [&](int64_t idx) {
-      _out[idx] = _in[idx][0] - _in[idx][1] -_in[idx][2] - x3[idx];
+      _out[idx] = _in[idx][0] - _in[idx][1] - _in[idx][2] - x3[idx];
     });
 
     return out;
@@ -183,7 +183,7 @@ NdArrayRef P2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
     using ashr_t = std::array<ashr_el_t, 3>;
     using pshr_el_t = ring2k_t;
 
-    NdArrayRef out(makeType<AShrTyMss>(field), in.shape());
+    NdArrayRef out(makeType<AShrTyMrss>(field), in.shape());
     NdArrayView<ashr_t> _out(out);
     NdArrayView<pshr_el_t> _in(in);
 
@@ -219,7 +219,7 @@ NdArrayRef P2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 NdArrayRef A2V::proc(KernelEvalContext* ctx, const NdArrayRef& in,
                      size_t rank) const {
   auto* comm = ctx->getState<Communicator>();
-  const auto field = in.eltype().as<AShrTyMss>()->field();
+  const auto field = in.eltype().as<AShrTyMrss>()->field();
 
   if (comm->getRank() == 0) std::cout << "A2V::proc" << std::endl;
 
@@ -256,7 +256,6 @@ NdArrayRef A2V::proc(KernelEvalContext* ctx, const NdArrayRef& in,
   });
 }
 
-
 // TODO: eq: not secure.
 NdArrayRef V2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   auto* comm = ctx->getState<Communicator>();
@@ -270,7 +269,7 @@ NdArrayRef V2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
     using ashr_el_t = ring2k_t;
     using ashr_t = std::array<ashr_el_t, 2>;
 
-    NdArrayRef out(makeType<AShrTyMss>(field), in.shape());
+    NdArrayRef out(makeType<AShrTyMrss>(field), in.shape());
     NdArrayView<ashr_t> _out(out);
 
     if (comm->getRank() == owner_rank) {
@@ -307,14 +306,14 @@ NdArrayRef V2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 }
 
 NdArrayRef NegateA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
-  const auto* in_ty = in.eltype().as<AShrTyMss>();
+  const auto* in_ty = in.eltype().as<AShrTyMrss>();
   const auto field = in_ty->field();
 
   return DISPATCH_ALL_FIELDS(field, [&]() {
     using el_t = std::make_unsigned_t<ring2k_t>;
     using shr_t = std::array<el_t, 3>;
 
-    NdArrayRef out(makeType<AShrTyMss>(field), in.shape());
+    NdArrayRef out(makeType<AShrTyMrss>(field), in.shape());
     NdArrayView<shr_t> _out(out);
     NdArrayView<shr_t> _in(in);
 
@@ -333,7 +332,7 @@ NdArrayRef NegateA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 ////////////////////////////////////////////////////////////////////
 NdArrayRef AddAP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
                        const NdArrayRef& rhs) const {
-  const auto* lhs_ty = lhs.eltype().as<AShrTyMss>();
+  const auto* lhs_ty = lhs.eltype().as<AShrTyMrss>();
   const auto* rhs_ty = rhs.eltype().as<Pub2kTy>();
 
   SPU_ENFORCE(lhs_ty->field() == rhs_ty->field());
@@ -343,7 +342,7 @@ NdArrayRef AddAP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
     using el_t = ring2k_t;
     using shr_t = std::array<el_t, 3>;
 
-    NdArrayRef out(makeType<AShrTyMss>(field), lhs.shape());
+    NdArrayRef out(makeType<AShrTyMrss>(field), lhs.shape());
     NdArrayView<shr_t> _out(out);
     NdArrayView<shr_t> _lhs(lhs);
     NdArrayView<el_t> _rhs(rhs);
@@ -359,8 +358,8 @@ NdArrayRef AddAP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
 
 NdArrayRef AddAA::proc(KernelEvalContext*, const NdArrayRef& lhs,
                        const NdArrayRef& rhs) const {
-  const auto* lhs_ty = lhs.eltype().as<AShrTyMss>();
-  const auto* rhs_ty = rhs.eltype().as<AShrTyMss>();
+  const auto* lhs_ty = lhs.eltype().as<AShrTyMrss>();
+  const auto* rhs_ty = rhs.eltype().as<AShrTyMrss>();
 
   SPU_ENFORCE(lhs_ty->field() == rhs_ty->field());
   const auto field = lhs_ty->field();
@@ -368,7 +367,7 @@ NdArrayRef AddAA::proc(KernelEvalContext*, const NdArrayRef& lhs,
   return DISPATCH_ALL_FIELDS(field, [&]() {
     using shr_t = std::array<ring2k_t, 3>;
 
-    NdArrayRef out(makeType<AShrTyMss>(field), lhs.shape());
+    NdArrayRef out(makeType<AShrTyMrss>(field), lhs.shape());
     NdArrayView<shr_t> _out(out);
     NdArrayView<shr_t> _lhs(lhs);
     NdArrayView<shr_t> _rhs(rhs);
@@ -387,7 +386,7 @@ NdArrayRef AddAA::proc(KernelEvalContext*, const NdArrayRef& lhs,
 ////////////////////////////////////////////////////////////////////
 NdArrayRef MulAP::proc(KernelEvalContext*, const NdArrayRef& lhs,
                        const NdArrayRef& rhs) const {
-  const auto* lhs_ty = lhs.eltype().as<AShrTyMss>();
+  const auto* lhs_ty = lhs.eltype().as<AShrTyMrss>();
   const auto* rhs_ty = rhs.eltype().as<Pub2kTy>();
 
   SPU_ENFORCE(lhs_ty->field() == rhs_ty->field());
@@ -397,7 +396,7 @@ NdArrayRef MulAP::proc(KernelEvalContext*, const NdArrayRef& lhs,
     using el_t = ring2k_t;
     using shr_t = std::array<el_t, 3>;
 
-    NdArrayRef out(makeType<AShrTyMss>(field), lhs.shape());
+    NdArrayRef out(makeType<AShrTyMrss>(field), lhs.shape());
     NdArrayView<shr_t> _out(out);
     NdArrayView<shr_t> _lhs(lhs);
     NdArrayView<el_t> _rhs(rhs);
@@ -656,13 +655,13 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
     auto z1 = ring_sum({t0, t2.get(), r.get()});
 
     auto f = std::async([&] { ring_assign(o1, z1); });
-    ring_assign(o2, comm->rotate(z1, kBindName));  // comm => 1, k
+    ring_assign(o2, comm->rotate(z1, kBindName()));  // comm => 1, k
     f.get();
 #ifdef CUDA_ENABLED
   } else {
     matmul_aa_gpu(x, y, o1);
     ring_add_(o1, r.get());
-    ring_assign(o2, comm->rotate(o1, kBindName));  // comm => 1, k
+    ring_assign(o2, comm->rotate(o1, kBindName()));  // comm => 1, k
   }
 #endif
 
@@ -718,12 +717,12 @@ NdArrayRef TruncA::proc(KernelEvalContext* ctx, const NdArrayRef& in,
   // we only record the maximum communication, we need to manually add comm
   comm->addCommStatsManually(1, kComm);  // comm => 1, 2
 
-    // ret
+  // ret
   const Sizes shift_bit = {static_cast<int64_t>(bits)};
   switch (comm->getRank()) {
     case 0: {
       const auto z1 = ring_arshift(x1, shift_bit);
-      const auto z2 = comm->recv(1, x1.eltype(), kBindName);
+      const auto z2 = comm->recv(1, x1.eltype(), kBindName());
       // TODO: eq: pass compiling.
       return makeAShare(z1, z1, z2, field);
     }
@@ -731,7 +730,7 @@ NdArrayRef TruncA::proc(KernelEvalContext* ctx, const NdArrayRef& in,
     case 1: {
       auto r1 = r_future.get().second;
       const auto z1 = ring_sub(ring_arshift(ring_add(x1, x2), shift_bit), r1);
-      comm->sendAsync(0, z1, kBindName);
+      comm->sendAsync(0, z1, kBindName());
       return makeAShare(z1, z1, r1, field);
     }
 

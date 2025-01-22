@@ -250,7 +250,7 @@ NdArrayRef BeaverTfpUnsafe::genPublCoin(FieldType field, int64_t numel) {
 // the last kth bits in open_val is valid
 std::pair<NdArrayRef, NdArrayRef> BeaverTfpUnsafe::BatchOpen(
     const NdArrayRef& value, const NdArrayRef& mac, size_t k, size_t s) {
-  static constexpr char kBindName[] = "batch_open";
+  static constexpr const char* kBindName() { return "batch_open"; }
   SPU_ENFORCE(value.shape() == mac.shape());
 
   const auto field = value.eltype().as<Ring2k>()->field();
@@ -265,7 +265,7 @@ std::pair<NdArrayRef, NdArrayRef> BeaverTfpUnsafe::BatchOpen(
   auto masked_mac =
       ring_add(mac, ring_lshift(r_mac, {static_cast<int64_t>(k)}));
 
-  auto open_val = comm_->allReduce(ReduceOp::ADD, masked_val, kBindName);
+  auto open_val = comm_->allReduce(ReduceOp::ADD, masked_val, kBindName());
   return {open_val, masked_mac};
 }
 

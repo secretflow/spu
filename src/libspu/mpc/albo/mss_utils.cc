@@ -98,14 +98,14 @@ NdArrayRef RssXor2(KernelEvalContext* ctx, const NdArrayRef& lhs,
 }
 
 // Xor gate for MSS.
-NdArrayRef MssXor2(KernelEvalContext* ctx, const NdArrayRef& lhs,
-                   const NdArrayRef& rhs) {
-  const auto* lhs_ty = lhs.eltype().as<BShrTyMss>();
-  const auto* rhs_ty = rhs.eltype().as<BShrTyMss>();
+NdArrayRef MrssXor2(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                    const NdArrayRef& rhs) {
+  const auto* lhs_ty = lhs.eltype().as<BShrTyMrss>();
+  const auto* rhs_ty = rhs.eltype().as<BShrTyMrss>();
 
   const size_t out_nbits = std::max(lhs_ty->nbits(), rhs_ty->nbits());
   const PtType out_btype = calcBShareBacktype(out_nbits);
-  NdArrayRef out(makeType<BShrTyMss>(out_btype, out_nbits), lhs.shape());
+  NdArrayRef out(makeType<BShrTyMrss>(out_btype, out_nbits), lhs.shape());
 
   return DISPATCH_UINT_PT_TYPES(rhs_ty->getBacktype(), [&]() {
     using rhs_el_t = ScalarT;
@@ -172,7 +172,7 @@ NdArrayRef RssAnd2NoComm(KernelEvalContext* ctx, const NdArrayRef& lhs,
 
         prg_state->fillPrssPair(r0.data(), r1.data(), r0.size(),
                                 PrgState::GenPrssCtrl::Both);
-#ifndef EQ_USE_PRG_STATE
+#ifndef ALKAID_USE_PRG_STATE
         std::fill(r0.begin(), r0.end(), 0);
         std::fill(r1.begin(), r1.end(), 0);
 #endif
@@ -194,13 +194,13 @@ NdArrayRef RssAnd2NoComm(KernelEvalContext* ctx, const NdArrayRef& lhs,
 }
 
 // And gate for MSS which outputs RSS result (no comunication).
-NdArrayRef MssAnd2NoComm(KernelEvalContext* ctx, const NdArrayRef& lhs,
-                         const NdArrayRef& rhs) {
+NdArrayRef MrssAnd2NoComm(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                          const NdArrayRef& rhs) {
   auto* prg_state = ctx->getState<PrgState>();
   auto* comm = ctx->getState<Communicator>();
 
-  const auto* lhs_ty = lhs.eltype().as<BShrTyMss>();
-  const auto* rhs_ty = rhs.eltype().as<BShrTyMss>();
+  const auto* lhs_ty = lhs.eltype().as<BShrTyMrss>();
+  const auto* rhs_ty = rhs.eltype().as<BShrTyMrss>();
 
   const size_t out_nbits = std::min(lhs_ty->nbits(), rhs_ty->nbits());
   const PtType out_btype = calcBShareBacktype(out_nbits);
@@ -227,24 +227,26 @@ NdArrayRef MssAnd2NoComm(KernelEvalContext* ctx, const NdArrayRef& lhs,
         prg_state->fillPrssPair(r0.data(), r1.data(), r0.size(),
                                 PrgState::GenPrssCtrl::Both);
 
-            // offline.
-            if (comm->getRank() == 0) OfflineRecorder::RecordMult(lhs.numel(), lhs.numel() * ((out_nbits + 7) / 8));
-            #if !defined(EQ_USE_PRG_STATE) || !defined(EQ_USE_OFFLINE)
-            std::fill(r0.begin(), r0.end(), 0);
-            std::fill(r1.begin(), r1.end(), 0);
-            comm->addCommStatsManually(0, 0);     // deal with unused-variable warning. 
-            #endif
-            #ifdef EQ_USE_OFFLINE
-            // dxy = dx & dy = (dx0 & dy0) ^ (dx0 & dy1) ^ (dx1 & dy0);
-            // r0 is dxy0, r1 is dxy1.
-            pforeach(0, lhs.numel(), [&](int64_t idx) {
-            const auto& l = _lhs[idx];
-            const auto& r = _rhs[idx];
-            r0[idx] = (l[1] & r[1]) ^ (l[1] & r[2]) ^ (l[2] & r[1]) ^
-                        (r0[idx] ^ r1[idx]);
-            });
+        // offline.
+        if (comm->getRank() == 0)
+          OfflineRecorder::RecordMult(lhs.numel(),
+                                      lhs.numel() * ((out_nbits + 7) / 8));
+#if !defined(ALKAID_USE_PRG_STATE) || !defined(ALKAID_USE_OFFLINE)
+        std::fill(r0.begin(), r0.end(), 0);
+        std::fill(r1.begin(), r1.end(), 0);
+        comm->addCommStatsManually(0, 0);  // deal with unused-variable warning.
+#endif
+#ifdef ALKAID_USE_OFFLINE
+        // dxy = dx & dy = (dx0 & dy0) ^ (dx0 & dy1) ^ (dx1 & dy0);
+        // r0 is dxy0, r1 is dxy1.
+        pforeach(0, lhs.numel(), [&](int64_t idx) {
+          const auto& l = _lhs[idx];
+          const auto& r = _rhs[idx];
+          r0[idx] = (l[1] & r[1]) ^ (l[1] & r[2]) ^ (l[2] & r[1]) ^
+                    (r0[idx] ^ r1[idx]);
+        });
 
-        r1 = comm->rotate<out_el_t>(r0, "MssAndBB, offline");  // comm => 1, k
+        r1 = comm->rotate<out_el_t>(r0, "MrssAndBB, offline");  // comm => 1, k
 // comm->addCommStatsManually(-1, -r0.size() * sizeof(out_el_t));
 #endif
 
@@ -272,28 +274,28 @@ NdArrayRef MssAnd2NoComm(KernelEvalContext* ctx, const NdArrayRef& lhs,
 }
 
 // And gate for MSS which outputs ASS result (no comunication).
-NdArrayRef MssAnd3NoComm(KernelEvalContext* ctx, const NdArrayRef& op1,
-                         const NdArrayRef& op2, const NdArrayRef& op3) {
-  auto lo_res = MssAnd2NoComm(ctx, op1, op2);
-  auto hi_res = ResharingMss2Rss(ctx, op3);
+NdArrayRef MrssAnd3NoComm(KernelEvalContext* ctx, const NdArrayRef& op1,
+                          const NdArrayRef& op2, const NdArrayRef& op3) {
+  auto lo_res = MrssAnd2NoComm(ctx, op1, op2);
+  auto hi_res = ResharingMrss2Rss(ctx, op3);
   auto out = RssAnd2NoComm(ctx, lo_res, hi_res);
 
   return out;
 }
 
 // And gate for MSS which outputs ASS result (no comunication).
-NdArrayRef MssAnd4NoComm(KernelEvalContext* ctx, const NdArrayRef& op1,
-                         const NdArrayRef& op2, const NdArrayRef& op3,
-                         const NdArrayRef& op4) {
-  auto lo_res = MssAnd2NoComm(ctx, op1, op2);
-  auto hi_res = MssAnd2NoComm(ctx, op3, op4);
+NdArrayRef MrssAnd4NoComm(KernelEvalContext* ctx, const NdArrayRef& op1,
+                          const NdArrayRef& op2, const NdArrayRef& op3,
+                          const NdArrayRef& op4) {
+  auto lo_res = MrssAnd2NoComm(ctx, op1, op2);
+  auto hi_res = MrssAnd2NoComm(ctx, op3, op4);
   auto out = RssAnd2NoComm(ctx, lo_res, hi_res);
 
   return out;
 }
 
 // Resharing protocol from RSS to MSS.
-NdArrayRef ResharingRss2Mss(KernelEvalContext* ctx, const NdArrayRef& in) {
+NdArrayRef ResharingRss2Mrss(KernelEvalContext* ctx, const NdArrayRef& in) {
   auto* prg_state = ctx->getState<PrgState>();
   auto* comm = ctx->getState<Communicator>();
 
@@ -301,7 +303,7 @@ NdArrayRef ResharingRss2Mss(KernelEvalContext* ctx, const NdArrayRef& in) {
 
   const size_t out_nbits = in_ty->nbits();
   const PtType out_btype = calcBShareBacktype(out_nbits);
-  NdArrayRef out(makeType<BShrTyMss>(out_btype, out_nbits), in.shape());
+  NdArrayRef out(makeType<BShrTyMrss>(out_btype, out_nbits), in.shape());
 
   return DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), [&]() {
     using in_el_t = ScalarT;
@@ -319,7 +321,7 @@ NdArrayRef ResharingRss2Mss(KernelEvalContext* ctx, const NdArrayRef& in) {
       std::vector<out_el_t> r1(in.numel(), 0);
       prg_state->fillPrssPair(r0.data(), r1.data(), r0.size(),
                               PrgState::GenPrssCtrl::Both);
-#if !defined(EQ_USE_OFFLINE) || !defined(EQ_USE_PRG_STATE)
+#if !defined(ALKAID_USE_OFFLINE) || !defined(ALKAID_USE_PRG_STATE)
       std::fill(r0.begin(), r0.end(), 0);
       std::fill(r1.begin(), r1.end(), 0);
 #endif
@@ -375,7 +377,7 @@ NdArrayRef ResharingAss2Rss(KernelEvalContext* ctx, const NdArrayRef& in) {
       std::vector<out_el_t> r1(in.numel(), 0);
       prg_state->fillPrssPair(r0.data(), r1.data(), r0.size(),
                               PrgState::GenPrssCtrl::Both);
-#if !defined(EQ_USE_OFFLINE) || !defined(EQ_USE_PRG_STATE)
+#if !defined(ALKAID_USE_OFFLINE) || !defined(ALKAID_USE_PRG_STATE)
       std::fill(r0.begin(), r0.end(), 0);
       std::fill(r1.begin(), r1.end(), 0);
 #endif
@@ -404,7 +406,7 @@ NdArrayRef ResharingAss2Rss(KernelEvalContext* ctx, const NdArrayRef& in) {
 
 // Resharing protocol from ASS to MSS.
 // using RSS container to hold ASS.
-NdArrayRef ResharingAss2Mss(KernelEvalContext* ctx, const NdArrayRef& in) {
+NdArrayRef ResharingAss2Mrss(KernelEvalContext* ctx, const NdArrayRef& in) {
   auto* prg_state = ctx->getState<PrgState>();
   auto* comm = ctx->getState<Communicator>();
 
@@ -412,7 +414,7 @@ NdArrayRef ResharingAss2Mss(KernelEvalContext* ctx, const NdArrayRef& in) {
 
   const size_t out_nbits = in_ty->nbits();
   const PtType out_btype = calcBShareBacktype(out_nbits);
-  NdArrayRef out(makeType<BShrTyMss>(out_btype, out_nbits), in.shape());
+  NdArrayRef out(makeType<BShrTyMrss>(out_btype, out_nbits), in.shape());
 
   return DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), [&]() {
     using in_el_t = ScalarT;
@@ -430,7 +432,7 @@ NdArrayRef ResharingAss2Mss(KernelEvalContext* ctx, const NdArrayRef& in) {
       std::vector<out_el_t> r1(in.numel());
       prg_state->fillPrssPair(r0.data(), r1.data(), r0.size(),
                               PrgState::GenPrssCtrl::Both);
-#if !defined(EQ_USE_OFFLINE) || !defined(EQ_USE_PRG_STATE)
+#if !defined(ALKAID_USE_OFFLINE) || !defined(ALKAID_USE_PRG_STATE)
       std::fill(r0.begin(), r0.end(), 0);
       std::fill(r1.begin(), r1.end(), 0);
 #endif
@@ -445,18 +447,29 @@ NdArrayRef ResharingAss2Mss(KernelEvalContext* ctx, const NdArrayRef& in) {
         r1[idx] = i[0];
       });
 
-            // TODO: not safe. should add a mask to r1.
-            // r0 = comm->rotateR<out_el_t>(r0, "Resharing ASS to MSS, online, message 1");  // comm => 1, k
-            // r1 = comm->rotate<out_el_t>(r1, "Resharing ASS to MSS, online, message 2");  // comm => 1, k
-            comm->sendAsync<out_el_t>(comm->nextRank(), r0, "Resharing ASS to MSS, online, message 1");  // comm => 1, k
-            comm->sendAsync<out_el_t>(comm->prevRank(), r1, "Resharing ASS to MSS, online, message 2");  // comm => 1, k
-            r0 = comm->recv<out_el_t>(comm->prevRank(), "Resharing ASS to MSS, online, message 1");  // comm => 1, k
-            r1 = comm->recv<out_el_t>(comm->nextRank(), "Resharing ASS to MSS, online, message 2");  // comm => 1, k
-            comm->addCommStatsManually(1, 0);
-            const std::atomic<size_t> & lctx_sent_actions = comm->lctx().get()->GetStats().get()->sent_actions;
-            const std::atomic<size_t> & lctx_recv_actions = comm->lctx().get()->GetStats().get()->recv_actions;
-            const_cast<std::atomic<size_t> &>(lctx_sent_actions) -= 1;
-            const_cast<std::atomic<size_t> &>(lctx_recv_actions) -= 1;
+      // TODO: not safe. should add a mask to r1.
+      // r0 = comm->rotateR<out_el_t>(r0, "Resharing ASS to MSS, online, message
+      // 1");  // comm => 1, k r1 = comm->rotate<out_el_t>(r1, "Resharing ASS to
+      // MSS, online, message 2");  // comm => 1, k
+      comm->sendAsync<out_el_t>(
+          comm->nextRank(), r0,
+          "Resharing ASS to MSS, online, message 1");  // comm => 1, k
+      comm->sendAsync<out_el_t>(
+          comm->prevRank(), r1,
+          "Resharing ASS to MSS, online, message 2");  // comm => 1, k
+      r0 = comm->recv<out_el_t>(
+          comm->prevRank(),
+          "Resharing ASS to MSS, online, message 1");  // comm => 1, k
+      r1 = comm->recv<out_el_t>(
+          comm->nextRank(),
+          "Resharing ASS to MSS, online, message 2");  // comm => 1, k
+      comm->addCommStatsManually(1, 0);
+      const std::atomic<size_t>& lctx_sent_actions =
+          comm->lctx().get()->GetStats().get()->sent_actions;
+      const std::atomic<size_t>& lctx_recv_actions =
+          comm->lctx().get()->GetStats().get()->recv_actions;
+      const_cast<std::atomic<size_t>&>(lctx_sent_actions) -= 1;
+      const_cast<std::atomic<size_t>&>(lctx_recv_actions) -= 1;
 
       pforeach(0, in.numel(), [&](int64_t idx) {
         in_shr_t& i = _in[idx];
@@ -470,8 +483,8 @@ NdArrayRef ResharingAss2Mss(KernelEvalContext* ctx, const NdArrayRef& in) {
 }
 
 // Resharing protocol from MSS to RSS.
-NdArrayRef ResharingMss2Rss(KernelEvalContext* ctx, const NdArrayRef& in) {
-  const auto* in_ty = in.eltype().as<BShrTyMss>();
+NdArrayRef ResharingMrss2Rss(KernelEvalContext* ctx, const NdArrayRef& in) {
+  const auto* in_ty = in.eltype().as<BShrTyMrss>();
 
   const size_t out_nbits = in_ty->nbits();
   const PtType out_btype = calcBShareBacktype(out_nbits);
@@ -503,11 +516,11 @@ NdArrayRef ResharingMss2Rss(KernelEvalContext* ctx, const NdArrayRef& in) {
   });
 }
 
-NdArrayRef ResharingMss2RssAri(KernelEvalContext* ctx, const NdArrayRef& in) {
+NdArrayRef ResharingMrss2RssAri(KernelEvalContext* ctx, const NdArrayRef& in) {
   auto* comm = ctx->getState<Communicator>();
   auto rank = comm->getRank();
 
-  const auto field = in.eltype().as<AShrTyMss>()->field();
+  const auto field = in.eltype().as<AShrTyMrss>()->field();
   NdArrayRef out(makeType<AShrTy>(field), in.shape());
 
   return DISPATCH_ALL_FIELDS(field, [&]() {
@@ -603,15 +616,15 @@ NdArrayRef pack_2_bitvec_ass(const NdArrayRef& lo, const NdArrayRef& hi) {
 }
 
 std::pair<NdArrayRef, NdArrayRef> unpack_2_bitvec_mss(const NdArrayRef& in) {
-  const auto* in_ty = in.eltype().as<BShrTyMss>();
+  const auto* in_ty = in.eltype().as<BShrTyMrss>();
   assert(in_ty->nbits() != 0 && in_ty->nbits() % 2 == 0);
 
   const size_t lo_nbits = in_ty->nbits() / 2;
   const size_t hi_nbits = in_ty->nbits() - lo_nbits;
   const PtType lo_btype = calcBShareBacktype(lo_nbits);
   const PtType hi_btype = calcBShareBacktype(hi_nbits);
-  NdArrayRef lo(makeType<BShrTyMss>(lo_btype, lo_nbits), in.shape());
-  NdArrayRef hi(makeType<BShrTyMss>(hi_btype, hi_nbits), in.shape());
+  NdArrayRef lo(makeType<BShrTyMrss>(lo_btype, lo_nbits), in.shape());
+  NdArrayRef hi(makeType<BShrTyMrss>(hi_btype, hi_nbits), in.shape());
 
   return DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), [&]() {
     using in_el_t = ScalarT;
@@ -645,33 +658,31 @@ std::pair<NdArrayRef, NdArrayRef> unpack_2_bitvec_mss(const NdArrayRef& in) {
   });
 }
 
-void AddRounds(KernelEvalContext* ctx, size_t rounds, bool reduce_spu, bool reduce_yacl)
-{
+void AddRounds(KernelEvalContext* ctx, size_t rounds, bool reduce_spu,
+               bool reduce_yacl) {
   auto* comm = ctx->getState<Communicator>();
-  if (reduce_yacl)
-  {
-    const std::atomic<size_t> & lctx_sent_actions = comm->lctx().get()->GetStats().get()->sent_actions;
-    const_cast<std::atomic<size_t> &>(lctx_sent_actions) += rounds;
+  if (reduce_yacl) {
+    const std::atomic<size_t>& lctx_sent_actions =
+        comm->lctx().get()->GetStats().get()->sent_actions;
+    const_cast<std::atomic<size_t>&>(lctx_sent_actions) += rounds;
   }
-  
-  if (reduce_spu)
-  {
+
+  if (reduce_spu) {
     comm->addCommStatsManually(rounds, 0);
   }
 }
 
-void SubRounds(KernelEvalContext* ctx, size_t rounds, bool reduce_spu, bool reduce_yacl)
-{
+void SubRounds(KernelEvalContext* ctx, size_t rounds, bool reduce_spu,
+               bool reduce_yacl) {
   auto* comm = ctx->getState<Communicator>();
-  if (reduce_yacl)
-  {
-    const std::atomic<size_t> & lctx_sent_actions = comm->lctx().get()->GetStats().get()->sent_actions;
-    const_cast<std::atomic<size_t> &>(lctx_sent_actions) -= rounds;
+  if (reduce_yacl) {
+    const std::atomic<size_t>& lctx_sent_actions =
+        comm->lctx().get()->GetStats().get()->sent_actions;
+    const_cast<std::atomic<size_t>&>(lctx_sent_actions) -= rounds;
   }
-  
-  if (reduce_spu)
-  {
+
+  if (reduce_spu) {
     comm->addCommStatsManually(-rounds, 0);
   }
 }
-} // namespace spu::mpc::albo
+}  // namespace spu::mpc::albo

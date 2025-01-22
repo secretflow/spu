@@ -37,7 +37,7 @@ namespace {
   SPU_ENFORCE((x).eltype().isa<GfmpTy>(), "expect gfmp type, got={}", \
               (x).eltype());
 
-#define ENFORCE_EQ_ELSIZE_AND_SHAPE(lhs, rhs)                      \
+#define ENFORCE_ALKAID_ELSIZE_AND_SHAPE(lhs, rhs)                  \
   SPU_ENFORCE((lhs).elsize() == (rhs).elsize(),                    \
               "type size mismatch lhs={}, rhs={}", (lhs).eltype(), \
               (rhs).eltype());                                     \
@@ -46,7 +46,7 @@ namespace {
 
 // Fast mod operation for Mersenne prime
 void gfmp_mod_impl(NdArrayRef& ret, const NdArrayRef& x) {
-  ENFORCE_EQ_ELSIZE_AND_SHAPE(ret, x);
+  ENFORCE_ALKAID_ELSIZE_AND_SHAPE(ret, x);
   const auto* ty = ret.eltype().as<GfmpTy>();
   const auto field = ty->field();
   const auto numel = x.numel();
@@ -59,8 +59,8 @@ void gfmp_mod_impl(NdArrayRef& ret, const NdArrayRef& x) {
 
 void gfmp_mul_mod_impl(NdArrayRef& ret, const NdArrayRef& x,
                        const NdArrayRef& y) {
-  ENFORCE_EQ_ELSIZE_AND_SHAPE(ret, x);
-  ENFORCE_EQ_ELSIZE_AND_SHAPE(ret, y);
+  ENFORCE_ALKAID_ELSIZE_AND_SHAPE(ret, x);
+  ENFORCE_ALKAID_ELSIZE_AND_SHAPE(ret, y);
   const auto* ty = x.eltype().as<GfmpTy>();
   const auto field = ty->field();
   const auto numel = x.numel();
@@ -75,8 +75,8 @@ void gfmp_mul_mod_impl(NdArrayRef& ret, const NdArrayRef& x,
 
 void gfmp_add_mod_impl(NdArrayRef& ret, const NdArrayRef& x,
                        const NdArrayRef& y) {
-  ENFORCE_EQ_ELSIZE_AND_SHAPE(ret, x);
-  ENFORCE_EQ_ELSIZE_AND_SHAPE(ret, y);
+  ENFORCE_ALKAID_ELSIZE_AND_SHAPE(ret, x);
+  ENFORCE_ALKAID_ELSIZE_AND_SHAPE(ret, y);
   const auto* ty = x.eltype().as<GfmpTy>();
   const auto field = ty->field();
   const auto numel = x.numel();
@@ -91,8 +91,8 @@ void gfmp_add_mod_impl(NdArrayRef& ret, const NdArrayRef& x,
 
 void gfmp_sub_mod_impl(NdArrayRef& ret, const NdArrayRef& x,
                        const NdArrayRef& y) {
-  ENFORCE_EQ_ELSIZE_AND_SHAPE(ret, x);
-  ENFORCE_EQ_ELSIZE_AND_SHAPE(ret, y);
+  ENFORCE_ALKAID_ELSIZE_AND_SHAPE(ret, x);
+  ENFORCE_ALKAID_ELSIZE_AND_SHAPE(ret, y);
   const auto* ty = x.eltype().as<GfmpTy>();
   const auto field = ty->field();
   const auto numel = x.numel();
@@ -108,8 +108,8 @@ void gfmp_sub_mod_impl(NdArrayRef& ret, const NdArrayRef& x,
 
 void gfmp_div_mod_impl(NdArrayRef& ret, const NdArrayRef& x,
                        const NdArrayRef& y) {
-  ENFORCE_EQ_ELSIZE_AND_SHAPE(ret, x);
-  ENFORCE_EQ_ELSIZE_AND_SHAPE(ret, y);
+  ENFORCE_ALKAID_ELSIZE_AND_SHAPE(ret, x);
+  ENFORCE_ALKAID_ELSIZE_AND_SHAPE(ret, y);
   const auto* ty = x.eltype().as<GfmpTy>();
   const auto field = ty->field();
   const auto numel = x.numel();
@@ -224,8 +224,8 @@ void gfmp_sub_mod_(NdArrayRef& x, const NdArrayRef& y) {
 // not requiring and not casting field.
 void gfmp_exp_mod_impl(NdArrayRef& ret, const NdArrayRef& x,
                        const NdArrayRef& y) {
-  ENFORCE_EQ_ELSIZE_AND_SHAPE(ret, x);
-  ENFORCE_EQ_ELSIZE_AND_SHAPE(ret, y);
+  ENFORCE_ALKAID_ELSIZE_AND_SHAPE(ret, x);
+  ENFORCE_ALKAID_ELSIZE_AND_SHAPE(ret, y);
   const auto* ty = x.eltype().as<GfmpTy>();
   const auto field = ty->field();
   const auto numel = x.numel();

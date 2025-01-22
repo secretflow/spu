@@ -17,15 +17,15 @@
 #include "yacl/crypto/block_cipher/symmetric_crypto.h"
 
 #include "libspu/core/ndarray_ref.h"
-#include "libspu/mpc/kernel.h"
 #include "libspu/mpc/aby3/oram.h"
+#include "libspu/mpc/kernel.h"
 
 namespace spu::mpc::alkaid {
 
 // Ashared index, Ashared database
 class OramOneHotAA : public OramOneHotKernel {
  public:
-  static constexpr char kBindName[] = "oram_onehot_aa";
+  static constexpr const char* kBindName() { return "oram_onehot_aa"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
@@ -36,7 +36,7 @@ class OramOneHotAA : public OramOneHotKernel {
 // Ashared index, Public database
 class OramOneHotAP : public OramOneHotKernel {
  public:
-  static constexpr char kBindName[] = "oram_onehot_ap";
+  static constexpr const char* kBindName() { return "oram_onehot_ap"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 
@@ -46,7 +46,7 @@ class OramOneHotAP : public OramOneHotKernel {
 
 class OramReadOA : public OramReadKernel {
  public:
-  static constexpr char kBindName[] = "oram_read_aa";
+  static constexpr const char* kBindName() { return "oram_read_aa"; }
 
   ce::CExpr latency() const override {
     // 1 * rotate: 1
@@ -65,7 +65,7 @@ class OramReadOA : public OramReadKernel {
 
 class OramReadOP : public OramReadKernel {
  public:
-  static constexpr char kBindName[] = "oram_read_ap";
+  static constexpr const char* kBindName() { return "oram_read_ap"; }
 
   ce::CExpr latency() const override {
     // 1 * rotate: 1

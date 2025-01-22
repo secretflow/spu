@@ -21,21 +21,24 @@ namespace spu::mpc::alkaid {
 
 // The layout of Alkaid share.
 //
-// Two shares are interleaved in a array, for example, given n element and k
-// bytes per-element.
+// Alkaid encompasses both the RSS of ABY3 and MRSS implementations. 
+// In terms of RSS, the memory view of Alkaid's shares is consistent 
+// with that of ABY3. In terms of MRSS,sSimiliar to ABY^3, the three 
+// shares of Alkaid are interleaved in a array, for example, given n 
+// element and k bytes per-element, we have
 //
 //   element          address
 //   a[0].share0      0
 //   a[0].share1      k
-//   a[1].share0      2k
-//   a[1].share1      3k
+//   a[0].share2      2k
+//   a[1].share0      3k
+//   a[1].share1      4k
+//   a[1].share2      5k
 //   ...
-//   a[n-1].share0    (n-1)*2*k+0
-//   a[n-1].share1    (n-1)*2*k+k
+//   a[n-1].share0    (n-1)*3*k+0
+//   a[n-1].share1    (n-1)*3*k+k
+//   a[n-1].share2    (n-1)*3*k+2k
 //
-// you can treat alkaid share as std::complex<T>, where
-//   real(x) is the first share piece.
-//   imag(x) is the second share piece.
 
 NdArrayRef getShare(const NdArrayRef& in, int64_t share_idx);
 
@@ -43,7 +46,12 @@ NdArrayRef getFirstShare(const NdArrayRef& in);
 
 NdArrayRef getSecondShare(const NdArrayRef& in);
 
+NdArrayRef getThirdShare(const NdArrayRef& in);
+
 NdArrayRef makeAShare(const NdArrayRef& s1, const NdArrayRef& s2,
+                      FieldType field);
+
+NdArrayRef makeAShare(const NdArrayRef& s1, const NdArrayRef& s2, const NdArrayRef& s3,
                       FieldType field);
 
 PtType calcBShareBacktype(size_t nbits);

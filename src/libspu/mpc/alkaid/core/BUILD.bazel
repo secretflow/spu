@@ -12,28 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_python//python:defs.bzl", "py_library")
+load("//bazel:spu.bzl", "spu_cc_library", "spu_cc_test", "spu_cc_binary")
 
 package(default_visibility = ["//visibility:public"])
 
-py_binary(
-    name = "nodectl",
-    srcs = ["nodectl.py"],
-    data = [
-        "//examples/alkaid/conf",
-    ],
+spu_cc_library(
+    name = "type_helper",
+    hdrs = ["type_helper.h"],
     deps = [
-        ":dataset_utils",  # server dependent.
-        "//spu/utils:distributed",
-    ] + all_requirements,
+        "//libspu/core:type",
+    ],
+    visibility = ["//libspu/mpc/alkaid:__subpackages__"]
 )
 
-py_library(
-    name = "optimizers",
-    srcs = ["optimizers.py"],
-)
-
-py_library(
-    name = "dataset_utils",
-    srcs = ["dataset_utils.py"],
+spu_cc_library(
+    name = "bshare",
+    srcs = ["bshare.cc"],
+    hdrs = ["bshare.h"],
+    deps = [
+        ":type_helper",
+        "//libspu/mpc/alkaid:type",
+        "//libspu/mpc/alkaid:value",
+        "//libspu/mpc:offline_recorder",
+        "//libspu/mpc/common:communicator",
+        "//libspu/mpc/common:prg_state",
+        "@yacl//yacl/utils:platform_utils",
+    ],
 )

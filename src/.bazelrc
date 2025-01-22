@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-common --experimental_repo_remote_exec
+# common --experimental_repo_remote_exec
 common --experimental_cc_shared_library
 
 common --registry=https://raw.githubusercontent.com/secretflow/bazel-registry/main
@@ -48,7 +48,7 @@ build:linux --copt=-Wl,-z,noexecstack
 build:macos --copt=-Wa,--noexecstack
 
 
-build --keep_going
+# build --keep_going
 test --test_output=errors
 
 build:benchmark --copt -O3

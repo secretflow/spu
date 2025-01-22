@@ -12,24 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/mpc/albo/boolean.h"
-
 #include <algorithm>
 
 #include "libspu/core/bit_utils.h"
 #include "libspu/core/parallel_utils.h"
+#include "libspu/mpc/albo/boolean.h"
 #include "libspu/mpc/albo/type.h"
 #include "libspu/mpc/albo/value.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pv2k.h"
 
-// #define EQ_USE_PRG_STATE
-// #define EQ_USE_OFFLINE
+// #define ALKAID_USE_PRG_STATE
+// #define ALKAID_USE_OFFLINE
 
 namespace spu::mpc::albo {
 
-NdArrayRef ResharingRss2Mss(KernelEvalContext* ctx, const NdArrayRef& in) {
+NdArrayRef ResharingRss2Mrss(KernelEvalContext* ctx, const NdArrayRef& in) {
   auto* prg_state = ctx->getState<PrgState>();
   auto* comm = ctx->getState<Communicator>();
 
@@ -37,72 +36,73 @@ NdArrayRef ResharingRss2Mss(KernelEvalContext* ctx, const NdArrayRef& in) {
 
   const size_t out_nbits = in_ty->nbits();
   const PtType out_btype = calcBShareBacktype(out_nbits);
-  NdArrayRef out(makeType<BShrTyMss>(out_btype, out_nbits), in.shape());
+  NdArrayRef out(makeType<BShrTyMrss>(out_btype, out_nbits), in.shape());
 
-    return DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), [&]() {
-      using in_el_t = ScalarT;
-      using in_shr_t = std::array<in_el_t, 2>;
-      NdArrayView<in_shr_t> _in(in);
+  return DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), [&]() {
+    using in_el_t = ScalarT;
+    using in_shr_t = std::array<in_el_t, 2>;
+    NdArrayView<in_shr_t> _in(in);
 
-      return DISPATCH_UINT_PT_TYPES(out_btype, [&]() {
-        using out_el_t = ScalarT;
-        // mss(x) = (Dx, dx0, dx1), x = Dx ^ dx0 ^ dx1
-        using out_shr_t = std::array<out_el_t, 3>;
-        NdArrayView<out_shr_t> _out(out);
+    return DISPATCH_UINT_PT_TYPES(out_btype, [&]() {
+      using out_el_t = ScalarT;
+      // mss(x) = (Dx, dx0, dx1), x = Dx ^ dx0 ^ dx1
+      using out_shr_t = std::array<out_el_t, 3>;
+      NdArrayView<out_shr_t> _out(out);
 
-        // correlated randomness for RSS based multiplication.
-        std::vector<out_el_t> r0(in.numel(), 0);
-        std::vector<out_el_t> r1(in.numel(), 0);
-        prg_state->fillPrssPair(r0.data(), r1.data(), r0.size(),
-                                PrgState::GenPrssCtrl::Both);
-        #if !defined(EQ_USE_OFFLINE) || !defined(EQ_USE_PRG_STATE)
-        std::fill(r0.begin(), r0.end(), 0);
-        std::fill(r1.begin(), r1.end(), 0);
-        #endif
+      // correlated randomness for RSS based multiplication.
+      std::vector<out_el_t> r0(in.numel(), 0);
+      std::vector<out_el_t> r1(in.numel(), 0);
+      prg_state->fillPrssPair(r0.data(), r1.data(), r0.size(),
+                              PrgState::GenPrssCtrl::Both);
+#if !defined(ALKAID_USE_OFFLINE) || !defined(ALKAID_USE_PRG_STATE)
+      std::fill(r0.begin(), r0.end(), 0);
+      std::fill(r1.begin(), r1.end(), 0);
+#endif
 
-        // online.
-        pforeach(0, in.numel(), [&](int64_t idx) {
-          in_shr_t& i = _in[idx];
-          out_shr_t& o = _out[idx];
-          o[1] = r0[idx];
-          o[2] = r1[idx];
-          r0[idx] = i[0] ^ r0[idx];
-        });
-
-        r0 = comm->rotateR<out_el_t>(r0, "Resharing RSS to MSS, online");  // comm => 1, k
-
-        pforeach(0, in.numel(), [&](int64_t idx) {
-          in_shr_t& i = _in[idx];
-          out_shr_t& o = _out[idx];
-
-          o[0] = i[0] ^ i[1] ^ o[1] ^ o[2] ^ r0[idx];
-        });
-        return out;
+      // online.
+      pforeach(0, in.numel(), [&](int64_t idx) {
+        in_shr_t& i = _in[idx];
+        out_shr_t& o = _out[idx];
+        o[1] = r0[idx];
+        o[2] = r1[idx];
+        r0[idx] = i[0] ^ r0[idx];
       });
+
+      r0 = comm->rotateR<out_el_t>(
+          r0, "Resharing RSS to MSS, online");  // comm => 1, k
+
+      pforeach(0, in.numel(), [&](int64_t idx) {
+        in_shr_t& i = _in[idx];
+        out_shr_t& o = _out[idx];
+
+        o[0] = i[0] ^ i[1] ^ o[1] ^ o[2] ^ r0[idx];
+      });
+      return out;
     });
+  });
 }
 
 void CommonTypeB::evaluate(KernelEvalContext* ctx) const {
   const Type& lhs = ctx->getParam<Type>(0);
   const Type& rhs = ctx->getParam<Type>(1);
 
-  const size_t lhs_nbits = lhs.as<BShrTyMss>()->nbits();
-  const size_t rhs_nbits = rhs.as<BShrTyMss>()->nbits();
+  const size_t lhs_nbits = lhs.as<BShrTyMrss>()->nbits();
+  const size_t rhs_nbits = rhs.as<BShrTyMrss>()->nbits();
 
   const size_t out_nbits = std::max(lhs_nbits, rhs_nbits);
   const PtType out_btype = calcBShareBacktype(out_nbits);
 
-  ctx->setOutput(makeType<BShrTyMss>(out_btype, out_nbits));
+  ctx->setOutput(makeType<BShrTyMrss>(out_btype, out_nbits));
 }
 
 NdArrayRef CastTypeB::proc(KernelEvalContext*, const NdArrayRef& in,
                            const Type& to_type) const {
   NdArrayRef out(to_type, in.shape());
-  DISPATCH_UINT_PT_TYPES(in.eltype().as<BShrTyMss>()->getBacktype(), [&]() {
+  DISPATCH_UINT_PT_TYPES(in.eltype().as<BShrTyMrss>()->getBacktype(), [&]() {
     using in_el_t = ScalarT;
     using in_shr_t = std::array<in_el_t, 3>;
 
-    DISPATCH_UINT_PT_TYPES(to_type.as<BShrTyMss>()->getBacktype(), [&]() {
+    DISPATCH_UINT_PT_TYPES(to_type.as<BShrTyMrss>()->getBacktype(), [&]() {
       using out_el_t = ScalarT;
       using out_shr_t = std::array<out_el_t, 3>;
 
@@ -123,7 +123,7 @@ NdArrayRef CastTypeB::proc(KernelEvalContext*, const NdArrayRef& in,
 
 NdArrayRef B2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   auto* comm = ctx->getState<Communicator>();
-  const PtType btype = in.eltype().as<BShrTyMss>()->getBacktype();
+  const PtType btype = in.eltype().as<BShrTyMrss>()->getBacktype();
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
 
   return DISPATCH_UINT_PT_TYPES(btype, "albo.b2p", [&]() {
@@ -165,7 +165,7 @@ NdArrayRef P2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
       using bshr_el_t = ScalarT;
       using bshr_t = std::array<bshr_el_t, 3>;
 
-      NdArrayRef out(makeType<BShrTyMss>(btype, nbits), in.shape());
+      NdArrayRef out(makeType<BShrTyMrss>(btype, nbits), in.shape());
       NdArrayView<bshr_t> _out(out);
 
       pforeach(0, in.numel(), [&](int64_t idx) {
@@ -181,7 +181,7 @@ NdArrayRef P2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 NdArrayRef B2V::proc(KernelEvalContext* ctx, const NdArrayRef& in,
                      size_t rank) const {
   auto* comm = ctx->getState<Communicator>();
-  const PtType btype = in.eltype().as<BShrTyMss>()->getBacktype();
+  const PtType btype = in.eltype().as<BShrTyMrss>()->getBacktype();
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
 
   return DISPATCH_UINT_PT_TYPES(btype, "albo.b2v", [&]() {
@@ -224,7 +224,7 @@ NdArrayRef B2V::proc(KernelEvalContext* ctx, const NdArrayRef& in,
 
 NdArrayRef AndBP::proc(KernelEvalContext*, const NdArrayRef& lhs,
                        const NdArrayRef& rhs) const {
-  const auto* lhs_ty = lhs.eltype().as<BShrTyMss>();
+  const auto* lhs_ty = lhs.eltype().as<BShrTyMrss>();
   const auto* rhs_ty = rhs.eltype().as<Pub2kTy>();
 
   return DISPATCH_ALL_FIELDS(rhs_ty->field(), [&]() {
@@ -246,7 +246,7 @@ NdArrayRef AndBP::proc(KernelEvalContext*, const NdArrayRef& lhs,
         using out_el_t = ScalarT;
         using out_shr_t = std::array<out_el_t, 3>;
 
-        NdArrayRef out(makeType<BShrTyMss>(out_btype, out_nbits), lhs.shape());
+        NdArrayRef out(makeType<BShrTyMrss>(out_btype, out_nbits), lhs.shape());
         NdArrayView<out_shr_t> _out(out);
 
         pforeach(0, lhs.numel(), [&](int64_t idx) {
@@ -268,8 +268,8 @@ NdArrayRef AndBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
   auto* prg_state = ctx->getState<PrgState>();
   auto* comm = ctx->getState<Communicator>();
 
-  const auto* lhs_ty = lhs.eltype().as<BShrTyMss>();
-  const auto* rhs_ty = rhs.eltype().as<BShrTyMss>();
+  const auto* lhs_ty = lhs.eltype().as<BShrTyMrss>();
+  const auto* rhs_ty = rhs.eltype().as<BShrTyMrss>();
 
   const size_t out_nbits = std::max(lhs_ty->nbits(), rhs_ty->nbits());
   const PtType out_btype = calcBShareBacktype(out_nbits);
@@ -297,13 +297,13 @@ NdArrayRef AndBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
                                 PrgState::GenPrssCtrl::Both);
 
         // offline.
-        
-        #if !defined(EQ_USE_PRG_STATE) || !defined(EQ_USE_OFFLINE)
+
+#if !defined(ALKAID_USE_PRG_STATE) || !defined(ALKAID_USE_OFFLINE)
         std::fill(r0.begin(), r0.end(), 0);
         std::fill(r1.begin(), r1.end(), 0);
-        comm->addCommStatsManually(0, 0);     // deal with unused-variable warning. 
-        #endif
-        #ifdef EQ_USE_OFFLINE
+        comm->addCommStatsManually(0, 0);  // deal with unused-variable warning.
+#endif
+#ifdef ALKAID_USE_OFFLINE
         // dxy = dx & dy = (dx0 & dy0) ^ (dx0 & dy1) ^ (dx1 & dy0);
         // r0 is dxy0, r1 is dxy1.
         pforeach(0, lhs.numel(), [&](int64_t idx) {
@@ -313,9 +313,9 @@ NdArrayRef AndBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
                     (r0[idx] ^ r1[idx]);
         });
 
-        r1 = comm->rotate<out_el_t>(r0, "MssAndBB, offline");  // comm => 1, k
-        // comm->addCommStatsManually(-1, -r0.size() * sizeof(out_el_t));        
-        #endif
+        r1 = comm->rotate<out_el_t>(r0, "MrssAndBB, offline");  // comm => 1, k
+// comm->addCommStatsManually(-1, -r0.size() * sizeof(out_el_t));
+#endif
 
         // online, compute [out] locally.
         NdArrayView<out_shr_t> _out(out);
@@ -324,13 +324,17 @@ NdArrayRef AndBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
           const auto& r = _rhs[idx];
 
           out_shr_t& o = _out[idx];
-          // z = x & y = (Dx ^ dx) & (Dy ^ dy) = Dx & Dy ^ Dx & dy ^ dx & Dy ^ dxy
-          // o[0] = ((comm->getRank() == 0) * (l[0] & r[0])) ^ (l[0] & r[1]) ^ (l[1] & r[0]) ^ r0[idx];   // r0 is dxy0
-          // o[1] = ((comm->getRank() == 2) * (l[0] & r[0])) ^ (l[0] & r[2]) ^ (l[2] & r[0]) ^ r1[idx];   // r1 is dxy1
-          o[0] = ((l[0] & r[0])) ^ (l[0] & r[1]) ^ (l[1] & r[0]) ^ r0[idx];   // r0 is dxy0
-          o[1] = ((l[0] & r[0])) ^ (l[0] & r[2]) ^ (l[2] & r[0]) ^ r1[idx];   // r1 is dxy1
+          // z = x & y = (Dx ^ dx) & (Dy ^ dy) = Dx & Dy ^ Dx & dy ^ dx & Dy ^
+          // dxy o[0] = ((comm->getRank() == 0) * (l[0] & r[0])) ^ (l[0] & r[1])
+          // ^ (l[1] & r[0]) ^ r0[idx];   // r0 is dxy0 o[1] = ((comm->getRank()
+          // == 2) * (l[0] & r[0])) ^ (l[0] & r[2]) ^ (l[2] & r[0]) ^ r1[idx];
+          // // r1 is dxy1
+          o[0] = ((l[0] & r[0])) ^ (l[0] & r[1]) ^ (l[1] & r[0]) ^
+                 r0[idx];  // r0 is dxy0
+          o[1] = ((l[0] & r[0])) ^ (l[0] & r[2]) ^ (l[2] & r[0]) ^
+                 r1[idx];  // r1 is dxy1
         });
-        return ResharingRss2Mss(ctx, out);
+        return ResharingRss2Mrss(ctx, out);
       });
     });
   });
@@ -338,7 +342,7 @@ NdArrayRef AndBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
 
 NdArrayRef XorBP::proc(KernelEvalContext*, const NdArrayRef& lhs,
                        const NdArrayRef& rhs) const {
-  const auto* lhs_ty = lhs.eltype().as<BShrTyMss>();
+  const auto* lhs_ty = lhs.eltype().as<BShrTyMrss>();
   const auto* rhs_ty = rhs.eltype().as<Pub2kTy>();
 
   return DISPATCH_ALL_FIELDS(rhs_ty->field(), [&]() {
@@ -350,7 +354,7 @@ NdArrayRef XorBP::proc(KernelEvalContext*, const NdArrayRef& lhs,
 
     NdArrayView<rhs_scalar_t> _rhs(rhs);
 
-    NdArrayRef out(makeType<BShrTyMss>(out_btype, out_nbits), lhs.shape());
+    NdArrayRef out(makeType<BShrTyMrss>(out_btype, out_nbits), lhs.shape());
 
     return DISPATCH_UINT_PT_TYPES(lhs_ty->getBacktype(), [&]() {
       using lhs_el_t = ScalarT;
@@ -378,8 +382,8 @@ NdArrayRef XorBP::proc(KernelEvalContext*, const NdArrayRef& lhs,
 
 NdArrayRef XorBB::proc(KernelEvalContext*, const NdArrayRef& lhs,
                        const NdArrayRef& rhs) const {
-  const auto* lhs_ty = lhs.eltype().as<BShrTyMss>();
-  const auto* rhs_ty = rhs.eltype().as<BShrTyMss>();
+  const auto* lhs_ty = lhs.eltype().as<BShrTyMrss>();
+  const auto* rhs_ty = rhs.eltype().as<BShrTyMrss>();
 
   const size_t out_nbits = std::max(lhs_ty->nbits(), rhs_ty->nbits());
   const PtType out_btype = calcBShareBacktype(out_nbits);
@@ -400,7 +404,7 @@ NdArrayRef XorBB::proc(KernelEvalContext*, const NdArrayRef& lhs,
         using out_el_t = ScalarT;
         using out_shr_t = std::array<out_el_t, 3>;
 
-        NdArrayRef out(makeType<BShrTyMss>(out_btype, out_nbits), lhs.shape());
+        NdArrayRef out(makeType<BShrTyMrss>(out_btype, out_nbits), lhs.shape());
         NdArrayView<out_shr_t> _out(out);
 
         pforeach(0, lhs.numel(), [&](int64_t idx) {
@@ -418,7 +422,7 @@ NdArrayRef XorBB::proc(KernelEvalContext*, const NdArrayRef& lhs,
 
 NdArrayRef LShiftB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
                          size_t bits) const {
-  const auto* in_ty = in.eltype().as<BShrTyMss>();
+  const auto* in_ty = in.eltype().as<BShrTyMrss>();
 
   // TODO: the hal dtype should tell us about the max number of possible bits.
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
@@ -435,7 +439,7 @@ NdArrayRef LShiftB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
       using out_el_t = ScalarT;
       using out_shr_t = std::array<out_el_t, 3>;
 
-      NdArrayRef out(makeType<BShrTyMss>(out_btype, out_nbits), in.shape());
+      NdArrayRef out(makeType<BShrTyMrss>(out_btype, out_nbits), in.shape());
       NdArrayView<out_shr_t> _out(out);
 
       pforeach(0, in.numel(), [&](int64_t idx) {
@@ -452,7 +456,7 @@ NdArrayRef LShiftB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
 
 NdArrayRef RShiftB::proc(KernelEvalContext*, const NdArrayRef& in,
                          size_t bits) const {
-  const auto* in_ty = in.eltype().as<BShrTyMss>();
+  const auto* in_ty = in.eltype().as<BShrTyMrss>();
 
   bits = std::min(in_ty->nbits(), bits);
   size_t out_nbits = in_ty->nbits();
@@ -467,7 +471,7 @@ NdArrayRef RShiftB::proc(KernelEvalContext*, const NdArrayRef& in,
       using out_el_t = ScalarT;
       using out_shr_t = std::array<out_el_t, 3>;
 
-      NdArrayRef out(makeType<BShrTyMss>(out_btype, out_nbits), in.shape());
+      NdArrayRef out(makeType<BShrTyMrss>(out_btype, out_nbits), in.shape());
       NdArrayView<out_shr_t> _out(out);
 
       pforeach(0, in.numel(), [&](int64_t idx) {
@@ -485,7 +489,7 @@ NdArrayRef RShiftB::proc(KernelEvalContext*, const NdArrayRef& in,
 NdArrayRef ARShiftB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
                           size_t bits) const {
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
-  const auto* in_ty = in.eltype().as<BShrTyMss>();
+  const auto* in_ty = in.eltype().as<BShrTyMrss>();
 
   // arithmetic right shift expects to work on ring, or the behaviour is
   // undefined.
@@ -498,7 +502,7 @@ NdArrayRef ARShiftB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
     using el_t = std::make_signed_t<ScalarT>;
     using shr_t = std::array<el_t, 3>;
 
-    NdArrayRef out(makeType<BShrTyMss>(out_btype, out_nbits), in.shape());
+    NdArrayRef out(makeType<BShrTyMrss>(out_btype, out_nbits), in.shape());
     NdArrayView<shr_t> _out(out);
     NdArrayView<shr_t> _in(in);
 
@@ -517,7 +521,7 @@ NdArrayRef BitrevB::proc(KernelEvalContext*, const NdArrayRef& in, size_t start,
                          size_t end) const {
   SPU_ENFORCE(start <= end && end <= 128);
 
-  const auto* in_ty = in.eltype().as<BShrTyMss>();
+  const auto* in_ty = in.eltype().as<BShrTyMrss>();
   const size_t out_nbits = std::max(in_ty->nbits(), end);
   const PtType out_btype = calcBShareBacktype(out_nbits);
 
@@ -531,7 +535,7 @@ NdArrayRef BitrevB::proc(KernelEvalContext*, const NdArrayRef& in, size_t start,
       using out_el_t = ScalarT;
       using out_shr_t = std::array<out_el_t, 3>;
 
-      NdArrayRef out(makeType<BShrTyMss>(out_btype, out_nbits), in.shape());
+      NdArrayRef out(makeType<BShrTyMrss>(out_btype, out_nbits), in.shape());
       NdArrayView<out_shr_t> _out(out);
 
       auto bitrev_fn = [&](out_el_t el) -> out_el_t {
@@ -561,7 +565,7 @@ NdArrayRef BitrevB::proc(KernelEvalContext*, const NdArrayRef& in, size_t start,
 NdArrayRef BitIntlB::proc(KernelEvalContext*, const NdArrayRef& in,
                           size_t stride) const {
   // void BitIntlB::evaluate(KernelEvalContext* ctx) const {
-  const auto* in_ty = in.eltype().as<BShrTyMss>();
+  const auto* in_ty = in.eltype().as<BShrTyMrss>();
   const size_t nbits = in_ty->nbits();
   SPU_ENFORCE(absl::has_single_bit(nbits));
 
@@ -585,7 +589,7 @@ NdArrayRef BitIntlB::proc(KernelEvalContext*, const NdArrayRef& in,
 
 NdArrayRef BitDeintlB::proc(KernelEvalContext*, const NdArrayRef& in,
                             size_t stride) const {
-  const auto* in_ty = in.eltype().as<BShrTyMss>();
+  const auto* in_ty = in.eltype().as<BShrTyMrss>();
   const size_t nbits = in_ty->nbits();
   SPU_ENFORCE(absl::has_single_bit(nbits));
 

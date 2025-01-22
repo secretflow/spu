@@ -647,13 +647,13 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
     auto z1 = ring_sum({t0, t2.get(), r.get()});
 
     auto f = std::async([&] { ring_assign(o1, z1); });
-    ring_assign(o2, comm->rotate(z1, kBindName));  // comm => 1, k
+    ring_assign(o2, comm->rotate(z1, kBindName()));  // comm => 1, k
     f.get();
 #ifdef CUDA_ENABLED
   } else {
     matmul_aa_gpu(x, y, o1);
     ring_add_(o1, r.get());
-    ring_assign(o2, comm->rotate(o1, kBindName));  // comm => 1, k
+    ring_assign(o2, comm->rotate(o1, kBindName()));  // comm => 1, k
   }
 #endif
 
@@ -714,14 +714,14 @@ NdArrayRef TruncA::proc(KernelEvalContext* ctx, const NdArrayRef& in,
   switch (comm->getRank()) {
     case 0: {
       const auto z1 = ring_arshift(x1, shift_bit);
-      const auto z2 = comm->recv(1, x1.eltype(), kBindName);
+      const auto z2 = comm->recv(1, x1.eltype(), kBindName());
       return makeAShare(z1, z2, field);
     }
 
     case 1: {
       auto r1 = r_future.get().second;
       const auto z1 = ring_sub(ring_arshift(ring_add(x1, x2), shift_bit), r1);
-      comm->sendAsync(0, z1, kBindName);
+      comm->sendAsync(0, z1, kBindName());
       return makeAShare(z1, r1, field);
     }
 
