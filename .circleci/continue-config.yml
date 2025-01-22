@@ -93,14 +93,14 @@ commands:
             declare -i status0=0
             declare -i status1=0
             mkdir test-results
-            mkdir test-testlogs
+            mkdir bazel-testlogs
 
             pushd src
             bazel query <<parameters.targets>>; if [ $? -eq 0 ]; then
               bazel test <<parameters.extra_bazel_test_args>> <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors | tee test_result.log; status0=${PIPESTATUS[0]}
               sh ../../devtools/rename-junit-xml.sh
               cp -r test-results/ ../test-results/
-              cp -r test-testlogs/ ../test-testlogs/
+              cp -r bazel-testlogs/ ../bazel-testlogs/
             fi
             popd
 
