@@ -54,13 +54,13 @@ jobs:
             declare -i status0=0
             declare -i status1=0
             mkdir test-results
-            mkdir test-testlogs
+            mkdir bazel-testlogs
 
             pushd src
             bazel test //... --features=asan --test_timeout=500 --ui_event_filters=-info,-debug,-warning --test_output=errors | tee test_result.log; status0=${PIPESTATUS[0]}
             sh ../../devtools/rename-junit-xml.sh
             cp -r test-results/ ../test-results/
-            cp -r test-testlogs/ ../test-testlogs/
+            cp -r bazel-testlogs/ ../bazel-testlogs/
             popd
 
             # TODO
