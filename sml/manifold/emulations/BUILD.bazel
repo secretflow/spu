@@ -44,5 +44,17 @@ py_binary(
     ],
 )
 
-
+py_binary(
+    name = "knn_test",
+    srcs = ["knn_test.py"],
+    deps = [
+        "//sml/utils:emulation",
+        "//sml/manifold:jacobi",
+        "//sml/manifold:dijkstra",
+        "//sml/manifold:MDS",
+        "//sml/manifold:kneighbors",
+        "//sml/manifold:floyd",
+        "//sml/manifold:SE",
+    ],
+)
 

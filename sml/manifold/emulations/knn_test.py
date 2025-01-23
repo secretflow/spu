@@ -16,11 +16,9 @@ import time
 import jax
 import jax.numpy as jnp
 import numpy as np
-from sklearn.manifold import spectral_embedding
-from sklearn.neighbors import kneighbors_graph
 
 import sml.utils.emulation as emulation
-from sml.manifold.kneighbors import mpc_kneighbors_graph
+from sml.manifold.kneighbors import test_mpc_kneighbors_graph
 from sml.manifold.SE import normalization, se
 
 
@@ -32,11 +30,9 @@ def emul_cpz(mode: emulation.Mode.MULTIPROCESS):
         emulator.up()
 
         def SE(sX, num_samples, num_features, k, num_components):
-            Knn = mpc_kneighbors_graph(sX, num_samples, num_features, k)
-            Knn = 0.5 * (Knn + Knn.T)
-            D, L = normalization(Knn)
-            ans = se(L, num_samples, D, num_components)
-            return ans
+            Knn,Knn1 = test_mpc_kneighbors_graph(sX, num_samples, num_features, k)
+            
+            return Knn,Knn1
 
 
         # Set sample size and dimensions
@@ -53,7 +49,7 @@ def emul_cpz(mode: emulation.Mode.MULTIPROCESS):
         )
 
         sX = emulator.seal(X)
-        ans= emulator.run(
+        Knn,Knn1= emulator.run(
             SE,
             static_argnums=(
                 1,
@@ -62,26 +58,10 @@ def emul_cpz(mode: emulation.Mode.MULTIPROCESS):
                 4,
             ),
         )(sX, num_samples, num_features, k, num_components)
-        print('ans: \n', ans)
+        print('Knn: \n',Knn)
+        print('Knn1: \n',Knn1)
         
         
-        # sklearn test
-        affinity_matrix = kneighbors_graph(
-            X, n_neighbors=k, mode="distance", include_self=False
-        )
-
-        # Make the matrix symmetric
-        affinity_matrix = 0.5 * (affinity_matrix + affinity_matrix.T)
-        # print(affinity_matrix)
-        embedding = spectral_embedding(
-            affinity_matrix, n_components=num_components, random_state=None
-        )
-        # print('embedding: \n', embedding)
-
-        # Calculate the maximum difference between the results of SE and sklearn test, i.e. accuracy
-        max_abs_diff = jnp.max(jnp.abs(jnp.abs(embedding) - jnp.abs(ans)))
-        print(max_abs_diff)
-
     finally:
         emulator.down()
 

@@ -17,7 +17,7 @@ import jax.numpy as jnp
 import spu.intrinsic as si
 
 
-def mpc_kneighbors_graph(
+def test_mpc_kneighbors_graph(
     X,  # the input samples to calculate the nearest neighbors
     num_samples,
     num_features,
@@ -54,6 +54,35 @@ def mpc_kneighbors_graph(
             MIndex_Dis=MIndex_Dis.at[i,j].set(Index_Dis[j])
         Knn = Knn.at[i].set(si.permute(Dis[i], si.permute(temp_pi, Index_Dis)))
     return MIndex_Dis,Knn
+
+
+def mpc_kneighbors_graph(
+    X,  # the input samples to calculate the nearest neighbors
+    num_samples,
+    num_features,
+    n_neighbors,  # Define the number of nearest neighbors, excluding the sample itself
+    *,
+    mode="distance",
+    metric="minkowski",  # Distance is defined as the Euclidean distance between samples
+    p=2,
+):
+
+    # Calculate the square of the Euclidean distance between every two samples
+    X_expanded = jnp.expand_dims(X, axis=1) - jnp.expand_dims(X, axis=0)
+    X_expanded = jnp.square(X_expanded)
+    Dis = jnp.sum(X_expanded, axis=-1)
+
+    # Sort each row of Dis, first calculate the permutation, and then apply the permutation to Dis
+    Index_Dis = jnp.argsort(Dis, axis=1)
+
+    Knn = jnp.zeros((num_samples, num_samples))
+    for i in range(num_samples):
+        temp_pi = jnp.arange(num_samples)
+        per_dis = si.permute(Dis[i], si.permute(temp_pi, Index_Dis[i]))
+        for j in range(num_samples):
+            Knn = Knn.at[i, j].set(per_dis[j])
+    
+    
     # Find the square root of the Euclidean distance of the nearest neighbor previously calculated, and set the distance of non nearest neighbors to 0
     Knn2 = jnp.zeros((num_samples, num_samples))
 
@@ -74,14 +103,9 @@ def mpc_kneighbors_graph(
 
     # Reverse permutation of Dis to restore the previous order
     Knn3 = jnp.zeros((num_samples, num_samples))
-    Indix_temp=jnp.zeros(num_samples)
     for i in range(num_samples):
-        for j in range(num_samples):
-            Indix_temp=Indix_temp.at[j].set(MIndex_Dis[i][j])
-        per_dis = si.permute(Knn2[i], Indix_temp)
+        per_dis = si.permute(Knn2[i], Index_Dis[i])
         for j in range(num_samples):
             Knn3 = Knn3.at[i, j].set(per_dis[j])
 
     return Knn3
-
-
