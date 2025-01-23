@@ -34,15 +34,26 @@ def mpc_kneighbors_graph(
     Dis = jnp.sum(X_expanded, axis=-1)
 
     # Sort each row of Dis, first calculate the permutation, and then apply the permutation to Dis
-    Indix_Dis = jnp.argsort(Dis, axis=1)
+    # Index_Dis = jnp.argsort(Dis, axis=1)
 
+    # Knn = jnp.zeros((num_samples, num_samples))
+    # for i in range(num_samples):
+    #     temp_pi = jnp.arange(num_samples)
+    #     per_dis = si.permute(Dis[i], si.permute(temp_pi, Index_Dis[i]))
+    #     for j in range(num_samples):
+    #         Knn = Knn.at[i, j].set(per_dis[j])
+    
+    # top_k行向量
     Knn = jnp.zeros((num_samples, num_samples))
+    MIndex_Dis = jnp.zeros((num_samples, num_samples))
+    Index_Dis = jnp.zeros(num_samples)
+    temp_pi = jnp.arange(num_samples)
     for i in range(num_samples):
-        temp_pi = jnp.arange(num_samples)
-        per_dis = si.permute(Dis[i], si.permute(temp_pi, Indix_Dis[i]))
+        _, Index_Dis = jax.lax.top_k(-Dis[i], n_neighbors)
         for j in range(num_samples):
-            Knn = Knn.at[i, j].set(per_dis[j])
-
+            MIndex_Dis=MIndex_Dis.at[i,j].set(Index_Dis[j])
+        Knn = Knn.at[i].set(si.permute(Dis[i], si.permute(temp_pi, Index_Dis)))
+    return MIndex_Dis,Knn
     # Find the square root of the Euclidean distance of the nearest neighbor previously calculated, and set the distance of non nearest neighbors to 0
     Knn2 = jnp.zeros((num_samples, num_samples))
 
@@ -63,9 +74,14 @@ def mpc_kneighbors_graph(
 
     # Reverse permutation of Dis to restore the previous order
     Knn3 = jnp.zeros((num_samples, num_samples))
+    Indix_temp=jnp.zeros(num_samples)
     for i in range(num_samples):
-        per_dis = si.permute(Knn2[i], Indix_Dis[i])
+        for j in range(num_samples):
+            Indix_temp=Indix_temp.at[j].set(MIndex_Dis[i][j])
+        per_dis = si.permute(Knn2[i], Indix_temp)
         for j in range(num_samples):
             Knn3 = Knn3.at[i, j].set(per_dis[j])
 
     return Knn3
+
+

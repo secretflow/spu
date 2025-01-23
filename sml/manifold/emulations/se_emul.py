@@ -32,16 +32,17 @@ def emul_cpz(mode: emulation.Mode.MULTIPROCESS):
         emulator.up()
 
         def SE(sX, num_samples, num_features, k, num_components):
-            Knn = mpc_kneighbors_graph(sX, num_samples, num_features, k)
-            Knn = 0.5 * (Knn + Knn.T)
-            D, L = normalization(Knn)
-            ans = se(L, num_samples, D, num_components)
-            return ans
+            Knn,Knn1 = mpc_kneighbors_graph(sX, num_samples, num_features, k)
+            # Knn = 0.5 * (Knn + Knn.T)
+            # D, L = normalization(Knn)
+            # ans = se(L, num_samples, D, num_components)
+            return Knn,Knn1
+
 
         # Set sample size and dimensions
-        num_samples = 20  # Number of samples
+        num_samples = 10  # Number of samples
         num_features = 4  # Sample dimension
-        k = 15  # Number of nearest neighbors
+        k = 6  # Number of nearest neighbors
         num_components = 3  # Dimension after dimensionality reduction
 
         # Generate random input
@@ -52,7 +53,7 @@ def emul_cpz(mode: emulation.Mode.MULTIPROCESS):
         )
 
         sX = emulator.seal(X)
-        ans = emulator.run(
+        Knn ,Knn1= emulator.run(
             SE,
             static_argnums=(
                 1,
@@ -61,25 +62,27 @@ def emul_cpz(mode: emulation.Mode.MULTIPROCESS):
                 4,
             ),
         )(sX, num_samples, num_features, k, num_components)
+        # print('ans: \n', ans)
+        print('Knn: \n',Knn)
+        print('Knn1: \n',Knn1)
+        
+        
+        # # sklearn test
+        # affinity_matrix = kneighbors_graph(
+        #     X, n_neighbors=k, mode="distance", include_self=False
+        # )
 
-        print('ans: \n', ans)
+        # # Make the matrix symmetric
+        # affinity_matrix = 0.5 * (affinity_matrix + affinity_matrix.T)
+        # # print(affinity_matrix)
+        # embedding = spectral_embedding(
+        #     affinity_matrix, n_components=num_components, random_state=None
+        # )
+        # # print('embedding: \n', embedding)
 
-        # sklearn test
-        affinity_matrix = kneighbors_graph(
-            X, n_neighbors=k, mode="distance", include_self=False
-        )
-
-        # Make the matrix symmetric
-        affinity_matrix = 0.5 * (affinity_matrix + affinity_matrix.T)
-
-        embedding = spectral_embedding(
-            affinity_matrix, n_components=num_components, random_state=None
-        )
-        print('embedding: \n', embedding)
-
-        # Calculate the maximum difference between the results of SE and sklearn test, i.e. accuracy
-        max_abs_diff = jnp.max(jnp.abs(jnp.abs(embedding) - jnp.abs(ans)))
-        print(max_abs_diff)
+        # # Calculate the maximum difference between the results of SE and sklearn test, i.e. accuracy
+        # # max_abs_diff = jnp.max(jnp.abs(jnp.abs(embedding) - jnp.abs(ans)))
+        # # print(max_abs_diff)
 
     finally:
         emulator.down()

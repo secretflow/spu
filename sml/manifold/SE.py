@@ -23,14 +23,25 @@ def se(X, num_samples, D, n_components):
     X, Q = Jacobi(X, num_samples)
     X = jnp.diag(X)
     X = jnp.array(X)
-    # perm = jnp.argsort(X)
-    X2 = jnp.expand_dims(X, axis=1).repeat(Q.shape[1], axis=1)
-    X3, ans = jax.lax.sort_key_val(X2.T, Q.T)
+
+    # X2 = jnp.expand_dims(X, axis=1).repeat(Q.shape[1], axis=1)
+    # X3, ans = jax.lax.sort_key_val(X2.T, Q.T)
+
+    perm = jnp.argsort(X)
+    ans=jnp.zeros((num_samples, num_samples))
+    Q=Q.T
+    for i in range(num_samples):
+        temp_pi = jnp.arange(num_samples)
+        per_Q = si.permute(Q[i], si.permute(temp_pi, perm))
+        for j in range(num_samples):
+            ans = ans.at[i, j].set(per_Q[j])
+    
     ans = ans[:, 1 : n_components + 1]
+    
+    
     D = jnp.diag(D)
     ans = ans.T * jnp.reciprocal(jnp.sqrt(D))
     return ans.T
-
 
 def normalization(
     adjacency,
