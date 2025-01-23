@@ -30,7 +30,6 @@
 #include "libspu/core/object.h"
 #include "libspu/core/parallel_utils.h"
 #include "libspu/core/prelude.h"
-
 #include "libspu/mpc/offline_recorder.h"
 
 // This module defines the protocol comm pattern used for all
@@ -124,7 +123,7 @@ class Communicator : public State {
   std::vector<T> rotate(absl::Span<T const> in, std::string_view tag);
 
   template <typename T>
-  std::vector<T> rotateR(absl::Span<T const> in, std::string_view tag);
+  std::vector<T> rotate2Next(absl::Span<T const> in, std::string_view tag);
 
   template <typename T>
   void sendAsync(size_t dst_rank, absl::Span<T const> in, std::string_view tag);
@@ -163,8 +162,8 @@ std::vector<T> Communicator::rotate(absl::Span<T const> in,
 
 // Send a message to the next rank and receive a message from the previous rank.
 template <typename T>
-std::vector<T> Communicator::rotateR(absl::Span<T const> in,
-                                    std::string_view tag) {
+std::vector<T> Communicator::rotate2Next(absl::Span<T const> in,
+                                         std::string_view tag) {
   yacl::ByteContainerView bv(reinterpret_cast<uint8_t const*>(in.data()),
                              sizeof(T) * in.size());
   lctx_->SendAsync(lctx_->NextRank(), bv, tag);
@@ -184,7 +183,6 @@ void Communicator::sendAsync(size_t dst_rank, absl::Span<T const> in,
                              sizeof(T) * in.size());
   lctx_->SendAsync(dst_rank, bv, tag);
 
-  // stats_.latency += 1;
   stats_.comm += in.size() * sizeof(T);
 }
 
@@ -233,8 +231,9 @@ std::vector<T> Communicator::bcast(absl::Span<T const> in, size_t root,
   if (lctx_->Rank() == root) {
     stats_.comm += (lctx_->WorldSize() - 1) * in.size() * sizeof(T);
     stats_.latency += 1;
-    const std::atomic<size_t> & lctx_sent_actions = lctx_->GetStats().get()->sent_actions;
-    const_cast<std::atomic<size_t> &>(lctx_sent_actions) -= 1;
+    const std::atomic<size_t>& lctx_sent_actions =
+        lctx_->GetStats().get()->sent_actions;
+    const_cast<std::atomic<size_t>&>(lctx_sent_actions) -= 1;
   } else {
     stats_.comm += in.size() * sizeof(T);
   }
@@ -261,8 +260,9 @@ std::vector<std::vector<T>> Communicator::gather(absl::Span<T const> in,
   } else {
     stats_.comm += in.size() * sizeof(T);
     stats_.latency += 1;
-    // const std::atomic<size_t> & lctx_sent_actions = lctx_->GetStats().get()->sent_actions;
-    // const_cast<std::atomic<size_t> &>(lctx_sent_actions) -= 1;
+    // const std::atomic<size_t> & lctx_sent_actions =
+    // lctx_->GetStats().get()->sent_actions; const_cast<std::atomic<size_t>
+    // &>(lctx_sent_actions) -= 1;
   }
 
   // TODO: steal the buffer.

@@ -15,20 +15,20 @@ template<typename PodT> using MrssArray = std::array<PodT, 3>;
 
 
 template<typename LhsT, typename RhsT, typename OutT>
-void AssXor2(const AssArray<LhsT>& lhs, const AssArray<RhsT>& rhs, AssArray<OutT>& out)
+void AssXor2OnArray(const AssArray<LhsT>& lhs, const AssArray<RhsT>& rhs, AssArray<OutT>& out)
 {
     out[0] = lhs[0] ^ rhs[0];
 }
 
 template<typename LhsT, typename RhsT, typename OutT>
-void RssXor2(const RssArray<LhsT>& lhs, const RssArray<RhsT>& rhs, RssArray<OutT>& out)
+void RssXor2OnArray(const RssArray<LhsT>& lhs, const RssArray<RhsT>& rhs, RssArray<OutT>& out)
 {
     out[0] = lhs[0] ^ rhs[0];
     out[1] = lhs[1] ^ rhs[1];
 }
 
 template<typename LhsT, typename RhsT, typename OutT>
-void MrssXor2(const MrssArray<LhsT>& lhs, const MrssArray<RhsT>& rhs, MrssArray<OutT>& out)
+void MrssXor2OnArray(const MrssArray<LhsT>& lhs, const MrssArray<RhsT>& rhs, MrssArray<OutT>& out)
 {
     out[0] = lhs[0] ^ rhs[0];
     out[1] = lhs[1] ^ rhs[1];
@@ -36,7 +36,7 @@ void MrssXor2(const MrssArray<LhsT>& lhs, const MrssArray<RhsT>& rhs, MrssArray<
 }
 
 template<typename LhsT, typename RhsT, typename OutT>
-void RssAnd2NoComm(
+void RssAnd2OnArray(
     const RssArray<LhsT>& lhs, const RssArray<RhsT>& rhs, 
     const OutT& r0, const OutT& r1,
     AssArray<OutT>& out) 
@@ -46,7 +46,17 @@ void RssAnd2NoComm(
 }
 
 template<typename LhsT, typename RhsT, typename OutT>
-void MssAnd2NoComm(
+void RssAnd2OnArrayFromMrss(
+    const RssArray<LhsT>& lhs, const RssArray<RhsT>& rhs, 
+    const OutT& r0, const OutT& r1,
+    OutT& out) 
+{
+    out = (lhs[1] & rhs[1]) ^ (lhs[1]  & rhs[2]) ^ 
+          (lhs[2] & rhs[1]) ^ (r0 ^ r1); 
+}
+
+template<typename LhsT, typename RhsT, typename OutT>
+void MssAnd2OnArray(
     const MrssArray<LhsT>& lhs, const MrssArray<RhsT>& rhs, 
     const OutT& r0, const OutT& r1,
     RssArray<OutT>& out) 
@@ -70,7 +80,7 @@ NdArrayRef RssXor2(KernelEvalContext* ctx, const NdArrayRef& lhs,
 NdArrayRef MrssXor2(KernelEvalContext* ctx, const NdArrayRef& lhs,
                     const NdArrayRef& rhs);
 
-
+// And without interaction. Similiar to ABY3, the output bits number is aligned to the min bits number.
 NdArrayRef RssAnd2NoComm(KernelEvalContext* ctx, const NdArrayRef& lhs,
                          const NdArrayRef& rhs);
 NdArrayRef MrssAnd2NoComm(KernelEvalContext* ctx, const NdArrayRef& lhs,
@@ -81,6 +91,7 @@ NdArrayRef MrssAnd4NoComm(KernelEvalContext* ctx, const NdArrayRef& op1,
                           const NdArrayRef& op2, const NdArrayRef& op3,
                           const NdArrayRef& op4);
 
+// Resharing between three share schemes. 
 NdArrayRef ResharingAss2Rss(KernelEvalContext* ctx, const NdArrayRef& in);
 NdArrayRef ResharingAss2Mrss(KernelEvalContext* ctx, const NdArrayRef& in);
 NdArrayRef ResharingRss2Mrss(KernelEvalContext* ctx, const NdArrayRef& in);

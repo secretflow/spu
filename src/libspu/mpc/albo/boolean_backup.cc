@@ -68,7 +68,7 @@ NdArrayRef ResharingRss2Mrss(KernelEvalContext* ctx, const NdArrayRef& in) {
         r0[idx] = i[0] ^ r0[idx];
       });
 
-      r0 = comm->rotateR<out_el_t>(
+      r0 = comm->rotate2Next<out_el_t>(
           r0, "Resharing RSS to MSS, online");  // comm => 1, k
 
       pforeach(0, in.numel(), [&](int64_t idx) {

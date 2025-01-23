@@ -235,7 +235,8 @@ namespace spu::mpc::alkaid {
 // #if !defined(ALKAID_USE_PRG_STATE) || !defined(ALKAID_USE_OFFLINE)
 //         std::fill(r0.begin(), r0.end(), 0);
 //         std::fill(r1.begin(), r1.end(), 0);
-//         comm->addCommStatsManually(0, 0);  // deal with unused-variable warning.
+//         comm->addCommStatsManually(0, 0);  // deal with unused-variable
+//         warning.
 // #endif
 // #ifdef ALKAID_USE_OFFLINE
 //         // dxy = dx & dy = (dx0 & dy0) ^ (dx0 & dy1) ^ (dx1 & dy0);
@@ -247,7 +248,8 @@ namespace spu::mpc::alkaid {
 //                     (r0[idx] ^ r1[idx]);
 //         });
 
-//         r1 = comm->rotate<out_el_t>(r0, "MrssAndBB, offline");  // comm => 1, k
+//         r1 = comm->rotate<out_el_t>(r0, "MrssAndBB, offline");  // comm => 1,
+//         k
 // // comm->addCommStatsManually(-1, -r0.size() * sizeof(out_el_t));
 // #endif
 
@@ -258,10 +260,14 @@ namespace spu::mpc::alkaid {
 //           const auto& r = _rhs[idx];
 
 //           out_shr_t& o = _out[idx];
-//           // z = x & y = (Dx ^ dx) & (Dy ^ dy) = Dx & Dy ^ Dx & dy ^ dx & Dy ^
-//           // dxy o[0] = ((comm->getRank() == 0) * (l[0] & r[0])) ^ (l[0] & r[1])
-//           // ^ (l[1] & r[0]) ^ r0[idx];   // r0 is dxy0 o[1] = ((comm->getRank()
-//           // == 2) * (l[0] & r[0])) ^ (l[0] & r[2]) ^ (l[2] & r[0]) ^ r1[idx];
+//           // z = x & y = (Dx ^ dx) & (Dy ^ dy) = Dx & Dy ^ Dx & dy ^ dx & Dy
+//           ^
+//           // dxy o[0] = ((comm->getRank() == 0) * (l[0] & r[0])) ^ (l[0] &
+//           r[1])
+//           // ^ (l[1] & r[0]) ^ r0[idx];   // r0 is dxy0 o[1] =
+//           ((comm->getRank()
+//           // == 2) * (l[0] & r[0])) ^ (l[0] & r[2]) ^ (l[2] & r[0]) ^
+//           r1[idx];
 //           // // r1 is dxy1
 //           o[0] = ((l[0] & r[0])) ^ (l[0] & r[1]) ^ (l[1] & r[0]) ^
 //                  r0[idx];  // r0 is dxy0
@@ -336,7 +342,7 @@ namespace spu::mpc::alkaid {
 //         r0[idx] = i[0] ^ r0[idx];
 //       });
 
-//       r0 = comm->rotateR<out_el_t>(
+//       r0 = comm->rotate2Next<out_el_t>(
 //           r0, "Resharing RSS to MSS, online");  // comm => 1, k
 
 //       pforeach(0, in.numel(), [&](int64_t idx) {
@@ -449,8 +455,10 @@ namespace spu::mpc::alkaid {
 //       });
 
 //       // TODO: not safe. should add a mask to r1.
-//       // r0 = comm->rotateR<out_el_t>(r0, "Resharing ASS to MSS, online, message
-//       // 1");  // comm => 1, k r1 = comm->rotate<out_el_t>(r1, "Resharing ASS to
+//       // r0 = comm->rotate2Next<out_el_t>(r0, "Resharing ASS to MSS, online,
+//       message
+//       // 1");  // comm => 1, k r1 = comm->rotate<out_el_t>(r1, "Resharing ASS
+//       to
 //       // MSS, online, message 2");  // comm => 1, k
 //       comm->sendAsync<out_el_t>(
 //           comm->nextRank(), r0,
@@ -517,7 +525,8 @@ namespace spu::mpc::alkaid {
 //   });
 // }
 
-// NdArrayRef ResharingMrss2RssAri(KernelEvalContext* ctx, const NdArrayRef& in) {
+// NdArrayRef ResharingMrss2RssAri(KernelEvalContext* ctx, const NdArrayRef& in)
+// {
 //   auto* comm = ctx->getState<Communicator>();
 //   auto rank = comm->getRank();
 

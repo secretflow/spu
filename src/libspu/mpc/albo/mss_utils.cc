@@ -335,7 +335,7 @@ NdArrayRef ResharingRss2Mrss(KernelEvalContext* ctx, const NdArrayRef& in) {
         r0[idx] = i[0] ^ r0[idx];
       });
 
-      r0 = comm->rotateR<out_el_t>(
+      r0 = comm->rotate2Next<out_el_t>(
           r0, "Resharing RSS to MSS, online");  // comm => 1, k
 
       pforeach(0, in.numel(), [&](int64_t idx) {
@@ -448,9 +448,9 @@ NdArrayRef ResharingAss2Mrss(KernelEvalContext* ctx, const NdArrayRef& in) {
       });
 
       // TODO: not safe. should add a mask to r1.
-      // r0 = comm->rotateR<out_el_t>(r0, "Resharing ASS to MSS, online, message
-      // 1");  // comm => 1, k r1 = comm->rotate<out_el_t>(r1, "Resharing ASS to
-      // MSS, online, message 2");  // comm => 1, k
+      // r0 = comm->rotate2Next<out_el_t>(r0, "Resharing ASS to MSS, online,
+      // message 1");  // comm => 1, k r1 = comm->rotate<out_el_t>(r1,
+      // "Resharing ASS to MSS, online, message 2");  // comm => 1, k
       comm->sendAsync<out_el_t>(
           comm->nextRank(), r0,
           "Resharing ASS to MSS, online, message 1");  // comm => 1, k
