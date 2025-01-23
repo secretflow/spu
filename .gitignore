@@ -25,6 +25,7 @@ _build
 
 # bazel
 /bazel-*
+src/bazel-*
 
 # cmake related
 abseil-cpp

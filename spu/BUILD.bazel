@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@protobuf//bazel:py_proto_library.bzl", "py_proto_library")
 load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
-load("@rules_proto_grpc//python:defs.bzl", "python_proto_compile")
-load("@rules_python//python:defs.bzl", "py_library")
 load("@rules_python//python:packaging.bzl", "py_package")
+load("//bazel:spu.bzl", "spu_py_library")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -41,13 +41,13 @@ pybind_extension(
     deps = [
         ":exported_symbols.lds",
         ":version_script.lds",
-        "//libspu:version",
-        "//libspu/compiler:compile",
-        "//libspu/compiler/common:compilation_context",
-        "//libspu/core:logging",
-        "//libspu/device:api",
-        "//libspu/device:io",
-        "//libspu/device/pphlo:pphlo_executor",
+        "@spulib//libspu:version",
+        "@spulib//libspu/compiler:compile",
+        "@spulib//libspu/compiler/common:compilation_context",
+        "@spulib//libspu/core:logging",
+        "@spulib//libspu/device:api",
+        "@spulib//libspu/device:io",
+        "@spulib//libspu/device/pphlo:pphlo_executor",
         "@yacl//yacl/link",
     ],
 )
@@ -66,40 +66,37 @@ pybind_extension(
     deps = [
         ":exported_symbols.lds",
         ":version_script.lds",
-        "@psi//psi:launch",
+        "@psi//psi/apps/psi_launcher:launch",
         "@psi//psi/legacy:memory_psi",
         "@yacl//yacl/link",
     ],
 )
 
-py_library(
+spu_py_library(
     name = "api",
     srcs = [
         "api.py",
         "spu_pb2.py",
-        "//libspu:spu_py_proto",
+        "@spulib//libspu:spu_py_proto",
     ],
     data = [
         ":libspu.so",
     ],
 )
 
-python_proto_compile(
+py_proto_library(
     name = "psi_py_proto",
-    output_mode = "NO_PREFIX_FLAT",
-    protos = ["@psi//psi/proto:psi_proto"],
+    deps = ["@psi//psi/proto:psi_proto"],
 )
 
-python_proto_compile(
+py_proto_library(
     name = "link_py_proto",
-    output_mode = "NO_PREFIX_FLAT",
-    protos = ["@yacl//yacl/link:link_proto"],
+    deps = ["@yacl//yacl/link:link_proto"],
 )
 
-python_proto_compile(
+py_proto_library(
     name = "psi_v2_py_proto",
-    output_mode = "NO_PREFIX",
-    protos = ["@psi//psi/proto:psi_v2_proto"],
+    deps = ["@psi//psi/proto:psi_v2_proto"],
 )
 
 # Hack generated protobuf due to https://github.com/protocolbuffers/protobuf/issues/1491
@@ -107,16 +104,39 @@ genrule(
     name = "psi_v2_py_proto_fixed",
     srcs = [":psi_v2_py_proto"],
     outs = ["psi_v2_pb2.py"],
-    cmd = "sed 's#from yacl.link import#from . import#g;s#from psi.proto import#from . import#g' $(SRCS) > $(OUTS)",
+    cmd = "sed 's#from yacl.link import#from . import#g;s#from psi.proto import#from . import#g;s#psi.proto.psi_v2_pb2#spu.psi_pb2#g' $(SRCS) > $(OUTS)",
 )
 
-py_library(
+genrule(
+    name = "psi_py_proto_fixed",
+    srcs = [":psi_py_proto"],
+    outs = ["psi_pb2.py"],
+    cmd = "sed 's/psi.proto.psi_pb2/spu.psi_pb2/g' $(SRCS) > $(OUTS)",
+)
+
+genrule(
+    name = "pir_py_proto_fixed",
+    srcs = [":pir_py_proto"],
+    outs = ["pir_pb2.py"],
+    cmd = """
+    sed "s/psi.proto.pir_pb2/spu.pir_pb2/g" $(SRCS) > $(OUTS)
+    """,
+)
+
+genrule(
+    name = "link_py_proto_fixed",
+    srcs = [":link_py_proto"],
+    outs = ["link_pb2.py"],
+    cmd = "sed 's/yacl.link.link_pb2/link.pir_pb2/g' $(SRCS) > $(OUTS)",
+)
+
+spu_py_library(
     name = "psi",
     srcs = [
         "psi.py",
-        ":link_py_proto",
-        ":pir_py_proto",
-        ":psi_py_proto",
+        ":link_py_proto_fixed",
+        ":pir_py_proto_fixed",
+        ":psi_py_proto_fixed",
         ":psi_v2_py_proto_fixed",
     ],
     data = [
@@ -125,13 +145,12 @@ py_library(
     ],
 )
 
-python_proto_compile(
+py_proto_library(
     name = "pir_py_proto",
-    output_mode = "NO_PREFIX_FLAT",
-    protos = ["@psi//psi/proto:pir_proto"],
+    deps = ["@psi//psi/proto:pir_proto"],
 )
 
-py_library(
+spu_py_library(
     name = "init",
     srcs = [
         "__init__.py",

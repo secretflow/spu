@@ -23,5 +23,6 @@ py_test(
         "//sml/feature_selection:univariate_selection",
         "//spu:init",
         "//spu/utils:simulation",
+        "@spu_pip_dev//scikit_learn:pkg",
     ],
 )

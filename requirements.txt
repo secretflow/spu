@@ -1,6 +1,6 @@
-grpcio>=1.42.0,!=1.48.0
+grpcio==1.66.0
 numpy>=1.22.0, <2 # FIXME: for SF compatibility
-protobuf>=4, <5
+protobuf==5.27.3
 cloudpickle>=2.0.0
 multiprocess>=0.70.12.2
 cachetools>=5.0.0

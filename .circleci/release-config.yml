@@ -52,11 +52,14 @@ commands:
             conda create -n build python=<< parameters.python_ver >> -y
             conda activate build
 
-            sh ./build_wheel_entrypoint.sh
-            python3 -m pip install twine
-            ls dist/*.whl
+            if [ ! -e "/usr/bin/python3" ]; then ln -s `which python3` /usr/bin/python3; fi
+            cd src && bazel build //... -c opt --ui_event_filters=-info,-debug,-warning
+            cd - && bazel build //:spu_wheel -c opt --@rules_python//python/config_settings:python_version=<< parameters.python_ver >>
 
-            python3 -m twine upload -r pypi -u __token__ -p ${PYPI_TWINE_TOKEN} dist/*.whl
+            python3 -m pip install twine
+            ls bazel-bin/spu*.whl
+
+            python3 -m twine upload -r pypi -u __token__ -p ${PYPI_TWINE_TOKEN} bazel-bin/spu*.whl
 
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
@@ -103,7 +106,7 @@ workflows:
       - linux_publish:
           matrix:
             parameters:
-              python_ver: ["3.9", "3.10", "3.11"]
+              python_ver: ["3.10", "3.11"]
               executor: ["linux_x64_executor", "linux_aarch64_executor"]
           filters:
             tags:
@@ -111,7 +114,7 @@ workflows:
       - macOS_publish:
           matrix:
             parameters:
-              python_ver: ["3.9", "3.10", "3.11"]
+              python_ver: ["3.10", "3.11"]
           filters:
             tags:
               only: /.*(?<!dev\d{8})$/

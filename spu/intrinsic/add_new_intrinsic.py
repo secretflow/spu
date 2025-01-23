@@ -98,7 +98,7 @@ def adapt_build(module_path, check_name):
         content = (
             content
             + f"""
-py_library(
+spu_py_library(
     name = "{check_name}",
     srcs = [
         "{check_name}_impl.py",
