@@ -25,7 +25,7 @@ class AShrTy : public TypeImpl<AShrTy, RingTy, Secret, AShare> {
   using Base::Base;
   static std::string_view getStaticId() { return "swift.AShr"; }
   explicit AShrTy(FieldType field) { field_ = field; }
-  
+
   size_t size() const override {
     if (field_ == FT_INVALID) {
       return 0;
