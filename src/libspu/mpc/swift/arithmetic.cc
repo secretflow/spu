@@ -1841,7 +1841,11 @@ NdArrayRef TruncA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
   auto numel = x.numel();
   auto a2p = A2P();
 
-  auto [r, rd] = TruncA::Trgen(ctx, static_cast<int64_t>(bits), field, numel);
+  auto trunc_pair =
+      TruncA::Trgen(ctx, static_cast<int64_t>(bits), field, numel);
+
+  auto r = trunc_pair.first;
+  auto rd = trunc_pair.second;
 
   r.reshape(x.shape());
   rd.reshape(x.shape());
