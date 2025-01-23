@@ -25,7 +25,13 @@ class AShrTy : public TypeImpl<AShrTy, RingTy, Secret, AShare> {
   using Base::Base;
   static std::string_view getStaticId() { return "swift.AShr"; }
   explicit AShrTy(FieldType field) { field_ = field; }
-  size_t size() const override { return SizeOf(GetStorageType(field_)) * 3; }
+  
+  size_t size() const override {
+    if (field_ == FT_INVALID) {
+      return 0;
+    }
+    return SizeOf(GetStorageType(field_) * 3);
+  }
 };
 
 class BShrTy : public TypeImpl<BShrTy, RingTy, Secret, BShare> {
@@ -56,7 +62,12 @@ class BShrTy : public TypeImpl<BShrTy, RingTy, Secret, BShare> {
     return fmt::format("{},{}", FieldType_Name(field()), nbits_);
   }
 
-  size_t size() const override { return SizeOf(GetStorageType(field_)) * 3; }
+  size_t size() const override {
+    if (field_ == FT_INVALID) {
+      return 0;
+    }
+    return SizeOf(GetStorageType(field_) * 3);
+  }
 
   bool equals(TypeObject const* other) const override {
     auto const* derived_other = dynamic_cast<BShrTy const*>(other);

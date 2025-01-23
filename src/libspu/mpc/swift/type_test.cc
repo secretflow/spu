@@ -37,6 +37,7 @@ TEST(AShrTy, Simple) {
 }
 
 TEST(BShrTy, Simple) {
+  Type ty = makeType<BShrTy>();
   // Swift::BShr constructor with field.
   {
     Type ty = makeType<BShrTy>(FM128);
@@ -49,6 +50,22 @@ TEST(BShrTy, Simple) {
     EXPECT_TRUE(ty.isa<BShare>());
 
     EXPECT_EQ(ty.toString(), "swift.BShr<FM128,128>");
+
+    EXPECT_EQ(Type::fromString(ty.toString()), ty);
+  }
+
+  // Swift::BShr constructor with field and nbits.
+  {
+    Type ty = makeType<BShrTy>(FM128, 7);
+    EXPECT_EQ(ty.size(), 16 * 3);
+
+    EXPECT_TRUE(ty.isa<Secret>());
+    EXPECT_TRUE(ty.isa<Ring2k>());
+    EXPECT_FALSE(ty.isa<Public>());
+    EXPECT_FALSE(ty.isa<AShare>());
+    EXPECT_TRUE(ty.isa<BShare>());
+
+    EXPECT_EQ(ty.toString(), "swift.BShr<FM128,7>");
 
     EXPECT_EQ(Type::fromString(ty.toString()), ty);
   }
