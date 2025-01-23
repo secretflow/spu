@@ -30,7 +30,7 @@ class AShrTy : public TypeImpl<AShrTy, RingTy, Secret, AShare> {
     if (field_ == FT_INVALID) {
       return 0;
     }
-    return SizeOf(GetStorageType(field_) * 3);
+    return SizeOf(GetStorageType(field_)) * 3;
   }
 };
 
@@ -66,7 +66,7 @@ class BShrTy : public TypeImpl<BShrTy, RingTy, Secret, BShare> {
     if (field_ == FT_INVALID) {
       return 0;
     }
-    return SizeOf(GetStorageType(field_) * 3);
+    return SizeOf(GetStorageType(field_)) * 3;
   }
 
   bool equals(TypeObject const* other) const override {
