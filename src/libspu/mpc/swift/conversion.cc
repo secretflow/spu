@@ -186,7 +186,6 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   auto mult = MulAA();
   auto add = AddAA();
   auto neg = NegateA();
-  auto a2p = A2P();
 
   auto decompose_numel = numel * static_cast<int64_t>(nbits);
 
@@ -260,8 +259,6 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   auto decompose_out = add.proc(ctx, alpha_b, beta_b);
   decompose_out = add.proc(ctx, decompose_out, neg_tmp);
   decompose_out = add.proc(ctx, decompose_out, neg_tmp);
-
-  auto b_reconstruct = a2p.proc(ctx, decompose_out);
 
   DISPATCH_ALL_FIELDS(field, [&]() {
     using el_t = ring2k_t;
