@@ -48,6 +48,21 @@ NdArrayRef JointMessagePassing(KernelEvalContext* ctx, const NdArrayRef& msg,
   bool inconsistent_bit = false;
 
   auto rank = comm->getRank();
+  size_t hash_len = 32;
+
+  const auto kComm = msg.elsize() * msg.numel();
+
+  // send v and hash(v)
+  // ignore the const comm which is indepent with numel
+  comm->addCommStatsManually(1, kComm);
+
+  // P_recv send inconsistent bit to P_send and P_hash
+  // ignore the const comm which is indepent with numel
+  comm->addCommStatsManually(1, 0);
+
+  // P_send and P_hash exchange inconsistent bit
+  // ignore the const comm which is indepent with numel
+  comm->addCommStatsManually(1, 0);
 
   if (rank == rank_send) {
     // send v to P_recv
@@ -80,7 +95,7 @@ NdArrayRef JointMessagePassing(KernelEvalContext* ctx, const NdArrayRef& msg,
     if (inconsistent_bit) {
       std::string broadcast_msg(getOrCreateCompactArray(msg).data<char>(),
                                 msg.numel() * msg.elsize());
-      auto broadcast_msg_hash = commit(0, broadcast_msg, tag);
+      auto broadcast_msg_hash = commit(0, broadcast_msg, tag, hash_len);
       yacl::ByteContainerView broadcast_msg_hash_bytes(
           reinterpret_cast<uint8_t const*>(broadcast_msg_hash.data()),
           broadcast_msg_hash.size());
@@ -118,7 +133,7 @@ NdArrayRef JointMessagePassing(KernelEvalContext* ctx, const NdArrayRef& msg,
     // std::string msg_str(getOrCreateCompactArray(ring_neg(msg)).data<char>(),
     //                     msg.numel() * msg.elsize());
 
-    auto msg_hash = commit(rank_hash, msg_str, tag);
+    auto msg_hash = commit(rank_hash, msg_str, tag, hash_len);
 
     yacl::ByteContainerView msg_hash_bytes(
         reinterpret_cast<uint8_t const*>(msg_hash.data()), msg_hash.size());
@@ -143,7 +158,7 @@ NdArrayRef JointMessagePassing(KernelEvalContext* ctx, const NdArrayRef& msg,
     if (inconsistent_bit) {
       std::string broadcast_msg(getOrCreateCompactArray(msg).data<char>(),
                                 msg.numel() * msg.elsize());
-      auto broadcast_msg_hash = commit(0, broadcast_msg, tag);
+      auto broadcast_msg_hash = commit(0, broadcast_msg, tag, hash_len);
       yacl::ByteContainerView broadcast_msg_hash_bytes(
           reinterpret_cast<uint8_t const*>(broadcast_msg_hash.data()),
           broadcast_msg_hash.size());
@@ -184,7 +199,7 @@ NdArrayRef JointMessagePassing(KernelEvalContext* ctx, const NdArrayRef& msg,
 
     std::string recv_msg_str(getOrCreateCompactArray(res_v).data<char>(),
                              res_v.numel() * res_v.elsize());
-    auto recv_msg_hash = commit(rank_hash, recv_msg_str, tag);
+    auto recv_msg_hash = commit(rank_hash, recv_msg_str, tag, hash_len);
 
     if (recv_msg_hash != recv_hash) {
       inconsistent_bit = true;
@@ -213,7 +228,7 @@ NdArrayRef JointMessagePassing(KernelEvalContext* ctx, const NdArrayRef& msg,
       // which means the inconsistent bit of each party is all true or false
       std::string broadcast_msg(getOrCreateCompactArray(res_v).data<char>(),
                                 res_v.numel() * res_v.elsize());
-      auto broadcast_msg_hash = commit(0, broadcast_msg, tag);
+      auto broadcast_msg_hash = commit(0, broadcast_msg, tag, hash_len);
       yacl::ByteContainerView broadcast_msg_hash_bytes(
           reinterpret_cast<uint8_t const*>(broadcast_msg_hash.data()),
           broadcast_msg_hash.size());
@@ -815,6 +830,14 @@ NdArrayRef MulAA_semi::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
   NdArrayRef beta_z(ty, shape);
   NdArrayRef out(makeType<AShrTy>(field), shape);
 
+  const auto kComm = lhs.elsize() * lhs.numel();
+
+  // P0 shares gamma
+  comm->addCommStatsManually(1, kComm * 2);
+
+  // P1 and P2 reconstruct beta
+  comm->addCommStatsManually(1, kComm * 2);
+
   // P0, Pj together sample random alpha_j
   auto [r0, r1] =
       prg_state->genPrssPair(field, lhs.shape(), PrgState::GenPrssCtrl::Both);
@@ -922,8 +945,6 @@ NdArrayRef RSS_A2P(KernelEvalContext* ctx, const NdArrayRef& in,
   auto* comm = ctx->getState<Communicator>();
   const auto field = in.eltype().as<AShrTy>()->field();
   auto numel = in.numel();
-  // auto rank = comm->getRank();
-  // std::cout << "Party " << rank << " numel = " << numel << std::endl;
 
   return DISPATCH_ALL_FIELDS(field, [&]() {
     using pshr_el_t = ring2k_t;
@@ -1084,13 +1105,13 @@ NdArrayRef MulPre(KernelEvalContext* ctx, const NdArrayRef& lhs,
   }
 
   // 1. calculate lsh * rhs in the semi-honest setting
-  auto res = RssMul_semi(ctx, lhs, rhs, "mul: lhs * rhs");
+  auto res = RssMul_semi(ctx, lhs, rhs, "mul: lhs * rhs");  // comm => 1, k
 
   // 2. generate potentially incorrect triple (a,b,c)
   SPU_ENFORCE(lhs.shape() == rhs.shape());
   auto a = RandA_RSS(ctx, lhs.shape(), field_sigma_plus_k);
   auto b = RingChange(ctx, rhs, field, field_sigma_plus_k, true);
-  auto c = RssMul_semi(ctx, a, b, "mul: a * b");
+  auto c = RssMul_semi(ctx, a, b, "mul: a * b");  // comm => 1, 2k
 
   // 3. sample r in \mathbb{Z}_{2^{sigma}}
   auto r = prg_state->genPubl(field_sigma_mask, lhs.shape());
@@ -1115,7 +1136,8 @@ NdArrayRef MulPre(KernelEvalContext* ctx, const NdArrayRef& lhs,
       _v[idx][2] = _r[idx] * _lhs_extend[idx][2] - _a[idx][2];
     });
 
-    auto reconstruct_v = RSS_A2P(ctx, v, "reconstruct v in MulPre");
+    auto reconstruct_v =
+        RSS_A2P(ctx, v, "reconstruct v in MulPre");  // comm => 1, 2k
 
     NdArrayView<ring2k_t> _reconstruct_v(reconstruct_v);
     NdArrayView<ashr_t> _w(w);
@@ -1131,7 +1153,8 @@ NdArrayRef MulPre(KernelEvalContext* ctx, const NdArrayRef& lhs,
                    _r[idx] * _res_extend[idx][2] + _c[idx][2];
     });
 
-    auto reconstruct_w = RSS_A2P(ctx, w, "reconstruct w in MulPre");
+    auto reconstruct_w =
+        RSS_A2P(ctx, w, "reconstruct w in MulPre");  // comm => 1, 2k
     // We need to change w from field_sigma_plus_k to field,
     // otherwise, when the shares are overflow (for example: c = c0 + c1 + c2 -
     // 2^l) r*(c-a*b) = r*(c + 2^l - a*b) != (\hat{c} - \hat{a}*b) mod
@@ -1238,7 +1261,7 @@ NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
     // p0, p1 : chi_1 = f1
     // p0, p2 : chi_2 = f0
     // p1, p2 : Phi = f2 - gamma_x * gamma_y
-    auto f = MulPre(ctx, d, e);
+    auto f = MulPre(ctx, d, e);  // comm => 4, 7k
 
     NdArrayView<shr_t> _f(f);
     NdArrayView<el_t> _chi_1(chi_1);
@@ -1642,9 +1665,7 @@ std::pair<NdArrayRef, NdArrayRef> TruncA::Trgen(KernelEvalContext* ctx,
   auto shape = {numel};
   const int64_t k = SizeOf(field) * 8;
 
-  auto dotp = MatMulAA();
   auto matmul = MatMulAA();
-  auto a2p = A2P();
 
   NdArrayRef r(ashrty, shape);
   NdArrayRef r1(ty_ring, shape);
