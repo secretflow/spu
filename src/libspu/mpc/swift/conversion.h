@@ -22,11 +22,19 @@ class A2B : public UnaryKernel {
  public:
   static constexpr const char* kBindName() { return "a2b"; }
 
-  ce::CExpr latency() const override { return ce::Const(0); }
+  ce::CExpr latency() const override {
+    return (Log(ce::K()) + 1)  // adder-circuit
+           * 13                // And gate
+           * 2                 // 2 calls of circuit
+        ;
+  }
 
-  ce::CExpr comm() const override { return ce::Const(0); }
-
-  Kind kind() const override { return Kind::Dynamic; }
+  ce::CExpr comm() const override {
+    return (2 * Log(ce::K()) + 1)  // KS-adder-circuit
+           * ce::K() * 7           // And gate
+           * 2                     // 2 calls of circuit
+        ;
+  }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
@@ -35,11 +43,19 @@ class MsbA2B : public UnaryKernel {
  public:
   static constexpr const char* kBindName() { return "msb_a2b"; }
 
-  ce::CExpr latency() const override { return ce::Const(0); }
+  ce::CExpr latency() const override {
+    return (Log(ce::K()) + 1)  // adder-circuit
+           * 13                // And gate
+           * 2                 // 2 calls of circuit
+        ;
+  }
 
-  ce::CExpr comm() const override { return ce::Const(0); }
-
-  Kind kind() const override { return Kind::Dynamic; }
+  ce::CExpr comm() const override {
+    return (2 * Log(ce::K()) + 1)  // KS-adder-circuit
+           * ce::K() * 7           // And gate
+           * 2                     // 2 calls of circuit
+        ;
+  }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
@@ -48,10 +64,15 @@ class B2A : public UnaryKernel {
  public:
   static constexpr const char* kBindName() { return "b2a"; }
 
-  ce::CExpr latency() const override { return ce::Const(0); }
+  ce::CExpr latency() const override { return ce::Const(13 * 2); }
 
-  ce::CExpr comm() const override { return ce::Const(0); }
+  ce::CExpr comm() const override {
+    // 2 * mult
+    // Sizeof(Field) * (comm of MulAA) * 2
+    return ce::K() * ce::K() * 10 * 2;
+  }
 
+  // The comm is incorrect for FM128, since SWIFT only support FM32 and FM64
   Kind kind() const override { return Kind::Dynamic; }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
