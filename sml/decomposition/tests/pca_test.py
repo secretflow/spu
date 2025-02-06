@@ -21,7 +21,7 @@ import numpy as np
 from jax import random
 from sklearn.decomposition import PCA as SklearnPCA
 
-import spu.spu_pb2 as spu_pb2
+import spu.libspu as libspu
 import spu.utils.simulation as spsim
 
 # Add the sml directory to the path
@@ -39,11 +39,11 @@ class UnitTests(unittest.TestCase):
 
         # 1. init sim
         cls.sim64 = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
+            3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM64
         )
-        config128 = spu_pb2.RuntimeConfig(
-            protocol=spu_pb2.ProtocolKind.ABY3,
-            field=spu_pb2.FieldType.FM128,
+        config128 = libspu.RuntimeConfig(
+            protocol=libspu.ProtocolKind.ABY3,
+            field=libspu.FieldType.FM128,
             fxp_fraction_bits=30,
         )
         cls.sim128 = spsim.Simulator(3, config128)

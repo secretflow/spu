@@ -1,0 +1,128 @@
+# Copyright 2021 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//bazel:spu.bzl", "spu_cc_library")
+
+package(default_visibility = ["//visibility:public"])
+
+spu_cc_library(
+    name = "io_interface",
+    hdrs = ["io_interface.h"],
+    deps = [
+        "//libspu/core:ndarray_ref",
+        "//libspu/core:pt_buffer_view",
+        "//libspu/core:type",
+    ],
+)
+
+spu_cc_library(
+    name = "io_test",
+    testonly = 1,
+    srcs = ["io_test.cc"],
+    hdrs = ["io_test.h"],
+    deps = [
+        ":io_interface",
+        "//libspu/mpc/utils:ring_ops",
+        "//libspu/mpc/utils:simulate",
+        "@googletest//:gtest",
+    ],
+    alwayslink = True,
+)
+
+spu_cc_library(
+    name = "factory",
+    srcs = ["factory.cc"],
+    hdrs = ["factory.h"],
+    deps = [
+        "//libspu:spu",
+        "//libspu/mpc/aby3",
+        "//libspu/mpc/cheetah",
+        "//libspu/mpc/ref2k",
+        "//libspu/mpc/securenn",
+        "//libspu/mpc/semi2k",
+    ],
+)
+
+spu_cc_library(
+    name = "kernel",
+    srcs = ["kernel.cc"],
+    hdrs = ["kernel.h"],
+    deps = [
+        "//libspu/core:context",
+    ],
+)
+
+spu_cc_library(
+    name = "ab_api",
+    srcs = ["ab_api.cc"],
+    hdrs = ["ab_api.h"],
+    deps = [
+        "//libspu/core:bit_utils",
+        "//libspu/core:context",
+        "//libspu/core:vectorize",
+        "//libspu/mpc/utils:tiling_util",  # TODO: drop bad reference
+    ],
+)
+
+spu_cc_library(
+    name = "api_test_params",
+    hdrs = ["api_test_params.h"],
+    deps = [
+        "//libspu/core:context",
+    ],
+)
+
+spu_cc_library(
+    name = "ab_api_test",
+    testonly = 1,
+    srcs = ["ab_api_test.cc"],
+    hdrs = ["ab_api_test.h"],
+    deps = [
+        ":ab_api",
+        ":api",
+        ":api_test_params",
+        "//libspu/core:context",
+        "//libspu/mpc:kernel",
+        "//libspu/mpc/common:communicator",
+        "//libspu/mpc/utils:simulate",
+        "@googletest//:gtest",
+    ],
+    alwayslink = True,
+)
+
+spu_cc_library(
+    name = "api",
+    srcs = ["api.cc"],
+    hdrs = ["api.h"],
+    deps = [
+        ":ab_api",
+        "//libspu/core:context",
+    ],
+)
+
+spu_cc_library(
+    name = "api_test",
+    testonly = 1,
+    srcs = ["api_test.cc"],
+    hdrs = ["api_test.h"],
+    deps = [
+        ":api",
+        "//libspu/core:context",
+        "//libspu/mpc:api_test_params",
+        "//libspu/mpc/common:communicator",
+        "//libspu/mpc/utils:simulate",
+        "@googletest//:gtest",
+    ],
+    alwayslink = True,
+)

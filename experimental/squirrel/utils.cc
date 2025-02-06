@@ -127,7 +127,7 @@ spu::Value ArgMax(spu::SPUContext* ctx, const spu::Value& x, int axis,
 
 spu::Value MulArithShareWithPrivateBoolean(spu::SPUContext* ctx,
                                            const spu::Value& ashr) {
-  SPU_ENFORCE(ctx->config().protocol() == spu::ProtocolKind::CHEETAH);
+  SPU_ENFORCE(ctx->config().protocol == spu::ProtocolKind::CHEETAH);
   SPU_ENFORCE(ashr.isSecret());
 
   spu::KernelEvalContext kctx(ctx);
@@ -143,7 +143,7 @@ spu::Value MulArithShareWithPrivateBoolean(spu::SPUContext* ctx,
 spu::Value MulArithShareWithPrivateBoolean(
     spu::SPUContext* ctx, const spu::Value& ashr,
     absl::Span<const uint8_t> prv_boolean) {
-  SPU_ENFORCE(ctx->config().protocol() == spu::ProtocolKind::CHEETAH);
+  SPU_ENFORCE(ctx->config().protocol == spu::ProtocolKind::CHEETAH);
   SPU_ENFORCE(ashr.isSecret());
   SPU_ENFORCE_EQ(ashr.numel(), (int64_t)prv_boolean.size());
 
@@ -160,9 +160,9 @@ spu::Value MulArithShareWithPrivateBoolean(
 spu::Value MulPrivateArithWithPrivateBoolean(spu::SPUContext* ctx,
                                              const spu::Value& arith) {
   using namespace spu;
-  SPU_ENFORCE(ctx->config().protocol() == spu::ProtocolKind::CHEETAH);
+  SPU_ENFORCE(ctx->config().protocol == spu::ProtocolKind::CHEETAH);
   spu::KernelEvalContext kctx(ctx);
-  auto ft = ctx->config().field();
+  auto ft = ctx->config().field;
   auto out = mpc::cheetah::TiledDispatchOTFunc(
       &kctx, arith.data(),
       [&](const NdArrayRef& input,
@@ -184,11 +184,11 @@ spu::Value MulPrivateArithWithPrivateBoolean(spu::SPUContext* ctx,
                                              const spu::DataType dtype,
                                              const spu::Shape& shape) {
   using namespace spu;
-  SPU_ENFORCE(ctx->config().protocol() == spu::ProtocolKind::CHEETAH);
+  SPU_ENFORCE(ctx->config().protocol == spu::ProtocolKind::CHEETAH);
   SPU_ENFORCE_EQ(boolean.size(), (size_t)shape.numel());
 
   spu::KernelEvalContext kctx(ctx);
-  auto ft = ctx->config().field();
+  auto ft = ctx->config().field;
   auto out = mpc::cheetah::TiledDispatchOTFunc(
       &kctx, boolean,
       [&](absl::Span<const uint8_t> input,
@@ -210,10 +210,10 @@ spu::Value MulArithShareWithANDBoolShare(spu::SPUContext* ctx,
   SPU_ENFORCE(ashr.isSecret());
   SPU_ENFORCE_EQ(ashr.numel(), (int64_t)bshr.size());
 
-  SPU_ENFORCE(ctx->config().protocol() == spu::ProtocolKind::CHEETAH);
+  SPU_ENFORCE(ctx->config().protocol == spu::ProtocolKind::CHEETAH);
 
   spu::KernelEvalContext kctx(ctx);
-  auto ft = ctx->config().field();
+  auto ft = ctx->config().field;
   int rank = ctx->lctx()->Rank();
 
   auto out = mpc::cheetah::TiledDispatchOTFunc(

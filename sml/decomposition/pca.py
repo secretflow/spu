@@ -117,9 +117,9 @@ class PCA:
         When use rsvd, there are a large number of continuous matrix multiplies inside, which will make the value expand rapidly and overflow,
         we can solve it in the following ways.
         Step 0: Modify the definition of simulator as follows:
-        config = spu_pb2.RuntimeConfig(
-            protocol=spu_pb2.ProtocolKind.ABY3,
-            field=spu_pb2.FieldType.FM128,
+        config = libspu.RuntimeConfig(
+            protocol=libspu.ProtocolKind.ABY3,
+            field=libspu.FieldType.FM128,
             fxp_fraction_bits=30,
             )
         sim_aby = spsim.Simulator(3, config)

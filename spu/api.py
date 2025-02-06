@@ -19,29 +19,28 @@ from typing import List
 from cachetools import LRUCache, cached
 
 from . import libspu  # type: ignore
-from . import spu_pb2
 
 
 class Runtime(object):
     """The SPU Virtual Machine Slice."""
 
-    def __init__(self, link: libspu.link.Context, config: spu_pb2.RuntimeConfig):
+    def __init__(self, link: libspu.link.Context, config: libspu.RuntimeConfig):
         """Constructor of an SPU Runtime.
 
         Args:
             link (libspu.link.Context): Link context.
-            config (spu_pb2.RuntimeConfig): SPU Runtime Config.
+            config (libspu.RuntimeConfig): SPU Runtime Config.
         """
-        self._vm = libspu.RuntimeWrapper(link, config.SerializeToString())
+        self._vm = libspu.RuntimeWrapper(link, config)
 
-    def run(self, executable: spu_pb2.ExecutableProto) -> None:
+    def run(self, executable: libspu.ExecutableProto) -> None:
         """Run an SPU executable.
 
         Args:
-            executable (spu_pb2.ExecutableProto): executable.
+            executable (libspu.ExecutableProto): executable.
 
         """
-        return self._vm.Run(executable.SerializeToString())
+        return self._vm.Run(executable)
 
     def set_var(self, name: str, value: libspu.Share) -> None:
         """Set an SPU value.
@@ -75,18 +74,16 @@ class Runtime(object):
         """
         return self._vm.GetVarChunksCount(name)
 
-    def get_var_meta(self, name: str) -> spu_pb2.ValueMetaProto:
+    def get_var_meta(self, name: str) -> libspu.ValueMetaProto:
         """Get an SPU value without content.
 
         Args:
             name (str): Id of value.
 
         Returns:
-            spu_pb2.ValueMeta: Data meta with out content.
+            libspu.ValueMeta: Data meta with out content.
         """
-        ret = spu_pb2.ValueMetaProto()
-        ret.ParseFromString(self._vm.GetVarMeta(name))
-        return ret
+        return self._vm.GetVarMeta(name)
 
     def del_var(self, name: str) -> None:
         """Delete an SPU value.
@@ -104,28 +101,28 @@ class Runtime(object):
 class Io(object):
     """The SPU IO interface."""
 
-    def __init__(self, world_size: int, config: spu_pb2.RuntimeConfig):
+    def __init__(self, world_size: int, config: libspu.RuntimeConfig):
         """Constructor of an SPU Io.
 
         Args:
             world_size (int): # of participants of SPU Device.
-            config (spu_pb2.RuntimeConfig): SPU Runtime Config.
+            config (libspu.RuntimeConfig): SPU Runtime Config.
         """
-        self._io = libspu.IoWrapper(world_size, config.SerializeToString())
+        self._io = libspu.IoWrapper(world_size, config)
 
     def get_share_chunk_count(
-        self, x: 'np.ndarray', vtype: spu_pb2.Visibility, owner_rank: int = -1
+        self, x: 'np.ndarray', vtype: libspu.Visibility, owner_rank: int = -1
     ) -> int:
         return self._io.GetShareChunkCount(x, vtype, owner_rank)
 
     def make_shares(
-        self, x: 'np.ndarray', vtype: spu_pb2.Visibility, owner_rank: int = -1
+        self, x: 'np.ndarray', vtype: libspu.Visibility, owner_rank: int = -1
     ) -> List[libspu.Share]:
         """Convert from NumPy array to list of SPU value(s).
 
         Args:
             x (np.ndarray): input.
-            vtype (spu_pb2.Visibility): visibility.
+            vtype (libspu.Visibility): visibility.
             owner_rank (int): the index of the trusted piece. if >= 0, colocation optimization may be applied.
 
         Returns:
@@ -146,22 +143,24 @@ class Io(object):
 
 
 @cached(cache=LRUCache(maxsize=128))
-def _spu_compilation(source: str, options_str: str):
-    return libspu.compile(source, options_str)
+def _spu_compilation(
+    source: libspu.CompilationSource, options: libspu.CompilerOptions
+) -> bytes:
+    return libspu.compile(source, options)
 
 
-def compile(source: spu_pb2.CompilationSource, copts: spu_pb2.CompilerOptions) -> str:
+def compile(source: libspu.CompilationSource, copts: libspu.CompilerOptions) -> bytes:
     """Compile from textual HLO/MHLO IR to SPU bytecode.
 
     Args:
-        source (spu_pb2.CompilationSource): input to compiler.
-        copts (spu_pb2.CompilerOptions): compiler options.
+        source (libspu.CompilationSource): input to compiler.
+        copts (libspu.CompilerOptions): compiler options.
 
     Returns:
-        [spu_pb2.ValueProto]: output.
+        [libspu.ValueProto]: output.
     """
 
-    return _spu_compilation(source.SerializeToString(), copts.SerializeToString())
+    return _spu_compilation(source, copts)
 
 
 def check_cpu_feature():

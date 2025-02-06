@@ -22,7 +22,7 @@ from cachetools import LRUCache, cached
 from numpy import ndarray
 
 from .. import api as spu_api
-from .. import spu_pb2
+from .. import libspu
 
 _jax_lock = Lock()
 
@@ -225,7 +225,7 @@ def compile(
     outputNameGen: Callable,
     static_argnums=(),
     static_argnames=None,
-    copts=spu_pb2.CompilerOptions(),
+    copts=libspu.CompilerOptions(),
 ):
     if kind == Kind.JAX:
         import jax
@@ -262,13 +262,10 @@ def compile(
     else:
         raise NameError(f"Unknown frontend type {kind}")
 
-    source = spu_pb2.CompilationSource()
-    source.ir_txt = ir_text
-    source.ir_type = spu_pb2.SourceIRType.XLA
-    source.input_visibility.extend(input_vis)
+    source = libspu.CompilationSource(libspu.SourceIRType.XLA, ir_text, input_vis)
     name = fn.func.__name__ if isinstance(fn, functools.partial) else fn.__name__
     mlir = spu_api.compile(source, copts)
-    executable = spu_pb2.ExecutableProto(
+    executable = libspu.ExecutableProto(
         name=name,
         input_names=input_names,
         output_names=output_names,
@@ -282,7 +279,7 @@ def torch_compile(
     args_flat: List,
     m_args_flat: List,
     state_dict: collections.OrderedDict,
-    copts=spu_pb2.CompilerOptions(),
+    copts=libspu.CompilerOptions(),
 ):
     import os
 
@@ -312,9 +309,7 @@ def torch_compile(
     ]
     output_tree = method.meta.output_pytree_spec
 
-    source = spu_pb2.CompilationSource()
-    source.ir_txt = ir_text
-    source.ir_type = spu_pb2.SourceIRType.STABLEHLO
+    source = libspu.CompilationSource(libspu.SourceIRType.STABLEHLO, ir_text, [])
 
     args_params_flat = []
     for loc in method.meta.input_locations:
@@ -335,13 +330,13 @@ def torch_compile(
             (
                 arg.vtype
                 if isinstance(arg, distributed.SPU.Object)
-                else spu_pb2.Visibility.VIS_PUBLIC
+                else libspu.Visibility.VIS_PUBLIC
             )
             for arg in args_params_flat
         ]
     )
     mlir = spu_api.compile(source, copts)
-    executable = spu_pb2.ExecutableProto(
+    executable = libspu.ExecutableProto(
         name=name,
         input_names=input_names,
         output_names=output_names,

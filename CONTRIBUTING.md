@@ -39,6 +39,7 @@ The compiler portion of the project follows [MLIR style](https://mlir.llvm.org/g
 
 ### Prerequisite
 
+
 #### Docker
 
 ```sh
@@ -49,8 +50,8 @@ docker run -d -it --name spu-dev-$(whoami) \
          --cap-add=SYS_PTRACE --security-opt seccomp=unconfined \
          --cap-add=NET_ADMIN \
          --privileged=true \
-         --entrypoint="bash" \
-         secretflow/ubuntu-base-ci:latest
+         secretflow/ubuntu-base-ci:latest \
+         bash
 
 # attach to build container
 docker exec -it spu-dev-$(whoami) bash
@@ -87,7 +88,28 @@ brew install nasm
 
 ### Build & UnitTest
 
+
+
+
 ``` sh
+####################################################
+# build and test spu python bindings and applicatons
+####################################################
+# build as debug
+bazel build //... -c dbg
+
+# build as release
+bazel build //... -c opt
+
+# test
+bazel test //...
+
+
+############################################
+# build and test spu core c++ implementation
+############################################
+cd src
+
 # build as debug
 bazel build //... -c dbg
 

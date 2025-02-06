@@ -15,7 +15,7 @@
 import jax.numpy as jnp
 import numpy as np
 
-import spu.spu_pb2 as spu_pb2
+import spu.libspu as libspu
 import spu.utils.simulation as ppsim
 
 if __name__ == "__main__":
@@ -24,8 +24,8 @@ if __name__ == "__main__":
     Please DONT commit it unless it will cause build break.
     """
 
-    sim = ppsim.Simulator.simple(3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64)
-    copts = spu_pb2.CompilerOptions()
+    sim = ppsim.Simulator.simple(3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM64)
+    copts = libspu.CompilerOptions()
     # Tweak compiler options
     copts.disable_div_sqrt_rewrite = True
 

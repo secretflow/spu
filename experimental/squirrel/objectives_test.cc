@@ -110,9 +110,9 @@ TEST_P(ObjectivesTest, MaxGain) {
 
   spu::mpc::utils::simulate(2, [&](std::shared_ptr<yacl::link::Context> lctx) {
     spu::RuntimeConfig rt_config;
-    rt_config.set_protocol(ProtocolKind::REF2K);
-    rt_config.set_field(field);
-    rt_config.set_fxp_fraction_bits(16);
+    rt_config.protocol = ProtocolKind::REF2K;
+    rt_config.field = field;
+    rt_config.fxp_fraction_bits = 16;
 
     auto _ctx = std::make_unique<spu::SPUContext>(rt_config, lctx);
     auto ctx = _ctx.get();
@@ -170,13 +170,12 @@ TEST_P(ObjectivesTest, Logistic) {
 
   spu::mpc::utils::simulate(2, [&](std::shared_ptr<yacl::link::Context> lctx) {
     spu::RuntimeConfig rt_config;
-    rt_config.set_protocol(ProtocolKind::CHEETAH);
-    rt_config.mutable_cheetah_2pc_config()->set_ot_kind(
-        CheetahOtKind::YACL_Softspoken);
-    rt_config.set_field(field);
-    rt_config.set_fxp_fraction_bits(17);
-    rt_config.set_enable_hal_profile(true);
-    rt_config.set_enable_pphlo_profile(true);
+    rt_config.protocol = ProtocolKind::CHEETAH;
+    rt_config.cheetah_2pc_config.ot_kind = CheetahOtKind::YACL_Softspoken;
+    rt_config.field = field;
+    rt_config.fxp_fraction_bits = 17;
+    rt_config.enable_hal_profile = true;
+    rt_config.enable_pphlo_profile = true;
 
     auto _ctx = std::make_unique<spu::SPUContext>(rt_config, lctx);
     auto ctx = _ctx.get();
@@ -198,7 +197,7 @@ TEST_P(ObjectivesTest, Logistic) {
       return;
     }
 
-    double fxp = std::pow(2., rt_config.fxp_fraction_bits());
+    double fxp = std::pow(2., rt_config.fxp_fraction_bits);
     double max_err = 0.;
 
     for (int64_t i = 0; i < logistic.numel(); ++i) {
@@ -241,13 +240,12 @@ TEST_P(ObjectivesTest, Sigmoid) {
 
   spu::mpc::utils::simulate(2, [&](std::shared_ptr<yacl::link::Context> lctx) {
     spu::RuntimeConfig rt_config;
-    rt_config.set_protocol(ProtocolKind::CHEETAH);
-    rt_config.mutable_cheetah_2pc_config()->set_ot_kind(
-        CheetahOtKind::YACL_Softspoken);
-    rt_config.set_field(field);
-    rt_config.set_fxp_fraction_bits(17);
-    rt_config.set_enable_hal_profile(true);
-    rt_config.set_enable_pphlo_profile(true);
+    rt_config.protocol = ProtocolKind::CHEETAH;
+    rt_config.cheetah_2pc_config.ot_kind = CheetahOtKind::YACL_Softspoken;
+    rt_config.field = field;
+    rt_config.fxp_fraction_bits = 17;
+    rt_config.enable_hal_profile = true;
+    rt_config.enable_pphlo_profile = true;
 
     auto _ctx = std::make_unique<spu::SPUContext>(rt_config, lctx);
     auto ctx = _ctx.get();
@@ -269,7 +267,7 @@ TEST_P(ObjectivesTest, Sigmoid) {
       return;
     }
 
-    double fxp = std::pow(2., rt_config.fxp_fraction_bits());
+    double fxp = std::pow(2., rt_config.fxp_fraction_bits);
     double max_err = 0.;
 
     for (int64_t i = 0; i < logistic.numel(); ++i) {

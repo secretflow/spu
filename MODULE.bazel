@@ -20,12 +20,21 @@
 ###############################################################################
 
 module(
-    name = "spulib",
-    version = "0.9.4.dev20250106",
+    name = "spu",
+    version = "0.9.4.dev20250124",
     compatibility_level = 1,
 )
 
-bazel_dep(name = "grpc")
+bazel_dep(name = "apple_support", version = "1.17.1")
+bazel_dep(name = "spulib")
+local_path_override(
+    module_name = "spulib",
+    path = "src",
+)
+
+bazel_dep(name = "psi", version = "0.6.0.dev250123")
+bazel_dep(name = "yacl", version = "20241212.0-871832a")
+bazel_dep(name = "grpc", version = "1.66.0.bcr.3")
 single_version_override(
     module_name = "grpc",
     patch_strip = 1,
@@ -46,20 +55,28 @@ single_version_override(
     version = "27.3",
 )
 
-bazel_dep(name = "bazel_skylib", version = "1.7.1")
-bazel_dep(name = "apple_support", version = "1.17.1")
-bazel_dep(name = "rules_cc", version = "0.0.12")
-bazel_dep(name = "rules_cuda", version = "0.2.3")
-bazel_dep(name = "rules_foreign_cc", version = "0.12.0")
-bazel_dep(name = "bazel_features", version = "1.20.0")
-bazel_dep(name = "platforms", version = "0.0.8")
 bazel_dep(name = "pybind11_bazel", version = "2.13.6")
+bazel_dep(name = "rules_cuda", version = "0.2.3")
 bazel_dep(name = "rules_python", version = "0.29.0")
-bazel_dep(name = "rules_proto", version = "6.0.0-rc1")
 bazel_dep(name = "rules_proto_grpc_python", version = "5.0.0")
+
+# For experimental/squirrel and examples/cpp
+bazel_dep(name = "eigen", version = "3.4.90-20230801-66e8f3")
+bazel_dep(name = "seal", version = "4.1.1")
 bazel_dep(name = "spdlog", version = "1.14.1")
-bazel_dep(name = "fmt", version = "11.0.2")
 bazel_dep(name = "abseil-cpp", version = "20240722.0")
+bazel_dep(name = "llvm-raw", version = "20240809.0-35f55f5")
+
+llvm = use_extension("@llvm-raw//utils/bazel:extension.bzl", "llvm")
+llvm.configure(
+    targets = [
+        "AArch64",
+        "X86",
+        "ARM",
+    ],
+)
+use_repo(llvm, "llvm-project")
+# END for experimental/squirrel and examples/cpp
 
 DEFAULT_PYTHON_VERSION = "3.11"
 
@@ -111,56 +128,5 @@ pip.override(
 )
 use_repo(pip, "spu_pip_dev")
 
-# --registry=https://baidu.github.io/babylon/registry
-bazel_dep(name = "leveldb", version = "1.23")
-
-# self-hosted registry
-bazel_dep(name = "eigen", version = "3.4.90-20230801-66e8f3")
-bazel_dep(name = "emp-tool", version = "0.2.5")
-bazel_dep(name = "emp-ot", version = "0.2.4")
-bazel_dep(name = "brpc", version = "1.11.0-20241212-282bc90")
-bazel_dep(name = "seal", version = "4.1.1")
-bazel_dep(name = "cutlass", version = "3.5.1")
-bazel_dep(name = "llvm-raw", version = "20240809.0-35f55f5")
-bazel_dep(name = "sse2neon", version = "1.7.0-20240330-8df2f48")
-
-llvm = use_extension("@llvm-raw//utils/bazel:extension.bzl", "llvm")
-llvm.configure(
-    targets = [
-        "AArch64",
-        "X86",
-        "ARM",
-    ],
-)
-use_repo(llvm, "llvm-project")
-
-bazel_dep(name = "stablehlo", version = "20240808.0-24d1807")
-bazel_dep(name = "xla", version = "20240814.0-64bdcc5")
-bazel_dep(name = "yacl", version = "20241212.0-871832a")
-bazel_dep(name = "psi")
-git_override(
-    module_name = "psi",
-    commit = "8ead92f1bb10329c7e7e56d541fecb3dcd47ee03",
-    remote = "https://github.com/secretflow/psi.git",
-)
-
-spu_dependencies = use_extension("//bazel:defs.bzl", "non_module_dependencies")
-use_repo(spu_dependencies, "xtensor")
-
-new_local_repository = use_repo_rule("@bazel_tools//tools/build_defs/repo:local.bzl", "new_local_repository")
-
-new_local_repository(
-    name = "macos_omp_x64",
-    build_file = "@yacl//bazel:local_openmp_macos.BUILD",
-    path = "/usr/local/opt/libomp",
-)
-
-new_local_repository(
-    name = "macos_omp_arm64",
-    build_file = "@yacl//bazel:local_openmp_macos.BUILD",
-    path = "/opt/homebrew/opt/libomp/",
-)
-
 # test
 bazel_dep(name = "googletest", version = "1.15.2", dev_dependency = True)
-bazel_dep(name = "google_benchmark", version = "1.8.5", dev_dependency = True)

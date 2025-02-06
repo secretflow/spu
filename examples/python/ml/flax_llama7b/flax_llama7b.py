@@ -31,7 +31,7 @@ from flax.linen.linear import Array
 from transformers import LlamaTokenizer
 
 import spu.intrinsic as intrinsic
-import spu.spu_pb2 as spu_pb2
+import spu.libspu as libspu
 import spu.utils.distributed as ppd
 
 parser = argparse.ArgumentParser(description='distributed driver.')
@@ -46,7 +46,7 @@ with open(args.config, 'r') as file:
 
 ppd.init(conf["nodes"], conf["devices"])
 
-copts = spu_pb2.CompilerOptions()
+copts = libspu.CompilerOptions()
 copts.enable_pretty_print = False
 copts.xla_pp_kind = 2
 # enable x / broadcast(y) -> x * broadcast(1/y)

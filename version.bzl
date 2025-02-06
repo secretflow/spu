@@ -12,27 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-SPU_VERSION = "0.9.4.dev20250106"
-
-def _spu_version_gen(ctx):
-    ctx.actions.expand_template(
-        template = ctx.file.template,
-        output = ctx.outputs.out,
-        substitutions = {
-            "@SPU_VERSION@": SPU_VERSION,
-        },
-    )
-
-spu_version_gen = rule(
-    implementation = _spu_version_gen,
-    attrs = {
-        "template": attr.label(
-            mandatory = True,
-            allow_single_file = True,
-        ),
-        "out": attr.output(
-            mandatory = True,
-        ),
-    },
-    output_to_genfiles = True,
-)
+SPU_VERSION = "0.9.4.dev20250124"

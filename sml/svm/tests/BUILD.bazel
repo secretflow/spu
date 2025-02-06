@@ -13,6 +13,7 @@
 # limitations under the License.
 
 load("@rules_python//python:defs.bzl", "py_test")
+load("@spu_pip_dev//:requirements.bzl", "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -23,6 +24,6 @@ py_test(
         "//sml/svm",
         "//spu:init",
         "//spu/utils:simulation",
-        "@spu_pip_dev//scikit_learn:pkg",
+        requirement("scikit-learn"),
     ],
 )
