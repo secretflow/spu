@@ -28,6 +28,28 @@ spu_cc_library(
     ],
 )
 
+spu_cc_library(
+    name = "pv_gfmp",
+    srcs = ["pv_gfmp.cc"],
+    hdrs = ["pv_gfmp.h"],
+    deps = [
+        ":pv2k",
+        "//libspu/mpc:kernel",
+        "//libspu/mpc/common:communicator",
+        "//libspu/mpc/common:prg_state",
+        "//libspu/mpc/utils:gfmp_ops",
+        "//libspu/mpc/utils:ring_ops",
+    ],
+)
+
+spu_cc_test(
+    name = "pv_gfmp_test",
+    srcs = ["pv_gfmp_test.cc"],
+    deps = [
+        ":pv_gfmp",
+    ],
+)
+
 spu_cc_test(
     name = "pv2k_test",
     srcs = ["pv2k_test.cc"],
