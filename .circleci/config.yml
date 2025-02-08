@@ -72,7 +72,7 @@ workflows:
           config-path: .circleci/continue-config.yml
           mapping: |
             spu/.* build-and-run true
-            libspu/.* build-and-run true
+            src/.* build-and-run true
             exmaples/.* build-and-run true
             bazel/.* build-and-run true
             .bazelrc build-and-run true
