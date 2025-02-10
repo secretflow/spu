@@ -17,15 +17,15 @@
 #include <algorithm>
 #include <mutex>
 
+#include "magic_enum.hpp"
+
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/kernel.h"
 #include "libspu/mpc/utils/ring_ops.h"
-
 namespace spu::mpc {
 namespace {
-
 inline bool isOwner(KernelEvalContext* ctx, const Type& type) {
   auto* comm = ctx->getState<Communicator>();
   return type.as<Priv2kTy>()->owner() == static_cast<int64_t>(comm->getRank());
@@ -943,6 +943,20 @@ class MergeKeysV : public MergeKeysKernel {
 };
 
 }  // namespace
+
+void Priv2kTy::fromString(std::string_view str) {
+  auto comma = str.find_first_of(',');
+  auto field_str = str.substr(0, comma);
+  auto owner_str = str.substr(comma + 1);
+  auto field = magic_enum::enum_cast<FieldType>(field_str);
+  SPU_ENFORCE(field.has_value(), "parse failed from={}", str);
+  field_ = field.value();
+  owner_ = std::stoll(std::string(owner_str));
+}
+
+std::string Priv2kTy::toString() const {
+  return fmt::format("{},{}", magic_enum::enum_name(field()), owner_);
+}
 
 void regPV2kTypes() {
   static std::once_flag flag;

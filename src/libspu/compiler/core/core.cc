@@ -45,7 +45,7 @@ void Core::buildPipeline(mlir::PassManager *pm) {
 
   // lowering
   auto &optPM = pm->nest<mlir::func::FuncOp>();
-  if (!options.disable_maxpooling_optimization()) {
+  if (!options.disable_maxpooling_optimization) {
     // Need a cse before maxpooling
     optPM.addPass(mlir::createCSEPass());
     optPM.addPass(mlir::spu::pphlo::createOptimizeMaxPoolingPass());
@@ -53,7 +53,7 @@ void Core::buildPipeline(mlir::PassManager *pm) {
   optPM.addPass(mlir::spu::pphlo::createDecomposeOps());
   optPM.addPass(mlir::spu::pphlo::createSortLowering());
 
-  if (!options.disable_partial_sort_optimization()) {
+  if (!options.disable_partial_sort_optimization) {
     optPM.addPass(mlir::spu::pphlo::createPartialSortToTopK());
   }
 
@@ -61,17 +61,17 @@ void Core::buildPipeline(mlir::PassManager *pm) {
 
   optPM.addPass(mlir::spu::pphlo::createInlineSecretControlFlow());
 
-  if (!options.disable_sqrt_plus_epsilon_rewrite()) {
+  if (!options.disable_sqrt_plus_epsilon_rewrite) {
     optPM.addPass(mlir::spu::pphlo::createOptimizeSqrtPlusEps());
   }
 
   optPM.addPass(mlir::spu::pphlo::createExpandSecretGatherPass());
 
-  if (!options.disable_div_sqrt_rewrite()) {
+  if (!options.disable_div_sqrt_rewrite) {
     optPM.addPass(mlir::spu::pphlo::createRewriteDivSqrtPatterns());
   }
 
-  if (options.enable_optimize_denominator_with_broadcast()) {
+  if (options.enable_optimize_denominator_with_broadcast) {
     optPM.addPass(mlir::spu::pphlo::createOptimizeDenominatorWithBroadcast());
   }
 
@@ -79,17 +79,17 @@ void Core::buildPipeline(mlir::PassManager *pm) {
 
   optPM.addPass(mlir::spu::pphlo::createConvertPushDownPass());
 
-  if (!options.disable_reduce_truncation_optimization()) {
+  if (!options.disable_reduce_truncation_optimization) {
     optPM.addPass(mlir::spu::pphlo::createReduceTruncationPass());
   }
 
-  if (!options.disallow_mix_types_opts()) {
+  if (!options.disallow_mix_types_opts) {
     optPM.addPass(mlir::spu::pphlo::createLowerMixedTypeOpPass());
   }
 
   optPM.addPass(mlir::createCanonicalizerPass());
 
-  if (!options.disable_select_optimization()) {
+  if (!options.disable_select_optimization) {
     optPM.addPass(mlir::spu::pphlo::createOptimizeSelectPass());
   }
 
@@ -97,7 +97,7 @@ void Core::buildPipeline(mlir::PassManager *pm) {
   optPM.addPass(mlir::spu::pphlo::createRegionAccessFixture());
   optPM.addPass(mlir::createCSEPass());
 
-  if (!options.disable_deallocation_insertion()) {
+  if (!options.disable_deallocation_insertion) {
     optPM.addPass(mlir::spu::pphlo::createInsertDeallocationOp());
   }
 }

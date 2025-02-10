@@ -17,8 +17,7 @@
 #include "fmt/format.h"  // IWYU pragma: keep
 
 #include "libspu/device/test_utils.h"
-
-#include "libspu/spu.pb.h"
+#include "libspu/spu.h"
 
 namespace spu::device::pphlo::test {
 
@@ -39,7 +38,7 @@ class Runner {
                 int owner_rank = -1) {
     const std::string name = fmt::format("input{}", input_idx_++);
     io_->InFeed(name, input, vis, owner_rank);
-    executable_.add_input_names(name);
+    executable_.input_names.emplace_back(name);
   }
 
   std::string compileMHlo(const std::string &mhlo,

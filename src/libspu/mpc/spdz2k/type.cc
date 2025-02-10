@@ -16,6 +16,8 @@
 
 #include <mutex>
 
+#include "magic_enum.hpp"
+
 #include "libspu/mpc/common/pv2k.h"
 
 namespace spu::mpc::spdz2k {
@@ -28,6 +30,26 @@ void registerTypes() {
   std::call_once(flag, []() {
     TypeContext::getTypeContext()->addTypes<AShrTy, BShrTy>();
   });
+}
+
+void BShrTy::fromString(std::string_view detail) {
+  auto comma = detail.find_first_of(',');
+  auto last_comma = detail.find_last_of(',');
+  auto back_type_str = detail.substr(0, comma);
+  auto nbits_str = detail.substr(comma + 1, last_comma);
+  auto back_type = magic_enum::enum_cast<PtType>(back_type_str);
+  SPU_ENFORCE(back_type.has_value(), "parse failed from={}", detail);
+  back_type_ = back_type.value();
+  nbits_ = std::stoul(std::string(nbits_str));
+  auto field_str = detail.substr(last_comma + 1);
+  auto field = magic_enum::enum_cast<FieldType>(field_str);
+  SPU_ENFORCE(field.has_value(), "parse failed from={}", field_str);
+  field_ = field.value();
+};
+
+std::string BShrTy::toString() const {
+  return fmt::format("{},{},{}", magic_enum::enum_name(back_type_), nbits_,
+                     field_);
 }
 
 }  // namespace spu::mpc::spdz2k

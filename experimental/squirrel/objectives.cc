@@ -291,11 +291,11 @@ namespace {
     spu::SPUContext* ctx, const spu::Value& _x, float threshold,
     spu::FieldType working_ft) {
   namespace sk = spu::kernel;
-  auto src_field = ctx->config().field();
+  auto src_field = ctx->config().field;
 
   spu::Value x(CastRing(_x.data(), working_ft), _x.dtype());
   // FIXME(lwj): dirty hack
-  const_cast<spu::RuntimeConfig*>(&ctx->config())->set_field(working_ft);
+  const_cast<spu::RuntimeConfig*>(&ctx->config())->field = working_ft;
   ctx->getState<spu::mpc::Z2kState>()->setField(working_ft);
 
   const auto ONE = sk::hal::_constant(ctx, 1, x.shape());
@@ -314,7 +314,7 @@ namespace {
   auto is_too_large = sk::hal::_xor(
       ctx, True, sk::hal::_or(ctx, is_neg, is_inside_range));  // x > t
   // FIXME(lwj): dirty hack
-  const_cast<spu::RuntimeConfig*>(&ctx->config())->set_field(src_field);
+  const_cast<spu::RuntimeConfig*>(&ctx->config())->field = src_field;
   ctx->getState<spu::mpc::Z2kState>()->setField(src_field);
 
   is_neg = spu::Value(CastRing(is_neg.data(), src_field), spu::DT_I1);

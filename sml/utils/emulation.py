@@ -28,7 +28,7 @@ from typing import Callable
 import yaml
 
 import spu.utils.distributed as ppd
-from spu import spu_pb2
+from spu import libspu
 from spu.utils.polyfill import Process
 
 CLUSTER_ABY3_3PC = "examples/python/conf/3pc.json"
@@ -158,7 +158,7 @@ class Emulator:
         self,
         func: Callable,
         static_argnums=(),
-        copts=spu_pb2.CompilerOptions(),
+        copts=libspu.CompilerOptions(),
     ):
         def wrapper(*args, **kwargs):
             # run the func on SPU.

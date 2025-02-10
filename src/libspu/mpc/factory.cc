@@ -32,7 +32,7 @@ namespace spu::mpc {
 void Factory::RegisterProtocol(
     SPUContext* ctx, const std::shared_ptr<yacl::link::Context>& lctx) {
   // TODO: support multi-protocols.
-  switch (ctx->config().protocol()) {
+  switch (ctx->config().protocol) {
     case ProtocolKind::REF2K: {
       return regRef2kProtocol(ctx, lctx);
     }
@@ -49,31 +49,31 @@ void Factory::RegisterProtocol(
       return regSecurennProtocol(ctx, lctx);
     }
     default: {
-      SPU_THROW("Invalid protocol kind {}", ctx->config().protocol());
+      SPU_THROW("Invalid protocol kind {}", ctx->config().protocol);
     }
   }
 }
 
 std::unique_ptr<IoInterface> Factory::CreateIO(const RuntimeConfig& conf,
                                                size_t npc) {
-  switch (conf.protocol()) {
+  switch (conf.protocol) {
     case ProtocolKind::REF2K: {
-      return makeRef2kIo(conf.field(), npc);
+      return makeRef2kIo(conf.field, npc);
     }
     case ProtocolKind::SEMI2K: {
-      return semi2k::makeSemi2kIo(conf.field(), npc);
+      return semi2k::makeSemi2kIo(conf.field, npc);
     }
     case ProtocolKind::ABY3: {
-      return aby3::makeAby3Io(conf.field(), npc);
+      return aby3::makeAby3Io(conf.field, npc);
     }
     case ProtocolKind::CHEETAH: {
-      return cheetah::makeCheetahIo(conf.field(), npc);
+      return cheetah::makeCheetahIo(conf.field, npc);
     }
     case ProtocolKind::SECURENN: {
-      return securenn::makeSecurennIo(conf.field(), npc);
+      return securenn::makeSecurennIo(conf.field, npc);
     }
     default: {
-      SPU_THROW("Invalid protocol kind {}", conf.protocol());
+      SPU_THROW("Invalid protocol kind {}", conf.protocol);
     }
   }
   return nullptr;

@@ -19,11 +19,11 @@ import numpy.testing as npt
 from absl.testing import absltest, parameterized
 
 import spu.api as ppapi
-import spu.spu_pb2 as spu_pb2
+import spu.libspu as libspu
 
 
 def _bytes_to_pb(msg: bytes):
-    ret = spu_pb2.ValueMetaProto()
+    ret = libspu.ValueMetaProto()
     ret.ParseFromString(msg)
     return ret
 
@@ -31,36 +31,36 @@ def _bytes_to_pb(msg: bytes):
 @parameterized.product(
     wsize=(2, 3, 5),
     prot=(
-        spu_pb2.ProtocolKind.REF2K,
-        spu_pb2.ProtocolKind.SEMI2K,
-        spu_pb2.ProtocolKind.ABY3,
+        libspu.ProtocolKind.REF2K,
+        libspu.ProtocolKind.SEMI2K,
+        libspu.ProtocolKind.ABY3,
     ),
-    field=(spu_pb2.FieldType.FM64, spu_pb2.FieldType.FM128),
+    field=(libspu.FieldType.FM64, libspu.FieldType.FM128),
     chunk_size=(4, 11, 33, 67, 127, 65535),
 )
 class UnitTests(parameterized.TestCase):
     def test_io(self, wsize, prot, field, chunk_size):
-        if prot == spu_pb2.ProtocolKind.ABY3 and wsize != 3:
+        if prot == libspu.ProtocolKind.ABY3 and wsize != 3:
             return
 
-        config = spu_pb2.RuntimeConfig(
+        config = libspu.RuntimeConfig(
             protocol=prot,
             field=field,
             fxp_fraction_bits=18,
-            share_max_chunk_size=chunk_size,
         )
+        config.share_max_chunk_size = chunk_size
         io = ppapi.Io(wsize, config)
 
         # SINT
         x = np.random.randint(10, size=(3, 4, 5))
 
-        xs = io.make_shares(x, spu_pb2.Visibility.VIS_SECRET)
+        xs = io.make_shares(x, libspu.Visibility.VIS_SECRET)
         self.assertEqual(len(xs), wsize)
         self.assertEqual(
-            _bytes_to_pb(xs[0].meta).shape,
-            spu_pb2.ShapeProto(dims=(3, 4, 5)),
+            _bytes_to_pb(xs[0].meta).shape.dims,
+            [3, 4, 5],
         )
-        chunk_count = io.get_share_chunk_count(x, spu_pb2.Visibility.VIS_SECRET)
+        chunk_count = io.get_share_chunk_count(x, libspu.Visibility.VIS_SECRET)
         self.assertEqual(len(xs[0].share_chunks), chunk_count)
         y = io.reconstruct(xs)
 
@@ -69,13 +69,13 @@ class UnitTests(parameterized.TestCase):
         # SFXP
         x = np.random.rand(3, 4, 5)
 
-        xs = io.make_shares(x, spu_pb2.Visibility.VIS_SECRET)
+        xs = io.make_shares(x, libspu.Visibility.VIS_SECRET)
         self.assertEqual(len(xs), wsize)
         self.assertEqual(
-            _bytes_to_pb(xs[0].meta).shape,
-            spu_pb2.ShapeProto(dims=(3, 4, 5)),
+            _bytes_to_pb(xs[0].meta).shape.dims,
+            [3, 4, 5],
         )
-        chunk_count = io.get_share_chunk_count(x, spu_pb2.Visibility.VIS_SECRET)
+        chunk_count = io.get_share_chunk_count(x, libspu.Visibility.VIS_SECRET)
         self.assertEqual(len(xs[0].share_chunks), chunk_count)
         y = io.reconstruct(xs)
 
@@ -84,13 +84,13 @@ class UnitTests(parameterized.TestCase):
         # PFXP
         x = np.random.rand(3, 4, 5)
 
-        xs = io.make_shares(x, spu_pb2.Visibility.VIS_PUBLIC)
+        xs = io.make_shares(x, libspu.Visibility.VIS_PUBLIC)
         self.assertEqual(len(xs), wsize)
         self.assertEqual(
-            _bytes_to_pb(xs[0].meta).shape,
-            spu_pb2.ShapeProto(dims=(3, 4, 5)),
+            _bytes_to_pb(xs[0].meta).shape.dims,
+            [3, 4, 5],
         )
-        chunk_count = io.get_share_chunk_count(x, spu_pb2.Visibility.VIS_PUBLIC)
+        chunk_count = io.get_share_chunk_count(x, libspu.Visibility.VIS_PUBLIC)
         self.assertEqual(len(xs[0].share_chunks), chunk_count)
         y = io.reconstruct(xs)
 
@@ -99,13 +99,13 @@ class UnitTests(parameterized.TestCase):
         # empty
         x = np.random.rand(1, 0)
 
-        xs = io.make_shares(x, spu_pb2.Visibility.VIS_SECRET)
+        xs = io.make_shares(x, libspu.Visibility.VIS_SECRET)
         self.assertEqual(len(xs), wsize)
         self.assertEqual(
-            _bytes_to_pb(xs[0].meta).shape,
-            spu_pb2.ShapeProto(dims=(1, 0)),
+            _bytes_to_pb(xs[0].meta).shape.dims,
+            [1, 0],
         )
-        chunk_count = io.get_share_chunk_count(x, spu_pb2.Visibility.VIS_SECRET)
+        chunk_count = io.get_share_chunk_count(x, libspu.Visibility.VIS_SECRET)
 
         self.assertEqual(len(xs[0].share_chunks), chunk_count)
         y = io.reconstruct(xs)
@@ -113,28 +113,24 @@ class UnitTests(parameterized.TestCase):
         npt.assert_almost_equal(x, y, decimal=5)
 
     def test_io_strides(self, wsize, prot, field, chunk_size):
-        if prot == spu_pb2.ProtocolKind.ABY3 and wsize != 3:
+        if prot == libspu.ProtocolKind.ABY3 and wsize != 3:
             return
 
-        config = spu_pb2.RuntimeConfig(
-            protocol=prot,
-            field=field,
-            fxp_fraction_bits=18,
-            share_max_chunk_size=chunk_size,
-        )
+        config = libspu.RuntimeConfig(protocol=prot, field=field, fxp_fraction_bits=18)
+        config.share_max_chunk_size = chunk_size
         io = ppapi.Io(wsize, config)
 
         # SINT
         x = np.random.randint(10, size=(6, 7, 8))
         x = x[0:5:2, 0:7:2, 0:8:2]
 
-        xs = io.make_shares(x, spu_pb2.Visibility.VIS_SECRET)
+        xs = io.make_shares(x, libspu.Visibility.VIS_SECRET)
         self.assertEqual(len(xs), wsize)
         self.assertEqual(
-            _bytes_to_pb(xs[0].meta).shape,
-            spu_pb2.ShapeProto(dims=(3, 4, 4)),
+            _bytes_to_pb(xs[0].meta).shape.dims,
+            [3, 4, 4],
         )
-        chunk_count = io.get_share_chunk_count(x, spu_pb2.Visibility.VIS_SECRET)
+        chunk_count = io.get_share_chunk_count(x, libspu.Visibility.VIS_SECRET)
         self.assertEqual(len(xs[0].share_chunks), chunk_count)
         y = io.reconstruct(xs)
 
@@ -144,14 +140,14 @@ class UnitTests(parameterized.TestCase):
         x = np.random.rand(6, 7, 8)
         x = x[0:5:2, 0:7:2, 0:8:2]
 
-        xs = io.make_shares(x, spu_pb2.Visibility.VIS_SECRET)
+        xs = io.make_shares(x, libspu.Visibility.VIS_SECRET)
         self.assertEqual(len(xs), wsize)
         self.assertEqual(
-            _bytes_to_pb(xs[0].meta).shape,
-            spu_pb2.ShapeProto(dims=(3, 4, 4)),
+            _bytes_to_pb(xs[0].meta).shape.dims,
+            [3, 4, 4],
         )
         y = io.reconstruct(xs)
-        chunk_count = io.get_share_chunk_count(x, spu_pb2.Visibility.VIS_SECRET)
+        chunk_count = io.get_share_chunk_count(x, libspu.Visibility.VIS_SECRET)
         self.assertEqual(len(xs[0].share_chunks), chunk_count)
 
         npt.assert_almost_equal(x, y, decimal=5)
@@ -160,38 +156,34 @@ class UnitTests(parameterized.TestCase):
         x = np.random.rand(6, 7, 8)
         x = x[0:5:2, 0:7:2, 0:8:2]
 
-        xs = io.make_shares(x, spu_pb2.Visibility.VIS_PUBLIC)
+        xs = io.make_shares(x, libspu.Visibility.VIS_PUBLIC)
         self.assertEqual(len(xs), wsize)
         self.assertEqual(
-            _bytes_to_pb(xs[0].meta).shape,
-            spu_pb2.ShapeProto(dims=(3, 4, 4)),
+            _bytes_to_pb(xs[0].meta).shape.dims,
+            [3, 4, 4],
         )
         y = io.reconstruct(xs)
-        chunk_count = io.get_share_chunk_count(x, spu_pb2.Visibility.VIS_PUBLIC)
+        chunk_count = io.get_share_chunk_count(x, libspu.Visibility.VIS_PUBLIC)
         self.assertEqual(len(xs[0].share_chunks), chunk_count)
 
         npt.assert_almost_equal(x, y, decimal=5)
 
     def test_io_scalar(self, wsize, prot, field, chunk_size):
-        if prot == spu_pb2.ProtocolKind.ABY3 and wsize != 3:
+        if prot == libspu.ProtocolKind.ABY3 and wsize != 3:
             return
 
-        config = spu_pb2.RuntimeConfig(
-            protocol=prot,
-            field=field,
-            fxp_fraction_bits=18,
-            share_max_chunk_size=chunk_size,
-        )
+        config = libspu.RuntimeConfig(protocol=prot, field=field, fxp_fraction_bits=18)
+        config.share_max_chunk_size = chunk_size
         io = ppapi.Io(wsize, config)
 
         # SINT
         x = np.random.randint(10, size=())
 
-        xs = io.make_shares(x, spu_pb2.Visibility.VIS_SECRET)
+        xs = io.make_shares(x, libspu.Visibility.VIS_SECRET)
         self.assertEqual(len(xs), wsize)
-        self.assertEqual(_bytes_to_pb(xs[0].meta).shape, spu_pb2.ShapeProto(dims=()))
+        self.assertEqual(_bytes_to_pb(xs[0].meta).shape.dims, [])
         y = io.reconstruct(xs)
-        chunk_count = io.get_share_chunk_count(x, spu_pb2.Visibility.VIS_SECRET)
+        chunk_count = io.get_share_chunk_count(x, libspu.Visibility.VIS_SECRET)
         self.assertEqual(len(xs[0].share_chunks), chunk_count)
 
         npt.assert_equal(x, y)
@@ -199,11 +191,11 @@ class UnitTests(parameterized.TestCase):
         # SFXP
         x = np.random.random(size=())
 
-        xs = io.make_shares(x, spu_pb2.Visibility.VIS_SECRET)
+        xs = io.make_shares(x, libspu.Visibility.VIS_SECRET)
         self.assertEqual(len(xs), wsize)
-        self.assertEqual(_bytes_to_pb(xs[0].meta).shape, spu_pb2.ShapeProto(dims=()))
+        self.assertEqual(_bytes_to_pb(xs[0].meta).shape.dims, [])
         y = io.reconstruct(xs)
-        chunk_count = io.get_share_chunk_count(x, spu_pb2.Visibility.VIS_SECRET)
+        chunk_count = io.get_share_chunk_count(x, libspu.Visibility.VIS_SECRET)
         self.assertEqual(len(xs[0].share_chunks), chunk_count)
 
         npt.assert_almost_equal(x, y, decimal=5)
@@ -211,100 +203,94 @@ class UnitTests(parameterized.TestCase):
         # PFXP
         x = np.random.random(size=())
 
-        xs = io.make_shares(x, spu_pb2.Visibility.VIS_PUBLIC)
+        xs = io.make_shares(x, libspu.Visibility.VIS_PUBLIC)
         self.assertEqual(len(xs), wsize)
-        self.assertEqual(_bytes_to_pb(xs[0].meta).shape, spu_pb2.ShapeProto(dims=()))
+        self.assertEqual(_bytes_to_pb(xs[0].meta).shape.dims, [])
         y = io.reconstruct(xs)
-        chunk_count = io.get_share_chunk_count(x, spu_pb2.Visibility.VIS_PUBLIC)
+        chunk_count = io.get_share_chunk_count(x, libspu.Visibility.VIS_PUBLIC)
         self.assertEqual(len(xs[0].share_chunks), chunk_count)
 
         npt.assert_almost_equal(x, y, decimal=5)
 
     def test_io_single_complex(self, wsize, prot, field, chunk_size):
-        if prot == spu_pb2.ProtocolKind.ABY3 and wsize != 3:
+        if prot == libspu.ProtocolKind.ABY3 and wsize != 3:
             return
 
-        config = spu_pb2.RuntimeConfig(
-            protocol=prot,
-            field=field,
-            share_max_chunk_size=chunk_size,
-        )
+        config = libspu.RuntimeConfig(protocol=prot, field=field)
+        config.share_max_chunk_size = chunk_size
         io = ppapi.Io(wsize, config)
 
         # SFXP
         x = np.array([1 + 2j, 3 + 4j, 5 + 6j]).astype('complex64')
 
-        xs = io.make_shares(x, spu_pb2.Visibility.VIS_SECRET)
+        xs = io.make_shares(x, libspu.Visibility.VIS_SECRET)
         self.assertEqual(len(xs), wsize)
 
         y = io.reconstruct(xs)
         print(xs)
-        chunk_count = io.get_share_chunk_count(x, spu_pb2.Visibility.VIS_SECRET)
+        chunk_count = io.get_share_chunk_count(x, libspu.Visibility.VIS_SECRET)
         self.assertEqual(len(xs[0].share_chunks), 2 * chunk_count)
 
         npt.assert_almost_equal(x, y, decimal=5)
 
         # PFXP
-        xs = io.make_shares(x, spu_pb2.Visibility.VIS_PUBLIC)
+        xs = io.make_shares(x, libspu.Visibility.VIS_PUBLIC)
         self.assertEqual(len(xs), wsize)
         y = io.reconstruct(xs)
-        chunk_count = io.get_share_chunk_count(x, spu_pb2.Visibility.VIS_PUBLIC)
+        chunk_count = io.get_share_chunk_count(x, libspu.Visibility.VIS_PUBLIC)
         self.assertEqual(len(xs[0].share_chunks), 2 * chunk_count)
 
         npt.assert_almost_equal(x, y, decimal=5)
 
     def test_io_double_complex(self, wsize, prot, field, chunk_size):
-        if prot == spu_pb2.ProtocolKind.ABY3 and wsize != 3:
+        if prot == libspu.ProtocolKind.ABY3 and wsize != 3:
             return
 
-        config = spu_pb2.RuntimeConfig(
-            protocol=prot,
-            field=field,
-            share_max_chunk_size=chunk_size,
-        )
+        config = libspu.RuntimeConfig(protocol=prot, field=field)
+        config.share_max_chunk_size = chunk_size
         io = ppapi.Io(wsize, config)
 
         # SFXP
         x = np.array([1 + 2j, 3 + 4j, 5 + 6j])
 
-        xs = io.make_shares(x, spu_pb2.Visibility.VIS_SECRET)
+        xs = io.make_shares(x, libspu.Visibility.VIS_SECRET)
         self.assertEqual(len(xs), wsize)
 
         y = io.reconstruct(xs)
         print(xs)
-        chunk_count = io.get_share_chunk_count(x, spu_pb2.Visibility.VIS_SECRET)
+        chunk_count = io.get_share_chunk_count(x, libspu.Visibility.VIS_SECRET)
         self.assertEqual(len(xs[0].share_chunks), 2 * chunk_count)
 
         npt.assert_almost_equal(x, y, decimal=5)
 
         # PFXP
-        xs = io.make_shares(x, spu_pb2.Visibility.VIS_PUBLIC)
+        xs = io.make_shares(x, libspu.Visibility.VIS_PUBLIC)
         self.assertEqual(len(xs), wsize)
         y = io.reconstruct(xs)
-        chunk_count = io.get_share_chunk_count(x, spu_pb2.Visibility.VIS_PUBLIC)
+        chunk_count = io.get_share_chunk_count(x, libspu.Visibility.VIS_PUBLIC)
         self.assertEqual(len(xs[0].share_chunks), 2 * chunk_count)
 
         npt.assert_almost_equal(x, y, decimal=5)
 
     def test_colocated_io(self, wsize, prot, field, chunk_size):
-        if prot == spu_pb2.ProtocolKind.ABY3 and wsize != 3:
+        if prot == libspu.ProtocolKind.ABY3 and wsize != 3:
             return
 
-        if prot == spu_pb2.ProtocolKind.REF2K:
+        if prot == libspu.ProtocolKind.REF2K:
             return
 
-        config = spu_pb2.RuntimeConfig(
+        config = libspu.RuntimeConfig(
             protocol=prot,
             field=field,
-            share_max_chunk_size=chunk_size,
-            experimental_enable_colocated_optimization=True,
         )
+        config.share_max_chunk_size = chunk_size
+        config.experimental_enable_colocated_optimization = True
         io = ppapi.Io(wsize, config)
 
         # PrivINT
         x = np.random.randint(10, size=())
 
-        xs = io.make_shares(x, spu_pb2.Visibility.VIS_SECRET, owner_rank=1)
+        xs = io.make_shares(x, libspu.Visibility.VIS_SECRET, owner_rank=1)
         self.assertIn('Priv2k', _bytes_to_pb(xs[0].meta).storage_type)
         y = io.reconstruct(xs)
 

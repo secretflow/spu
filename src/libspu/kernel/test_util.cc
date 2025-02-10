@@ -34,9 +34,9 @@ SPUContext makeSPUContext(RuntimeConfig config,
 SPUContext makeSPUContext(ProtocolKind prot_kind, FieldType field,
                           const std::shared_ptr<yacl::link::Context>& lctx) {
   RuntimeConfig cfg;
-  cfg.set_protocol(prot_kind);
-  cfg.set_field(field);
-  cfg.set_enable_action_trace(false);
+  cfg.protocol = prot_kind;
+  cfg.field = field;
+  cfg.enable_action_trace = false;
 
   return makeSPUContext(cfg, lctx);
 }

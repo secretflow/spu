@@ -61,22 +61,8 @@ class BShrTy : public TypeImpl<BShrTy, RingTy, Secret, BShare> {
 
   static std::string_view getStaticId() { return "spdz2k.BShr"; }
 
-  void fromString(std::string_view detail) override {
-    auto comma = detail.find_first_of(',');
-    auto last_comma = detail.find_last_of(',');
-    auto back_type_str = detail.substr(0, comma);
-    auto nbits_str = detail.substr(comma + 1, last_comma);
-    SPU_ENFORCE(PtType_Parse(std::string(back_type_str), &back_type_),
-                "parse failed from={}", back_type_str);
-    nbits_ = std::stoul(std::string(nbits_str));
-    auto field_str = detail.substr(last_comma + 1);
-    SPU_ENFORCE(FieldType_Parse(std::string(field_str), &field_),
-                "parse failed from={}", field_str);
-  };
-
-  std::string toString() const override {
-    return fmt::format("{},{},{}", PtType_Name(back_type_), nbits_, field_);
-  }
+  void fromString(std::string_view detail) override;
+  std::string toString() const override;
 
   size_t nbits() const { return nbits_; }
 

@@ -118,11 +118,11 @@ std::unique_ptr<spu::SPUContext> MakeSPUContext() {
   auto lctx = MakeLink(Parties.getValue(), Rank.getValue());
 
   spu::RuntimeConfig config;
-  config.set_protocol(spu::ProtocolKind::CHEETAH);
-  config.set_field(static_cast<spu::FieldType>(Field.getValue()));
-  config.set_fxp_fraction_bits(18);
-  config.set_fxp_div_goldschmidt_iters(1);
-  config.set_enable_hal_profile(EngineTrace.getValue());
+  config.protocol = spu::ProtocolKind::CHEETAH;
+  config.field = static_cast<spu::FieldType>(Field.getValue());
+  config.fxp_fraction_bits = 18;
+  config.fxp_div_goldschmidt_iters = 1;
+  config.enable_hal_profile = EngineTrace.getValue();
   auto hctx = std::make_unique<spu::SPUContext>(config, lctx);
   spu::mpc::Factory::RegisterProtocol(hctx.get(), lctx);
   return hctx;
@@ -218,7 +218,7 @@ void RunTest(spu::SPUContext* hctx, squirrel::XGBTreeBuilder& builder,
   }
 
   const int64_t nsamples = dframe.shape(0);
-  const double fxp = std::pow(2., hctx->config().fxp_fraction_bits());
+  const double fxp = std::pow(2., hctx->config().fxp_fraction_bits);
 
   SPDLOG_DEBUG("Computing inference on testing set ...");
 
@@ -293,7 +293,7 @@ int main(int argc, char** argv) {
       bucket_size, nfeatures, peer_nfeatures);
 
   worker->BuildMap(dframe);
-  worker->Setup(8 * spu::SizeOf(hctx->config().field()), hctx->lctx());
+  worker->Setup(8 * spu::SizeOf(hctx->config().field), hctx->lctx());
 
   std::string act = Activation.getValue();
   SPU_ENFORCE(act == "log" or act == "sig", "invalid activation type={}", act);
@@ -335,7 +335,7 @@ int main(int argc, char** argv) {
   }
 
   // Test on train set
-  double fxp = std::pow(2., hctx->config().fxp_fraction_bits());
+  double fxp = std::pow(2., hctx->config().fxp_fraction_bits);
   int32_t correct = 0;
   SPDLOG_DEBUG("Computing inference on training set ...");
   for (int64_t i = 0; i < (int64_t)nsamples; ++i) {

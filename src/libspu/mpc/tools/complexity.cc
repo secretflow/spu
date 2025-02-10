@@ -49,8 +49,8 @@ internal::SingleComplexityReport dumpComplexityReport(
   fmt::print("{:<15}, {:<20}, {:<20}\n", "name", "latency", "comm");
 
   RuntimeConfig rt_conf;
-  rt_conf.set_protocol(protocol);
-  rt_conf.set_field(FM64);
+  rt_conf.protocol = protocol;
+  rt_conf.field = FM64;
 
   utils::simulate(
       party_cnt, [&](const std::shared_ptr<yacl::link::Context>& lctx) -> void {

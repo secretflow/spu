@@ -24,6 +24,8 @@
 #include "libspu/core/type_util.h"
 #include "libspu/core/vectorize.h"
 
+#include "libspu/spu.pb.h"
+
 namespace spu {
 
 // In order to prevent a single protobuf from being larger than 2gb, a spu
@@ -31,8 +33,8 @@ namespace spu {
 // std::vector is used to organize multiple chunks instead of repeated in
 // protobuf.
 struct ValueProto {
-  ValueMetaProto meta;
-  std::vector<ValueChunkProto> chunks;
+  pb::ValueMetaProto meta;
+  std::vector<pb::ValueChunkProto> chunks;
 };
 
 class Value final {
@@ -90,7 +92,7 @@ class Value final {
   // Serialize to protobuf.
   ValueProto toProto(size_t max_chunk_size) const;
   size_t chunksCount(size_t max_chunk_size) const;
-  ValueMetaProto toMetaProto() const;
+  pb::ValueMetaProto toMetaProto() const;
 
   // Deserialize from protobuf.
   static Value fromProto(const ValueProto& value);

@@ -18,8 +18,7 @@
 #include "yacl/link/link.h"
 
 #include "libspu/mpc/api_test_params.h"
-
-#include "libspu/spu.pb.h"
+#include "libspu/spu.h"
 
 namespace spu::mpc::test {
 

@@ -30,8 +30,8 @@ TEST_P(IoClientTest, Float) {
   const Visibility kVisibility = std::get<3>(GetParam());
 
   RuntimeConfig hconf;
-  hconf.set_protocol(std::get<1>(GetParam()));
-  hconf.set_field(std::get<2>(GetParam()));
+  hconf.protocol = std::get<1>(GetParam());
+  hconf.field = std::get<2>(GetParam());
   IoClient io(kWorldSize, hconf);
 
   xt::xarray<float> in_data({{1, -2, 3, 0}});
@@ -52,8 +52,8 @@ TEST_P(IoClientTest, Int) {
   const Visibility kVisibility = std::get<3>(GetParam());
 
   RuntimeConfig hconf;
-  hconf.set_protocol(std::get<1>(GetParam()));
-  hconf.set_field(std::get<2>(GetParam()));
+  hconf.protocol = std::get<1>(GetParam());
+  hconf.field = std::get<2>(GetParam());
   IoClient io(kWorldSize, hconf);
 
   xt::xarray<int> in_data({{1, -2, 3, 0}});
@@ -103,8 +103,8 @@ TEST_P(ColocatedIoTest, Works) {
   const Visibility kVisibility = std::get<3>(GetParam());
 
   RuntimeConfig hconf;
-  hconf.set_protocol(std::get<1>(GetParam()));
-  hconf.set_field(std::get<2>(GetParam()));
+  hconf.protocol = std::get<1>(GetParam());
+  hconf.field = std::get<2>(GetParam());
 
   mpc::utils::simulate(kWorldSize, [&](auto lctx) {
     SPUContext sctx(hconf, lctx);
@@ -135,9 +135,9 @@ TEST(ColocatedIoTest, PrivateWorks) {
   const size_t kWorldSize = 2;
 
   RuntimeConfig hconf;
-  hconf.set_protocol(ProtocolKind::SEMI2K);
-  hconf.set_field(FieldType::FM64);
-  hconf.set_experimental_enable_colocated_optimization(true);
+  hconf.protocol = ProtocolKind::SEMI2K;
+  hconf.field = FieldType::FM64;
+  hconf.experimental_enable_colocated_optimization = true;
 
   mpc::utils::simulate(kWorldSize, [&](auto lctx) {
     SPUContext sctx(hconf, lctx);

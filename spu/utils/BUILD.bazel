@@ -50,7 +50,7 @@ spu_py_library(
     srcs = [
         "distributed_impl.py",
         ":distributed_py_proto_grpc",
-        "@spulib//libspu:spu_py_proto",
+        # "@spulib//libspu:spu_py_proto",
     ],
     deps = [
         ":frontend",

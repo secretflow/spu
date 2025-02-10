@@ -43,7 +43,7 @@ size_t IoClient::getShareSize(const PtBufferView &bv, Visibility vtype,
 
 std::vector<spu::Value> IoClient::makeShares(const PtBufferView &bv,
                                              Visibility vtype, int owner_rank) {
-  const size_t fxp_bits = config_.fxp_fraction_bits();
+  const size_t fxp_bits = config_.fxp_fraction_bits;
   SPU_ENFORCE(fxp_bits != 0, "fxp should never be zero, please check default");
 
   if (bv.pt_type == PT_I1 && vtype == VIS_SECRET &&
@@ -86,10 +86,10 @@ std::vector<spu::Value> IoClient::makeShares(const PtBufferView &bv,
 
   // encode to ring.
   DataType dtype;
-  NdArrayRef encoded = encodeToRing(bv, config_.field(), fxp_bits, &dtype);
+  NdArrayRef encoded = encodeToRing(bv, config_.field, fxp_bits, &dtype);
 
   // make shares.
-  if (!config_.experimental_enable_colocated_optimization()) {
+  if (!config_.experimental_enable_colocated_optimization) {
     owner_rank = -1;
   }
   std::vector<NdArrayRef> shares =
@@ -154,7 +154,7 @@ void IoClient::combineShares(absl::Span<Value const> values,
     return;
   }
 
-  const size_t fxp_bits = config_.fxp_fraction_bits();
+  const size_t fxp_bits = config_.fxp_fraction_bits;
   SPU_ENFORCE(fxp_bits != 0, "fxp should never be zero, please check default");
 
   // reconstruct to ring buffer.

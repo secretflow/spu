@@ -22,8 +22,8 @@ namespace {
 
 RuntimeConfig makeConfig(FieldType field) {
   RuntimeConfig conf;
-  conf.set_protocol(ProtocolKind::REF2K);
-  conf.set_field(field);
+  conf.protocol = ProtocolKind::REF2K;
+  conf.field = field;
   return conf;
 }
 
@@ -37,7 +37,7 @@ INSTANTIATE_TEST_SUITE_P(
                                      makeConfig(FieldType::FM128)),  //
                      testing::Values(1, 2, 3, 5)),                   //
     [](const testing::TestParamInfo<ApiTest::ParamType>& p) {
-      return fmt::format("{}x{}", std::get<1>(p.param).field(),
+      return fmt::format("{}x{}", std::get<1>(p.param).field,
                          std::get<2>(p.param));
     });
 

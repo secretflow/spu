@@ -49,8 +49,7 @@ NdArrayRef ExpA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
     const ring2k_t exp_conv_scale = std::roundf(M_LOG2E * (1L << kExpFxp));
 
     // offset scale should directly encoded to a fixed point with total_fxp
-    const ring2k_t offset =
-        ctx->sctx()->config().experimental_exp_prime_offset();
+    const ring2k_t offset = ctx->sctx()->config().experimental_exp_prime_offset;
     const ring2k_t offset_scaled = offset << total_fxp;
 
     NdArrayView<ring2k_t> _x(x);

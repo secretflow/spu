@@ -20,8 +20,8 @@ namespace {
 
 RuntimeConfig makeConfig(FieldType field) {
   RuntimeConfig conf;
-  conf.set_protocol(ProtocolKind::SEMI2K);  // FIXME:
-  conf.set_field(field);
+  conf.protocol = ProtocolKind::SEMI2K;
+  conf.field = field;
   return conf;
 }
 
@@ -35,7 +35,7 @@ INSTANTIATE_TEST_SUITE_P(
                      testing::Values(2)),                           //
     [](const testing::TestParamInfo<ApiTest::ParamType>& p) {
       return fmt::format("{}x{}x{}", std::get<0>(p.param).name(),
-                         std::get<1>(p.param).field(), std::get<2>(p.param));
+                         std::get<1>(p.param).field, std::get<2>(p.param));
     });
 
 }  // namespace spu::mpc::test

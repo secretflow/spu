@@ -38,8 +38,8 @@ void runner(const OpFcn &f, absl::Span<const xt::xarray<InT>> inputs,
             absl::Span<const xt::xarray<OutT>> positives,
             absl::Span<const xt::xarray<OutT>> negatives) {
   RuntimeConfig conf;
-  conf.set_field(FM64);
-  conf.set_protocol(SEMI2K);
+  conf.protocol = SEMI2K;
+  conf.field = FM64;
   std::unique_ptr<LocalIo> io_ = std::make_unique<LocalIo>(2, conf);
   for (size_t idx = 0; idx < inputs.size(); ++idx) {
     io_->InFeed(fmt::format("in{}", idx), inputs[idx], VIS_SECRET);
@@ -261,8 +261,8 @@ TEST(Verify, Greater) {
 
 TEST(Verify, Select) {
   RuntimeConfig conf;
-  conf.set_field(FM64);
-  conf.set_protocol(SEMI2K);
+  conf.protocol = SEMI2K;
+  conf.field = FM64;
   std::unique_ptr<LocalIo> io_ = std::make_unique<LocalIo>(2, conf);
   io_->InFeed("in0", xt::xarray<bool>{false, true, true, false}, VIS_SECRET);
   io_->InFeed("in1", xt::xarray<int32_t>{5, 2, 7, 4}, VIS_SECRET);

@@ -76,6 +76,7 @@ spu_cc_library(
         "//libspu/dialect/pphlo/transforms:all_passes",
         "@llvm-project//mlir:FuncExtensions",
         "@llvm-project//mlir:Parser",
+        "@magic_enum",
         "@xla//xla/mlir_hlo:mhlo_passes",
         "@xla//xla/translate/mhlo_to_hlo:translate",
     ],

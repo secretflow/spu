@@ -18,7 +18,7 @@
 
 #include "mlir/IR/OwningOpRef.h"
 
-#include "libspu/spu.pb.h"
+#include "libspu/spu.h"
 
 namespace mlir {
 

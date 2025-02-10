@@ -16,6 +16,8 @@
 
 #include <mutex>
 
+#include "magic_enum.hpp"
+
 namespace spu {
 
 Type::Type()
@@ -101,6 +103,42 @@ Type Type::fromString(std::string_view repr) {
   auto fctor = TypeContext::getTypeContext()->getTypeCreateFunction(keyword);
 
   return Type(fctor(details.substr(0, details.length() - 1)));
+}
+
+void PtTy::fromString(std::string_view detail) {
+  auto pt_type = magic_enum::enum_cast<PtType>(detail);
+  SPU_ENFORCE(pt_type.has_value(), "parse failed from={}", detail);
+  pt_type_ = pt_type.value();
+}
+
+std::string PtTy::toString() const {
+  return std::string(magic_enum::enum_name(pt_type_));
+}
+
+void RingTy::fromString(std::string_view detail) {
+  auto field = magic_enum::enum_cast<FieldType>(detail);
+  SPU_ENFORCE(field.has_value(), "parse failed from={}", detail);
+  field_ = field.value();
+}
+
+std::string RingTy::toString() const {
+  return std::string(magic_enum::enum_name(field()));
+}
+
+void GfmpTy::fromString(std::string_view detail) {
+  auto comma = detail.find_first_of(',');
+  auto field_str = detail.substr(0, comma);
+  auto mp_exp_str = detail.substr(comma + 1);
+  auto field = magic_enum::enum_cast<FieldType>(field_str);
+  SPU_ENFORCE(field.has_value(), "parse failed from={}", detail);
+  field_ = field.value();
+  mersenne_prime_exp_ = std::stoul(std::string(mp_exp_str));
+  prime_ = (static_cast<uint128_t>(1) << mersenne_prime_exp_) - 1;
+}
+
+std::string GfmpTy::toString() const {
+  return fmt::format("{},{}", magic_enum::enum_name(field()),
+                     mersenne_prime_exp_);
 }
 
 }  // namespace spu

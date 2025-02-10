@@ -34,8 +34,7 @@
 #include "libspu/dialect/utils/utils.h"
 #include "libspu/kernel/test_util.h"
 #include "libspu/mpc/utils/simulate.h"
-
-#include "libspu/spu.pb.h"
+#include "libspu/spu.h"
 
 #define EXPOSE_PIPELINE_BUILDER
 #include "libspu/compiler/core/core.h"
@@ -217,33 +216,33 @@ void evalModule(ModuleOp module) {
   runPasses(module);
 
   ::spu::RuntimeConfig conf;
-  conf.set_field(::spu::FM64);
-  conf.set_enable_type_checker(true);
+  conf.field = ::spu::FM64;
+  conf.enable_type_checker = true;
   int numParties = 1;
 
   switch (ProtocolKind.getValue()) {
   case 1: {
-    conf.set_protocol(::spu::REF2K);
+    conf.protocol = ::spu::REF2K;
     numParties = 1;
     break;
   }
   case 2: {
-    conf.set_protocol(::spu::SEMI2K);
+    conf.protocol = ::spu::SEMI2K;
     numParties = 2;
     break;
   }
   case 3: {
-    conf.set_protocol(::spu::ABY3);
+    conf.protocol = ::spu::ABY3;
     numParties = 3;
     break;
   }
   case 4: {
-    conf.set_protocol(::spu::CHEETAH);
+    conf.protocol = ::spu::CHEETAH;
     numParties = 2;
     break;
   }
   case 5: {
-    conf.set_protocol(::spu::SECURENN);
+    conf.protocol = ::spu::SECURENN;
     numParties = 3;
     break;
   }

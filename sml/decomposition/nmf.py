@@ -151,9 +151,9 @@ class NMF:
         -----
         (1) To prevent overflow error when using large data sets or get more accurate results,
         you can modify the definition of simulator as follows:
-        config = spu_pb2.RuntimeConfig(
-            protocol=spu_pb2.ProtocolKind.ABY3,
-            field=spu_pb2.FieldType.FM128,
+        config = libspu.RuntimeConfig(
+            protocol=libspu.ProtocolKind.ABY3,
+            field=libspu.FieldType.FM128,
             fxp_fraction_bits=30,
             )
         sim_aby = spsim.Simulator(3, config)

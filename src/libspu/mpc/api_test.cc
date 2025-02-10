@@ -261,7 +261,7 @@ TEST_P(ApiTest, MsbS) {
     auto p0 = rand_p(sctx.get(), kShape);
 
     // SECURENN has an msb input range requirement here
-    if (conf.protocol() == ProtocolKind::SECURENN) {
+    if (conf.protocol == ProtocolKind::SECURENN) {
       p0 = arshift_p(sctx.get(), p0, {1});
     }
 
@@ -288,7 +288,7 @@ TEST_P(ApiTest, MsbS) {
           auto x_s = p2s(sctx.get(), x_p);                                    \
                                                                               \
           for (auto bits : kShiftBits) {                                      \
-            if (bits >= SizeOf(conf.field()) * 8) {                           \
+            if (bits >= SizeOf(conf.field) * 8) {                             \
               continue;                                                       \
             }                                                                 \
             /* WHEN */                                                        \
@@ -318,7 +318,7 @@ TEST_P(ApiTest, MsbS) {
             auto x_v = p2v(sctx.get(), x_p, rank);                            \
                                                                               \
             for (auto bits : kShiftBits) {                                    \
-              if (bits >= SizeOf(conf.field()) * 8) {                         \
+              if (bits >= SizeOf(conf.field) * 8) {                           \
                 continue;                                                     \
               }                                                               \
               /* WHEN */                                                      \
@@ -349,7 +349,7 @@ TEST_P(ApiTest, MsbS) {
           auto p0 = rand_p(sctx.get(), kShape);                               \
                                                                               \
           for (auto bits : kShiftBits) { /* WHEN */                           \
-            if (bits >= SizeOf(conf.field()) * 8) {                           \
+            if (bits >= SizeOf(conf.field) * 8) {                             \
               continue;                                                       \
             }                                                                 \
             auto r_p = OP##_p(sctx.get(), p0, {static_cast<int64_t>(bits)});  \
@@ -379,13 +379,13 @@ TEST_P(ApiTest, TruncS) {
     auto sctx = factory(conf, lctx);
 
     // NOTE(lwj): test Cheetah's TiledDispatch using larger shape
-    auto p0 = rand_p(sctx.get(), conf.protocol() == ProtocolKind::CHEETAH
+    auto p0 = rand_p(sctx.get(), conf.protocol == ProtocolKind::CHEETAH
                                      ? Shape({300, 20})
                                      : kShape);
 
     // TODO: here we assume has msb error, only use lowest 10 bits.
     p0 = arshift_p(sctx.get(), p0,
-                   {static_cast<int64_t>(SizeOf(conf.field()) * 8 - 10)});
+                   {static_cast<int64_t>(SizeOf(conf.field) * 8 - 10)});
 
     const size_t bits = 2;
     auto r_s = s2p(sctx.get(), trunc_s(sctx.get(), p2s(sctx.get(), p0), bits,
