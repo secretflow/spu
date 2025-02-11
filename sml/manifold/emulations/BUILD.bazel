@@ -14,7 +14,7 @@
 
 
 load("@spu_pip_dev//:requirements.bzl", "requirement")
-load("//bazel:spu.bzl", "spu_py_library")
+load("//bazel:spu.bzl", "spu_py_binary")
 package(default_visibility = ["//visibility:public"])
 
 spu_py_binary(
@@ -28,6 +28,8 @@ spu_py_binary(
         "//sml/manifold:kneighbors",
         "//sml/manifold:floyd",
         "//sml/manifold:SE",
+        requirement("scikit-learn"),
+        requirement("pyyaml"),
     ],
 )
 
@@ -42,6 +44,8 @@ spu_py_binary(
         "//sml/manifold:kneighbors",
         "//sml/manifold:floyd",
         "//sml/manifold:SE",
+        requirement("scikit-learn"),
+        requirement("pyyaml"),
     ],
 )
 
@@ -56,6 +60,8 @@ spu_py_binary(
         "//sml/manifold:kneighbors",
         "//sml/manifold:floyd",
         "//sml/manifold:SE",
+        requirement("scikit-learn"),
+        requirement("pyyaml"),
     ],
 )
 
