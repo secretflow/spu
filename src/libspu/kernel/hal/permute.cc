@@ -29,8 +29,7 @@
 #include "libspu/kernel/hal/shape_ops.h"
 #include "libspu/kernel/hal/type_cast.h"
 #include "libspu/kernel/hal/utils.h"
-
-#include "libspu/spu.pb.h"
+#include "libspu/spu.h"
 
 namespace spu::kernel::hal {
 
@@ -396,7 +395,7 @@ bool Partition(SPUContext *ctx, const int64_t num_keys,
     return false;
   }
 
-  int64_t quick_sort_thres = ctx->config().quick_sort_threshold();
+  int64_t quick_sort_thres = ctx->config().quick_sort_threshold;
 
   int64_t lo;  // left end of current interval
   int64_t hi;  // right end of current interval
@@ -755,7 +754,7 @@ std::vector<spu::Value> PrepareInput(SPUContext *ctx, const Value &input,
 
   if (!config.value_only) {
     auto dt =
-        ctx->config().field() == FieldType::FM32 ? spu::DT_I32 : spu::DT_I64;
+        ctx->config().field == FieldType::FM32 ? spu::DT_I32 : spu::DT_I64;
     // shuffle index with the same permutation as values
     inp.push_back(
         _perm_ss(ctx, _p2s(ctx, hal::iota(ctx, dt, input.numel())), rand_perm)
@@ -1014,8 +1013,7 @@ spu::Value _gen_inv_perm_s(SPUContext *ctx, absl::Span<spu::Value const> keys,
   SPU_ENFORCE_GT(bv.size(), 0U);
 
   // 2. generate natural permutation for initialization
-  auto dt =
-      ctx->config().field() == FieldType::FM32 ? spu::DT_I32 : spu::DT_I64;
+  auto dt = ctx->config().field == FieldType::FM32 ? spu::DT_I32 : spu::DT_I64;
   auto init_perm = iota(ctx, dt, keys[0].numel());
   auto shared_perm = _p2s(ctx, init_perm);
 
@@ -1319,8 +1317,7 @@ spu::Value _apply_inv_perm(SPUContext *ctx, const spu::Value &x,
 // Given a permutation, generate its inverse permutation
 // ret[perm[i]] = i
 spu::Value _inverse(SPUContext *ctx, const Value &perm) {
-  auto dt =
-      ctx->config().field() == FieldType::FM32 ? spu::DT_I32 : spu::DT_I64;
+  auto dt = ctx->config().field == FieldType::FM32 ? spu::DT_I32 : spu::DT_I64;
   auto iota_perm = iota(ctx, dt, perm.numel());
   return _apply_inv_perm(ctx, iota_perm, perm);
 }
@@ -1398,8 +1395,7 @@ spu::Value _merge_pub_pri_keys(SPUContext *ctx,
     auto cur_inv_perm = _gen_inv_perm(ctx, cur_key_hat, is_ascending);
     inv_perm = _compose_perm(ctx, inv_perm, cur_inv_perm);
   }
-  auto dt =
-      ctx->config().field() == FieldType::FM32 ? spu::DT_I32 : spu::DT_I64;
+  auto dt = ctx->config().field == FieldType::FM32 ? spu::DT_I32 : spu::DT_I64;
   std::vector<spu::Value> permed_keys;
   for (const auto &key : keys) {
     permed_keys.emplace_back(_apply_inv_perm(ctx, key, inv_perm));
@@ -1581,7 +1577,7 @@ std::vector<spu::Value> simple_sort1d(SPUContext *ctx,
               "num_keys {} is not valid", num_keys);
 
   std::vector<spu::Value> ret;
-  const auto sort_method = ctx->config().sort_method();
+  const auto sort_method = ctx->config().sort_method;
 
   // There are multiple sort methods supported by SPU, we will try to seek the
   // best method in the following order if the user does not specify the method
@@ -1772,7 +1768,7 @@ std::vector<Value> topk_1d(SPUContext *ctx, const spu::Value &input,
     ret.push_back(internal::_permute_1d(ctx, input, topk_indices));
     if (!config.value_only) {
       auto dt =
-          ctx->config().field() == FieldType::FM32 ? spu::DT_I32 : spu::DT_I64;
+          ctx->config().field == FieldType::FM32 ? spu::DT_I32 : spu::DT_I64;
       ret.push_back(constant(ctx, topk_indices, dt,
                              {static_cast<int64_t>(topk_indices.size())}));
     }
@@ -1809,7 +1805,7 @@ std::vector<Value> topk_1d(SPUContext *ctx, const spu::Value &input,
         "kernels are not supported");
 
     auto dt =
-        ctx->config().field() == FieldType::FM32 ? spu::DT_I32 : spu::DT_I64;
+        ctx->config().field == FieldType::FM32 ? spu::DT_I32 : spu::DT_I64;
     std::vector<spu::Value> inp;
 
     inp.push_back(input);

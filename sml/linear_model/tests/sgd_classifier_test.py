@@ -19,16 +19,14 @@ import jax.numpy as jnp
 
 # TODO: unify this.
 import examples.python.utils.dataset_utils as dsutil
-import spu.spu_pb2 as spu_pb2  # type: ignore
+import spu.libspu as libspu
 import spu.utils.simulation as spsim
 from sml.linear_model.sgd_classifier import SGDClassifier
 
 
 class UnitTests(unittest.TestCase):
     def test_sgd(self):
-        sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
-        )
+        sim = spsim.Simulator.simple(3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM64)
 
         def proc(x1, x2, y):
             model = SGDClassifier(

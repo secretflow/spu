@@ -62,7 +62,7 @@ void MPCBenchMark(benchmark::State& state) {
     const size_t npc = BenchConfig::bench_npc;
     const auto field = static_cast<spu::FieldType>(state.range(0));
     RuntimeConfig conf;
-    conf.set_field(field);
+    conf.field = field;
     auto func = [&](std::shared_ptr<yacl::link::Context> lctx) {
       auto obj = BenchConfig::bench_factory(conf, lctx);
       if (!obj->hasKernel(OpData::op_name)) {

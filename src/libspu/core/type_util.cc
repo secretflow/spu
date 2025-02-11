@@ -14,6 +14,7 @@
 
 #include "libspu/core/type_util.h"
 
+#include "magic_enum.hpp"
 namespace spu {
 
 //////////////////////////////////////////////////////////////
@@ -95,7 +96,7 @@ std::ostream& operator<<(std::ostream& os, const DataType& dtype) {
 // Plaintext types.
 //////////////////////////////////////////////////////////////
 std::ostream& operator<<(std::ostream& os, const PtType& pt_type) {
-  os << PtType_Name(pt_type);
+  os << magic_enum::enum_name(pt_type);
   return os;
 }
 
@@ -118,7 +119,7 @@ size_t SizeOf(PtType ptt) {
 // ProtocolKind utils
 //////////////////////////////////////////////////////////////
 std::ostream& operator<<(std::ostream& os, ProtocolKind protocol) {
-  os << ProtocolKind_Name(protocol);
+  os << magic_enum::enum_name(protocol);
   return os;
 }
 
@@ -142,7 +143,7 @@ size_t GetMersennePrimeExp(FieldType field) {
 // Field 2k types, TODO(jint) support Zq
 //////////////////////////////////////////////////////////////
 std::ostream& operator<<(std::ostream& os, FieldType field) {
-  os << FieldType_Name(field);
+  os << magic_enum::enum_name(field);
   return os;
 }
 

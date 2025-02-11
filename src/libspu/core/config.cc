@@ -41,78 +41,77 @@ size_t defaultFxpBits(FieldType field) {
 
 void populateRuntimeConfig(RuntimeConfig& cfg) {
   // mandatory fields.
-  SPU_ENFORCE(cfg.protocol() != ProtocolKind::PROT_INVALID);
-  SPU_ENFORCE(cfg.field() != FieldType::FT_INVALID);
+  SPU_ENFORCE(cfg.protocol != ProtocolKind::PROT_INVALID);
+  SPU_ENFORCE(cfg.field != FieldType::FT_INVALID);
 
-  if (cfg.max_concurrency() == 0) {
-    cfg.set_max_concurrency(yacl::get_num_threads());
+  if (cfg.max_concurrency == 0) {
+    cfg.max_concurrency = yacl::get_num_threads();
   }
 
   //
-  if (cfg.fxp_fraction_bits() == 0) {
-    cfg.set_fxp_fraction_bits(defaultFxpBits(cfg.field()));
+  if (cfg.fxp_fraction_bits == 0) {
+    cfg.fxp_fraction_bits = defaultFxpBits(cfg.field);
   }
 
-  if (cfg.fxp_div_goldschmidt_iters() == 0) {
-    cfg.set_fxp_div_goldschmidt_iters(2);
+  if (cfg.fxp_div_goldschmidt_iters == 0) {
+    cfg.fxp_div_goldschmidt_iters = 2;
   }
 
   // sort
-  if (cfg.quick_sort_threshold() == 0) {
-    cfg.set_quick_sort_threshold(32);
+  if (cfg.quick_sort_threshold == 0) {
+    cfg.quick_sort_threshold = 32;
   }
 
   // fxp exponent config
   {
-    if (cfg.fxp_exp_mode() == RuntimeConfig::EXP_DEFAULT) {
-      cfg.set_fxp_exp_mode(RuntimeConfig::EXP_TAYLOR);
+    if (cfg.fxp_exp_mode == RuntimeConfig::EXP_DEFAULT) {
+      cfg.fxp_exp_mode = RuntimeConfig::EXP_TAYLOR;
     }
-    if (cfg.fxp_exp_mode() == RuntimeConfig::EXP_PRIME) {
+    if (cfg.fxp_exp_mode == RuntimeConfig::EXP_PRIME) {
       // 0 offset is not supported
-      if (cfg.experimental_exp_prime_offset() == 0) {
+      if (cfg.experimental_exp_prime_offset == 0) {
         // For FM128 default offset is 13
-        if (cfg.field() == FieldType::FM128) {
-          cfg.set_experimental_exp_prime_offset(13);
+        if (cfg.field == FieldType::FM128) {
+          cfg.experimental_exp_prime_offset = 13;
         }
         // TODO: set defaults for other fields, currently only FM128 is
         // supported
       }
     }
 
-    if (cfg.fxp_exp_iters() == 0) {
-      cfg.set_fxp_exp_iters(8);
+    if (cfg.fxp_exp_iters == 0) {
+      cfg.fxp_exp_iters = 8;
     }
   }
 
   // fxp log config
   {
-    if (cfg.fxp_log_mode() == RuntimeConfig::LOG_DEFAULT) {
-      cfg.set_fxp_log_mode(RuntimeConfig::LOG_MINMAX);
+    if (cfg.fxp_log_mode == RuntimeConfig::LOG_DEFAULT) {
+      cfg.fxp_log_mode = RuntimeConfig::LOG_MINMAX;
     }
 
-    if (cfg.fxp_log_iters() == 0) {
-      cfg.set_fxp_log_iters(3);
+    if (cfg.fxp_log_iters == 0) {
+      cfg.fxp_log_iters = 3;
     }
 
-    if (cfg.fxp_log_orders() == 0) {
-      cfg.set_fxp_log_orders(8);
+    if (cfg.fxp_log_orders == 0) {
+      cfg.fxp_log_orders = 8;
     }
   }
 
-  if (cfg.sine_cosine_iters() == 0) {
-    cfg.set_sine_cosine_iters(10);  // Default
+  if (cfg.sine_cosine_iters == 0) {
+    cfg.sine_cosine_iters = 10;  // Default
   }
 
   // inter op concurrency
-  if (cfg.experimental_enable_inter_op_par()) {
-    cfg.set_experimental_inter_op_concurrency(
-        cfg.experimental_inter_op_concurrency() == 0
-            ? 8
-            : cfg.experimental_inter_op_concurrency());
+  if (cfg.experimental_enable_inter_op_par) {
+    if (cfg.experimental_inter_op_concurrency == 0) {
+      cfg.experimental_inter_op_concurrency = 8;
+    }
   }
 
-  if (cfg.sigmoid_mode() == RuntimeConfig::SIGMOID_DEFAULT) {
-    cfg.set_sigmoid_mode(RuntimeConfig::SIGMOID_REAL);
+  if (cfg.sigmoid_mode == RuntimeConfig::SIGMOID_DEFAULT) {
+    cfg.sigmoid_mode = RuntimeConfig::SIGMOID_REAL;
   }
 
   // MPC related configurations

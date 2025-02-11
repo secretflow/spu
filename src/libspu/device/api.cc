@@ -124,12 +124,12 @@ struct ActionStats {
 
 void takeSnapshot(size_t rank, const RuntimeConfig &rt_config,
                   const ExecutableProto &executable, const SymbolTable &env) {
-  const std::string &dump_dir = rt_config.snapshot_dump_dir();
+  const std::string &dump_dir = rt_config.snapshot_dump_dir;
   // Naming convention for dumped files must align with debug runner.
   std::filesystem::path dump_folder(dump_dir);
   std::filesystem::create_directories(dump_folder);
 
-  // Dump executable
+  // Dump config
   {
     std::ofstream config_file(getConfigFilePath(dump_folder),
                               std::ios::binary | std::ios::out);
@@ -270,15 +270,15 @@ void executeImpl(OpExecutor *executor, spu::SPUContext *sctx,
   std::vector<spu::Value> inputs;
   {
     TimeitGuard timeit(exec_stats.infeed_time);
-    inputs.reserve(executable.input_names_size());
-    for (int32_t idx = 0; idx < executable.input_names_size(); idx++) {
-      inputs.emplace_back(env->getVar(executable.input_names(idx)));
+    inputs.reserve(executable.input_names.size());
+    for (size_t idx = 0; idx < executable.input_names.size(); idx++) {
+      inputs.emplace_back(env->getVar(executable.input_names[idx]));
     }
   }
 
   const RuntimeConfig rt_config = sctx->config();
 
-  if (rt_config.enable_runtime_snapshot()) {
+  if (rt_config.enable_runtime_snapshot) {
     const bool isRefHal = sctx->lctx() == nullptr;
     const size_t rank = isRefHal ? 0 : sctx->lctx()->Rank();
     takeSnapshot(rank, rt_config, executable, *env);
@@ -298,7 +298,7 @@ void executeImpl(OpExecutor *executor, spu::SPUContext *sctx,
         [&](mlir::Diagnostic &diag) { SPDLOG_ERROR(diag.str()); });
 
     auto moduleOpRef =
-        mlir::parseSourceString<mlir::ModuleOp>(executable.code(), &mlir_ctx);
+        mlir::parseSourceString<mlir::ModuleOp>(executable.code, &mlir_ctx);
 
     SPU_ENFORCE(moduleOpRef, "MLIR parser failure");
 
@@ -322,11 +322,11 @@ void executeImpl(OpExecutor *executor, spu::SPUContext *sctx,
     SPU_ENFORCE(entry_function, "main module not found");
 
     ExecutionOptions opts;
-    opts.do_type_check = rt_config.enable_type_checker();
-    opts.do_log_execution = rt_config.enable_pphlo_trace();
-    opts.do_parallel = rt_config.experimental_enable_inter_op_par();
+    opts.do_type_check = rt_config.enable_type_checker;
+    opts.do_log_execution = rt_config.enable_pphlo_trace;
+    opts.do_parallel = rt_config.experimental_enable_inter_op_par;
     if (opts.do_parallel) {
-      opts.concurrency = rt_config.experimental_inter_op_concurrency();
+      opts.concurrency = rt_config.experimental_inter_op_concurrency;
       mlir_ctx.enableMultithreading();
       mlir_ctx.enterMultiThreadedExecution();
     }
@@ -341,14 +341,14 @@ void executeImpl(OpExecutor *executor, spu::SPUContext *sctx,
   // sync output to environment.
   {
     TimeitGuard timeit(exec_stats.outfeed_time);
-    for (int32_t idx = 0; idx < executable.output_names_size(); idx++) {
-      env->setVar(executable.output_names(idx), outputs[idx]);
+    for (size_t idx = 0; idx < executable.output_names.size(); idx++) {
+      env->setVar(executable.output_names[idx], outputs[idx]);
     }
   }
 
   comm_stats.diff(sctx->lctx());
   if ((getGlobalTraceFlag(sctx->id()) & TR_REC) != 0) {
-    printProfilingData(sctx, executable.name(), exec_stats, comm_stats);
+    printProfilingData(sctx, executable.name, exec_stats, comm_stats);
   }
 }
 
@@ -361,12 +361,7 @@ void execute(OpExecutor *executor, spu::SPUContext *sctx,
              const std::string &text,
              const std::vector<std::string> &input_names,
              const std::vector<std::string> &output_names, SymbolTable *env) {
-  ExecutableProto executable;
-  executable.set_name("unnamed");
-  *executable.mutable_input_names() = {input_names.begin(), input_names.end()};
-  *executable.mutable_output_names() = {output_names.begin(),
-                                        output_names.end()};
-  executable.set_code(text);
+  ExecutableProto executable("unnamed", input_names, output_names, text);
 
   return executeImpl(executor, sctx, executable, env);
 }

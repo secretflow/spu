@@ -65,9 +65,9 @@ TEST_F(UtilsTest, ReduceSum) {
 
   spu::mpc::utils::simulate(2, [&](std::shared_ptr<yacl::link::Context> lctx) {
     spu::RuntimeConfig rt_config;
-    rt_config.set_protocol(ProtocolKind::REF2K);
-    rt_config.set_field(field);
-    rt_config.set_fxp_fraction_bits(16);
+    rt_config.protocol = ProtocolKind::REF2K;
+    rt_config.field = field;
+    rt_config.fxp_fraction_bits = 16;
 
     auto _ctx = std::make_unique<spu::SPUContext>(rt_config, lctx);
     auto* ctx = _ctx.get();
@@ -82,7 +82,7 @@ TEST_F(UtilsTest, ReduceSum) {
       ASSERT_EQ(expected.numel(), got.numel());
 
       if (lctx->Rank() == 0) {
-        const double fxp = std::pow(2., rt_config.fxp_fraction_bits());
+        const double fxp = std::pow(2., rt_config.fxp_fraction_bits);
         auto flatten = got.data().reshape({got.numel()});
 
         DISPATCH_ALL_FIELDS(field, [&]() {
@@ -117,9 +117,9 @@ TEST_F(UtilsTest, ArgMax) {
 
   spu::mpc::utils::simulate(2, [&](std::shared_ptr<yacl::link::Context> lctx) {
     spu::RuntimeConfig rt_config;
-    rt_config.set_protocol(ProtocolKind::REF2K);
-    rt_config.set_field(field);
-    rt_config.set_fxp_fraction_bits(16);
+    rt_config.protocol = ProtocolKind::REF2K;
+    rt_config.field = field;
+    rt_config.fxp_fraction_bits = 16;
 
     auto _ctx = std::make_unique<spu::SPUContext>(rt_config, lctx);
     auto* ctx = _ctx.get();
@@ -170,13 +170,12 @@ TEST_F(UtilsTest, MulA1BV) {
 
   spu::mpc::utils::simulate(2, [&](std::shared_ptr<yacl::link::Context> lctx) {
     spu::RuntimeConfig rt_config;
-    rt_config.set_protocol(ProtocolKind::CHEETAH);
-    rt_config.mutable_cheetah_2pc_config()->set_ot_kind(
-        CheetahOtKind::YACL_Softspoken);
-    rt_config.set_field(field);
-    rt_config.set_fxp_fraction_bits(16);
-    rt_config.set_experimental_enable_colocated_optimization(true);
-    rt_config.set_enable_hal_profile(true);
+    rt_config.protocol = ProtocolKind::CHEETAH;
+    rt_config.field = field;
+    rt_config.fxp_fraction_bits = 16;
+    rt_config.experimental_enable_colocated_optimization = true;
+    rt_config.enable_hal_profile = true;
+    rt_config.cheetah_2pc_config.ot_kind = CheetahOtKind::YACL_Softspoken;
 
     auto _ctx = std::make_unique<spu::SPUContext>(rt_config, lctx);
     auto* ctx = _ctx.get();
@@ -193,7 +192,7 @@ TEST_F(UtilsTest, MulA1BV) {
     c = hlo::Reveal(ctx, c);
 
     if (lctx->Rank() == 0) {
-      double scale = std::pow(2., rt_config.fxp_fraction_bits());
+      double scale = std::pow(2., rt_config.fxp_fraction_bits);
       for (int64_t i = 0; i < c.numel(); ++i) {
         if (ind[i]) {
           ASSERT_NEAR(c.data().at<int64_t>(i) / scale, _x[i], 2. / scale);
@@ -232,13 +231,12 @@ TEST_F(UtilsTest, MulA1B_AND_style) {
 
   spu::mpc::utils::simulate(2, [&](std::shared_ptr<yacl::link::Context> lctx) {
     spu::RuntimeConfig rt_config;
-    rt_config.set_protocol(ProtocolKind::CHEETAH);
-    rt_config.set_field(field);
-    rt_config.mutable_cheetah_2pc_config()->set_ot_kind(
-        CheetahOtKind::YACL_Softspoken);
-    rt_config.set_fxp_fraction_bits(16);
-    rt_config.set_experimental_enable_colocated_optimization(true);
-    rt_config.set_enable_hal_profile(true);
+    rt_config.protocol = ProtocolKind::CHEETAH;
+    rt_config.field = field;
+    rt_config.fxp_fraction_bits = 16;
+    rt_config.experimental_enable_colocated_optimization = true;
+    rt_config.enable_hal_profile = true;
+    rt_config.cheetah_2pc_config.ot_kind = CheetahOtKind::YACL_Softspoken;
 
     auto _ctx = std::make_unique<spu::SPUContext>(rt_config, lctx);
     auto* ctx = _ctx.get();
@@ -253,7 +251,7 @@ TEST_F(UtilsTest, MulA1B_AND_style) {
     c = hlo::Reveal(ctx, c);
 
     if (lctx->Rank() == 0) {
-      double scale = std::pow(2., rt_config.fxp_fraction_bits());
+      double scale = std::pow(2., rt_config.fxp_fraction_bits);
       for (int64_t i = 0; i < c.numel(); ++i) {
         if (ind[0][i] & ind[1][i]) {
           ASSERT_NEAR(c.data().at<int64_t>(i) / scale, _x[i], 2. / scale);
@@ -291,13 +289,12 @@ TEST_F(UtilsTest, BatchMulA1B_AND_style) {
 
   spu::mpc::utils::simulate(2, [&](std::shared_ptr<yacl::link::Context> lctx) {
     spu::RuntimeConfig rt_config;
-    rt_config.set_protocol(ProtocolKind::CHEETAH);
-    rt_config.mutable_cheetah_2pc_config()->set_ot_kind(
-        CheetahOtKind::YACL_Softspoken);
-    rt_config.set_field(field);
-    rt_config.set_fxp_fraction_bits(16);
-    rt_config.set_experimental_enable_colocated_optimization(true);
-    rt_config.set_enable_hal_profile(true);
+    rt_config.protocol = ProtocolKind::CHEETAH;
+    rt_config.field = field;
+    rt_config.fxp_fraction_bits = 16;
+    rt_config.experimental_enable_colocated_optimization = true;
+    rt_config.enable_hal_profile = true;
+    rt_config.cheetah_2pc_config.ot_kind = CheetahOtKind::YACL_Softspoken;
 
     auto _ctx = std::make_unique<spu::SPUContext>(rt_config, lctx);
     auto* ctx = _ctx.get();
@@ -309,7 +306,7 @@ TEST_F(UtilsTest, BatchMulA1B_AND_style) {
     c = hlo::Reveal(ctx, c);
 
     if (lctx->Rank() == 0) {
-      double scale = std::pow(2., rt_config.fxp_fraction_bits());
+      double scale = std::pow(2., rt_config.fxp_fraction_bits);
 
       for (int64_t k = 0; k < c.numel(); k += batch_size) {
         for (int64_t i = 0; i < batch_size; ++i) {

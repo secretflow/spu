@@ -20,8 +20,7 @@
 
 #include "libspu/core/shape.h"
 #include "libspu/mpc/common/prg_tensor.h"
-
-#include "libspu/spu.pb.h"
+#include "libspu/spu.h"
 
 namespace spu::mpc::semi2k {
 

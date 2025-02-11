@@ -40,7 +40,7 @@ spu_cc_library(
     srcs = [],
     hdrs = ["prelude.h"],
     deps = [
-        "//libspu:spu_cc_proto",
+        "//libspu:spu",
         "@yacl//yacl/base:exception",
         "@yacl//yacl/utils:scope_guard",
     ],
@@ -52,8 +52,9 @@ spu_cc_library(
     hdrs = ["type_util.h"],
     deps = [
         ":half",
-        "//libspu:spu_cc_proto",
+        "//libspu:spu",
         "//libspu/core:prelude",
+        "@magic_enum",
         "@yacl//yacl/base:int128",
     ],
 )
@@ -75,7 +76,7 @@ spu_cc_library(
     srcs = ["config.cc"],
     hdrs = ["config.h"],
     deps = [
-        "//libspu:spu_cc_proto",
+        "//libspu:spu",
         "//libspu/core:prelude",
         "@yacl//yacl/utils:parallel",
     ],
@@ -116,6 +117,7 @@ spu_cc_library(
     deps = [
         ":type_util",
         "//libspu/core:prelude",
+        "@magic_enum",
     ],
 )
 

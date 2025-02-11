@@ -17,7 +17,7 @@ import unittest
 
 import numpy as np
 
-import spu.spu_pb2 as spu_pb2
+import spu.libspu as libspu
 import spu.utils.simulation as ppsim
 from spu.tests.jnp_testbase import JnpTests
 
@@ -25,7 +25,7 @@ from spu.tests.jnp_testbase import JnpTests
 class JnpTestCheetahFM64(JnpTests.JnpTestBase):
     def setUp(self):
         self._sim = ppsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
+            2, libspu.ProtocolKind.CHEETAH, libspu.FieldType.FM64
         )
         self._rng = np.random.RandomState()
 

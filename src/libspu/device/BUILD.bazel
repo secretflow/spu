@@ -30,7 +30,7 @@ spu_cc_library(
     hdrs = ["io.h"],
     deps = [
         ":symbol_table",
-        "//libspu:spu_cc_proto",
+        "//libspu:spu",
         "//libspu/core:context",
         "//libspu/core:pt_buffer_view",
         "//libspu/core:value",
@@ -55,7 +55,6 @@ spu_cc_library(
     deps = [
         ":intrinsic_table",
         ":symbol_table",
-        "//libspu:spu_cc_proto",
         "//libspu/core:context",
         "//libspu/core:value",
         "//libspu/dialect/pphlo/IR:dialect",
@@ -85,7 +84,7 @@ spu_cc_library(
     deps = [
         ":io",
         ":symbol_table",
-        "//libspu:spu_cc_proto",
+        "//libspu:spu",
         "//libspu/core:ndarray_ref",
         "//libspu/mpc/utils:simulate",
     ],

@@ -84,13 +84,13 @@ class Spdz2kState : public State {
 
   explicit Spdz2kState(const RuntimeConfig& conf,
                        std::shared_ptr<yacl::link::Context> lctx)
-      : data_field_(conf.field()) {
-    if (conf.beaver_type() == RuntimeConfig_BeaverType_TrustedFirstParty) {
+      : data_field_(conf.field) {
+    if (conf.beaver_type == RuntimeConfig::TrustedFirstParty) {
       beaver_ = std::make_unique<spdz2k::BeaverTfpUnsafe>(lctx);
-    } else if (conf.beaver_type() == RuntimeConfig_BeaverType_MultiParty) {
+    } else if (conf.beaver_type == RuntimeConfig::MultiParty) {
       beaver_ = std::make_unique<spdz2k::BeaverTinyOt>(lctx);
     } else {
-      SPU_THROW("unsupported beaver type {}", conf.beaver_type());
+      SPU_THROW("unsupported beaver type {}", conf.beaver_type);
     }
     lctx_ = lctx;
     runtime_field_ = getRuntimeField(data_field_);

@@ -17,6 +17,7 @@
 #include "yacl/link/algorithm/allgather.h"
 #include "yacl/utils/parallel.h"
 
+#include "libspu/core/config.h"
 #include "libspu/core/trace.h"
 
 namespace spu {
@@ -40,11 +41,12 @@ SPUContext::SPUContext(const RuntimeConfig& config,
       prot_(std::make_unique<Object>(genRootObjectId(lctx))),
       lctx_(lctx),
       max_cluster_level_concurrency_(yacl::get_num_threads()) {
+  populateRuntimeConfig(config_);
   // Limit number of threads
-  if (config.max_concurrency() > 0) {
-    yacl::set_num_threads(config.max_concurrency());
+  if (config.max_concurrency > 0) {
+    yacl::set_num_threads(config.max_concurrency);
     max_cluster_level_concurrency_ = std::min<int32_t>(
-        max_cluster_level_concurrency_, config.max_concurrency());
+        max_cluster_level_concurrency_, config.max_concurrency);
   }
 
   if (lctx_) {
@@ -70,17 +72,17 @@ std::unique_ptr<SPUContext> SPUContext::fork() const {
 void setupTrace(spu::SPUContext* sctx, const spu::RuntimeConfig& rt_config) {
   int64_t tr_flag = 0;
   // TODO: Support tracing for parallel op execution
-  if (rt_config.enable_action_trace() &&
-      !rt_config.experimental_enable_intra_op_par()) {
+  if (rt_config.enable_action_trace &&
+      !rt_config.experimental_enable_intra_op_par) {
     tr_flag |= TR_LOG;
   }
 
-  if (rt_config.enable_pphlo_profile()) {
+  if (rt_config.enable_pphlo_profile) {
     tr_flag |= TR_HLO;
     tr_flag |= TR_REC;
   }
 
-  if (rt_config.enable_hal_profile()) {
+  if (rt_config.enable_hal_profile) {
     tr_flag |= TR_HAL | TR_MPC;
     tr_flag |= TR_REC;
   }

@@ -19,7 +19,7 @@ from flax import linen as nn
 from jax import numpy as jnp
 from jax import random
 
-import spu.spu_pb2 as spu_pb2
+import spu.libspu as libspu
 import spu.utils.simulation as ppsim
 
 
@@ -31,7 +31,7 @@ class UnitTests(unittest.TestCase):
     # https://github.com/secretflow/spu/issues/428
     def test_cache_with_static_argnums(self):
         sim = ppsim.Simulator.simple(
-            1, spu_pb2.ProtocolKind.REF2K, spu_pb2.FieldType.FM64
+            1, libspu.ProtocolKind.REF2K, libspu.FieldType.FM64
         )
 
         power_list = [-1, 0, 1, 2, 3]
@@ -52,7 +52,7 @@ class UnitTests(unittest.TestCase):
     # https://github.com/secretflow/spu/issues/306
     def test_compile_nn_layer(self):
         sim = ppsim.Simulator.simple(
-            1, spu_pb2.ProtocolKind.REF2K, spu_pb2.FieldType.FM64
+            1, libspu.ProtocolKind.REF2K, libspu.FieldType.FM64
         )
 
         class LinearModel(nn.Module):

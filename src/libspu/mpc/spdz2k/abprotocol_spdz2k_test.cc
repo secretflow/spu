@@ -98,8 +98,8 @@ TEST_P(BooleanTest, NotB) {
 
     /* THEN */
     EXPECT_VALUE_EQ(r_p, r_pp);
-    EXPECT_TRUE(verifyCost(obj->prot()->getKernel("not_b"), "not_b",
-                           conf.field(), kShape, npc, cost));
+    EXPECT_TRUE(verifyCost(obj->prot()->getKernel("not_b"), "not_b", conf.field,
+                           kShape, npc, cost));
   });
 }
 
@@ -129,7 +129,7 @@ TEST_P(ConversionTest, AddBB) {
 
     /* THEN */
     EXPECT_VALUE_EQ(re, rp);
-    EXPECT_TRUE(verifyCost(obj->getKernel("add_bb"), "add_bb", conf.field(),
+    EXPECT_TRUE(verifyCost(obj->getKernel("add_bb"), "add_bb", conf.field,
                            kShape, npc, cost));
   });
 }
@@ -160,7 +160,7 @@ TEST_P(ConversionTest, AddBP) {
 
     /* THEN */
     EXPECT_VALUE_EQ(re, rp);
-    EXPECT_TRUE(verifyCost(obj->getKernel("add_bp"), "add_bp", conf.field(),
+    EXPECT_TRUE(verifyCost(obj->getKernel("add_bp"), "add_bp", conf.field,
                            kShape, npc, cost));
   });
 }
@@ -189,8 +189,8 @@ TEST_P(ConversionTest, Bit2A) {
     auto p1 = a2p(obj.get(), a);
     /* THEN */
     EXPECT_VALUE_EQ(p0, p1);
-    EXPECT_TRUE(verifyCost(obj->getKernel("bit2a"), "bit2a", conf.field(),
-                           kShape, npc, cost));
+    EXPECT_TRUE(verifyCost(obj->getKernel("bit2a"), "bit2a", conf.field, kShape,
+                           npc, cost));
   });
 }
 
@@ -218,8 +218,8 @@ TEST_P(ConversionTest, A2Bit) {
     auto p1 = b2p(obj.get(), b);
     /* THEN */
     EXPECT_VALUE_EQ(p0, p1);
-    EXPECT_TRUE(verifyCost(obj->getKernel("a2bit"), "a2bit", conf.field(),
-                           kShape, npc, cost));
+    EXPECT_TRUE(verifyCost(obj->getKernel("a2bit"), "a2bit", conf.field, kShape,
+                           npc, cost));
   });
 }
 
@@ -267,7 +267,7 @@ TEST_P(ConversionTest, BitLT) {
     });
 
     /* THEN */
-    EXPECT_TRUE(verifyCost(obj->getKernel("bitlt_bb"), "bitlt_bb", conf.field(),
+    EXPECT_TRUE(verifyCost(obj->getKernel("bitlt_bb"), "bitlt_bb", conf.field,
                            kShape, npc, cost));
   });
 }
@@ -316,7 +316,7 @@ TEST_P(ConversionTest, BitLE) {
     });
 
     /* THEN */
-    EXPECT_TRUE(verifyCost(obj->getKernel("bitle_bb"), "bitle_bb", conf.field(),
+    EXPECT_TRUE(verifyCost(obj->getKernel("bitle_bb"), "bitle_bb", conf.field,
                            kShape, npc, cost));
   });
 }
@@ -342,8 +342,8 @@ TEST_P(BooleanTest, BitIntl) {
     auto pp1 = bitintl_b(obj.get(), p0, stride);
     /* THEN */
     EXPECT_VALUE_EQ(p1, pp1);
-    EXPECT_TRUE(verifyCost(obj->getKernel("bitintl_b"), "bitintl_b",
-                           conf.field(), kShape, npc, cost));
+    EXPECT_TRUE(verifyCost(obj->getKernel("bitintl_b"), "bitintl_b", conf.field,
+                           kShape, npc, cost));
   });
 }
 
@@ -368,8 +368,8 @@ TEST_P(BooleanTest, BitDeintl) {
     auto pp1 = bitdeintl_b(obj.get(), p0, stride);
     /* THEN */
     EXPECT_VALUE_EQ(p1, pp1);
-    EXPECT_TRUE(verifyCost(obj->getKernel("bitintl_b"), "bitintl_b",
-                           conf.field(), kShape, npc, cost));
+    EXPECT_TRUE(verifyCost(obj->getKernel("bitintl_b"), "bitintl_b", conf.field,
+                           kShape, npc, cost));
   });
 }
 
@@ -394,8 +394,8 @@ TEST_P(BooleanTest, BitIntlAndDeintl) {
     auto p1 = b2p(obj.get(), b1);
     /* THEN */
     EXPECT_VALUE_EQ(p0, p1);
-    EXPECT_TRUE(verifyCost(obj->getKernel("bitintl_b"), "bitintl_b",
-                           conf.field(), kShape, npc, cost));
+    EXPECT_TRUE(verifyCost(obj->getKernel("bitintl_b"), "bitintl_b", conf.field,
+                           kShape, npc, cost));
   });
 }
 

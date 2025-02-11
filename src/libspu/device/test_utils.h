@@ -19,8 +19,7 @@
 #include "libspu/core/config.h"
 #include "libspu/device/io.h"
 #include "libspu/device/symbol_table.h"
-
-#include "libspu/spu.pb.h"
+#include "libspu/spu.h"
 
 namespace spu::device {
 

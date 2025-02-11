@@ -12,36 +12,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_python//python:defs.bzl", "py_library")
 
+load("@spu_pip_dev//:requirements.bzl", "requirement")
+load("//bazel:spu.bzl", "spu_py_library")
 package(default_visibility = ["//visibility:public"])
 
-py_library(
+spu_py_library(
     name = "jacobi",
     srcs = ["jacobi.py"],
 )
 
-py_library(
+spu_py_library(
     name = "dijkstra",
     srcs = ["dijkstra.py"],
 )
 
-py_library(
+spu_py_library(
     name = "MDS",
     srcs = ["MDS.py"],
 )
 
-py_library(
+spu_py_library(
     name = "kneighbors",
     srcs = ["kneighbors.py"],
 )
 
-py_library(
+spu_py_library(
     name = "floyd",
     srcs = ["floyd.py"],
 )
 
-py_library(
+spu_py_library(
     name = "SE",
     srcs = ["SE.py"],
 )

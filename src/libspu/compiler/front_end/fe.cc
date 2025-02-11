@@ -15,6 +15,7 @@
 #include "libspu/compiler/front_end/fe.h"
 
 #include "fmt/ranges.h"
+#include "magic_enum.hpp"
 #include "mlir/Dialect/Func/Extensions/InlinerExtension.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/IR/BuiltinOps.h"
@@ -33,7 +34,6 @@
 #include "libspu/core/prelude.h"
 #include "libspu/dialect/pphlo/IR/dialect.h"
 #include "libspu/dialect/pphlo/transforms/passes.h"
-
 namespace spu::compiler {
 
 FE::FE(CompilationContext *ctx) : ctx_(ctx) {
@@ -50,8 +50,8 @@ mlir::OwningOpRef<mlir::ModuleOp> FE::doit(const CompilationSource &source) {
   HloImporter importer(ctx_);
   mlir::OwningOpRef<mlir::ModuleOp> module;
 
-  if (source.ir_type() == spu::SourceIRType::STABLEHLO) {
-    module = mlir::parseSourceString<mlir::ModuleOp>(source.ir_txt(),
+  if (source.ir_type == spu::SourceIRType::STABLEHLO) {
+    module = mlir::parseSourceString<mlir::ModuleOp>(source.ir_txt,
                                                      ctx_->getMLIRContext());
 
     SPU_ENFORCE(module, "MLIR parser failure");
@@ -72,17 +72,17 @@ mlir::OwningOpRef<mlir::ModuleOp> FE::doit(const CompilationSource &source) {
       out.flush();
       module = importer.parseXlaModuleFromString(xla_text);
     }
-  } else if (source.ir_type() == spu::SourceIRType::XLA) {
-    module = importer.parseXlaModuleFromString(source.ir_txt());
+  } else if (source.ir_type == spu::SourceIRType::XLA) {
+    module = importer.parseXlaModuleFromString(source.ir_txt);
   } else {
-    SPU_THROW("Unhandled IR type = {}", source.ir_type());
+    SPU_THROW("Unhandled IR type = {}", source.ir_type);
   }
 
   std::string input_vis_str;
   {
     std::vector<std::string> input_vis;
-    for (const auto &v : source.input_visibility()) {
-      input_vis.emplace_back(Visibility_Name(v));
+    for (const auto &v : source.input_visibility) {
+      input_vis.emplace_back(magic_enum::enum_name(v));
     }
     input_vis_str = fmt::format("input_vis_list={}", fmt::join(input_vis, ","));
   }

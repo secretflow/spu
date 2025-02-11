@@ -29,6 +29,8 @@
 #include "libspu/mpc/factory.h"
 #include "libspu/mpc/utils/simulate.h"
 
+#include "libspu/spu.pb.h"
+
 llvm::cl::opt<std::string> SnapshotDir(
     "snapshot_dir", llvm::cl::desc("folder contains core snapshot files"),
     llvm::cl::init("."));
@@ -80,10 +82,10 @@ spu::RuntimeConfig parseRuntimeConfig(
   SPDLOG_INFO("Read config file from {}", config_file.c_str());
   std::ifstream stream(config_file, std::ios::binary);
 
-  spu::RuntimeConfig config;
+  spu::pb::RuntimeConfig config;
   SPU_ENFORCE(config.ParseFromIstream(&stream),
               "Parse serialized config file {} failed", config_file.c_str());
-  return config;
+  return spu::RuntimeConfig(config);
 }
 
 spu::ExecutableProto parseExecutable(
@@ -94,10 +96,15 @@ spu::ExecutableProto parseExecutable(
   SPDLOG_INFO("Read config file from {}", code_file.c_str());
   std::ifstream stream(code_file, std::ios::binary);
 
-  spu::ExecutableProto code;
+  spu::pb::ExecutableProto code;
   SPU_ENFORCE(code.ParseFromIstream(&stream),
               "Parse serialized code file {} failed", code_file.c_str());
-  return code;
+  auto input_names = std::vector<std::string>(code.input_names().begin(),
+                                              code.input_names().end());
+  auto output_names = std::vector<std::string>(code.output_names().begin(),
+                                               code.output_names().end());
+  return spu::ExecutableProto(code.name(), input_names, output_names,
+                              code.code());
 }
 
 spu::device::SymbolTable parseSymbolTable(
@@ -162,7 +169,7 @@ void MemBasedRunner(const std::filesystem::path &snapshot_dir) {
   SPDLOG_INFO("world size = {}", world_size);
 
   auto rt_config = parseRuntimeConfig(snapshot_dir);
-  rt_config.set_enable_runtime_snapshot(false);
+  rt_config.enable_runtime_snapshot = false;
 
   spu::mpc::utils::simulate(
       world_size, [&](const std::shared_ptr<::yacl::link::Context> &lctx) {

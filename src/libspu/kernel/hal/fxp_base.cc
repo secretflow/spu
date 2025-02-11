@@ -118,7 +118,7 @@ Value reciprocal_goldschmidt_normalized_approx(SPUContext* ctx,
   auto r = w;
   auto e = f_sub(ctx, k1_, f_mul(ctx, c, w, SignType::Positive));
 
-  size_t num_iters = ctx->config().fxp_div_goldschmidt_iters();
+  size_t num_iters = ctx->config().fxp_div_goldschmidt_iters;
   if (ctx->getFxpBits() >= 30) {
     // default 2 iters of goldschmidt can only get precision about 14 bits.
     // so if fxp>=30, we use 3 iters by default, which get about 28 bits

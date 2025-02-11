@@ -28,7 +28,7 @@ import os
 import jax.numpy as jnp
 import numpy as np
 
-import spu.spu_pb2 as spu_pb2
+import spu.libspu as libspu
 import spu.utils.distributed as ppd
 
 logging.basicConfig(level=logging.INFO)
@@ -48,7 +48,7 @@ ppd.init(conf["nodes"], conf["devices"])
 dump_path = os.path.join(os.path.expanduser("~"), args.dir)
 logging.info(f"Dump path: {dump_path}")
 # refer to spu.proto for more detailed configuration
-copts = spu_pb2.CompilerOptions()
+copts = libspu.CompilerOptions()
 copts.enable_pretty_print = True
 copts.pretty_print_dump_dir = dump_path
 copts.xla_pp_kind = 2

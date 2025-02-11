@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_python//python:defs.bzl", "py_binary")
 
+load("@spu_pip_dev//:requirements.bzl", "requirement")
+load("//bazel:spu.bzl", "spu_py_library")
 package(default_visibility = ["//visibility:public"])
 
-py_binary(
+spu_py_binary(
     name = "Isomap_emul",
     srcs = ["Isomap_emul.py"],
     deps = [
@@ -30,7 +31,7 @@ py_binary(
     ],
 )
 
-py_binary(
+spu_py_binary(
     name = "se_emul",
     srcs = ["se_emul.py"],
     deps = [
@@ -44,7 +45,7 @@ py_binary(
     ],
 )
 
-py_binary(
+spu_py_binary(
     name = "knn_test",
     srcs = ["knn_test.py"],
     deps = [

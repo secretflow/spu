@@ -144,7 +144,7 @@ std::vector<Value> intrinsic_dispatcher(SPUContext* ctx,
   }
 
   if (name == PREFER_A) {
-    if (ctx->config().protocol() == ProtocolKind::CHEETAH) {
+    if (ctx->config().protocol == ProtocolKind::CHEETAH) {
       // NOTE(juhou): For 2PC, MulAB uses COT which is efficient and accurate
       // than MulAA that needs HE. Thus we just by-pass the PreferAOp for 2PC.
       return {inputs[0]};

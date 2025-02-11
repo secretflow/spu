@@ -76,8 +76,8 @@ spu_py_library(
     name = "api",
     srcs = [
         "api.py",
-        "spu_pb2.py",
-        "@spulib//libspu:spu_py_proto",
+        # "spu_pb2.py",
+        # "@spulib//libspu:spu_py_proto",
     ],
     data = [
         ":libspu.so",

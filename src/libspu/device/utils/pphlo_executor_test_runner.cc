@@ -25,21 +25,16 @@ namespace spu::device::pphlo::test {
 
 Runner::Runner(size_t world_size, FieldType field, ProtocolKind protocol)
     : world_size_(world_size) {
-  config_.set_field(field);
-  config_.set_protocol(protocol);
-  config_.set_enable_type_checker(true);
-  config_.set_experimental_enable_colocated_optimization(true);
+  config_.field = field;
+  config_.protocol = protocol;
+  config_.enable_type_checker = true;
+  config_.experimental_enable_colocated_optimization = true;
   io_ = std::make_unique<LocalIo>(world_size_, config_);
 }
 
 std::string Runner::compileMHlo(const std::string &mhlo,
                                 const std::vector<spu::Visibility> &vis) {
-  CompilationSource source;
-  source.set_ir_type(SourceIRType::STABLEHLO);
-  source.set_ir_txt(mhlo);
-  for (const auto v : vis) {
-    source.add_input_visibility(v);
-  }
+  CompilationSource source(SourceIRType::STABLEHLO, mhlo, vis);
 
   CompilerOptions copts;
   return compiler::compile(source, copts);
@@ -47,13 +42,12 @@ std::string Runner::compileMHlo(const std::string &mhlo,
 
 void Runner::run(const std::string &mlir, size_t num_output) {
   for (size_t idx = 0; idx < num_output; ++idx) {
-    executable_.add_output_names(fmt::format("output{}", idx));
+    executable_.output_names.emplace_back(fmt::format("output{}", idx));
   }
-  executable_.set_code(mlir);
+  executable_.code = mlir;
   ::spu::mpc::utils::simulate(
       world_size_, [&](const std::shared_ptr<yacl::link::Context> &lctx) {
-        RuntimeConfig conf;
-        conf.CopyFrom(config_);
+        RuntimeConfig conf(config_);
         if (lctx->Rank() == 0) {
           // conf.set_enable_action_trace(true);
         }

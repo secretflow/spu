@@ -17,10 +17,11 @@ import sys
 import unittest
 
 import numpy as np
-import spu.spu_pb2 as spu_pb2
-import spu.utils.simulation as spsim
 from sklearn.datasets import load_iris
 from sklearn.feature_selection import chi2 as chi2_sklearn
+
+import spu.libspu as libspu
+import spu.utils.simulation as spsim
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../../'))
 from sml.feature_selection.univariate_selection import chi2
@@ -29,7 +30,7 @@ from sml.feature_selection.univariate_selection import chi2
 class UnitTests(unittest.TestCase):
     def test_chi2(self):
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM128
+            3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM128
         )
 
         def proc(x, y, num_class, max_iter, compute_p_value):

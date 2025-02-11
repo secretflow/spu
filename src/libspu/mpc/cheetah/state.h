@@ -24,8 +24,7 @@
 #include "libspu/mpc/cheetah/arith/cheetah_mul.h"
 #include "libspu/mpc/cheetah/ot/basic_ot_prot.h"
 #include "libspu/mpc/cheetah/rlwe/utils.h"
-
-#include "libspu/spu.pb.h"
+#include "libspu/spu.h"
 
 namespace spu::mpc::cheetah {
 

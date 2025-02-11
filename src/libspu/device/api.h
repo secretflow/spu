@@ -21,11 +21,9 @@
 #include "libspu/core/value.h"
 #include "libspu/device/executor.h"
 #include "libspu/device/symbol_table.h"
-
-#include "libspu/spu.pb.h"
+#include "libspu/spu.h"
 
 namespace spu::device {
-
 void execute(OpExecutor *executor, SPUContext *sctx,
              const ExecutableProto &executable, SymbolTable *env);
 
@@ -34,5 +32,4 @@ void execute(OpExecutor *executor, spu::SPUContext *sctx,
              const std::string &text,
              const std::vector<std::string> &input_names,
              const std::vector<std::string> &output_names, SymbolTable *env);
-
 }  // namespace spu::device

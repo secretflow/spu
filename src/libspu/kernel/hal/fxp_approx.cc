@@ -125,7 +125,7 @@ Value log2_pade_normalized(SPUContext* ctx, const Value& x) {
 Value log2_pade(SPUContext* ctx, const Value& x) {
   SPU_TRACE_HAL_DISP(ctx, x);
 
-  const size_t bit_width = SizeOf(ctx->config().field()) * 8;
+  const size_t bit_width = SizeOf(ctx->config().field) * 8;
   auto k = _popcount(ctx, _prefix_or(ctx, x), bit_width);
 
   const size_t num_fxp_bits = ctx->getFxpBits();
@@ -165,7 +165,7 @@ Value log_householder(SPUContext* ctx, const Value& x) {
   Value y = f_add(ctx, f_sub(ctx, term_1, term_2),
                   constant(ctx, 3.0, x.dtype(), x.shape()));
 
-  const size_t fxp_log_orders = ctx->config().fxp_log_orders();
+  const size_t fxp_log_orders = ctx->config().fxp_log_orders;
   SPU_ENFORCE(fxp_log_orders != 0, "fxp_log_orders should not be {}",
               fxp_log_orders);
   std::vector<float> coeffs{0.0};
@@ -173,7 +173,7 @@ Value log_householder(SPUContext* ctx, const Value& x) {
     coeffs.emplace_back(1.0 / (1.0 + i));
   }
 
-  const size_t num_iters = ctx->config().fxp_log_iters();
+  const size_t num_iters = ctx->config().fxp_log_iters;
   SPU_ENFORCE(num_iters != 0, "fxp_log_iters should not be {}", num_iters);
   for (size_t i = 0; i < num_iters; i++) {
     Value h = f_sub(ctx, constant(ctx, 1.0, x.dtype(), x.shape()),
@@ -187,7 +187,7 @@ Value log_householder(SPUContext* ctx, const Value& x) {
 // see https://lvdmaaten.github.io/publications/papers/crypten.pdf
 //   exp(x) = (1 + x / n) ^ n, when n is infinite large.
 Value exp_taylor(SPUContext* ctx, const Value& x) {
-  const size_t fxp_exp_iters = ctx->config().fxp_exp_iters();
+  const size_t fxp_exp_iters = ctx->config().fxp_exp_iters;
   SPU_ENFORCE(fxp_exp_iters != 0, "fxp_exp_iters should not be {}",
               fxp_exp_iters);
 
@@ -203,9 +203,9 @@ Value exp_taylor(SPUContext* ctx, const Value& x) {
 
 Value exp_prime(SPUContext* ctx, const Value& x) {
   auto clamped_x = x;
-  auto offset = ctx->config().experimental_exp_prime_offset();
+  auto offset = ctx->config().experimental_exp_prime_offset;
   auto fxp = ctx->getFxpBits();
-  if (!ctx->config().experimental_exp_prime_disable_lower_bound()) {
+  if (!ctx->config().experimental_exp_prime_disable_lower_bound) {
     // currently the bound is tied to FM128
     SPU_ENFORCE_EQ(ctx->getField(), FieldType::FM128);
     auto lower_bound = (48.0 - offset - 2.0 * fxp) / M_LOG2E;
@@ -213,7 +213,7 @@ Value exp_prime(SPUContext* ctx, const Value& x) {
                              constant(ctx, lower_bound, x.dtype(), x.shape()))
                     .setDtype(x.dtype());
   }
-  if (ctx->config().experimental_exp_prime_enable_upper_bound()) {
+  if (ctx->config().experimental_exp_prime_enable_upper_bound) {
     // currently the bound is tied to FM128
     SPU_ENFORCE_EQ(ctx->getField(), FieldType::FM128);
     auto upper_bound = (124.0 - 2.0 * fxp - offset) / M_LOG2E;
@@ -457,7 +457,7 @@ Value f_exp(SPUContext* ctx, const Value& x) {
     return f_exp_p(ctx, x);
   }
 
-  switch (ctx->config().fxp_exp_mode()) {
+  switch (ctx->config().fxp_exp_mode) {
     case RuntimeConfig::EXP_DEFAULT:
     case RuntimeConfig::EXP_TAYLOR:
       return detail::exp_taylor(ctx, x);
@@ -482,7 +482,7 @@ Value f_exp(SPUContext* ctx, const Value& x) {
       }
     default:
       SPU_THROW("unexpected exp approximation method {}",
-                ctx->config().fxp_exp_mode());
+                ctx->config().fxp_exp_mode);
   }
 }
 
@@ -495,7 +495,7 @@ Value f_log(SPUContext* ctx, const Value& x) {
     return f_log_p(ctx, x);
   }
 
-  switch (ctx->config().fxp_log_mode()) {
+  switch (ctx->config().fxp_log_mode) {
     // Note:
     // Generally, MINMAX approximation is a fast and precise DEFAULT option
     // which gives very high precision (avg error < 3e-5) when x is between ( 0,
@@ -519,7 +519,7 @@ Value f_log(SPUContext* ctx, const Value& x) {
       return detail::log_householder(ctx, x);
     default:
       SPU_THROW("unexpected log approximation method {}",
-                ctx->config().fxp_log_mode());
+                ctx->config().fxp_log_mode);
   }
 }
 
@@ -575,7 +575,7 @@ static Value rsqrt_init_guess(SPUContext* ctx, const Value& x, const Value& z) {
   // let rsqrt(u) = 26.02942339 * u^4 - 49.86605845 * u^3 + 38.4714796 * u^2
   // - 15.47994394 * u + 4.14285016
   spu::Value r;
-  if (!ctx->config().enable_lower_accuracy_rsqrt()) {
+  if (!ctx->config().enable_lower_accuracy_rsqrt) {
     auto coeffs = {0.0F, -15.47994394F, 38.4714796F, -49.86605845F,
                    26.02942339F};
     r = f_add(ctx,
@@ -666,7 +666,7 @@ Value f_rsqrt(SPUContext* ctx, const Value& x) {
 
   // TODO: we should avoid fork context in hal layer, it will make global
   // scheduling harder and also make profiling harder.
-  if (ctx->config().experimental_enable_intra_op_par()) {
+  if (ctx->config().experimental_enable_intra_op_par) {
     auto sub_ctx = ctx->fork();
     auto r = std::async(rsqrt_init_guess,
                         dynamic_cast<SPUContext*>(sub_ctx.get()), x, z);
@@ -746,7 +746,7 @@ Value f_sigmoid(SPUContext* ctx, const Value& x) {
 
   SPU_ENFORCE(x.isFxp());
 
-  switch (ctx->config().sigmoid_mode()) {
+  switch (ctx->config().sigmoid_mode) {
     case RuntimeConfig::SIGMOID_DEFAULT:
     case RuntimeConfig::SIGMOID_MM1: {
       return sigmoid_mm1(ctx, x);
