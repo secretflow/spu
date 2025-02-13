@@ -37,7 +37,7 @@ void regSwiftProtocol(SPUContext* ctx,
   ctx->prot()->addState<PrgState>(lctx);
 
   // add Z2k state.
-  ctx->prot()->addState<Z2kState>(ctx->config().field());
+  ctx->prot()->addState<Z2kState>(ctx->config().field);
 
   // register public kernels.
   regPV2kKernels(ctx->prot());

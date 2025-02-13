@@ -49,25 +49,15 @@ class BShrTy : public TypeImpl<BShrTy, RingTy, Secret, BShare> {
 
   static std::string_view getStaticId() { return "swift.BShr"; }
 
-  void fromString(std::string_view detail) override {
-    auto comma = detail.find_first_of(',');
-    auto field_str = detail.substr(0, comma);
-    auto nbits_str = detail.substr(comma + 1);
-    SPU_ENFORCE(FieldType_Parse(std::string(field_str), &field_),
-                "parse failed from={}", detail);
-    nbits_ = std::stoul(std::string(nbits_str));
-  };
-
-  std::string toString() const override {
-    return fmt::format("{},{}", FieldType_Name(field()), nbits_);
-  }
-
   size_t size() const override {
     if (field_ == FT_INVALID) {
       return 0;
     }
     return SizeOf(GetStorageType(field_)) * 3;
   }
+
+  void fromString(std::string_view detail) override;
+  std::string toString() const override;
 
   bool equals(TypeObject const* other) const override {
     auto const* derived_other = dynamic_cast<BShrTy const*>(other);
