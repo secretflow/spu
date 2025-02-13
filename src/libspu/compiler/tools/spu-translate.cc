@@ -247,7 +247,7 @@ void evalModule(ModuleOp module) {
     break;
   }
   case 6: {
-    conf.set_protocol(::spu::SWIFT);
+    conf.protocol = ::spu::SWIFT;
     numParties = 3;
     break;
   }
