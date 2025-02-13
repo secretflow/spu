@@ -24,8 +24,8 @@ namespace {
 
 RuntimeConfig makeConfig(FieldType field) {
   RuntimeConfig conf;
-  conf.set_protocol(ProtocolKind::SWIFT);
-  conf.set_field(field);
+  conf.protocol = ProtocolKind::SWIFT;
+  conf.field = field;
   return conf;
 }
 
@@ -39,7 +39,7 @@ INSTANTIATE_TEST_SUITE_P(
                                      makeConfig(FieldType::FM128)),  //
                      testing::Values(3)),                            //
     [](const testing::TestParamInfo<ArithmeticTest::ParamType>& p) {
-      return fmt::format("{}x{}", std::get<1>(p.param).field(),
+      return fmt::format("{}x{}", std::get<1>(p.param).field,
                          std::get<2>(p.param));
     });
 
@@ -51,7 +51,7 @@ INSTANTIATE_TEST_SUITE_P(
                                      makeConfig(FieldType::FM128)),  //
                      testing::Values(3)),                            //
     [](const testing::TestParamInfo<BooleanTest::ParamType>& p) {
-      return fmt::format("{}x{}", std::get<1>(p.param).field(),
+      return fmt::format("{}x{}", std::get<1>(p.param).field,
                          std::get<2>(p.param));
     });
 
@@ -63,7 +63,7 @@ INSTANTIATE_TEST_SUITE_P(
                                      makeConfig(FieldType::FM128)),  //
                      testing::Values(3)),                            //
     [](const testing::TestParamInfo<ConversionTest::ParamType>& p) {
-      return fmt::format("{}x{}", std::get<1>(p.param).field(),
+      return fmt::format("{}x{}", std::get<1>(p.param).field,
                          std::get<2>(p.param));
     });
 
@@ -76,6 +76,6 @@ INSTANTIATE_TEST_SUITE_P(
                      testing::Values(3)),                            //
     [](const testing::TestParamInfo<ApiTest::ParamType>& p) {
       return fmt::format("{}x{}x{}", std::get<0>(p.param).name(),
-                         std::get<1>(p.param).field(), std::get<2>(p.param));
+                         std::get<1>(p.param).field, std::get<2>(p.param));
     });
 }  // namespace spu::mpc::test
