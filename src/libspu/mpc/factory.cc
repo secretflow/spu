@@ -78,7 +78,7 @@ std::unique_ptr<IoInterface> Factory::CreateIO(const RuntimeConfig& conf,
       return securenn::makeSecurennIo(conf.field, npc);
     }
     case ProtocolKind::SWIFT: {
-      return swift::makeSwiftIo(conf.field(), npc);
+      return swift::makeSwiftIo(conf.field, npc);
     }
     default: {
       SPU_THROW("Invalid protocol kind {}", conf.protocol);
