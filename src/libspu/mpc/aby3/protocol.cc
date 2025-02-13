@@ -33,7 +33,7 @@ void regAby3Protocol(SPUContext* ctx,
                      const std::shared_ptr<yacl::link::Context>& lctx) {
   aby3::registerTypes();
 
-  ctx->prot()->addState<Z2kState>(ctx->config().field());
+  ctx->prot()->addState<Z2kState>(ctx->config().field);
 
   // add communicator
   ctx->prot()->addState<Communicator>(lctx);

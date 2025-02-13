@@ -19,7 +19,7 @@ import jax.numpy as jnp
 from sklearn.datasets import load_iris
 from sklearn.tree import DecisionTreeClassifier
 
-import spu.spu_pb2 as spu_pb2  # type: ignore
+import spu.libspu as libspu  # type: ignore
 import spu.utils.simulation as spsim
 from sml.tree.tree import DecisionTreeClassifier as sml_dtc
 
@@ -55,9 +55,7 @@ class UnitTests(unittest.TestCase):
             return X, y
 
         # bandwidth and latency only work for docker mode
-        sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
-        )
+        sim = spsim.Simulator.simple(3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM64)
 
         # load mock data
         X, y = load_data()

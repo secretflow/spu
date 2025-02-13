@@ -27,7 +27,7 @@ from datasets import load_dataset
 from transformers import FlaxWhisperForConditionalGeneration, WhisperProcessor
 
 import spu.utils.distributed as ppd
-from spu import spu_pb2
+from spu import libspu
 
 parser = argparse.ArgumentParser(description='distributed driver.')
 parser.add_argument(
@@ -68,7 +68,7 @@ def run_on_spu():
     inputs_ids = processor(ds[0]["audio"]["array"], return_tensors="np")
 
     # Enable rewrite for better performance
-    copts = spu_pb2.CompilerOptions()
+    copts = libspu.CompilerOptions()
     copts.enable_optimize_denominator_with_broadcast = True
 
     input_ids = ppd.device("P1")(lambda x: x)(inputs_ids.input_features)

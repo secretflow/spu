@@ -37,38 +37,33 @@ class Semi2kState : public State {
 
   explicit Semi2kState(const RuntimeConfig& conf,
                        const std::shared_ptr<yacl::link::Context>& lctx) {
-    if (conf.beaver_type() == RuntimeConfig_BeaverType_TrustedFirstParty) {
+    if (conf.beaver_type == RuntimeConfig::TrustedFirstParty) {
       beaver_ = std::make_unique<semi2k::BeaverTfpUnsafe>(lctx);
-    } else if (conf.beaver_type() ==
-               RuntimeConfig_BeaverType_TrustedThirdParty) {
+    } else if (conf.beaver_type == RuntimeConfig::TrustedThirdParty) {
       semi2k::BeaverTtp::Options ops;
       SPU_ENFORCE(conf.has_ttp_beaver_config());
-      ops.server_host = conf.ttp_beaver_config().server_host();
-      ops.adjust_rank = conf.ttp_beaver_config().adjust_rank();
-      ops.asym_crypto_schema = conf.ttp_beaver_config().asym_crypto_schema();
+      ops.server_host = conf.ttp_beaver_config->server_host;
+      ops.adjust_rank = conf.ttp_beaver_config->adjust_rank;
+      ops.asym_crypto_schema = conf.ttp_beaver_config->asym_crypto_schema;
       {
-        const auto& key = conf.ttp_beaver_config().server_public_key();
+        const auto& key = conf.ttp_beaver_config->server_public_key;
         ops.server_public_key = yacl::Buffer(key.data(), key.size());
       }
-      if (!conf.ttp_beaver_config().transport_protocol().empty()) {
-        ops.brpc_channel_protocol =
-            conf.ttp_beaver_config().transport_protocol();
+      if (!conf.ttp_beaver_config->transport_protocol.empty()) {
+        ops.brpc_channel_protocol = conf.ttp_beaver_config->transport_protocol;
       }
-      if (conf.ttp_beaver_config().has_ssl_config()) {
+      if (conf.ttp_beaver_config->has_ssl_config()) {
+        auto& ssl_config = conf.ttp_beaver_config->ssl_config;
         brpc::ChannelSSLOptions ssl_options;
-        ssl_options.verify.ca_file_path =
-            conf.ttp_beaver_config().ssl_config().ca_file_path();
-        ssl_options.verify.verify_depth =
-            conf.ttp_beaver_config().ssl_config().verify_depth();
-        ssl_options.client_cert.certificate =
-            conf.ttp_beaver_config().ssl_config().certificate();
-        ssl_options.client_cert.private_key =
-            conf.ttp_beaver_config().ssl_config().private_key();
+        ssl_options.verify.ca_file_path = ssl_config->ca_file_path;
+        ssl_options.verify.verify_depth = ssl_config->verify_depth;
+        ssl_options.client_cert.certificate = ssl_config->certificate;
+        ssl_options.client_cert.private_key = ssl_config->private_key;
         ops.brpc_ssl_options = std::move(ssl_options);
       }
       beaver_ = std::make_unique<semi2k::BeaverTtp>(lctx, std::move(ops));
     } else {
-      SPU_THROW("unsupported beaver type {}", conf.beaver_type());
+      SPU_THROW("unsupported beaver type {}", conf.beaver_type);
     }
     beaver_cache_ = std::make_unique<semi2k::BeaverCache>();
   }

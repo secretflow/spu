@@ -20,10 +20,9 @@ namespace {
 
 RuntimeConfig makeConfig(FieldType field) {
   RuntimeConfig conf;
-  conf.set_protocol(ProtocolKind::CHEETAH);
-  conf.set_field(field);
-  conf.mutable_cheetah_2pc_config()->set_ot_kind(
-      CheetahOtKind::YACL_Softspoken);
+  conf.protocol = ProtocolKind::CHEETAH;
+  conf.field = field;
+  conf.cheetah_2pc_config.ot_kind = CheetahOtKind::YACL_Softspoken;
   return conf;
 }
 
@@ -37,7 +36,7 @@ INSTANTIATE_TEST_SUITE_P(
                                      makeConfig(FieldType::FM128)),  //
                      testing::Values(2)),                            //
     [](const testing::TestParamInfo<ApiTest::ParamType>& p) {
-      return fmt::format("{}x{}", std::get<1>(p.param).field(),
+      return fmt::format("{}x{}", std::get<1>(p.param).field,
                          std::get<2>(p.param));
     });
 

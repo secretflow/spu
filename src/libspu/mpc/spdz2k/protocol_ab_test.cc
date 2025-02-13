@@ -20,15 +20,15 @@ namespace {
 
 RuntimeConfig makeConfig(FieldType field) {
   RuntimeConfig conf;
-  conf.set_protocol(ProtocolKind::SEMI2K);  // FIXME:
-  conf.set_field(field);
+  conf.protocol = ProtocolKind::SEMI2K;
+  conf.field = field;
   return conf;
 }
 
 std::unique_ptr<SPUContext> makeMpcSpdz2kProtocol(
     const RuntimeConfig& rt, const std::shared_ptr<yacl::link::Context>& lctx) {
   RuntimeConfig mpc_rt = rt;
-  mpc_rt.set_beaver_type(RuntimeConfig_BeaverType_MultiParty);
+  mpc_rt.beaver_type = RuntimeConfig::MultiParty;
 
   return makeSpdz2kProtocol(mpc_rt, lctx);
 }
@@ -42,7 +42,7 @@ INSTANTIATE_TEST_SUITE_P(
                                makeConfig(FieldType::FM32), 2}),
     [](const testing::TestParamInfo<ArithmeticTest::ParamType>& p) {
       return fmt::format("{}x{}x{}", std::get<0>(p.param).name(),
-                         std::get<1>(p.param).field(), std::get<2>(p.param));
+                         std::get<1>(p.param).field, std::get<2>(p.param));
     });
 
 // TODO : improve performance of boolean share and conversion in offline phase
@@ -54,7 +54,7 @@ INSTANTIATE_TEST_SUITE_P(
                      testing::Values(2)),                           //
     [](const testing::TestParamInfo<BooleanTest::ParamType>& p) {
       return fmt::format("{}x{}x{}", std::get<0>(p.param).name(),
-                         std::get<1>(p.param).field(), std::get<2>(p.param));
+                         std::get<1>(p.param).field, std::get<2>(p.param));
     });
 
 INSTANTIATE_TEST_SUITE_P(
@@ -65,7 +65,7 @@ INSTANTIATE_TEST_SUITE_P(
                      testing::Values(2)),                           //
     [](const testing::TestParamInfo<BooleanTest::ParamType>& p) {
       return fmt::format("{}x{}x{}", std::get<0>(p.param).name(),
-                         std::get<1>(p.param).field(), std::get<2>(p.param));
+                         std::get<1>(p.param).field, std::get<2>(p.param));
     });
 
 }  // namespace spu::mpc::test

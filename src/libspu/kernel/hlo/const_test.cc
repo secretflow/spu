@@ -41,7 +41,7 @@ TEST(ConstTest, Epsilon) {
 
   auto v = hal::dump_public_as<float>(&sctx, eps);
 
-  EXPECT_FLOAT_EQ(v[0], 1 / (std::pow(2, sctx.config().fxp_fraction_bits())));
+  EXPECT_FLOAT_EQ(v[0], 1 / (std::pow(2, sctx.config().fxp_fraction_bits)));
 }
 
 }  // namespace spu::kernel::hlo

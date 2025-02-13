@@ -19,16 +19,14 @@ import jax.numpy as jnp
 import numpy as np
 from sklearn.datasets import make_blobs
 
-import spu.spu_pb2 as spu_pb2  # type: ignore
+import spu.libspu as libspu  # type: ignore
 import spu.utils.simulation as spsim
 from sml.cluster.kmeans import KMEANS
 
 
 class UnitTests(unittest.TestCase):
     def test_kmeans(self):
-        sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
-        )
+        sim = spsim.Simulator.simple(3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM64)
 
         def proc(x1, x2):
             x = jnp.concatenate((x1, x2), axis=1)
@@ -57,9 +55,7 @@ class UnitTests(unittest.TestCase):
         print("sklearn:\n", model.fit(X).predict(X))
 
     def test_kmeans_kmeans_plus_plus(self):
-        sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
-        )
+        sim = spsim.Simulator.simple(3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM64)
 
         X = jnp.array([[-4, -3, -2, -1], [-4, -3, -2, -1]]).T
 
@@ -96,9 +92,7 @@ class UnitTests(unittest.TestCase):
         np.testing.assert_allclose(result, sk_result, rtol=0, atol=1e-4)
 
     def test_kmeans_init_array(self):
-        sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
-        )
+        sim = spsim.Simulator.simple(3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM64)
 
         def proc(x, init):
             model = KMEANS(
@@ -123,9 +117,7 @@ class UnitTests(unittest.TestCase):
         np.testing.assert_allclose(result, sk_result, rtol=0, atol=1e-4)
 
     def test_kmeans_random(self):
-        sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
-        )
+        sim = spsim.Simulator.simple(3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM64)
 
         X = jnp.array([[-4, -3, -2, -1], [-4, -3, -2, -1]]).T
 

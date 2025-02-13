@@ -19,8 +19,6 @@
 
 #include "libspu/core/config.h"
 
-#include "libspu/spu.pb.h"
-
 llvm::cl::opt<std::string> Parties(
     "parties", llvm::cl::init("127.0.0.1:61530,127.0.0.1:61531"),
     llvm::cl::desc("server list, format: host1:port1[,host2:port2, ...]"));
@@ -52,13 +50,13 @@ std::unique_ptr<spu::SPUContext> MakeSPUContext() {
   auto lctx = MakeLink(Parties.getValue(), Rank.getValue());
 
   spu::RuntimeConfig config;
-  config.set_protocol(static_cast<spu::ProtocolKind>(ProtocolKind.getValue()));
-  config.set_field(static_cast<spu::FieldType>(Field.getValue()));
+  config.protocol = static_cast<spu::ProtocolKind>(ProtocolKind.getValue());
+  config.field = static_cast<spu::FieldType>(Field.getValue());
 
   populateRuntimeConfig(config);
 
-  config.set_enable_action_trace(EngineTrace.getValue());
-  config.set_enable_type_checker(EngineTrace.getValue());
+  config.enable_action_trace = EngineTrace.getValue();
+  config.enable_type_checker = EngineTrace.getValue();
 
   return std::make_unique<spu::SPUContext>(config, lctx);
 }

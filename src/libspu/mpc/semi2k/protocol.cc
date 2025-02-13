@@ -40,7 +40,7 @@ void regSemi2kProtocol(SPUContext* ctx,
   ctx->prot()->addState<PrgState>(lctx);
 
   // add Z2k state.
-  ctx->prot()->addState<Z2kState>(ctx->config().field());
+  ctx->prot()->addState<Z2kState>(ctx->config().field);
 
   // register public kernels.
   regPV2kKernels(ctx->prot());
@@ -72,7 +72,7 @@ void regSemi2kProtocol(SPUContext* ctx,
           semi2k::EqualAA, semi2k::EqualAP,                             //
           semi2k::BeaverCacheKernel>();
 
-  if (ctx->config().trunc_allow_msb_error()) {
+  if (ctx->config().trunc_allow_msb_error) {
     ctx->prot()->regKernel<semi2k::TruncA>();
   } else {
     ctx->prot()->regKernel<semi2k::TruncAPr>();
@@ -84,7 +84,7 @@ void regSemi2kProtocol(SPUContext* ctx,
 
     // only supports 2pc fm128 for now
     if (ctx->getField() == FieldType::FM128 &&
-        ctx->config().experimental_enable_exp_prime()) {
+        ctx->config().experimental_enable_exp_prime) {
       ctx->prot()->regKernel<semi2k::ExpA>();
     }
   }

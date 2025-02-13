@@ -21,7 +21,7 @@ from sklearn.datasets import load_breast_cancer, load_wine
 from sklearn.metrics import roc_auc_score
 from sklearn.preprocessing import MinMaxScaler
 
-import spu.spu_pb2 as spu_pb2
+import spu.libspu as libspu
 import spu.utils.simulation as spsim
 
 # Add the library directory to the path
@@ -32,9 +32,7 @@ from sml.linear_model.logistic import LogisticRegression
 class UnitTests(unittest.TestCase):
     @staticmethod
     def load_data(multi_class="binary"):
-        sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
-        )
+        sim = spsim.Simulator.simple(3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM64)
         # Create dataset
         if multi_class == "binary":
             X, y = load_breast_cancer(return_X_y=True, as_frame=True)

@@ -227,8 +227,8 @@ std::tuple<NdArrayRef, NdArrayRef, NdArrayRef, NdArrayRef, NdArrayRef> MulOpen(
   auto x_hit_cache = x_cache.replay_desc.status != Beaver::Init;
   auto y_hit_cache = y_cache.replay_desc.status != Beaver::Init;
 
-  if (ctx->sctx()->config().experimental_disable_vectorization() ||
-      x_hit_cache || y_hit_cache) {
+  if (ctx->sctx()->config().experimental_disable_vectorization || x_hit_cache ||
+      y_hit_cache) {
     if (x_hit_cache) {
       x_a = std::move(x_cache.open_cache);
     } else {

@@ -191,6 +191,7 @@ spu_cc_library(
     deps = [
         "//libspu/core:type",
         "//libspu/mpc/common:pv2k",
+        "@magic_enum",
     ],
 )
 

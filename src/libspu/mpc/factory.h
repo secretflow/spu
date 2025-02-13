@@ -20,8 +20,7 @@
 
 #include "libspu/core/context.h"
 #include "libspu/mpc/io_interface.h"
-
-#include "libspu/spu.pb.h"
+#include "libspu/spu.h"
 
 namespace spu::mpc {
 

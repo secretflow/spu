@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 import pandas as pd
 
-import spu.spu_pb2 as spu_pb2
+import spu.libspu as libspu
 import spu.utils.simulation as spsim
 from spu.ops.groupby.aggregation import groupby_count, groupby_count_cleartext
 from spu.ops.groupby.groupby_via_shuffle import (
@@ -51,7 +51,7 @@ def groupby_agg_fun(agg):
 
 
 def test_fn(agg):
-    sim = spsim.Simulator.simple(3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64)
+    sim = spsim.Simulator.simple(3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM64)
 
     def proc(x1, x2, y):
         return groupby([x1[:, 2], x2[:, 3]], [y])
@@ -153,9 +153,7 @@ class UnitTests(unittest.TestCase):
         test_fn('var')
 
     def test_count(self):
-        sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
-        )
+        sim = spsim.Simulator.simple(3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM64)
 
         def proc(x1, x2, y):
             return groupby([x1[:, 2], x2[:, 3]], [y])

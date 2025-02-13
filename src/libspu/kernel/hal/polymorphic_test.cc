@@ -682,9 +682,9 @@ class LogisticTest
 TEST_P(LogisticTest, Logistic) {
   // GIVEN
   RuntimeConfig config;
-  config.set_protocol(ProtocolKind::REF2K);
-  config.set_field(FieldType::FM64);
-  config.set_sigmoid_mode(GetParam());
+  config.protocol = ProtocolKind::REF2K;
+  config.field = FieldType::FM64;
+  config.sigmoid_mode = GetParam();
   SPUContext ctx = test::makeSPUContext(config, nullptr);
 
   xt::xarray<float> x{{1.0, 2.0}, {0.5, 1.8}};

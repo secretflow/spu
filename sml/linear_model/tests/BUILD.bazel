@@ -13,6 +13,8 @@
 # limitations under the License.
 
 load("@rules_python//python:defs.bzl", "py_test")
+load("@spu_pip//:requirements.bzl", "requirement")
+load("@spu_pip_dev//:requirements.bzl", dev_requirement = "requirement")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -27,8 +29,8 @@ py_test(
         "//sml/linear_model:sgd_classifier",
         "//spu:init",
         "//spu/utils:simulation",
-        "@spu_pip//jax:pkg",
-        "@spu_pip_dev//scikit_learn:pkg",
+        requirement("jax"),
+        dev_requirement("scikit-learn"),
     ],
 )
 
@@ -39,8 +41,8 @@ py_test(
         "//sml/linear_model:logistic",
         "//spu:init",
         "//spu/utils:simulation",
-        "@spu_pip_dev//pandas:pkg",
-        "@spu_pip_dev//scikit_learn:pkg",
+        dev_requirement("pandas"),
+        dev_requirement("scikit-learn"),
     ],
 )
 
@@ -52,7 +54,7 @@ py_test(
         "//sml/linear_model:ridge",
         "//spu:init",
         "//spu/utils:simulation",
-        "@spu_pip_dev//scikit_learn:pkg",
+        dev_requirement("scikit-learn"),
     ],
 )
 
@@ -63,9 +65,9 @@ py_test(
         "//sml/linear_model:pla",
         "//spu:init",
         "//spu/utils:simulation",
-        "@spu_pip//jax:pkg",
-        "@spu_pip_dev//pandas:pkg",
-        "@spu_pip_dev//scikit_learn:pkg",
+        requirement("jax"),
+        dev_requirement("pandas"),
+        dev_requirement("scikit-learn"),
     ],
 )
 
@@ -76,7 +78,7 @@ py_test(
         "//sml/linear_model:glm",
         "//spu:init",
         "//spu/utils:simulation",
-        "@spu_pip_dev//scikit_learn:pkg",
+        dev_requirement("scikit-learn"),
     ],
 )
 
@@ -87,8 +89,8 @@ py_test(
         "//sml/linear_model:quantile",
         "//spu:init",
         "//spu/utils:simulation",
-        "@spu_pip//jax:pkg",
-        "@spu_pip_dev//pandas:pkg",
-        "@spu_pip_dev//scikit_learn:pkg",
+        requirement("jax"),
+        dev_requirement("pandas"),
+        dev_requirement("scikit-learn"),
     ],
 )

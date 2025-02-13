@@ -117,6 +117,8 @@
     "https://bcr.bazel.build/modules/jsoncpp/1.9.5/source.json": "4108ee5085dd2885a341c7fab149429db457b3169b86eb081fa245eadf69169d",
     "https://bcr.bazel.build/modules/libpfm/4.11.0/MODULE.bazel": "45061ff025b301940f1e30d2c16bea596c25b176c8b6b3087e92615adbd52902",
     "https://bcr.bazel.build/modules/libpfm/4.11.0/source.json": "caaffb3ac2b59b8aac456917a4ecf3167d40478ee79f15ab7a877ec9273937c9",
+    "https://bcr.bazel.build/modules/magic_enum/0.9.6/MODULE.bazel": "2b8db5bbd5d456dfb1e05cafd4a572374d461ffd2e0bd6970b9060dca2200618",
+    "https://bcr.bazel.build/modules/magic_enum/0.9.6/source.json": "abac9e9c84a47db89960a4c5a585d607bdfe51a60d7e3285dfe1a3dca50d1107",
     "https://bcr.bazel.build/modules/msgpack-c/6.1.0/MODULE.bazel": "2822ba864146468b3128216ad416f8b39b511395e88d896d472c9c6b30b1ceb2",
     "https://bcr.bazel.build/modules/msgpack-c/6.1.0/source.json": "b412dd4c8290ea0cce122616076e62ffe1b0799cebd6422608c407608193c1c9",
     "https://bcr.bazel.build/modules/nlohmann_json/3.11.3/MODULE.bazel": "87023db2f55fc3a9949c7b08dc711fae4d4be339a80a99d04453c4bb3998eefc",
@@ -332,6 +334,7 @@
     "https://raw.githubusercontent.com/secretflow/bazel-registry/main/modules/libtommath/0.0.0-20240407-42b3fb0/source.json": "ffeac1c889d6d8eb4c6ed0d7243bfd298a94f0fb3a3670a31e88045b8c95fc02",
     "https://raw.githubusercontent.com/secretflow/bazel-registry/main/modules/llvm-raw/20240809.0-35f55f5/MODULE.bazel": "569ffa91a1497f0cbfc2a39b03b3155d2f7e7c360e2fdf5b31418868a1a9f1b8",
     "https://raw.githubusercontent.com/secretflow/bazel-registry/main/modules/llvm-raw/20240809.0-35f55f5/source.json": "eccb7418d37d4ffc5ccf7c5b737f051d11299b7510fc85895f4cd5f8b948a5a6",
+    "https://raw.githubusercontent.com/secretflow/bazel-registry/main/modules/magic_enum/0.9.6/MODULE.bazel": "not found",
     "https://raw.githubusercontent.com/secretflow/bazel-registry/main/modules/mcl/1.99/MODULE.bazel": "e2bf3654186853610a74833e398fc3b6de6d9ccbe8fa67eaa3ae58d3344940ef",
     "https://raw.githubusercontent.com/secretflow/bazel-registry/main/modules/mcl/1.99/source.json": "d38d4c7dbd9fb31bcabcc55c0336d82044828b27548c928389cdb6fba05029bd",
     "https://raw.githubusercontent.com/secretflow/bazel-registry/main/modules/msgpack-c/6.1.0/MODULE.bazel": "not found",
@@ -446,7 +449,7 @@
     "//bazel:defs.bzl%non_module_dependencies": {
       "general": {
         "bzlTransitiveDigest": "JT8ZLEUdrYXN19gijrHtztFq/cEAhJlRlNjhtQUlDIE=",
-        "usagesDigest": "6n60USwsGB5Z94VzGaJhZHMgjavixB/T5boxrw8IhDU=",
+        "usagesDigest": "De6xcaUoo/nee6n8unzzT9fZQjzw6vxabjE95MVezUY=",
         "recordedFileInputs": {},
         "recordedDirentsInputs": {},
         "envVariables": {},

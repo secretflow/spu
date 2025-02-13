@@ -477,7 +477,7 @@ void regRef2kProtocol(SPUContext* ctx,
   ctx->prot()->addState<Communicator>(lctx);
 
   // add Z2k state.
-  ctx->prot()->addState<Z2kState>(ctx->config().field());
+  ctx->prot()->addState<Z2kState>(ctx->config().field);
 
   // register public kernels.
   regPV2kKernels(ctx->prot());

@@ -20,16 +20,14 @@ import pandas as pd
 import sklearn.linear_model as sk
 from sklearn.datasets import load_iris
 
-import spu.spu_pb2 as spu_pb2  # type: ignore
+import spu.libspu as libspu  # type: ignore
 import spu.utils.simulation as spsim
 from sml.linear_model.pla import Perceptron
 
 
 class UnitTests(unittest.TestCase):
     def test_pla(self):
-        sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
-        )
+        sim = spsim.Simulator.simple(3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM64)
 
         def proc(x, y):
             model = Perceptron(

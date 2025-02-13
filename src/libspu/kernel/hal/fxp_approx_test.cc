@@ -83,13 +83,13 @@ TEST(FxpTest, ExponentialPrime) {
   std::cout << "test exp_prime" << std::endl;
   spu::mpc::utils::simulate(2, [&](std::shared_ptr<yacl::link::Context> lctx) {
     RuntimeConfig conf;
-    conf.set_protocol(ProtocolKind::SEMI2K);
-    conf.set_field(FieldType::FM128);
-    conf.set_fxp_fraction_bits(40);
-    conf.set_experimental_enable_exp_prime(true);
+    conf.protocol = ProtocolKind::SEMI2K;
+    conf.field = FieldType::FM128;
+    conf.fxp_fraction_bits = 40;
+    conf.experimental_enable_exp_prime = true;
     SPUContext ctx = test::makeSPUContext(conf, lctx);
 
-    auto offset = ctx.config().experimental_exp_prime_offset();
+    auto offset = ctx.config().experimental_exp_prime_offset;
     auto fxp = ctx.getFxpBits();
     auto lower_bound = (48.0 - offset - 2.0 * fxp) / M_LOG2E;
     auto upper_bound = (124.0 - 2.0 * fxp - offset) / M_LOG2E;
@@ -262,9 +262,9 @@ TEST(FxpTest, Rsqrt) {
   // fxp_fraction_bits = 17
   {
     RuntimeConfig config;
-    config.set_protocol(ProtocolKind::REF2K);
-    config.set_field(FieldType::FM64);
-    config.set_fxp_fraction_bits(17);
+    config.protocol = ProtocolKind::REF2K;
+    config.field = FieldType::FM64;
+    config.fxp_fraction_bits = 17;
     SPUContext ctx = test::makeSPUContext(config, nullptr);
 
     Value a = test::makeValue(&ctx, x, VIS_SECRET);
@@ -279,9 +279,9 @@ TEST(FxpTest, Rsqrt) {
 
   {
     RuntimeConfig config;
-    config.set_protocol(ProtocolKind::REF2K);
-    config.set_field(FieldType::FM64);
-    config.set_fxp_fraction_bits(16);
+    config.protocol = ProtocolKind::REF2K;
+    config.field = FieldType::FM64;
+    config.fxp_fraction_bits = 16;
     SPUContext ctx = test::makeSPUContext(config, nullptr);
 
     xt::random::seed(0);
@@ -320,9 +320,9 @@ TEST(FxpTest, Sqrt) {
   // fxp_fraction_bits = 17
   {
     RuntimeConfig config;
-    config.set_protocol(ProtocolKind::REF2K);
-    config.set_field(FieldType::FM64);
-    config.set_fxp_fraction_bits(17);
+    config.protocol = ProtocolKind::REF2K;
+    config.field = FieldType::FM64;
+    config.fxp_fraction_bits = 17;
     SPUContext ctx = test::makeSPUContext(config, nullptr);
 
     Value a = test::makeValue(&ctx, x, VIS_SECRET);

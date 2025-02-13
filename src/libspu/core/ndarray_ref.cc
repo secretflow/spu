@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <cstring>
 #include <numeric>
+#include <set>
 #include <utility>
 
 namespace spu {

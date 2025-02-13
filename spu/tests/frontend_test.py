@@ -19,8 +19,8 @@ import jax.numpy as jnp
 import numpy as np
 import tensorflow as tf
 
+import spu.libspu as libspu
 import spu.utils.frontend as spu_fe
-from spu import spu_pb2
 
 
 def test_jax_add(*args, **kwargs):
@@ -41,10 +41,10 @@ class UnitTests(unittest.TestCase):
             {"in3": 2, "in4": np.array([2, 4])},
             ["in1", "in2", "in3", "in4"],
             [
-                spu_pb2.VIS_PUBLIC,
-                spu_pb2.VIS_PUBLIC,
-                spu_pb2.VIS_PUBLIC,
-                spu_pb2.VIS_PUBLIC,
+                libspu.Visibility.VIS_PUBLIC,
+                libspu.Visibility.VIS_PUBLIC,
+                libspu.Visibility.VIS_PUBLIC,
+                libspu.Visibility.VIS_PUBLIC,
             ],
             lambda out_flat: [f'test-out{idx}' for idx in range(len(out_flat))],
             static_argnums=(0,),
@@ -77,7 +77,7 @@ class UnitTests(unittest.TestCase):
             (np.array([1, 2]), np.array([2, 4])),
             {},
             ["in1", "in2"],
-            [spu_pb2.VIS_PUBLIC, spu_pb2.VIS_PUBLIC],
+            [libspu.Visibility.VIS_PUBLIC, libspu.Visibility.VIS_PUBLIC],
             lambda out_flat: [f'test-out{idx}' for idx in range(len(out_flat))],
         )
         self.assertEqual(executable.name, "add")
@@ -101,7 +101,7 @@ class UnitTests(unittest.TestCase):
             (np.array([1, 2]), np.array([2, 4])),
             {},
             ["in1", "in2"],
-            [spu_pb2.VIS_PUBLIC, spu_pb2.VIS_PUBLIC],
+            [libspu.Visibility.VIS_PUBLIC, libspu.Visibility.VIS_PUBLIC],
             lambda out_flat: [f'test-out{idx}' for idx in range(len(out_flat))],
         )
         self.assertEqual(executable.name, "foo")

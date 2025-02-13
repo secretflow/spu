@@ -20,6 +20,7 @@
 #include <xtensor/xsort.hpp>
 
 #include "gtest/gtest.h"
+#include "magic_enum.hpp"
 #include "xtensor/xio.hpp"
 
 #include "libspu/kernel/hal/polymorphic.h"
@@ -28,11 +29,10 @@
 #include "libspu/kernel/hlo/const.h"
 #include "libspu/kernel/test_util.h"
 #include "libspu/mpc/utils/simulate.h"
-
 // to print method name
 std::ostream &operator<<(std::ostream &os,
-                         spu::RuntimeConfig_SortMethod method) {
-  os << spu::RuntimeConfig::SortMethod_Name(method);
+                         spu::RuntimeConfig::SortMethod method) {
+  os << magic_enum::enum_name(method);
   return os;
 }
 namespace spu::kernel::hlo {
@@ -248,10 +248,11 @@ TEST_P(SimpleSortTest, MultiOperands) {
   mpc::utils::simulate(
       npc, [&](const std::shared_ptr<yacl::link::Context> &lctx) {
         RuntimeConfig cfg;
-        cfg.set_protocol(prot);
-        cfg.set_field(field);
-        cfg.set_enable_action_trace(false);
-        cfg.set_sort_method(method);
+        cfg.protocol = prot;
+        cfg.field = field;
+        cfg.enable_action_trace = false;
+        cfg.sort_method = method;
+
         SPUContext ctx = test::makeSPUContext(cfg, lctx);
 
         xt::xarray<float> k1 = {7, 6, 5, 5, 4, 4, 4, 1, 3, 3};
@@ -292,10 +293,10 @@ TEST_P(SimpleSortTest, SingleKeyWithPayload) {
   mpc::utils::simulate(
       npc, [&](const std::shared_ptr<yacl::link::Context> &lctx) {
         RuntimeConfig cfg;
-        cfg.set_protocol(prot);
-        cfg.set_field(field);
-        cfg.set_enable_action_trace(false);
-        cfg.set_sort_method(method);
+        cfg.protocol = prot;
+        cfg.field = field;
+        cfg.enable_action_trace = false;
+        cfg.sort_method = method;
         SPUContext ctx = test::makeSPUContext(cfg, lctx);
 
         xt::xarray<float> k1 = {7, 6, 5, 4, 1, 3, 2};

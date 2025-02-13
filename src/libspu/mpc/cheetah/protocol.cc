@@ -42,16 +42,16 @@ void regCheetahProtocol(SPUContext* ctx,
   ctx->prot()->addState<PrgState>(lctx);
 
   // add Z2k state.
-  ctx->prot()->addState<Z2kState>(ctx->config().field());
+  ctx->prot()->addState<Z2kState>(ctx->config().field);
 
   // add Cheetah states
   ctx->prot()->addState<cheetah::CheetahMulState>(
-      lctx, ctx->config().cheetah_2pc_config().enable_mul_lsb_error());
+      lctx, ctx->config().cheetah_2pc_config.enable_mul_lsb_error);
   ctx->prot()->addState<cheetah::CheetahDotState>(
-      lctx, ctx->config().cheetah_2pc_config().disable_matmul_pack());
+      lctx, ctx->config().cheetah_2pc_config.disable_matmul_pack);
   ctx->prot()->addState<cheetah::CheetahOTState>(
       ctx->getClusterLevelMaxConcurrency(),
-      ctx->config().cheetah_2pc_config().ot_kind());
+      ctx->config().cheetah_2pc_config.ot_kind);
 
   // register public kernels.
   regPV2kKernels(ctx->prot());

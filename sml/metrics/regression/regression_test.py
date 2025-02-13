@@ -20,25 +20,25 @@ import jax.numpy as jnp
 import numpy as np
 from sklearn import metrics
 
-import spu.spu_pb2 as spu_pb2
+import spu.libspu as libspu
 import spu.utils.simulation as spsim
 
 # add ops dir to the path
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../../'))
 
 from sml.metrics.regression.regression import (
-    explained_variance_score,
-    mean_squared_error,
-    mean_poisson_deviance,
-    mean_gamma_deviance,
     d2_tweedie_score,
+    explained_variance_score,
+    mean_gamma_deviance,
+    mean_poisson_deviance,
+    mean_squared_error,
 )
 
 
 class UnitTests(unittest.TestCase):
     def test_d2_tweedie_score(self):
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM128
+            3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM128
         )
 
         power_list = [-1, 0, 1, 2, 3]
@@ -63,7 +63,7 @@ class UnitTests(unittest.TestCase):
 
     def test_explained_variance_score(self):
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM128
+            3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM128
         )
 
         weight_list = [
@@ -90,7 +90,7 @@ class UnitTests(unittest.TestCase):
 
     def test_mean_squared_error(self):
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM128
+            3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM128
         )
 
         weight_list = [
@@ -113,7 +113,7 @@ class UnitTests(unittest.TestCase):
 
     def test_mean_poisson_deviance(self):
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM128
+            3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM128
         )
 
         weight_list = [
@@ -136,7 +136,7 @@ class UnitTests(unittest.TestCase):
 
     def test_mean_gamma_deviance(self):
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM128
+            3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM128
         )
 
         weight_list = [

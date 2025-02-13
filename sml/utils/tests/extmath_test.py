@@ -16,7 +16,7 @@ import unittest
 import jax.numpy as jnp
 import numpy as np
 
-import spu.spu_pb2 as spu_pb2  # type: ignore
+import spu.libspu as libspu  # type: ignore
 import spu.utils.simulation as spsim
 from sml.utils.extmath import randomized_svd, svd
 
@@ -55,14 +55,14 @@ class ExtMathTests(unittest.TestCase):
         np.random.seed(0)
 
         # 2. init simulator
-        config64 = spu_pb2.RuntimeConfig(
-            protocol=spu_pb2.ProtocolKind.ABY3,
-            field=spu_pb2.FieldType.FM64,
+        config64 = libspu.RuntimeConfig(
+            protocol=libspu.ProtocolKind.ABY3,
+            field=libspu.FieldType.FM64,
             fxp_fraction_bits=18,
         )
-        config128 = spu_pb2.RuntimeConfig(
-            protocol=spu_pb2.ProtocolKind.ABY3,
-            field=spu_pb2.FieldType.FM128,
+        config128 = libspu.RuntimeConfig(
+            protocol=libspu.ProtocolKind.ABY3,
+            field=libspu.FieldType.FM128,
             fxp_fraction_bits=30,
         )
         sim64 = spsim.Simulator(3, config64)

@@ -18,16 +18,16 @@ import unittest
 import numpy as np
 import numpy.testing as npt
 
-import spu.spu_pb2 as spu_pb2
+import spu.libspu as libspu
 from spu.utils.simulation import Simulator
 
 
 class UnitTests(unittest.TestCase):
     def test_no_io(self):
         wsize = 3
-        config = spu_pb2.RuntimeConfig(
-            protocol=spu_pb2.ProtocolKind.SEMI2K,
-            field=spu_pb2.FieldType.FM128,
+        config = libspu.RuntimeConfig(
+            protocol=libspu.ProtocolKind.SEMI2K,
+            field=libspu.FieldType.FM128,
             fxp_fraction_bits=18,
         )
 
@@ -42,16 +42,16 @@ func.func @main(%arg0: tensor<2x2x!pphlo.secret<i32>>) -> (tensor<2x2x!pphlo.sec
     pphlo.custom_call @spu.dbg_print (%1) {has_side_effect = true} : (tensor<2x2x!pphlo.secret<i32>>)->()
     return %1 : tensor<2x2x!pphlo.secret<i32>>
 }"""
-        executable = spu_pb2.ExecutableProto(
+        executable = libspu.ExecutableProto(
             name="test", input_names=["in0"], output_names=["out0"], code=code.encode()
         )
         sim(executable, x)
 
     def test_raise(self):
         wsize = 3
-        config = spu_pb2.RuntimeConfig(
-            protocol=spu_pb2.ProtocolKind.SEMI2K,
-            field=spu_pb2.FieldType.FM128,
+        config = libspu.RuntimeConfig(
+            protocol=libspu.ProtocolKind.SEMI2K,
+            field=libspu.FieldType.FM128,
             fxp_fraction_bits=18,
         )
 
@@ -66,7 +66,7 @@ func.func @main(%arg0: tensor<2x3x!pphlo.secret<i32>>, %arg1: tensor<12x13x!pphl
     %0 = pphlo.dot %arg0, %arg1 : (tensor<2x3x!pphlo.secret<i32>>, tensor<12x13x!pphlo.secret<i32>>) -> tensor<2x2x!pphlo.secret<i32>>
     return %0 : tensor<2x2x!pphlo.secret<i32>>
 }"""
-        executable = spu_pb2.ExecutableProto(
+        executable = libspu.ExecutableProto(
             name="test",
             input_names=["in0", "in1"],
             output_names=["out0"],
@@ -78,9 +78,9 @@ func.func @main(%arg0: tensor<2x3x!pphlo.secret<i32>>, %arg1: tensor<12x13x!pphl
 
     def test_wrong_version(self):
         wsize = 1
-        config = spu_pb2.RuntimeConfig(
-            protocol=spu_pb2.ProtocolKind.REF2K,
-            field=spu_pb2.FieldType.FM64,
+        config = libspu.RuntimeConfig(
+            protocol=libspu.ProtocolKind.REF2K,
+            field=libspu.FieldType.FM64,
         )
 
         sim = Simulator(wsize, config)
@@ -93,7 +93,7 @@ module @no_version attributes {pphlo.version = "0.0.1"} {
     return %0 : tensor<1xf32>
   }
 }"""
-        executable = spu_pb2.ExecutableProto(
+        executable = libspu.ExecutableProto(
             name="test",
             code=code.encode(),
         )

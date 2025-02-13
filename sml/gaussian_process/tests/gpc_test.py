@@ -20,7 +20,7 @@ import jax
 import jax.numpy as jnp
 from sklearn.datasets import load_iris
 
-import spu.spu_pb2 as spu_pb2
+import spu.libspu as libspu
 import spu.utils.simulation as spsim
 
 # Add the library directory to the path
@@ -31,7 +31,7 @@ from sml.gaussian_process._gpc import GaussianProcessClassifier
 class UnitTests(unittest.TestCase):
     def test_gpc(self):
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM128
+            3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM128
         )
 
         # Test GaussianProcessClassifier

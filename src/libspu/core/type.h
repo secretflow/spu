@@ -327,12 +327,8 @@ class PtTy : public TypeImpl<PtTy, TypeObject> {
 
   size_t size() const override { return SizeOf(pt_type_); }
 
-  std::string toString() const override { return PtType_Name(pt_type_); }
-
-  void fromString(std::string_view detail) override {
-    SPU_ENFORCE(PtType_Parse(std::string(detail), &pt_type_),
-                "parse failed from={}", detail);
-  }
+  void fromString(std::string_view detail) override;
+  std::string toString() const override;
 };
 
 inline Type makePtType(PtType etype) { return makeType<PtTy>(etype); }
@@ -380,12 +376,8 @@ class RingTy : public TypeImpl<RingTy, TypeObject, Ring2k> {
     return SizeOf(GetStorageType(field_));
   }
 
-  void fromString(std::string_view detail) override {
-    SPU_ENFORCE(FieldType_Parse(std::string(detail), &field_),
-                "parse failed from={}", detail);
-  };
-
-  std::string toString() const override { return FieldType_Name(field()); }
+  void fromString(std::string_view detail) override;
+  std::string toString() const override;
 
   bool equals(TypeObject const* other) const override {
     auto const* derived_other = dynamic_cast<RingTy const*>(other);
@@ -420,19 +412,8 @@ class GfmpTy : public TypeImpl<GfmpTy, TypeObject, Gfp, Ring2k> {
 
   size_t mp_exp() const { return mersenne_prime_exp_; }
 
-  void fromString(std::string_view detail) override {
-    auto comma = detail.find_first_of(',');
-    auto field_str = detail.substr(0, comma);
-    auto mp_exp_str = detail.substr(comma + 1);
-    SPU_ENFORCE(FieldType_Parse(std::string(field_str), &field_),
-                "parse failed from={}", detail);
-    mersenne_prime_exp_ = std::stoul(std::string(mp_exp_str));
-    prime_ = (static_cast<uint128_t>(1) << mersenne_prime_exp_) - 1;
-  }
-
-  std::string toString() const override {
-    return fmt::format("{},{}", FieldType_Name(field()), mersenne_prime_exp_);
-  }
+  void fromString(std::string_view detail) override;
+  std::string toString() const override;
 
   bool equals(TypeObject const* other) const override {
     auto const* derived_other = dynamic_cast<GfmpTy const*>(other);

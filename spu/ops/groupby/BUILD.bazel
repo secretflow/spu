@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@spu_pip_dev//:requirements.bzl", "requirement")
 load("//bazel:spu.bzl", "spu_py_library", "spu_py_test")
 
 package(default_visibility = ["//visibility:public"])
@@ -90,6 +91,6 @@ spu_py_test(
         ":segmentation",
         "//spu:init",
         "//spu/utils:simulation",
-        "@spu_pip_dev//pandas:pkg",
+        requirement("pandas"),
     ],
 )

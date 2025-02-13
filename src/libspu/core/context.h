@@ -23,8 +23,7 @@
 #include "libspu/core/object.h"
 #include "libspu/core/prelude.h"
 #include "libspu/core/value.h"
-
-#include "libspu/spu.pb.h"
+#include "libspu/spu.h"
 
 namespace spu {
 
@@ -57,13 +56,13 @@ class SPUContext final {
 
   // Return current working fixed point fractional bits.
   size_t getFxpBits() const {
-    const auto fbits = config_.fxp_fraction_bits();
+    const auto fbits = config_.fxp_fraction_bits;
     SPU_ENFORCE(fbits != 0);
     return fbits;
   }
 
   // Return current working field of MPC engine.
-  FieldType getField() const { return config_.field(); }
+  FieldType getField() const { return config_.field; }
 
   // Return current working runtime config.
   const RuntimeConfig& config() const { return config_; }

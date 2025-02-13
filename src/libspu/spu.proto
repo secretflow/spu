@@ -22,7 +22,7 @@
 
 syntax = "proto3";
 
-package spu;
+package spu.pb;
 
 option java_package = "org.secretflow.spu";
 

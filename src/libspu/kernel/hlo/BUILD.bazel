@@ -306,6 +306,7 @@ spu_cc_test(
         "//libspu/kernel:test_util",
         "//libspu/kernel/hal:polymorphic",
         "//libspu/mpc/utils:simulate",
+        "@magic_enum",
     ],
 )
 

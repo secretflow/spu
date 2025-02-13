@@ -21,7 +21,7 @@ import jax.numpy as jnp
 import numpy as np
 from sklearn import metrics
 
-import spu.spu_pb2 as spu_pb2
+import spu.libspu as libspu
 import spu.utils.simulation as spsim
 
 # add ops dir to the path
@@ -44,9 +44,7 @@ from sml.metrics.classification.classification import (
 
 class UnitTests(unittest.TestCase):
     def test_auc(self):
-        sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
-        )
+        sim = spsim.Simulator.simple(3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM64)
 
         def bin_count(y_true, y_pred, bin_size):
             thresholds = equal_obs(y_pred, bin_size)
@@ -89,7 +87,7 @@ class UnitTests(unittest.TestCase):
 
     def test_classification(self):
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM128
+            3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM128
         )
 
         def proc(
@@ -159,7 +157,7 @@ class UnitTests(unittest.TestCase):
 
     def test_average_precision_score(self):
         sim = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.SEMI2K, spu_pb2.FieldType.FM64
+            2, libspu.ProtocolKind.SEMI2K, libspu.FieldType.FM64
         )
 
         def proc(y_true, y_score, **kwargs):

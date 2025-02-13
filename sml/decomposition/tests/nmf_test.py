@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 from sklearn.decomposition import NMF as SklearnNMF
 
-import spu.spu_pb2 as spu_pb2
+import spu.libspu as libspu
 import spu.utils.simulation as spsim
 
 # Add the sml directory to the path
@@ -35,9 +35,9 @@ class UnitTests(unittest.TestCase):
         cls.random_seed = 0
         np.random.seed(cls.random_seed)
         # NMF must use FM128 now, for heavy use of non-linear & matrix operations
-        config = spu_pb2.RuntimeConfig(
-            protocol=spu_pb2.ProtocolKind.ABY3,
-            field=spu_pb2.FieldType.FM128,
+        config = libspu.RuntimeConfig(
+            protocol=libspu.ProtocolKind.ABY3,
+            field=libspu.FieldType.FM128,
             fxp_fraction_bits=30,
         )
         cls.sim = spsim.Simulator(3, config)

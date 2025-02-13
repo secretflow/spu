@@ -18,7 +18,7 @@ from sklearn.datasets import load_iris
 from sklearn.ensemble import AdaBoostClassifier
 from sklearn.tree import DecisionTreeClassifier
 
-import spu.spu_pb2 as spu_pb2  # type: ignore
+import spu.libspu as libspu  # type: ignore
 import spu.utils.simulation as spsim
 from sml.ensemble.adaboost import AdaBoostClassifier as sml_Adaboost
 from sml.tree.tree import DecisionTreeClassifier as sml_dtc
@@ -66,9 +66,7 @@ class UnitTests(unittest.TestCase):
             X, y = new_features[:, ::3], iris_label[:]
             return X, y
 
-        sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
-        )
+        sim = spsim.Simulator.simple(3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM64)
 
         X, y = load_data()
         n_samples, n_features = X.shape
