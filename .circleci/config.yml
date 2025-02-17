@@ -35,10 +35,10 @@ parameters:
     default: ""
   run-schedule:
     type: boolean
-    default: false
+    default: true
   run-asan:
     type: boolean
-    default: true
+    default: false
 
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
