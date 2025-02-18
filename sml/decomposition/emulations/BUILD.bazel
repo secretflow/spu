@@ -45,6 +45,15 @@ py_binary(
     ],
 )
 
+py_binary(
+    name = "jacobi_svd_emul",
+    srcs = ["jacobi_svd_emul.py"],
+    deps = [
+        "//sml/decomposition:jacobi_svd",
+        "//sml/utils:emulation",
+    ],
+)
+
 filegroup(
     name = "conf",
     srcs = [
