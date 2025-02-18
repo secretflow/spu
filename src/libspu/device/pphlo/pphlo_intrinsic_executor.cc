@@ -67,7 +67,15 @@ std::vector<Value> intrinsic_dispatcher(SPUContext* ctx,
 
     return {inputs[0]};
   }
-  // DO-NOT-EDIT: Add_DISPATCH_CODE
+  
+  if (name == "permute") {
+      SPU_ENFORCE(inputs.size() == 2);
+      absl::Span<const spu::Value> input_span(inputs.data(), inputs.size());
+      return kernel::hal::internal::apply_inv_perm(ctx, input_span, inputs[1]);
+
+  }
+            
+            
 
   // Default: Identity function
   if (name == "example") {

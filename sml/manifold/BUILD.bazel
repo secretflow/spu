@@ -1,4 +1,4 @@
-# Copyright 2023 Ant Group Co., Ltd.
+# Copyright 2024 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,17 +12,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel:spu.bzl", "spu_py_library")
 
+load("@spu_pip_dev//:requirements.bzl", "requirement")
+load("//bazel:spu.bzl", "spu_py_library")
 package(default_visibility = ["//visibility:public"])
 
 spu_py_library(
-    name = "pca",
-    srcs = ["pca.py"],
-    deps = ["//sml/utils:extmath"],
+    name = "jacobi",
+    srcs = ["jacobi.py"],
 )
 
 spu_py_library(
-    name = "nmf",
-    srcs = ["nmf.py"],
+    name = "dijkstra",
+    srcs = ["dijkstra.py"],
+)
+
+spu_py_library(
+    name = "MDS",
+    srcs = ["MDS.py"],
+)
+
+spu_py_library(
+    name = "kneighbors",
+    srcs = ["kneighbors.py"],
+)
+
+spu_py_library(
+    name = "floyd",
+    srcs = ["floyd.py"],
+)
+
+spu_py_library(
+    name = "SE",
+    srcs = ["SE.py"],
 )
