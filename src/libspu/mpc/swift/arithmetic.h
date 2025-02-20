@@ -24,7 +24,7 @@ namespace spu::mpc::swift {
 // P_send, P_hash -> P_recv : msg
 // latency: 3
 // comm: ce::K()
-// ignore the const comm which is indepent with numel
+// ignore the const comm which is independent with numel
 NdArrayRef JointMessagePassing(KernelEvalContext* ctx, const NdArrayRef& msg,
                                size_t rank_send, size_t rank_hash,
                                size_t rank_recv, std::string_view tag);
