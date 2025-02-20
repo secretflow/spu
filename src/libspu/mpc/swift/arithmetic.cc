@@ -53,15 +53,15 @@ NdArrayRef JointMessagePassing(KernelEvalContext* ctx, const NdArrayRef& msg,
   const auto kComm = msg.elsize() * msg.numel();
 
   // send v and hash(v)
-  // ignore the const comm which is indepent with numel
+  // ignore the const comm which is independent with numel
   comm->addCommStatsManually(1, kComm);
 
   // P_recv send inconsistent bit to P_send and P_hash
-  // ignore the const comm which is indepent with numel
+  // ignore the const comm which is independent with numel
   comm->addCommStatsManually(1, 0);
 
   // P_send and P_hash exchange inconsistent bit
-  // ignore the const comm which is indepent with numel
+  // ignore the const comm which is independent with numel
   comm->addCommStatsManually(1, 0);
 
   if (rank == rank_send) {
