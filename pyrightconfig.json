@@ -1,10 +1,15 @@
 {
     "executionEnvironments": [
-        {"root": "."}
+        {
+            "root": "."
+        }
     ],
-    "exclude":[
+    "exclude": [
         ".cache",
         "external",
         "**/bazel-*"
+    ],
+    "include": [
+        "examples/python/ml/flax_ds_qwen_1.5b/flax_ds_qwen.py"
     ]
 }
