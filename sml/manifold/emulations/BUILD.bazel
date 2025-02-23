@@ -12,22 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 load("@spu_pip_dev//:requirements.bzl", "requirement")
 load("//bazel:spu.bzl", "spu_py_binary")
+
 package(default_visibility = ["//visibility:public"])
 
 spu_py_binary(
     name = "Isomap_emul",
     srcs = ["Isomap_emul.py"],
     deps = [
-        "//sml/utils:emulation",
-        "//sml/manifold:jacobi",
-        "//sml/manifold:dijkstra",
         "//sml/manifold:MDS",
-        "//sml/manifold:kneighbors",
-        "//sml/manifold:floyd",
         "//sml/manifold:SE",
+        "//sml/manifold:dijkstra",
+        "//sml/manifold:floyd",
+        "//sml/manifold:jacobi",
+        "//sml/manifold:kneighbors",
+        "//sml/utils:emulation",
         requirement("scikit-learn"),
         requirement("pyyaml"),
     ],
@@ -37,13 +37,13 @@ spu_py_binary(
     name = "se_emul",
     srcs = ["se_emul.py"],
     deps = [
-        "//sml/utils:emulation",
-        "//sml/manifold:jacobi",
-        "//sml/manifold:dijkstra",
         "//sml/manifold:MDS",
-        "//sml/manifold:kneighbors",
-        "//sml/manifold:floyd",
         "//sml/manifold:SE",
+        "//sml/manifold:dijkstra",
+        "//sml/manifold:floyd",
+        "//sml/manifold:jacobi",
+        "//sml/manifold:kneighbors",
+        "//sml/utils:emulation",
         requirement("scikit-learn"),
         requirement("pyyaml"),
     ],
@@ -53,15 +53,30 @@ spu_py_binary(
     name = "knn_test",
     srcs = ["knn_test.py"],
     deps = [
-        "//sml/utils:emulation",
-        "//sml/manifold:jacobi",
-        "//sml/manifold:dijkstra",
         "//sml/manifold:MDS",
-        "//sml/manifold:kneighbors",
-        "//sml/manifold:floyd",
         "//sml/manifold:SE",
+        "//sml/manifold:dijkstra",
+        "//sml/manifold:floyd",
+        "//sml/manifold:jacobi",
+        "//sml/manifold:kneighbors",
+        "//sml/utils:emulation",
         requirement("scikit-learn"),
         requirement("pyyaml"),
     ],
 )
 
+spu_py_binary(
+    name = "knn_emul",
+    srcs = ["knn_emul.py"],
+    deps = [
+        "//sml/manifold:MDS",
+        "//sml/manifold:SE",
+        "//sml/manifold:dijkstra",
+        "//sml/manifold:floyd",
+        "//sml/manifold:jacobi",
+        "//sml/manifold:kneighbors",
+        "//sml/utils:emulation",
+        requirement("scikit-learn"),
+        requirement("pyyaml"),
+    ],
+)

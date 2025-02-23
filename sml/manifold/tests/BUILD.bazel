@@ -13,36 +13,33 @@
 # limitations under the License.
 
 load("@spu_pip_dev//:requirements.bzl", "requirement")
-load("//bazel:spu.bzl", "spu_py_library")
+load("//bazel:spu.bzl", "spu_py_test")
 
 package(default_visibility = ["//visibility:public"])
 
-spu_py_library(
-    name = "jacobi",
-    srcs = ["jacobi.py"],
+spu_py_test(
+    name = "Isomap_test",
+    srcs = ["Isomap_test.py"],
+    deps = [
+        "//sml/manifold:MDS",
+        "//sml/manifold:floyd",
+        "//sml/manifold:jacobi",
+        "//sml/manifold:kneighbors",
+        "//spu:init",
+        "//spu/utils:simulation",
+        requirement("scikit-learn"),
+    ],
 )
 
-spu_py_library(
-    name = "dijkstra",
-    srcs = ["dijkstra.py"],
-)
-
-spu_py_library(
-    name = "MDS",
-    srcs = ["MDS.py"],
-)
-
-spu_py_library(
-    name = "kneighbors",
-    srcs = ["kneighbors.py"],
-)
-
-spu_py_library(
-    name = "floyd",
-    srcs = ["floyd.py"],
-)
-
-spu_py_library(
-    name = "SE",
-    srcs = ["SE.py"],
+spu_py_test(
+    name = "se_test",
+    srcs = ["se_test.py"],
+    deps = [
+        "//sml/manifold:SE",
+        "//sml/manifold:jacobi",
+        "//sml/manifold:kneighbors",
+        "//spu:init",
+        "//spu/utils:simulation",
+        requirement("scikit-learn"),
+    ],
 )

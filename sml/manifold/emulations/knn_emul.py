@@ -14,14 +14,9 @@
 import time
 
 import jax
-import jax.numpy as jnp
-import numpy as np
-from sklearn.manifold import spectral_embedding
-from sklearn.neighbors import kneighbors_graph
 
 import sml.utils.emulation as emulation
 from sml.manifold.kneighbors import test_mpc_kneighbors_graph
-from sml.manifold.SE import normalization, se
 
 
 def emul_cpz(mode: emulation.Mode.MULTIPROCESS):
@@ -32,9 +27,8 @@ def emul_cpz(mode: emulation.Mode.MULTIPROCESS):
         emulator.up()
 
         def SE(sX, num_samples, num_features, k, num_components):
-            Knn,Knn1 = test_mpc_kneighbors_graph(sX, num_samples, num_features, k)
-            return Knn,Knn1
-
+            Knn, Knn1 = test_mpc_kneighbors_graph(sX, num_samples, num_features, k)
+            return Knn, Knn1
 
         # Set sample size and dimensions
         num_samples = 10  # Number of samples
@@ -50,7 +44,7 @@ def emul_cpz(mode: emulation.Mode.MULTIPROCESS):
         )
 
         sX = emulator.seal(X)
-        Knn ,Knn1= emulator.run(
+        Knn, Knn1 = emulator.run(
             SE,
             static_argnums=(
                 1,
@@ -59,11 +53,8 @@ def emul_cpz(mode: emulation.Mode.MULTIPROCESS):
                 4,
             ),
         )(sX, num_samples, num_features, k, num_components)
-        print('Knn: \n',Knn)
-        print('Knn1: \n',Knn1)
-        
-        
-       
+        print('Knn: \n', Knn)
+        print('Knn1: \n', Knn1)
 
     finally:
         emulator.down()

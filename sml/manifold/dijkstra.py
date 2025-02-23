@@ -11,12 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import jax
 import jax.numpy as jnp
 
 
 def set_value(x, index, value, n):
     # Change the value at the index of array x to value, where index is secretly shared
+    # n: the length of array x
+
     perm = jnp.zeros(n, dtype=jnp.int16)
     perm_2 = jnp.zeros(n, dtype=jnp.int16)
     for i in range(n):
@@ -30,6 +31,8 @@ def set_value(x, index, value, n):
 
 def get_value_1(x, index, n):
     # Obtain the value at the x[index] index, where index is a secret shared value
+    # n: the length of array x
+
     perm = jnp.zeros(n, dtype=jnp.int16)
     perm_2 = jnp.zeros(n, dtype=jnp.int16)
     for i in range(n):
@@ -41,6 +44,7 @@ def get_value_1(x, index, n):
 
 def get_value_2(x, index_1, index_2, n):
     # Obtain the value at index x[index_1][index_2], where index_2 is plaintext and index_1 is secret shared
+    # n: the length of array x
 
     # Initialize row index
     perm_1 = jnp.zeros((n, n), dtype=jnp.int16)

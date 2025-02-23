@@ -14,13 +14,14 @@
 
 from .example_binary_impl import example_binary
 from .example_impl import example
-from .permute_impl import permute
-
+from .invperm_impl import invperm
+from .perm_impl import perm
 # DO-NOT-EDIT:ADD_IMPORT
 
 __all__ = [
     # "example",
     # "example_binary",
-    "permute",
-    # DO-NOT-EDIT:EOL
+    "invperm",
+	"perm",
+	# DO-NOT-EDIT:EOL
 ]

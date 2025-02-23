@@ -25,7 +25,8 @@ spu_py_library(
     deps = [
         ":example",
         ":example_binary",
-        ":permute",
+        ":invperm",
+        ":perm",
         # DO-NOT-EDIT:ADD_IMPORT
     ],
 )
@@ -49,15 +50,26 @@ spu_py_library(
         "//visibility:private",
     ],
 )
-
-py_library(
-    name = "permute",
+        
+        
+spu_py_library(
+    name = "invperm",
     srcs = [
-        "permute_impl.py",
+        "invperm_impl.py",
     ],
     visibility = [
         "//visibility:private",
     ],
 )
         
+        
+spu_py_library(
+    name = "perm",
+    srcs = [
+        "perm_impl.py",
+    ],
+    visibility = [
+        "//visibility:private",
+    ],
+)
         

@@ -33,33 +33,22 @@ def test_mpc_kneighbors_graph(
     X_expanded = jnp.square(X_expanded)
     Dis = jnp.sum(X_expanded, axis=-1)
 
-    # Sort each row of Dis, first calculate the permutation, and then apply the permutation to Dis
-    # Index_Dis = jnp.argsort(Dis, axis=1)
-
-    # Knn = jnp.zeros((num_samples, num_samples))
-    # for i in range(num_samples):
-    #     temp_pi = jnp.arange(num_samples)
-    #     per_dis = si.permute(Dis[i], si.permute(temp_pi, Index_Dis[i]))
-    #     for j in range(num_samples):
-    #         Knn = Knn.at[i, j].set(per_dis[j])
-    
     # top_k行向量
     Knn = jnp.zeros((num_samples, num_samples))
     MIndex_Dis = jnp.zeros((num_samples, num_samples))
     Index_Dis = jnp.zeros(num_samples)
-    temp_pi = jnp.arange(num_samples)
     for i in range(num_samples):
         _, Index_Dis = jax.lax.top_k(-Dis[i], n_neighbors)
         for j in range(num_samples):
-            MIndex_Dis=MIndex_Dis.at[i,j].set(Index_Dis[j])
-        Knn = Knn.at[i].set(si.permute(Dis[i], si.permute(temp_pi, Index_Dis)))
-    return MIndex_Dis,Knn
+            MIndex_Dis = MIndex_Dis.at[i, j].set(Index_Dis[j])
+        Knn = Knn.at[i].set(si.perm(Dis[i], Index_Dis))
+    return MIndex_Dis, Knn
 
 
 def mpc_kneighbors_graph(
     X,  # the input samples to calculate the nearest neighbors
-    num_samples,
-    num_features,
+    num_samples,  # the number of samples in X
+    num_features,  # the number of features in each sample
     n_neighbors,  # Define the number of nearest neighbors, excluding the sample itself
     *,
     mode="distance",
@@ -74,15 +63,12 @@ def mpc_kneighbors_graph(
 
     # Sort each row of Dis, first calculate the permutation, and then apply the permutation to Dis
     Index_Dis = jnp.argsort(Dis, axis=1)
-
     Knn = jnp.zeros((num_samples, num_samples))
     for i in range(num_samples):
-        temp_pi = jnp.arange(num_samples)
-        per_dis = si.permute(Dis[i], si.permute(temp_pi, Index_Dis[i]))
+        per_dis = si.perm(Dis[i], Index_Dis[i])
         for j in range(num_samples):
             Knn = Knn.at[i, j].set(per_dis[j])
-    
-    
+
     # Find the square root of the Euclidean distance of the nearest neighbor previously calculated, and set the distance of non nearest neighbors to 0
     Knn2 = jnp.zeros((num_samples, num_samples))
 
@@ -104,7 +90,7 @@ def mpc_kneighbors_graph(
     # Reverse permutation of Dis to restore the previous order
     Knn3 = jnp.zeros((num_samples, num_samples))
     for i in range(num_samples):
-        per_dis = si.permute(Knn2[i], Index_Dis[i])
+        per_dis = si.invperm(Knn2[i], Index_Dis[i])
         for j in range(num_samples):
             Knn3 = Knn3.at[i, j].set(per_dis[j])
 

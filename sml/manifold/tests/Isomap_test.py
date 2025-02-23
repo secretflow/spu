@@ -4,34 +4,37 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#   http://www.apache.org/licenses/LICENSE-2.0
+#      https://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import time
+import os
+import sys
+import unittest
 
 import jax
 import jax.numpy as jnp
 from sklearn.manifold import Isomap
 
-import sml.utils.emulation as emulation
+import spu.libspu as libspu
+import spu.utils.simulation as spsim
 from sml.manifold.floyd import floyd_opt
 from sml.manifold.kneighbors import mpc_kneighbors_graph
 from sml.manifold.MDS import mds
 
+# Add the sml directory to the path
+sys.path.append(os.path.join(os.path.dirname(__file__), '../../../'))
 
-def emul_cpz(mode: emulation.Mode.MULTIPROCESS):
-    try:
-        # bandwidth and latency only work for docker mode
-        emulator = emulation.Emulator(
-            emulation.CLUSTER_ABY3_3PC, mode, bandwidth=300, latency=20
-        )
-        emulator.up()
+# from sml.neighbors.knn import KNNClassifer
 
-        # The shortest path method in Isomap uses floyd
+
+class UnitTests(unittest.TestCase):
+    def test_knn(self):
+        sim = spsim.Simulator.simple(3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM64)
+
         def mpc_isomap_floyd(
             sX,
             mpc_shortest_paths,
@@ -56,13 +59,14 @@ def emul_cpz(mode: emulation.Mode.MULTIPROCESS):
             return Knn, mpc_shortest_paths, B, ans, values, vectors
 
         # Set sample size and dimensions
-        num_samples = 30  # Number of samples
+        num_samples = 5  # Number of samples
         num_features = 4  # Sample dimension
-        k = 10  # Number of nearest neighbors
+        k = 3  # Number of nearest neighbors
         num_components = 2  # Dimension after dimensionality reduction
 
         # Generate random input
-        seed = int(time.time())
+        # seed = int(time.time())
+        seed = 5
         key = jax.random.PRNGKey(seed)
         X = jax.random.uniform(
             key, shape=(num_samples, num_features), minval=0.0, maxval=1.0
@@ -70,24 +74,17 @@ def emul_cpz(mode: emulation.Mode.MULTIPROCESS):
 
         shortest_paths = jnp.zeros((num_samples, num_samples))
 
-        sX, mpc_shortest_paths = emulator.seal(X, shortest_paths)
-
-        Knn, mpc_shortest_paths, B, ans, values, vectors = emulator.run(
-            mpc_isomap_floyd, static_argnums=(2, 3, 4, 5)
+        # 运行模拟器
+        Knn, mpc_shortest_paths, B, ans, values, vectors = spsim.sim_jax(
+            sim, mpc_isomap_floyd, static_argnums=(2, 3, 4, 5)
         )(
-            sX,
-            mpc_shortest_paths,
+            X,
+            shortest_paths,
             num_samples,
             num_features,
             k,
             num_components,
         )
-        # print('Knn: \n',Knn)
-        # print('mpc_shortest_paths: \n', mpc_shortest_paths)
-        # print('values: \n',values)
-        # print('vectors: \n',vectors)
-
-        print('ans: \n', ans)
 
         # sklearn test
         embedding = Isomap(n_components=num_components, n_neighbors=k)
@@ -98,9 +95,6 @@ def emul_cpz(mode: emulation.Mode.MULTIPROCESS):
         max_abs_diff = jnp.max(jnp.abs(jnp.abs(X_transformed) - jnp.abs(ans)))
         print(max_abs_diff)
 
-    finally:
-        emulator.down()
-
 
 if __name__ == "__main__":
-    emul_cpz(emulation.Mode.MULTIPROCESS)
+    unittest.main()

@@ -30,20 +30,13 @@ def floyd(dist):
 
 # Optimized Floyd algorithm, but due to the. at.set problem, the run time is relatively long
 def floyd_opt_1(dist):
-
+    # 1. Require that dist is a symmetric matrix.
+    # 2. Require that the diagonal elements of dist are 0.
+    # 3. Require that in the off-diagonal elements of dist, if the distance between samples i and j is infinite, it should be represented as an infinite or a very large element.
     n = len(dist)
 
     for k in range(n):
-        # # Package and calculate batch_2.
-        # dist_kk = jnp.full(n-1, dist[k][k])
-
-        # batch_1 = jnp.delete(dist[k], k)
-        # batch_1 = jnp.minimum(batch_1, batch_1 + dist_kk)
-
-        # dist = dist.at[k].set(jnp.insert(batch_1, k, dist[k][k]))
-        # dist = dist.at[:, k].set(dist[k])
-
-        # Package calculation batch_3
+        # Package calculation batch_2,batch_3
         batch_2 = dist
         batch_2 = jnp.delete(batch_2, k, axis=0)
         col_k_without_dkk = batch_2[:, k]
@@ -85,6 +78,9 @@ def floyd_opt_1(dist):
 
 # Floyd optimized without using. at.set
 def floyd_opt(D):
+    # 1. Require that dist is a symmetric matrix.
+    # 2. Require that the diagonal elements of dist are 0.
+    # 3. Require that in the off-diagonal elements of dist, if the distance between samples i and j is infinite, it should be represented as an infinite or a very large element.
     n = D.shape[0]
     for k in range(n):
         # Update distance through intermediate node k

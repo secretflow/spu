@@ -90,10 +90,3 @@ std::vector<spu::Value> apply_permute_1d(SPUContext *ctx,
                                          const spu::Value &perm);
 
 }  // namespace spu::kernel::hal
-
-namespace spu::kernel::hal::internal{
-std::vector<spu::Value> apply_inv_perm(SPUContext *ctx,
-                                       absl::Span<spu::Value const> inputs,
-                                       const spu::Value &perm);
-
-}

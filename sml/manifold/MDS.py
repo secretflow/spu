@@ -11,9 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import jax
 import jax.numpy as jnp
 
+import spu.intrinsic as si
 from sml.manifold.jacobi import Jacobi
 
 
@@ -37,10 +37,19 @@ def mds(D, num_samples, n_components):
 
     values = jnp.diag(values)
     values = jnp.array(values)
-    values = jnp.expand_dims(values, axis=1).repeat(vectors.shape[1], axis=1)
-    values, vectors = jax.lax.sort_key_val(values.T, vectors.T)
+
+    # Retrieve the largest n_components values and their corresponding vectors.
+    # Sort each column of vectors according to values.
+    vectors = vectors.T
+    Index_value = jnp.argsort(values)
+    values = si.perm(values, Index_value)
+    for i in range(num_samples):
+        per_vectors = si.perm(vectors[i], Index_value)
+        for j in range(num_samples):
+            vectors = vectors.at[i, j].set(per_vectors[j])
+
     vectors = vectors[:, num_samples - n_components : num_samples]
-    values = values[0, num_samples - n_components : num_samples]
+    values = values[num_samples - n_components : num_samples]
     values = jnp.sqrt(values)
     values = jnp.diag(values)
     ans = jnp.dot(vectors, values)

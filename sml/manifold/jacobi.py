@@ -15,7 +15,8 @@ import jax
 import jax.numpy as jnp
 
 
-def compute_elements(X, k, l, n):
+def compute_elements(X, k, l, num_samples):
+    # Calculate the rotation angle for the element X[k][l].
     tar_elements = X[k][l]
     tar_diff = X[k][k] - X[l][l]
 
@@ -35,27 +36,17 @@ def compute_elements(X, k, l, n):
     return cos, sin
 
 
-def Rotation_Matrix(X, k, l, n, k_0, l_0):
+def Rotation_Matrix(X, k, l, num_samples):
     # Calculate the rotation matrix J based on the selected X [k] [l]
-    J = jnp.eye(n)
-    k_values = jnp.array(k)  # Ensure that k and l are JAX arrays
+    J = jnp.eye(num_samples)
+    k_values = jnp.array(k)
     l_values = jnp.array(l)
 
     # Parallelize using vmap
     cos_values, sin_values = jax.vmap(compute_elements, in_axes=(None, 0, 0, None))(
-        X, k_values, l_values, n
+        X, k_values, l_values, num_samples
     )
-    
-    # Update J
-    # for i in range(len(k_values)):
-    #     t_k=k_0-i
-    #     t_l=l_0+i
-    #     J=J.at[t_k,t_k].set(cos_values[i])
-    #     J=J.at[t_l,t_l].set(cos_values[i])
-    #     J=J.at[t_k,t_l].set(-sin_values[i])
-    #     J=J.at[t_l,t_k].set(sin_values[i])
-    t_k = k_0 - jnp.arange(len(k_values))
-    t_l = l_0 + jnp.arange(len(k_values))
+
     J = J.at[k, k].set(cos_values)
     J = J.at[l, l].set(cos_values)
     J = J.at[k, l].set(-sin_values)
@@ -64,37 +55,16 @@ def Rotation_Matrix(X, k, l, n, k_0, l_0):
     return J
 
 
-# def Jacobi(X, num_samples):
-#     Q = jnp.eye(num_samples)
-#     k = 0
-#     while k < 5:
-#         for i in range(1, 2 * num_samples - 2):
-#             if i < num_samples:
-#                 l_0 = i
-#                 r_0 = 0
-#             else:
-#                 l_0 = num_samples - 1
-#                 r_0 = i - l_0
-
-#             n = (l_0 - r_0 - 1) // 2 + 1
-
-#             j_indices = jnp.arange(n)
-#             l = l_0 - j_indices
-#             r = r_0 + j_indices
-#             # Calculate rotation matrix
-#             J = Rotation_Matrix(X, l, r, num_samples, l_0, r_0)
-#             # Update X and Q with rotation matrix
-#             X = jnp.dot(J.T, jnp.dot(X, J))
-#             Q = jnp.dot(J.T, Q)
-#         k = k + 1
-
-#     return X, Q
-
+# Ref:
+# https://arxiv.org/abs/2105.07612
 def Jacobi(X, num_samples):
     Q = jnp.eye(num_samples)
     k = 0
+    # Generally, convergence is achieved within five iterations.
     while k < 5:
-        for i in range(1, num_samples+(num_samples-1)//2):
+        # For each iteration, it is necessary to rotate all elements in the lower triangular part.
+        # To reduce the number of rounds, elements with non-repeating indices should be rotated in parallel as much as possible.
+        for i in range(1, num_samples + (num_samples - 1) // 2):
             if i < num_samples:
                 l_0 = i
                 r_0 = 0
@@ -108,18 +78,18 @@ def Jacobi(X, num_samples):
             l = l_0 - j_indices
             r = r_0 + j_indices
 
-            if i < num_samples//2:
-                l_1=num_samples-1-r_0
-                r_1=num_samples-1-l_0
+            if i < num_samples // 2:
+                l_1 = num_samples - 1 - r_0
+                r_1 = num_samples - 1 - l_0
                 n = (l_1 - r_1 - 1) // 2 + 1
                 j_indices = jnp.arange(n)
                 l_1 = l_1 - j_indices
                 r_1 = r_1 + j_indices
-                l=jnp.concatenate([l,l_1])
-                r=jnp.concatenate([r,r_1])
-            
+                l = jnp.concatenate([l, l_1])
+                r = jnp.concatenate([r, r_1])
+
             # Calculate rotation matrix
-            J = Rotation_Matrix(X, l, r, num_samples, l_0, r_0)
+            J = Rotation_Matrix(X, l, r, num_samples)
             # Update X and Q with rotation matrix
             X = jnp.dot(J.T, jnp.dot(X, J))
             Q = jnp.dot(J.T, Q)
