@@ -1,3 +1,6 @@
+# adapted from https://github.com/J-Rosser-UK/Torch2Jax-DeepSeek-R1-Distill-Qwen-1.5B
+
+
 from typing import Optional, Tuple
 
 import flax.linen as nn

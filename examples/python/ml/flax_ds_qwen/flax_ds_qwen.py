@@ -53,7 +53,9 @@ def text_generation(input_ids, params, max_new_tokens=1):
     return output
 
 
-def init_model_params(flax_params_path):
+def init_model_params(model_or_dir_name="deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B"):
+    # DeepSake only supply the models from PyTorch, we convert them to JAX format by:
+    # https://github.com/J-Rosser-UK/Torch2Jax-DeepSeek-R1-Distill-Qwen-1.5B
     # Load model params globally
     config = Qwen2Config()
     model = Qwen2ForCausalLM(config=config)
@@ -69,14 +71,14 @@ def init_model_params(flax_params_path):
 
     # Load the parameters from the file
     try:
-        with open(flax_params_path, "rb") as f:
+        with open("flax_params.msgpack", "rb") as f:
             params = {
                 "params": flax.serialization.from_bytes(params["params"], f.read())
             }
     except FileNotFoundError:
         print("File not found. Running conversion...")
-        torch_to_flax()
-        with open(flax_params_path, "rb") as f:
+        torch_to_flax(model_or_dir_name)
+        with open("flax_params.msgpack", "rb") as f:
             params = {
                 "params": flax.serialization.from_bytes(params["params"], f.read())
             }
@@ -104,11 +106,9 @@ def run_on_spu(input_ids, params):
 
 if __name__ == "__main__":
     # Load tokenizer
-    model_dir_name = "/data/models/DeepSeek-R1-Distill-Qwen-1.5B"
-    tokenizer = AutoTokenizer.from_pretrained(model_dir_name)
-
-    flax_params_path = "/home/jjzhou/codes/github/Torch2Jax-DeepSeek-R1-Distill-Qwen-1.5B/flax_params.msgpack"
-    model_params = init_model_params(flax_params_path)
+    model_or_dir_name = "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B"
+    tokenizer = AutoTokenizer.from_pretrained(model_or_dir_name)
+    model_params = init_model_params(model_or_dir_name)
 
     prompt = "What is 3 + 4? <think>\n"
     inputs = tokenizer(prompt, return_tensors="jax")

@@ -1,3 +1,5 @@
+# adapted from https://github.com/J-Rosser-UK/Torch2Jax-DeepSeek-R1-Distill-Qwen-1.5B
+
 import flax.serialization
 import jax
 import jax.numpy as jnp
@@ -192,10 +194,10 @@ def convert_model_cpu(flax_model, torch_model):
     return converted_params
 
 
-def torch_to_flax():
+def torch_to_flax(model_or_dir_name="deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B"):
     # Load the PyTorch model
     torch_model = AutoModelForCausalLM.from_pretrained(
-        "/data/models/DeepSeek-R1-Distill-Qwen-1.5B",
+        model_or_dir_name,
         # device_map="cpu",
         local_files_only=True,
     )
