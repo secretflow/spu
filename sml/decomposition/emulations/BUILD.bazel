@@ -13,7 +13,7 @@
 # limitations under the License.
 
 load("@rules_python//python:defs.bzl", "py_binary")
-
+load("//bazel:spu.bzl", "spu_py_binary")
 package(default_visibility = ["//visibility:public"])
 
 py_binary(
@@ -41,6 +41,15 @@ py_binary(
     data = [":conf"],
     deps = [
         "//sml/decomposition:nmf",
+        "//sml/utils:emulation",
+    ],
+)
+
+spu_py_binary(
+    name = "jacobi_svd_emul",
+    srcs = ["jacobi_svd_emul.py"],
+    deps = [
+        "//sml/decomposition:jacobi_svd",
         "//sml/utils:emulation",
     ],
 )
