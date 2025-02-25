@@ -12,12 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@spu_pip_dev//:requirements.bzl", "requirement")
-load("//bazel:spu.bzl", "spu_py_test")
+# load("@spu_pip_dev//:requirements.bzl", "requirement")
+# load("//bazel:spu.bzl", "spu_py_test")
+
+# package(default_visibility = ["//visibility:public"])
+
+
+
+load("//bazel:spu.bzl", "sml_py_test")
 
 package(default_visibility = ["//visibility:public"])
 
-spu_py_test(
+sml_py_test(
     name = "Isomap_test",
     srcs = ["Isomap_test.py"],
     deps = [
@@ -27,11 +33,11 @@ spu_py_test(
         "//sml/manifold:kneighbors",
         "//spu:init",
         "//spu/utils:simulation",
-        requirement("scikit-learn"),
+        # requirement("scikit-learn"),
     ],
 )
 
-spu_py_test(
+ml_py_test(
     name = "se_test",
     srcs = ["se_test.py"],
     deps = [
@@ -40,6 +46,6 @@ spu_py_test(
         "//sml/manifold:kneighbors",
         "//spu:init",
         "//spu/utils:simulation",
-        requirement("scikit-learn"),
+        # requirement("scikit-learn"),
     ],
 )
