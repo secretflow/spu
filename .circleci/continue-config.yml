@@ -69,18 +69,18 @@ commands:
             declare -i status1=0
             declare -i status2=0
 
-            bazel --version && python3 --version && bazel run //:requirements-dev.update; status0=${PIPESTATUS[0]}
+            bazelisk --version && python3 --version && bazelisk run //:requirements-dev.update; status0=${PIPESTATUS[0]}
 
             # build module spulib
             pushd src
-            bazel query <<parameters.targets>>; if [ $? -eq 0 ]; then
-              bazel build <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning; status1=${PIPESTATUS[0]}
+            bazelisk query <<parameters.targets>>; if [ $? -eq 0 ]; then
+              bazelisk build <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning; status1=${PIPESTATUS[0]}
             fi
             popd
 
             # build module spu
-            bazel query <<parameters.targets>>; if [ $? -eq 0 ]; then
-              bazel build <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning; status2=${PIPESTATUS[0]}
+            bazelisk query <<parameters.targets>>; if [ $? -eq 0 ]; then
+              bazelisk build <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning; status2=${PIPESTATUS[0]}
             fi
 
             status=$((${status0} + ${status1} + ${status2}))
@@ -96,16 +96,16 @@ commands:
             mkdir bazel-testlogs
 
             pushd src
-            bazel query <<parameters.targets>>; if [ $? -eq 0 ]; then
-              bazel test <<parameters.extra_bazel_test_args>> <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors | tee test_result.log; status0=${PIPESTATUS[0]}
+            bazelisk query <<parameters.targets>>; if [ $? -eq 0 ]; then
+              bazelisk test <<parameters.extra_bazel_test_args>> <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors | tee test_result.log; status0=${PIPESTATUS[0]}
               sh ../../devtools/rename-junit-xml.sh
               cp -r test-results/ ../test-results/
               cp -r bazel-testlogs/ ../bazel-testlogs/
             fi
             popd
 
-            bazel query <<parameters.targets>>; if [ $? -eq 0 ]; then
-              bazel test <<parameters.extra_bazel_test_args>> <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors | tee -a test_result.log; status1=${PIPESTATUS[0]}
+            bazelisk query <<parameters.targets>>; if [ $? -eq 0 ]; then
+              bazelisk test <<parameters.extra_bazel_test_args>> <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors | tee -a test_result.log; status1=${PIPESTATUS[0]}
               sh ../devtools/rename-junit-xml.sh
             fi
 
@@ -132,6 +132,15 @@ jobs:
     # See: https://circleci.com/docs/2.0/configuration-reference/#steps
     steps:
       - checkout
+      - run:
+          name: Install dependencies
+          command: |
+            if [ "`uname -m`" == "x86_64" ]; then
+                wget https://github.com/bazelbuild/bazelisk/releases/download/v1.25.0/bazelisk-amd64.deb && dpkg -i bazelisk-amd64.deb
+            fi
+            if [ "`uname -m`" == "aarch64" ]; then
+                wget https://github.com/bazelbuild/bazelisk/releases/download/v1.25.0/bazelisk-arm64.deb && dpkg -i bazelisk-arm64.deb
+            fi
       - restore_cache:
           name: restore pip cache
           key: &pip-cache pip-{{ arch }}-{{ .Branch }}-{{ checksum "requirements.txt" }}-{{ checksum "requirements-dev.txt" }}
@@ -147,6 +156,15 @@ jobs:
       resource_class: 2xlarge+
     steps:
       - checkout
+      - run:
+          name: Install dependencies
+          command: |
+            if [ "`uname -m`" == "x86_64" ]; then
+                wget https://github.com/bazelbuild/bazelisk/releases/download/v1.25.0/bazelisk-amd64.deb && dpkg -i bazelisk-amd64.deb
+            fi
+            if [ "`uname -m`" == "aarch64" ]; then
+                wget https://github.com/bazelbuild/bazelisk/releases/download/v1.25.0/bazelisk-arm64.deb && dpkg -i bazelisk-arm64.deb
+            fi
       - run:
           name: Install extra deps
           command: |
