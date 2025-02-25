@@ -47,13 +47,18 @@ jobs:
           name: Install dependencies
           command: |
             if [ -x "$(command -v npm)" ]; then
-                echo "Found npm"
+                npm install -g @bazel/bazelisk
+            elif [ -x "$(command -v dpkg)" ]; then
+                if [ "`uname -m`" == "x86_64" ]; then
+                    wget https://github.com/bazelbuild/bazelisk/releases/download/v1.25.0/bazelisk-amd64.deb && dpkg -i bazelisk-amd64.deb
+                elif [ "`uname -m`" == "aarch64" ]; then
+                    wget https://github.com/bazelbuild/bazelisk/releases/download/v1.25.0/bazelisk-arm64.deb && dpkg -i bazelisk-arm64.deb
+                fi
             elif [ -x "$(command -v apt)" ]; then
-                apt install -y npm
+                apt install -y npm && npm install -g @bazel/bazelisk
             elif [ -x "$(command -v yum)" ]; then
-                yum install -y npm
+                yum install -y npm && npm install -g @bazel/bazelisk
             fi
-            npm install -g @bazel/bazelisk
       - run:
           name: Checkout devtools
           command: git clone https://github.com/secretflow/devtools.git ../devtools
