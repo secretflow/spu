@@ -135,7 +135,7 @@ cd docs
 make clean && make html  # html docs will be in docs/_build/html
 
 # build Chinese docs
-make -e SPHINXOPTS="-D language='zh_CN'" html  # html docs will be in docs/_build/html
+make clean && make -e SPHINXOPTS="-D language='zh_CN'" html  # html docs will be in docs/_build/html
 ```
 
 ## Release cycle
