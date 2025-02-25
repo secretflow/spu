@@ -1,0 +1,26 @@
+load("@rules_python//python:defs.bzl", "py_test")
+load("@spu_pip_dev//:requirements.bzl", "requirement")
+
+package(default_visibility = ["//visibility:public"])
+
+py_test(
+    name = "jacobipca_test",
+    srcs = ["jacobipca_test.py"],
+    deps = [
+        "//sml/fyy_pca:jacobi_pca",
+        "//spu:init",
+        "//spu/utils:simulation",
+        requirement("scikit-learn"),
+    ],
+)
+
+py_test(
+    name = "jacobievd_test",
+    srcs = ["jacobievd_test.py"],
+    deps = [
+        "//sml/fyy_pca:jacobi_evd",
+        "//spu:init",
+        "//spu/utils:simulation",
+        requirement("scikit-learn"),
+    ],
+)

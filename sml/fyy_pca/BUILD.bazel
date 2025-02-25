@@ -1,0 +1,17 @@
+load("//bazel:spu.bzl", "spu_py_library")
+
+package(default_visibility = ["//visibility:public"])
+
+spu_py_library(
+    name = "jacobi_evd",
+    srcs = ["jacobi_evd.py"],
+)
+
+spu_py_library(
+    name = "jacobi_pca",
+    srcs = ["jacobi_pca.py"],
+    deps = [
+        ":jacobi_evd",
+        "//sml/utils:extmath",
+    ],
+)
