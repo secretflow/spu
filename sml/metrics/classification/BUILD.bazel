@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@spu_pip_dev//:requirements.bzl", "requirement")
-load("//bazel:spu.bzl", "spu_py_library", "spu_py_test")
+load("//bazel:spu.bzl", "sml_py_binary", "sml_py_library", "sml_py_test")
 
 package(default_visibility = ["//visibility:public"])
 
-spu_py_library(
+sml_py_library(
     name = "classification",
     srcs = ["classification.py"],
     deps = [
@@ -27,28 +26,24 @@ spu_py_library(
     ],
 )
 
-spu_py_library(
+sml_py_library(
     name = "auc",
     srcs = ["auc.py"],
     deps = ["//spu/ops/groupby"],
 )
 
-spu_py_test(
+sml_py_test(
     name = "classification_test",
     srcs = ["classification_test.py"],
     deps = [
         ":classification",
-        "//spu:init",
-        "//spu/utils:simulation",
-        requirement("scikit-learn"),
     ],
 )
 
-spu_py_library(
+sml_py_binary(
     name = "classification_emul",
     srcs = ["classification_emul.py"],
     deps = [
         ":classification",
-        "//sml/utils:emulation",
     ],
 )

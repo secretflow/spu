@@ -12,18 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@spu_pip_dev//:requirements.bzl", "requirement")
-load("//bazel:spu.bzl", "spu_py_test")
+load("//bazel:spu.bzl", "sml_py_test")
 
 package(default_visibility = ["//visibility:public"])
 
-spu_py_test(
+sml_py_test(
     name = "kmeans_test",
     srcs = ["kmeans_test.py"],
     deps = [
         "//sml/cluster:kmeans",
-        "//spu:init",
-        "//spu/utils:simulation",
-        requirement("scikit-learn"),
     ],
 )
