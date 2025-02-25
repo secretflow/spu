@@ -1,5 +1,5 @@
 {
-  "lockFileVersion": 11,
+  "lockFileVersion": 13,
   "registryFileHashes": {
     "https://baidu.github.io/babylon/registry/modules/openssl/3.3.2/MODULE.bazel": "36cf348554a03d4c3bd45f2e7258273c700efec29058b40cd33196b51bd8fd20",
     "https://bcr.bazel.build/bazel_registry.json": "8a28e4aff06ee60aed2a8c281907fb8bcbf3b753c91fb5a5c57da3215d5b3497",
@@ -509,14 +509,14 @@
     "https://raw.githubusercontent.com/secretflow/bazel-registry/main/modules/ippcp/2021.8/source.json": "5f651e8d1844a65570cacaacee787651994a4cfdb996a278aca5c3c8b07c3a7f",
     "https://raw.githubusercontent.com/secretflow/bazel-registry/main/modules/jsoncpp/1.9.5/MODULE.bazel": "not found",
     "https://raw.githubusercontent.com/secretflow/bazel-registry/main/modules/leveldb/1.23/MODULE.bazel": "450b5dafff03fd68d2c57544e0cdca1411e9cf42ae599e31fbbbfdf1ddea92b3",
-    "https://raw.githubusercontent.com/secretflow/bazel-registry/main/modules/leveldb/1.23/source.json": "69c27fb00af5f46b7fbb2cb8f813a5d81872bfef5bc45a055b25e44356bc8aa7",
+    "https://raw.githubusercontent.com/secretflow/bazel-registry/main/modules/leveldb/1.23/source.json": "82a078a44ec4a6c299fe108e87b6d7a0ce56dd46206bfc69495001087d7e2dfb",
     "https://raw.githubusercontent.com/secretflow/bazel-registry/main/modules/lib25519/20240321/MODULE.bazel": "849ae135d5582105a552331791eb34bb881bc9cc14106c159c4bf70bed02808a",
     "https://raw.githubusercontent.com/secretflow/bazel-registry/main/modules/lib25519/20240321/source.json": "17672e2c227edd4b9a17fcc1d078fd94ae86ad1f0c78fc491880bf03565045ed",
     "https://raw.githubusercontent.com/secretflow/bazel-registry/main/modules/libdivide/5.0/MODULE.bazel": "2936817667b364892e0ef46c906de17c4bd967838a11181a1e036769c75c9fd7",
     "https://raw.githubusercontent.com/secretflow/bazel-registry/main/modules/libdivide/5.0/source.json": "41566db4fdc0cdfa10b74ed7f6c9b5fa99f504fecfc63c95b87f0edc673cc8ef",
     "https://raw.githubusercontent.com/secretflow/bazel-registry/main/modules/libpfm/4.11.0/MODULE.bazel": "not found",
     "https://raw.githubusercontent.com/secretflow/bazel-registry/main/modules/libsodium/1.0.18/MODULE.bazel": "0c5efe7944f6cf929c6b6414b539ceec47305cfc69856b1c7c9dc066016d50c5",
-    "https://raw.githubusercontent.com/secretflow/bazel-registry/main/modules/libsodium/1.0.18/source.json": "95bb802f5e2c3b1588d9aed2613501eface5637197521d26409bf9fc83f9d725",
+    "https://raw.githubusercontent.com/secretflow/bazel-registry/main/modules/libsodium/1.0.18/source.json": "85abb5d41e1f38b3909f24a92eca547d337bee936649d39461037b0582ec6cd1",
     "https://raw.githubusercontent.com/secretflow/bazel-registry/main/modules/libtommath/0.0.0-20240407-42b3fb0/MODULE.bazel": "09c54cc493f68ec486a6c36b4b494a67936532a075fec29089cc1b8e1143e30d",
     "https://raw.githubusercontent.com/secretflow/bazel-registry/main/modules/libtommath/0.0.0-20240407-42b3fb0/source.json": "ffeac1c889d6d8eb4c6ed0d7243bfd298a94f0fb3a3670a31e88045b8c95fc02",
     "https://raw.githubusercontent.com/secretflow/bazel-registry/main/modules/llvm-raw/20240809.0-35f55f5/MODULE.bazel": "569ffa91a1497f0cbfc2a39b03b3155d2f7e7c360e2fdf5b31418868a1a9f1b8",
@@ -1636,7 +1636,7 @@
     "@@spulib~//bazel:defs.bzl%non_module_dependencies": {
       "general": {
         "bzlTransitiveDigest": "JT8ZLEUdrYXN19gijrHtztFq/cEAhJlRlNjhtQUlDIE=",
-        "usagesDigest": "H/unVLwVf9lkXyD6DNR/nT2UydRB+nHhr+iO46XfbSk=",
+        "usagesDigest": "zGZrcYF8MXiwT+bWXAgoWze/Q3tNFfLi0iWi2/GdFEo=",
         "recordedFileInputs": {},
         "recordedDirentsInputs": {},
         "envVariables": {},
