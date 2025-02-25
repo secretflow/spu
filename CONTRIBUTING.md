@@ -129,7 +129,13 @@ bazelisk test //... --features=ubsan
 # prerequisite
 pip install -U -r docs/requirements.txt
 
-cd docs && make html  # html docs will be in docs/_build/html
+cd docs
+
+# build English docs
+make clean && make html  # html docs will be in docs/_build/html
+
+# build Chinese docs
+make -e SPHINXOPTS="-D language='zh_CN'" html  # html docs will be in docs/_build/html
 ```
 
 ## Release cycle
