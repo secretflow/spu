@@ -12,62 +12,56 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_python//python:defs.bzl", "py_binary")
+load("//bazel:spu.bzl", "sml_py_binary")
 
 package(default_visibility = ["//visibility:public"])
 
-py_binary(
+sml_py_binary(
     name = "sgd_classifier_emul",
     srcs = ["sgd_classifier_emul.py"],
     deps = [
         "//examples/python/utils:dataset_utils",  # FIXME: remove examples dependency
         "//sml/linear_model:sgd_classifier",
-        "//sml/utils:emulation",
     ],
 )
 
-py_binary(
+sml_py_binary(
     name = "logistic_emul",
     srcs = ["logistic_emul.py"],
     deps = [
         "//sml/linear_model:logistic",
-        "//sml/utils:emulation",
     ],
 )
 
-py_binary(
+sml_py_binary(
     name = "ridge_emul",
     srcs = ["ridge_emul.py"],
     deps = [
         "//examples/python/utils:dataset_utils",  # FIXME: remove examples dependency
         "//sml/linear_model:ridge",
-        "//sml/utils:emulation",
     ],
 )
 
-py_binary(
+sml_py_binary(
     name = "pla_emul",
     srcs = ["pla_emul.py"],
     deps = [
         "//sml/linear_model:pla",
-        "//sml/utils:emulation",
     ],
 )
 
-py_binary(
+sml_py_binary(
     name = "glm_emul",
     srcs = ["glm_emul.py"],
     deps = [
         "//sml/linear_model:glm",
-        "//sml/utils:emulation",
     ],
 )
 
-py_binary(
+sml_py_binary(
     name = "quantile_emul",
     srcs = ["quantile_emul.py"],
     deps = [
         "//sml/linear_model:quantile",
-        "//sml/utils:emulation",
     ],
 )
