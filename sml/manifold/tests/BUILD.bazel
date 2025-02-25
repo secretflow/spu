@@ -31,21 +31,21 @@ sml_py_test(
         "//sml/manifold:floyd",
         "//sml/manifold:jacobi",
         "//sml/manifold:kneighbors",
-        "//spu:init",
-        "//spu/utils:simulation",
+        # "//spu:init",
+        # "//spu/utils:simulation",
         # requirement("scikit-learn"),
     ],
 )
 
-ml_py_test(
+sml_py_test(
     name = "se_test",
     srcs = ["se_test.py"],
     deps = [
         "//sml/manifold:SE",
         "//sml/manifold:jacobi",
         "//sml/manifold:kneighbors",
-        "//spu:init",
-        "//spu/utils:simulation",
+        # "//spu:init",
+        # "//spu/utils:simulation",
         # requirement("scikit-learn"),
     ],
 )

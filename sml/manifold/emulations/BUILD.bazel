@@ -12,17 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@spu_pip_dev//:requirements.bzl", "requirement")
-load("//bazel:spu.bzl", "spu_py_binary")
-
-package(default_visibility = ["//visibility:public"])
-
-
-# load("//bazel:spu.bzl", "sml_py_binary")
+# load("@spu_pip_dev//:requirements.bzl", "requirement")
+# load("//bazel:spu.bzl", "spu_py_binary")
 
 # package(default_visibility = ["//visibility:public"])
 
-spu_py_binary(
+
+load("//bazel:spu.bzl", "sml_py_binary")
+
+package(default_visibility = ["//visibility:public"])
+
+sml_py_binary(
     name = "Isomap_emul",
     srcs = ["Isomap_emul.py"],
     deps = [
@@ -32,13 +32,14 @@ spu_py_binary(
         "//sml/manifold:floyd",
         "//sml/manifold:jacobi",
         "//sml/manifold:kneighbors",
-        "//sml/utils:emulation",
-        requirement("scikit-learn"),
-        requirement("pyyaml"),
+        "//spu/intrinsic:all_intrinsics",
+        # "//sml/utils:emulation",
+        # requirement("scikit-learn"),
+        # requirement("pyyaml"),
     ],
 )
 
-spu_py_binary(
+sml_py_binary(
     name = "se_emul",
     srcs = ["se_emul.py"],
     deps = [
@@ -48,14 +49,15 @@ spu_py_binary(
         "//sml/manifold:floyd",
         "//sml/manifold:jacobi",
         "//sml/manifold:kneighbors",
-        "//sml/utils:emulation",
-        requirement("scikit-learn"),
-        requirement("pyyaml"),
+        "//spu/intrinsic:all_intrinsics",
+        # "//sml/utils:emulation",
+        # requirement("scikit-learn"),
+        # requirement("pyyaml"),
     ],
 )
 
 
-spu_py_binary(
+sml_py_binary(
     name = "knn_emul",
     srcs = ["knn_emul.py"],
     deps = [
@@ -65,8 +67,9 @@ spu_py_binary(
         "//sml/manifold:floyd",
         "//sml/manifold:jacobi",
         "//sml/manifold:kneighbors",
-        "//sml/utils:emulation",
-        requirement("scikit-learn"),
-        requirement("pyyaml"),
+        "//spu/intrinsic:all_intrinsics",
+        # "//sml/utils:emulation",
+        # requirement("scikit-learn"),
+        # requirement("pyyaml"),
     ],
 )
