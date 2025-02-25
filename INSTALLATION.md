@@ -7,7 +7,7 @@
 SPU has been tested with the following settings:
 
 - Ubuntu 22.04
-- python3.8
+- python3.10
 - 8c16g
 
 ### MacOS
@@ -29,11 +29,6 @@ You could install SPU via the [official PyPI package](https://pypi.org/project/s
 pip install spu
 ```
 
-
-
-
-
-
 ### From Source
 
 - Install dependencies listed [here](https://github.com/secretflow/spu/blob/main/CONTRIBUTING.md#prerequisite).
@@ -43,28 +38,28 @@ pip install spu
 - At the root of repo, run
 
 ```bash
-bazel build //:spu_wheel -c opt
+bazelisk build //:spu_wheel -c opt
 pip install bazel-bin/spu-*.whl --force-reinstall
 ```
 
 - Once GCC/bazel/python/Xcode version or other environment settings have changed, please run the following command to ensure a clean build
 
 ```bash
-bazel clean --expunge
+bazelisk clean --expunge
 ```
 
 #### Build with GPU support
 
 ```bash
-bazel build //:spu_wheel -c opt --config=gpu
+bazelisk build //:spu_wheel -c opt --config=gpu
 ```
 
 #### Build with specified python version
 
 ```bash
 # build with python 3.10
-bazel build //:spu_wheel -c opt --@rules_python//python/config_settings:python_version=3.10
+bazelisk build //:spu_wheel -c opt --@rules_python//python/config_settings:python_version=3.10
 
 # build with python 3.11
-bazel build //:spu_wheel -c opt --@rules_python//python/config_settings:python_version=3.11
+bazelisk build //:spu_wheel -c opt --@rules_python//python/config_settings:python_version=3.11
 ```

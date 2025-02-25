@@ -75,7 +75,6 @@ sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 https://brew.sh/
 
 # Install dependencies
-# Be aware, brew may install a newer version of bazel, when that happens bazel will give an error message during build.
 # Please follow instructions in the error message to install the required version
 brew install bazelisk cmake ninja libomp wget
 
@@ -90,32 +89,13 @@ brew install nasm
 # build and test spu python bindings and applicatons
 ####################################################
 # build as debug
-bazel build //... -c dbg
+bazelisk build //... -c dbg
 
 # build as release
-bazel build //... -c opt
+bazelisk build //... -c opt
 
 # test
-bazel test //...
-
-
-############################################
-# build and test spu core c++ implementation
-############################################
-cd src
-
-``` sh
-####################################################
-# build and test spu python bindings and applicatons
-####################################################
-# build as debug
-bazel build //... -c dbg
-
-# build as release
-bazel build //... -c opt
-
-# test
-bazel test //...
+bazelisk test //...
 
 
 ############################################
@@ -124,17 +104,17 @@ bazel test //...
 cd src
 
 # build as debug
-bazel build //... -c dbg
+bazelisk build //... -c dbg
 
 # build as release
-bazel build //... -c opt
+bazelisk build //... -c opt
 
 # test
-bazel test //...
+bazelisk test //...
 
 # [optional] build & test with ASAN or UBSAN, for macOS users please use configs with macOS prefix
-bazel test //... --features=asan
-bazel test //... --features=ubsan
+bazelisk test //... --features=asan
+bazelisk test //... --features=ubsan
 ```
 
 ### Bazel build options
