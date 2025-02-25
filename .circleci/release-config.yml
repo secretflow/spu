@@ -95,6 +95,15 @@ jobs:
     executor: <<parameters.executor>>
     steps:
       - checkout
+      - run:
+          name: Install dependencies
+          command: |
+            if [ "`uname -m`" == "x86_64" ]; then
+                wget https://github.com/bazelbuild/bazelisk/releases/download/v1.25.0/bazelisk-amd64.deb && dpkg -i bazelisk-amd64.deb
+            fi
+            if [ "`uname -m`" == "aarch64" ]; then
+                wget https://github.com/bazelbuild/bazelisk/releases/download/v1.25.0/bazelisk-arm64.deb && dpkg -i bazelisk-arm64.deb
+            fi
       - build_and_upload:
           python_ver: <<parameters.python_ver>>
 

@@ -132,6 +132,15 @@ jobs:
     # See: https://circleci.com/docs/2.0/configuration-reference/#steps
     steps:
       - checkout
+      - run:
+          name: Install dependencies
+          command: |
+            if [ "`uname -m`" == "x86_64" ]; then
+                wget https://github.com/bazelbuild/bazelisk/releases/download/v1.25.0/bazelisk-amd64.deb && dpkg -i bazelisk-amd64.deb
+            fi
+            if [ "`uname -m`" == "aarch64" ]; then
+                wget https://github.com/bazelbuild/bazelisk/releases/download/v1.25.0/bazelisk-arm64.deb && dpkg -i bazelisk-arm64.deb
+            fi
       - restore_cache:
           name: restore pip cache
           key: &pip-cache pip-{{ arch }}-{{ .Branch }}-{{ checksum "requirements.txt" }}-{{ checksum "requirements-dev.txt" }}
@@ -147,6 +156,15 @@ jobs:
       resource_class: 2xlarge+
     steps:
       - checkout
+      - run:
+          name: Install dependencies
+          command: |
+            if [ "`uname -m`" == "x86_64" ]; then
+                wget https://github.com/bazelbuild/bazelisk/releases/download/v1.25.0/bazelisk-amd64.deb && dpkg -i bazelisk-amd64.deb
+            fi
+            if [ "`uname -m`" == "aarch64" ]; then
+                wget https://github.com/bazelbuild/bazelisk/releases/download/v1.25.0/bazelisk-arm64.deb && dpkg -i bazelisk-arm64.deb
+            fi
       - run:
           name: Install extra deps
           command: |
