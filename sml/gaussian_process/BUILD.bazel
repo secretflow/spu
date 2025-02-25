@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel:spu.bzl", "spu_py_library")
+load("//bazel:spu.bzl", "sml_py_library")
 
 package(default_visibility = ["//visibility:public"])
 
-spu_py_library(
+sml_py_library(
     name = "_gpc",
     srcs = ["_gpc.py"],
     deps = [
@@ -25,12 +25,12 @@ spu_py_library(
     ],
 )
 
-spu_py_library(
+sml_py_library(
     name = "kernels",
     srcs = ["kernels.py"],
 )
 
-spu_py_library(
+sml_py_library(
     name = "ovo_ovr",
     srcs = ["ovo_ovr.py"],
 )
