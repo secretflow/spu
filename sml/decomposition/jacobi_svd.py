@@ -1,9 +1,6 @@
 import jax.numpy as jnp
-import jax.random as random
 import jax.lax as lax
-from jax import jit, vmap
-import numpy as np
-import time
+from jax import jit
 
 
 @jit
