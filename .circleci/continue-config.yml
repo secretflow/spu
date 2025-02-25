@@ -69,18 +69,18 @@ commands:
             declare -i status1=0
             declare -i status2=0
 
-            bazel --version && python3 --version && bazel run //:requirements-dev.update; status0=${PIPESTATUS[0]}
+            bazelisk --version && python3 --version && bazelisk run //:requirements-dev.update; status0=${PIPESTATUS[0]}
 
             # build module spulib
             pushd src
-            bazel query <<parameters.targets>>; if [ $? -eq 0 ]; then
-              bazel build <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning; status1=${PIPESTATUS[0]}
+            bazelisk query <<parameters.targets>>; if [ $? -eq 0 ]; then
+              bazelisk build <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning; status1=${PIPESTATUS[0]}
             fi
             popd
 
             # build module spu
-            bazel query <<parameters.targets>>; if [ $? -eq 0 ]; then
-              bazel build <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning; status2=${PIPESTATUS[0]}
+            bazelisk query <<parameters.targets>>; if [ $? -eq 0 ]; then
+              bazelisk build <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning; status2=${PIPESTATUS[0]}
             fi
 
             status=$((${status0} + ${status1} + ${status2}))
@@ -96,16 +96,16 @@ commands:
             mkdir bazel-testlogs
 
             pushd src
-            bazel query <<parameters.targets>>; if [ $? -eq 0 ]; then
-              bazel test <<parameters.extra_bazel_test_args>> <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors | tee test_result.log; status0=${PIPESTATUS[0]}
+            bazelisk query <<parameters.targets>>; if [ $? -eq 0 ]; then
+              bazelisk test <<parameters.extra_bazel_test_args>> <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors | tee test_result.log; status0=${PIPESTATUS[0]}
               sh ../../devtools/rename-junit-xml.sh
               cp -r test-results/ ../test-results/
               cp -r bazel-testlogs/ ../bazel-testlogs/
             fi
             popd
 
-            bazel query <<parameters.targets>>; if [ $? -eq 0 ]; then
-              bazel test <<parameters.extra_bazel_test_args>> <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors | tee -a test_result.log; status1=${PIPESTATUS[0]}
+            bazelisk query <<parameters.targets>>; if [ $? -eq 0 ]; then
+              bazelisk test <<parameters.extra_bazel_test_args>> <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors | tee -a test_result.log; status1=${PIPESTATUS[0]}
               sh ../devtools/rename-junit-xml.sh
             fi
 

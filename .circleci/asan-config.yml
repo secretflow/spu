@@ -57,14 +57,14 @@ jobs:
             mkdir bazel-testlogs
 
             pushd src
-            bazel test //... --features=asan --test_timeout=500 --ui_event_filters=-info,-debug,-warning --test_output=errors | tee test_result.log; status0=${PIPESTATUS[0]}
+            bazelisk test //... --features=asan --test_timeout=500 --ui_event_filters=-info,-debug,-warning --test_output=errors | tee test_result.log; status0=${PIPESTATUS[0]}
             sh ../../devtools/rename-junit-xml.sh
             cp -r test-results/ ../test-results/
             cp -r bazel-testlogs/ ../bazel-testlogs/
             popd
 
             # TODO
-            # bazel test //... --features=asan --test_timeout=500 --ui_event_filters=-info,-debug,-warning --test_output=errors | tee -a test_result.log; status1=${PIPESTATUS[0]}
+            # bazelisk test //... --features=asan --test_timeout=500 --ui_event_filters=-info,-debug,-warning --test_output=errors | tee -a test_result.log; status1=${PIPESTATUS[0]}
             # sh ../devtools/rename-junit-xml.sh
 
             find bazel-testlogs/ -type f -name "test.log"  -print0 | xargs -0 tar -cvzf test_logs.tar.gz
