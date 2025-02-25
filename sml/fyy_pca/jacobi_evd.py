@@ -4,7 +4,7 @@ from jax import jit
 
 
 def generate_ring_sequence(n):
-    """ An algorithm for generating a fixed cyclic sequence
+    """An algorithm for generating a fixed cyclic sequence
     Parameters
     ----------
     n : int
@@ -48,15 +48,13 @@ def generate_ring_sequence(n):
 
 
 def serial_jacobi_evd(
-    A, 
-    J,                      # rotate matrix，init as jnp.eye(A.shape[0])
-    max_jacobi_iter  
+    A, J, max_jacobi_iter  # rotate matrix，init as jnp.eye(A.shape[0])
 ):
-    """ A Eigendecomposition algorithm using the Jacobi Method.
+    """A Eigendecomposition algorithm using the Jacobi Method.
     Parameters
     ----------
     A : {array-like}, shape (n, n)
-        The input matrix used to perform EVD. 
+        The input matrix used to perform EVD.
         Note that A must be a symmetric matrix, because the employed two-sided Jacobi-EVD algorithm only supports symmetric matrices.
     J : {array-like}, shape (n, n)
         The required rotation matrix, the initial input is the unit matrix jnp.eye(), which needs to be kept secret during execution.
@@ -114,15 +112,6 @@ def serial_jacobi_evd(
             s = sin_combined[1]
 
             J_combined = J.copy()
-            # for i in range(len(pair)):
-            #     if mask.at[i]:  # 此处mask为secret类型,使用 if else存在问题
-            #         k, l = ks[i], ls[i]
-            #         rows, cols, vals = (
-            #             [k, l, k, l],
-            #             [k, l, l, k],
-            #             [c[i], c[i], s[i], -s[i]],
-            #         )
-            #         J_combined = J_combined.at[rows, cols].set(vals)
             rows, cols, vals = (
                 [ks, ls, ks, ls],
                 [ks, ls, ls, ks],
@@ -158,6 +147,3 @@ def serial_jacobi_evd(
 
     eigenvalues = jnp.diag(A)
     return eigenvalues, eigenvectors
-
-
-

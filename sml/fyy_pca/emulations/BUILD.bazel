@@ -1,28 +1,21 @@
-load("@rules_python//python:defs.bzl", "py_binary")
-load("@spu_pip_dev//:requirements.bzl", "requirement")
+load("//bazel:spu.bzl", "sml_py_binary")
 
 package(default_visibility = ["//visibility:public"])
 
-py_binary(
+sml_py_binary(
     name = "jacobipca_emul",
     srcs = ["jacobipca_emul.py"],
     deps = [
         "//sml/fyy_pca:jacobi_pca",
-        "//sml/utils:emulation",
-        requirement("scikit-learn"),
-        requirement("pyyaml"),
     ],
 )
 
-py_binary(
+sml_py_binary(
     name = "jacobievd_emul",
     srcs = ["jacobievd_emul.py"],
     data = [":conf"],
     deps = [
         "//sml/fyy_pca:jacobi_evd",
-        "//sml/utils:emulation",
-        requirement("scikit-learn"),
-        requirement("pyyaml"),
     ],
 )
 
