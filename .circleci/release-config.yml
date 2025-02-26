@@ -53,8 +53,8 @@ commands:
             conda activate build
 
             if [ ! -e "/usr/bin/python3" ]; then ln -s `which python3` /usr/bin/python3; fi
-            cd src && bazelisk build //... -c opt --ui_event_filters=-info,-debug,-warning
-            cd - && bazelisk build //:spu_wheel -c opt --@rules_python//python/config_settings:python_version=<< parameters.python_ver >>
+            cd src && bazel build //... -c opt --ui_event_filters=-info,-debug,-warning
+            cd - && bazel build //:spu_wheel -c opt --@rules_python//python/config_settings:python_version=<< parameters.python_ver >>
 
             python3 -m pip install twine
             ls bazel-bin/spu*.whl
@@ -95,22 +95,6 @@ jobs:
     executor: <<parameters.executor>>
     steps:
       - checkout
-      - run:
-          name: Install dependencies
-          command: |
-            if [ -x "$(command -v npm)" ]; then
-                npm install -g @bazel/bazelisk
-            elif [ -x "$(command -v dpkg)" ]; then
-                if [ "`uname -m`" == "x86_64" ]; then
-                    wget https://github.com/bazelbuild/bazelisk/releases/download/v1.25.0/bazelisk-amd64.deb && dpkg -i bazelisk-amd64.deb
-                elif [ "`uname -m`" == "aarch64" ]; then
-                    wget https://github.com/bazelbuild/bazelisk/releases/download/v1.25.0/bazelisk-arm64.deb && dpkg -i bazelisk-arm64.deb
-                fi
-            elif [ -x "$(command -v apt)" ]; then
-                apt install -y npm && npm install -g @bazel/bazelisk
-            elif [ -x "$(command -v yum)" ]; then
-                yum install -y npm && npm install -g @bazel/bazelisk
-            fi
       - build_and_upload:
           python_ver: <<parameters.python_ver>>
 

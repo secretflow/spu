@@ -55,8 +55,3 @@ idir/
 
 spu_wheel.name
 *.whl
-
-
-# doc translation files
-docs/**/*.mo
-docs/**/*.pot
