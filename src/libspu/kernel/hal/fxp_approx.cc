@@ -416,6 +416,14 @@ Value sin_chebyshev(SPUContext* ctx, const Value& x) {
   auto coeff_value = constant(ctx, kCoeffs, x.dtype(),
                               {1, static_cast<int64_t>(kCoeffs.size())});
 
+  // // Computation without Normalization
+  // auto reshaped_x = reshape(ctx, x, {1, x.numel()});
+  // reshaped_x = f_mul(ctx,
+  //                   constant(ctx, 0.25464790894703254F, reshaped_x.dtype(),
+  //                             reshaped_x.shape()),
+  //                   reshaped_x);
+  // auto poly = compute_chebyshev_polynomials(ctx, reshaped_x, kCoeffs.size());
+  
   // Normalize input to[-pi, pi]
   // theta - TWO_PI * Math.floor((theta + Math.PI) / TWO_PI)
   auto pi = constant(ctx, M_PI, x.dtype(), x.shape());
