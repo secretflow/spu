@@ -25,6 +25,8 @@ spu_py_library(
     deps = [
         ":example",
         ":example_binary",
+        ":invperm",
+        ":perm",
         # DO-NOT-EDIT:ADD_IMPORT
     ],
 )
@@ -48,3 +50,26 @@ spu_py_library(
         "//visibility:private",
     ],
 )
+        
+        
+spu_py_library(
+    name = "invperm",
+    srcs = [
+        "invperm_impl.py",
+    ],
+    visibility = [
+        "//visibility:private",
+    ],
+)
+        
+        
+spu_py_library(
+    name = "perm",
+    srcs = [
+        "perm_impl.py",
+    ],
+    visibility = [
+        "//visibility:private",
+    ],
+)
+        
