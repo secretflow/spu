@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "spdlog/spdlog.h"
+#include "libspu/mpc/swift/hash_func.h"
+
 #include "yacl/crypto/hash/blake3.h"
 #include "yacl/crypto/hash/hash_utils.h"
 #include "yacl/crypto/rand/rand.h"
 
 #include "libspu/core/prelude.h"
-#include "libspu/mpc/swift/hash_func.h"
 
 namespace spu::mpc {
 std::string hash_func(size_t send_player, absl::string_view msg,
