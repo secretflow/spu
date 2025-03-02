@@ -150,6 +150,10 @@ NdArrayRef MsbA2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   return msb_res.as(bty);
 }
 
+// Reference:
+// SWIFT: Super-fast and Robust Privacy-Preserving Machine Learning
+// P12 3.3 Bi2 to Arithmetic Conversion
+// https://eprint.iacr.org/2020/592.pdf
 // In Swift, the Bit2A convert <Xi>B to <Xi>A
 // but we need to implement B2A which convert <X>B to <X>A
 // we can:
