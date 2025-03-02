@@ -193,3 +193,22 @@ spu_cc_test(
         "@yacl//yacl/utils:elapsed_timer",
     ],
 )
+
+spu_cc_library(
+    name = "waksman_net",
+    srcs = ["waksman_net.cc"],
+    hdrs = ["waksman_net.h"],
+    deps = [
+        "//libspu/core:bit_utils",
+        "//libspu/core:shape",
+    ],
+)
+
+spu_cc_test(
+    name = "waksman_net_test",
+    srcs = ["waksman_net_test.cc"],
+    deps = [
+        ":permute",
+        ":waksman_net",
+    ],
+)

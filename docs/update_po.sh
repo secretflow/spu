@@ -1,4 +1,6 @@
-# Copyright 2023 Ant Group Co., Ltd.
+#! /bin/bash
+#
+# Copyright 2025 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,15 +13,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-load("//bazel:spu.bzl", "sml_py_test")
-
-package(default_visibility = ["//visibility:public"])
-
-sml_py_test(
-    name = "knn_test",
-    srcs = ["knn_test.py"],
-    deps = [
-        "//sml/neighbors:knn",
-    ],
-)
+#
+mkdir -p _build/gettext &&
+make gettext &&
+sphinx-intl update -p _build/gettext -l zh_CN &&
+echo "po files has been updated. Please update po files in locales folder."

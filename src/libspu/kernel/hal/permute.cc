@@ -90,6 +90,13 @@ hal::CompFn _get_cmp_func(SPUContext *ctx, int64_t num_keys,
   return comp_fn;
 }
 
+bool _has_efficient_shuffle(SPUContext *ctx) {
+  const auto prot = ctx->config().protocol;
+
+  // semi2k and aby3 have highly efficient constant round implementation.
+  return prot == ProtocolKind::SEMI2K || prot == ProtocolKind::ABY3;
+}
+
 bool _check_method_require(SPUContext *ctx, RuntimeConfig::SortMethod method) {
   bool pass = false;
   switch (method) {
@@ -1610,9 +1617,11 @@ std::vector<spu::Value> simple_sort1d(SPUContext *ctx,
   }
 
   // if use default sort method, trying to find the most best method
-  // currently, radix sort -> quick sort -> sorting network
+  // currently, radix sort (has efficient `shuffle`) -> quick sort -> sorting
+  // network
   if (sort_method == RuntimeConfig::SORT_DEFAULT) {
-    if (internal::_check_method_require(ctx, RuntimeConfig::SORT_RADIX)) {
+    if (internal::_check_method_require(ctx, RuntimeConfig::SORT_RADIX) &&
+        internal::_has_efficient_shuffle(ctx)) {
       ret = internal::radix_sort(ctx, inputs, direction, num_keys, valid_bits);
     } else if (internal::_check_method_require(ctx,
                                                RuntimeConfig::SORT_QUICK)) {

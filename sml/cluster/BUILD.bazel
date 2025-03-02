@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel:spu.bzl", "spu_py_binary")
+load("//bazel:spu.bzl", "sml_py_library")
 
 package(default_visibility = ["//visibility:public"])
 
-spu_py_binary(
+sml_py_library(
     name = "kmeans",
     srcs = ["kmeans.py"],
 )

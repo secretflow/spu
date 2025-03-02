@@ -52,6 +52,15 @@ class BShrTy : public TypeImpl<BShrTy, RingTy, Secret, BShare> {
   }
 };
 
+class PShrTy : public TypeImpl<PShrTy, RingTy, Secret, PShare> {
+  using Base = TypeImpl<PShrTy, RingTy, Secret, PShare>;
+
+ public:
+  using Base::Base;
+  static std::string_view getStaticId() { return "cheetah.PShr"; }
+  explicit PShrTy() { field_ = FieldType::FM64; }
+};
+
 void registerTypes();
 
 }  // namespace spu::mpc::cheetah

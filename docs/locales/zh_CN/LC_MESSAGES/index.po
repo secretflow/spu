@@ -1,0 +1,54 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2021 Ant Group Co., Ltd.
+# This file is distributed under the same license as the SPU package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2025.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: SPU \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-02-25 19:46+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: ../../index.rst:7
+msgid "SPU"
+msgstr ""
+
+#: ../../index.rst:9
+msgid ""
+"SPU(Secure Processing Unit) consists of a frontend **compiler** and a "
+"backend **runtime**. The frontend compiler accepts an ML program as input"
+" and converts it into an **MPC-specific intermediate representation**. "
+"After a series of delicate code optimizations, programs will be executed "
+"by a performant backend runtime as MPC protocols. Based on SPU, we can "
+"run ML programs of different frameworks with minor modifications in a "
+"privacy-preserving manner."
+msgstr ""
+
+#: ../../index.rst:14
+msgid ""
+"SPU is a major part of `SecretFlow "
+"<https://www.secretflow.org.cn/docs/secretflow/en/>`_ project. SPU is "
+"designed to be easily integrated into other distributed system, it's "
+"**recommended to use** SecretFlow to write SPU program."
+msgstr ""
+
+#: ../../index.rst:19
+msgid "Citing"
+msgstr ""
+
+#: ../../index.rst:21
+msgid ""
+"SPU was accepted by USENIX ATC'23. Please check the paper `here "
+"<https://www.usenix.org/conference/atc23/presentation/ma>`_."
+msgstr ""
+
