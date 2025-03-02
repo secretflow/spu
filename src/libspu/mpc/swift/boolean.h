@@ -52,6 +52,8 @@ class B2P : public UnaryKernel {
     return ce::K() * 3;
   }
 
+  Kind kind() const override { return Kind::Dynamic; }
+
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
 
@@ -113,7 +115,7 @@ class AndBB : public BinaryKernel {
     return ce::K() * 7;
   }
 
-  // Kind kind() const override { return Kind::Dynamic; }
+  Kind kind() const override { return Kind::Dynamic; }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
                   const NdArrayRef& rhs) const override;

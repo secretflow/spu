@@ -23,7 +23,9 @@ namespace spu::mpc::swift {
 // rank_recv : receiver
 // P_send, P_hash -> P_recv : msg
 // latency: 3
-// comm: ce::K()
+// comm:
+// Party_send: ce::K()
+// Party_hash, Party_recv: 0
 // ignore the const comm which is independent with numel
 NdArrayRef JointMessagePassing(KernelEvalContext* ctx, const NdArrayRef& msg,
                                size_t rank_send, size_t rank_hash,
@@ -41,6 +43,8 @@ class P2A : public UnaryKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
+  Kind kind() const override { return Kind::Dynamic; }
+
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
 
@@ -55,6 +59,8 @@ class A2P : public UnaryKernel {
     return ce::K() * 3;
   }
 
+  Kind kind() const override { return Kind::Dynamic; }
+
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
 
@@ -65,6 +71,8 @@ class A2V : public RevealToKernel {
   ce::CExpr latency() const override { return ce::Const(3); }
 
   ce::CExpr comm() const override { return ce::K(); }
+
+  Kind kind() const override { return Kind::Dynamic; }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
                   size_t rank_dst) const override;
@@ -77,6 +85,8 @@ class V2A : public UnaryKernel {
   ce::CExpr latency() const override { return ce::Const(3); }
 
   ce::CExpr comm() const override { return ce::K(); }
+
+  Kind kind() const override { return Kind::Dynamic; }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
@@ -99,6 +109,8 @@ class RandA : public RandKernel {
   ce::CExpr latency() const override { return ce::Const(3); }
 
   ce::CExpr comm() const override { return ce::K(); }
+
+  Kind kind() const override { return Kind::Dynamic; }
 
   NdArrayRef proc(KernelEvalContext* ctx, const Shape& shape) const override;
 };
@@ -152,6 +164,8 @@ class MulAA_semi : public BinaryKernel {
   ce::CExpr latency() const override { return ce::Const(2); }
 
   ce::CExpr comm() const override { return ce::K() * 4; }
+
+  Kind kind() const override { return Kind::Dynamic; }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
                   const NdArrayRef& rhs) const override;
@@ -239,12 +253,12 @@ class TruncA : public TruncAKernel {
     return ce::K() * 3;
   }
 
+  Kind kind() const override { return Kind::Dynamic; }
+
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t bits,
                   SignType sign) const override;
 
   bool hasMsbError() const override { return true; }
-
-  Kind kind() const override { return Kind::Dynamic; }
 
   TruncLsbRounding lsbRounding() const override {
     return TruncLsbRounding::Random;

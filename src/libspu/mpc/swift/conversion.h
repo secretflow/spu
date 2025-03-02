@@ -36,6 +36,8 @@ class A2B : public UnaryKernel {
         ;
   }
 
+  Kind kind() const override { return Kind::Dynamic; }
+
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
 
@@ -56,6 +58,8 @@ class MsbA2B : public UnaryKernel {
            * 2                     // 2 calls of circuit
         ;
   }
+
+  Kind kind() const override { return Kind::Dynamic; }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };

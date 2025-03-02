@@ -23,12 +23,19 @@
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pv2k.h"
-#include "libspu/mpc/swift/commitment.h"
+#include "libspu/mpc/swift/hash_func.h"
 #include "libspu/mpc/swift/type.h"
 #include "libspu/mpc/swift/value.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc::swift {
+
+// note:
+// We don't consider the situation that some party keeps silent
+// We just vote for the TTP, but don't let TTP do the subsequence computation
+// We don't split the offline and online phases
+// We only implement the 3PC protocol of
+// https://eprint.iacr.org/2020/592
 
 NdArrayRef getOrCreateCompactArray(const NdArrayRef& in) {
   if (!in.isCompact()) {
@@ -37,6 +44,10 @@ NdArrayRef getOrCreateCompactArray(const NdArrayRef& in) {
   return in;
 }
 
+// Reference:
+// SWIFT: Super-fast and Robust Privacy-Preserving Machine Learning
+// P6 3.1 Protocol_jmp
+// https://eprint.iacr.org/2020/592.pdf
 NdArrayRef JointMessagePassing(KernelEvalContext* ctx, const NdArrayRef& msg,
                                size_t rank_send, size_t rank_hash,
                                size_t rank_recv, std::string_view tag) {
@@ -52,21 +63,10 @@ NdArrayRef JointMessagePassing(KernelEvalContext* ctx, const NdArrayRef& msg,
 
   const auto kComm = msg.elsize() * msg.numel();
 
-  // send v and hash(v)
-  // ignore the const comm which is independent with numel
-  comm->addCommStatsManually(1, kComm);
-
-  // P_recv send inconsistent bit to P_send and P_hash
-  // ignore the const comm which is independent with numel
-  comm->addCommStatsManually(1, 0);
-
-  // P_send and P_hash exchange inconsistent bit
-  // ignore the const comm which is independent with numel
-  comm->addCommStatsManually(1, 0);
-
   if (rank == rank_send) {
     // send v to P_recv
     comm->sendAsync(rank_recv, msg, tag);
+    comm->addCommStatsManually(1, kComm);
 
     res = msg;
 
@@ -89,43 +89,15 @@ NdArrayRef JointMessagePassing(KernelEvalContext* ctx, const NdArrayRef& msg,
     comm->sendAsync<bool>(rank_hash, absl::MakeSpan(send_b), tag);
     inconsistent_bit = recv_b_from_pk[0] || recv_b_from_pj[0];
 
-    // broadcast Hash(v)
-    // without considering the situation that some party is silent
-    // which means the inconsistent bit of each party is all true or false
-    if (inconsistent_bit) {
-      std::string broadcast_msg(getOrCreateCompactArray(msg).data<char>(),
-                                msg.numel() * msg.elsize());
-      auto broadcast_msg_hash = commit(0, broadcast_msg, tag, hash_len);
-      yacl::ByteContainerView broadcast_msg_hash_bytes(
-          reinterpret_cast<uint8_t const*>(broadcast_msg_hash.data()),
-          broadcast_msg_hash.size());
-      auto all_hash_bytes =
-          yacl::link::AllGather(comm->lctx(), broadcast_msg_hash_bytes, tag);
-      std::vector<std::string> all_hash(3);
-      for (int i = 0; i < 3; i++) {
-        all_hash[i] =
-            std::string(reinterpret_cast<const char*>(all_hash_bytes[i].data()),
-                        all_hash_bytes[i].size());
-      }
-      if (all_hash[rank_send] != all_hash[rank_hash]) {
-        SPDLOG_INFO(
-            "inconsistent check fail for tag {} from Party_{}, TTP = Party_{}",
-            tag, rank_send, rank_recv);
-      } else if (all_hash[rank_send] != all_hash[rank_recv]) {
-        SPDLOG_INFO(
-            "inconsistent check fail for tag {} from Party_{}, TTP = Party_{}",
-            tag, rank_send, rank_hash);
-      } else {
-        SPDLOG_INFO(
-            "inconsistent check fail for tag {} from Party_{}, TTP = Party_{}",
-            tag, rank_send, rank_send);
-      }
-    }
+    // P_send and P_hash exchange inconsistent bit
+    // ignore the const comm which is independent with numel
+    comm->addCommStatsManually(1, 0);
   }
   if (rank == rank_hash) {
     res = msg;
 
     // send hash(v) to P_recv
+    // ignore the const comm which is independent with numel
     std::string msg_str(getOrCreateCompactArray(msg).data<char>(),
                         msg.numel() * msg.elsize());
 
@@ -133,7 +105,7 @@ NdArrayRef JointMessagePassing(KernelEvalContext* ctx, const NdArrayRef& msg,
     // std::string msg_str(getOrCreateCompactArray(ring_neg(msg)).data<char>(),
     //                     msg.numel() * msg.elsize());
 
-    auto msg_hash = commit(rank_hash, msg_str, tag, hash_len);
+    auto msg_hash = hash_func(rank_hash, msg_str, tag, hash_len);
 
     yacl::ByteContainerView msg_hash_bytes(
         reinterpret_cast<uint8_t const*>(msg_hash.data()), msg_hash.size());
@@ -152,38 +124,9 @@ NdArrayRef JointMessagePassing(KernelEvalContext* ctx, const NdArrayRef& msg,
     auto recv_b_from_pi = comm->recv<bool>(rank_send, tag);
     inconsistent_bit = recv_b_from_pk[0] || recv_b_from_pi[0];
 
-    // broadcast Hash(v)
-    // without considering the situation that some party is silent
-    // which means the inconsistent bit of each party is all true or false
-    if (inconsistent_bit) {
-      std::string broadcast_msg(getOrCreateCompactArray(msg).data<char>(),
-                                msg.numel() * msg.elsize());
-      auto broadcast_msg_hash = commit(0, broadcast_msg, tag, hash_len);
-      yacl::ByteContainerView broadcast_msg_hash_bytes(
-          reinterpret_cast<uint8_t const*>(broadcast_msg_hash.data()),
-          broadcast_msg_hash.size());
-      auto all_hash_bytes =
-          yacl::link::AllGather(comm->lctx(), broadcast_msg_hash_bytes, tag);
-      std::vector<std::string> all_hash(3);
-      for (int i = 0; i < 3; i++) {
-        all_hash[i] =
-            std::string(reinterpret_cast<const char*>(all_hash_bytes[i].data()),
-                        all_hash_bytes[i].size());
-      }
-      if (all_hash[rank_send] != all_hash[rank_hash]) {
-        SPDLOG_INFO(
-            "inconsistent check fail for tag {} from Party_{}, TTP = Party_{}",
-            tag, rank_hash, rank_recv);
-      } else if (all_hash[rank_send] != all_hash[rank_recv]) {
-        SPDLOG_INFO(
-            "inconsistent check fail for tag {} from Party_{}, TTP = Party_{}",
-            tag, rank_hash, rank_hash);
-      } else {
-        SPDLOG_INFO(
-            "inconsistent check fail for tag {} from Party_{}, TTP = Party_{}",
-            tag, rank_hash, rank_send);
-      }
-    }
+    // P_send and P_hash exchange inconsistent bit
+    // ignore the const comm which is independent with numel
+    comm->addCommStatsManually(1, 0);
   }
   if (rank == rank_recv) {
     // recv v and H_v from P_send and P_hash respectively
@@ -199,68 +142,66 @@ NdArrayRef JointMessagePassing(KernelEvalContext* ctx, const NdArrayRef& msg,
 
     std::string recv_msg_str(getOrCreateCompactArray(res_v).data<char>(),
                              res_v.numel() * res_v.elsize());
-    auto recv_msg_hash = commit(rank_hash, recv_msg_str, tag, hash_len);
+    auto recv_msg_hash = hash_func(rank_hash, recv_msg_str, tag, hash_len);
 
     if (recv_msg_hash != recv_hash) {
       inconsistent_bit = true;
     }
 
-    if (!inconsistent_bit) {
-      // send inconsistent_bit to P_send and P_hash
-      std::array<bool, 1> send_b;
-      send_b[0] = inconsistent_bit;
+    // send inconsistent_bit to P_send and P_hash
+    std::array<bool, 1> send_b;
+    send_b[0] = inconsistent_bit;
 
-      comm->sendAsync<bool>(rank_hash, absl::MakeSpan(send_b), tag);
-      comm->sendAsync<bool>(rank_send, absl::MakeSpan(send_b), tag);
-    } else {
-      SPDLOG_INFO("commit check fail for tag {}", tag);
-      inconsistent_bit = true;
+    comm->sendAsync<bool>(rank_hash, absl::MakeSpan(send_b), tag);
+    comm->sendAsync<bool>(rank_send, absl::MakeSpan(send_b), tag);
 
-      // send inconsistent_bit to P_send and P_hash
-      std::array<bool, 1> send_b;
-      send_b[0] = inconsistent_bit;
+    // P_recv send inconsistent bit to P_send and P_hash
+    // ignore the const comm which is independent with numel
+    comm->addCommStatsManually(1, 0);
 
-      comm->sendAsync<bool>(rank_hash, absl::MakeSpan(send_b), tag);
-      comm->sendAsync<bool>(rank_send, absl::MakeSpan(send_b), tag);
-
-      // broadcast Hash(v)
-      // without considering the situation that some party is silent
-      // which means the inconsistent bit of each party is all true or false
-      std::string broadcast_msg(getOrCreateCompactArray(res_v).data<char>(),
-                                res_v.numel() * res_v.elsize());
-      auto broadcast_msg_hash = commit(0, broadcast_msg, tag, hash_len);
-      yacl::ByteContainerView broadcast_msg_hash_bytes(
-          reinterpret_cast<uint8_t const*>(broadcast_msg_hash.data()),
-          broadcast_msg_hash.size());
-      auto all_hash_bytes =
-          yacl::link::AllGather(comm->lctx(), broadcast_msg_hash_bytes, tag);
-      std::vector<std::string> all_hash(3);
-      for (int i = 0; i < 3; i++) {
-        all_hash[i] =
-            std::string(reinterpret_cast<const char*>(all_hash_bytes[i].data()),
-                        all_hash_bytes[i].size());
-      }
-
-      if (all_hash[rank_send] != all_hash[rank_hash]) {
-        SPDLOG_INFO(
-            "inconsistent check fail for tag {} from Party_{}, TTP = Party_{}",
-            tag, rank_recv, rank_recv);
-      } else if (all_hash[rank_send] != all_hash[rank_recv]) {
-        SPDLOG_INFO(
-            "inconsistent check fail for tag {} from Party_{}, TTP = Party_{}",
-            tag, rank_recv, rank_hash);
-      } else {
-        SPDLOG_INFO(
-            "inconsistent check fail for tag {} from Party_{}, TTP = Party_{}",
-            tag, rank_recv, rank_send);
-      }
-    }
     res = res_v;
+  }
+
+  // broadcast Hash(v)
+  // without considering the situation that some party is silent
+  // which means the inconsistent bit of each party is all true or false
+  if (inconsistent_bit) {
+    std::string broadcast_msg(getOrCreateCompactArray(res).data<char>(),
+                              res.numel() * res.elsize());
+    auto broadcast_msg_hash = hash_func(0, broadcast_msg, tag, hash_len);
+    yacl::ByteContainerView broadcast_msg_hash_bytes(
+        reinterpret_cast<uint8_t const*>(broadcast_msg_hash.data()),
+        broadcast_msg_hash.size());
+    auto all_hash_bytes =
+        yacl::link::AllGather(comm->lctx(), broadcast_msg_hash_bytes, tag);
+    std::vector<std::string> all_hash(3);
+    for (int i = 0; i < 3; i++) {
+      all_hash[i] =
+          std::string(reinterpret_cast<const char*>(all_hash_bytes[i].data()),
+                      all_hash_bytes[i].size());
+    }
+    if (all_hash[rank_send] != all_hash[rank_hash]) {
+      SPDLOG_INFO(
+          "inconsistent check fail for tag {} from Party_{}, TTP = Party_{}",
+          tag, rank_send, rank_recv);
+    } else if (all_hash[rank_send] != all_hash[rank_recv]) {
+      SPDLOG_INFO(
+          "inconsistent check fail for tag {} from Party_{}, TTP = Party_{}",
+          tag, rank_send, rank_hash);
+    } else {
+      SPDLOG_INFO(
+          "inconsistent check fail for tag {} from Party_{}, TTP = Party_{}",
+          tag, rank_send, rank_send);
+    }
   }
 
   return res;
 }
 
+// Reference:
+// SWIFT: Super-fast and Robust Privacy-Preserving Machine Learning
+// P6 3.2 Sharing Protocol
+// https://eprint.iacr.org/2020/592.pdf
 NdArrayRef Sharing(KernelEvalContext* ctx, const NdArrayRef& msg, size_t owner,
                    std::string_view tag) {
   auto const field = msg.eltype().as<RingTy>()->field();
@@ -276,10 +217,11 @@ NdArrayRef Sharing(KernelEvalContext* ctx, const NdArrayRef& msg, size_t owner,
   NdArrayRef gamma(ty, msg.shape());
   NdArrayRef beta_plus_gamma(ty, msg.shape());
 
+  auto [r0, r1] =
+      prg_state->genPrssPair(field, msg.shape(), PrgState::GenPrssCtrl::Both);
+
   if (owner == 0) {
     // P0, Pj together sample random alpha_j
-    auto [r0, r1] =
-        prg_state->genPrssPair(field, msg.shape(), PrgState::GenPrssCtrl::Both);
     if (rank == 0) {
       alpha2 = r0;
       alpha1 = r1;
@@ -315,8 +257,6 @@ NdArrayRef Sharing(KernelEvalContext* ctx, const NdArrayRef& msg, size_t owner,
   if (owner == 1) {
     // P0, P1 together sample alpha1
     // P1, P2 together sample gamma
-    auto [r0, r1] =
-        prg_state->genPrssPair(field, msg.shape(), PrgState::GenPrssCtrl::Both);
     if (rank == 0) {
       alpha1 = r1;
     }
@@ -350,8 +290,6 @@ NdArrayRef Sharing(KernelEvalContext* ctx, const NdArrayRef& msg, size_t owner,
   if (owner == 2) {
     // P0, P2 together sample alpha2
     // P1, P2 together sample gamma
-    auto [r0, r1] =
-        prg_state->genPrssPair(field, msg.shape(), PrgState::GenPrssCtrl::Both);
     if (rank == 0) {
       alpha2 = r0;
     }
@@ -396,31 +334,19 @@ NdArrayRef Sharing(KernelEvalContext* ctx, const NdArrayRef& msg, size_t owner,
     NdArrayRef out(out_ty, msg.shape());
     NdArrayView<ashr_t> _out(out);
 
-    if (rank == 0) {
-      pforeach(0, msg.numel(), [&](int64_t idx) {
-        _out[idx][0] = _alpha1[idx];
-        _out[idx][1] = _alpha2[idx];
-        _out[idx][2] = _beta_plus_gamma[idx];
-      });
-    }
-    if (rank == 1) {
-      pforeach(0, msg.numel(), [&](int64_t idx) {
-        _out[idx][0] = _alpha1[idx];
-        _out[idx][1] = _beta[idx];
-        _out[idx][2] = _gamma[idx];
-      });
-    }
-    if (rank == 2) {
-      pforeach(0, msg.numel(), [&](int64_t idx) {
-        _out[idx][0] = _alpha2[idx];
-        _out[idx][1] = _beta[idx];
-        _out[idx][2] = _gamma[idx];
-      });
-    }
+    pforeach(0, msg.numel(), [&](int64_t idx) {
+      _out[idx][0] = rank == 2 ? _alpha2[idx] : _alpha1[idx];
+      _out[idx][1] = rank == 0 ? _alpha2[idx] : _beta[idx];
+      _out[idx][2] = rank == 0 ? _beta_plus_gamma[idx] : _gamma[idx];
+    });
     return out;
   });
 }
 
+// Reference:
+// SWIFT: Super-fast and Robust Privacy-Preserving Machine Learning
+// P6 3.2 Joint Sharing Protocol
+// https://eprint.iacr.org/2020/592.pdf
 NdArrayRef JointSharing(KernelEvalContext* ctx, const NdArrayRef& msg,
                         size_t rank_i, size_t rank_j, std::string_view tag) {
   auto const field = msg.eltype().as<RingTy>()->field();
@@ -832,12 +758,6 @@ NdArrayRef MulAA_semi::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
 
   const auto kComm = lhs.elsize() * lhs.numel();
 
-  // P0 shares gamma
-  comm->addCommStatsManually(1, kComm * 2);
-
-  // P1 and P2 reconstruct beta
-  comm->addCommStatsManually(1, kComm * 2);
-
   // P0, Pj together sample random alpha_j
   auto [r0, r1] =
       prg_state->genPrssPair(field, lhs.shape(), PrgState::GenPrssCtrl::Both);
@@ -864,6 +784,9 @@ NdArrayRef MulAA_semi::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
     auto Gammas = ring_rand_additive_splits(Gamma, 2);
     comm->sendAsync(1, Gammas[0], "Gamma_i");
     comm->sendAsync(2, Gammas[1], "Gamma_i");
+
+    // P0 shares gamma
+    comm->addCommStatsManually(1, kComm * 2);
   }
   if (rank == 1 || rank == 2) {
     auto Gamma = comm->recv(0, ty, "Gamma_i");
@@ -887,6 +810,9 @@ NdArrayRef MulAA_semi::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
     comm->sendAsync((3 - rank), beta_zi, "beta_zi");
     auto beta_zi_ = comm->recv((3 - rank), ty, "beta_zi");
     beta_z = ring_add(beta_zi, beta_zi_);
+
+    // P1 and P2 reconstruct beta
+    comm->addCommStatsManually(1, kComm);
   }
 
   return DISPATCH_ALL_FIELDS(field, [&]() {
@@ -1007,6 +933,7 @@ NdArrayRef RssMul_semi(KernelEvalContext* ctx, const NdArrayRef& lhs,
     pforeach(0, lhs.numel(), [&](int64_t idx) {
       _out[idx][0] = r0[idx];
       _out[idx][1] = r1[idx];
+      _out[idx][2] = el_t(0);
     });
 
     return out;
@@ -1014,7 +941,6 @@ NdArrayRef RssMul_semi(KernelEvalContext* ctx, const NdArrayRef& lhs,
 }
 
 // extend each element from FieldType_in to FieldType_out
-// only for AShrTy
 NdArrayRef RingChange(KernelEvalContext* ctx, const NdArrayRef& in,
                       FieldType fieldType_in, FieldType fieldType_out,
                       bool isAShrTy) {
@@ -1079,15 +1005,18 @@ NdArrayRef RingChange(KernelEvalContext* ctx, const NdArrayRef& in,
 }
 
 // The functionality of MulPre is a malicious multiplication protocol for RSS
-// refer to https://eprint.iacr.org/2023/1744
+// Reference:
+// Don't Eject the Impostor: Fast Three-Party Computation With a Known Cheater
+// P5 3.1 Triple Sacrificing Approach
+// https://eprint.iacr.org/2023/1744.pdf
 NdArrayRef MulPre(KernelEvalContext* ctx, const NdArrayRef& lhs,
                   const NdArrayRef& rhs) {
   const auto field = lhs.eltype().as<Ring2k>()->field();
   auto* prg_state = ctx->getState<PrgState>();
   auto numel = lhs.numel();
-  // if (!(field == FieldType::FM32 || field == FieldType::FM64)) {
-  //   SPU_THROW("malicious MulPre in MulAA only support FM32 and FM64");
-  // }
+  if (!(field == FieldType::FM32 || field == FieldType::FM64)) {
+    SPDLOG_INFO("malicious MulPre only support FM32 and FM64");
+  }
 
   FieldType field_sigma_plus_k, field_sigma_mask;
 
@@ -1168,6 +1097,10 @@ NdArrayRef MulPre(KernelEvalContext* ctx, const NdArrayRef& lhs,
   return res;
 }
 
+// Reference:
+// SWIFT: Super-fast and Robust Privacy-Preserving Machine Learning
+// P8 3.2 Multiplication Protocol
+// https://eprint.iacr.org/2020/592.pdf
 NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
                        const NdArrayRef& rhs) const {
   const auto field = lhs.eltype().as<RingTy>()->field();
@@ -1411,9 +1344,9 @@ NdArrayRef MatMulPre(KernelEvalContext* ctx, const NdArrayRef& lhs,
   auto* prg_state = ctx->getState<PrgState>();
   auto M = lhs.shape()[0];
   auto N = rhs.shape()[1];
-  // if (!(field == FieldType::FM32 || field == FieldType::FM64)) {
-  //   SPU_THROW("malicious MulPre only support FM32 and FM64");
-  // }
+  if (!(field == FieldType::FM32 || field == FieldType::FM64)) {
+    SPDLOG_INFO("malicious MatMulPre only support FM32 and FM64");
+  }
 
   FieldType field_sigma_plus_k, field_sigma_mask;
 
@@ -1493,6 +1426,7 @@ NdArrayRef MatMulPre(KernelEvalContext* ctx, const NdArrayRef& lhs,
   return res;
 }
 
+// matrix version of MulAA
 NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
                           const NdArrayRef& y) const {
   auto* prg_state = ctx->getState<PrgState>();
@@ -1654,6 +1588,10 @@ NdArrayRef LShiftA::proc(KernelEvalContext*, const NdArrayRef& in,
   });
 }
 
+// Reference:
+// SWIFT: Super-fast and Robust Privacy-Preserving Machine Learning
+// P4 3.3 Truncation, Protocol_trgen
+// https://eprint.iacr.org/2020/592.pdf
 std::pair<NdArrayRef, NdArrayRef> TruncA::Trgen(KernelEvalContext* ctx,
                                                 int64_t bits, FieldType field,
                                                 int64_t numel) const {
@@ -1814,7 +1752,6 @@ std::pair<NdArrayRef, NdArrayRef> TruncA::Trgen(KernelEvalContext* ctx,
     NdArrayView<shr_t> _rd(rd);
 
     pforeach(0, numel, [&](int64_t idx) {
-      // use tmp as sum
       _rd[idx][0] = (ring2k_t)0;
       _rd[idx][1] = (ring2k_t)0;
       _rd[idx][2] = (ring2k_t)0;

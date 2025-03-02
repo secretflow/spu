@@ -78,7 +78,7 @@ spu_cc_library(
     srcs = ["arithmetic.cc"],
     hdrs = ["arithmetic.h"],
     deps = [
-        ":commitment",
+        ":hash_func",
         ":type",
         ":value",
         "//libspu/core:vectorize",
@@ -114,9 +114,9 @@ spu_cc_test(
 )
 
 spu_cc_library(
-    name = "commitment",
-    srcs = ["commitment.cc"],
-    hdrs = ["commitment.h"],
+    name = "hash_func",
+    srcs = ["hash_func.cc"],
+    hdrs = ["hash_func.h"],
     deps = [
         "//libspu/core:prelude",
         "@yacl//yacl/crypto/hash:blake3",

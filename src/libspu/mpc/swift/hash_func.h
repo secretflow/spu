@@ -19,9 +19,9 @@
 
 namespace spu::mpc {
 
-std::string commit(size_t send_player, absl::string_view msg,
-                   absl::string_view r, size_t hash_len = 32,
-                   yacl::crypto::HashAlgorithm hash_type =
-                       yacl::crypto::HashAlgorithm::BLAKE3);
+std::string hash_func(size_t send_player, absl::string_view msg,
+                      absl::string_view r, size_t hash_len = 32,
+                      yacl::crypto::HashAlgorithm hash_type =
+                          yacl::crypto::HashAlgorithm::BLAKE3);
 
 }  // namespace spu::mpc
