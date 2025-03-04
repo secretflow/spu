@@ -38,7 +38,7 @@ void regFantastic4Protocol(SPUContext* ctx,
       ->regKernel<
           fantastic4::P2A, fantastic4::V2A, fantastic4::A2P, fantastic4::A2V,fantastic4::AddAA, fantastic4::AddAP, fantastic4::NegateA,fantastic4::MulAP, fantastic4::MulAA, fantastic4::MatMulAP, fantastic4::MatMulAA, fantastic4::LShiftA, fantastic4::TruncAPr,
           fantastic4::CastTypeB, fantastic4::B2P, fantastic4::P2B, fantastic4::XorBB, fantastic4::XorBP, fantastic4::AndBP, fantastic4::AndBB,
-          fantastic4::LShiftB, fantastic4::RShiftB, fantastic4::ARShiftB, fantastic4::BitrevB, fantastic4::A2B, fantastic4::B2A, fantastic4::RandA, fantastic4::EqualAP, fantastic4::EqualAA
+          fantastic4::LShiftB, fantastic4::RShiftB, fantastic4::ARShiftB, fantastic4::BitrevB, fantastic4::A2B, fantastic4::B2A, fantastic4::MsbA2B, fantastic4::RandA, fantastic4::EqualAP, fantastic4::EqualAA
           >();
 }
 

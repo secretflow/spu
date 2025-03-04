@@ -8,6 +8,8 @@
 #include "libspu/mpc/utils/ring_ops.h"
 #include "libspu/mpc/ab_api.h"
 
+#include "libspu/mpc/fantastic4/jmp.h"
+
 namespace spu::mpc::fantastic4 {
 
 namespace {
@@ -18,110 +20,12 @@ namespace {
     return UnwrapValue(mul_aa(ctx, WrapValue(x), WrapValue(y)));
   }
 
-  size_t PrevRankA(size_t rank, size_t world_size){
-    return (rank + world_size -1) % world_size;
-  }
-
-  size_t OffsetRankA(size_t myrank, size_t other, size_t world_size){
-    size_t offset = (myrank + world_size -other) % world_size;
-    if(offset == 3){
-      offset = 1;
-    }
-    return offset;
-  }
-
-
-  // Sender and Receiver jointly input a X
-  template <typename el_t>
-  void JointInputArith(KernelEvalContext* ctx, std::vector<el_t>& input, NdArrayRef& output, size_t sender, size_t backup, size_t receiver, size_t outsider){
-    auto* comm = ctx->getState<Communicator>();
-    size_t world_size =  comm->getWorldSize();
-    auto* prg_state = ctx->getState<PrgState>();
-    auto myrank = comm->getRank();
-
-    using shr_t = std::array<el_t, 3>;
-    NdArrayView<shr_t> _out(output);
-    
-    // Receiver's Previous Party Rank
-    // The mask corresponds to the prev party of receiver, receiver doesn't have the correpsonding PRG of its prev party
-    size_t receiver_prev_rank = PrevRankA(receiver, world_size);
-
-    // My offset from the receiver_prev_rank. 
-    // 0- i'm the receiver_prev_rank
-    // 1- i'm prev/next party of receiver_prev_rank
-    // 2- next next
-    size_t offset_from_receiver_prev = OffsetRankA(myrank, receiver_prev_rank, world_size);
-    size_t offset_from_outsider_prev = OffsetRankA(myrank, (outsider + 4 - 1)%4 , world_size);
-
-    if(myrank != receiver){
-      // Non-Interactive Random Masks Generation.
-      std::vector<el_t> r(output.numel());
-
-      if(offset_from_receiver_prev == 0){
-          // should use PRG[0]
-          prg_state->fillPrssTuple<el_t>(r.data(), nullptr, nullptr , r.size(),
-                              PrgState::GenPrssCtrl::First);
-      }
-      if(offset_from_receiver_prev == 1){
-          // should use PRG[1]
-          prg_state->fillPrssTuple<el_t>(nullptr, r.data(), nullptr , r.size(),
-                              PrgState::GenPrssCtrl::Second);
-      }
-      if(offset_from_receiver_prev == 2){
-          // should use PRG[2]
-          prg_state->fillPrssTuple<el_t>(nullptr, nullptr, r.data(), r.size(),
-                              PrgState::GenPrssCtrl::Third);
-      }
-
-      // For sender,backup,outsider
-      // the corresponding share is set to r
-
-      pforeach(0, output.numel(), [&](int64_t idx) {
-          _out[idx][offset_from_receiver_prev] += r[idx];
-      }); 
-
-      if(myrank != outsider){
-
-        std::vector<el_t> input_minus_r(output.numel());
-
-        // For sender, backup
-        // compute and set masked input x-r
-        pforeach(0, output.numel(), [&](int64_t idx) {
-          input_minus_r[idx] = (input[idx] - r[idx]);
-          _out[idx][offset_from_outsider_prev] +=  input_minus_r[idx];
-          
-          }); 
-
-        // Sender send x-r to receiver
-        if(myrank == sender) {
-          comm->sendAsync<el_t>(receiver, input_minus_r, "Joint Input");
-        }
-
-        // Backup update x-r for sender-to-receiver channel
-        if(myrank == backup) {
-          // Todo:
-          // MAC update input_minus_r
-        }
-      }
-    }
-
-    if (myrank == receiver) {
-      auto input_minus_r = comm->recv<el_t>(sender, "Joint Input");
-      pforeach(0, output.numel(), [&](int64_t idx) {
-          _out[idx][offset_from_outsider_prev] += input_minus_r[idx];
-      }); 
-
-      // Todo: 
-      // Mac update sender-backup channel
-    }
-  }
 
 }
 
 NdArrayRef RandA::proc(KernelEvalContext* ctx, const Shape& shape) const {
   auto* prg_state = ctx->getState<PrgState>();
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
-
   NdArrayRef out(makeType<AShrTy>(field), shape);
 
   DISPATCH_ALL_FIELDS(field, [&]() {
@@ -139,7 +43,6 @@ NdArrayRef RandA::proc(KernelEvalContext* ctx, const Shape& shape) const {
                               PrgState::GenPrssCtrl::Third);   
 
     NdArrayView<std::array<el_t, 3>> _out(out);
-
     pforeach(0, out.numel(), [&](int64_t idx) {
       // Comparison only works for [-2^(k-2), 2^(k-2)).
       // TODO: Move this constraint to upper layer, saturate it here.
@@ -148,7 +51,6 @@ NdArrayRef RandA::proc(KernelEvalContext* ctx, const Shape& shape) const {
       _out[idx][2] = r2[idx] >> 2;
     });
   });
-
   return out;
 }
 
@@ -165,18 +67,15 @@ NdArrayRef A2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
     NdArrayRef out(makeType<Pub2kTy>(field), in.shape());
     NdArrayView<pshr_el_t> _out(out);
     NdArrayView<ashr_t> _in(in);
-
     std::vector<ashr_el_t> x3(numel);
 
     pforeach(0, numel, [&](int64_t idx) { x3[idx] = _in[idx][2]; });
-    
     // Pass the third share to previous party
     auto x4 = comm->rotate<ashr_el_t>(x3, "a2p");  // comm => 1, k
 
     pforeach(0, numel, [&](int64_t idx) {
       _out[idx] = _in[idx][0] + _in[idx][1] + _in[idx][2] + x4[idx];
     });
-
     return out;
   });
 }
@@ -186,10 +85,8 @@ NdArrayRef A2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
 NdArrayRef P2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   auto* comm = ctx->getState<Communicator>();
-
   const auto* in_ty = in.eltype().as<Pub2kTy>();
   const auto field = in_ty->field();
-
   auto rank = comm->getRank();
 
   return DISPATCH_ALL_FIELDS(field, [&]() {
@@ -212,7 +109,6 @@ NdArrayRef P2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
     std::vector<ashr_el_t> r0(in.numel());
     std::vector<ashr_el_t> r1(in.numel());
     std::vector<ashr_el_t> r2(in.numel());
-
     std::vector<ashr_el_t> s0(in.numel());
     std::vector<ashr_el_t> s1(in.numel());
     std::vector<ashr_el_t> s2(in.numel());
@@ -223,7 +119,7 @@ NdArrayRef P2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
     prg_state->fillPrssTuple<ashr_el_t>(nullptr, r1.data(), nullptr, r1.size(),
                               PrgState::GenPrssCtrl::Second); 
     prg_state->fillPrssTuple<ashr_el_t>(nullptr, nullptr, r2.data(), r2.size(),
-                              PrgState::GenPrssCtrl::Third);                                                   
+                              PrgState::GenPrssCtrl::Third);    
 
     for (int64_t idx = 0; idx < in.numel(); idx++) {
       s0[idx] = r0[idx] - r1[idx];
@@ -233,19 +129,11 @@ NdArrayRef P2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
     s2 = comm->rotate<ashr_el_t>(s1, "p2a.zero");
 
     for (int64_t idx = 0; idx < in.numel(); idx++) {
-      // printf(" My rank = %zu, share = (%llu, %llu, %llu)", comm->getRank(), (unsigned long long)s0[idx], (unsigned long long)s1[idx], (unsigned long long)s2[idx]);
-      // if(comm->getRank() == 0 && idx == 0){
-      //   printf(" My rank = %zu, share = %llu\n", comm->getRank(), (unsigned long long)(~(s1[idx] + s2[idx])));
-      // }
-      // if(comm->getRank() == 2 && idx == 0){
-      //   printf(" My rank = %zu, share = %llu\n", comm->getRank(), (unsigned long long)(-s1[idx] - s2[idx]));
-      // }
       _out[idx][0] += s0[idx];
       _out[idx][1] += s1[idx];
       _out[idx][2] += s2[idx];
     }
 #endif
-
     return out;
   });
 }
@@ -265,7 +153,6 @@ NdArrayRef A2V::proc(KernelEvalContext* ctx, const NdArrayRef& in,
 
     if (comm->getRank() == rank) {
       auto x4 = comm->recv<ashr_el_t>(comm->nextRank(), "a2v");  // comm => 1, k
-                                                                 //
       NdArrayRef out(out_ty, in.shape());
       NdArrayView<vshr_el_t> _out(out);
 
@@ -273,8 +160,8 @@ NdArrayRef A2V::proc(KernelEvalContext* ctx, const NdArrayRef& in,
         _out[idx] = _in[idx][0] + _in[idx][1] + _in[idx][2] + x4[idx];
       });
       return out;
-
-    } else if (comm->getRank() == (rank + 1) % 4) {
+    }
+    else if (comm->getRank() == (rank + 1) % 4) {
       std::vector<ashr_el_t> x3(in.numel());
 
       pforeach(0, in.numel(), [&](int64_t idx) { x3[idx] = _in[idx][2]; });
@@ -282,24 +169,17 @@ NdArrayRef A2V::proc(KernelEvalContext* ctx, const NdArrayRef& in,
       comm->sendAsync<ashr_el_t>(comm->prevRank(), x3,
                                  "a2v");  // comm => 1, k
       return makeConstantArrayRef(out_ty, in.shape());
-    } else {
+    } 
+    else {
       return makeConstantArrayRef(out_ty, in.shape());
     }
   });
 }
 
-
-
-// /////////////////////////////////////////////////
-// V2A
-// In aby3, no use of prg, the dealer just distribute shr1 and shr2, set shr3 = 0
-// /////////////////////////////////////////////////
 NdArrayRef V2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   auto* comm = ctx->getState<Communicator>();
-
   const auto* in_ty = in.eltype().as<Priv2kTy>();
   const auto field = in_ty->field();
-
   size_t owner_rank = in_ty->owner();
 
   return DISPATCH_ALL_FIELDS(field, [&]() {
@@ -311,20 +191,12 @@ NdArrayRef V2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
     if (comm->getRank() == owner_rank) {
       auto splits = ring_rand_additive_splits(in, 3);
-      // send (shr2, shr3) to next party
-      //      (shr3, shr1) to next next party
-      //      (shr1, shr2) to prev party
-      // shr4 = 0
-
-      comm->sendAsync((owner_rank + 1) % 4, splits[1], "v2a 1");  // comm => 1, k
-      comm->sendAsync((owner_rank + 1) % 4, splits[2], "v2a 2");  // comm => 1, k
-
-      comm->sendAsync((owner_rank + 2) % 4, splits[2], "v2a 1");  // comm => 1, k
-      comm->sendAsync((owner_rank + 2) % 4, splits[0], "v2a 2");  // comm => 1, k
-
-      comm->sendAsync((owner_rank + 3) % 4, splits[0], "v2a 1");  // comm => 1, k
-      comm->sendAsync((owner_rank + 3) % 4, splits[1], "v2a 2");  // comm => 1, k
-
+      comm->sendAsync((owner_rank + 1) % 4, splits[1], "v2a 1");  
+      comm->sendAsync((owner_rank + 1) % 4, splits[2], "v2a 2"); 
+      comm->sendAsync((owner_rank + 2) % 4, splits[2], "v2a 1");  
+      comm->sendAsync((owner_rank + 2) % 4, splits[0], "v2a 2"); 
+      comm->sendAsync((owner_rank + 3) % 4, splits[0], "v2a 1"); 
+      comm->sendAsync((owner_rank + 3) % 4, splits[1], "v2a 2");  
 
       NdArrayView<ashr_el_t> _s0(splits[0]);
       NdArrayView<ashr_el_t> _s1(splits[1]);
@@ -337,8 +209,8 @@ NdArrayRef V2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
       });
     } 
     else if (comm->getRank() == (owner_rank + 1) % 4) {
-      auto x1 = comm->recv<ashr_el_t>((comm->getRank() + 3) % 4, "v2a 1");  // comm => 1, k
-      auto x2 = comm->recv<ashr_el_t>((comm->getRank() + 3) % 4, "v2a 2");  // comm => 1, k
+      auto x1 = comm->recv<ashr_el_t>((comm->getRank() + 3) % 4, "v2a 1");  
+      auto x2 = comm->recv<ashr_el_t>((comm->getRank() + 3) % 4, "v2a 2");
       pforeach(0, in.numel(), [&](int64_t idx) {
         
         _out[idx][0] = x1[idx];
@@ -347,16 +219,18 @@ NdArrayRef V2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
       });
     } 
     else if (comm->getRank() == (owner_rank + 2) % 4) {
-      auto x3 = comm->recv<ashr_el_t>((comm->getRank() + 2) % 4, "v2a 1");  // comm => 1, k
-      auto x1 = comm->recv<ashr_el_t>((comm->getRank() + 2) % 4, "v2a 2");  // comm => 1, k
+      auto x3 = comm->recv<ashr_el_t>((comm->getRank() + 2) % 4, "v2a 1"); 
+      auto x1 = comm->recv<ashr_el_t>((comm->getRank() + 2) % 4, "v2a 2"); 
+
       pforeach(0, in.numel(), [&](int64_t idx) {
         _out[idx][0] = x3[idx];
         _out[idx][1] = 0;
         _out[idx][2] = x1[idx];
       });
     } else {
-      auto x1 = comm->recv<ashr_el_t>((comm->getRank() + 1) % 4, "v2a 1");  // comm => 1, k
-      auto x2 = comm->recv<ashr_el_t>((comm->getRank() + 1) % 4, "v2a 2");  // comm => 1, k
+      auto x1 = comm->recv<ashr_el_t>((comm->getRank() + 1) % 4, "v2a 1"); 
+      auto x2 = comm->recv<ashr_el_t>((comm->getRank() + 1) % 4, "v2a 2"); 
+
       pforeach(0, in.numel(), [&](int64_t idx) {
         _out[idx][0] = 0;
         _out[idx][1] = x1[idx];
@@ -367,7 +241,6 @@ NdArrayRef V2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
     return out;
   });
 }
-
 
 NdArrayRef NegateA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const auto* in_ty = in.eltype().as<AShrTy>();
@@ -451,7 +324,6 @@ NdArrayRef AddAA::proc(KernelEvalContext*, const NdArrayRef& lhs,
   });
 }
 
-
 ////////////////////////////////////////////////////////////////////
 // multiply family
 ////////////////////////////////////////////////////////////////////
@@ -484,7 +356,7 @@ NdArrayRef MulAP::proc(KernelEvalContext*, const NdArrayRef& lhs,
 NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
                        const NdArrayRef& rhs) const {
   const auto field = lhs.eltype().as<Ring2k>()->field();
-   auto* comm = ctx->getState<Communicator>();
+  auto* comm = ctx->getState<Communicator>();
   auto rank = comm->getRank();
   auto next_rank = (rank + 1) % 4;
 
@@ -559,7 +431,6 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
   auto rank = comm->getRank();
   auto next_rank = (rank + 1) % 4;
 
-  
   auto M = x.shape()[0];
   auto K = x.shape()[1];
   auto N = y.shape()[1];
@@ -568,7 +439,6 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
     using shr_t = std::array<el_t, 3>;
 
     NdArrayRef out(makeType<AShrTy>(field), {M, N});
-
     NdArrayView<shr_t> _x(x);
     NdArrayView<shr_t> _y(y);
     NdArrayView<shr_t> _out(out);
@@ -590,6 +460,7 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
           a[i][idx] = 0;
         }
     });
+
     pforeach(0, M, [&](int64_t i) {
         for(int64_t j = 0; j < N; j++) {
           for(int64_t k = 0; k < K; k++) {
@@ -602,6 +473,7 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
           }
         }                
     });
+
     JointInputArith<el_t>(ctx, a[1], out, 0, 1, 3, 2);
     JointInputArith<el_t>(ctx, a[2], out, 1, 2, 0, 3);
     JointInputArith<el_t>(ctx, a[3], out, 2, 3, 1, 0);
@@ -610,8 +482,6 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
     JointInputArith<el_t>(ctx, a[4], out, 1, 3, 2, 0);
 
     return out;
-
-
   });
 }
 
@@ -639,24 +509,15 @@ NdArrayRef LShiftA::proc(KernelEvalContext*, const NdArrayRef& in,
   });
 }
 
-void printBinary(unsigned long long x, size_t k) {
-    for (int i = k - 1; i >= 0; --i) {
-        unsigned long long bit = (x >> i) & 1ULL;
-        printf("%llu", bit);
-    }
-}
-
 NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t bits,
                   SignType sign) const {
-  (void)sign;  // TODO: optimize me.
+  (void)sign;
 
   const auto field = in.eltype().as<Ring2k>()->field();
   const size_t k = SizeOf(field) * 8;
   auto* prg_state = ctx->getState<PrgState>();
   auto* comm = ctx->getState<Communicator>();
   auto rank = comm->getRank();
-
-
 
   return DISPATCH_ALL_FIELDS(field, [&]() {
     using el_t = ring2k_t;
@@ -687,6 +548,7 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
           _out[idx][0] = 0;
           _out[idx][1] = 0;
           _out[idx][2] = 0;
+
           _rb_shr[idx][0] = 0;
           _rb_shr[idx][1] = 0;
           _rb_shr[idx][2] = 0;
@@ -700,16 +562,13 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
           _sc_shr[idx][0] = 0;
           _sc_shr[idx][1] = 0;
           _sc_shr[idx][2] = 0;
-
     });
-    
 
     if(rank == (size_t)0){ 
         // -------------------------------------
         // Step 1: Generate r and rb, rc
         // -------------------------------------
         // locally compute PRG[1] (unknown to P2), PRG[2] (unknown to P3)
-        
         // std::vector<el_t> r0(output.numel());
         std::vector<el_t> r1(out.numel());
         std::vector<el_t> r2(out.numel());
@@ -742,7 +601,6 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
         // Step 3: compute [x] + [r]
         //          [r] = r0 + r1 + r2 + r3, only r1 and r2 are non-zero
         // -------------------------------------
-        
         pforeach(0, out.numel(), [&](int64_t idx) {
           _masked_input[idx][0] = _in[idx][0]; // r0 = 0
           _masked_input[idx][1] = _in[idx][1] + r1[idx];
@@ -754,8 +612,6 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
         //         by P1 sends s1 to P2
         //            P2 sends s2 to P3
         // -------------------------------------
-
-
         // -------------------------------------
         // Step 5: compute sb = s{k-1} and sc = s{k-2}.....s{m}
         // -------------------------------------
@@ -987,10 +843,7 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
           _out[idx][2] = _sc_shr[idx][2] - _rc_shr[idx][2] + (_overflow[idx][2] << (k - bits - 1));
         });                                    
     }
-
     return out;
   });
 }
-
-
 } // namespace spu::mpc::fantastic4

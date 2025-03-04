@@ -51,7 +51,7 @@ def emul_rsvdPCA(mode: emulation.Mode.MULTIPROCESS):
     try:
         # bandwidth and latency only work for docker mode
         conf_path = "sml/decomposition/emulations/3pc.json"
-        emulator = emulation.Emulator(conf_path, mode, bandwidth=300, latency=20)
+        emulator = emulation.Emulator(emulation.CLUSTER_FANTASTIC4_4PC, mode, bandwidth=300, latency=20)
         emulator.up()
 
         # Create a simple dataset

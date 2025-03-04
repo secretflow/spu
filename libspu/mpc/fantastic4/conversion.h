@@ -1,5 +1,7 @@
 #pragma once
 
+#define USE_OPTIMIZED
+
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/mpc/kernel.h"
 
@@ -27,15 +29,6 @@ class A2B : public UnaryKernel {
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
 
-// class B2ASelector : public UnaryKernel {
-//  public:
-//   static constexpr const char* kBindName() { return "b2a"; }
-
-//   Kind kind() const override { return Kind::Dynamic; }
-
-//   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
-// };
-
 class B2A : public UnaryKernel {
  public:
   static constexpr const char* kBindName() { return "b2a"; }
@@ -56,46 +49,24 @@ class B2A : public UnaryKernel {
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
 
-// // Reference:
-// // 5.4.1 Semi-honest Security
-// // https://eprint.iacr.org/2018/403.pdf
-// class B2AByOT : public UnaryKernel {
-//  public:
-//   static constexpr const char* kBindName() { return "b2a"; }
+class MsbA2B : public UnaryKernel {
+ public:
+  static constexpr const char* kBindName() { return "msb_a2b"; }
 
-//   ce::CExpr latency() const override { return ce::Const(2); }
+  ce::CExpr latency() const override {
+    // 1 * carry : log(k) + 1
+    // 1 * rotate: 1
+    return Log(ce::K()) + 1 + 1;
+  }
 
-//   // Note: when nbits is large, OT method will be slower then circuit method.
-//   ce::CExpr comm() const override {
-//     return 2 * ce::K() * ce::K()  // the OT
-//            + ce::K()              // partial send
-//         ;
-//   }
+  ce::CExpr comm() const override {
+    // 1 * carry : k + 2 * k + 16 * 2
+    // 1 * rotate: k
+    return ce::K() + 2 * ce::K() + ce::K() + 32;
+  }
 
-//   // FIXME: bypass unittest.
-//   Kind kind() const override { return Kind::Dynamic; }
-
-//   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
-// };
-
-// class MsbA2B : public UnaryKernel {
-//  public:
-//   static constexpr const char* kBindName() { return "msb_a2b"; }
-
-//   ce::CExpr latency() const override {
-//     // 1 * carry : log(k) + 1
-//     // 1 * rotate: 1
-//     return Log(ce::K()) + 1 + 1;
-//   }
-
-//   ce::CExpr comm() const override {
-//     // 1 * carry : k + 2 * k + 16 * 2
-//     // 1 * rotate: k
-//     return ce::K() + 2 * ce::K() + ce::K() + 32;
-//   }
-
-//   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
-// };
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
+};
 
 class EqualAA : public BinaryKernel {
  public:
@@ -117,5 +88,13 @@ class EqualAP : public BinaryKernel {
                   const NdArrayRef& rhs) const override;
 };
 
+class CommonTypeV : public Kernel {
+  public:
+   static constexpr const char* kBindName() { return "common_type_v"; }
+ 
+   Kind kind() const override { return Kind::Dynamic; }
+ 
+   void evaluate(KernelEvalContext* ctx) const override;
+ };
 
 }  // namespace spu::mpc::fantastic4

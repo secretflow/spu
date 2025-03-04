@@ -15,7 +15,7 @@ Type Fantastic4Io::getShareType(Visibility vis, int owner_rank) const {
   if (vis == VIS_PUBLIC) {
     return makeType<Pub2kTy>(field_);
   } else if (vis == VIS_SECRET) {
-    if (owner_rank >= 0 && owner_rank <= 2) {
+    if (owner_rank >= 0 && owner_rank <= 3) {
       return makeType<Priv2kTy>(field_, owner_rank);
     } else {
       return makeType<AShrTy>(field_);

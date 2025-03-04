@@ -21,6 +21,7 @@ filegroup(
         "2pc_semi2k.json",
         "3pc.json",
         "3pc_colocated.json",
+        "4pc.json",
         "ds_breast_cancer_basic.json",
         "ds_mock_regression_basic.json",
     ],

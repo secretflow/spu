@@ -21,6 +21,7 @@ spu_cc_library(
         ":boolean",
         ":conversion",
         ":value",
+        ":jmp",
         "//libspu/mpc/standard_shape:protocol",
     ],
 )
@@ -30,6 +31,7 @@ spu_cc_test(
     srcs = ["protocol_test.cc"],
     deps = [
         ":protocol",
+        ":jmp",
         "//libspu/mpc:ab_api_test",
         "//libspu/mpc:api_test",
     ],
@@ -53,6 +55,7 @@ spu_cc_library(
     deps = [
         ":type",
         ":value",
+        ":jmp",
         "//libspu/core:trace",
         "//libspu/mpc:ab_api",
         "//libspu/mpc/common:communicator",
@@ -67,6 +70,7 @@ spu_cc_library(
     deps = [
         ":type",
         ":value",
+        ":jmp",
         "//libspu/mpc/common:communicator",
         "//libspu/mpc/common:prg_state",
     ],
@@ -88,11 +92,23 @@ spu_cc_library(
     hdrs = ["conversion.h"],
     deps = [
         ":value",
+        ":jmp",
         "//libspu/mpc:ab_api",
         "//libspu/mpc/common:communicator",
         "//libspu/mpc/common:prg_state",
         "//libspu/mpc/utils:circuits",
         "@yacl//yacl/utils:platform_utils",
+    ],
+)
+
+spu_cc_library(
+    name = "jmp",
+    srcs = ["jmp.cc"],
+    hdrs = ["jmp.h"],
+    deps = [
+        ":value",
+        "//libspu/mpc/common:communicator",
+        "//libspu/mpc/common:prg_state",
     ],
 )
 

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "libspu/mpc/io_interface.h"
-
+#include "value.h"
 namespace spu::mpc::fantastic4 {
 
 class Fantastic4Io final : public BaseIo {

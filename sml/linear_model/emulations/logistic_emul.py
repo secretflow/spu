@@ -97,7 +97,7 @@ if __name__ == "__main__":
     try:
         # bandwidth and latency only work for docker mode
         emulator = emulation.Emulator(
-            emulation.CLUSTER_ABY3_3PC,
+            emulation.CLUSTER_FANTASTIC4_4PC,
             emulation.Mode.MULTIPROCESS,
             bandwidth=300,
             latency=20,
