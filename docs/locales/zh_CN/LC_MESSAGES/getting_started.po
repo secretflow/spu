@@ -358,14 +358,14 @@ msgstr ""
 
 #: ../../getting_started/introduction.rst:2
 msgid "What is SPU?"
-msgstr ""
+msgstr "SPU 是什么？"
 
 #: ../../getting_started/introduction.rst:4
 msgid ""
 "SPU (Secure Processing Unit) is a domain-specific **compiler and runtime "
 "suite**, that aims to provide a **secure computation** service with "
 "**provable security**."
-msgstr ""
+msgstr "SPU （安全处理单元） 是一种特定领域的编译器和运行时套件，并且其旨在提供可验证的安全性的安全计算服务。"
 
 #: ../../getting_started/introduction.rst:6
 msgid ""
@@ -377,7 +377,7 @@ msgid ""
 "by SPU runtime. Currently, SPU team highly recommends using `JAX "
 "<https://github.com/google/jax>`_ and its sibling - `Flax "
 "<https://github.com/google/flax>`_."
-msgstr ""
+msgstr "SPU 编译器采用 XLA 作为前端中间表示，因此支持 TensorFlow、JAX 和 PyTorch 的 XLA IR 输出。SPU 内部会将 XLA 编译为 MPC 专属的 MLIR，并由运行时解释执行。SPU 团队推荐使用 JAX 及其姊妹框架 Flax。"
 
 #: ../../getting_started/introduction.rst:8
 msgid ""
@@ -387,7 +387,7 @@ msgid ""
 "extensible**, protocol developers can hack into MPC protocols with "
 "minimum effort and let the SPU compiler/runtime translate and interpret "
 "complicated frontend logic on it."
-msgstr ""
+msgstr "SPU 运行时（后端）实现了多种多方计算协议以提供安全性证明。SPU 运行时设计高度可扩展，协议开发者能够便捷地定制开发多方计算协议，并使 SPU 编译器/运行时翻译和解释复杂的前端逻辑。"
 
 #: ../../getting_started/introduction.rst:14
 msgid "High-level system architecture of SPU"
