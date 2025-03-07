@@ -377,7 +377,7 @@ msgid ""
 "by SPU runtime. Currently, SPU team highly recommends using `JAX "
 "<https://github.com/google/jax>`_ and its sibling - `Flax "
 "<https://github.com/google/flax>`_."
-msgstr "SPU 编译器使用 XLA 作为其前端中间层表示，因此支持 TensorFlow、JAX 和 PyTorch 的 XLA IR 输出。SPU 内部会将 XLA 编译为 MPC 专属的 MLIR，并由运行时解释执行。SPU 团队推荐使用 JAX 及其姊妹框架 Flax。"
+msgstr "SPU 编译器使用 XLA 作为其前端中间层表示，因此支持 TensorFlow、JAX 和 PyTorch 的 XLA IR 输出。SPU 内部会将 XLA 编译为 MPC 专属的 MLIR 方言，并由运行时解释执行。SPU 团队推荐使用 JAX 及其姊妹框架 Flax。"
 
 #: ../../getting_started/introduction.rst:8
 msgid ""
