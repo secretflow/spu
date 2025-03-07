@@ -44,6 +44,7 @@ def update_cpp_file(intrinsic_path, intrinsic_name):
         intrinsic_path,
         "..",
         "..",
+        "src",
         "libspu",
         "device",
         "pphlo",
