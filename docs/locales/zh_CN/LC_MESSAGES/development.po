@@ -447,13 +447,13 @@ msgstr ""
 
 #: ../../development/compiler.rst:2
 msgid "SPU Compiler"
-msgstr ""
+msgstr "SPU 编译器"
 
 #: ../../development/compiler.rst:4
 msgid ""
 "The SPU compiler aims to provide first-party compiler support from the "
 "different ML frameworks to SPU runtime."
-msgstr ""
+msgstr "SPU 编译器旨在为 SPU 运行时提供来自不同 ML 框架的第一方编译器支持。"
 
 #: ../../development/compiler.rst:7
 msgid ""
@@ -462,7 +462,7 @@ msgid ""
 "address software fragmentation, improve compilation for heterogeneous "
 "hardware, significantly reduce the cost of building domain specific "
 "compilers, and aid in connecting existing compilers together."
-msgstr ""
+msgstr "MLIR：MLIR 项目是一种构建可重复使用、可扩展的编译器基础架构的新方法。MLIR 旨在解决软件碎片化问题、改进异构硬件的编译、大幅降低构建特定领域编译器的成本，并帮助将现有编译器连接在一起。"
 
 #: ../../development/compiler.rst:9
 msgid ""
@@ -470,13 +470,13 @@ msgid ""
 " XLA as the middle layer, mapping from platform frameworks like PyTorch, "
 "JAX, and TensorFlow into XLA and then progressively lowering down to "
 "their target hardware."
-msgstr ""
+msgstr "XLA：多家供应商使用 XLA 作为中间层，从 PyTorch、JAX 和 TensorFlow 等平台框架映射到 XLA，然后逐步汇聚到目标硬件。"
 
 #: ../../development/compiler.rst:11
 msgid ""
 "`MLIR-HLO <https://github.com/tensorflow/mlir-hlo>`_ MLIR-HLO project "
 "connects XLA into MLIR world."
-msgstr ""
+msgstr "MLIR-HLO：MLIR-HLO 项目将 XLA 连接到 MLIR。"
 
 #: ../../development/compiler.rst:13
 msgid ""
@@ -486,11 +486,11 @@ msgid ""
 "SPU. For current hardware vendors, they just need to add LLVM target "
 "support instead of implementing separate Clang/C++ frontends. MLIR-HLO is"
 " achieving similar goal."
-msgstr ""
+msgstr "将不同前端框架的规范汇聚到 MLIR 生态系统，将为硬件供应商提供有效的帮助，使他们能够专注于其独特价值，而不是为 SPU 实现另一个前端。对于当前的硬件供应商，他们只需添加 LLVM 支持，而不是实现单独的 Clang/C++ 前端。MLIR-HLO 正在实现类似的目标。"
 
 #: ../../development/compiler.rst:17
 msgid "All the roads from ML frameworks to SPU"
-msgstr ""
+msgstr "ML 框架到 SPU 的层次结构"
 
 #: ../../development/design_device.rst:2
 msgid "Design: generic device"
@@ -3013,4 +3013,21 @@ msgstr ""
 #: ../../development/visibility_inference_rule.rst:123
 msgid "visibility(result) == common_visibility(operand, source, init)"
 msgstr ""
+
+#~ msgid ""
+#~ "Try **Larger** field(``FM128``) first. Larger"
+#~ " field can accommodate larger number "
+#~ "when fxp is fixed, so overflow can"
+#~ " be avoided. But it will drag "
+#~ "down the efficiency of **nearly all "
+#~ "op** dramatically."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "When numerator is very large(:math:`>2^{28}`"
+#~ " for ``FM64`` and ``fxp=18``), then "
+#~ "the integer part may overflow under "
+#~ "large probability, and this brings huge"
+#~ " error."
+#~ msgstr ""
 
