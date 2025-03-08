@@ -1991,7 +1991,7 @@ msgid ""
 msgstr "随机梯度下降法（SGD）是一个著名的优化算法，它沿着负梯度方向来更新模型的参数。然而，这种方法要求使用者仔细地选择超参数。"
 "当然，网格搜索方法是一个解决该问题的方法，但是该方法在实际场景中是不实际的，因为训练的时间花费非常大。"
 "例如，在 credit card 数据集上使用随机梯度下降法训练线性回归模型时（批量大小为 4096，学习率为 0.1），"
-"我们发现应该使用小的批量大小和学习率，否则在 10 个轮次中我们会得到较大的损失值和强烈波动的 auc 值（随机选择 10000 个样本作为测试数据集）。"
+"我们发现，若批量大小和学习率设置不当，在 10 个轮次内损失值会偏大，且 AUC 值波动剧烈。（随机选择 10000 个样本作为测试数据集）。"
 
 #: ../../development/policy_sgd_insight.rst:12
 msgid ""
@@ -2013,7 +2013,7 @@ msgstr "在我们的全面的实验下，我们发现朴素 SGD 方法的两个�
 
 #: ../../development/policy_sgd_insight.rst:19
 msgid "slow update(because of small learning_rate) at the beginning."
-msgstr "在起始阶段，由于较小的学习率，参数更新较慢。"
+msgstr "起始阶段，参数更新缓慢是由于学习率较小造成的。"
 
 #: ../../development/policy_sgd_insight.rst:21
 msgid "vibration happens when near to optimal point."
@@ -2048,7 +2048,7 @@ msgid ""
 "1. Adaptive learning rate scaling mechanism: in first epoch, we force the"
 " weight move unit-norm in gradient direction and record "
 ":math:`\\frac{1}{||grad||_2}` as scale factor for this batch."
-msgstr "自适应学习率缩放机制：在第一个训练周期（epoch）中，我们强制权重在梯度方向上移动单位范数，并将 "
+msgstr "自适应学习率缩放机制：在第一个轮次（epoch）中，我们强制权重在梯度方向上移动单位范数，并将 "
 ":math:`\\frac{1}{||grad||_2}` 记录为该批次的缩放因子。"
 
 #: ../../development/policy_sgd_insight.rst:38
@@ -2058,9 +2058,8 @@ msgid ""
 "based(use Taylor expansion to avoid invoking time-consuming op like "
 "`exp`, `log`) and weight based, and choose the latter in our final "
 "implementation."
-msgstr "学习率衰减和早停策略：我们采用步长衰减（step - decay）策略来进行学习率衰减。"
-"至于早停方法，我们比较了两种策略，一种是基于损失的策略（使用泰勒展开式来避免调用像指数函数、对数函数这类耗时的运算），"
-"另一种是基于权重的策略，最终在实现中选择了后者。"
+msgstr "学习率衰减与早停策略：我们采用步长衰减（step-decay）策略进行学习率衰减。"
+"关于早停，我们比较了基于损失（利用泰勒展开避免指数、对数等耗时运算）和基于权重的两种策略，最终选择了后者。"
 
 #: ../../development/policy_sgd_insight.rst:44
 msgid "Experiments"
@@ -2192,11 +2191,10 @@ msgid ""
 " for naive_sgd). But for policy_sgd, it's often harmless to use larger "
 "batch_size(2048 for these experiments),and we set learning_rate decay a "
 "half every 2 epochs."
-msgstr "我们对比 naive-sgd（v1）和 policy-sgd（v2）的总运行时间。"
-"对于 naive-sgd，我们遵循 “稳妥策略”（常用于明文机器学习中）：采用较小的学习率，比如 0.1，以及较小的批量大小，如 1024"
-"（如果使用 2048，那么部分数据将无法收敛）。而且，很难为 naive-sgd 确定一个合适的默认值来很好地实现早停（更糟糕的是，如果设置了不好的值，可能会导致 auc 大幅下降）。"
-"为了避免繁琐的网格搜索，所以对于 naive-sgd，运行时不采用任何学习率衰减（这是针对 naive-sgd 推荐的做法）。但对于 policy-sgd 而言，"
-"使用较大的批量大小通常是无害的（在这些实验中采用 2048），并且我们设置每 2 个训练周期将学习率减半。"
+msgstr "我们对比了 naive-sgd (v1) 和 policy-sgd (v2) 的总运行时间。"
+"对于 naive-sgd，我们遵循“稳妥策略”（常用于明文机器学习）：采用较小的学习率（如 0.1）和较小的批量大小（如 1024，若使用 2048 则部分数据无法收敛）。"
+"此外，naive-sgd 难以确定合适的默认早停值（设置不当可能导致 AUC 大幅下降）。为避免繁琐的网格搜索，naive-sgd 运行时不采用任何学习率衰减（推荐做法）。"
+"但对于 policy-sgd，使用较大的批量大小通常无害（本实验中为 2048），且每 2 个轮次学习率减半。"
 
 #: ../../development/policy_sgd_insight.rst:93
 msgid ""
@@ -2214,9 +2212,9 @@ msgid ""
 "means policy_sgd meets the stop criterion based on loss, similar for "
 "purple line) after the model converges. Besides, checking the auc of "
 "stopping time, it has very low gap(<0.01) between baseline."
-msgstr "首先，我们发现对于 naive-sgd（v1），在四个数据集上没有一组在 20 轮内满足早停条件（所以我们没有在图中标出）。"
-"然而，对于 policy-sgd（v2），它在四个数据集上总是可以在模型收敛后“早停”（图中的红色点划线表示满足给予 loss 的早停标准，紫色表示 weight 的早停标准）。"
-"并且，检查早停时的 auc 的值，与基线的差距非常小（<0.01）。"
+msgstr "首先，我们发现 naive-sgd (v1) 在四个数据集上均未能在 20 轮内满足早停条件（因此图中未标出）。"
+"而 policy-sgd (v2) 在所有四个数据集上均能在模型收敛后实现“早停”（红色点划线表示满足基于损失的早停标准，紫色表示基于权重的早停标准）。"
+"此外，早停时的 AUC 值与基线差距极小（<0.01）。"
 
 #: ../../development/policy_sgd_insight.rst:103
 msgid ""
