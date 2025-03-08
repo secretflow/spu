@@ -299,7 +299,7 @@ msgstr "基本概念"
 msgid ""
 "SPU has quite a different programming model than CPU/GPU, this guide "
 "introduces the basic concepts."
-msgstr "SPU 的编程模型与 CPU/GPU 存在显著差异，本文档将阐述其核心概念。"
+msgstr "本文档旨在阐述 SPU 的核心概念，SPU 的编程模型与 CPU/GPU 存在显著差异。"
 
 #: ../../development/basic_concepts.rst:7
 msgid "Machine model"
@@ -324,7 +324,7 @@ msgid ""
 "provided by a separate party, finally, the output could be received by "
 "another party. So **SPU is born to be used in a distributed context**. It"
 " looks like:"
-msgstr "SPU 的显著特征在于：输入数据来源于多方，代码可能由独立参与方提供，计算结果亦可由不同参与方接收。因此，SPU 专为分布式场景设计，其交互模型如下："
+msgstr "SPU 的显著特征在于：输入数据来源于多方，代码可能由独立参与方提供，计算结果亦可由不同参与方接收。因此，SPU 专为分布式场景设计，其交互模型如下。"
 
 #: ../../development/basic_concepts.rst:20
 msgid "multi-user and SPU"
