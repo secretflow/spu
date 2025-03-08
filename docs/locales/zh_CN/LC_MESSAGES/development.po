@@ -1842,108 +1842,108 @@ msgstr ""
 
 #: ../../development/pipeline.rst:2
 msgid "SPU Pipeline"
-msgstr ""
+msgstr "SPU 管道"
 
 #: ../../development/pipeline.rst:4
 msgid ""
 "Recall that SPU could be treated as a :ref:`virtual device "
 "<development/basic_concepts:Machine model>`. When working with a (virtual"
 " or physical) device, we need several steps."
-msgstr ""
+msgstr "前面提到，SPU 可以被视为虚拟设备。使用（虚拟或物理）设备时，我们需要几个步骤。"
 
 #: ../../development/pipeline.rst:6
 msgid "infeed code to it"
-msgstr ""
+msgstr "输入代码"
 
 #: ../../development/pipeline.rst:7
 msgid "infeed data to it"
-msgstr ""
+msgstr "输入数据"
 
 #: ../../development/pipeline.rst:8
 msgid "trigger it to run"
-msgstr ""
+msgstr "触发运行"
 
 #: ../../development/pipeline.rst:9
 msgid "get result from it"
-msgstr ""
+msgstr "获取结果"
 
 #: ../../development/pipeline.rst:11
 msgid "This page describes details of each step."
-msgstr ""
+msgstr "本页将描述每个步骤的详细信息。"
 
 #: ../../development/pipeline.rst:16
 msgid ""
 "Before diving into the details, let's first take a closer look of SPU "
 "pipeline, it's something like this:"
-msgstr ""
+msgstr "在深入了解细节之前，让我们先仔细看看 SPU 管道，它是这样的："
 
 #: ../../development/pipeline.rst:21
 msgid "code and data pipeline"
-msgstr ""
+msgstr "代码和数据管道"
 
 #: ../../development/pipeline.rst:24
 msgid "Compilation"
-msgstr ""
+msgstr "汇编"
 
 #: ../../development/pipeline.rst:26
 msgid "The vertical part depicts the compilation pipeline, from top to bottom."
-msgstr ""
+msgstr "垂直部分从上到下描绘了编译管道。"
 
 #: ../../development/pipeline.rst:28
 msgid "Programmer writes code in AI frameworks(like TensorFlow/JAX)."
-msgstr ""
+msgstr "程序员在 AI 框架（如 TensorFlow/JAX）中编写代码。"
 
 #: ../../development/pipeline.rst:29
 msgid "AI frontend traces the DAG, and emits as XLA IR."
-msgstr ""
+msgstr "AI frontend 跟踪 DAG，并以 XLA IR 形式发出。"
 
 #: ../../development/pipeline.rst:30
 msgid ""
 "SPU compiler takes XLA IR, and compiles it to SPU IR, the format that SPU"
 " runtime understands."
-msgstr ""
+msgstr "SPU 编译器接收 XLA IR，并将其编译为 SPU IR，即 SPU 运行时可以理解的格式。"
 
 #: ../../development/pipeline.rst:32
 msgid "For more details, please see :doc:`compiler` for details."
-msgstr ""
+msgstr "更多详细信息请参见 SPU 编译器详情。"
 
 #: ../../development/pipeline.rst:35
 msgid "Data pipeline"
-msgstr ""
+msgstr "数据管道"
 
 #: ../../development/pipeline.rst:37
 msgid "The horizontal part depicts the data pipeline, from left to right."
-msgstr ""
+msgstr "水平部分从左到右描绘数据管道。"
 
 #: ../../development/pipeline.rst:39
 msgid ""
 "Data providers use :ref:`SPU io <reference/py_api:Runtime IO>` module to "
 "encrypt input data."
-msgstr ""
+msgstr "数据提供者使用 SPU io 模块来加密输入数据。"
 
 #: ../../development/pipeline.rst:41
 msgid "For SPU MPC backend, *encrypt* means to split plaintext data into shares."
-msgstr ""
+msgstr "对于 SPU MPC 后端，加密意味着将明文数据分成几部分。"
 
 #: ../../development/pipeline.rst:42
 msgid "For floating-point data, encoding to fixed-point may be also required."
-msgstr ""
+msgstr "对于浮点数据，可能还需要编码为定点。"
 
 #: ../../development/pipeline.rst:44
 msgid ""
 "The encrypted data is sent to :ref:`SPU runtime <reference/py_api:Runtime"
 " Setup>`."
-msgstr ""
+msgstr "加密数据被发送到 SPU 运行时。"
 
 #: ../../development/pipeline.rst:45
 msgid ""
 "The output data is fetched by *result owner*, and decrypted by the "
 ":ref:`SPU io <reference/py_api:Runtime IO>` module."
-msgstr ""
+msgstr "输出数据由SPU io 模块解密后提供给数据获取者。"
 
 #: ../../development/pipeline.rst:49
 msgid "Just in time"
-msgstr ""
+msgstr "即时编译"
 
 #: ../../development/pipeline.rst:51
 msgid ""
@@ -1953,7 +1953,7 @@ msgid ""
 "<https://en.wikipedia.org/wiki/Ahead-of-time_compilation>`_. JIT may "
 "introduce more evaluation overhead, but it's really trivial in secure "
 "computation setting."
-msgstr ""
+msgstr "JIT 是即时编译 (Just-in-time compilation) 的缩写，通过这种方式，编译器可以比 AOT 模式获取更多信息，例如输入形状。JIT 可能会引入更多的评估开销，但在安全计算场景中这是微不足道的。"
 
 #: ../../development/pipeline.rst:53
 msgid ""
@@ -1964,13 +1964,13 @@ msgid ""
 "public known to all parties, the operation will be much faster. So we "
 "should *mark* as much data as possible to be *public* (if it doesn't need"
 " to be protected), and tell the compiler these information."
-msgstr ""
+msgstr "在 SPU 中，JIT 具有更多优势，因为如果后端引擎知道数据是可见的，那么它的速度可能会快几个数量级。例如，在将两方秘密数据相乘时，后端 MPC 运算可能涉及昂贵的三重运算，但当其中一方数据是所有各方都知道的公共数据时，运算会快得多。因此，我们应该将尽可能多的数据标记为公开（如果数据不需要保护），并告诉编译器这些信息。"
 
 #: ../../development/pipeline.rst:55
 msgid ""
 "So, SPU compilation normally happens after all data infeed is done, and "
 "`just in time` before the real evaluation."
-msgstr ""
+msgstr "因此，SPU 编译通常在所有数据输入完成后进行，并且在实际评估之前进行即时编译。"
 
 #: ../../development/policy_sgd_insight.rst:2
 msgid "Background: SGD in MPC-ML"
@@ -3013,4 +3013,21 @@ msgstr ""
 #: ../../development/visibility_inference_rule.rst:123
 msgid "visibility(result) == common_visibility(operand, source, init)"
 msgstr ""
+
+#~ msgid ""
+#~ "Try **Larger** field(``FM128``) first. Larger"
+#~ " field can accommodate larger number "
+#~ "when fxp is fixed, so overflow can"
+#~ " be avoided. But it will drag "
+#~ "down the efficiency of **nearly all "
+#~ "op** dramatically."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "When numerator is very large(:math:`>2^{28}`"
+#~ " for ``FM64`` and ``fxp=18``), then "
+#~ "the integer part may overflow under "
+#~ "large probability, and this brings huge"
+#~ " error."
+#~ msgstr ""
 
