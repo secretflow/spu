@@ -311,7 +311,7 @@ msgid ""
 "blackbox*, which accepts user's *code* and *data*, runs the computation, "
 "and returns result *data* to user. If we draw a picture to show the "
 "relationship between user and machine, it's something like this."
-msgstr "在传统 CPU 模型中，机器可视为一个算术黑箱，其接收用户的代码与数据，执行计算后返回结果数据。用户与机器的关系可示意如下："
+msgstr "在传统 CPU 模型中，机器可视为一个算术黑箱，其接收用户的代码与数据，执行计算后返回结果数据。用户与机器的关系可示意如下。"
 
 #: ../../development/basic_concepts.rst:13
 msgid "user and CPU"
