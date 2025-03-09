@@ -1989,7 +1989,7 @@ msgid ""
 "and learning_rate, else we get some loss or very strong vibration of auc "
 "within 10 epochs(we leave 10000 samples as test dataset randomly)."
 msgstr "随机梯度下降法（SGD）是一个著名的优化算法，它沿着负梯度方向来更新模型的参数。然而，这种方法要求使用者仔细地选择超参数。"
-"当然，网格搜索方法是一个解决该问题的方法，但是该方法在实际场景中是不实际的，因为训练的时间花费非常大。"
+"网格搜索虽然可以解决此问题，但在实际应用中训练耗时过长，因此并不实用。"
 "例如，在 credit card 数据集上使用随机梯度下降法训练线性回归模型时（批量大小为 4096，学习率为 0.1），"
 "我们发现，若批量大小和学习率设置不当，在 10 个轮次内损失值会偏大，且 AUC 值波动剧烈。（随机选择 10000 个样本作为测试数据集）。"
 
@@ -2036,7 +2036,7 @@ msgid ""
 "For SSLR, we provide an answer to the above question: policy-sgd(already "
 "implemented on `SSRegression` in Secretflow when setting "
 "`strategy=policy_sgd`)."
-msgstr "对于SSLR算法，我们已经在隐语 Secretflow 中实现了 policy-sgd 方法。（在 SSRegression中设置 strategy=policy_sgd）"
+msgstr "对于 SSLR 算法，我们已经在隐语 Secretflow 中实现了 policy-sgd 方法。（在 SSRegression 中设置 strategy=policy_sgd）"
 
 #: ../../development/policy_sgd_insight.rst:33
 msgid "The core of this optimizer consists of two parts:"
