@@ -552,6 +552,7 @@ struct ExecutableProto {
 // enum util func
 //////////////////////////////////////////////////////////////////////////
 std::string_view GetDataTypeName(DataType dtype);
+std::string_view GetPtTypeName(PtType pt_type);
 std::string_view GetVisibilityName(Visibility vis);
 std::string_view GetFieldTypeName(FieldType field);
 std::string_view GetProtocolKindName(ProtocolKind protocol);

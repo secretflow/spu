@@ -26,6 +26,10 @@ std::string_view GetDataTypeName(DataType dtype) {
   return magic_enum::enum_name(dtype);
 }
 
+std::string_view GetPtTypeName(PtType pt_type) {
+  return magic_enum::enum_name(pt_type);
+}
+
 std::string_view GetVisibilityName(Visibility vis) {
   return magic_enum::enum_name(vis);
 }
