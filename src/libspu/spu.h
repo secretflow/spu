@@ -423,7 +423,7 @@ struct RuntimeConfig {
                 int64_t fxp_fraction_bits = 0)
       : protocol(protocol),
         field(field),
-        fxp_fraction_bits(fxp_fraction_bits){};
+        fxp_fraction_bits(fxp_fraction_bits) {};
   RuntimeConfig(const RuntimeConfig& other) = default;
   explicit RuntimeConfig(const pb::RuntimeConfig& pb_conf);
 
@@ -563,6 +563,9 @@ std::string_view GetSigmoidModeName(RuntimeConfig::SigmoidMode mode);
 std::string_view GetBeaverTypeName(RuntimeConfig::BeaverType beaver_type);
 std::string_view GetSourceIRTypeName(SourceIRType ir_type);
 std::string_view GetXLAPrettyPrintKindName(XLAPrettyPrintKind pp_kind);
+
+// Return true if the str is a valid ProtocolKind name.
+bool ParseProtocolKind(std::string_view str, ProtocolKind* protocol);
 };  // namespace spu
 
 namespace std {

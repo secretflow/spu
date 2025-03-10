@@ -70,6 +70,15 @@ std::string_view GetXLAPrettyPrintKindName(XLAPrettyPrintKind kind) {
   return magic_enum::enum_name(kind);
 }
 
+bool ParseProtocolKind(std::string_view str, ProtocolKind* protocol) {
+  auto result = magic_enum::enum_cast<ProtocolKind>(str);
+  if (result.has_value()) {
+    *protocol = result.value();
+    return true;
+  }
+  return false;
+}
+
 void convertFromPB(const pb::RuntimeConfig& src, RuntimeConfig& dst) {
   dst.protocol = ProtocolKind(src.protocol());
   dst.field = FieldType(src.field());
