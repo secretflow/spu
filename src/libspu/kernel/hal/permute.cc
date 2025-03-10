@@ -720,15 +720,11 @@ std::vector<spu::Value> QuickSelectTopk(SPUContext *ctx,
     }
   }
 
-  // out.push_back(slice(ctx, input.front(), {0}, {config.k_hi}));
-  // if (!config.value_only) {
-  //   out.push_back(slice(ctx, input.back(), {0}, {config.k_hi}));
-  // }
-  out.push_back(slice(ctx, input.front(), {0}, {n}));
+  out.push_back(slice(ctx, input.front(), {0}, {config.k_hi}));
   if (!config.value_only) {
-    out.push_back(slice(ctx, input.back(), {0}, {n}));
+    out.push_back(slice(ctx, input.back(), {0}, {config.k_hi}));
   }
-  return out;
+  
 }
 
 std::vector<spu::Value> PrepareInput(SPUContext *ctx, const Value &input,

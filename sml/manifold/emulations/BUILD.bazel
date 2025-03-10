@@ -12,11 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# load("@spu_pip_dev//:requirements.bzl", "requirement")
-# load("//bazel:spu.bzl", "spu_py_binary")
-
-# package(default_visibility = ["//visibility:public"])
-
 
 load("//bazel:spu.bzl", "sml_py_binary")
 
@@ -33,9 +28,6 @@ sml_py_binary(
         "//sml/manifold:jacobi",
         "//sml/manifold:kneighbors",
         "//spu/intrinsic:all_intrinsics",
-        # "//sml/utils:emulation",
-        # requirement("scikit-learn"),
-        # requirement("pyyaml"),
     ],
 )
 
@@ -50,9 +42,6 @@ sml_py_binary(
         "//sml/manifold:jacobi",
         "//sml/manifold:kneighbors",
         "//spu/intrinsic:all_intrinsics",
-        # "//sml/utils:emulation",
-        # requirement("scikit-learn"),
-        # requirement("pyyaml"),
     ],
 )
 
@@ -68,8 +57,5 @@ sml_py_binary(
         "//sml/manifold:jacobi",
         "//sml/manifold:kneighbors",
         "//spu/intrinsic:all_intrinsics",
-        # "//sml/utils:emulation",
-        # requirement("scikit-learn"),
-        # requirement("pyyaml"),
     ],
 )

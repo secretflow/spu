@@ -12,11 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# load("@spu_pip_dev//:requirements.bzl", "requirement")
-# load("//bazel:spu.bzl", "spu_py_library")
-
-# package(default_visibility = ["//visibility:public"])
-
 
 load("//bazel:spu.bzl", "sml_py_library")
 
@@ -52,4 +47,3 @@ sml_py_library(
     name = "SE",
     srcs = ["SE.py"],
 )
-
