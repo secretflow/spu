@@ -34,6 +34,7 @@ spu_cc_library(
     hdrs = ["spu.h"],
     deps = [
         ":spu_cc_proto",
+        "@magic_enum",
         "@protobuf",
     ],
 )

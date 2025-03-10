@@ -23,6 +23,7 @@
 #include "libspu/mpc/cheetah/arithmetic.h"
 #include "libspu/mpc/cheetah/boolean.h"
 #include "libspu/mpc/cheetah/conversion.h"
+#include "libspu/mpc/cheetah/permute.h"
 #include "libspu/mpc/cheetah/state.h"
 #include "libspu/mpc/cheetah/type.h"
 #include "libspu/mpc/common/pv2k.h"
@@ -61,25 +62,29 @@ void regCheetahProtocol(SPUContext* ctx,
 
   // register arithmetic & binary kernels
   ctx->prot()
-      ->regKernel<cheetah::P2A, cheetah::A2P, cheetah::V2A, cheetah::A2V,   //
-                  cheetah::B2P, cheetah::P2B, cheetah::A2B, cheetah::B2A,   //
-                  cheetah::NegateA,                                         //
-                  cheetah::AddAP, cheetah::AddAA,                           //
-                  cheetah::MulAP, cheetah::MulAA, cheetah::MulAV,           //
-                  cheetah::SquareA,                                         //
-                  cheetah::MulA1B, cheetah::MulA1BV,                        //
-                  cheetah::EqualAA, cheetah::EqualAP,                       //
-                  cheetah::MatMulAP, cheetah::MatMulAA, cheetah::MatMulAV,  //
-                  cheetah::MatMulVVS,                                       //
-                  cheetah::LShiftA, cheetah::ARShiftB, cheetah::LShiftB,    //
-                  cheetah::RShiftB,                                         //
-                  cheetah::BitrevB,                                         //
-                  cheetah::TruncA,                                          //
-                  cheetah::MsbA2B,                                          //
-                  cheetah::CommonTypeB, cheetah::CommonTypeV,               //
-                  cheetah::CastTypeB, cheetah::AndBP, cheetah::AndBB,       //
-                  cheetah::XorBP, cheetah::XorBB,                           //
-                  cheetah::RandA, cheetah::RandB>();
+      ->regKernel<cheetah::P2A, cheetah::A2P, cheetah::V2A,
+                  cheetah::A2V,                                               //
+                  cheetah::B2P, cheetah::P2B, cheetah::A2B, cheetah::B2A,     //
+                  cheetah::NegateA,                                           //
+                  cheetah::AddAP, cheetah::AddAA,                             //
+                  cheetah::MulAP, cheetah::MulAA, cheetah::MulAV,             //
+                  cheetah::SquareA,                                           //
+                  cheetah::MulA1B, cheetah::MulA1BV,                          //
+                  cheetah::EqualAA, cheetah::EqualAP,                         //
+                  cheetah::MatMulAP, cheetah::MatMulAA, cheetah::MatMulAV,    //
+                  cheetah::MatMulVVS,                                         //
+                  cheetah::LShiftA, cheetah::ARShiftB, cheetah::LShiftB,      //
+                  cheetah::RShiftB,                                           //
+                  cheetah::BitrevB,                                           //
+                  cheetah::TruncA,                                            //
+                  cheetah::MsbA2B,                                            //
+                  cheetah::CommonTypeB, cheetah::CommonTypeV,                 //
+                  cheetah::CastTypeB, cheetah::AndBP, cheetah::AndBB,         //
+                  cheetah::XorBP, cheetah::XorBB,                             //
+                  cheetah::RandA, cheetah::RandB,                             //
+                  cheetah::RandPermM, cheetah::PermAM, cheetah::PermAP,       //
+                  cheetah::InvPermAM, cheetah::InvPermAP, cheetah::InvPermAV  //
+                  >();
 }
 
 std::unique_ptr<SPUContext> makeCheetahProtocol(

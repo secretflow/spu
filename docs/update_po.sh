@@ -1,4 +1,6 @@
-# Copyright 2024 Ant Group Co., Ltd.
+#! /bin/bash
+#
+# Copyright 2025 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,5 +13,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-SPU_VERSION = "0.9.4.dev20250310"
+#
+mkdir -p _build/gettext &&
+make gettext &&
+sphinx-intl update -p _build/gettext -l zh_CN &&
+echo "po files has been updated. Please update po files in locales folder."

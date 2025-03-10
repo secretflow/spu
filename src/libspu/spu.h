@@ -433,6 +433,7 @@ struct RuntimeConfig {
   bool ParseFromString(std::string_view data);
   std::string SerializeAsString() const;
   std::string DebugString() const;
+  pb::RuntimeConfig ToProto() const;
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -546,6 +547,21 @@ struct ExecutableProto {
   bool ParseFromString(std::string_view data);
   std::string SerializeAsString() const;
 };
+
+//////////////////////////////////////////////////////////////////////////
+// enum util func
+//////////////////////////////////////////////////////////////////////////
+std::string_view GetDataTypeName(DataType dtype);
+std::string_view GetVisibilityName(Visibility vis);
+std::string_view GetFieldTypeName(FieldType field);
+std::string_view GetProtocolKindName(ProtocolKind protocol);
+std::string_view GetSortMethodName(RuntimeConfig::SortMethod method);
+std::string_view GetExpModeName(RuntimeConfig::ExpMode mode);
+std::string_view GetLogModeName(RuntimeConfig::LogMode mode);
+std::string_view GetSigmoidModeName(RuntimeConfig::SigmoidMode mode);
+std::string_view GetBeaverTypeName(RuntimeConfig::BeaverType beaver_type);
+std::string_view GetSourceIRTypeName(SourceIRType ir_type);
+std::string_view GetXLAPrettyPrintKindName(XLAPrettyPrintKind pp_kind);
 };  // namespace spu
 
 namespace std {

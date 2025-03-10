@@ -21,7 +21,7 @@
 
 module(
     name = "spulib",
-    version = "0.9.4.dev20250225",
+    version = "0.9.4.dev20250310",
     compatibility_level = 1,
 )
 
@@ -92,7 +92,7 @@ use_repo(llvm, "llvm-project")
 
 bazel_dep(name = "stablehlo", version = "20240808.0-24d1807")
 bazel_dep(name = "xla", version = "20240814.0-64bdcc5")
-bazel_dep(name = "yacl", version = "20241212.0-871832a")
+bazel_dep(name = "yacl", version = "0.4.5b10-nightly-20250110")
 
 spu_dependencies = use_extension("//bazel:defs.bzl", "non_module_dependencies")
 use_repo(spu_dependencies, "xtensor")
