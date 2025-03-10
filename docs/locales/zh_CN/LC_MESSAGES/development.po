@@ -470,7 +470,7 @@ msgid ""
 " XLA as the middle layer, mapping from platform frameworks like PyTorch, "
 "JAX, and TensorFlow into XLA and then progressively lowering down to "
 "their target hardware."
-msgstr "XLA：多家供应商使用 XLA 作为中间层，从 PyTorch、JAX 和 TensorFlow 等平台框架映射到 XLA，然后逐步汇聚到目标硬件。"
+msgstr "XLA：多家供应商使用 XLA 作为中间层，从 PyTorch、JAX 和 TensorFlow 等平台框架映射到 XLA，然后逐步翻译到目标硬件。"
 
 #: ../../development/compiler.rst:11
 msgid ""
@@ -486,7 +486,7 @@ msgid ""
 "SPU. For current hardware vendors, they just need to add LLVM target "
 "support instead of implementing separate Clang/C++ frontends. MLIR-HLO is"
 " achieving similar goal."
-msgstr "将不同前端框架的规范汇聚到 MLIR 生态系统，将为硬件供应商提供有效的帮助，使他们能够专注于其独特价值，而不是为 SPU 实现另一个前端。对于当前的硬件供应商，他们只需添加 LLVM 支持，而不是实现单独的 Clang/C++ 前端。MLIR-HLO 正在实现类似的目标。"
+msgstr "将不同前端框架的规范翻译到 MLIR 生态系统，将为硬件供应商提供有效的帮助，使他们能够专注于其独特价值，而不是为 SPU 实现另一个前端。对于当前的硬件供应商，他们只需添加 LLVM 支持，而不是实现单独的 Clang/C++ 前端。MLIR-HLO 正在实现类似的目标。"
 
 #: ../../development/compiler.rst:17
 msgid "All the roads from ML frameworks to SPU"
