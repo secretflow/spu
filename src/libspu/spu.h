@@ -552,6 +552,7 @@ struct ExecutableProto {
 // enum util func
 //////////////////////////////////////////////////////////////////////////
 std::string_view GetDataTypeName(DataType dtype);
+std::string_view GetPtTypeName(PtType pt_type);
 std::string_view GetVisibilityName(Visibility vis);
 std::string_view GetFieldTypeName(FieldType field);
 std::string_view GetProtocolKindName(ProtocolKind protocol);
@@ -562,6 +563,9 @@ std::string_view GetSigmoidModeName(RuntimeConfig::SigmoidMode mode);
 std::string_view GetBeaverTypeName(RuntimeConfig::BeaverType beaver_type);
 std::string_view GetSourceIRTypeName(SourceIRType ir_type);
 std::string_view GetXLAPrettyPrintKindName(XLAPrettyPrintKind pp_kind);
+
+// Return true if the str is a valid ProtocolKind name.
+bool ParseProtocolKind(std::string_view str, ProtocolKind* protocol);
 };  // namespace spu
 
 namespace std {

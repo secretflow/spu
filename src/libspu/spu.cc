@@ -26,6 +26,10 @@ std::string_view GetDataTypeName(DataType dtype) {
   return magic_enum::enum_name(dtype);
 }
 
+std::string_view GetPtTypeName(PtType pt_type) {
+  return magic_enum::enum_name(pt_type);
+}
+
 std::string_view GetVisibilityName(Visibility vis) {
   return magic_enum::enum_name(vis);
 }
@@ -64,6 +68,15 @@ std::string_view GetSourceIRTypeName(SourceIRType type) {
 
 std::string_view GetXLAPrettyPrintKindName(XLAPrettyPrintKind kind) {
   return magic_enum::enum_name(kind);
+}
+
+bool ParseProtocolKind(std::string_view str, ProtocolKind* protocol) {
+  auto result = magic_enum::enum_cast<ProtocolKind>(str);
+  if (result.has_value()) {
+    *protocol = result.value();
+    return true;
+  }
+  return false;
 }
 
 void convertFromPB(const pb::RuntimeConfig& src, RuntimeConfig& dst) {
