@@ -731,7 +731,7 @@ std::vector<spu::Value> QuickSelectTopk(SPUContext *ctx,
   if (!config.value_only) {
     out.push_back(slice(ctx, input.back(), {0}, {config.k_hi}));
   }
-  
+  return out;
 }
 
 std::vector<spu::Value> PrepareInput(SPUContext *ctx, const Value &input,

@@ -78,9 +78,16 @@ def floyd_opt_1(dist):
 
 # Floyd optimized without using. at.set
 def floyd_opt(D):
-    # 1. Require that dist is a symmetric matrix.
-    # 2. Require that the diagonal elements of dist are 0.
-    # 3. Require that in the off-diagonal elements of dist, if the distance between samples i and j is infinite, it should be represented as an infinite or a very large element.
+    """Optimized Floyd-Warshall algorithm to compute the shortest paths between all pairs of nodes in a graph.
+
+    Args:
+        D: A symmetric distance matrix where:
+           - Diagonal elements are 0 (distance from a node to itself is 0).
+           - Off-diagonal elements represent the distance between nodes. If there is no direct path between two nodes, the distance should be infinite or a very large value.
+
+    Returns:
+        The updated distance matrix containing the shortest paths between all pairs of nodes.
+    """
     n = D.shape[0]
     for k in range(n):
         # Update distance through intermediate node k

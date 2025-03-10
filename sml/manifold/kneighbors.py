@@ -17,44 +17,36 @@ import jax.numpy as jnp
 import spu.intrinsic as si
 
 
-def test_mpc_kneighbors_graph(
-    X,  # the input samples to calculate the nearest neighbors
+def mpc_kneighbors_graph(
+    X,
     num_samples,
     num_features,
-    n_neighbors,  # Define the number of nearest neighbors, excluding the sample itself
+    n_neighbors,
     *,
     mode="distance",
-    metric="minkowski",  # Distance is defined as the Euclidean distance between samples
+    metric="minkowski",
     p=2,
 ):
+    """
+    Compute the k-nearest neighbors graph in a privacy-preserving manner using Secure Multi-Party Computation (MPC).
 
-    # Calculate the square of the Euclidean distance between every two samples
-    X_expanded = jnp.expand_dims(X, axis=1) - jnp.expand_dims(X, axis=0)
-    X_expanded = jnp.square(X_expanded)
-    Dis = jnp.sum(X_expanded, axis=-1)
+    This function calculates the Euclidean distance between all pairs of input samples,
+    finds the k-nearest neighbors for each sample, and returns a matrix where non-nearest
+    neighbor distances are set to zero.
 
-    # top_k行向量
-    Knn = jnp.zeros((num_samples, num_samples))
-    MIndex_Dis = jnp.zeros((num_samples, num_samples))
-    Index_Dis = jnp.zeros(num_samples)
-    for i in range(num_samples):
-        _, Index_Dis = jax.lax.top_k(-Dis[i], n_neighbors)
-        for j in range(num_samples):
-            MIndex_Dis = MIndex_Dis.at[i, j].set(Index_Dis[j])
-        Knn = Knn.at[i].set(si.perm(Dis[i], Index_Dis))
-    return MIndex_Dis, Knn
+    Args:
+        X: A (num_samples, num_features) matrix containing the input samples.
+        num_samples: Total number of samples in X.
+        num_features: Number of features in each sample.
+        n_neighbors: The number of nearest neighbors to retain for each sample, excluding the sample itself.
+        mode: Specifies the output format (default: "distance").
+        metric: The distance metric used (default: "minkowski").
+        p: The order of the Minkowski distance (default: 2 for Euclidean distance).
 
-
-def mpc_kneighbors_graph(
-    X,  # the input samples to calculate the nearest neighbors
-    num_samples,  # the number of samples in X
-    num_features,  # the number of features in each sample
-    n_neighbors,  # Define the number of nearest neighbors, excluding the sample itself
-    *,
-    mode="distance",
-    metric="minkowski",  # Distance is defined as the Euclidean distance between samples
-    p=2,
-):
+    Returns:
+        Knn3: A (num_samples, num_samples) matrix where each row contains the distances
+              to its k-nearest neighbors, with all other entries set to zero.
+    """
 
     # Calculate the square of the Euclidean distance between every two samples
     X_expanded = jnp.expand_dims(X, axis=1) - jnp.expand_dims(X, axis=0)

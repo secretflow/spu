@@ -12,19 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 load("//bazel:spu.bzl", "sml_py_binary")
 
 package(default_visibility = ["//visibility:public"])
 
 sml_py_binary(
-    name = "Isomap_emul",
-    srcs = ["Isomap_emul.py"],
+    name = "isomap_emul",
+    srcs = ["isomap_emul.py"],
     deps = [
-        "//sml/manifold:MDS",
-        "//sml/manifold:SE",
-        "//sml/manifold:dijkstra",
         "//sml/manifold:floyd",
+        "//sml/manifold:isomap",
         "//sml/manifold:jacobi",
         "//sml/manifold:kneighbors",
         "//spu/intrinsic:all_intrinsics",
@@ -35,27 +32,9 @@ sml_py_binary(
     name = "se_emul",
     srcs = ["se_emul.py"],
     deps = [
-        "//sml/manifold:MDS",
-        "//sml/manifold:SE",
-        "//sml/manifold:dijkstra",
-        "//sml/manifold:floyd",
         "//sml/manifold:jacobi",
         "//sml/manifold:kneighbors",
-        "//spu/intrinsic:all_intrinsics",
-    ],
-)
-
-
-sml_py_binary(
-    name = "knn_emul",
-    srcs = ["knn_emul.py"],
-    deps = [
-        "//sml/manifold:MDS",
-        "//sml/manifold:SE",
-        "//sml/manifold:dijkstra",
-        "//sml/manifold:floyd",
-        "//sml/manifold:jacobi",
-        "//sml/manifold:kneighbors",
+        "//sml/manifold:se",
         "//spu/intrinsic:all_intrinsics",
     ],
 )

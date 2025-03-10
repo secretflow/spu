@@ -12,17 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 load("//bazel:spu.bzl", "sml_py_test")
 
 package(default_visibility = ["//visibility:public"])
 
 sml_py_test(
-    name = "Isomap_test",
-    srcs = ["Isomap_test.py"],
+    name = "isomap_test",
+    srcs = ["isomap_test.py"],
     deps = [
-        "//sml/manifold:MDS",
         "//sml/manifold:floyd",
+        "//sml/manifold:isomap",
         "//sml/manifold:jacobi",
         "//sml/manifold:kneighbors",
     ],
@@ -32,8 +31,33 @@ sml_py_test(
     name = "se_test",
     srcs = ["se_test.py"],
     deps = [
-        "//sml/manifold:SE",
         "//sml/manifold:jacobi",
+        "//sml/manifold:kneighbors",
+        "//sml/manifold:se",
+    ],
+)
+
+sml_py_test(
+    name = "shortest_path_test",
+    srcs = ["shortest_path_test.py"],
+    deps = [
+        "//sml/manifold:dijkstra",
+        "//sml/manifold:floyd",
+    ],
+)
+
+sml_py_test(
+    name = "jacobi_test",
+    srcs = ["jacobi_test.py"],
+    deps = [
+        "//sml/manifold:jacobi",
+    ],
+)
+
+sml_py_test(
+    name = "knn_test",
+    srcs = ["knn_test.py"],
+    deps = [
         "//sml/manifold:kneighbors",
     ],
 )

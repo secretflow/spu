@@ -12,11 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 load("//bazel:spu.bzl", "sml_py_library")
 
 package(default_visibility = ["//visibility:public"])
-
 
 sml_py_library(
     name = "jacobi",
@@ -29,8 +27,8 @@ sml_py_library(
 )
 
 sml_py_library(
-    name = "MDS",
-    srcs = ["MDS.py"],
+    name = "isomap",
+    srcs = ["isomap.py"],
 )
 
 sml_py_library(
@@ -44,6 +42,6 @@ sml_py_library(
 )
 
 sml_py_library(
-    name = "SE",
-    srcs = ["SE.py"],
+    name = "se",
+    srcs = ["se.py"],
 )

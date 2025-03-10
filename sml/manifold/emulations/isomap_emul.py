@@ -15,12 +15,11 @@ import time
 
 import jax
 import jax.numpy as jnp
+import numpy as np
 from sklearn.manifold import Isomap
 
 import sml.utils.emulation as emulation
-from sml.manifold.floyd import floyd_opt
-from sml.manifold.kneighbors import mpc_kneighbors_graph
-from sml.manifold.MDS import mds
+from sml.manifold.isomap import ISOMAP
 
 
 def emul_cpz(mode: emulation.Mode.MULTIPROCESS):
@@ -31,35 +30,27 @@ def emul_cpz(mode: emulation.Mode.MULTIPROCESS):
         )
         emulator.up()
 
-        # The shortest path method in Isomap uses floyd
-        def mpc_isomap_floyd(
+        def isomap(
             sX,
-            mpc_shortest_paths,
             num_samples,
             num_features,
             k,
             num_components,
         ):
-
-            Knn = mpc_kneighbors_graph(sX, num_samples, num_features, k)
-
-            Knn = (Knn == 0) * jnp.inf + Knn
-            Knn = jnp.where(jnp.eye(Knn.shape[0]), 0, Knn)
-            flag = Knn <= Knn.T
-            Knn = flag * Knn + (1 - flag) * Knn.T
-
-            mpc_shortest_paths = floyd_opt(Knn)
-
-            B, ans, values, vectors = mds(
-                mpc_shortest_paths, num_samples, num_components
+            embedding = ISOMAP(
+                n_components=num_components,
+                n_neighbors=k,
+                n_samples=num_samples,
+                n_features=num_features,
             )
-            return Knn, mpc_shortest_paths, B, ans, values, vectors
+            X_transformed = embedding.fit_transform(sX)
+            return X_transformed
 
         # Set sample size and dimensions
-        num_samples = 30  # Number of samples
+        num_samples = 20  # Number of samples
         num_features = 4  # Sample dimension
-        k = 10  # Number of nearest neighbors
-        num_components = 2  # Dimension after dimensionality reduction
+        k = 6  # Number of nearest neighbors
+        num_components = 3  # Dimension after dimensionality reduction
 
         # Generate random input
         seed = int(time.time())
@@ -68,24 +59,15 @@ def emul_cpz(mode: emulation.Mode.MULTIPROCESS):
             key, shape=(num_samples, num_features), minval=0.0, maxval=1.0
         )
 
-        shortest_paths = jnp.zeros((num_samples, num_samples))
+        sX = emulator.seal(X)
 
-        sX, mpc_shortest_paths = emulator.seal(X, shortest_paths)
-
-        Knn, mpc_shortest_paths, B, ans, values, vectors = emulator.run(
-            mpc_isomap_floyd, static_argnums=(2, 3, 4, 5)
-        )(
+        ans = emulator.run(isomap, static_argnums=(1, 2, 3, 4))(
             sX,
-            mpc_shortest_paths,
             num_samples,
             num_features,
             k,
             num_components,
         )
-        # print('Knn: \n',Knn)
-        # print('mpc_shortest_paths: \n', mpc_shortest_paths)
-        # print('values: \n',values)
-        # print('vectors: \n',vectors)
 
         print('ans: \n', ans)
 
@@ -94,9 +76,9 @@ def emul_cpz(mode: emulation.Mode.MULTIPROCESS):
         X_transformed = embedding.fit_transform(X)
         print('X_transformed: \n', X_transformed)
 
-        # Calculate the maximum difference between the results of SE and sklearn test, i.e. accuracy
-        max_abs_diff = jnp.max(jnp.abs(jnp.abs(X_transformed) - jnp.abs(ans)))
-        print(max_abs_diff)
+        np.testing.assert_allclose(
+            jnp.abs(X_transformed), jnp.abs(ans), rtol=0, atol=4e-2
+        )
 
     finally:
         emulator.down()

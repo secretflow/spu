@@ -15,12 +15,12 @@ import time
 
 import jax
 import jax.numpy as jnp
+import numpy as np
 from sklearn.manifold import spectral_embedding
 from sklearn.neighbors import kneighbors_graph
 
 import sml.utils.emulation as emulation
-from sml.manifold.kneighbors import mpc_kneighbors_graph
-from sml.manifold.SE import normalization, se
+from sml.manifold.se import SE
 
 
 def emul_cpz(mode: emulation.Mode.MULTIPROCESS):
@@ -30,12 +30,15 @@ def emul_cpz(mode: emulation.Mode.MULTIPROCESS):
         )
         emulator.up()
 
-        def SE(sX, num_samples, num_features, k, num_components):
-            Knn = mpc_kneighbors_graph(sX, num_samples, num_features, k)
-            Knn = 0.5 * (Knn + Knn.T)
-            D, L = normalization(Knn)
-            ans = se(L, num_samples, D, num_components)
-            return ans
+        def se(sX, num_samples, num_features, k, num_components):
+            embedding = SE(
+                n_components=num_components,
+                n_neighbors=k,
+                n_samples=num_samples,
+                n_features=num_features,
+            )
+            X_transformed = embedding.fit_transform(sX)
+            return X_transformed
 
         # Set sample size and dimensions
         num_samples = 10  # Number of samples
@@ -52,7 +55,7 @@ def emul_cpz(mode: emulation.Mode.MULTIPROCESS):
 
         sX = emulator.seal(X)
         ans = emulator.run(
-            SE,
+            se,
             static_argnums=(
                 1,
                 2,
@@ -75,9 +78,7 @@ def emul_cpz(mode: emulation.Mode.MULTIPROCESS):
         )
         print('embedding: \n', embedding)
 
-        # Calculate the maximum difference between the results of SE and sklearn test, i.e. accuracy
-        max_abs_diff = jnp.max(jnp.abs(jnp.abs(embedding) - jnp.abs(ans)))
-        print(max_abs_diff)
+        np.testing.assert_allclose(jnp.abs(embedding), jnp.abs(ans), rtol=0, atol=1e-2)
 
     finally:
         emulator.down()
