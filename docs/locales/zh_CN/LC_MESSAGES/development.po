@@ -453,7 +453,7 @@ msgstr "SPU 编译器"
 msgid ""
 "The SPU compiler aims to provide first-party compiler support from the "
 "different ML frameworks to SPU runtime."
-msgstr "SPU 编译器旨在为 SPU 运行时提供来自不同 ML 框架的第一方编译器支持。"
+msgstr "SPU 编译器旨在为 SPU 运行时提供来自不同 ML 框架的原生编译器支持。"
 
 #: ../../development/compiler.rst:7
 msgid ""
