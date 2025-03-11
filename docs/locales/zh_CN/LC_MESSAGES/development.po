@@ -1988,7 +1988,7 @@ msgid ""
 "learning_rate), we can find that it seems safer to use small batch_size "
 "and learning_rate, else we get some loss or very strong vibration of auc "
 "within 10 epochs(we leave 10000 samples as test dataset randomly)."
-msgstr "随机梯度下降法（SGD）是一个著名的优化算法，它沿着负梯度方向来更新模型的参数。然而，这种方法要求使用者仔细地选择超参数。"
+msgstr "随机梯度下降法（SGD）是一个著名的优化算法，它沿着负梯度方向来更新模型的权重。然而，这种方法要求使用者仔细地选择超参数。"
 "网格搜索虽然可以解决此问题，但在实际应用中训练耗时过长，因此并不实用。"
 "例如，在 credit card 数据集上使用随机梯度下降法训练线性回归模型时（批量大小为 4096，学习率为 0.1），"
 "我们发现，若批量大小和学习率设置不当，在 10 个轮次内损失值会偏大，且 AUC 值波动剧烈。（随机选择 10000 个样本作为测试数据集）。"
@@ -2013,11 +2013,11 @@ msgstr "在我们的全面的实验下，我们发现朴素 SGD 方法的两个�
 
 #: ../../development/policy_sgd_insight.rst:19
 msgid "slow update(because of small learning_rate) at the beginning."
-msgstr "起始阶段，参数更新缓慢是由于学习率较小造成的。"
+msgstr "起始阶段，模型权重更新缓慢是由于学习率较小造成的。"
 
 #: ../../development/policy_sgd_insight.rst:21
 msgid "vibration happens when near to optimal point."
-msgstr "当参数接近最优点时，模型的表现开始波动。"
+msgstr "当模型权重接近最优点时，模型的表现开始波动。"
 
 #: ../../development/policy_sgd_insight.rst:23
 msgid ""
@@ -2092,7 +2092,7 @@ msgstr "训练集的维度"
 
 #: ../../development/policy_sgd_insight.rst:53
 msgid "baseline auc"
-msgstr "auc"
+msgstr "基线 auc"
 
 #: ../../development/policy_sgd_insight.rst:55
 #: ../../development/policy_sgd_insight.rst:109
@@ -2221,7 +2221,7 @@ msgid ""
 "The following table shows the total running time of policy_sgd and "
 "naive_sgd(based on weight early stop). Policy_sgd can reduce the time by "
 "2-5 times compared to naive_sgd."
-msgstr "下方的表格展示了两种方法的运行时间，其中 policy-sgd 是基于 weight 进行早停判断的。 policy-sgd 相比 naive-sgd 在时间上缩短了 2-5 倍。"
+msgstr "下方的表格展示了两种方法的运行时间，其中 policy-sgd 是基于模型权重进行早停判断的。 policy-sgd 相比 naive-sgd 在时间上缩短了 2-5 倍。"
 
 #: ../../development/policy_sgd_insight.rst:107
 msgid "naive_sgd(s)"
