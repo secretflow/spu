@@ -8,16 +8,16 @@ msgid ""
 msgstr ""
 "Project-Id-Version: SPU \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-03-12 19:33+0800\n"
+"POT-Creation-Date: 2025-02-25 19:46+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
 "Language-Team: zh_CN <LL@li.org>\n"
-"Plural-Forms: nplurals=1; plural=0\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.9.0\n"
+"Generated-By: Babel 2.17.0\n"
 
 #: ../../development/add_protocols.rst:2
 msgid "Adding New MPC Protocols"
@@ -684,6 +684,7 @@ msgid ""
 msgstr ""
 
 #: ../../development/design_device.rst:92
+#, python-brace-format
 msgid ""
 "Both {Bob, Charlie} would encrypt their data and send it to Alice, we "
 "have to do possible device abstractions."
@@ -761,6 +762,7 @@ msgid "**Location node** is the node that the evaluator located on."
 msgstr ""
 
 #: ../../development/design_device.rst:118
+#, python-brace-format
 msgid "**KeyOwner node** is the node that provides `{PK, SK}`"
 msgstr ""
 
@@ -1340,7 +1342,7 @@ msgstr ""
 
 #: ../../development/fxp.ipynb:97
 msgid ""
-"SPU uses Goldschmidt’s method to calculate Reciprocal. Please refer to "
+"SPU uses Goldschmidt's method to calculate Reciprocal. Please refer to "
 "`Secure Computation With Fixed-Point Numbers "
 "<http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.221.1305&rep=rep1&type=pdf>`__"
 " for details."
@@ -1353,7 +1355,7 @@ msgid ""
 msgstr ""
 
 #: ../../development/fxp.ipynb:101
-msgid "First, let’s have a look at the figure."
+msgid "First, let's have a look at the figure."
 msgstr ""
 
 #: ../../development/fxp.ipynb:191
@@ -1362,7 +1364,7 @@ msgstr ""
 
 #: ../../development/fxp.ipynb:220
 msgid ""
-"Let’s have an idea about what happens if input is not within the valid "
+"Let's have an idea about what happens if input is not within the valid "
 "range."
 msgstr ""
 
@@ -1389,7 +1391,7 @@ msgid "**NOTE:** Similar conclusion also applies to **log1p**, **log2**."
 msgstr ""
 
 #: ../../development/fxp.ipynb:344
-msgid "Again, let’s see what happens if input is out of valid range."
+msgid "Again, let's see what happens if input is out of valid range."
 msgstr ""
 
 #: ../../development/fxp.ipynb:387
@@ -1404,7 +1406,7 @@ msgid ""
 msgstr ""
 
 #: ../../development/fxp.ipynb:436
-msgid "While, if out of valid input…"
+msgid "While, if out of valid input..."
 msgstr ""
 
 #: ../../development/fxp.ipynb:475
@@ -1422,7 +1424,7 @@ msgid "**NOTE:** Similar conclusion also applies to **exp2**."
 msgstr ""
 
 #: ../../development/fxp.ipynb:525
-msgid "If input not in valid range, then…"
+msgid "If input not in valid range, then..."
 msgstr ""
 
 #: ../../development/fxp.ipynb:564
@@ -1436,7 +1438,7 @@ msgid ""
 msgstr ""
 
 #: ../../development/fxp.ipynb:613
-msgid "Let’s check if input is larger than 20:"
+msgid "Let's check if input is larger than 20:"
 msgstr ""
 
 #: ../../development/fxp.ipynb:652
@@ -1462,7 +1464,7 @@ msgstr ""
 
 #: ../../development/fxp.ipynb:706
 msgid ""
-"SPU uses Goldschmidt’s method to calculate division. Please refer to "
+"SPU uses Goldschmidt's method to calculate division. Please refer to "
 "`Secure Computation With Fixed-Point Numbers "
 "<http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.221.1305&rep=rep1&type=pdf>`__"
 " for details."
@@ -1493,7 +1495,7 @@ msgstr ""
 
 #: ../../development/fxp.ipynb:727
 msgid ""
-"We recommend users to try some actions if you come across “strange” "
+"We recommend users to try some actions if you come across \"strange\" "
 "outputs:"
 msgstr ""
 
@@ -1502,7 +1504,7 @@ msgid "If **huge error** occurs(maybe even **opposite sign**):"
 msgstr ""
 
 #: ../../development/fxp.ipynb:731
-msgid "It’s common that numerator is **too large**, which leads to overflow."
+msgid "It's common that numerator is **too large**, which leads to overflow."
 msgstr ""
 
 #: ../../development/fxp.ipynb:732
@@ -1529,9 +1531,9 @@ msgstr ""
 
 #: ../../development/fxp.ipynb:738
 msgid ""
-"Enlarging ``fxp_div_goldschmidt_iters``: the precision of Goldschmidt’s "
+"Enlarging ``fxp_div_goldschmidt_iters``: the precision of Goldschmidt's "
 "method depends on iter numbers. So if you eager to more precise output, "
-"you can enlarge this parameter. But it’s worthy to note that:"
+"you can enlarge this parameter. But it's worthy to note that:"
 msgstr ""
 
 #: ../../development/fxp.ipynb:740
@@ -1548,6 +1550,7 @@ msgid ""
 msgstr ""
 
 #: ../../development/fxp.ipynb:803
+#, python-brace-format
 msgid ""
 "When numerator is very large(:math:`>2^{28}` for ``FM64`` and "
 "``fxp=18``), then the integer part may overflow under large probability, "
@@ -1567,7 +1570,7 @@ msgstr ""
 #: ../../development/fxp.ipynb:1012
 msgid ""
 "As we have mentioned at **reciprocal** part, SPU implements reciprocal "
-"with Goldschmidt’s method, so the final precision depends heavily on the "
+"with Goldschmidt's method, so the final precision depends heavily on the "
 "**iter numbers**."
 msgstr ""
 
@@ -1579,13 +1582,14 @@ msgid ""
 msgstr ""
 
 #: ../../development/fxp.ipynb:1016
+#, python-brace-format
 msgid ""
 "r_i = r_{i-1}(1+e_i) \\\\\n"
 "   e_{i+1} = e_i^2"
 msgstr ""
 
 #: ../../development/fxp.ipynb:1021
-msgid "It’s easy to prove that:"
+msgid "It's easy to prove that:"
 msgstr ""
 
 #: ../../development/fxp.ipynb:1023
@@ -1599,6 +1603,7 @@ msgid ""
 msgstr ""
 
 #: ../../development/fxp.ipynb:1025
+#, python-brace-format
 msgid "The relative error :math:`e_i = e_0^{2^i}`\\ (same as ``Div(a,b)``)."
 msgstr ""
 
@@ -2035,6 +2040,7 @@ msgid "The core of this optimizer consists of two parts:"
 msgstr ""
 
 #: ../../development/policy_sgd_insight.rst:35
+#, python-brace-format
 msgid ""
 "1. Adaptive learning rate scaling mechanism: in first epoch, we force the"
 " weight move unit-norm in gradient direction and record "
@@ -2055,6 +2061,7 @@ msgid "Experiments"
 msgstr ""
 
 #: ../../development/policy_sgd_insight.rst:45
+#, python-brace-format
 msgid ""
 "We use 4 dataset for experiments, containing 3 open source dataset "
 "(`credit_card <https://www.kaggle.com/datasets/uciml/default-of-credit-"
@@ -2263,101 +2270,101 @@ msgstr ""
 
 #: ../../development/runtime.rst:2
 msgid "SPU Runtime"
-msgstr ""
+msgstr "SPU 运行时"
 
 #: ../../development/runtime.rst:5
 msgid "Architecture"
-msgstr ""
+msgstr "架构"
 
 #: ../../development/runtime.rst:7
 msgid "Here is the big picture of SPU VM."
-msgstr ""
+msgstr "以下是 SPU 虚拟机的整体概况。"
 
 #: ../../development/runtime.rst:11
 msgid ""
 "The top 3 blocks above *SPU VM* are applications, we could ignore them "
 "for now."
-msgstr ""
+msgstr "SPU 虚拟机上方的三个模块是应用程序，我们暂时可以忽略它们。"
 
 #: ../../development/runtime.rst:12
 msgid "The bottom left block is the scheduling component."
-msgstr ""
+msgstr "左下方的模块是调度组件。"
 
 #: ../../development/runtime.rst:13
 msgid ""
 "The main block is the SPU Architecture, which is the core for secure "
 "evaluation."
-msgstr ""
+msgstr "主要模块是 SPU 架构，它是安全评估的核心。"
 
 #: ../../development/runtime.rst:15
 msgid "Inside SPU, there are multiple layers, from bottom to up:"
-msgstr ""
+msgstr "在 SPU 内部，有多个层次，从下到上分别是："
 
 #: ../../development/runtime.rst:17
 msgid ""
 "**System layer** provides the basic computation and communication ability"
 " for the upper layers."
-msgstr ""
+msgstr "系统层 为上层提供基本的计算和通信能力。"
 
 #: ../../development/runtime.rst:18
 msgid ""
 "**Crypto layer** is the key for secure computation, it's composed by 3 "
 "sub layers."
-msgstr ""
+msgstr "加密层 是安全计算的关键，它由三个子层组成。"
 
 #: ../../development/runtime.rst:20
 msgid ""
 "**Basic** or classic layer, provides classic cryptography, OT, HE also "
 "lives in this layer."
-msgstr ""
+msgstr "基础层 或经典层，提供经典的加密技术、OT 和 HE 也在这一层。"
 
 #: ../../development/runtime.rst:21
 msgid ""
 "**Correlation** or the offline protocol layer, provides correlation like "
 "beaver triple and randbit."
-msgstr ""
+msgstr "关联层 或离线协议层，提供类似于比弗三元组和随机位的关联。"
 
 #: ../../development/runtime.rst:22
 msgid ""
 "**Protocol** or the online protocol layer, applies random correlation and"
 " runs the secure evaluation."
-msgstr ""
+msgstr "协议层 或在线协议层，应用随机关联并运行安全评估。"
 
 #: ../../development/runtime.rst:24
 msgid ""
 "**ALU layer** converts MPC protocols into a programmable machine, which "
 "has two sub layers."
-msgstr ""
+msgstr "ALU层 将 MPC 协议转换为可编程机器，它有两个子层。"
 
 #: ../../development/runtime.rst:26
 msgid ""
 "**Ring 2^k** layer, just like normal CPU, hides cryptography layer's "
 "details and provides standard ring2k arithmetic."
-msgstr ""
+msgstr "Ring 2^k层，就像普通 CPU 一样，隐藏了加密层的细节，并提供标准的 ring2k 算术运算能力。"
 
 #: ../../development/runtime.rst:27
 msgid ""
 "**Fixed point** layer uses fixed point encoding to represent a fractional"
 " number and provides basic arithmetic operations over them."
-msgstr ""
+msgstr "定点层 使用定点编码来表示小数，并提供基本的算术运算。"
 
 #: ../../development/runtime.rst:29
 msgid ""
 "**OPS layer** is designed to be extensible, in this layer we can define "
 "multiple modules based on *ALU layer* and finally exposed to VM clients "
 "via bindings or SPU IR."
-msgstr ""
+msgstr "OPS 层 被设计为可扩展的，在这一层我们可以基于 *ALU 层* 定义多个模块，最终通过绑定或 SPU IR 暴露给 VM 客户端。"
 
 #: ../../development/runtime.rst:32
 msgid "Homogeneous and Heterogeneous"
-msgstr ""
+msgstr "同构和异构"
 
 #: ../../development/runtime.rst:34
 msgid ""
 "Recall that SPU VM is composed of multiple physical engines, the "
 "definitions of *homogeneous* and *heterogeneous* come from an *engines*' "
 "perspective."
-msgstr ""
+msgstr "回想一下，SPU 虚拟机由多个物理引擎组成，*同构* 和 *异构* 的定义来自 *引擎* 的角度。"
 
 #: ../../development/runtime.rst:36
 msgid ""
@@ -2366,7 +2373,7 @@ msgid ""
 "to distinguish between engines, they cannot and should not send/recv "
 "messages between engines, in other words, they can treat all engines the "
 "same, and program them as one machine."
-msgstr ""
+msgstr "**同构**：一个层次是*同构*的，意味着所有引擎在这一层运行完全相同的代码。该层次的用户不需要区分引擎，他们不能也不应该在引擎之间发送/接收消息，换句话说，他们可以将所有引擎视为一个机器来编程。"
 
 #: ../../development/runtime.rst:37
 msgid ""
@@ -2374,7 +2381,7 @@ msgid ""
 "engines in this layer behave differently (following some protocols). The "
 "author of this layer should take care of the behavior of each engine to "
 "make things correct."
-msgstr ""
+msgstr "**异构**：相反，一个层次是*异构*的，意味着这一层的引擎行为不同（遵循某些协议）。该层次的作者应注意每个引擎的行为以确保正确性。"
 
 #: ../../development/runtime.rst:39
 msgid ""
@@ -2382,13 +2389,13 @@ msgid ""
 "virtual device when applying secure evaluation. For example, in the "
 "following computation graph, given `x`, `y`, we want to compute `f(x, "
 "y)`, the big circle represents a computing node which can evaluate f."
-msgstr ""
+msgstr "我们希望 SPU 虚拟机是*同构*的，这样在应用安全评估时可以将其视为一个普通的虚拟设备。例如，在下面的计算图中，给定 `x` 和 `y`，我们希望计算 `f(x, y)`，大圆圈代表一个可以评估 f 的计算节点。"
 
 #: ../../development/runtime.rst:43
 msgid ""
 "In secure computation mode, we have a group of servers working together "
 "to provide the functionality of `f`, as shown blow."
-msgstr ""
+msgstr "在安全计算模式下，我们有一组服务器协同工作来提供 `f` 的功能，如下所示。"
 
 #: ../../development/runtime.rst:47
 msgid ""
@@ -2396,7 +2403,7 @@ msgid ""
 "servers inside the big circle may behave differently, in this pic, the "
 "lower part is blue, which means three servers act and interact "
 "differently."
-msgstr ""
+msgstr "安全协议（MPC 协议）本身是**异构**的，大圆圈内的三台服务器可能表现不同（遵循某些协议）。在这张图中，下半部分是蓝色的，表示三台服务器的行为和交互不同。"
 
 #: ../../development/runtime.rst:49
 msgid ""
@@ -2404,110 +2411,110 @@ msgid ""
 " in this pic, the upper half is orange, three servers behave exactly the "
 "same, so in the whole computation DAG, the big circle could be treated as"
 " one (virtual) node."
-msgstr ""
+msgstr "但它们共同为上层提供了一个**同构**接口，在这张图中，上半部分是橙色的，三台服务器的行为完全相同，因此在整个计算 DAG 中，大圆圈可以被视为一个（虚拟）节点。"
 
 #: ../../development/runtime.rst:51
 msgid ""
 "Another reason to use **homogeneous** IR is to hide the number of "
 "parties, so the application can switch to an m-PC protocol from an n-PC "
 "protocol without code change."
-msgstr ""
+msgstr "使用**同构**IR的另一个原因是隐藏参与方的数量，这样应用程序可以在不更改代码的情况下从n-PC协议切换到m-PC协议。"
 
 #: ../../development/runtime.rst:53
 msgid ""
 "One of *SPU*'s goal is to hide the heterogeneous part and expose "
 "homogeneous API."
-msgstr ""
+msgstr "SPU 的目标之一是隐藏异构部分并暴露同构 API。"
 
 #: ../../development/runtime.rst:56
 msgid "VM Layout"
-msgstr ""
+msgstr "虚拟机布局"
 
 #: ../../development/runtime.rst:58
 msgid ""
 "SPU, as a virtual device, is hosted by multiple physical devices. The "
 "relationship between physical devices and SPU is very flexible. Now let's"
 " use some examples to illustrate the possible layouts."
-msgstr ""
+msgstr "SPU 作为一个虚拟设备，由多个物理设备托管。物理设备与 SPU 之间的关系非常灵活。现在让我们用一些例子来说明可能的布局。"
 
 #: ../../development/runtime.rst:61
 msgid ""
 "Programmers coding toward the virtual layout, the underline physical is "
 "**transparent** from the programmer's perspective. It's free to use "
 "different physical layouts, without changing a single line of code."
-msgstr ""
+msgstr "程序员面向虚拟布局进行编码，从程序员的角度来看，底层物理布局是**透明**的。可以自由使用不同的物理布局，而无需更改一行代码。"
 
 #: ../../development/runtime.rst:64
 msgid "Outsourcing"
-msgstr ""
+msgstr "数据托管模式"
 
 #: ../../development/runtime.rst:66
 msgid ""
 "In this mode, data providers send data shares to a group of non-colluding"
 " computation providers who cooperate to evaluate secure computations."
-msgstr ""
+msgstr "在这种模式下，数据提供者将数据份额发送给一组不串通的计算提供者，这些提供者协同工作以进行安全计算。"
 
 #: ../../development/runtime.rst:70
 msgid ""
 "The figure to left depicts the physical layout, there are 6 physical "
 "nodes, mutually connected but untrusted to each other."
-msgstr ""
+msgstr "左图描绘了物理布局，有 6 个物理节点，彼此相互连接但不互相信任。"
 
 #: ../../development/runtime.rst:72
 msgid "The circle stands for data provider."
-msgstr ""
+msgstr "圆圈代表数据提供者。"
 
 #: ../../development/runtime.rst:73
 msgid ""
 "The triangle stands for computing provider, three triangle nodes agree on"
 " some MPC protocol."
-msgstr ""
+msgstr "三角形代表计算提供者，三个三角形节点表示同意某些 MPC 协议。"
 
 #: ../../development/runtime.rst:75
 msgid "The figure to the right depicts the virtual layout."
-msgstr ""
+msgstr "右图描绘了虚拟布局。"
 
 #: ../../development/runtime.rst:77
 msgid "The circle has one-to-one relation to the physical nodes."
-msgstr ""
+msgstr "圆圈与物理节点是一对一的关系。"
 
 #: ../../development/runtime.rst:78
 msgid "3 triangle nodes are treated as a single virtual device."
-msgstr ""
+msgstr "三个三角形节点被视为一个虚拟设备。"
 
 #: ../../development/runtime.rst:81
 msgid "Colocated"
-msgstr ""
+msgstr "联合计算模式"
 
 #: ../../development/runtime.rst:83
 msgid ""
 "In this mode, data providers also participate in the computation "
 "progress, that is, data providers are **colocated** with computing "
 "providers."
-msgstr ""
+msgstr "在这种模式下，数据提供者也参与计算过程，即数据提供者与计算提供者**联合**计算。"
 
 #: ../../development/runtime.rst:87
 msgid ""
 "On the left side, there are 3 physical nodes, each of which acts as data "
 "provider as well as computing provider."
-msgstr ""
+msgstr "左侧有 3 个物理节点，每个节点既是数据提供者也是计算提供者。"
 
 #: ../../development/runtime.rst:88
 msgid ""
 "On the right side, **SPU is a pure virtual node, constructed by physical "
 "nodes**."
-msgstr ""
+msgstr "右侧，**SPU 是一个由物理节点构建的纯虚拟节点**。"
 
 #: ../../development/runtime.rst:91
 msgid ""
 "The number of computing nodes could be larger than that of data nodes in "
 "this mode, for example, a computing node without data source could act as"
 " a *random correlation generator*, for example:"
-msgstr ""
+msgstr "在这种模式下，计算节点的数量可能多于数据节点，例如，没有数据源的计算节点可以作为*随机关联生成器*，例如："
 
 #: ../../development/runtime.rst:97
 msgid "There are two notable optimizations in this mode."
-msgstr ""
+msgstr "在这种模式下有两个显著的优化。"
 
 #: ../../development/runtime.rst:99
 msgid ""
@@ -2515,30 +2522,30 @@ msgid ""
 "manipulations to accelerate MPC computation, for example, in *HESS "
 "protocol*, we can do :code:`HShare x Private` without online "
 "communication."
-msgstr ""
+msgstr "**私有语义**，计算节点可以进行私有数据操作以加速 MPC 计算，例如，在 *HESS 协议* 中，我们可以进行 :code:`HShare x Private` 而无需在线通信。"
 
 #: ../../development/runtime.rst:100
 msgid ""
 "The **zero share data infeed**, when a data provider tries to share data "
 "cross nodes, it can use :code:`ZeroShare + Private` trick to avoid online"
 " communication."
-msgstr ""
+msgstr "**零份额数据输入**，当数据提供者尝试跨节点共享数据时，可以使用 :code:`ZeroShare + Private` 技巧来避免在线通信。"
 
 #: ../../development/runtime.rst:103
 msgid "Hybrid"
-msgstr ""
+msgstr "混合部署模式"
 
 #: ../../development/runtime.rst:105
 msgid ""
 "This is the most general form, some data providers participate in the "
 "secure computation while others do not."
-msgstr ""
+msgstr "这是最常见的模式，一些数据提供者参与安全计算，而另一些则不参与。"
 
 #: ../../development/runtime.rst:110
 msgid ""
 "the **private semantic** and **zero share data infeed** also apply to "
 "data providers that participate in the computation."
-msgstr ""
+msgstr "**私有语义**和**零份额数据输入**也适用于参与计算的数据提供者。"
 
 #: ../../development/type_system.rst:2
 msgid "Type System"
@@ -2579,10 +2586,12 @@ msgid "A value type is a tuple (**V**, **D**, **S**), where:"
 msgstr ""
 
 #: ../../development/type_system.rst:21
+#, python-brace-format
 msgid "**V** is *visibility*, could be one of *{public, secret}*"
 msgstr ""
 
 #: ../../development/type_system.rst:22
+#, python-brace-format
 msgid "**D** is *data type*, could be one of *{int, fxp}*"
 msgstr ""
 
@@ -2714,12 +2723,14 @@ msgid "The dispatch problem"
 msgstr ""
 
 #: ../../development/type_system.rst:118
+#, python-brace-format
 msgid ""
 "In this example, `%1` and `%2` are SPU values, each of them belongs one "
 "of four types `{sint, pint, sfxp, pfxp}`, the type of `MUL` is:"
 msgstr ""
 
 #: ../../development/type_system.rst:120
+#, python-brace-format
 msgid ""
 "\\begin{Bmatrix} sint \\\\ pint \\\\ sfxp \\\\ pfxp \\end{Bmatrix}\n"
 "\\times\n"
@@ -2934,7 +2945,7 @@ msgstr ""
 msgid "Control Flow Op"
 msgstr ""
 
-#: ../../development/visibility_inference_rule.rst:88
+#: ../../development/visibility_inference_rule.rst:62
 msgid ""
 "`If <https://github.com/openxla/stablehlo/blob/main/docs/spec.md#if>`_ "
 "and `Case "
@@ -2953,7 +2964,7 @@ msgid ""
 "common visibility will be inserted before relative return."
 msgstr ""
 
-#: ../../development/visibility_inference_rule.rst:105
+#: ../../development/visibility_inference_rule.rst:90
 msgid ""
 "`While "
 "<https://github.com/openxla/stablehlo/blob/main/docs/spec.md#while>`_"
@@ -2985,13 +2996,13 @@ msgid ""
 "<https://github.com/openxla/stablehlo/blob/main/docs/spec.md#reduce_window>`_"
 msgstr ""
 
-#: ../../development/visibility_inference_rule.rst:132
+#: ../../development/visibility_inference_rule.rst:120
 msgid ""
 "`SelectAndScatter "
 "<https://github.com/openxla/stablehlo/blob/main/docs/spec.md#select_and_scatter>`_"
 msgstr ""
 
-#: ../../development/visibility_inference_rule.rst:123
+#: ../../development/visibility_inference_rule.rst:121
 msgid "In general the rule is"
 msgstr ""
 
