@@ -8,16 +8,16 @@ msgid ""
 msgstr ""
 "Project-Id-Version: SPU \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-03-12 19:33+0800\n"
+"POT-Creation-Date: 2025-02-25 19:46+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
 "Language-Team: zh_CN <LL@li.org>\n"
-"Plural-Forms: nplurals=1; plural=0\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.9.0\n"
+"Generated-By: Babel 2.17.0\n"
 
 #: ../../development/add_protocols.rst:2
 msgid "Adding New MPC Protocols"
@@ -293,17 +293,17 @@ msgstr ""
 
 #: ../../development/basic_concepts.rst:2
 msgid "Basic concepts"
-msgstr ""
+msgstr "基本概念"
 
 #: ../../development/basic_concepts.rst:4
 msgid ""
 "SPU has quite a different programming model than CPU/GPU, this guide "
 "introduces the basic concepts."
-msgstr ""
+msgstr "本文档旨在阐述 SPU 的核心概念，SPU 的编程模型与 CPU/GPU 存在显著差异。"
 
 #: ../../development/basic_concepts.rst:7
 msgid "Machine model"
-msgstr ""
+msgstr "机器模型"
 
 #: ../../development/basic_concepts.rst:9
 msgid ""
@@ -311,11 +311,11 @@ msgid ""
 "blackbox*, which accepts user's *code* and *data*, runs the computation, "
 "and returns result *data* to user. If we draw a picture to show the "
 "relationship between user and machine, it's something like this."
-msgstr ""
+msgstr "在传统 CPU 模型中，机器可视为一个算术黑箱，其接收用户的代码与数据，执行计算后返回结果数据。用户与机器的关系可示意如下。"
 
 #: ../../development/basic_concepts.rst:13
 msgid "user and CPU"
-msgstr ""
+msgstr "CPU 模型"
 
 #: ../../development/basic_concepts.rst:16
 msgid ""
@@ -324,11 +324,11 @@ msgid ""
 "provided by a separate party, finally, the output could be received by "
 "another party. So **SPU is born to be used in a distributed context**. It"
 " looks like:"
-msgstr ""
+msgstr "SPU 的显著特征在于：输入数据来源于多方，代码可能由独立参与方提供，计算结果亦可由不同参与方接收。因此，SPU 专为分布式场景设计，其交互模型如下。"
 
 #: ../../development/basic_concepts.rst:20
 msgid "multi-user and SPU"
-msgstr ""
+msgstr "SPU 模型"
 
 #: ../../development/basic_concepts.rst:23
 msgid ""
@@ -337,31 +337,31 @@ msgid ""
 "in the following picture, we have three parties (red, blue and green) "
 "that work together with some MPC protocols, and provide computation "
 "service as a **virtual machine**."
-msgstr ""
+msgstr "进一步观察，SPU 并非物理实体机器，而是由互不信任的多个参与方共同托管。例如，下图展示三个参与方（红、蓝、绿）通过 MPC 协议协作，共同构建虚拟机服务："
 
 #: ../../development/basic_concepts.rst:27
 msgid "inside SPU"
-msgstr ""
+msgstr "SPU 内部架构"
 
 #: ../../development/basic_concepts.rst:30
 msgid ""
 "So we have treated SPU as a (multi-party visualized) **secure arithmetic "
 "blackbox**, which can evaluate computations securely."
-msgstr ""
+msgstr "综上，SPU 可抽象为多方协同的安全算术黑箱，提供安全计算能力。"
 
 #: ../../development/basic_concepts.rst:33
 msgid "Programming model"
-msgstr ""
+msgstr "编程模型"
 
 #: ../../development/basic_concepts.rst:35
 msgid "With the above VM model, the next question is **how to program on it**?"
-msgstr ""
+msgstr "基于上述虚拟机模型，SPU 的编程需解决以下问题：如何为多方协同计算编写程序？"
 
 #: ../../development/basic_concepts.rst:37
 msgid ""
 "Inside SPU, each physical node behaves differently for the same progress,"
 " i.e. some nodes act as senders, while others act as receivers."
-msgstr ""
+msgstr "SPU 中，各物理节点在同一计算流程中执行不同操作（如发送方与接收方）。"
 
 #: ../../development/basic_concepts.rst:39
 msgid ""
@@ -369,81 +369,81 @@ msgid ""
 "One important responsibility of SPU compiler/runtime pipeline is to "
 "translate **homogeneous** program to another for **heterogeneous** "
 "runtime engines."
-msgstr ""
+msgstr "但对用户而言，SPU 表现为单一虚拟机。SPU 编译器/运行时的核心职责是将同构程序转换为适配异构运行时引擎的指令。"
 
 #: ../../development/basic_concepts.rst:41
 msgid ""
 "For example, in the following computation graph, given `x`, `y`, we want "
 "to compute `f(x, y)`, and the big circle represent a compute node which "
 "can evaluate f."
-msgstr ""
+msgstr "例如，在下面的计算图中，给定 `x`，`y`，我们想要计算 `f（x，y）`，大圆圈表示可以评估 f 的计算节点。"
 
 #: ../../development/basic_concepts.rst:45
 msgid ""
 "In SPU, a group of nodes work together to provide functionality of `f`, "
 "as shown blow."
-msgstr ""
+msgstr "而在 SPU 中，多个节点通过协议协作实现等效功能："
 
 #: ../../development/basic_concepts.rst:49
 msgid "With the above abstraction, SPU can:"
-msgstr ""
+msgstr "通过此抽象，SPU 具备以下特性："
 
 #: ../../development/basic_concepts.rst:51
 msgid "Hide the underline protocols, *write once, run on all protocols*."
-msgstr ""
+msgstr "协议透明化，一次编码，支持多种底层协议。"
 
 #: ../../development/basic_concepts.rst:52
 msgid ""
 "Hide the number of parties, *write once, run for a variable number of "
 "parties*."
-msgstr ""
+msgstr "规模弹性化，一次编码，适配可变参与方数量。"
 
 #: ../../development/basic_concepts.rst:56
 msgid "API level"
-msgstr ""
+msgstr "API 层级"
 
 #: ../../development/basic_concepts.rst:58
 msgid ""
 "With the above programming model, the next question is **which language "
 "is supported**? SPU provides multi-level API, from upper to lower:"
-msgstr ""
+msgstr "基于上述编程模型，接下来支持哪些语言呢？SPU 提供多层 API，从高阶到低阶依次为："
 
 #: ../../development/basic_concepts.rst:60
 msgid ""
 "**Frontend API** (like TensorFlow/JAX), SPU compiles them into SPU IR "
 "before running."
-msgstr ""
+msgstr "Frontend API（如 TensorFlow/JAX），通过 SPU 编译转换为 SPU IR。"
 
 #: ../../development/basic_concepts.rst:61
 msgid ""
 "**SPU IR**, an Intermediate Representation format defined by SPU, which "
 "is not quite readable but easier for computers to understand."
-msgstr ""
+msgstr "SPU IR，一种由 SPU 定义的中间表示格式，其可读性不强，但更易于计算机理解。"
 
 #: ../../development/basic_concepts.rst:62
 msgid "**C++ API**, which could directly access the underline MPC protocols."
-msgstr ""
+msgstr "C++ API，可以直接访问底层MPC协议。"
 
 #: ../../development/basic_concepts.rst:64
 msgid "The API hierarchy looks like:"
-msgstr ""
+msgstr "API 层次结构如下："
 
 #: ../../development/basic_concepts.rst:69
 msgid "SPU API hierarchy"
-msgstr ""
+msgstr "SPU API 层次结构"
 
 #: ../../development/basic_concepts.rst:72
 msgid ""
 "An important goal of SPU is to allow people to write secure programs with"
 " their familiar frameworks they are familiar with, so it's recommended to"
 " use Frontend API."
-msgstr ""
+msgstr "SPU 的核心设计目标是让用户使用他们熟悉的框架编写安全程序，推荐优先使用 Frontend API。"
 
 #: ../../development/basic_concepts.rst:74
 msgid ""
 "Currently, only JAX frontend is supported for now. Please check :doc:`JAX"
 " on SPU <../tutorials/quick_start>`."
-msgstr ""
+msgstr "当前仅支持 JAX 前端，详见 :doc:`JAX on SPU <../tutorials/quick_start>`。"
 
 #: ../../development/compiler.rst:2
 msgid "SPU Compiler"
@@ -684,6 +684,7 @@ msgid ""
 msgstr ""
 
 #: ../../development/design_device.rst:92
+#, python-brace-format
 msgid ""
 "Both {Bob, Charlie} would encrypt their data and send it to Alice, we "
 "have to do possible device abstractions."
@@ -761,6 +762,7 @@ msgid "**Location node** is the node that the evaluator located on."
 msgstr ""
 
 #: ../../development/design_device.rst:118
+#, python-brace-format
 msgid "**KeyOwner node** is the node that provides `{PK, SK}`"
 msgstr ""
 
@@ -1340,7 +1342,7 @@ msgstr ""
 
 #: ../../development/fxp.ipynb:97
 msgid ""
-"SPU uses Goldschmidt’s method to calculate Reciprocal. Please refer to "
+"SPU uses Goldschmidt's method to calculate Reciprocal. Please refer to "
 "`Secure Computation With Fixed-Point Numbers "
 "<http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.221.1305&rep=rep1&type=pdf>`__"
 " for details."
@@ -1353,7 +1355,7 @@ msgid ""
 msgstr ""
 
 #: ../../development/fxp.ipynb:101
-msgid "First, let’s have a look at the figure."
+msgid "First, let's have a look at the figure."
 msgstr ""
 
 #: ../../development/fxp.ipynb:191
@@ -1362,7 +1364,7 @@ msgstr ""
 
 #: ../../development/fxp.ipynb:220
 msgid ""
-"Let’s have an idea about what happens if input is not within the valid "
+"Let's have an idea about what happens if input is not within the valid "
 "range."
 msgstr ""
 
@@ -1389,7 +1391,7 @@ msgid "**NOTE:** Similar conclusion also applies to **log1p**, **log2**."
 msgstr ""
 
 #: ../../development/fxp.ipynb:344
-msgid "Again, let’s see what happens if input is out of valid range."
+msgid "Again, let's see what happens if input is out of valid range."
 msgstr ""
 
 #: ../../development/fxp.ipynb:387
@@ -1404,7 +1406,7 @@ msgid ""
 msgstr ""
 
 #: ../../development/fxp.ipynb:436
-msgid "While, if out of valid input…"
+msgid "While, if out of valid input..."
 msgstr ""
 
 #: ../../development/fxp.ipynb:475
@@ -1422,7 +1424,7 @@ msgid "**NOTE:** Similar conclusion also applies to **exp2**."
 msgstr ""
 
 #: ../../development/fxp.ipynb:525
-msgid "If input not in valid range, then…"
+msgid "If input not in valid range, then..."
 msgstr ""
 
 #: ../../development/fxp.ipynb:564
@@ -1436,7 +1438,7 @@ msgid ""
 msgstr ""
 
 #: ../../development/fxp.ipynb:613
-msgid "Let’s check if input is larger than 20:"
+msgid "Let's check if input is larger than 20:"
 msgstr ""
 
 #: ../../development/fxp.ipynb:652
@@ -1462,7 +1464,7 @@ msgstr ""
 
 #: ../../development/fxp.ipynb:706
 msgid ""
-"SPU uses Goldschmidt’s method to calculate division. Please refer to "
+"SPU uses Goldschmidt's method to calculate division. Please refer to "
 "`Secure Computation With Fixed-Point Numbers "
 "<http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.221.1305&rep=rep1&type=pdf>`__"
 " for details."
@@ -1493,7 +1495,7 @@ msgstr ""
 
 #: ../../development/fxp.ipynb:727
 msgid ""
-"We recommend users to try some actions if you come across “strange” "
+"We recommend users to try some actions if you come across \"strange\" "
 "outputs:"
 msgstr ""
 
@@ -1502,7 +1504,7 @@ msgid "If **huge error** occurs(maybe even **opposite sign**):"
 msgstr ""
 
 #: ../../development/fxp.ipynb:731
-msgid "It’s common that numerator is **too large**, which leads to overflow."
+msgid "It's common that numerator is **too large**, which leads to overflow."
 msgstr ""
 
 #: ../../development/fxp.ipynb:732
@@ -1529,9 +1531,9 @@ msgstr ""
 
 #: ../../development/fxp.ipynb:738
 msgid ""
-"Enlarging ``fxp_div_goldschmidt_iters``: the precision of Goldschmidt’s "
+"Enlarging ``fxp_div_goldschmidt_iters``: the precision of Goldschmidt's "
 "method depends on iter numbers. So if you eager to more precise output, "
-"you can enlarge this parameter. But it’s worthy to note that:"
+"you can enlarge this parameter. But it's worthy to note that:"
 msgstr ""
 
 #: ../../development/fxp.ipynb:740
@@ -1548,6 +1550,7 @@ msgid ""
 msgstr ""
 
 #: ../../development/fxp.ipynb:803
+#, python-brace-format
 msgid ""
 "When numerator is very large(:math:`>2^{28}` for ``FM64`` and "
 "``fxp=18``), then the integer part may overflow under large probability, "
@@ -1567,7 +1570,7 @@ msgstr ""
 #: ../../development/fxp.ipynb:1012
 msgid ""
 "As we have mentioned at **reciprocal** part, SPU implements reciprocal "
-"with Goldschmidt’s method, so the final precision depends heavily on the "
+"with Goldschmidt's method, so the final precision depends heavily on the "
 "**iter numbers**."
 msgstr ""
 
@@ -1579,13 +1582,14 @@ msgid ""
 msgstr ""
 
 #: ../../development/fxp.ipynb:1016
+#, python-brace-format
 msgid ""
 "r_i = r_{i-1}(1+e_i) \\\\\n"
 "   e_{i+1} = e_i^2"
 msgstr ""
 
 #: ../../development/fxp.ipynb:1021
-msgid "It’s easy to prove that:"
+msgid "It's easy to prove that:"
 msgstr ""
 
 #: ../../development/fxp.ipynb:1023
@@ -1599,6 +1603,7 @@ msgid ""
 msgstr ""
 
 #: ../../development/fxp.ipynb:1025
+#, python-brace-format
 msgid "The relative error :math:`e_i = e_0^{2^i}`\\ (same as ``Div(a,b)``)."
 msgstr ""
 
@@ -1837,108 +1842,108 @@ msgstr ""
 
 #: ../../development/pipeline.rst:2
 msgid "SPU Pipeline"
-msgstr ""
+msgstr "SPU 管道"
 
 #: ../../development/pipeline.rst:4
 msgid ""
 "Recall that SPU could be treated as a :ref:`virtual device "
 "<development/basic_concepts:Machine model>`. When working with a (virtual"
 " or physical) device, we need several steps."
-msgstr ""
+msgstr "前面提到，SPU 可以被视为虚拟设备。使用（虚拟或物理）设备时，我们需要几个步骤。"
 
 #: ../../development/pipeline.rst:6
 msgid "infeed code to it"
-msgstr ""
+msgstr "输入代码"
 
 #: ../../development/pipeline.rst:7
 msgid "infeed data to it"
-msgstr ""
+msgstr "输入数据"
 
 #: ../../development/pipeline.rst:8
 msgid "trigger it to run"
-msgstr ""
+msgstr "触发运行"
 
 #: ../../development/pipeline.rst:9
 msgid "get result from it"
-msgstr ""
+msgstr "获取结果"
 
 #: ../../development/pipeline.rst:11
 msgid "This page describes details of each step."
-msgstr ""
+msgstr "本页将描述每个步骤的详细信息。"
 
 #: ../../development/pipeline.rst:16
 msgid ""
 "Before diving into the details, let's first take a closer look of SPU "
 "pipeline, it's something like this:"
-msgstr ""
+msgstr "在深入了解细节之前，让我们先仔细看看 SPU 管道，它是这样的："
 
 #: ../../development/pipeline.rst:21
 msgid "code and data pipeline"
-msgstr ""
+msgstr "代码和数据管道"
 
 #: ../../development/pipeline.rst:24
 msgid "Compilation"
-msgstr ""
+msgstr "编译"
 
 #: ../../development/pipeline.rst:26
 msgid "The vertical part depicts the compilation pipeline, from top to bottom."
-msgstr ""
+msgstr "垂直部分从上到下描绘了编译管道。"
 
 #: ../../development/pipeline.rst:28
 msgid "Programmer writes code in AI frameworks(like TensorFlow/JAX)."
-msgstr ""
+msgstr "程序员在 AI 框架（如 TensorFlow/JAX）中编写代码。"
 
 #: ../../development/pipeline.rst:29
 msgid "AI frontend traces the DAG, and emits as XLA IR."
-msgstr ""
+msgstr "AI frontend 跟踪 DAG，并以 XLA IR 形式发出。"
 
 #: ../../development/pipeline.rst:30
 msgid ""
 "SPU compiler takes XLA IR, and compiles it to SPU IR, the format that SPU"
 " runtime understands."
-msgstr ""
+msgstr "SPU 编译器接收 XLA IR，并将其编译为 SPU IR，即 SPU 运行时可以理解的格式。"
 
 #: ../../development/pipeline.rst:32
 msgid "For more details, please see :doc:`compiler` for details."
-msgstr ""
+msgstr "更多详细信息请参见 SPU 编译器详情。"
 
 #: ../../development/pipeline.rst:35
 msgid "Data pipeline"
-msgstr ""
+msgstr "数据管道"
 
 #: ../../development/pipeline.rst:37
 msgid "The horizontal part depicts the data pipeline, from left to right."
-msgstr ""
+msgstr "水平部分从左到右描绘数据管道。"
 
 #: ../../development/pipeline.rst:39
 msgid ""
 "Data providers use :ref:`SPU io <reference/py_api:Runtime IO>` module to "
 "encrypt input data."
-msgstr ""
+msgstr "数据提供者使用 SPU io 模块来加密输入数据。"
 
 #: ../../development/pipeline.rst:41
 msgid "For SPU MPC backend, *encrypt* means to split plaintext data into shares."
-msgstr ""
+msgstr "对于 SPU MPC 后端，加密意味着将明文数据分成几部分。"
 
 #: ../../development/pipeline.rst:42
 msgid "For floating-point data, encoding to fixed-point may be also required."
-msgstr ""
+msgstr "对于浮点数据，可能还需要编码为定点。"
 
 #: ../../development/pipeline.rst:44
 msgid ""
 "The encrypted data is sent to :ref:`SPU runtime <reference/py_api:Runtime"
 " Setup>`."
-msgstr ""
+msgstr "加密数据被发送到 SPU 运行时。"
 
 #: ../../development/pipeline.rst:45
 msgid ""
 "The output data is fetched by *result owner*, and decrypted by the "
 ":ref:`SPU io <reference/py_api:Runtime IO>` module."
-msgstr ""
+msgstr "输出数据由SPU io 模块解密后提供给数据获取者。"
 
 #: ../../development/pipeline.rst:49
 msgid "Just in time"
-msgstr ""
+msgstr "即时编译"
 
 #: ../../development/pipeline.rst:51
 msgid ""
@@ -1948,7 +1953,7 @@ msgid ""
 "<https://en.wikipedia.org/wiki/Ahead-of-time_compilation>`_. JIT may "
 "introduce more evaluation overhead, but it's really trivial in secure "
 "computation setting."
-msgstr ""
+msgstr "JIT 是即时编译 (Just-in-time compilation) 的缩写，通过这种方式，编译器可以比 AOT 模式获取更多信息，例如输入形状。JIT 可能会引入更多的评估开销，但在安全计算场景中这是微不足道的。"
 
 #: ../../development/pipeline.rst:53
 msgid ""
@@ -1959,17 +1964,17 @@ msgid ""
 "public known to all parties, the operation will be much faster. So we "
 "should *mark* as much data as possible to be *public* (if it doesn't need"
 " to be protected), and tell the compiler these information."
-msgstr ""
+msgstr "在 SPU 中，JIT 具有更多优势，因为如果后端引擎知道数据是可见的，那么它的速度可能会快几个数量级。例如，在将两方秘密数据相乘时，后端 MPC 运算可能涉及昂贵的三重运算，但当其中一方数据是所有各方都知道的公共数据时，运算会快得多。因此，我们应该将尽可能多的数据标记为公开（如果数据不需要保护），并告诉编译器这些信息。"
 
 #: ../../development/pipeline.rst:55
 msgid ""
 "So, SPU compilation normally happens after all data infeed is done, and "
 "`just in time` before the real evaluation."
-msgstr ""
+msgstr "因此，SPU 编译通常在所有数据输入完成后进行，并且在实际评估之前进行即时编译。"
 
 #: ../../development/policy_sgd_insight.rst:2
 msgid "Background: SGD in MPC-ML"
-msgstr ""
+msgstr "背景：随机梯度下降法在MPC-ML"
 
 #: ../../development/policy_sgd_insight.rst:4
 msgid ""
@@ -1983,7 +1988,10 @@ msgid ""
 "learning_rate), we can find that it seems safer to use small batch_size "
 "and learning_rate, else we get some loss or very strong vibration of auc "
 "within 10 epochs(we leave 10000 samples as test dataset randomly)."
-msgstr ""
+msgstr "随机梯度下降法（SGD）是一个著名的优化算法，它沿着负梯度方向来更新模型的权重。然而，这种方法要求使用者仔细地选择超参数。"
+"网格搜索虽然可以解决此问题，但在实际应用中训练耗时过长，因此并不实用。"
+"例如，在 credit card 数据集上使用随机梯度下降法训练线性回归模型时（批量大小为 4096，学习率为 0.1），"
+"我们发现，若批量大小和学习率设置不当，在 10 个轮次内损失值会偏大，且 AUC 值波动剧烈。（随机选择 10000 个样本作为测试数据集）。"
 
 #: ../../development/policy_sgd_insight.rst:12
 msgid ""
@@ -1991,25 +1999,25 @@ msgid ""
 "batch_size leads to huge training time under limited network resources. "
 "Besides, even you have high bandwidth, small batch_size can not utilize "
 "it!"
-msgstr ""
+msgstr "但是，但处于MPC模式下，即使简单的算法，例如SSLR，小的批量大小在网络资源有限的环境下也会导致训练时间的大幅增加。而且，即使你拥有较高的网络带宽，小的批量也无法充分利用带宽资源。"
 
 #: ../../development/policy_sgd_insight.rst:16
 msgid "How to improve SGD"
-msgstr ""
+msgstr "如何优化 SGD 方法"
 
 #: ../../development/policy_sgd_insight.rst:17
 msgid ""
 "Indeed, after our elaborated experiments, we can find two drawbacks of "
 "naive SGD:"
-msgstr ""
+msgstr "在我们的全面的实验下，我们发现朴素 SGD 方法的两个缺点"
 
 #: ../../development/policy_sgd_insight.rst:19
 msgid "slow update(because of small learning_rate) at the beginning."
-msgstr ""
+msgstr "起始阶段，模型权重更新缓慢是由于学习率较小造成的。"
 
 #: ../../development/policy_sgd_insight.rst:21
 msgid "vibration happens when near to optimal point."
-msgstr ""
+msgstr "当模型权重接近最优点时，模型的表现开始波动。"
 
 #: ../../development/policy_sgd_insight.rst:23
 msgid ""
@@ -2017,29 +2025,31 @@ msgid ""
 "beginning, and \"slow down\" as training goes on. But the ensuing "
 "question is how to determine specific \"large\" and \"slow down\" for "
 "different datasets."
-msgstr ""
+msgstr "所以，应该在起步阶段使用较大的学习率，随着训练的进行，逐渐减小学习率。问题是，对于不同的数据集，如何确定“较大的”和“逐渐减小”的具体情况。"
 
 #: ../../development/policy_sgd_insight.rst:27
 msgid "What's Policy sgd"
-msgstr ""
+msgstr "什么是Policy sgd"
 
 #: ../../development/policy_sgd_insight.rst:28
 msgid ""
 "For SSLR, we provide an answer to the above question: policy-sgd(already "
 "implemented on `SSRegression` in Secretflow when setting "
 "`strategy=policy_sgd`)."
-msgstr ""
+msgstr "对于 SSLR 算法，我们已经在隐语 Secretflow 中实现了 policy-sgd 方法。（在 SSRegression 中设置 strategy=policy_sgd）"
 
 #: ../../development/policy_sgd_insight.rst:33
 msgid "The core of this optimizer consists of two parts:"
-msgstr ""
+msgstr "policy-sgd 优化算法的核心包含两部分"
 
 #: ../../development/policy_sgd_insight.rst:35
+#, python-brace-format
 msgid ""
 "1. Adaptive learning rate scaling mechanism: in first epoch, we force the"
 " weight move unit-norm in gradient direction and record "
 ":math:`\\frac{1}{||grad||_2}` as scale factor for this batch."
-msgstr ""
+msgstr "自适应学习率缩放机制：在第一个轮次（epoch）中，我们强制权重在梯度方向上移动单位范数，并将 "
+":math:`\\frac{1}{||grad||_2}` 记录为该批次的缩放因子。"
 
 #: ../../development/policy_sgd_insight.rst:38
 msgid ""
@@ -2048,13 +2058,15 @@ msgid ""
 "based(use Taylor expansion to avoid invoking time-consuming op like "
 "`exp`, `log`) and weight based, and choose the latter in our final "
 "implementation."
-msgstr ""
+msgstr "学习率衰减与早停策略：我们采用步长衰减（step-decay）策略进行学习率衰减。"
+"关于早停，我们比较了基于损失（利用泰勒展开避免指数、对数等耗时运算）和基于权重的两种策略，最终选择了后者。"
 
 #: ../../development/policy_sgd_insight.rst:44
 msgid "Experiments"
-msgstr ""
+msgstr "实验"
 
 #: ../../development/policy_sgd_insight.rst:45
+#, python-brace-format
 msgid ""
 "We use 4 dataset for experiments, containing 3 open source dataset "
 "(`credit_card <https://www.kaggle.com/datasets/uciml/default-of-credit-"
@@ -2065,105 +2077,107 @@ msgid ""
 " basic one-hot and min-max normalization like normal LR needs. We leave "
 "out about :math:`\\frac{1}{3}` data for test data and evaluate auc on it."
 " The baseline auc is computed when using sklearn for model training."
-msgstr ""
+msgstr "我们使用四个数据集进行实验，包含三个开源数据集（credit_card, Bank Marketing, Aps）和一个工业界数据集（wzdata）。"
+"对于开源数据集，我们仅仅做一些基本的 one-hot 和 min-max 的归一化操作，以此来满足线性回归模型的需要。"
+"我们留出三分之一的数据作为测试数据集，并在其上评估了 auc 指标作为基线。我们使用 sklearn 进行模型训练，并计算 auc。"
 
 #: ../../development/policy_sgd_insight.rst:53
 #: ../../development/policy_sgd_insight.rst:107
 msgid "Dataset"
-msgstr ""
+msgstr "数据集"
 
 #: ../../development/policy_sgd_insight.rst:53
 msgid "Training shape"
-msgstr ""
+msgstr "训练集的维度"
 
 #: ../../development/policy_sgd_insight.rst:53
 msgid "baseline auc"
-msgstr ""
+msgstr "基线 auc"
 
 #: ../../development/policy_sgd_insight.rst:55
 #: ../../development/policy_sgd_insight.rst:109
 msgid "business dataset"
-msgstr ""
+msgstr "wzdata"
 
 #: ../../development/policy_sgd_insight.rst:55
 msgid "111618，23"
-msgstr ""
+msgstr "111618，23"
 
 #: ../../development/policy_sgd_insight.rst:55
 msgid "0.8175"
-msgstr ""
+msgstr "0.8175"
 
 #: ../../development/policy_sgd_insight.rst:57
 #: ../../development/policy_sgd_insight.rst:111
 msgid "Bank Marketing"
-msgstr ""
+msgstr "Bank Marketing"
 
 #: ../../development/policy_sgd_insight.rst:57
 msgid "40787，48"
-msgstr ""
+msgstr "40787，48"
 
 #: ../../development/policy_sgd_insight.rst:57
 msgid "0.93"
-msgstr ""
+msgstr "0.93"
 
 #: ../../development/policy_sgd_insight.rst:59
 #: ../../development/policy_sgd_insight.rst:113
 msgid "credit_card"
-msgstr ""
+msgstr "credit_card"
 
 #: ../../development/policy_sgd_insight.rst:59
 msgid "20000, 23"
-msgstr ""
+msgstr "20000, 23"
 
 #: ../../development/policy_sgd_insight.rst:59
 msgid "0.718"
-msgstr ""
+msgstr "0.718"
 
 #: ../../development/policy_sgd_insight.rst:61
 #: ../../development/policy_sgd_insight.rst:115
 msgid "Aps"
-msgstr ""
+msgstr "Aps"
 
 #: ../../development/policy_sgd_insight.rst:61
 msgid "60000，170"
-msgstr ""
+msgstr "60000，170"
 
 #: ../../development/policy_sgd_insight.rst:61
 msgid "0.9666"
-msgstr ""
+msgstr "0.9666"
 
 #: ../../development/policy_sgd_insight.rst:65
 msgid "Precision"
-msgstr ""
+msgstr "精确度"
 
 #: ../../development/policy_sgd_insight.rst:67
 msgid ""
 "We first test how precision of fixed point influence SSLR and test three "
 "settings:"
-msgstr ""
+msgstr "我们首先测试定点精度如何影响 SSLR，并测试了三种设置："
 
 #: ../../development/policy_sgd_insight.rst:69
 msgid "low precision: `FM64` + 18 fxp"
-msgstr ""
+msgstr "低精度：64 位定点数格式（FM64）加上 18 位小数部分（fxp）"
 
 #: ../../development/policy_sgd_insight.rst:71
 msgid "medium precision: `FM128` + 28 fxp"
-msgstr ""
+msgstr "中精度：128 位定点数格式（FM128）加上 28 位小数部分（fxp）"
 
 #: ../../development/policy_sgd_insight.rst:73
 msgid "high precision: `FM128` + 42 fxp"
-msgstr ""
+msgstr "高精度：128 位定点数格式（FM128）加上 42 位小数部分（fxp）"
 
 #: ../../development/policy_sgd_insight.rst:81
 msgid ""
 "We can find that for both optimizer, precision has little influence on "
 "final auc, so it's safe for user to choose low precision when training "
 "LR."
-msgstr ""
+msgstr "我们可以发现，对于这两种优化器而言，精度对 auc 影响很小，因此用户在训练线性回归（LR）模型时选择低精度是安全的。"
 
 #: ../../development/policy_sgd_insight.rst:85
 msgid "Naive v.s Policy"
-msgstr ""
+msgstr "Naive sgd 与 Policy sgd 对比"
 
 #: ../../development/policy_sgd_insight.rst:87
 msgid ""
@@ -2177,7 +2191,10 @@ msgid ""
 " for naive_sgd). But for policy_sgd, it's often harmless to use larger "
 "batch_size(2048 for these experiments),and we set learning_rate decay a "
 "half every 2 epochs."
-msgstr ""
+msgstr "我们对比了 naive-sgd (v1) 和 policy-sgd (v2) 的总运行时间。"
+"对于 naive-sgd，我们遵循“稳妥策略”（常用于明文机器学习）：采用较小的学习率（如 0.1）和较小的批量大小（如 1024，若使用 2048 则部分数据无法收敛）。"
+"此外，naive-sgd 难以确定合适的默认早停值（设置不当可能导致 AUC 大幅下降）。为避免繁琐的网格搜索，naive-sgd 运行时不采用任何学习率衰减（推荐做法）。"
+"但对于 policy-sgd，使用较大的批量大小通常无害（本实验中为 2048），且每 2 个轮次学习率减半。"
 
 #: ../../development/policy_sgd_insight.rst:93
 msgid ""
@@ -2185,7 +2202,7 @@ msgid ""
 "learning_rate to 0.1 and use low precision, CHEETAH protocol. And we test"
 " in WAN, providing 20Mbps and 20ms RTT, which is a typical setting in "
 "real world project."
-msgstr ""
+msgstr "至于其他超参数，我们将总运行轮次设置为 20，学习率设置为 0.1，并使用低精度、CHEETAH协议。我们在广域网中进行测试，提供 20Mbps 的带宽以及 20 毫秒的往返时间（RTT），这是现实世界项目中的一种典型设置。"
 
 #: ../../development/policy_sgd_insight.rst:99
 msgid ""
@@ -2195,71 +2212,73 @@ msgid ""
 "means policy_sgd meets the stop criterion based on loss, similar for "
 "purple line) after the model converges. Besides, checking the auc of "
 "stopping time, it has very low gap(<0.01) between baseline."
-msgstr ""
+msgstr "首先，我们发现 naive-sgd (v1) 在四个数据集上均未能在 20 轮内满足早停条件（因此图中未标出）。"
+"而 policy-sgd (v2) 在所有四个数据集上均能在模型收敛后实现“早停”（红色点划线表示满足基于损失的早停标准，紫色表示基于权重的早停标准）。"
+"此外，早停时的 AUC 值与基线差距极小（<0.01）。"
 
 #: ../../development/policy_sgd_insight.rst:103
 msgid ""
 "The following table shows the total running time of policy_sgd and "
 "naive_sgd(based on weight early stop). Policy_sgd can reduce the time by "
 "2-5 times compared to naive_sgd."
-msgstr ""
+msgstr "下方的表格展示了两种方法的运行时间，其中 policy-sgd 是基于模型权重进行早停判断的。 policy-sgd 相比 naive-sgd 在时间上缩短了 2-5 倍。"
 
 #: ../../development/policy_sgd_insight.rst:107
 msgid "naive_sgd(s)"
-msgstr ""
+msgstr "naive_sgd(s)"
 
 #: ../../development/policy_sgd_insight.rst:107
 msgid "policy_sgd(s)"
-msgstr ""
+msgstr "policy_sgd(s)"
 
 #: ../../development/policy_sgd_insight.rst:107
 msgid "naive/policy"
-msgstr ""
+msgstr "naive/policy"
 
 #: ../../development/policy_sgd_insight.rst:109
 msgid "~8000"
-msgstr ""
+msgstr "~8000"
 
 #: ../../development/policy_sgd_insight.rst:109
 #: ../../development/policy_sgd_insight.rst:113
 msgid "~1600"
-msgstr ""
+msgstr "~1600"
 
 #: ../../development/policy_sgd_insight.rst:109
 msgid "5x"
-msgstr ""
+msgstr "5x"
 
 #: ../../development/policy_sgd_insight.rst:111
 msgid "~3000"
-msgstr ""
+msgstr "~3000"
 
 #: ../../development/policy_sgd_insight.rst:111
 msgid "~800"
-msgstr ""
+msgstr "~800"
 
 #: ../../development/policy_sgd_insight.rst:111
 msgid "3.75x"
-msgstr ""
+msgstr "3.75x"
 
 #: ../../development/policy_sgd_insight.rst:113
 msgid "~350"
-msgstr ""
+msgstr "~350"
 
 #: ../../development/policy_sgd_insight.rst:113
 msgid "4.57x"
-msgstr ""
+msgstr "4.57x"
 
 #: ../../development/policy_sgd_insight.rst:115
 msgid "~10000"
-msgstr ""
+msgstr "~10000"
 
 #: ../../development/policy_sgd_insight.rst:115
 msgid "~4200"
-msgstr ""
+msgstr "~4200"
 
 #: ../../development/policy_sgd_insight.rst:115
 msgid "2.38x"
-msgstr ""
+msgstr "2.38x"
 
 #: ../../development/runtime.rst:2
 msgid "SPU Runtime"
@@ -2579,10 +2598,12 @@ msgid "A value type is a tuple (**V**, **D**, **S**), where:"
 msgstr ""
 
 #: ../../development/type_system.rst:21
+#, python-brace-format
 msgid "**V** is *visibility*, could be one of *{public, secret}*"
 msgstr ""
 
 #: ../../development/type_system.rst:22
+#, python-brace-format
 msgid "**D** is *data type*, could be one of *{int, fxp}*"
 msgstr ""
 
@@ -2714,12 +2735,14 @@ msgid "The dispatch problem"
 msgstr ""
 
 #: ../../development/type_system.rst:118
+#, python-brace-format
 msgid ""
 "In this example, `%1` and `%2` are SPU values, each of them belongs one "
 "of four types `{sint, pint, sfxp, pfxp}`, the type of `MUL` is:"
 msgstr ""
 
 #: ../../development/type_system.rst:120
+#, python-brace-format
 msgid ""
 "\\begin{Bmatrix} sint \\\\ pint \\\\ sfxp \\\\ pfxp \\end{Bmatrix}\n"
 "\\times\n"
@@ -2934,7 +2957,7 @@ msgstr ""
 msgid "Control Flow Op"
 msgstr ""
 
-#: ../../development/visibility_inference_rule.rst:88
+#: ../../development/visibility_inference_rule.rst:62
 msgid ""
 "`If <https://github.com/openxla/stablehlo/blob/main/docs/spec.md#if>`_ "
 "and `Case "
@@ -2953,7 +2976,7 @@ msgid ""
 "common visibility will be inserted before relative return."
 msgstr ""
 
-#: ../../development/visibility_inference_rule.rst:105
+#: ../../development/visibility_inference_rule.rst:90
 msgid ""
 "`While "
 "<https://github.com/openxla/stablehlo/blob/main/docs/spec.md#while>`_"
@@ -2985,13 +3008,13 @@ msgid ""
 "<https://github.com/openxla/stablehlo/blob/main/docs/spec.md#reduce_window>`_"
 msgstr ""
 
-#: ../../development/visibility_inference_rule.rst:132
+#: ../../development/visibility_inference_rule.rst:120
 msgid ""
 "`SelectAndScatter "
 "<https://github.com/openxla/stablehlo/blob/main/docs/spec.md#select_and_scatter>`_"
 msgstr ""
 
-#: ../../development/visibility_inference_rule.rst:123
+#: ../../development/visibility_inference_rule.rst:121
 msgid "In general the rule is"
 msgstr ""
 
@@ -3002,4 +3025,3 @@ msgstr ""
 #: ../../development/visibility_inference_rule.rst:123
 msgid "visibility(result) == common_visibility(operand, source, init)"
 msgstr ""
-
