@@ -32,7 +32,7 @@ msgstr ""
 
 #: ../../development/design_device.rst:8
 msgid "Overview"
-msgstr ""
+msgstr "概述"
 
 #: ../../development/design_device.rst:10
 msgid ""

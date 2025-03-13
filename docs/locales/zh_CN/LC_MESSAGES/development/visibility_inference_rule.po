@@ -25,7 +25,7 @@ msgstr ""
 
 #: ../../development/visibility_inference_rule.rst:5
 msgid "Overview"
-msgstr ""
+msgstr "概述"
 
 #: ../../development/visibility_inference_rule.rst:7
 msgid "This document is for SPU compiler developers."

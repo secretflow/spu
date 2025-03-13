@@ -21,13 +21,13 @@ msgstr ""
 
 #: ../../development/compiler.rst:2
 msgid "SPU Compiler"
-msgstr ""
+msgstr "SPU 编译器"
 
 #: ../../development/compiler.rst:4
 msgid ""
 "The SPU compiler aims to provide first-party compiler support from the "
 "different ML frameworks to SPU runtime."
-msgstr ""
+msgstr "SPU 编译器旨在为 SPU 运行时提供来自不同 ML 框架的原生编译器支持。"
 
 #: ../../development/compiler.rst:7
 msgid ""
@@ -44,13 +44,13 @@ msgid ""
 " XLA as the middle layer, mapping from platform frameworks like PyTorch, "
 "JAX, and TensorFlow into XLA and then progressively lowering down to "
 "their target hardware."
-msgstr ""
+msgstr "XLA：多家供应商使用 XLA 作为中间层，从 PyTorch、JAX 和 TensorFlow 等平台框架映射到 XLA，然后逐步翻译到目标硬件。"
 
 #: ../../development/compiler.rst:11
 msgid ""
 "`MLIR-HLO <https://github.com/tensorflow/mlir-hlo>`_ MLIR-HLO project "
 "connects XLA into MLIR world."
-msgstr ""
+msgstr "MLIR-HLO：MLIR-HLO 项目将 XLA 连接到 MLIR。"
 
 #: ../../development/compiler.rst:13
 msgid ""
@@ -64,5 +64,5 @@ msgstr ""
 
 #: ../../development/compiler.rst:17
 msgid "All the roads from ML frameworks to SPU"
-msgstr ""
+msgstr "ML 框架到 SPU 的层次结构"
 

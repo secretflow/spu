@@ -21,7 +21,7 @@ msgstr ""
 
 #: ../../development/policy_sgd_insight.rst:2
 msgid "Background: SGD in MPC-ML"
-msgstr ""
+msgstr "背景：随机梯度下降法在MPC-ML"
 
 #: ../../development/policy_sgd_insight.rst:4
 msgid ""
@@ -43,25 +43,25 @@ msgid ""
 "batch_size leads to huge training time under limited network resources. "
 "Besides, even you have high bandwidth, small batch_size can not utilize "
 "it!"
-msgstr ""
+msgstr "但是，但处于MPC模式下，即使简单的算法，例如SSLR，小的批量大小在网络资源有限的环境下也会导致训练时间的大幅增加。而且，即使你拥有较高的网络带宽，小的批量也无法充分利用带宽资源。"
 
 #: ../../development/policy_sgd_insight.rst:16
 msgid "How to improve SGD"
-msgstr ""
+msgstr "如何优化 SGD 方法"
 
 #: ../../development/policy_sgd_insight.rst:17
 msgid ""
 "Indeed, after our elaborated experiments, we can find two drawbacks of "
 "naive SGD:"
-msgstr ""
+msgstr "在我们的全面的实验下，我们发现朴素 SGD 方法的两个缺点"
 
 #: ../../development/policy_sgd_insight.rst:19
 msgid "slow update(because of small learning_rate) at the beginning."
-msgstr ""
+msgstr "起始阶段，模型权重更新缓慢是由于学习率较小造成的。"
 
 #: ../../development/policy_sgd_insight.rst:21
 msgid "vibration happens when near to optimal point."
-msgstr ""
+msgstr "当模型权重接近最优点时，模型的表现开始波动。"
 
 #: ../../development/policy_sgd_insight.rst:23
 msgid ""
@@ -69,11 +69,11 @@ msgid ""
 "beginning, and \"slow down\" as training goes on. But the ensuing "
 "question is how to determine specific \"large\" and \"slow down\" for "
 "different datasets."
-msgstr ""
+msgstr "所以，应该在起步阶段使用较大的学习率，随着训练的进行，逐渐减小学习率。问题是，对于不同的数据集，如何确定“较大的”和“逐渐减小”的具体情况。"
 
 #: ../../development/policy_sgd_insight.rst:27
 msgid "What's Policy sgd"
-msgstr ""
+msgstr "什么是Policy sgd"
 
 #: ../../development/policy_sgd_insight.rst:28
 msgid ""
@@ -84,7 +84,7 @@ msgstr ""
 
 #: ../../development/policy_sgd_insight.rst:33
 msgid "The core of this optimizer consists of two parts:"
-msgstr ""
+msgstr "policy-sgd 优化算法的核心包含两部分"
 
 #: ../../development/policy_sgd_insight.rst:35
 #, python-brace-format
@@ -105,7 +105,7 @@ msgstr ""
 
 #: ../../development/policy_sgd_insight.rst:44
 msgid "Experiments"
-msgstr ""
+msgstr "实验"
 
 #: ../../development/policy_sgd_insight.rst:45
 #, python-brace-format
@@ -124,7 +124,7 @@ msgstr ""
 #: ../../development/policy_sgd_insight.rst:53
 #: ../../development/policy_sgd_insight.rst:107
 msgid "Dataset"
-msgstr ""
+msgstr "数据集"
 
 #: ../../development/policy_sgd_insight.rst:53
 msgid "Training shape"
@@ -137,7 +137,7 @@ msgstr ""
 #: ../../development/policy_sgd_insight.rst:55
 #: ../../development/policy_sgd_insight.rst:109
 msgid "business dataset"
-msgstr ""
+msgstr "wzdata"
 
 #: ../../development/policy_sgd_insight.rst:55
 msgid "111618，23"
@@ -150,7 +150,7 @@ msgstr ""
 #: ../../development/policy_sgd_insight.rst:57
 #: ../../development/policy_sgd_insight.rst:111
 msgid "Bank Marketing"
-msgstr ""
+msgstr "Bank Marketing"
 
 #: ../../development/policy_sgd_insight.rst:57
 msgid "40787，48"
@@ -163,7 +163,7 @@ msgstr ""
 #: ../../development/policy_sgd_insight.rst:59
 #: ../../development/policy_sgd_insight.rst:113
 msgid "credit_card"
-msgstr ""
+msgstr "credit_card"
 
 #: ../../development/policy_sgd_insight.rst:59
 msgid "20000, 23"
@@ -176,7 +176,7 @@ msgstr ""
 #: ../../development/policy_sgd_insight.rst:61
 #: ../../development/policy_sgd_insight.rst:115
 msgid "Aps"
-msgstr ""
+msgstr "Aps"
 
 #: ../../development/policy_sgd_insight.rst:61
 msgid "60000，170"
@@ -188,36 +188,36 @@ msgstr ""
 
 #: ../../development/policy_sgd_insight.rst:65
 msgid "Precision"
-msgstr ""
+msgstr "精确度"
 
 #: ../../development/policy_sgd_insight.rst:67
 msgid ""
 "We first test how precision of fixed point influence SSLR and test three "
 "settings:"
-msgstr ""
+msgstr "我们首先测试定点精度如何影响 SSLR，并测试了三种设置："
 
 #: ../../development/policy_sgd_insight.rst:69
 msgid "low precision: `FM64` + 18 fxp"
-msgstr ""
+msgstr "低精度：64 位定点数格式（FM64）加上 18 位小数部分（fxp）"
 
 #: ../../development/policy_sgd_insight.rst:71
 msgid "medium precision: `FM128` + 28 fxp"
-msgstr ""
+msgstr "中精度：128 位定点数格式（FM128）加上 28 位小数部分（fxp）"
 
 #: ../../development/policy_sgd_insight.rst:73
 msgid "high precision: `FM128` + 42 fxp"
-msgstr ""
+msgstr "高精度：128 位定点数格式（FM128）加上 42 位小数部分（fxp）"
 
 #: ../../development/policy_sgd_insight.rst:81
 msgid ""
 "We can find that for both optimizer, precision has little influence on "
 "final auc, so it's safe for user to choose low precision when training "
 "LR."
-msgstr ""
+msgstr "我们可以发现，对于这两种优化器而言，精度对 auc 影响很小，因此用户在训练线性回归（LR）模型时选择低精度是安全的。"
 
 #: ../../development/policy_sgd_insight.rst:85
 msgid "Naive v.s Policy"
-msgstr ""
+msgstr "Naive sgd 与 Policy sgd 对比"
 
 #: ../../development/policy_sgd_insight.rst:87
 msgid ""
