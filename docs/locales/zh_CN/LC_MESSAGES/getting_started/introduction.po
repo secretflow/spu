@@ -1,0 +1,58 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2021 Ant Group Co., Ltd.
+# This file is distributed under the same license as the SPU package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2025.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: SPU \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-03-13 15:10+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: ../../getting_started/introduction.rst:2
+msgid "What is SPU?"
+msgstr ""
+
+#: ../../getting_started/introduction.rst:4
+msgid ""
+"SPU (Secure Processing Unit) is a domain-specific **compiler and runtime "
+"suite**, that aims to provide a **secure computation** service with "
+"**provable security**."
+msgstr ""
+
+#: ../../getting_started/introduction.rst:6
+msgid ""
+"SPU compiler uses `XLA "
+"<https://www.tensorflow.org/xla/operation_semantics>`_ as its front-end "
+"Intermediate Representation (IR), therefore, SPU supports the XLA IR "
+"outputs from Tensorflow, Jax, or PyTorch. Internally, the SPU compiler "
+"compiles XLA to an MPC specific MLIR dialect which is later interpreted "
+"by SPU runtime. Currently, SPU team highly recommends using `JAX "
+"<https://github.com/google/jax>`_ and its sibling - `Flax "
+"<https://github.com/google/flax>`_."
+msgstr ""
+
+#: ../../getting_started/introduction.rst:8
+msgid ""
+"SPU runtime implements various `MPC <https://en.wikipedia.org/wiki"
+"/Secure_multi-party_computation>`_ protocols (as the back-end) to provide"
+" **provable security**. SPU runtime is designed to be **highly "
+"extensible**, protocol developers can hack into MPC protocols with "
+"minimum effort and let the SPU compiler/runtime translate and interpret "
+"complicated frontend logic on it."
+msgstr ""
+
+#: ../../getting_started/introduction.rst:14
+msgid "High-level system architecture of SPU"
+msgstr ""
+

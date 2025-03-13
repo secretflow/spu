@@ -1,0 +1,357 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2021 Ant Group Co., Ltd.
+# This file is distributed under the same license as the SPU package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2025.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: SPU \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-03-13 15:10+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: ../../development/type_system.rst:2
+msgid "Type System"
+msgstr ""
+
+#: ../../development/type_system.rst:5
+msgid "Overview"
+msgstr ""
+
+#: ../../development/type_system.rst:7
+msgid "This document is for VM developers."
+msgstr ""
+
+#: ../../development/type_system.rst:9
+msgid "Everything in SPU could be treated as an object, each object has a type."
+msgstr ""
+
+#: ../../development/type_system.rst:11
+msgid ""
+"There are only two types of objects, *value* or *operator*, which means "
+"if a symbol is not a *value*, it's an *operator*."
+msgstr ""
+
+#: ../../development/type_system.rst:13
+msgid ""
+"**value**: an object that is managed by SPU runtime, representing a "
+"public/secret data."
+msgstr ""
+
+#: ../../development/type_system.rst:14
+msgid ""
+"**operator**: an object that takes one or more values and outputs a "
+"return value, i.e. `multiply` is an operator."
+msgstr ""
+
+#: ../../development/type_system.rst:17
+msgid "Value type"
+msgstr ""
+
+#: ../../development/type_system.rst:19
+msgid "A value type is a tuple (**V**, **D**, **S**), where:"
+msgstr ""
+
+#: ../../development/type_system.rst:21
+#, python-brace-format
+msgid "**V** is *visibility*, could be one of *{public, secret}*"
+msgstr ""
+
+#: ../../development/type_system.rst:22
+#, python-brace-format
+msgid "**D** is *data type*, could be one of *{int, fxp}*"
+msgstr ""
+
+#: ../../development/type_system.rst:23
+msgid "**S** is *shape*, which makes the value a tensor."
+msgstr ""
+
+#: ../../development/type_system.rst:25
+msgid ""
+"We can define a hyper type function, which takes three parameters and "
+"return a concrete value type."
+msgstr ""
+
+#: ../../development/type_system.rst:31
+msgid ""
+"To simplify things a little bit, we can ignore *shape* for now and assume"
+" that runtime will handle it correctly."
+msgstr ""
+
+#: ../../development/type_system.rst:37
+msgid ""
+"With this type function, we can define a list of types in the SPU type "
+"system."
+msgstr ""
+
+#: ../../development/type_system.rst:47
+msgid "Operator type"
+msgstr ""
+
+#: ../../development/type_system.rst:49
+msgid ""
+"*Operators* takes a list of values as parameters and returns exactly one "
+"value as result, operator's type is determined by the types of input "
+"parameters and return values."
+msgstr ""
+
+#: ../../development/type_system.rst:51
+msgid ""
+"In SPU IR, an operator could take a polymorphic typed parameter and the "
+"return type could be deduced from the parameters. For example:"
+msgstr ""
+
+#: ../../development/type_system.rst:62
+msgid ""
+"The `add` operator takes a pair of `type(V, D)` as parameter, which has "
+"2x2x2x2 = 16 different kinds of combinations. To support this type of "
+"operators, we introduce the following *type functor*."
+msgstr ""
+
+#: ../../development/type_system.rst:64
+msgid ""
+"**dtype promotion**, which promotes two dtypes to a more relaxed type, in"
+" SPU system, *int* is always promoted to *fxp*."
+msgstr ""
+
+#: ../../development/type_system.rst:72
+msgid ""
+"**visibility narrow**, which narrows the visibility when two or more "
+"operands have different visibility properties, this is the key to "
+"maintain the \"secure semantic\" of SPU VM, since the resulting "
+"visibility of ops will always be more strict. i.e. if one of operands is "
+"*secret*, the result is a *secret*."
+msgstr ""
+
+#: ../../development/type_system.rst:82
+msgid "Now we can represent the polymorphic mul op as:"
+msgstr ""
+
+#: ../../development/type_system.rst:88
+msgid ""
+"the op takes two parameters, first type is :code:`type(V0, D0)`, second "
+"type is :code:`type(V1, D1)`."
+msgstr ""
+
+#: ../../development/type_system.rst:89
+msgid "the op returns :code:`type(narrow(V0, V1), promote(D0, D1))` as a result."
+msgstr ""
+
+#: ../../development/type_system.rst:90
+msgid ""
+"when applying the op to two arbitrary arguments, the result could be "
+"deduced from the above type expressions."
+msgstr ""
+
+#: ../../development/type_system.rst:94
+msgid "Use of type"
+msgstr ""
+
+#: ../../development/type_system.rst:96
+msgid "There are many uses for types."
+msgstr ""
+
+#: ../../development/type_system.rst:98
+msgid ""
+"First, the most important one, type is self descriptive, with an accurate"
+" defined type system, we can describe *SPU IR* more accurately."
+msgstr ""
+
+#: ../../development/type_system.rst:99
+msgid ""
+"Second, runtime type information is used to do runtime dispatch, which is"
+" important for polymorphic operators."
+msgstr ""
+
+#: ../../development/type_system.rst:100
+msgid ""
+"Third, the type system could be used by static type checker, and could be"
+" used to double check runtime implementation."
+msgstr ""
+
+#: ../../development/type_system.rst:104
+msgid "Ops dispatch"
+msgstr ""
+
+#: ../../development/type_system.rst:106
+msgid ""
+"As described above, type helps for dispatching, here we use `MUL` "
+"instruction as an example."
+msgstr ""
+
+#: ../../development/type_system.rst:113
+msgid ""
+"The above `MUL` instruction does element-wise multiplication, `%1` and "
+"`%2` are parameters and `%3` is the return value."
+msgstr ""
+
+#: ../../development/type_system.rst:116
+msgid "The dispatch problem"
+msgstr ""
+
+#: ../../development/type_system.rst:118
+#, python-brace-format
+msgid ""
+"In this example, `%1` and `%2` are SPU values, each of them belongs one "
+"of four types `{sint, pint, sfxp, pfxp}`, the type of `MUL` is:"
+msgstr ""
+
+#: ../../development/type_system.rst:120
+#, python-brace-format
+msgid ""
+"\\begin{Bmatrix} sint \\\\ pint \\\\ sfxp \\\\ pfxp \\end{Bmatrix}\n"
+"\\times\n"
+"\\begin{Bmatrix} sint \\\\ pint \\\\ sfxp \\\\ pfxp \\end{Bmatrix}"
+msgstr ""
+
+#: ../../development/type_system.rst:126
+msgid ""
+"**The problem is how to dispatch operations to correct kernel according "
+"to the arguments' type information**."
+msgstr ""
+
+#: ../../development/type_system.rst:128
+msgid ""
+"A simple idea is to pattern match all these type combinations and "
+"dispatch to different kernels accordingly, with this way we got 4x4=16 "
+"different kernels."
+msgstr ""
+
+#: ../../development/type_system.rst:146
+msgid "Layered dispatch"
+msgstr ""
+
+#: ../../development/type_system.rst:148
+msgid ""
+"A better way is to dispatch layer by layer, for example, first dispatch "
+"by dtype, then dispatch by vtype."
+msgstr ""
+
+#: ../../development/type_system.rst:172
+msgid "In the above diagram:"
+msgstr ""
+
+#: ../../development/type_system.rst:174
+msgid "**mul** is general *multiplication* method."
+msgstr ""
+
+#: ../../development/type_system.rst:175
+msgid "**imul** is integer multiplication method."
+msgstr ""
+
+#: ../../development/type_system.rst:176
+msgid "**fmul** is fixedpoint multiplication method."
+msgstr ""
+
+#: ../../development/type_system.rst:177
+msgid "**rmul** is untyped multiplication method over ring 2k."
+msgstr ""
+
+#: ../../development/type_system.rst:178
+msgid ""
+"**mulss** multiplies two secrets, the domain and behavior are secure "
+"protocol dependent."
+msgstr ""
+
+#: ../../development/type_system.rst:180
+msgid "The above idea can be expressed in code like:"
+msgstr ""
+
+#: ../../development/type_system.rst:215
+msgid "Fast dispatch"
+msgstr ""
+
+#: ../../development/type_system.rst:217
+msgid ""
+"In the above example, we observe that `i2f` and `truncation` could be "
+"optimized, the intuition is that when a value is converted from `int` to "
+"`fxp` and later convert back, these two conversion introduce non-trivial "
+"computation overhead in MPC setting."
+msgstr ""
+
+#: ../../development/type_system.rst:219
+msgid ""
+"We use the so called *fast dispatch* to optimize it, when doing cross "
+"`int` and `fxp` multiplication, we could directly do `imul` without type "
+"lift and truncation."
+msgstr ""
+
+#: ../../development/type_system.rst:239 ../../development/type_system.rst:274
+msgid "Note:"
+msgstr ""
+
+#: ../../development/type_system.rst:241
+msgid "in the above implementation we didn't maintain the type correctness."
+msgstr ""
+
+#: ../../development/type_system.rst:242
+msgid ""
+"this pattern match based *fast dispatch* is exactly the same as compile-"
+"time *peephole optimization*."
+msgstr ""
+
+#: ../../development/type_system.rst:243
+msgid ""
+"dispatch inside a protocol is also complicated and beyond the scope of "
+"this article."
+msgstr ""
+
+#: ../../development/type_system.rst:247
+msgid "Implementation"
+msgstr ""
+
+#: ../../development/type_system.rst:249
+msgid ""
+"With *type functor*, we have the following op definitions in `mul` "
+"dispatch chain."
+msgstr ""
+
+#: ../../development/type_system.rst:258
+msgid ""
+"In dispatch phrase, SPU runtime uses type information to select next "
+"dispatch op. In this example, `(x:sfxp, y:sfxp)` is applied op `mul`, via"
+" pattern matching we got `(V0=SECRET,D0=FXP), (V1=SECRET,D1=FXP)`, and "
+"the dispatch stack looks like:"
+msgstr ""
+
+#: ../../development/type_system.rst:276
+msgid ""
+"We use C++-like template type notation to represent polymorphic type "
+"constraints."
+msgstr ""
+
+#: ../../development/type_system.rst:279
+msgid "Partial type"
+msgstr ""
+
+#: ../../development/type_system.rst:281
+msgid ""
+"In the type dispatch step, type information is used to select next op, "
+"and when partial of type information is used, it's *erased*. For example,"
+" when `dtype` is used to select `fmul` in the above example, dtype is "
+"useless in the future and could be erased, the lower level op does not "
+"distinguish dtype (via a generic type parameter). In a real "
+"implementation, we don't erase the type explicitly, just leave it there "
+"without further use."
+msgstr ""
+
+#: ../../development/type_system.rst:283
+msgid ""
+"The return value takes the `reverse progress` of dispatch. The return "
+"type is filled from bottom to up. For example, in the above progress, "
+"when :code:`z=rmul(x,y)` is called, `rmul` knows `z`'s visibility type is"
+" `SECRET` but does not know its dtype yet, so here `z` has a partial type"
+" `type(SECRET, $UNKNOWN)`. The type will be filled step by step during "
+"stack popup, and eventually be completed as a full type when the whole "
+"dispatch progress is done."
+msgstr ""
+

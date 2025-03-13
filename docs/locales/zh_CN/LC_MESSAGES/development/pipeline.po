@@ -1,0 +1,157 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2021 Ant Group Co., Ltd.
+# This file is distributed under the same license as the SPU package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2025.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: SPU \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-03-13 15:10+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: ../../development/pipeline.rst:2
+msgid "SPU Pipeline"
+msgstr ""
+
+#: ../../development/pipeline.rst:4
+msgid ""
+"Recall that SPU could be treated as a :ref:`virtual device "
+"<development/basic_concepts:Machine model>`. When working with a (virtual"
+" or physical) device, we need several steps."
+msgstr ""
+
+#: ../../development/pipeline.rst:6
+msgid "infeed code to it"
+msgstr ""
+
+#: ../../development/pipeline.rst:7
+msgid "infeed data to it"
+msgstr ""
+
+#: ../../development/pipeline.rst:8
+msgid "trigger it to run"
+msgstr ""
+
+#: ../../development/pipeline.rst:9
+msgid "get result from it"
+msgstr ""
+
+#: ../../development/pipeline.rst:11
+msgid "This page describes details of each step."
+msgstr ""
+
+#: ../../development/pipeline.rst:14
+msgid "Overview"
+msgstr ""
+
+#: ../../development/pipeline.rst:16
+msgid ""
+"Before diving into the details, let's first take a closer look of SPU "
+"pipeline, it's something like this:"
+msgstr ""
+
+#: ../../development/pipeline.rst:21
+msgid "code and data pipeline"
+msgstr ""
+
+#: ../../development/pipeline.rst:24
+msgid "Compilation"
+msgstr ""
+
+#: ../../development/pipeline.rst:26
+msgid "The vertical part depicts the compilation pipeline, from top to bottom."
+msgstr ""
+
+#: ../../development/pipeline.rst:28
+msgid "Programmer writes code in AI frameworks(like TensorFlow/JAX)."
+msgstr ""
+
+#: ../../development/pipeline.rst:29
+msgid "AI frontend traces the DAG, and emits as XLA IR."
+msgstr ""
+
+#: ../../development/pipeline.rst:30
+msgid ""
+"SPU compiler takes XLA IR, and compiles it to SPU IR, the format that SPU"
+" runtime understands."
+msgstr ""
+
+#: ../../development/pipeline.rst:32
+msgid "For more details, please see :doc:`compiler` for details."
+msgstr ""
+
+#: ../../development/pipeline.rst:35
+msgid "Data pipeline"
+msgstr ""
+
+#: ../../development/pipeline.rst:37
+msgid "The horizontal part depicts the data pipeline, from left to right."
+msgstr ""
+
+#: ../../development/pipeline.rst:39
+msgid ""
+"Data providers use :ref:`SPU io <reference/py_api:Runtime IO>` module to "
+"encrypt input data."
+msgstr ""
+
+#: ../../development/pipeline.rst:41
+msgid "For SPU MPC backend, *encrypt* means to split plaintext data into shares."
+msgstr ""
+
+#: ../../development/pipeline.rst:42
+msgid "For floating-point data, encoding to fixed-point may be also required."
+msgstr ""
+
+#: ../../development/pipeline.rst:44
+msgid ""
+"The encrypted data is sent to :ref:`SPU runtime <reference/py_api:Runtime"
+" Setup>`."
+msgstr ""
+
+#: ../../development/pipeline.rst:45
+msgid ""
+"The output data is fetched by *result owner*, and decrypted by the "
+":ref:`SPU io <reference/py_api:Runtime IO>` module."
+msgstr ""
+
+#: ../../development/pipeline.rst:49
+msgid "Just in time"
+msgstr ""
+
+#: ../../development/pipeline.rst:51
+msgid ""
+"JIT is short for `Just-in-time compilation <https://en.wikipedia.org/wiki"
+"/Just-in-time_compilation>`_, with this approach, the compiler can get "
+"more information, such as input shapes, than in `AOT mode "
+"<https://en.wikipedia.org/wiki/Ahead-of-time_compilation>`_. JIT may "
+"introduce more evaluation overhead, but it's really trivial in secure "
+"computation setting."
+msgstr ""
+
+#: ../../development/pipeline.rst:53
+msgid ""
+"In SPU, JIT has more benefits since the backend engine may be orders of "
+"magnitude faster if it knows the *visibility* of data. For example, when "
+"multiplying two secrets, the backend MPC engine may involve expensive "
+"*beaver triple* progress, but when one of the inputs (of multiply) is "
+"public known to all parties, the operation will be much faster. So we "
+"should *mark* as much data as possible to be *public* (if it doesn't need"
+" to be protected), and tell the compiler these information."
+msgstr ""
+
+#: ../../development/pipeline.rst:55
+msgid ""
+"So, SPU compilation normally happens after all data infeed is done, and "
+"`just in time` before the real evaluation."
+msgstr ""
+
