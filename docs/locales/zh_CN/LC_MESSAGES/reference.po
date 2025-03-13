@@ -6430,7 +6430,7 @@ msgstr ""
 
 #: ../../reference/xla_status.md
 msgid "condition region must return a public scalar"
-msgstr "条件区域必须返回一个公共标量"
+msgstr "条件判断区必须返回公开标量值"
 
 #: ../../reference/xla_status.md
 msgid "`all_gather`"

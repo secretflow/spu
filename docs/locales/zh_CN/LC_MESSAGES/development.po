@@ -2304,56 +2304,56 @@ msgstr "在 SPU 内部，有多个层次，从下到上分别是："
 msgid ""
 "**System layer** provides the basic computation and communication ability"
 " for the upper layers."
-msgstr "系统层 为上层提供基本的计算和通信能力。"
+msgstr "**系统层** 为上层提供基本的计算和通信能力。"
 
 #: ../../development/runtime.rst:18
 msgid ""
 "**Crypto layer** is the key for secure computation, it's composed by 3 "
 "sub layers."
-msgstr "加密层 是安全计算的关键，它由三个子层组成。"
+msgstr "**加密层** 是安全计算的关键，它由三个子层组成。"
 
 #: ../../development/runtime.rst:20
 msgid ""
 "**Basic** or classic layer, provides classic cryptography, OT, HE also "
 "lives in this layer."
-msgstr "基础层 或经典层，提供经典的加密技术、OT 和 HE 也在这一层。"
+msgstr "**基础层** 或经典层，提供经典的加密技术、OT 和 HE 也在这一层。"
 
 #: ../../development/runtime.rst:21
 msgid ""
 "**Correlation** or the offline protocol layer, provides correlation like "
 "beaver triple and randbit."
-msgstr "关联层 或离线协议层，提供类似于比弗三元组和随机位的关联。"
+msgstr "**关联层** 或离线协议层，提供类似于比弗三元组和随机位的关联。"
 
 #: ../../development/runtime.rst:22
 msgid ""
 "**Protocol** or the online protocol layer, applies random correlation and"
 " runs the secure evaluation."
-msgstr "协议层 或在线协议层，应用随机关联并运行安全评估。"
+msgstr "**协议层** 或在线协议层，应用随机关联并运行安全评估。"
 
 #: ../../development/runtime.rst:24
 msgid ""
 "**ALU layer** converts MPC protocols into a programmable machine, which "
 "has two sub layers."
-msgstr "ALU层 将 MPC 协议转换为可编程机器，它有两个子层。"
+msgstr "**ALU层** 将 MPC 协议转换为可编程机器，它有两个子层。"
 
 #: ../../development/runtime.rst:26
 msgid ""
 "**Ring 2^k** layer, just like normal CPU, hides cryptography layer's "
 "details and provides standard ring2k arithmetic."
-msgstr "Ring 2^k层，就像普通 CPU 一样，隐藏了加密层的细节，并提供标准的 ring2k 算术运算能力。"
+msgstr "**Ring 2^k层**，就像普通 CPU 一样，隐藏了加密层的细节，并提供标准的 ring2k 算术运算能力。"
 
 #: ../../development/runtime.rst:27
 msgid ""
 "**Fixed point** layer uses fixed point encoding to represent a fractional"
 " number and provides basic arithmetic operations over them."
-msgstr "定点层 使用定点编码来表示小数，并提供基本的算术运算。"
+msgstr "**定点层** 使用定点编码来表示小数，并提供基本的算术运算。"
 
 #: ../../development/runtime.rst:29
 msgid ""
 "**OPS layer** is designed to be extensible, in this layer we can define "
 "multiple modules based on *ALU layer* and finally exposed to VM clients "
 "via bindings or SPU IR."
-msgstr "OPS 层 被设计为可扩展的，在这一层我们可以基于 *ALU 层* 定义多个模块，最终通过绑定或 SPU IR 暴露给 VM 客户端。"
+msgstr "**OPS 层** 被设计为可扩展的，在这一层我们可以基于 *ALU 层* 定义多个模块，最终通过绑定或 SPU IR 暴露给 VM 客户端。"
 
 #: ../../development/runtime.rst:32
 msgid "Homogeneous and Heterogeneous"
