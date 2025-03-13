@@ -21,17 +21,17 @@ msgstr ""
 
 #: ../../getting_started/faq.rst:2
 msgid "Frequently Asked Questions (FAQ)"
-msgstr ""
+msgstr "常见问题解答 (FAQ)"
 
 #: ../../getting_started/faq.rst:6
 msgid "Installation"
-msgstr ""
+msgstr "安装"
 
 #: ../../getting_started/faq.rst:9
 msgid ""
 "When I install from PyPI, it complains \"Could not find a version that "
 "satisfies the requirement\"."
-msgstr ""
+msgstr "从 PyPI 安装时提示 \"Could not find a version that satisfies the requirement\""
 
 #: ../../getting_started/faq.rst:10
 msgid ""
@@ -40,10 +40,13 @@ msgid ""
 "meets the requirement of tags. Please refer to "
 "https://github.com/pypa/manylinux to check the tags."
 msgstr ""
+"我们仅上传了有限版本的 SPU 二进制包。请检查 "
+"https://pypi.org/project/spu/#files 以确认您的环境是否满足标签要求。"
+"关于标签的详细信息请参考 https://github.com/pypa/manylinux。"
 
 #: ../../getting_started/faq.rst:15
 msgid "What is the requirement for glibc?"
-msgstr ""
+msgstr "glibc 的要求是什么？"
 
 #: ../../getting_started/faq.rst:17
 msgid ""
@@ -51,20 +54,22 @@ msgid ""
 "of glibc is 2.17. If you couldn't meet this restriction, please build "
 "your own binary from source."
 msgstr ""
+"如果使用我们提供的预编译二进制包，glibc 的最低要求是 2.17。"
+"如果你的环境不满足此要求，请自行从源码构建。"
 
 #: ../../getting_started/faq.rst:22
 msgid "Usage"
-msgstr ""
+msgstr "使用"
 
 #: ../../getting_started/faq.rst:25
 msgid "How can I check logs of SPU?"
-msgstr ""
+msgstr "如何查看 SPU 的运行日志？"
 
 #: ../../getting_started/faq.rst:27
 msgid ""
 "You have to enable these flags in :ref:`/reference/runtime_config.md` "
 "when you start SPU cluster:"
-msgstr ""
+msgstr "启动 SPU 集群时需在 :ref:`/reference/runtime_config.md` 中启用以下配置项："
 
 #: ../../getting_started/faq.rst:29
 msgid "enable_action_trace"
@@ -76,7 +81,7 @@ msgstr ""
 
 #: ../../getting_started/faq.rst:33
 msgid "How could I use Cheetah protocol?"
-msgstr ""
+msgstr "如何使用 Cheetah 协议？"
 
 #: ../../getting_started/faq.rst:35
 msgid ""
@@ -85,14 +90,16 @@ msgid ""
 "in RuntimeConfig. And please keep in mind that Cheetah protocol is a 2PC "
 "protocol."
 msgstr ""
+"你只需在 :ref:`/reference/runtime_config.md` 的 RuntimeConfig 中搜索 *protocol* 字段并选择 Cheetah。"
+"请注意 Cheetah 是专为两方计算 (2PC) 场景设计的协议。"
 
 #: ../../getting_started/faq.rst:40
 msgid "General"
-msgstr ""
+msgstr "常规问题"
 
 #: ../../getting_started/faq.rst:43
 msgid "Does SPU support PyTorch?"
-msgstr ""
+msgstr "SPU 是否支持 PyTorch？"
 
 #: ../../getting_started/faq.rst:45
 msgid ""
@@ -101,36 +108,41 @@ msgid ""
 "consumed by SPU compiler, please check other opensource projects which "
 "work on transferring other languages to XLA."
 msgstr ""
+"目前我们仅提供基于 JAX 的 SPU 实现。"
+"但是理论上 SPU 编译器支持任何可转换为 XLA 的前端语言"
+"，具体可参考其他将不同语言转换为 XLA 的开源项目。"
 
 #: ../../getting_started/faq.rst:49
 msgid ""
 "I have met huge inconsistency between SPU result and Plaintext(JAX) "
 "result."
-msgstr ""
+msgstr "SPU 计算结果与明文 (JAX) 结果存在显著差异"
 
 #: ../../getting_started/faq.rst:51
 msgid ""
 "Arithmetic operation of SPU is based on Fxp. Please check "
 ":doc:`/development/fxp`. In most cases, you have to choose:"
 msgstr ""
+"SPU 的算术运算基于定点数 (Fxp) 实现，请参阅 :doc:`/development/fxp`。"
+"通常可以试着："
 
 #: ../../getting_started/faq.rst:54
 msgid "Use large field or modify fraction bits."
-msgstr ""
+msgstr "使用更大的数域或调整小数位精度。"
 
 #: ../../getting_started/faq.rst:55
 msgid "Modify arithmetic ops approximation approach."
-msgstr ""
+msgstr "修改算术运算的近似方法。"
 
 #: ../../getting_started/faq.rst:57
 msgid ""
 "But there's no such thing as a free lunch. More accurate result sometimes"
 " requires a huger cost."
-msgstr ""
+msgstr "但是天下没有免费的午餐。更高的精度往往伴随更大的计算开销。"
 
 #: ../../getting_started/faq.rst:60
 msgid "Could I convert any Jax code to XLA and run by SPU?"
-msgstr ""
+msgstr "能否将所有 Jax 代码转换为 XLA 并在 SPU 上运行？"
 
 #: ../../getting_started/faq.rst:62
 msgid ""
@@ -140,4 +152,8 @@ msgid ""
 "implemented all XLA ops. Please check :ref:`/reference/xla_status.md`. We"
 " are working hard to finish them, you have my word!"
 msgstr ""
+"首先需确保您的 Jax 代码支持 **JIT** ，这通常需要一些编码技巧。"
+"即使代码支持 JIT ，由于部分 XLA 算子尚未实现（详见 :ref:`/reference/xla_status.md`），也可能无法达到预期。"
+"但我向你保证我们将持续完善算子支持。"
+
 
