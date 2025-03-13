@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: SPU \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-02-25 19:46+0800\n"
+"POT-Creation-Date: 2025-03-07 13:08+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -17,7 +17,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.17.0\n"
+"Generated-By: Babel 2.16.0\n"
 
 #: ../../development/add_protocols.rst:2
 msgid "Adding New MPC Protocols"
@@ -507,7 +507,7 @@ msgstr ""
 #: ../../development/type_system.rst:5
 #: ../../development/visibility_inference_rule.rst:5
 msgid "Overview"
-msgstr ""
+msgstr "概述"
 
 #: ../../development/design_device.rst:10
 msgid ""
@@ -1509,7 +1509,7 @@ msgstr ""
 
 #: ../../development/fxp.ipynb:732
 msgid ""
-"Try **Larger** field(``FM128``) first. Larger field can accommodate "
+"Try **Larger** field(\\ ``FM128``) first. Larger field can accommodate "
 "larger number when fxp is fixed, so overflow can be avoided. But it will "
 "drag down the efficiency of **nearly all op** dramatically."
 msgstr ""
@@ -1550,9 +1550,8 @@ msgid ""
 msgstr ""
 
 #: ../../development/fxp.ipynb:803
-#, python-brace-format
 msgid ""
-"When numerator is very large(:math:`>2^{28}` for ``FM64`` and "
+"When numerator is very large(\\ :math:`>2^{28}` for ``FM64`` and "
 "``fxp=18``), then the integer part may overflow under large probability, "
 "and this brings huge error."
 msgstr ""
@@ -2561,90 +2560,90 @@ msgstr ""
 
 #: ../../development/type_system.rst:2
 msgid "Type System"
-msgstr ""
+msgstr "类型系统"
 
 #: ../../development/type_system.rst:7
 msgid "This document is for VM developers."
-msgstr ""
+msgstr "本文档面向虚拟机开发者。"
 
 #: ../../development/type_system.rst:9
 msgid "Everything in SPU could be treated as an object, each object has a type."
-msgstr ""
+msgstr "在 SPU 中的一切都是一个对象，每个对象都有一个类型。"
 
 #: ../../development/type_system.rst:11
 msgid ""
 "There are only two types of objects, *value* or *operator*, which means "
 "if a symbol is not a *value*, it's an *operator*."
-msgstr ""
+msgstr "对象只有两种类型：值或操作符，也就是说如果一个符号不是值，那么它就是操作符。"
 
 #: ../../development/type_system.rst:13
 msgid ""
 "**value**: an object that is managed by SPU runtime, representing a "
 "public/secret data."
-msgstr ""
+msgstr "值：由 SPU 运行时管理的对象，表示公开/秘密数据。"
 
 #: ../../development/type_system.rst:14
 msgid ""
 "**operator**: an object that takes one or more values and outputs a "
 "return value, i.e. `multiply` is an operator."
-msgstr ""
+msgstr "操作符：接受一个或多个值并给出一个返回值的对象，例如 `multiply` 就是一个操作符。"
 
 #: ../../development/type_system.rst:17
 msgid "Value type"
-msgstr ""
+msgstr "值类型"
 
 #: ../../development/type_system.rst:19
 msgid "A value type is a tuple (**V**, **D**, **S**), where:"
-msgstr ""
+msgstr "值类型是一个元组 (V, D, S)，其含义如下："
 
 #: ../../development/type_system.rst:21
 #, python-brace-format
 msgid "**V** is *visibility*, could be one of *{public, secret}*"
-msgstr ""
+msgstr "V 为可见性（visibility），可以是 {public, secret} 之一。"
 
 #: ../../development/type_system.rst:22
 #, python-brace-format
 msgid "**D** is *data type*, could be one of *{int, fxp}*"
-msgstr ""
+msgstr "D 为数据类型（data type），可以是 {int, fxp} 之一。"
 
 #: ../../development/type_system.rst:23
 msgid "**S** is *shape*, which makes the value a tensor."
-msgstr ""
+msgstr "S 为形状（shape），它将值构建为张量。"
 
 #: ../../development/type_system.rst:25
 msgid ""
 "We can define a hyper type function, which takes three parameters and "
 "return a concrete value type."
-msgstr ""
+msgstr "我们可以定义一个超类型函数，它接受三个参数并返回一个具体的值类型。"
 
 #: ../../development/type_system.rst:31
 msgid ""
 "To simplify things a little bit, we can ignore *shape* for now and assume"
 " that runtime will handle it correctly."
-msgstr ""
+msgstr "为了简化问题，我们可以暂时忽略形状，并假设运行时会正确处理它。"
 
 #: ../../development/type_system.rst:37
 msgid ""
 "With this type function, we can define a list of types in the SPU type "
 "system."
-msgstr ""
+msgstr "通过这个类型函数，我们可以在SPU类型系统中定义一系列类型。"
 
 #: ../../development/type_system.rst:47
 msgid "Operator type"
-msgstr ""
+msgstr "操作符类型"
 
 #: ../../development/type_system.rst:49
 msgid ""
 "*Operators* takes a list of values as parameters and returns exactly one "
 "value as result, operator's type is determined by the types of input "
 "parameters and return values."
-msgstr ""
+msgstr "操作符以值列表作为参数，并返回一个具体的值作为结果，操作符类型由输入参数和返回值的类型决定。"
 
 #: ../../development/type_system.rst:51
 msgid ""
 "In SPU IR, an operator could take a polymorphic typed parameter and the "
 "return type could be deduced from the parameters. For example:"
-msgstr ""
+msgstr "在 SPU IR 中，操作符可以接受多种类型的参数，并且从中推导出返回的类型。例如："
 
 #: ../../development/type_system.rst:62
 msgid ""
@@ -2652,12 +2651,14 @@ msgid ""
 "2x2x2x2 = 16 different kinds of combinations. To support this type of "
 "operators, we introduce the following *type functor*."
 msgstr ""
+"`add` 操作符接受一对 `type(V, D)` 作为参数，共有 2x2x2x2 = "
+"16 种不同的组合。为了支持这种类型的操作符，我们引入了以下类型函子。"
 
 #: ../../development/type_system.rst:64
 msgid ""
 "**dtype promotion**, which promotes two dtypes to a more relaxed type, in"
 " SPU system, *int* is always promoted to *fxp*."
-msgstr ""
+msgstr "数据类型提升（dtype promotion）：将两个 dtype 提升为更宽松的类型，在 SPU 系统中，int 总是被提升为 fxp。"
 
 #: ../../development/type_system.rst:72
 msgid ""
@@ -2667,72 +2668,74 @@ msgid ""
 "visibility of ops will always be more strict. i.e. if one of operands is "
 "*secret*, the result is a *secret*."
 msgstr ""
+"可见性收窄（visibility narrow）：当两个或多个操作数具有不同的可见性属性时窄化可见性。这是保持 SPU "
+"VM “语义安全”的关键，因为操作的结果可见性总是更严格。例如，如果其中一个操作数是 secret，则结果是 secret。"
 
 #: ../../development/type_system.rst:82
 msgid "Now we can represent the polymorphic mul op as:"
-msgstr ""
+msgstr "现在我们可以将多态的 mul 操作符表示为："
 
 #: ../../development/type_system.rst:88
 msgid ""
 "the op takes two parameters, first type is :code:`type(V0, D0)`, second "
 "type is :code:`type(V1, D1)`."
-msgstr ""
+msgstr "该操作符接受两个参数，第一个类型是 :code:`type(V0, D0)`，第二个类型是 :code:`type(V1, D1)`。"
 
 #: ../../development/type_system.rst:89
 msgid "the op returns :code:`type(narrow(V0, V1), promote(D0, D1))` as a result."
-msgstr ""
+msgstr "该操作符返回 :code:`type(narrow(V0, V1), promote(D0, D1))` 作为结果。"
 
 #: ../../development/type_system.rst:90
 msgid ""
 "when applying the op to two arbitrary arguments, the result could be "
 "deduced from the above type expressions."
-msgstr ""
+msgstr "当将操作符应用于两个任意参数时，结果都可以从上述类型表达式中推导出来"。
 
 #: ../../development/type_system.rst:94
 msgid "Use of type"
-msgstr ""
+msgstr "类型的用途"
 
 #: ../../development/type_system.rst:96
 msgid "There are many uses for types."
-msgstr ""
+msgstr "类型有许多用途。"
 
 #: ../../development/type_system.rst:98
 msgid ""
 "First, the most important one, type is self descriptive, with an accurate"
 " defined type system, we can describe *SPU IR* more accurately."
-msgstr ""
+msgstr "首先，最重要的是类型是自描述的，通过准确定义的类型系统，我们可以更准确地描述 SPU IR。"
 
 #: ../../development/type_system.rst:99
 msgid ""
 "Second, runtime type information is used to do runtime dispatch, which is"
 " important for polymorphic operators."
-msgstr ""
+msgstr "其次，在进行运行时调度会使用运行时类型信息，这对于多态操作符非常重要。"
 
 #: ../../development/type_system.rst:100
 msgid ""
 "Third, the type system could be used by static type checker, and could be"
 " used to double check runtime implementation."
-msgstr ""
+msgstr "第三，类型系统可以用于静态类型检查，并可以用于双重检查运行时的实现。"
 
 #: ../../development/type_system.rst:104
 msgid "Ops dispatch"
-msgstr ""
+msgstr "操作调度"
 
 #: ../../development/type_system.rst:106
 msgid ""
 "As described above, type helps for dispatching, here we use `MUL` "
 "instruction as an example."
-msgstr ""
+msgstr "如上所述，类型有助于调度，这里我们以 `MUL` 指令为例。"
 
 #: ../../development/type_system.rst:113
 msgid ""
 "The above `MUL` instruction does element-wise multiplication, `%1` and "
 "`%2` are parameters and `%3` is the return value."
-msgstr ""
+msgstr "上面的 `MUL` 指令执行逐元素乘法，`%1` 和 `%2` 是参数，`%3` 是返回值。"
 
 #: ../../development/type_system.rst:116
 msgid "The dispatch problem"
-msgstr ""
+msgstr "调度问题"
 
 #: ../../development/type_system.rst:118
 #, python-brace-format
@@ -2740,6 +2743,8 @@ msgid ""
 "In this example, `%1` and `%2` are SPU values, each of them belongs one "
 "of four types `{sint, pint, sfxp, pfxp}`, the type of `MUL` is:"
 msgstr ""
+"在这个例子中，`%1` 和 `%2` 是 SPU 值，每个值都属于四种类型 `{sint, pint, sfxp, pfxp}` 之一，`MUL` "
+"的类型是："
 
 #: ../../development/type_system.rst:120
 #, python-brace-format
@@ -2748,12 +2753,15 @@ msgid ""
 "\\times\n"
 "\\begin{Bmatrix} sint \\\\ pint \\\\ sfxp \\\\ pfxp \\end{Bmatrix}"
 msgstr ""
+"\\begin{Bmatrix} sint \\\\ pint \\\\ sfxp \\\\ pfxp \\end{Bmatrix}\n"
+"\\times\n"
+"\\begin{Bmatrix} sint \\\\ pint \\\\ sfxp \\\\ pfxp \\end{Bmatrix}"
 
 #: ../../development/type_system.rst:126
 msgid ""
 "**The problem is how to dispatch operations to correct kernel according "
 "to the arguments' type information**."
-msgstr ""
+msgstr "问题是如何根据参数的类型信息将操作调度到正确的内核。"
 
 #: ../../development/type_system.rst:128
 msgid ""
@@ -2761,50 +2769,52 @@ msgid ""
 "dispatch to different kernels accordingly, with this way we got 4x4=16 "
 "different kernels."
 msgstr ""
+"一个简单的想法是使用模式匹配所有这些类型组合，并相应地调度到不同的"
+"内核，这样我们就有 4x4=16 个不同的内核了。"
 
 #: ../../development/type_system.rst:146
 msgid "Layered dispatch"
-msgstr ""
+msgstr "分层调度"
 
 #: ../../development/type_system.rst:148
 msgid ""
 "A better way is to dispatch layer by layer, for example, first dispatch "
 "by dtype, then dispatch by vtype."
-msgstr ""
+msgstr "更好的方法是逐层调度，例如，首先按 dtype 调度，然后按 vtype 调度。"
 
 #: ../../development/type_system.rst:172
 msgid "In the above diagram:"
-msgstr ""
+msgstr "在上图中："
 
 #: ../../development/type_system.rst:174
 msgid "**mul** is general *multiplication* method."
-msgstr ""
+msgstr "mul 是通用的乘法方法。"
 
 #: ../../development/type_system.rst:175
 msgid "**imul** is integer multiplication method."
-msgstr ""
+msgstr "imul 是整数乘法方法。"
 
 #: ../../development/type_system.rst:176
 msgid "**fmul** is fixedpoint multiplication method."
-msgstr ""
+msgstr "fmul 是定点乘法方法。"
 
 #: ../../development/type_system.rst:177
 msgid "**rmul** is untyped multiplication method over ring 2k."
-msgstr ""
+msgstr "rmul 是在环2k上的无类型乘法方法。"
 
 #: ../../development/type_system.rst:178
 msgid ""
 "**mulss** multiplies two secrets, the domain and behavior are secure "
 "protocol dependent."
-msgstr ""
+msgstr "mulss 是两个秘密值的乘法，其域和行为依赖于安全协议。"
 
 #: ../../development/type_system.rst:180
 msgid "The above idea can be expressed in code like:"
-msgstr ""
+msgstr "上述思想用代码可以表示为："
 
 #: ../../development/type_system.rst:215
 msgid "Fast dispatch"
-msgstr ""
+msgstr "快速调度"
 
 #: ../../development/type_system.rst:217
 msgid ""
@@ -2813,43 +2823,45 @@ msgid ""
 "`fxp` and later convert back, these two conversion introduce non-trivial "
 "computation overhead in MPC setting."
 msgstr ""
+"在上面的例子中，我们观察到 `i2f` 和 `truncation` 可以被优化，直觉是当一个值从 `int` 转换为 `fxp` "
+"然后再转换回来时，这两个转换在 MPC 设置中引入了不小的计算开销。"
 
 #: ../../development/type_system.rst:219
 msgid ""
 "We use the so called *fast dispatch* to optimize it, when doing cross "
 "`int` and `fxp` multiplication, we could directly do `imul` without type "
 "lift and truncation."
-msgstr ""
+msgstr "我们使用所谓的快速调度来优化它，当进行跨 `int` 和 `fxp` 乘法时，我们可以直接进行 `imul` 而不需要类型提升和截断。"
 
 #: ../../development/type_system.rst:239 ../../development/type_system.rst:274
 msgid "Note:"
-msgstr ""
+msgstr "注意："
 
 #: ../../development/type_system.rst:241
 msgid "in the above implementation we didn't maintain the type correctness."
-msgstr ""
+msgstr "在上述实现中，我们没有维护类型的正确性。"
 
 #: ../../development/type_system.rst:242
 msgid ""
 "this pattern match based *fast dispatch* is exactly the same as compile-"
 "time *peephole optimization*."
-msgstr ""
+msgstr "这种基于模式匹配的快速调度与编译时的窥孔优化完全相同。"
 
 #: ../../development/type_system.rst:243
 msgid ""
 "dispatch inside a protocol is also complicated and beyond the scope of "
 "this article."
-msgstr ""
+msgstr "协议内部的调度也很复杂，超出了本文的范围。"
 
 #: ../../development/type_system.rst:247
 msgid "Implementation"
-msgstr ""
+msgstr "实现"
 
 #: ../../development/type_system.rst:249
 msgid ""
 "With *type functor*, we have the following op definitions in `mul` "
 "dispatch chain."
-msgstr ""
+msgstr "通过类型函子，我们在 `mul` 调度链中有以下操作定义。"
 
 #: ../../development/type_system.rst:258
 msgid ""
@@ -2858,16 +2870,18 @@ msgid ""
 " pattern matching we got `(V0=SECRET,D0=FXP), (V1=SECRET,D1=FXP)`, and "
 "the dispatch stack looks like:"
 msgstr ""
+"在调度阶段，SPU运行时使用类型信息来选择下一个调度操作。在这个例子中，`(x:sfxp, y:sfxp)` 被应用于操作 "
+"`mul`，通过模式匹配我们得到 `(V0=SECRET,D0=FXP), (V1=SECRET,D1=FXP)`，调度栈如下所示："
 
 #: ../../development/type_system.rst:276
 msgid ""
 "We use C++-like template type notation to represent polymorphic type "
 "constraints."
-msgstr ""
+msgstr "我们使用类似 C++ 模板类型的符号来表示多态类型约束。"
 
 #: ../../development/type_system.rst:279
 msgid "Partial type"
-msgstr ""
+msgstr "部分类型"
 
 #: ../../development/type_system.rst:281
 msgid ""
@@ -2879,6 +2893,8 @@ msgid ""
 "implementation, we don't erase the type explicitly, just leave it there "
 "without further use."
 msgstr ""
+"在类型调度步骤中类型信息用于选择下一个操作，当使用部分类型信息时它会被擦除。在上面的例子中，当使用 `dtype` 选择 `fmul` "
+"时，dtype 在之后是无用的，可以被擦除，"
 
 #: ../../development/type_system.rst:283
 msgid ""
@@ -2890,6 +2906,9 @@ msgid ""
 "stack popup, and eventually be completed as a full type when the whole "
 "dispatch progress is done."
 msgstr ""
+"返回值采用调度的反向处理。返回类型从下到上填充。例如，在上述的过程中，当调用 :code:`z=rmul(x,y)` 时，`rmul` 知道 "
+"`z` 的可见性类型是 `SECRET`，但还不知道其 `dtype`，所以这里 `z` 有一个部分类型 `type(SECRET, "
+"$UNKNOWN)`。类型将在栈弹出过程中逐步填充，最终在整个调度过程完成时作为一个完整类型完成。"
 
 #: ../../development/visibility_inference_rule.rst:2
 msgid "Visibility Inference"
@@ -3025,4 +3044,21 @@ msgstr ""
 #: ../../development/visibility_inference_rule.rst:123
 msgid "visibility(result) == common_visibility(operand, source, init)"
 msgstr ""
+
+#~ msgid ""
+#~ "Try **Larger** field(``FM128``) first. Larger"
+#~ " field can accommodate larger number "
+#~ "when fxp is fixed, so overflow can"
+#~ " be avoided. But it will drag "
+#~ "down the efficiency of **nearly all "
+#~ "op** dramatically."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "When numerator is very large(:math:`>2^{28}`"
+#~ " for ``FM64`` and ``fxp=18``), then "
+#~ "the integer part may overflow under "
+#~ "large probability, and this brings huge"
+#~ " error."
+#~ msgstr ""
 
