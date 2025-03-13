@@ -63,6 +63,13 @@ NdArrayRef JointMessagePassing(KernelEvalContext* ctx, const NdArrayRef& msg,
 
   const auto kComm = msg.elsize() * msg.numel();
 
+  // size of msg < size of Hash(msg): Party_hash send msg in the first step
+  // otherwise: Party_hash send Hash(msg) to optimize comm
+  bool send_hash = true;
+  if (kComm < hash_len) {
+    send_hash = false;
+  }
+
   if (rank == rank_send) {
     // send v to P_recv
     comm->sendAsync(rank_recv, msg, tag);
@@ -90,27 +97,32 @@ NdArrayRef JointMessagePassing(KernelEvalContext* ctx, const NdArrayRef& msg,
     inconsistent_bit = recv_b_from_pk[0] || recv_b_from_pj[0];
 
     // P_send and P_hash exchange inconsistent bit
-    // ignore the const comm which is independent with numel
-    comm->addCommStatsManually(1, 0);
+    comm->addCommStatsManually(1, 1);
   }
   if (rank == rank_hash) {
     res = msg;
 
-    // send hash(v) to P_recv
-    // ignore the const comm which is independent with numel
-    std::string msg_str(getOrCreateCompactArray(msg).data<char>(),
-                        msg.numel() * msg.elsize());
+    // send hash(v)/v to P_recv
+    if (send_hash) {
+      std::string msg_str(getOrCreateCompactArray(msg).data<char>(),
+                          msg.numel() * msg.elsize());
 
-    // malicious action 1 : P_hash send wrong hash
-    // std::string msg_str(getOrCreateCompactArray(ring_neg(msg)).data<char>(),
-    //                     msg.numel() * msg.elsize());
+      // malicious action 1 : P_hash send wrong hash
+      // std::string
+      // msg_str(getOrCreateCompactArray(ring_neg(msg)).data<char>(),
+      //                     msg.numel() * msg.elsize());
 
-    auto msg_hash = hash_func(rank_hash, msg_str, tag, hash_len);
+      auto msg_hash = hash_func(rank_hash, msg_str, tag, hash_len);
 
-    yacl::ByteContainerView msg_hash_bytes(
-        reinterpret_cast<uint8_t const*>(msg_hash.data()), msg_hash.size());
-    comm->sendAsync<std::uint8_t>(rank_recv, absl::MakeSpan(msg_hash_bytes),
-                                  tag);
+      yacl::ByteContainerView msg_hash_bytes(
+          reinterpret_cast<uint8_t const*>(msg_hash.data()), msg_hash.size());
+      comm->sendAsync<std::uint8_t>(rank_recv, absl::MakeSpan(msg_hash_bytes),
+                                    tag);
+      comm->addCommStatsManually(1, hash_len);
+    } else {
+      comm->sendAsync(rank_recv, msg, tag);
+      comm->addCommStatsManually(1, kComm);
+    }
 
     // recv inconsistent_bit from P_recv
     auto recv_b_from_pk = comm->recv<bool>(rank_recv, tag);
@@ -125,27 +137,35 @@ NdArrayRef JointMessagePassing(KernelEvalContext* ctx, const NdArrayRef& msg,
     inconsistent_bit = recv_b_from_pk[0] || recv_b_from_pi[0];
 
     // P_send and P_hash exchange inconsistent bit
-    // ignore the const comm which is independent with numel
-    comm->addCommStatsManually(1, 0);
+    comm->addCommStatsManually(1, 1);
   }
   if (rank == rank_recv) {
-    // recv v and H_v from P_send and P_hash respectively
+    // recv v and H_v/v from P_send and P_hash respectively
     auto res_v = comm->recv(rank_send, msg.eltype(), tag);
     res_v = res_v.reshape(msg.shape());
 
-    auto recv_bytes = comm->recv<std::uint8_t>(rank_hash, tag);
+    if (send_hash) {
+      auto recv_bytes = comm->recv<std::uint8_t>(rank_hash, tag);
 
-    // check Hash(v) = H_v
+      // check Hash(v) = H_v
 
-    std::string recv_hash = std::string(
-        reinterpret_cast<const char*>(recv_bytes.data()), recv_bytes.size());
+      std::string recv_hash = std::string(
+          reinterpret_cast<const char*>(recv_bytes.data()), recv_bytes.size());
 
-    std::string recv_msg_str(getOrCreateCompactArray(res_v).data<char>(),
-                             res_v.numel() * res_v.elsize());
-    auto recv_msg_hash = hash_func(rank_hash, recv_msg_str, tag, hash_len);
+      std::string recv_msg_str(getOrCreateCompactArray(res_v).data<char>(),
+                               res_v.numel() * res_v.elsize());
+      auto recv_msg_hash = hash_func(rank_hash, recv_msg_str, tag, hash_len);
+      if (recv_msg_hash != recv_hash) {
+        inconsistent_bit = true;
+      }
+    } else {
+      auto res_v_ = comm->recv(rank_hash, msg.eltype(), tag);
+      res_v_ = res_v_.reshape(msg.shape());
 
-    if (recv_msg_hash != recv_hash) {
-      inconsistent_bit = true;
+      // check v(from Party_send) == v_(from Party_hash)
+      if (getOrCreateCompactArray(res_v) != getOrCreateCompactArray(res_v_)) {
+        inconsistent_bit = true;
+      }
     }
 
     // send inconsistent_bit to P_send and P_hash
@@ -156,8 +176,7 @@ NdArrayRef JointMessagePassing(KernelEvalContext* ctx, const NdArrayRef& msg,
     comm->sendAsync<bool>(rank_send, absl::MakeSpan(send_b), tag);
 
     // P_recv send inconsistent bit to P_send and P_hash
-    // ignore the const comm which is independent with numel
-    comm->addCommStatsManually(1, 0);
+    comm->addCommStatsManually(1, 1);
 
     res = res_v;
   }
