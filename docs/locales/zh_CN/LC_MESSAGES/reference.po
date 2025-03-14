@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: SPU \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-03-10 14:17+0800\n"
+"POT-Creation-Date: 2025-03-13 15:14+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -6736,58 +6736,10 @@ msgstr ""
 msgid "`cstr_reshapable`"
 msgstr ""
 
-#~ msgid "The SPU Virtual Machine Slice."
-#~ msgstr ""
-
-#~ msgid "Delete all SPU values."
-#~ msgstr ""
-
-#~ msgid "Delete an SPU value."
-#~ msgstr ""
-
-#~ msgid "Args:"
-#~ msgstr ""
-
-#~ msgid "name (str): Id of the value."
-#~ msgstr ""
-
-#~ msgid "Get an SPU value."
-#~ msgstr ""
-
-#~ msgid "name (str): Id of value."
-#~ msgstr ""
-
-#~ msgid "Returns:"
-#~ msgstr ""
-
-#~ msgid "libspu.Share: Data data."
-#~ msgstr ""
-
-#~ msgid "int: chunks count in libspu.Share"
-#~ msgstr ""
-
-#~ msgid "Get an SPU value without content."
-#~ msgstr ""
-
 #~ msgid "spu_pb2.ValueMeta: Data meta with out content."
 #~ msgstr ""
 
-#~ msgid "Run an SPU executable."
-#~ msgstr ""
-
 #~ msgid "executable (spu_pb2.ExecutableProto): executable."
-#~ msgstr ""
-
-#~ msgid "Set an SPU value."
-#~ msgstr ""
-
-#~ msgid "name (str): Id of value. value (libspu.Share): value data."
-#~ msgstr ""
-
-#~ msgid "The SPU IO interface."
-#~ msgstr ""
-
-#~ msgid "Convert from NumPy array to list of SPU value(s)."
 #~ msgstr ""
 
 #~ msgid ""
@@ -6796,21 +6748,6 @@ msgstr ""
 #~ " the index of the trusted piece. "
 #~ "if >= 0, colocation optimization may "
 #~ "be applied."
-#~ msgstr ""
-
-#~ msgid "[libspu.Share]: output."
-#~ msgstr ""
-
-#~ msgid "Convert from list of SPU value(s) to NumPy array."
-#~ msgstr ""
-
-#~ msgid "xs ([libspu.Share]): input."
-#~ msgstr ""
-
-#~ msgid "np.ndarray: output."
-#~ msgstr ""
-
-#~ msgid "Compile from textual HLO/MHLO IR to SPU bytecode."
 #~ msgstr ""
 
 #~ msgid ""
@@ -6822,27 +6759,8 @@ msgstr ""
 #~ msgid "[spu_pb2.ValueProto]: output."
 #~ msgstr ""
 
-#~ msgid "helper method to create an SPU Simulator"
-#~ msgstr ""
-
-#~ msgid "wsize (int): the world size."
-#~ msgstr ""
-
 #~ msgid "prot (spu_pb2.ProtocolKind): protocol."
 #~ msgstr ""
 
 #~ msgid "field (spu_pb2.FieldType): field type."
 #~ msgstr ""
-
-#~ msgid "A SPU Simulator"
-#~ msgstr ""
-
-#~ msgid "Decorates a jax numpy fn that simulated on SPU."
-#~ msgstr ""
-
-#~ msgid "Then we can call spu_fn like normal jnp fn."
-#~ msgstr ""
-
-#~ msgid "The function will be evaluated in an spu simulator."
-#~ msgstr ""
-
