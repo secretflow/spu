@@ -21,17 +21,17 @@ msgstr ""
 
 #: ../../getting_started/faq.rst:2
 msgid "Frequently Asked Questions (FAQ)"
-msgstr ""
+msgstr "常见问题（FAQ）"
 
 #: ../../getting_started/faq.rst:6
 msgid "Installation"
-msgstr ""
+msgstr "安装"
 
 #: ../../getting_started/faq.rst:9
 msgid ""
 "When I install from PyPI, it complains \"Could not find a version that "
 "satisfies the requirement\"."
-msgstr ""
+msgstr "当我从 PyPI 安装时，提示“Could not find a version that satisfies the requirement”错误。"
 
 #: ../../getting_started/faq.rst:10
 msgid ""
@@ -39,44 +39,44 @@ msgid ""
 "https://pypi.org/project/spu/#files to confirm whether your environment "
 "meets the requirement of tags. Please refer to "
 "https://github.com/pypa/manylinux to check the tags."
-msgstr ""
+msgstr "我们仅上传了有限版本的 SPU 二进制文件，请检查 https://pypi.org/project/spu/#files 以确认你的环境是否满足标签的要求。请参考 https://github.com/pypa/manylinux 查看标签信息。"
 
 #: ../../getting_started/faq.rst:15
 msgid "What is the requirement for glibc?"
-msgstr ""
+msgstr "glibc 的要求是什么？"
 
 #: ../../getting_started/faq.rst:17
 msgid ""
 "If you are using the binaries provided from us, the minimum requirement "
 "of glibc is 2.17. If you couldn't meet this restriction, please build "
 "your own binary from source."
-msgstr ""
+msgstr "如果你使用我们提供的二进制文件，glibc 的最低要求是 2.17。如果你无法满足此要求，请从源代码构建你自己的二进制文件。"
 
 #: ../../getting_started/faq.rst:22
 msgid "Usage"
-msgstr ""
+msgstr "用法"
 
 #: ../../getting_started/faq.rst:25
 msgid "How can I check logs of SPU?"
-msgstr ""
+msgstr "如何查看 SPU 的日志？"
 
 #: ../../getting_started/faq.rst:27
 msgid ""
 "You have to enable these flags in :ref:`/reference/runtime_config.md` "
 "when you start SPU cluster:"
-msgstr ""
+msgstr "你需要在启动 SPU 集群时在 SPU 运行时配置中启用以下参数："
 
 #: ../../getting_started/faq.rst:29
 msgid "enable_action_trace"
-msgstr ""
+msgstr "enable_action_trace"
 
 #: ../../getting_started/faq.rst:30
 msgid "enable_pphlo_trace"
-msgstr ""
+msgstr "enable_pphlo_trace"
 
 #: ../../getting_started/faq.rst:33
 msgid "How could I use Cheetah protocol?"
-msgstr ""
+msgstr "如何使用 Cheetah 协议？"
 
 #: ../../getting_started/faq.rst:35
 msgid ""
@@ -84,15 +84,15 @@ msgid ""
 ":ref:`/reference/runtime_config.md`. Please search for *protocol* field "
 "in RuntimeConfig. And please keep in mind that Cheetah protocol is a 2PC "
 "protocol."
-msgstr ""
+msgstr "你只需在 :ref:`/reference/runtime_config.md` 中选择 Cheetah 协议。请在 RuntimeConfig 中搜索 *protocol* 字段。请记住，Cheetah 协议是一个 2PC 协议。"
 
 #: ../../getting_started/faq.rst:40
 msgid "General"
-msgstr ""
+msgstr "常规"
 
 #: ../../getting_started/faq.rst:43
 msgid "Does SPU support PyTorch?"
-msgstr ""
+msgstr "SPU 支持 PyTorch 吗？"
 
 #: ../../getting_started/faq.rst:45
 msgid ""
@@ -100,37 +100,37 @@ msgid ""
 " the frontend languages which could be transferred into XLA could be "
 "consumed by SPU compiler, please check other opensource projects which "
 "work on transferring other languages to XLA."
-msgstr ""
+msgstr "目前，我们仅提供支持 JAX 的 SPU。但理论上，所有能够转换为 XLA 的前端语言都可以被 SPU 编译器使用，请查看其他致力于将别的语言转换为 XLA 的开源项目。"
 
 #: ../../getting_started/faq.rst:49
 msgid ""
 "I have met huge inconsistency between SPU result and Plaintext(JAX) "
 "result."
-msgstr ""
+msgstr "我遇到了 SPU 结果和明文（JAX）结果之间的巨大不一致。"
 
 #: ../../getting_started/faq.rst:51
 msgid ""
 "Arithmetic operation of SPU is based on Fxp. Please check "
 ":doc:`/development/fxp`. In most cases, you have to choose:"
-msgstr ""
+msgstr "SPU 的算术运算基于 Fxp，请查看 :doc:`/development/fxp` 部分。在大多数情况下，你需要选择："
 
 #: ../../getting_started/faq.rst:54
 msgid "Use large field or modify fraction bits."
-msgstr ""
+msgstr "使用大字段或修改小数位。"
 
 #: ../../getting_started/faq.rst:55
 msgid "Modify arithmetic ops approximation approach."
-msgstr ""
+msgstr "修改算术运算的近似方法。"
 
 #: ../../getting_started/faq.rst:57
 msgid ""
 "But there's no such thing as a free lunch. More accurate result sometimes"
 " requires a huger cost."
-msgstr ""
+msgstr "但天下没有免费的午餐，更准确的结果有时需要更高的成本。"
 
 #: ../../getting_started/faq.rst:60
 msgid "Could I convert any Jax code to XLA and run by SPU?"
-msgstr ""
+msgstr "我可以将任何 Jax 代码转换为 XLA 并通过 SPU 运行吗？"
 
 #: ../../getting_started/faq.rst:62
 msgid ""
@@ -139,5 +139,5 @@ msgid ""
 "jitable, sometime we will still disappoint you since we haven't "
 "implemented all XLA ops. Please check :ref:`/reference/xla_status.md`. We"
 " are working hard to finish them, you have my word!"
-msgstr ""
+msgstr "首先，你必须确保你的 Jax 代码是可被 **jitable** （指的是可以被 JIT 编译器处理和优化的代码）。实际上，你需要用上一些技巧来实现这一点。即使你的代码是可被 jitable 的，有时我们还是会让你失望，因为我们尚未实现所有的 XLA 操作。请检查 :ref:`/reference/xla_status.md`，我们正在努力完成它们，我向你保证！"
 
