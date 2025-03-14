@@ -21,15 +21,14 @@ msgstr ""
 
 #: ../../getting_started/issue.rst:2
 msgid "Reporting an Issue"
-msgstr ""
+msgstr "报告问题"
 
 #: ../../getting_started/issue.rst:4
 msgid ""
-"Please create an issue at `Github Issues "
+"Please create an issue at `GitHub Issues "
 "<https://github.com/secretflow/spu/issues>`_."
-msgstr ""
-
+msgstr "请创建一个 `GitHub Issues <https://github.com/secretflow/spu/issues>`_。"
 #: ../../getting_started/issue.rst:6
 msgid "We will look into issues and get back to you soon."
-msgstr ""
+msgstr "我们会尽快调查这些问题并及时回复你。"
 
