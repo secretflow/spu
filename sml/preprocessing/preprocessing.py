@@ -11,9 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from typing import List, Optional, Union
 
 import jax
 import jax.numpy as jnp
+from jax.lax import associative_scan
 
 
 def label_binarize(y, *, classes, n_classes, neg_label=0, pos_label=1):
@@ -1222,3 +1224,260 @@ class KBinsDiscretizer:
             return bin_centers[(x).astype(jnp.int32)]
 
         return jax.vmap(bin_func, in_axes=(1, 1), out_axes=1)(bin_edges, X)
+
+class OneHotEncoder:
+    """JAX-based One-Hot Encoder designed for privacy-preserving computation frameworks like SPU"""
+
+    def __init__(
+            self,
+            categories: Union[str, List[List]] = "auto",
+            drop: Optional[Union[str, List]] = None,
+            sparse_output: bool = False,
+            dtype: jnp.dtype = jnp.float64,
+            handle_unknown: str = "ignore",
+            min_frequency: Optional[int] = None,
+            max_categories: Optional[int] = None,
+            feature_name_combiner: str = "concat",
+    ):
+        """
+        Initialize one-hot encoder with privacy-preserving configurations
+        Parameters
+        ----------
+
+        Args:
+            categories: Category specification mode:
+                       - 'auto' (default): Learn from data
+                       - Manual list of categories per feature
+            drop: Category dropping strategy for collinearity prevention:
+                  - None: No dropping
+                  - 'first': Drop first category
+                  - 'if_binary': Drop first category if binary feature
+            sparse_output: Whether to generate sparse matrices
+            dtype: Output matrix data type (default jnp.float64)
+            handle_unknown: Unknown value handling:
+                           - 'ignore': Encode as zero vector
+                           - 'error': Raise error on unknown values
+            min_frequency: Minimum frequency threshold for category inclusion
+            max_categories: Maximum categories per feature
+            feature_name_combiner: Feature naming strategy
+        """
+        self.categories = categories
+        self.drop = drop
+        self.sparse_output = sparse_output
+        self.dtype = dtype
+        self.handle_unknown = handle_unknown
+        self.min_frequency = min_frequency
+        self.max_categories = max_categories
+        self.feature_name_combiner = feature_name_combiner
+
+        self.categories_ = None
+        self.drop_idx_ = None
+        self.n_features_in_ = None
+        self.max_cat_ = None
+        self.feature_lengths_ = None
+
+    def _custom_unique(self, arr):
+        """
+        Parallelized unique value extraction using JAX associative scan
+
+        Optimized for large-scale data and privacy-preserving environments
+
+        Args:
+            arr: Input 1D array (JAX DeviceArray)
+
+        Returns:
+            Tuple (unique_values, count): Sorted unique values and their count
+        """
+        sorted_arr = jnp.sort(arr)
+
+        def scan_fun(carry, x):
+            return jnp.where(carry == x, carry, x)
+
+        unique_values = associative_scan(scan_fun, sorted_arr)
+        return unique_values, unique_values.size
+
+    def fit(self, X):
+        """
+        Learn category structure from data with privacy considerations
+
+        Handles missing values (marked with -1) and implements frequency-based filtering
+
+        Args:
+            X: Input matrix of shape (n_samples, n_features)
+
+        Returns:
+            self: Fitted encoder instance
+        """
+        self.n_features_in_ = X.shape[1]
+        categories_list = []
+        max_cat_per_feature = []
+
+        for i in range(self.n_features_in_):
+            X_col = X[:, i]
+
+            if self.categories == "auto":
+                unique, counts = self._custom_unique(X_col)
+
+                if self.min_frequency is not None:
+                    mask = counts >= self.min_frequency
+                    unique = unique[mask]
+
+                if self.max_categories is not None:
+                    unique = unique[: self.max_categories]
+
+                current_len = len(unique)
+                max_cat_per_feature.append(current_len)
+                categories_list.append(unique)
+            else:
+                cats = jnp.array(self.categories[i])
+                categories_list.append(cats)
+                current_len = len(cats)
+                max_cat_per_feature.append(current_len)
+
+        self.max_cat_ = max(max_cat_per_feature) if max_cat_per_feature else 0
+
+        self.categories_ = categories_list
+        self.drop_idx_ = self._compute_drop_idx()
+        self.feature_lengths_ = []
+
+        for i in range(self.n_features_in_):
+            cats = self.categories_[i]
+            valid_mask = cats != -1
+
+            num_valid_cats = jnp.sum(valid_mask)
+
+            if self.drop_idx_[i] is not None:
+                num_valid_cats -= 1
+
+            self.feature_lengths_.append(num_valid_cats)
+        return self
+
+    def _compute_drop_idx(self):
+        """
+        Compute indices to drop for collinearity prevention
+
+        Implements different dropping strategies while maintaining privacy constraints
+
+        Returns:
+            List of indices to drop (None for no dropping)
+        """
+        drop_idx = []
+        for i, cats in enumerate(self.categories_):
+            valid_mask = cats != -1
+
+            if self.drop is None:
+                drop_idx.append(None)
+            elif self.drop == "first":
+                drop_idx.append(
+                    jnp.where(valid_mask)[0][0] if jnp.any(valid_mask) else None
+                )
+            elif self.drop == "if_binary":
+                if jnp.sum(valid_mask) == 2:
+                    drop_idx.append(jnp.where(valid_mask)[0][0])
+                else:
+                    drop_idx.append(None)
+            else:
+                raise NotImplementedError("Drop type not supported")
+        return drop_idx
+
+    def transform(self, X):
+        """
+        Transform categorical data to one-hot encoded format
+
+        Maintains differential privacy characteristics through masking
+
+        Args:
+            X: Input matrix matching fit() dimensions
+
+        Returns:
+            jnp.ndarray: Encoded matrix of shape (n_samples, n_encoded_features)
+        """
+        encoded_features = []
+
+        for i in range(self.n_features_in_):
+            X_col = X[:, i]
+            cats = self.categories_[i]
+            drop_idx = self.drop_idx_[i]
+
+            mask_cats = cats != -1
+            is_valid = (X_col != -1) & jnp.any(
+                (X_col[:, None] == cats) & mask_cats, axis=1
+            )
+
+            one_hot = (X_col[:, None] == cats).astype(self.dtype) * mask_cats
+            masked_one_hot = one_hot * is_valid[:, None]
+
+            if drop_idx is not None and drop_idx < len(cats):
+                masked_one_hot = jnp.delete(masked_one_hot, drop_idx, axis=1)
+
+            encoded_features.append(masked_one_hot)
+
+        output = jnp.concatenate(encoded_features, axis=1)
+        return output
+
+    def fit_transform(self, x):
+        """Combined fit/transform operation for non-distributed scenarios"""
+        return self.fit(x).transform(x)
+
+    def inverse_transform(self, x):
+        """
+        Reconstruct original categories from encoded data
+
+        Maintains privacy by handling unknown values through masking
+
+        Args:
+            x: Encoded matrix from transform()
+
+        Returns:
+            jnp.ndarray: Reconstructed categorical data
+
+        Raises:
+            ValueError: When unknown encoding detected with handle_unknown='error'
+        """
+        current_col = 0
+        feature_parts = []
+        for _ in range(len(self.feature_lengths_)):
+            feature_parts.append(x[:, current_col: current_col + self.max_cat_])
+            current_col += self.max_cat_
+
+        inv_features = []
+        for i in range(self.n_features_in_):
+            part = feature_parts[i]
+            cats = self.categories_[i]
+            valid_mask = cats != -1
+            valid_cats = jnp.where(valid_mask, cats, 0)
+            drop_idx = self.drop_idx_[i]
+
+            if drop_idx is None:
+                indices = jnp.argmax(part, axis=1)
+                if self.handle_unknown == "error":
+                    sums = jnp.sum(part, axis=1)
+                    if jnp.any(sums == 0):
+                        if not jax.config.jax_disable_jit:
+                            raise RuntimeError(
+                                "handle_unknown='error' not supported in JIT mode"
+                            )
+                        invalid = jnp.where(sums == 0)[0]
+                        raise ValueError(
+                            f"Unknown categories in feature {i} at samples {invalid}"
+                        )
+            else:
+                k = drop_idx
+                left = part[:, :k]
+                right = part[:, k:]
+                zeros = jnp.zeros((part.shape[0], 1), dtype=part.dtype)
+                inserted_part = jnp.concatenate([left, zeros, right], axis=1)
+                sums = jnp.sum(inserted_part, axis=1)
+                mask = sums == 0
+                indices = jnp.where(mask, k, jnp.argmax(inserted_part, axis=1))
+
+            feature_values = valid_cats[indices]
+            row_sums = jnp.sum(part, axis=1)
+
+            feature_values = jnp.where(row_sums == 0, 0, feature_values)
+            feature_values_array = jnp.array(
+                [value if value is not None else jnp.nan for value in feature_values]
+            )[:, None]
+            inv_features.append(feature_values_array)
+
+        return jnp.concatenate(inv_features, axis=1)
