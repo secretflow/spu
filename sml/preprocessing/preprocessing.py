@@ -1287,7 +1287,13 @@ class OneHotEncoder:
 
         Returns:
             Tuple (unique_values, count): Sorted unique values and their count
+
+        Raises:
+            ValueError: If the input array is empty.
         """
+        if arr.size == 0:
+            raise ValueError("Input array is empty. Please provide a non-empty array.")
+
         sorted_arr = jnp.sort(arr)
 
         def scan_fun(carry, x):
