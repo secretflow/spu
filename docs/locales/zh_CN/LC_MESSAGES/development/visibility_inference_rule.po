@@ -1,0 +1,160 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2021 Ant Group Co., Ltd.
+# This file is distributed under the same license as the SPU package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2025.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: SPU \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-03-13 15:10+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: ../../development/visibility_inference_rule.rst:2
+msgid "Visibility Inference"
+msgstr ""
+
+#: ../../development/visibility_inference_rule.rst:5
+msgid "Overview"
+msgstr "概述"
+
+#: ../../development/visibility_inference_rule.rst:7
+msgid "This document is for SPU compiler developers."
+msgstr ""
+
+#: ../../development/visibility_inference_rule.rst:9
+msgid ""
+"In SPU compiler stack, visibility is part of type qualifier. During "
+"legalize stablehlo to pphlo, every SSA value and BlockArg need to assign "
+"with a proper visibility. This procedure is referred as **Visibility "
+"Inference**"
+msgstr ""
+
+#: ../../development/visibility_inference_rule.rst:13
+msgid "Common Visibility"
+msgstr ""
+
+#: ../../development/visibility_inference_rule.rst:15
+msgid ""
+"When an operation inputs have different visibilities, the way of compute "
+"common visibility is defined as:"
+msgstr ""
+
+#: ../../development/visibility_inference_rule.rst:25
+msgid "Nullary Op"
+msgstr ""
+
+#: ../../development/visibility_inference_rule.rst:27
+msgid ""
+"Nullary ops in stablehlo are `ConstantOp "
+"<https://github.com/openxla/stablehlo/blob/main/docs/spec.md#constant>`_ "
+"and `IotaOp "
+"<https://github.com/openxla/stablehlo/blob/main/docs/spec.md#iota>`_"
+msgstr ""
+
+#: ../../development/visibility_inference_rule.rst:30
+msgid "All nullary ops follows the following inference rule:"
+msgstr ""
+
+#: ../../development/visibility_inference_rule.rst:38
+msgid "Unary Op"
+msgstr ""
+
+#: ../../development/visibility_inference_rule.rst:40
+msgid ""
+"Most unary ops in **stablehlo** cannot change visibility of input "
+"argument and follows the following inference rule:"
+msgstr ""
+
+#: ../../development/visibility_inference_rule.rst:49
+msgid "Binary Op"
+msgstr ""
+
+#: ../../development/visibility_inference_rule.rst:51
+msgid ""
+"Most binary ops in **stablehlo** yield a result with common visibility of"
+" **lhs** and **rhs** and follows the following inference rule:"
+msgstr ""
+
+#: ../../development/visibility_inference_rule.rst:60
+msgid "Control Flow Op"
+msgstr ""
+
+#: ../../development/visibility_inference_rule.rst:62
+msgid ""
+"`If <https://github.com/openxla/stablehlo/blob/main/docs/spec.md#if>`_ "
+"and `Case "
+"<https://github.com/openxla/stablehlo/blob/main/docs/spec.md#case>`_"
+msgstr ""
+
+#: ../../development/visibility_inference_rule.rst:63
+msgid ""
+"In short, each result of an if statement is common visibility of results "
+"from different branches and predicate."
+msgstr ""
+
+#: ../../development/visibility_inference_rule.rst:65
+msgid ""
+"If different branches yield results of different visibilities, cast to "
+"common visibility will be inserted before relative return."
+msgstr ""
+
+#: ../../development/visibility_inference_rule.rst:90
+msgid ""
+"`While "
+"<https://github.com/openxla/stablehlo/blob/main/docs/spec.md#while>`_"
+msgstr ""
+
+#: ../../development/visibility_inference_rule.rst:91
+msgid ""
+"For while body, consider result visibility might be different from input "
+"visibility, multi-rounds of visibility inference is applied on body "
+"region. The final result will be all input visibility matches result "
+"visibility."
+msgstr ""
+
+#: ../../development/visibility_inference_rule.rst:94
+msgid ""
+"**Attention**: Although no protocol supports **while** with a non-public "
+"cond region at this point, compiler in general does not error out here."
+msgstr ""
+
+#: ../../development/visibility_inference_rule.rst:108
+msgid "Reduce Related Op"
+msgstr ""
+
+#: ../../development/visibility_inference_rule.rst:110
+msgid ""
+"`Reduce "
+"<https://github.com/openxla/stablehlo/blob/main/docs/spec.md#reduce>`_ "
+"and `ReduceWindow "
+"<https://github.com/openxla/stablehlo/blob/main/docs/spec.md#reduce_window>`_"
+msgstr ""
+
+#: ../../development/visibility_inference_rule.rst:120
+msgid ""
+"`SelectAndScatter "
+"<https://github.com/openxla/stablehlo/blob/main/docs/spec.md#select_and_scatter>`_"
+msgstr ""
+
+#: ../../development/visibility_inference_rule.rst:121
+msgid "In general the rule is"
+msgstr ""
+
+#: ../../development/visibility_inference_rule.rst:122
+msgid "visibility(opernad) == visibility(init)"
+msgstr ""
+
+#: ../../development/visibility_inference_rule.rst:123
+msgid "visibility(result) == common_visibility(operand, source, init)"
+msgstr ""
+

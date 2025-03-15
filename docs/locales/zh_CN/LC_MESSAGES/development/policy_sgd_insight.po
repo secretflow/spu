@@ -1,0 +1,317 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2021 Ant Group Co., Ltd.
+# This file is distributed under the same license as the SPU package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2025.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: SPU \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-03-13 15:10+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: ../../development/policy_sgd_insight.rst:2
+msgid "Background: SGD in MPC-ML"
+msgstr "背景：随机梯度下降法在MPC-ML"
+
+#: ../../development/policy_sgd_insight.rst:4
+msgid ""
+"SGD(Stochastic Gradient Descent) is a famous optimization algorithm, it "
+"updates weights using gradient direction. However, it suffers that user "
+"should choose hyper-parameters very carefully. Of course, grid-search is "
+"a potential treatment for this problem, but it becomes impractical when "
+"training cost is large. As an example, When running LR with SGD in "
+"`credit card dataset <https://www.kaggle.com/datasets/uciml/default-of-"
+"credit-card-clients-dataset>`_ (for 4096-0.1, 4096 is batch_size, 0.1 is "
+"learning_rate), we can find that it seems safer to use small batch_size "
+"and learning_rate, else we get some loss or very strong vibration of auc "
+"within 10 epochs(we leave 10000 samples as test dataset randomly)."
+msgstr ""
+
+#: ../../development/policy_sgd_insight.rst:12
+msgid ""
+"Unfortunately, when under MPC, even simple algorithm like SSLR, small "
+"batch_size leads to huge training time under limited network resources. "
+"Besides, even you have high bandwidth, small batch_size can not utilize "
+"it!"
+msgstr "但是，但处于MPC模式下，即使简单的算法，例如SSLR，小的批量大小在网络资源有限的环境下也会导致训练时间的大幅增加。而且，即使你拥有较高的网络带宽，小的批量也无法充分利用带宽资源。"
+
+#: ../../development/policy_sgd_insight.rst:16
+msgid "How to improve SGD"
+msgstr "如何优化 SGD 方法"
+
+#: ../../development/policy_sgd_insight.rst:17
+msgid ""
+"Indeed, after our elaborated experiments, we can find two drawbacks of "
+"naive SGD:"
+msgstr "在我们的全面的实验下，我们发现朴素 SGD 方法的两个缺点"
+
+#: ../../development/policy_sgd_insight.rst:19
+msgid "slow update(because of small learning_rate) at the beginning."
+msgstr "起始阶段，模型权重更新缓慢是由于学习率较小造成的。"
+
+#: ../../development/policy_sgd_insight.rst:21
+msgid "vibration happens when near to optimal point."
+msgstr "当模型权重接近最优点时，模型的表现开始波动。"
+
+#: ../../development/policy_sgd_insight.rst:23
+msgid ""
+"So, it's a straight strategy to use \"large\" learning_rate at the "
+"beginning, and \"slow down\" as training goes on. But the ensuing "
+"question is how to determine specific \"large\" and \"slow down\" for "
+"different datasets."
+msgstr "所以，应该在起步阶段使用较大的学习率，随着训练的进行，逐渐减小学习率。问题是，对于不同的数据集，如何确定“较大的”和“逐渐减小”的具体情况。"
+
+#: ../../development/policy_sgd_insight.rst:27
+msgid "What's Policy sgd"
+msgstr "什么是Policy sgd"
+
+#: ../../development/policy_sgd_insight.rst:28
+msgid ""
+"For SSLR, we provide an answer to the above question: policy-sgd(already "
+"implemented on `SSRegression` in Secretflow when setting "
+"`strategy=policy_sgd`)."
+msgstr ""
+
+#: ../../development/policy_sgd_insight.rst:33
+msgid "The core of this optimizer consists of two parts:"
+msgstr "policy-sgd 优化算法的核心包含两部分"
+
+#: ../../development/policy_sgd_insight.rst:35
+#, python-brace-format
+msgid ""
+"1. Adaptive learning rate scaling mechanism: in first epoch, we force the"
+" weight move unit-norm in gradient direction and record "
+":math:`\\frac{1}{||grad||_2}` as scale factor for this batch."
+msgstr ""
+
+#: ../../development/policy_sgd_insight.rst:38
+msgid ""
+"2. Learning rate decay and early stop: we use step-decay strategy for "
+"learning_rate decay. As for early stop, we compare two strategies, loss "
+"based(use Taylor expansion to avoid invoking time-consuming op like "
+"`exp`, `log`) and weight based, and choose the latter in our final "
+"implementation."
+msgstr ""
+
+#: ../../development/policy_sgd_insight.rst:44
+msgid "Experiments"
+msgstr "实验"
+
+#: ../../development/policy_sgd_insight.rst:45
+#, python-brace-format
+msgid ""
+"We use 4 dataset for experiments, containing 3 open source dataset "
+"(`credit_card <https://www.kaggle.com/datasets/uciml/default-of-credit-"
+"card-clients-dataset>`_, `Bank Marketing "
+"<https://archive.ics.uci.edu/ml/datasets/Bank+Marketing#>`_, `Aps "
+"<https://archive.ics.uci.edu/ml/datasets/APS+Failure+at+Scania+Trucks>`_)"
+" and 1 business dataset(wzdata). For open source dataset, we just do some"
+" basic one-hot and min-max normalization like normal LR needs. We leave "
+"out about :math:`\\frac{1}{3}` data for test data and evaluate auc on it."
+" The baseline auc is computed when using sklearn for model training."
+msgstr ""
+
+#: ../../development/policy_sgd_insight.rst:53
+#: ../../development/policy_sgd_insight.rst:107
+msgid "Dataset"
+msgstr "数据集"
+
+#: ../../development/policy_sgd_insight.rst:53
+msgid "Training shape"
+msgstr ""
+
+#: ../../development/policy_sgd_insight.rst:53
+msgid "baseline auc"
+msgstr ""
+
+#: ../../development/policy_sgd_insight.rst:55
+#: ../../development/policy_sgd_insight.rst:109
+msgid "business dataset"
+msgstr "wzdata"
+
+#: ../../development/policy_sgd_insight.rst:55
+msgid "111618，23"
+msgstr ""
+
+#: ../../development/policy_sgd_insight.rst:55
+msgid "0.8175"
+msgstr ""
+
+#: ../../development/policy_sgd_insight.rst:57
+#: ../../development/policy_sgd_insight.rst:111
+msgid "Bank Marketing"
+msgstr "Bank Marketing"
+
+#: ../../development/policy_sgd_insight.rst:57
+msgid "40787，48"
+msgstr ""
+
+#: ../../development/policy_sgd_insight.rst:57
+msgid "0.93"
+msgstr ""
+
+#: ../../development/policy_sgd_insight.rst:59
+#: ../../development/policy_sgd_insight.rst:113
+msgid "credit_card"
+msgstr "credit_card"
+
+#: ../../development/policy_sgd_insight.rst:59
+msgid "20000, 23"
+msgstr ""
+
+#: ../../development/policy_sgd_insight.rst:59
+msgid "0.718"
+msgstr ""
+
+#: ../../development/policy_sgd_insight.rst:61
+#: ../../development/policy_sgd_insight.rst:115
+msgid "Aps"
+msgstr "Aps"
+
+#: ../../development/policy_sgd_insight.rst:61
+msgid "60000，170"
+msgstr ""
+
+#: ../../development/policy_sgd_insight.rst:61
+msgid "0.9666"
+msgstr ""
+
+#: ../../development/policy_sgd_insight.rst:65
+msgid "Precision"
+msgstr "精确度"
+
+#: ../../development/policy_sgd_insight.rst:67
+msgid ""
+"We first test how precision of fixed point influence SSLR and test three "
+"settings:"
+msgstr "我们首先测试定点精度如何影响 SSLR，并测试了三种设置："
+
+#: ../../development/policy_sgd_insight.rst:69
+msgid "low precision: `FM64` + 18 fxp"
+msgstr "低精度：64 位定点数格式（FM64）加上 18 位小数部分（fxp）"
+
+#: ../../development/policy_sgd_insight.rst:71
+msgid "medium precision: `FM128` + 28 fxp"
+msgstr "中精度：128 位定点数格式（FM128）加上 28 位小数部分（fxp）"
+
+#: ../../development/policy_sgd_insight.rst:73
+msgid "high precision: `FM128` + 42 fxp"
+msgstr "高精度：128 位定点数格式（FM128）加上 42 位小数部分（fxp）"
+
+#: ../../development/policy_sgd_insight.rst:81
+msgid ""
+"We can find that for both optimizer, precision has little influence on "
+"final auc, so it's safe for user to choose low precision when training "
+"LR."
+msgstr "我们可以发现，对于这两种优化器而言，精度对 auc 影响很小，因此用户在训练线性回归（LR）模型时选择低精度是安全的。"
+
+#: ../../development/policy_sgd_insight.rst:85
+msgid "Naive v.s Policy"
+msgstr "Naive sgd 与 Policy sgd 对比"
+
+#: ../../development/policy_sgd_insight.rst:87
+msgid ""
+"Then, we compare the totally runtime of naive_sgd(v1) and policy_sgd(v2)."
+" For naive-sgd, we follow the \"safe strategy\"(mostly used in plaintext "
+"ML): small learning_rate like 0.1, and small batch_size like 1024(If "
+"using 2048, then some data does not converge). Also, it's hard to decide "
+"a good default value for naive_sgd to early stop well(even worse, you may"
+" get huge auc drop if setting bad values). To avoid tedious grid-search, "
+"so for naive_sgd, it runs without any learning_rate decay(recommended way"
+" for naive_sgd). But for policy_sgd, it's often harmless to use larger "
+"batch_size(2048 for these experiments),and we set learning_rate decay a "
+"half every 2 epochs."
+msgstr ""
+
+#: ../../development/policy_sgd_insight.rst:93
+msgid ""
+"As for other hyper-parameters, we set total running epochs to 20, "
+"learning_rate to 0.1 and use low precision, CHEETAH protocol. And we test"
+" in WAN, providing 20Mbps and 20ms RTT, which is a typical setting in "
+"real world project."
+msgstr ""
+
+#: ../../development/policy_sgd_insight.rst:99
+msgid ""
+"First, we find for naive_sgd(v1), none of them meets any early stop "
+"criterion during 20 epochs(so we omit the early stop line in figure). "
+"However, for policy_sgd(v2), it can always \"stop well\"(red dot line "
+"means policy_sgd meets the stop criterion based on loss, similar for "
+"purple line) after the model converges. Besides, checking the auc of "
+"stopping time, it has very low gap(<0.01) between baseline."
+msgstr ""
+
+#: ../../development/policy_sgd_insight.rst:103
+msgid ""
+"The following table shows the total running time of policy_sgd and "
+"naive_sgd(based on weight early stop). Policy_sgd can reduce the time by "
+"2-5 times compared to naive_sgd."
+msgstr ""
+
+#: ../../development/policy_sgd_insight.rst:107
+msgid "naive_sgd(s)"
+msgstr ""
+
+#: ../../development/policy_sgd_insight.rst:107
+msgid "policy_sgd(s)"
+msgstr ""
+
+#: ../../development/policy_sgd_insight.rst:107
+msgid "naive/policy"
+msgstr ""
+
+#: ../../development/policy_sgd_insight.rst:109
+msgid "~8000"
+msgstr ""
+
+#: ../../development/policy_sgd_insight.rst:109
+#: ../../development/policy_sgd_insight.rst:113
+msgid "~1600"
+msgstr ""
+
+#: ../../development/policy_sgd_insight.rst:109
+msgid "5x"
+msgstr ""
+
+#: ../../development/policy_sgd_insight.rst:111
+msgid "~3000"
+msgstr ""
+
+#: ../../development/policy_sgd_insight.rst:111
+msgid "~800"
+msgstr ""
+
+#: ../../development/policy_sgd_insight.rst:111
+msgid "3.75x"
+msgstr ""
+
+#: ../../development/policy_sgd_insight.rst:113
+msgid "~350"
+msgstr ""
+
+#: ../../development/policy_sgd_insight.rst:113
+msgid "4.57x"
+msgstr ""
+
+#: ../../development/policy_sgd_insight.rst:115
+msgid "~10000"
+msgstr ""
+
+#: ../../development/policy_sgd_insight.rst:115
+msgid "~4200"
+msgstr ""
+
+#: ../../development/policy_sgd_insight.rst:115
+msgid "2.38x"
+msgstr ""
+
