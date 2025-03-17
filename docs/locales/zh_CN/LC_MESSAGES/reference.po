@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: SPU \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-02-25 19:46+0800\n"
+"POT-Creation-Date: 2025-03-13 15:14+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -4567,7 +4567,7 @@ msgid "Get an SPU value without content."
 msgstr ""
 
 #: of spu.api.Runtime.get_var_meta:7
-msgid "spu_pb2.ValueMeta: Data meta with out content."
+msgid "libspu.ValueMeta: Data meta with out content."
 msgstr ""
 
 #: of spu.api.Runtime.run:1
@@ -4575,7 +4575,7 @@ msgid "Run an SPU executable."
 msgstr ""
 
 #: of spu.api.Runtime.run:4
-msgid "executable (spu_pb2.ExecutableProto): executable."
+msgid "executable (libspu.ExecutableProto): executable."
 msgstr ""
 
 #: of spu.api.Runtime.set_var:1
@@ -4600,8 +4600,8 @@ msgstr ""
 
 #: of spu.api.Io.make_shares:4
 msgid ""
-"x (np.ndarray): input. vtype (spu_pb2.Visibility): visibility. owner_rank"
-" (int): the index of the trusted piece. if >= 0, colocation optimization "
+"x (np.ndarray): input. vtype (libspu.Visibility): visibility. owner_rank "
+"(int): the index of the trusted piece. if >= 0, colocation optimization "
 "may be applied."
 msgstr ""
 
@@ -4631,12 +4631,12 @@ msgstr ""
 
 #: of spu.api.compile:4
 msgid ""
-"source (spu_pb2.CompilationSource): input to compiler. copts "
-"(spu_pb2.CompilerOptions): compiler options."
+"source (libspu.CompilationSource): input to compiler. copts "
+"(libspu.CompilerOptions): compiler options."
 msgstr ""
 
 #: of spu.api.compile:8
-msgid "[spu_pb2.ValueProto]: output."
+msgid "[libspu.ValueProto]: output."
 msgstr ""
 
 #: ../../reference/py_api.rst:26
@@ -4652,11 +4652,11 @@ msgid "wsize (int): the world size."
 msgstr ""
 
 #: of spu.utils.simulation.Simulator.simple:6
-msgid "prot (spu_pb2.ProtocolKind): protocol."
+msgid "prot (libspu.ProtocolKind): protocol."
 msgstr ""
 
 #: of spu.utils.simulation.Simulator.simple:8
-msgid "field (spu_pb2.FieldType): field type."
+msgid "field (libspu.FieldType): field type."
 msgstr ""
 
 #: of spu.utils.simulation.Simulator.simple:11
@@ -6884,4 +6884,33 @@ msgstr ""
 #: ../../reference/xla_status.md
 msgid "`cstr_reshapable`"
 msgstr ""
+
+#~ msgid "spu_pb2.ValueMeta: Data meta with out content."
+#~ msgstr ""
+
+#~ msgid "executable (spu_pb2.ExecutableProto): executable."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "x (np.ndarray): input. vtype "
+#~ "(spu_pb2.Visibility): visibility. owner_rank (int):"
+#~ " the index of the trusted piece. "
+#~ "if >= 0, colocation optimization may "
+#~ "be applied."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "source (spu_pb2.CompilationSource): input to "
+#~ "compiler. copts (spu_pb2.CompilerOptions): compiler"
+#~ " options."
+#~ msgstr ""
+
+#~ msgid "[spu_pb2.ValueProto]: output."
+#~ msgstr ""
+
+#~ msgid "prot (spu_pb2.ProtocolKind): protocol."
+#~ msgstr ""
+
+#~ msgid "field (spu_pb2.FieldType): field type."
+#~ msgstr ""
 

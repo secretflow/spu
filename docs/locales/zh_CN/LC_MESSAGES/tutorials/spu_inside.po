@@ -1,0 +1,351 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2021 Ant Group Co., Ltd.
+# This file is distributed under the same license as the SPU package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2025.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: SPU \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-03-13 15:10+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: ../../tutorials/spu_inside.ipynb:9
+msgid "SPU Inside"
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:20
+msgid ""
+"SPU is a virtual device backed by an MPC engine, which provides an "
+"*arithmetic black box* abstraction to front-end users. Just like other "
+"*black boxes*, it's not easy to understand what happened inside it."
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:22
+msgid ""
+"For this reason, SPU provides some features to show what happened inside "
+"it, this document demonstrates these features."
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:25
+msgid "Simulation"
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:27
+msgid ""
+"As the name suggests, *multi-party computation* is born to be distributed"
+" system with multiple participants, which makes it harder to setup, debug"
+" and inspect. So SPU provides a *simulation module* that uses threads to "
+"simulate multi-parties in a single process. All parties acts exactly the "
+"same as in production environment, so we can use it as a playground to "
+"inspect the internals of SPU."
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:29
+msgid "To use the simulation module, we can simple do"
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:55
+msgid "Now we can create SPU simulator and run program on it."
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:119
+msgid "In the above code."
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:121
+msgid ""
+"First, we create an SPU simulator backed by *ABY3* protocol with *FM64* "
+"field."
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:122
+msgid ""
+"Then we decorates a jax function ``jax.add`` to make it a SPU simulated "
+"function."
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:123
+msgid "Then we can use the simulated function just like normal python functions."
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:125
+msgid ""
+"As the result suggests, it behaves like a python function, we can also "
+"print the compiled pphlo program with"
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:188
+msgid ""
+"The above code is a pphlo dialect in `MLIR <https://mlir.llvm.org/>`__ "
+"format, which defines a ``main`` function that accepts two arguments and "
+"returns the sum as result."
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:190
+msgid ""
+"Besides single ``jax.numpy`` op, we can simulate any jax function on SPU,"
+" i.e."
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:284
+msgid "The above code is ``spu function`` which is composed of spu builtin ops."
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:286
+msgid ""
+"Note: since spu use `JIT <https://en.wikipedia.org/wiki/Just-in-"
+"time_compilation>`__ compilation, so we have to execute the function "
+"before printing the compiled bytecode."
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:298
+msgid "Profling"
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:300
+msgid ""
+"Besides simple simulation, we can profile the simulated program, although"
+" the profiling result could NOT be used as a reference of SPU perf, it "
+"still gives some information of what happened."
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:302
+msgid "To use profiling, we have enabled some feature flags."
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:325
+msgid ""
+"``enable_pphlo_profile`` tells SPU runtime to print information about "
+"pphlo, now, let's run the function on this new runtime."
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:395
+msgid ""
+"The above log tells the total execution time and the detailed statistics "
+"of each builtin function."
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:397
+msgid ""
+"Besides the ``enable_pphlo_profile`` feature flag, SPU has other flags "
+"like ``enable_hal_profile`` to dump runtime information in different "
+"levels of instructions."
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:400
+msgid "Tracing"
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:402
+msgid ""
+"*Profiling* can only tell the statistics of SPU instructions, it's still "
+"hard to understand what happened inside it. *Tracing* is a feature that "
+"used to print verbose ``call stack``, which helps to understand/inspect "
+"what exactly happened."
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:404
+msgid ""
+"To enable tracing features, just set ``enable_action_trace`` in the "
+"runtime config."
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:427
+msgid "Now, let's run another function on this ``tracing enabled`` simulator."
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:548
+msgid ""
+"At the first glance, the trace log is a bit of frustrating, so it worth a"
+" little while to explain it."
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:550
+msgid "At the very begining, is the entry point of ``multiply`` function."
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:552
+msgid "Each line follows the format as below:"
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:558
+msgid ""
+"For example, the second line ``[timestamp] [TR] [B]   "
+"hal.mul(Value<2x2xSFXP,s=2,1>, Value<2x2xSFXP,s=2,1>)`` means:"
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:560
+msgid "this is a tracing log indicated by ``[TR]``"
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:561
+msgid "the function begins/ends ``[B/E]``"
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:562
+msgid "the module is ``hal``"
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:563
+msgid "the operator is ``mul``"
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:564
+msgid "the two args are both ``Value<2x2xSFXP,s=2,1>``"
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:566
+msgid ""
+"Note, ``hlo`` is short for ``High Level Operations``, ``hal`` is short "
+"for ``Hardware Abstraction Layer``, ``mpc`` is short for ``Multi-Party "
+"Computation``."
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:568
+msgid ""
+"The ``Value<2x2xSFXP,s=2,1>`` means it's a **S**\\ ecret **F**\\ i\\ "
+"**X**\\ ed **P**\\ ointed tensor with shape(**2x2**) and "
+"strides(**2,1**)."
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:570
+msgid ""
+"the runtime dispatches the function according parameters datatype (in "
+"this case *fxp*), then calls the corresponding fixed point handle "
+"function ``hal.f_mul``, the prefix ``f_`` means its for fixed point."
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:571
+msgid ""
+"the runtime dispatches ``hal.f_mul`` to the untyped version ``hal._mul`` "
+"which operates on ``rings``."
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:572
+msgid ""
+"the runtime dispatches ``hal._mul`` according to the *visibility* type, "
+"since both parameters are **secret**, so ``hal._mul_ss`` is called, the "
+"postfix ``_ss`` indicates that it operates on two secrets."
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:574
+msgid ""
+"Then the function ``hal._mul_ss`` is dispatched to the MPC layer, the "
+"signature becomes more complicated."
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:580
+msgid ""
+"The signature of this operation is the same as above, ``mpc.mul_ss`` "
+"indicates the module is ``mpc`` and the operation is ``mul_ss``."
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:582
+msgid "The type ``ArrayRef<4xaby3.AShr<FM64>>`` has two notable differences:"
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:584
+msgid ""
+"unlike hal ops, mpc ops operates on 1D-array instead of tensor, which "
+"makes it a more standard SIMD instruction."
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:585
+msgid ""
+"the type ``aby3.AShr<FM64>`` is protocol-dependent, in this case, it's an"
+" *ABY3* arithmetic share in FM64."
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:587
+msgid ""
+"Finally, it's dispatched to ``mpc.mul_aa``, the postfix ``_aa`` indicates"
+" both parameters are arithmetic shares, then the ABY3 share addition "
+"protocol is performed."
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:589
+msgid ""
+"But ``f_mul`` could not be done with ring multiplication only, we have to"
+" ``truncate`` the result to make the fixed point legal, in the following "
+"lines, ``hal._trunc`` is called and finally dispatched to ``mpc.trunc_a``"
+" protocol."
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:600
+msgid "The above example is pretty straight forward, now let's make it harder."
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:602
+msgid ""
+"Fixed point reciprocal is done with `Goldschmidt "
+"<https://en.wikipedia.org/wiki/Division_algorithm#Goldschmidt_division>`__"
+" approximation algorithm, the algorithm itself is not that simple, and "
+"when it's executed on MPC, things become more complicated."
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:604
+msgid ""
+"It takes a lot of effort to understand how it works, let's directly see "
+"the tracing result."
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:3515
+msgid "Surprise, it's really a lot of ops!"
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:3517
+msgid ""
+"Yes, that's why MPC is still relatively slow and why SPU wants to "
+"optimize it :P"
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:3519
+msgid ""
+"The ``reciprocal`` is still a relative simple operator, you can try more "
+"complicated op like ``convolution``."
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:3531
+msgid "Misc"
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:3533
+msgid ""
+"Simulation could be used to inspect other parts of SPU, i.e. the *fixed "
+"point arithmetic* accuracy."
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:3535
+msgid ""
+"As the above example indicates, non-linear functions like ``reciprocal`` "
+"and ``exp`` are approximated with some numeric methods, so the result is "
+"not as accurate as floating point arithmetic."
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:3537
+msgid "For example."
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:3653
+msgid ""
+"As we can see, the SPU version of ``exp`` (blue line) diverges with the "
+"standard version when input is larger."
+msgstr ""
+
+#: ../../tutorials/spu_inside.ipynb:3664
+msgid ""
+"Finally, SPU, as a secure computation, behaves very differently from CPU,"
+" both in accuracy and cost model, when you are not sure about how it "
+"works, simulate on it!"
+msgstr ""
+

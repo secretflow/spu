@@ -1,0 +1,337 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2021 Ant Group Co., Ltd.
+# This file is distributed under the same license as the SPU package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2025.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: SPU \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-03-13 15:10+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: ../../development/fxp.ipynb:9
+msgid "Pitfalls - Fxp Arithmetic"
+msgstr ""
+
+#: ../../development/fxp.ipynb:11
+msgid ""
+"We have confirmed the precision issues or input limitations with the "
+"following ops."
+msgstr ""
+
+#: ../../development/fxp.ipynb:13
+msgid "We will update this part promptly."
+msgstr ""
+
+#: ../../development/fxp.ipynb:25
+msgid "Simulation"
+msgstr ""
+
+#: ../../development/fxp.ipynb:27
+msgid ""
+"We will use SPU **simulation** tool to simulate multi-parties with "
+"threads."
+msgstr ""
+
+#: ../../development/fxp.ipynb:57
+msgid "Default Runtime Config Parameters"
+msgstr ""
+
+#: ../../development/fxp.ipynb:59
+msgid ""
+"We will use the following common settings in SPU Runtime config. Other "
+"parameters may be modified however."
+msgstr ""
+
+#: ../../development/fxp.ipynb:83
+msgid "Unary Operator"
+msgstr ""
+
+#: ../../development/fxp.ipynb:95
+msgid "Reciprocal"
+msgstr ""
+
+#: ../../development/fxp.ipynb:97
+msgid ""
+"SPU uses Goldschmidt's method to calculate Reciprocal. Please refer to "
+"`Secure Computation With Fixed-Point Numbers "
+"<http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.221.1305&rep=rep1&type=pdf>`__"
+" for details."
+msgstr ""
+
+#: ../../development/fxp.ipynb:99
+msgid ""
+"Reciprocal is only correct if input belongs to **(-2**fxp_fraction_bits, "
+"2**fxp_fraction_bits)**."
+msgstr ""
+
+#: ../../development/fxp.ipynb:101
+msgid "First, let's have a look at the figure."
+msgstr ""
+
+#: ../../development/fxp.ipynb:191
+msgid "Actually the precision is quite high."
+msgstr ""
+
+#: ../../development/fxp.ipynb:220
+msgid ""
+"Let's have an idea about what happens if input is not within the valid "
+"range."
+msgstr ""
+
+#: ../../development/fxp.ipynb:282
+msgid "Natural Logarithm"
+msgstr ""
+
+#: ../../development/fxp.ipynb:284
+msgid ""
+"SPU uses Pade approximation by default. Please check `Benchmarking "
+"Privacy Preserving Scientific Operations "
+"<https://www.esat.kuleuven.be/cosic/publications/article-3013.pdf>`__ for"
+" details."
+msgstr ""
+
+#: ../../development/fxp.ipynb:286
+msgid ""
+"Logarithm is only correct if input belongs to **(0, "
+"2**fxp_fraction_bits)**."
+msgstr ""
+
+#: ../../development/fxp.ipynb:288
+msgid "**NOTE:** Similar conclusion also applies to **log1p**, **log2**."
+msgstr ""
+
+#: ../../development/fxp.ipynb:344
+msgid "Again, let's see what happens if input is out of valid range."
+msgstr ""
+
+#: ../../development/fxp.ipynb:387
+msgid "Another Choice: Newton Approximation"
+msgstr ""
+
+#: ../../development/fxp.ipynb:389
+msgid ""
+"If you would like to compute faster, you may switch to Newton "
+"Approximation. But the precision is lower and valid input range is around"
+" **(0, 250)**."
+msgstr ""
+
+#: ../../development/fxp.ipynb:436
+msgid "While, if out of valid input..."
+msgstr ""
+
+#: ../../development/fxp.ipynb:475
+msgid "Natural Exponential"
+msgstr ""
+
+#: ../../development/fxp.ipynb:477
+msgid ""
+"The current implementation is based on Taylor approximation. The valid "
+"input range is around **(0, 10)**."
+msgstr ""
+
+#: ../../development/fxp.ipynb:479
+msgid "**NOTE:** Similar conclusion also applies to **exp2**."
+msgstr ""
+
+#: ../../development/fxp.ipynb:525
+msgid "If input not in valid range, then..."
+msgstr ""
+
+#: ../../development/fxp.ipynb:564
+msgid "Another Choice: Pade Approximation"
+msgstr ""
+
+#: ../../development/fxp.ipynb:566
+msgid ""
+"SPU also implements Pade Approximation which has a larger valid input "
+"range - **(0, 20)** but with slower computation speed."
+msgstr ""
+
+#: ../../development/fxp.ipynb:613
+msgid "Let's check if input is larger than 20:"
+msgstr ""
+
+#: ../../development/fxp.ipynb:652
+msgid "Hyperbolic Tangent"
+msgstr ""
+
+#: ../../development/fxp.ipynb:654
+#, python-format
+msgid ""
+"SPU uses Pade Approximation for implementation. The parameters refer to "
+"`Wolfram "
+"<https://www.wolframalpha.com/input?i=Pade+approximation+tanh%28x%29+order+5%2C5>`__."
+" The valid input range is about **(-5,5)**."
+msgstr ""
+
+#: ../../development/fxp.ipynb:701
+msgid "Binary Operator"
+msgstr ""
+
+#: ../../development/fxp.ipynb:704
+msgid "Div"
+msgstr ""
+
+#: ../../development/fxp.ipynb:706
+msgid ""
+"SPU uses Goldschmidt's method to calculate division. Please refer to "
+"`Secure Computation With Fixed-Point Numbers "
+"<http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.221.1305&rep=rep1&type=pdf>`__"
+" for details."
+msgstr ""
+
+#: ../../development/fxp.ipynb:708
+msgid ""
+"So we have a similar valid input range to **b**, which is "
+"**(-2**fxp_fraction_bits, 2**fxp_fraction_bits)**. Please check details "
+"at **reciprocal** part."
+msgstr ""
+
+#: ../../development/fxp.ipynb:719
+msgid "Besides, We do find some subtle pitfalls in real applications:"
+msgstr ""
+
+#: ../../development/fxp.ipynb:721
+msgid "Overflow when numerator is large."
+msgstr ""
+
+#: ../../development/fxp.ipynb:723
+msgid "Some gap between numpy output."
+msgstr ""
+
+#: ../../development/fxp.ipynb:725
+msgid "**Rule of thumb**"
+msgstr ""
+
+#: ../../development/fxp.ipynb:727
+msgid ""
+"We recommend users to try some actions if you come across \"strange\" "
+"outputs:"
+msgstr ""
+
+#: ../../development/fxp.ipynb:729
+msgid "If **huge error** occurs(maybe even **opposite sign**):"
+msgstr ""
+
+#: ../../development/fxp.ipynb:731
+msgid "It's common that numerator is **too large**, which leads to overflow."
+msgstr ""
+
+#: ../../development/fxp.ipynb:732
+msgid ""
+"Try **Larger** field(``FM128``) first. Larger field can accommodate "
+"larger number when fxp is fixed, so overflow can be avoided. But it will "
+"drag down the efficiency of **nearly all op** dramatically."
+msgstr ""
+
+#: ../../development/fxp.ipynb:734
+msgid ""
+"Else, if the gap is not very significant, you can try to modify another "
+"two parameters:"
+msgstr ""
+
+#: ../../development/fxp.ipynb:736
+msgid ""
+"Enlarging ``fxp_fraction_bits``: it is an essential parameters for fixed-"
+"point arithmetic and will influence all the op associated with float-"
+"point. For fixed field, larger fxp can support more bits for fraction "
+"part which may give more precision. However, larger fxp will occupy the "
+"bits for integer part, and makes **overflow** easier."
+msgstr ""
+
+#: ../../development/fxp.ipynb:738
+msgid ""
+"Enlarging ``fxp_div_goldschmidt_iters``: the precision of Goldschmidt's "
+"method depends on iter numbers. So if you eager to more precise output, "
+"you can enlarge this parameter. But it's worthy to note that:"
+msgstr ""
+
+#: ../../development/fxp.ipynb:740
+msgid ""
+"Larger this parameter, larger the cost of ``Div`` and all op containing "
+"it(like ``Log`` and ``Tanh``)."
+msgstr ""
+
+#: ../../development/fxp.ipynb:741
+msgid ""
+"The final precision is also influenced by field, fxp and even method for "
+"truncation. We only recommend to adjust this when you really care about "
+"the **high precision**\\ (low absolute error) and other methods not work."
+msgstr ""
+
+#: ../../development/fxp.ipynb:803
+#, python-brace-format
+msgid ""
+"When numerator is very large(:math:`>2^{28}` for ``FM64`` and "
+"``fxp=18``), then the integer part may overflow under large probability, "
+"and this brings huge error."
+msgstr ""
+
+#: ../../development/fxp.ipynb:873
+msgid ""
+"In this situation, **enlarging** field to ``FM128`` may be the only "
+"remedy."
+msgstr ""
+
+#: ../../development/fxp.ipynb:943
+msgid "Now, we try larger fxp."
+msgstr ""
+
+#: ../../development/fxp.ipynb:1012
+msgid ""
+"As we have mentioned at **reciprocal** part, SPU implements reciprocal "
+"with Goldschmidt's method, so the final precision depends heavily on the "
+"**iter numbers**."
+msgstr ""
+
+#: ../../development/fxp.ipynb:1014
+msgid ""
+"We first go through the algorithm quickly. let :math:`r_i` denote the "
+"approximation of reciprocal, :math:`e_i` be the relative error, then in "
+"one iter:"
+msgstr ""
+
+#: ../../development/fxp.ipynb:1016
+#, python-brace-format
+msgid ""
+"r_i = r_{i-1}(1+e_i) \\\\\n"
+"   e_{i+1} = e_i^2"
+msgstr ""
+
+#: ../../development/fxp.ipynb:1021
+msgid "It's easy to prove that:"
+msgstr ""
+
+#: ../../development/fxp.ipynb:1023
+msgid ""
+"To compute ``Div(a, b)``, if we need :math:`|\\frac{a}{b} - r_i| \\le "
+"2^{-l}`, then :math:`\\lceil {log(\\frac{l +log(a)}{\\tau})} \\rceil` "
+"iterations should be done(we assume :math:`|\\frac{1}{b} - r_0| \\le "
+"2^{-\\tau}`).In current implementation, we choose polynomial of degree 1 "
+"as the initial guess of reciprocal, which leads to :math:`\\tau \\approx "
+"3.5`."
+msgstr ""
+
+#: ../../development/fxp.ipynb:1025
+#, python-brace-format
+msgid "The relative error :math:`e_i = e_0^{2^i}`\\ (same as ``Div(a,b)``)."
+msgstr ""
+
+#: ../../development/fxp.ipynb:1027
+msgid ""
+"Although some other factors like fxp and truncation will also bring into "
+"some errors, the above error analysis can still give readers some "
+"recommendations when deciding ``fxp_div_goldschmidt_iters``."
+msgstr ""
+
