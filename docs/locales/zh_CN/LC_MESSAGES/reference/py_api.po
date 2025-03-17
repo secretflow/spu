@@ -28,7 +28,7 @@ msgid ""
 "Python API is used to control & access SPU, for example, to do data "
 "infeed/outfeed, to compile an XLA program to PPHlo, or to fire a PPHlo on"
 " an SPU runtime."
-msgstr "Python API 用于控制和访问 SPU，例如，执行数据输入/输出、将 XLA 程序编译为 PPHLO，或在 SPU 运行时启动 PPHLO。"
+msgstr "Python API 用于控制和访问 SPU，例如，执行数据输入/输出、将 XLA 程序编译为 PPHlo，或在 SPU 运行时启动 PPHlo。"
 
 #: ../../reference/py_api.rst:8
 msgid "Runtime Setup"
