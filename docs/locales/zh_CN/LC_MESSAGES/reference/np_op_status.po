@@ -1,0 +1,1749 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2021 Ant Group Co., Ltd.
+# This file is distributed under the same license as the SPU package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2025.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: SPU \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-03-13 15:10+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: ../../reference/np_op_status.md:2
+msgid "JAX NumPy Operators Status"
+msgstr ""
+
+#: ../../reference/np_op_status.md:5
+msgid "Overview"
+msgstr ""
+
+#: ../../reference/np_op_status.md:8
+msgid ""
+"SPU recommends users to use JAX as frontend language to write logics. We "
+"found most of users would utilize **jax.numpy** modules in their "
+"programs. We have conducted tests with some *selected* Operators for "
+"reference."
+msgstr ""
+
+#: ../../reference/np_op_status.md:10
+msgid ""
+"Just keep in mind, if you couldn't find a **jax.numpy** operator in this "
+"list, it doesn't mean it's not supported. We just haven't test it, e.g. "
+"jax.numpy.sort. And we don't test other **JAX** modules at this moment."
+msgstr ""
+
+#: ../../reference/np_op_status.md:12
+msgid "Please contact us if"
+msgstr ""
+
+#: ../../reference/np_op_status.md:13
+msgid ""
+"You need to confirm the status of another **jax.numpy** operator not "
+"listed here."
+msgstr ""
+
+#: ../../reference/np_op_status.md:14
+msgid ""
+"You find a **jax.numpy** is not working even it is marked as **PASS**. "
+"e.g. The precision is bad."
+msgstr ""
+
+#: ../../reference/np_op_status.md:18
+msgid "Tested Operators List"
+msgstr ""
+
+#: ../../reference/np_op_status.md:20
+msgid "abs"
+msgstr ""
+
+#: ../../reference/np_op_status.md:22
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.abs.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:23 ../../reference/np_op_status.md:39
+#: ../../reference/np_op_status.md:55 ../../reference/np_op_status.md:70
+#: ../../reference/np_op_status.md:85 ../../reference/np_op_status.md:100
+#: ../../reference/np_op_status.md:111 ../../reference/np_op_status.md:126
+#: ../../reference/np_op_status.md:141 ../../reference/np_op_status.md:156
+#: ../../reference/np_op_status.md:167 ../../reference/np_op_status.md:178
+#: ../../reference/np_op_status.md:194 ../../reference/np_op_status.md:210
+#: ../../reference/np_op_status.md:225 ../../reference/np_op_status.md:240
+#: ../../reference/np_op_status.md:255 ../../reference/np_op_status.md:270
+#: ../../reference/np_op_status.md:285 ../../reference/np_op_status.md:299
+#: ../../reference/np_op_status.md:313 ../../reference/np_op_status.md:327
+#: ../../reference/np_op_status.md:341 ../../reference/np_op_status.md:355
+#: ../../reference/np_op_status.md:366 ../../reference/np_op_status.md:381
+#: ../../reference/np_op_status.md:396 ../../reference/np_op_status.md:411
+#: ../../reference/np_op_status.md:422 ../../reference/np_op_status.md:437
+#: ../../reference/np_op_status.md:452 ../../reference/np_op_status.md:463
+#: ../../reference/np_op_status.md:478 ../../reference/np_op_status.md:493
+#: ../../reference/np_op_status.md:504 ../../reference/np_op_status.md:520
+#: ../../reference/np_op_status.md:535 ../../reference/np_op_status.md:550
+#: ../../reference/np_op_status.md:565 ../../reference/np_op_status.md:576
+#: ../../reference/np_op_status.md:591 ../../reference/np_op_status.md:602
+#: ../../reference/np_op_status.md:617 ../../reference/np_op_status.md:632
+#: ../../reference/np_op_status.md:647 ../../reference/np_op_status.md:662
+#: ../../reference/np_op_status.md:677 ../../reference/np_op_status.md:688
+#: ../../reference/np_op_status.md:704 ../../reference/np_op_status.md:720
+#: ../../reference/np_op_status.md:735 ../../reference/np_op_status.md:750
+#: ../../reference/np_op_status.md:761 ../../reference/np_op_status.md:776
+#: ../../reference/np_op_status.md:790 ../../reference/np_op_status.md:806
+#: ../../reference/np_op_status.md:821 ../../reference/np_op_status.md:828
+#: ../../reference/np_op_status.md:835 ../../reference/np_op_status.md:842
+#: ../../reference/np_op_status.md:849 ../../reference/np_op_status.md:856
+#: ../../reference/np_op_status.md:871 ../../reference/np_op_status.md:886
+#: ../../reference/np_op_status.md:901 ../../reference/np_op_status.md:912
+#: ../../reference/np_op_status.md:923 ../../reference/np_op_status.md:937
+#: ../../reference/np_op_status.md:953 ../../reference/np_op_status.md:969
+#: ../../reference/np_op_status.md:984 ../../reference/np_op_status.md:999
+#: ../../reference/np_op_status.md:1014 ../../reference/np_op_status.md:1029
+#: ../../reference/np_op_status.md:1044 ../../reference/np_op_status.md:1055
+#: ../../reference/np_op_status.md:1066 ../../reference/np_op_status.md:1082
+#: ../../reference/np_op_status.md:1098 ../../reference/np_op_status.md:1114
+#: ../../reference/np_op_status.md:1130 ../../reference/np_op_status.md:1146
+#: ../../reference/np_op_status.md:1161 ../../reference/np_op_status.md:1177
+#: ../../reference/np_op_status.md:1192 ../../reference/np_op_status.md:1207
+#: ../../reference/np_op_status.md:1223 ../../reference/np_op_status.md:1230
+#: ../../reference/np_op_status.md:1237 ../../reference/np_op_status.md:1244
+#: ../../reference/np_op_status.md:1251 ../../reference/np_op_status.md:1258
+#: ../../reference/np_op_status.md:1273 ../../reference/np_op_status.md:1284
+#: ../../reference/np_op_status.md:1300 ../../reference/np_op_status.md:1315
+#: ../../reference/np_op_status.md:1330 ../../reference/np_op_status.md:1345
+#: ../../reference/np_op_status.md:1360 ../../reference/np_op_status.md:1376
+#: ../../reference/np_op_status.md:1387 ../../reference/np_op_status.md:1403
+#: ../../reference/np_op_status.md:1418 ../../reference/np_op_status.md:1429
+#: ../../reference/np_op_status.md:1444 ../../reference/np_op_status.md:1458
+#: ../../reference/np_op_status.md:1469 ../../reference/np_op_status.md:1484
+#: ../../reference/np_op_status.md:1499 ../../reference/np_op_status.md:1514
+#: ../../reference/np_op_status.md:1529 ../../reference/np_op_status.md:1544
+#: ../../reference/np_op_status.md:1559 ../../reference/np_op_status.md:1575
+#: ../../reference/np_op_status.md:1590 ../../reference/np_op_status.md:1605
+#: ../../reference/np_op_status.md:1619 ../../reference/np_op_status.md:1630
+#: ../../reference/np_op_status.md:1645 ../../reference/np_op_status.md:1661
+#: ../../reference/np_op_status.md:1676 ../../reference/np_op_status.md:1691
+msgid "Status"
+msgstr ""
+
+#: ../../reference/np_op_status.md:25 ../../reference/np_op_status.md:41
+#: ../../reference/np_op_status.md:57 ../../reference/np_op_status.md:72
+#: ../../reference/np_op_status.md:87 ../../reference/np_op_status.md:113
+#: ../../reference/np_op_status.md:128 ../../reference/np_op_status.md:143
+#: ../../reference/np_op_status.md:158 ../../reference/np_op_status.md:180
+#: ../../reference/np_op_status.md:196 ../../reference/np_op_status.md:212
+#: ../../reference/np_op_status.md:227 ../../reference/np_op_status.md:242
+#: ../../reference/np_op_status.md:257 ../../reference/np_op_status.md:272
+#: ../../reference/np_op_status.md:287 ../../reference/np_op_status.md:301
+#: ../../reference/np_op_status.md:315 ../../reference/np_op_status.md:329
+#: ../../reference/np_op_status.md:343 ../../reference/np_op_status.md:368
+#: ../../reference/np_op_status.md:383 ../../reference/np_op_status.md:398
+#: ../../reference/np_op_status.md:424 ../../reference/np_op_status.md:439
+#: ../../reference/np_op_status.md:454 ../../reference/np_op_status.md:465
+#: ../../reference/np_op_status.md:480 ../../reference/np_op_status.md:495
+#: ../../reference/np_op_status.md:506 ../../reference/np_op_status.md:522
+#: ../../reference/np_op_status.md:537 ../../reference/np_op_status.md:552
+#: ../../reference/np_op_status.md:567 ../../reference/np_op_status.md:578
+#: ../../reference/np_op_status.md:593 ../../reference/np_op_status.md:604
+#: ../../reference/np_op_status.md:619 ../../reference/np_op_status.md:634
+#: ../../reference/np_op_status.md:649 ../../reference/np_op_status.md:664
+#: ../../reference/np_op_status.md:690 ../../reference/np_op_status.md:706
+#: ../../reference/np_op_status.md:722 ../../reference/np_op_status.md:737
+#: ../../reference/np_op_status.md:763 ../../reference/np_op_status.md:778
+#: ../../reference/np_op_status.md:792 ../../reference/np_op_status.md:808
+#: ../../reference/np_op_status.md:858 ../../reference/np_op_status.md:873
+#: ../../reference/np_op_status.md:888 ../../reference/np_op_status.md:925
+#: ../../reference/np_op_status.md:939 ../../reference/np_op_status.md:955
+#: ../../reference/np_op_status.md:971 ../../reference/np_op_status.md:986
+#: ../../reference/np_op_status.md:1001 ../../reference/np_op_status.md:1016
+#: ../../reference/np_op_status.md:1031 ../../reference/np_op_status.md:1046
+#: ../../reference/np_op_status.md:1057 ../../reference/np_op_status.md:1068
+#: ../../reference/np_op_status.md:1084 ../../reference/np_op_status.md:1100
+#: ../../reference/np_op_status.md:1116 ../../reference/np_op_status.md:1132
+#: ../../reference/np_op_status.md:1148 ../../reference/np_op_status.md:1163
+#: ../../reference/np_op_status.md:1179 ../../reference/np_op_status.md:1194
+#: ../../reference/np_op_status.md:1209 ../../reference/np_op_status.md:1260
+#: ../../reference/np_op_status.md:1286 ../../reference/np_op_status.md:1302
+#: ../../reference/np_op_status.md:1317 ../../reference/np_op_status.md:1332
+#: ../../reference/np_op_status.md:1347 ../../reference/np_op_status.md:1362
+#: ../../reference/np_op_status.md:1378 ../../reference/np_op_status.md:1389
+#: ../../reference/np_op_status.md:1405 ../../reference/np_op_status.md:1420
+#: ../../reference/np_op_status.md:1431 ../../reference/np_op_status.md:1446
+#: ../../reference/np_op_status.md:1460 ../../reference/np_op_status.md:1471
+#: ../../reference/np_op_status.md:1486 ../../reference/np_op_status.md:1501
+#: ../../reference/np_op_status.md:1516 ../../reference/np_op_status.md:1531
+#: ../../reference/np_op_status.md:1546 ../../reference/np_op_status.md:1561
+#: ../../reference/np_op_status.md:1577 ../../reference/np_op_status.md:1592
+#: ../../reference/np_op_status.md:1607 ../../reference/np_op_status.md:1632
+#: ../../reference/np_op_status.md:1647 ../../reference/np_op_status.md:1663
+#: ../../reference/np_op_status.md:1678 ../../reference/np_op_status.md:1693
+msgid "**PASS** Please check *Supported Dtypes* as well."
+msgstr ""
+
+#: ../../reference/np_op_status.md:27 ../../reference/np_op_status.md:43
+#: ../../reference/np_op_status.md:59 ../../reference/np_op_status.md:74
+#: ../../reference/np_op_status.md:89 ../../reference/np_op_status.md:115
+#: ../../reference/np_op_status.md:130 ../../reference/np_op_status.md:145
+#: ../../reference/np_op_status.md:160 ../../reference/np_op_status.md:182
+#: ../../reference/np_op_status.md:198 ../../reference/np_op_status.md:214
+#: ../../reference/np_op_status.md:229 ../../reference/np_op_status.md:244
+#: ../../reference/np_op_status.md:259 ../../reference/np_op_status.md:274
+#: ../../reference/np_op_status.md:289 ../../reference/np_op_status.md:303
+#: ../../reference/np_op_status.md:317 ../../reference/np_op_status.md:331
+#: ../../reference/np_op_status.md:345 ../../reference/np_op_status.md:370
+#: ../../reference/np_op_status.md:385 ../../reference/np_op_status.md:400
+#: ../../reference/np_op_status.md:426 ../../reference/np_op_status.md:441
+#: ../../reference/np_op_status.md:456 ../../reference/np_op_status.md:467
+#: ../../reference/np_op_status.md:482 ../../reference/np_op_status.md:497
+#: ../../reference/np_op_status.md:508 ../../reference/np_op_status.md:524
+#: ../../reference/np_op_status.md:539 ../../reference/np_op_status.md:554
+#: ../../reference/np_op_status.md:569 ../../reference/np_op_status.md:580
+#: ../../reference/np_op_status.md:595 ../../reference/np_op_status.md:606
+#: ../../reference/np_op_status.md:621 ../../reference/np_op_status.md:636
+#: ../../reference/np_op_status.md:651 ../../reference/np_op_status.md:666
+#: ../../reference/np_op_status.md:692 ../../reference/np_op_status.md:708
+#: ../../reference/np_op_status.md:724 ../../reference/np_op_status.md:739
+#: ../../reference/np_op_status.md:765 ../../reference/np_op_status.md:780
+#: ../../reference/np_op_status.md:794 ../../reference/np_op_status.md:810
+#: ../../reference/np_op_status.md:860 ../../reference/np_op_status.md:875
+#: ../../reference/np_op_status.md:890 ../../reference/np_op_status.md:927
+#: ../../reference/np_op_status.md:941 ../../reference/np_op_status.md:957
+#: ../../reference/np_op_status.md:973 ../../reference/np_op_status.md:988
+#: ../../reference/np_op_status.md:1003 ../../reference/np_op_status.md:1018
+#: ../../reference/np_op_status.md:1033 ../../reference/np_op_status.md:1048
+#: ../../reference/np_op_status.md:1059 ../../reference/np_op_status.md:1070
+#: ../../reference/np_op_status.md:1086 ../../reference/np_op_status.md:1102
+#: ../../reference/np_op_status.md:1118 ../../reference/np_op_status.md:1134
+#: ../../reference/np_op_status.md:1150 ../../reference/np_op_status.md:1165
+#: ../../reference/np_op_status.md:1181 ../../reference/np_op_status.md:1196
+#: ../../reference/np_op_status.md:1211 ../../reference/np_op_status.md:1262
+#: ../../reference/np_op_status.md:1288 ../../reference/np_op_status.md:1304
+#: ../../reference/np_op_status.md:1319 ../../reference/np_op_status.md:1334
+#: ../../reference/np_op_status.md:1349 ../../reference/np_op_status.md:1364
+#: ../../reference/np_op_status.md:1380 ../../reference/np_op_status.md:1391
+#: ../../reference/np_op_status.md:1407 ../../reference/np_op_status.md:1422
+#: ../../reference/np_op_status.md:1433 ../../reference/np_op_status.md:1448
+#: ../../reference/np_op_status.md:1462 ../../reference/np_op_status.md:1473
+#: ../../reference/np_op_status.md:1488 ../../reference/np_op_status.md:1503
+#: ../../reference/np_op_status.md:1518 ../../reference/np_op_status.md:1533
+#: ../../reference/np_op_status.md:1548 ../../reference/np_op_status.md:1563
+#: ../../reference/np_op_status.md:1579 ../../reference/np_op_status.md:1594
+#: ../../reference/np_op_status.md:1609 ../../reference/np_op_status.md:1634
+#: ../../reference/np_op_status.md:1649 ../../reference/np_op_status.md:1665
+#: ../../reference/np_op_status.md:1680 ../../reference/np_op_status.md:1695
+msgid "Supported Dtypes"
+msgstr ""
+
+#: ../../reference/np_op_status.md:29 ../../reference/np_op_status.md:45
+#: ../../reference/np_op_status.md:184 ../../reference/np_op_status.md:200
+#: ../../reference/np_op_status.md:510 ../../reference/np_op_status.md:694
+#: ../../reference/np_op_status.md:710 ../../reference/np_op_status.md:796
+#: ../../reference/np_op_status.md:943 ../../reference/np_op_status.md:959
+#: ../../reference/np_op_status.md:1072 ../../reference/np_op_status.md:1088
+#: ../../reference/np_op_status.md:1104 ../../reference/np_op_status.md:1120
+#: ../../reference/np_op_status.md:1136 ../../reference/np_op_status.md:1167
+#: ../../reference/np_op_status.md:1213 ../../reference/np_op_status.md:1290
+#: ../../reference/np_op_status.md:1366 ../../reference/np_op_status.md:1393
+#: ../../reference/np_op_status.md:1565 ../../reference/np_op_status.md:1651
+msgid "bool_"
+msgstr ""
+
+#: ../../reference/np_op_status.md:30 ../../reference/np_op_status.md:46
+#: ../../reference/np_op_status.md:61 ../../reference/np_op_status.md:76
+#: ../../reference/np_op_status.md:91 ../../reference/np_op_status.md:117
+#: ../../reference/np_op_status.md:132 ../../reference/np_op_status.md:147
+#: ../../reference/np_op_status.md:162 ../../reference/np_op_status.md:185
+#: ../../reference/np_op_status.md:201 ../../reference/np_op_status.md:216
+#: ../../reference/np_op_status.md:231 ../../reference/np_op_status.md:246
+#: ../../reference/np_op_status.md:261 ../../reference/np_op_status.md:276
+#: ../../reference/np_op_status.md:372 ../../reference/np_op_status.md:387
+#: ../../reference/np_op_status.md:402 ../../reference/np_op_status.md:428
+#: ../../reference/np_op_status.md:443 ../../reference/np_op_status.md:458
+#: ../../reference/np_op_status.md:469 ../../reference/np_op_status.md:484
+#: ../../reference/np_op_status.md:511 ../../reference/np_op_status.md:526
+#: ../../reference/np_op_status.md:541 ../../reference/np_op_status.md:556
+#: ../../reference/np_op_status.md:571 ../../reference/np_op_status.md:582
+#: ../../reference/np_op_status.md:597 ../../reference/np_op_status.md:608
+#: ../../reference/np_op_status.md:623 ../../reference/np_op_status.md:638
+#: ../../reference/np_op_status.md:653 ../../reference/np_op_status.md:668
+#: ../../reference/np_op_status.md:695 ../../reference/np_op_status.md:711
+#: ../../reference/np_op_status.md:726 ../../reference/np_op_status.md:741
+#: ../../reference/np_op_status.md:767 ../../reference/np_op_status.md:797
+#: ../../reference/np_op_status.md:812 ../../reference/np_op_status.md:862
+#: ../../reference/np_op_status.md:877 ../../reference/np_op_status.md:892
+#: ../../reference/np_op_status.md:944 ../../reference/np_op_status.md:960
+#: ../../reference/np_op_status.md:975 ../../reference/np_op_status.md:990
+#: ../../reference/np_op_status.md:1005 ../../reference/np_op_status.md:1020
+#: ../../reference/np_op_status.md:1035 ../../reference/np_op_status.md:1050
+#: ../../reference/np_op_status.md:1061 ../../reference/np_op_status.md:1073
+#: ../../reference/np_op_status.md:1089 ../../reference/np_op_status.md:1105
+#: ../../reference/np_op_status.md:1121 ../../reference/np_op_status.md:1137
+#: ../../reference/np_op_status.md:1152 ../../reference/np_op_status.md:1168
+#: ../../reference/np_op_status.md:1183 ../../reference/np_op_status.md:1198
+#: ../../reference/np_op_status.md:1214 ../../reference/np_op_status.md:1264
+#: ../../reference/np_op_status.md:1291 ../../reference/np_op_status.md:1306
+#: ../../reference/np_op_status.md:1321 ../../reference/np_op_status.md:1336
+#: ../../reference/np_op_status.md:1351 ../../reference/np_op_status.md:1367
+#: ../../reference/np_op_status.md:1382 ../../reference/np_op_status.md:1394
+#: ../../reference/np_op_status.md:1409 ../../reference/np_op_status.md:1424
+#: ../../reference/np_op_status.md:1435 ../../reference/np_op_status.md:1464
+#: ../../reference/np_op_status.md:1475 ../../reference/np_op_status.md:1490
+#: ../../reference/np_op_status.md:1505 ../../reference/np_op_status.md:1520
+#: ../../reference/np_op_status.md:1535 ../../reference/np_op_status.md:1550
+#: ../../reference/np_op_status.md:1566 ../../reference/np_op_status.md:1581
+#: ../../reference/np_op_status.md:1596 ../../reference/np_op_status.md:1636
+#: ../../reference/np_op_status.md:1652 ../../reference/np_op_status.md:1667
+#: ../../reference/np_op_status.md:1682 ../../reference/np_op_status.md:1697
+msgid "float32"
+msgstr ""
+
+#: ../../reference/np_op_status.md:31 ../../reference/np_op_status.md:47
+#: ../../reference/np_op_status.md:62 ../../reference/np_op_status.md:77
+#: ../../reference/np_op_status.md:92 ../../reference/np_op_status.md:118
+#: ../../reference/np_op_status.md:133 ../../reference/np_op_status.md:148
+#: ../../reference/np_op_status.md:186 ../../reference/np_op_status.md:202
+#: ../../reference/np_op_status.md:217 ../../reference/np_op_status.md:232
+#: ../../reference/np_op_status.md:247 ../../reference/np_op_status.md:262
+#: ../../reference/np_op_status.md:277 ../../reference/np_op_status.md:291
+#: ../../reference/np_op_status.md:305 ../../reference/np_op_status.md:319
+#: ../../reference/np_op_status.md:333 ../../reference/np_op_status.md:347
+#: ../../reference/np_op_status.md:373 ../../reference/np_op_status.md:388
+#: ../../reference/np_op_status.md:403 ../../reference/np_op_status.md:429
+#: ../../reference/np_op_status.md:444 ../../reference/np_op_status.md:470
+#: ../../reference/np_op_status.md:485 ../../reference/np_op_status.md:512
+#: ../../reference/np_op_status.md:527 ../../reference/np_op_status.md:542
+#: ../../reference/np_op_status.md:557 ../../reference/np_op_status.md:583
+#: ../../reference/np_op_status.md:609 ../../reference/np_op_status.md:624
+#: ../../reference/np_op_status.md:639 ../../reference/np_op_status.md:654
+#: ../../reference/np_op_status.md:669 ../../reference/np_op_status.md:696
+#: ../../reference/np_op_status.md:712 ../../reference/np_op_status.md:727
+#: ../../reference/np_op_status.md:742 ../../reference/np_op_status.md:768
+#: ../../reference/np_op_status.md:782 ../../reference/np_op_status.md:798
+#: ../../reference/np_op_status.md:813 ../../reference/np_op_status.md:863
+#: ../../reference/np_op_status.md:878 ../../reference/np_op_status.md:893
+#: ../../reference/np_op_status.md:929 ../../reference/np_op_status.md:945
+#: ../../reference/np_op_status.md:961 ../../reference/np_op_status.md:976
+#: ../../reference/np_op_status.md:991 ../../reference/np_op_status.md:1006
+#: ../../reference/np_op_status.md:1021 ../../reference/np_op_status.md:1036
+#: ../../reference/np_op_status.md:1074 ../../reference/np_op_status.md:1090
+#: ../../reference/np_op_status.md:1106 ../../reference/np_op_status.md:1122
+#: ../../reference/np_op_status.md:1138 ../../reference/np_op_status.md:1153
+#: ../../reference/np_op_status.md:1169 ../../reference/np_op_status.md:1184
+#: ../../reference/np_op_status.md:1199 ../../reference/np_op_status.md:1215
+#: ../../reference/np_op_status.md:1265 ../../reference/np_op_status.md:1292
+#: ../../reference/np_op_status.md:1307 ../../reference/np_op_status.md:1322
+#: ../../reference/np_op_status.md:1337 ../../reference/np_op_status.md:1352
+#: ../../reference/np_op_status.md:1368 ../../reference/np_op_status.md:1395
+#: ../../reference/np_op_status.md:1410 ../../reference/np_op_status.md:1436
+#: ../../reference/np_op_status.md:1450 ../../reference/np_op_status.md:1476
+#: ../../reference/np_op_status.md:1491 ../../reference/np_op_status.md:1506
+#: ../../reference/np_op_status.md:1521 ../../reference/np_op_status.md:1536
+#: ../../reference/np_op_status.md:1551 ../../reference/np_op_status.md:1567
+#: ../../reference/np_op_status.md:1582 ../../reference/np_op_status.md:1597
+#: ../../reference/np_op_status.md:1611 ../../reference/np_op_status.md:1637
+#: ../../reference/np_op_status.md:1653 ../../reference/np_op_status.md:1668
+#: ../../reference/np_op_status.md:1683
+msgid "int16"
+msgstr ""
+
+#: ../../reference/np_op_status.md:32 ../../reference/np_op_status.md:48
+#: ../../reference/np_op_status.md:63 ../../reference/np_op_status.md:78
+#: ../../reference/np_op_status.md:93 ../../reference/np_op_status.md:119
+#: ../../reference/np_op_status.md:134 ../../reference/np_op_status.md:149
+#: ../../reference/np_op_status.md:187 ../../reference/np_op_status.md:203
+#: ../../reference/np_op_status.md:218 ../../reference/np_op_status.md:233
+#: ../../reference/np_op_status.md:248 ../../reference/np_op_status.md:263
+#: ../../reference/np_op_status.md:278 ../../reference/np_op_status.md:292
+#: ../../reference/np_op_status.md:306 ../../reference/np_op_status.md:320
+#: ../../reference/np_op_status.md:334 ../../reference/np_op_status.md:348
+#: ../../reference/np_op_status.md:374 ../../reference/np_op_status.md:389
+#: ../../reference/np_op_status.md:404 ../../reference/np_op_status.md:430
+#: ../../reference/np_op_status.md:445 ../../reference/np_op_status.md:471
+#: ../../reference/np_op_status.md:486 ../../reference/np_op_status.md:499
+#: ../../reference/np_op_status.md:513 ../../reference/np_op_status.md:528
+#: ../../reference/np_op_status.md:543 ../../reference/np_op_status.md:558
+#: ../../reference/np_op_status.md:584 ../../reference/np_op_status.md:610
+#: ../../reference/np_op_status.md:625 ../../reference/np_op_status.md:640
+#: ../../reference/np_op_status.md:655 ../../reference/np_op_status.md:670
+#: ../../reference/np_op_status.md:697 ../../reference/np_op_status.md:713
+#: ../../reference/np_op_status.md:728 ../../reference/np_op_status.md:743
+#: ../../reference/np_op_status.md:769 ../../reference/np_op_status.md:783
+#: ../../reference/np_op_status.md:799 ../../reference/np_op_status.md:814
+#: ../../reference/np_op_status.md:864 ../../reference/np_op_status.md:879
+#: ../../reference/np_op_status.md:894 ../../reference/np_op_status.md:930
+#: ../../reference/np_op_status.md:946 ../../reference/np_op_status.md:962
+#: ../../reference/np_op_status.md:977 ../../reference/np_op_status.md:992
+#: ../../reference/np_op_status.md:1007 ../../reference/np_op_status.md:1022
+#: ../../reference/np_op_status.md:1037 ../../reference/np_op_status.md:1075
+#: ../../reference/np_op_status.md:1091 ../../reference/np_op_status.md:1107
+#: ../../reference/np_op_status.md:1123 ../../reference/np_op_status.md:1139
+#: ../../reference/np_op_status.md:1154 ../../reference/np_op_status.md:1170
+#: ../../reference/np_op_status.md:1185 ../../reference/np_op_status.md:1200
+#: ../../reference/np_op_status.md:1216 ../../reference/np_op_status.md:1266
+#: ../../reference/np_op_status.md:1293 ../../reference/np_op_status.md:1308
+#: ../../reference/np_op_status.md:1323 ../../reference/np_op_status.md:1338
+#: ../../reference/np_op_status.md:1353 ../../reference/np_op_status.md:1369
+#: ../../reference/np_op_status.md:1396 ../../reference/np_op_status.md:1411
+#: ../../reference/np_op_status.md:1437 ../../reference/np_op_status.md:1451
+#: ../../reference/np_op_status.md:1477 ../../reference/np_op_status.md:1492
+#: ../../reference/np_op_status.md:1507 ../../reference/np_op_status.md:1522
+#: ../../reference/np_op_status.md:1537 ../../reference/np_op_status.md:1552
+#: ../../reference/np_op_status.md:1568 ../../reference/np_op_status.md:1583
+#: ../../reference/np_op_status.md:1598 ../../reference/np_op_status.md:1612
+#: ../../reference/np_op_status.md:1638 ../../reference/np_op_status.md:1654
+#: ../../reference/np_op_status.md:1669 ../../reference/np_op_status.md:1684
+msgid "int32"
+msgstr ""
+
+#: ../../reference/np_op_status.md:33 ../../reference/np_op_status.md:49
+#: ../../reference/np_op_status.md:64 ../../reference/np_op_status.md:79
+#: ../../reference/np_op_status.md:94 ../../reference/np_op_status.md:120
+#: ../../reference/np_op_status.md:135 ../../reference/np_op_status.md:150
+#: ../../reference/np_op_status.md:188 ../../reference/np_op_status.md:204
+#: ../../reference/np_op_status.md:219 ../../reference/np_op_status.md:234
+#: ../../reference/np_op_status.md:249 ../../reference/np_op_status.md:264
+#: ../../reference/np_op_status.md:279 ../../reference/np_op_status.md:293
+#: ../../reference/np_op_status.md:307 ../../reference/np_op_status.md:321
+#: ../../reference/np_op_status.md:335 ../../reference/np_op_status.md:349
+#: ../../reference/np_op_status.md:375 ../../reference/np_op_status.md:390
+#: ../../reference/np_op_status.md:405 ../../reference/np_op_status.md:431
+#: ../../reference/np_op_status.md:446 ../../reference/np_op_status.md:472
+#: ../../reference/np_op_status.md:487 ../../reference/np_op_status.md:514
+#: ../../reference/np_op_status.md:529 ../../reference/np_op_status.md:544
+#: ../../reference/np_op_status.md:559 ../../reference/np_op_status.md:585
+#: ../../reference/np_op_status.md:611 ../../reference/np_op_status.md:626
+#: ../../reference/np_op_status.md:641 ../../reference/np_op_status.md:656
+#: ../../reference/np_op_status.md:671 ../../reference/np_op_status.md:698
+#: ../../reference/np_op_status.md:714 ../../reference/np_op_status.md:729
+#: ../../reference/np_op_status.md:744 ../../reference/np_op_status.md:770
+#: ../../reference/np_op_status.md:784 ../../reference/np_op_status.md:800
+#: ../../reference/np_op_status.md:815 ../../reference/np_op_status.md:865
+#: ../../reference/np_op_status.md:880 ../../reference/np_op_status.md:895
+#: ../../reference/np_op_status.md:931 ../../reference/np_op_status.md:947
+#: ../../reference/np_op_status.md:963 ../../reference/np_op_status.md:978
+#: ../../reference/np_op_status.md:993 ../../reference/np_op_status.md:1008
+#: ../../reference/np_op_status.md:1023 ../../reference/np_op_status.md:1038
+#: ../../reference/np_op_status.md:1076 ../../reference/np_op_status.md:1092
+#: ../../reference/np_op_status.md:1108 ../../reference/np_op_status.md:1124
+#: ../../reference/np_op_status.md:1140 ../../reference/np_op_status.md:1155
+#: ../../reference/np_op_status.md:1171 ../../reference/np_op_status.md:1186
+#: ../../reference/np_op_status.md:1201 ../../reference/np_op_status.md:1217
+#: ../../reference/np_op_status.md:1267 ../../reference/np_op_status.md:1294
+#: ../../reference/np_op_status.md:1309 ../../reference/np_op_status.md:1324
+#: ../../reference/np_op_status.md:1339 ../../reference/np_op_status.md:1354
+#: ../../reference/np_op_status.md:1370 ../../reference/np_op_status.md:1397
+#: ../../reference/np_op_status.md:1412 ../../reference/np_op_status.md:1438
+#: ../../reference/np_op_status.md:1452 ../../reference/np_op_status.md:1478
+#: ../../reference/np_op_status.md:1493 ../../reference/np_op_status.md:1508
+#: ../../reference/np_op_status.md:1523 ../../reference/np_op_status.md:1538
+#: ../../reference/np_op_status.md:1553 ../../reference/np_op_status.md:1569
+#: ../../reference/np_op_status.md:1584 ../../reference/np_op_status.md:1599
+#: ../../reference/np_op_status.md:1613 ../../reference/np_op_status.md:1639
+#: ../../reference/np_op_status.md:1655 ../../reference/np_op_status.md:1670
+#: ../../reference/np_op_status.md:1685
+msgid "uint16"
+msgstr ""
+
+#: ../../reference/np_op_status.md:34 ../../reference/np_op_status.md:50
+#: ../../reference/np_op_status.md:65 ../../reference/np_op_status.md:80
+#: ../../reference/np_op_status.md:95 ../../reference/np_op_status.md:121
+#: ../../reference/np_op_status.md:136 ../../reference/np_op_status.md:151
+#: ../../reference/np_op_status.md:189 ../../reference/np_op_status.md:205
+#: ../../reference/np_op_status.md:220 ../../reference/np_op_status.md:235
+#: ../../reference/np_op_status.md:250 ../../reference/np_op_status.md:265
+#: ../../reference/np_op_status.md:280 ../../reference/np_op_status.md:294
+#: ../../reference/np_op_status.md:308 ../../reference/np_op_status.md:322
+#: ../../reference/np_op_status.md:336 ../../reference/np_op_status.md:350
+#: ../../reference/np_op_status.md:376 ../../reference/np_op_status.md:391
+#: ../../reference/np_op_status.md:406 ../../reference/np_op_status.md:432
+#: ../../reference/np_op_status.md:447 ../../reference/np_op_status.md:473
+#: ../../reference/np_op_status.md:488 ../../reference/np_op_status.md:515
+#: ../../reference/np_op_status.md:530 ../../reference/np_op_status.md:545
+#: ../../reference/np_op_status.md:560 ../../reference/np_op_status.md:586
+#: ../../reference/np_op_status.md:612 ../../reference/np_op_status.md:627
+#: ../../reference/np_op_status.md:642 ../../reference/np_op_status.md:657
+#: ../../reference/np_op_status.md:672 ../../reference/np_op_status.md:699
+#: ../../reference/np_op_status.md:715 ../../reference/np_op_status.md:730
+#: ../../reference/np_op_status.md:745 ../../reference/np_op_status.md:771
+#: ../../reference/np_op_status.md:785 ../../reference/np_op_status.md:801
+#: ../../reference/np_op_status.md:816 ../../reference/np_op_status.md:866
+#: ../../reference/np_op_status.md:881 ../../reference/np_op_status.md:896
+#: ../../reference/np_op_status.md:932 ../../reference/np_op_status.md:948
+#: ../../reference/np_op_status.md:964 ../../reference/np_op_status.md:979
+#: ../../reference/np_op_status.md:994 ../../reference/np_op_status.md:1009
+#: ../../reference/np_op_status.md:1024 ../../reference/np_op_status.md:1039
+#: ../../reference/np_op_status.md:1077 ../../reference/np_op_status.md:1093
+#: ../../reference/np_op_status.md:1109 ../../reference/np_op_status.md:1125
+#: ../../reference/np_op_status.md:1141 ../../reference/np_op_status.md:1156
+#: ../../reference/np_op_status.md:1172 ../../reference/np_op_status.md:1187
+#: ../../reference/np_op_status.md:1202 ../../reference/np_op_status.md:1218
+#: ../../reference/np_op_status.md:1268 ../../reference/np_op_status.md:1295
+#: ../../reference/np_op_status.md:1310 ../../reference/np_op_status.md:1325
+#: ../../reference/np_op_status.md:1340 ../../reference/np_op_status.md:1355
+#: ../../reference/np_op_status.md:1371 ../../reference/np_op_status.md:1398
+#: ../../reference/np_op_status.md:1413 ../../reference/np_op_status.md:1439
+#: ../../reference/np_op_status.md:1453 ../../reference/np_op_status.md:1479
+#: ../../reference/np_op_status.md:1494 ../../reference/np_op_status.md:1509
+#: ../../reference/np_op_status.md:1524 ../../reference/np_op_status.md:1539
+#: ../../reference/np_op_status.md:1554 ../../reference/np_op_status.md:1570
+#: ../../reference/np_op_status.md:1585 ../../reference/np_op_status.md:1600
+#: ../../reference/np_op_status.md:1614 ../../reference/np_op_status.md:1640
+#: ../../reference/np_op_status.md:1656 ../../reference/np_op_status.md:1671
+#: ../../reference/np_op_status.md:1686
+msgid "uint32"
+msgstr ""
+
+#: ../../reference/np_op_status.md:36
+msgid "add"
+msgstr ""
+
+#: ../../reference/np_op_status.md:38
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.add.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:52 ../../reference/np_op_status.md:67
+msgid "angle"
+msgstr ""
+
+#: ../../reference/np_op_status.md:54 ../../reference/np_op_status.md:69
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.angle.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:82
+msgid "arccos"
+msgstr ""
+
+#: ../../reference/np_op_status.md:84
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.arccos.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:97
+msgid "arccosh"
+msgstr ""
+
+#: ../../reference/np_op_status.md:99
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.arccosh.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:102 ../../reference/np_op_status.md:169
+#: ../../reference/np_op_status.md:357 ../../reference/np_op_status.md:413
+#: ../../reference/np_op_status.md:679 ../../reference/np_op_status.md:903
+#: ../../reference/np_op_status.md:1621
+msgid ""
+"Not supported by compiler or runtime. But we could implement on demand in"
+" future. Please check *Note* for details."
+msgstr ""
+
+#: ../../reference/np_op_status.md:104 ../../reference/np_op_status.md:171
+#: ../../reference/np_op_status.md:359 ../../reference/np_op_status.md:415
+#: ../../reference/np_op_status.md:681 ../../reference/np_op_status.md:754
+#: ../../reference/np_op_status.md:905 ../../reference/np_op_status.md:916
+#: ../../reference/np_op_status.md:1277 ../../reference/np_op_status.md:1623
+msgid "Note"
+msgstr ""
+
+#: ../../reference/np_op_status.md:107
+msgid "nan"
+msgstr ""
+
+#: ../../reference/np_op_status.md:108
+msgid "arcsin"
+msgstr ""
+
+#: ../../reference/np_op_status.md:110
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.arcsin.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:123
+msgid "arcsinh"
+msgstr ""
+
+#: ../../reference/np_op_status.md:125
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.arcsinh.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:138
+msgid "arctan"
+msgstr ""
+
+#: ../../reference/np_op_status.md:140
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.arctan.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:153
+msgid "arctan2"
+msgstr ""
+
+#: ../../reference/np_op_status.md:155
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.arctan2.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:164
+msgid "arctanh"
+msgstr ""
+
+#: ../../reference/np_op_status.md:166
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.arctanh.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:174
+msgid "[-1, 1] nan"
+msgstr ""
+
+#: ../../reference/np_op_status.md:175
+msgid "argmax"
+msgstr ""
+
+#: ../../reference/np_op_status.md:177
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.argmax.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:191
+msgid "argmin"
+msgstr ""
+
+#: ../../reference/np_op_status.md:193
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.argmin.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:207
+msgid "array_equal"
+msgstr ""
+
+#: ../../reference/np_op_status.md:209
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.array_equal.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:222
+msgid "array_equiv"
+msgstr ""
+
+#: ../../reference/np_op_status.md:224
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.array_equiv.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:237
+msgid "atleast_1d"
+msgstr ""
+
+#: ../../reference/np_op_status.md:239
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.atleast_1d.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:252
+msgid "atleast_2d"
+msgstr ""
+
+#: ../../reference/np_op_status.md:254
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.atleast_2d.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:267
+msgid "atleast_3d"
+msgstr ""
+
+#: ../../reference/np_op_status.md:269
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.atleast_3d.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:282
+msgid "bitwise_and"
+msgstr ""
+
+#: ../../reference/np_op_status.md:284
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.bitwise_and.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:296
+msgid "bitwise_count"
+msgstr ""
+
+#: ../../reference/np_op_status.md:298
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.bitwise_count.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:310
+msgid "bitwise_not"
+msgstr ""
+
+#: ../../reference/np_op_status.md:312
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.bitwise_not.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:324
+msgid "bitwise_or"
+msgstr ""
+
+#: ../../reference/np_op_status.md:326
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.bitwise_or.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:338
+msgid "bitwise_xor"
+msgstr ""
+
+#: ../../reference/np_op_status.md:340
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.bitwise_xor.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:352
+msgid "cbrt"
+msgstr ""
+
+#: ../../reference/np_op_status.md:354
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.cbrt.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:362
+msgid "stablehlo.cbrt"
+msgstr ""
+
+#: ../../reference/np_op_status.md:363
+msgid "ceil"
+msgstr ""
+
+#: ../../reference/np_op_status.md:365
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.ceil.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:378
+msgid "conj"
+msgstr ""
+
+#: ../../reference/np_op_status.md:380
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.conj.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:393
+msgid "conjugate"
+msgstr ""
+
+#: ../../reference/np_op_status.md:395
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.conjugate.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:408
+msgid "copysign"
+msgstr ""
+
+#: ../../reference/np_op_status.md:410
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.copysign.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:418
+msgid "shift"
+msgstr ""
+
+#: ../../reference/np_op_status.md:419
+msgid "cos"
+msgstr ""
+
+#: ../../reference/np_op_status.md:421
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.cos.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:434
+msgid "cosh"
+msgstr ""
+
+#: ../../reference/np_op_status.md:436
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.cosh.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:449
+msgid "deg2rad"
+msgstr ""
+
+#: ../../reference/np_op_status.md:451
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.deg2rad.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:460
+msgid "divide"
+msgstr ""
+
+#: ../../reference/np_op_status.md:462
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.divide.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:475
+msgid "divmod"
+msgstr ""
+
+#: ../../reference/np_op_status.md:477
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.divmod.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:490
+msgid "ediff1d"
+msgstr ""
+
+#: ../../reference/np_op_status.md:492
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.ediff1d.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:501
+msgid "equal"
+msgstr ""
+
+#: ../../reference/np_op_status.md:503
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.equal.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:517
+msgid "exp"
+msgstr ""
+
+#: ../../reference/np_op_status.md:519
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.exp.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:532
+msgid "exp2"
+msgstr ""
+
+#: ../../reference/np_op_status.md:534
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.exp2.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:547
+msgid "expm1"
+msgstr ""
+
+#: ../../reference/np_op_status.md:549
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.expm1.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:562
+msgid "fabs"
+msgstr ""
+
+#: ../../reference/np_op_status.md:564
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.fabs.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:573
+msgid "fix"
+msgstr ""
+
+#: ../../reference/np_op_status.md:575
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.fix.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:588
+msgid "float_power"
+msgstr ""
+
+#: ../../reference/np_op_status.md:590
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.float_power.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:599
+msgid "floor"
+msgstr ""
+
+#: ../../reference/np_op_status.md:601
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.floor.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:614
+msgid "floor_divide"
+msgstr ""
+
+#: ../../reference/np_op_status.md:616
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.floor_divide.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:629
+msgid "fmax"
+msgstr ""
+
+#: ../../reference/np_op_status.md:631
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.fmax.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:644
+msgid "fmin"
+msgstr ""
+
+#: ../../reference/np_op_status.md:646
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.fmin.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:659
+msgid "fmod"
+msgstr ""
+
+#: ../../reference/np_op_status.md:661
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.fmod.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:674
+msgid "gcd"
+msgstr ""
+
+#: ../../reference/np_op_status.md:676
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.gcd.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:684 ../../reference/np_op_status.md:908
+msgid "secret while"
+msgstr ""
+
+#: ../../reference/np_op_status.md:685
+msgid "greater"
+msgstr ""
+
+#: ../../reference/np_op_status.md:687
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.greater.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:701
+msgid "greater_equal"
+msgstr ""
+
+#: ../../reference/np_op_status.md:703
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.greater_equal.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:717
+msgid "heaviside"
+msgstr ""
+
+#: ../../reference/np_op_status.md:719
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.heaviside.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:732
+msgid "hypot"
+msgstr ""
+
+#: ../../reference/np_op_status.md:734
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.hypot.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:747
+msgid "i0"
+msgstr ""
+
+#: ../../reference/np_op_status.md:749
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.i0.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:752 ../../reference/np_op_status.md:914
+#: ../../reference/np_op_status.md:1275
+msgid "Result is incorrect. Please check *Note* for details."
+msgstr ""
+
+#: ../../reference/np_op_status.md:757
+msgid "accuracy"
+msgstr ""
+
+#: ../../reference/np_op_status.md:758
+msgid "imag"
+msgstr ""
+
+#: ../../reference/np_op_status.md:760
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.imag.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:773
+msgid "invert"
+msgstr ""
+
+#: ../../reference/np_op_status.md:775
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.invert.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:787
+msgid "isclose"
+msgstr ""
+
+#: ../../reference/np_op_status.md:789
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.isclose.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:803
+msgid "iscomplex"
+msgstr ""
+
+#: ../../reference/np_op_status.md:805
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.iscomplex.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:818
+msgid "isfinite"
+msgstr ""
+
+#: ../../reference/np_op_status.md:820
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.isfinite.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:823 ../../reference/np_op_status.md:830
+#: ../../reference/np_op_status.md:837 ../../reference/np_op_status.md:844
+#: ../../reference/np_op_status.md:851 ../../reference/np_op_status.md:1225
+#: ../../reference/np_op_status.md:1232 ../../reference/np_op_status.md:1239
+#: ../../reference/np_op_status.md:1246 ../../reference/np_op_status.md:1253
+msgid ""
+"Not supported by design. We couldn't fix this in near future. Please "
+"check *Note* for details."
+msgstr ""
+
+#: ../../reference/np_op_status.md:825
+msgid "isinf"
+msgstr ""
+
+#: ../../reference/np_op_status.md:827
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.isinf.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:832
+msgid "isnan"
+msgstr ""
+
+#: ../../reference/np_op_status.md:834
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.isnan.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:839
+msgid "isneginf"
+msgstr ""
+
+#: ../../reference/np_op_status.md:841
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.isneginf.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:846
+msgid "isposinf"
+msgstr ""
+
+#: ../../reference/np_op_status.md:848
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.isposinf.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:853
+msgid "isreal"
+msgstr ""
+
+#: ../../reference/np_op_status.md:855
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.isreal.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:868
+msgid "isrealobj"
+msgstr ""
+
+#: ../../reference/np_op_status.md:870
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.isrealobj.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:883
+msgid "kron"
+msgstr ""
+
+#: ../../reference/np_op_status.md:885
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.kron.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:898
+msgid "lcm"
+msgstr ""
+
+#: ../../reference/np_op_status.md:900
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.lcm.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:909
+msgid "ldexp"
+msgstr ""
+
+#: ../../reference/np_op_status.md:911
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.ldexp.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:919 ../../reference/np_op_status.md:1280
+msgid "IEEE-754"
+msgstr ""
+
+#: ../../reference/np_op_status.md:920
+msgid "left_shift"
+msgstr ""
+
+#: ../../reference/np_op_status.md:922
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.left_shift.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:934
+msgid "less"
+msgstr ""
+
+#: ../../reference/np_op_status.md:936
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.less.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:950
+msgid "less_equal"
+msgstr ""
+
+#: ../../reference/np_op_status.md:952
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.less_equal.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:966
+msgid "log"
+msgstr ""
+
+#: ../../reference/np_op_status.md:968
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.log.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:981
+msgid "log10"
+msgstr ""
+
+#: ../../reference/np_op_status.md:983
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.log10.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:996 ../../reference/np_op_status.md:1011
+msgid "log1p"
+msgstr ""
+
+#: ../../reference/np_op_status.md:998 ../../reference/np_op_status.md:1013
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.log1p.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1026
+msgid "log2"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1028
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.log2.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1041
+msgid "logaddexp"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1043
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.logaddexp.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1052
+msgid "logaddexp2"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1054
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.logaddexp2.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1063
+msgid "logical_and"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1065
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.logical_and.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1079
+msgid "logical_not"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1081
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.logical_not.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1095
+msgid "logical_or"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1097
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.logical_or.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1111
+msgid "logical_xor"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1113
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.logical_xor.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1127
+msgid "maximum"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1129
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.maximum.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1143
+msgid "mean"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1145
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.mean.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1158
+msgid "minimum"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1160
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.minimum.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1174
+msgid "mod"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1176
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.mod.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1189
+msgid "modf"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1191
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.modf.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1204
+msgid "multiply"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1206
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.multiply.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1220
+msgid "nanargmax"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1222
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.nanargmax.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1227
+msgid "nanargmin"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1229
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.nanargmin.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1234
+msgid "nanmean"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1236
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.nanmean.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1241
+msgid "nanprod"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1243
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.nanprod.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1248
+msgid "nansum"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1250
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.nansum.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1255
+msgid "negative"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1257
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.negative.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1270
+msgid "nextafter"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1272
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.nextafter.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1281
+msgid "not_equal"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1283
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.not_equal.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1297
+msgid "outer"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1299
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.outer.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1312
+msgid "polyval"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1314
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.polyval.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1327
+msgid "positive"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1329
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.positive.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1342
+msgid "power"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1344
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.power.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1357
+msgid "prod"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1359
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.prod.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1373
+msgid "rad2deg"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1375
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.rad2deg.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1384
+msgid "ravel"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1386
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.ravel.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1400
+msgid "real"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1402
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.real.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1415
+msgid "reciprocal"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1417
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.reciprocal.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1426
+msgid "remainder"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1428
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.remainder.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1441
+msgid "right_shift"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1443
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.right_shift.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1455
+msgid "rint"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1457
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.rint.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1466
+msgid "sign"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1468
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.sign.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1481
+msgid "signbit"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1483
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.signbit.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1496
+msgid "sin"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1498
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.sin.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1511
+msgid "sinc"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1513
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.sinc.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1526
+msgid "sinh"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1528
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.sinh.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1541
+msgid "sqrt"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1543
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.sqrt.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1556 ../../reference/np_op_status.md:1572
+msgid "square"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1558 ../../reference/np_op_status.md:1574
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.square.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1587
+msgid "subtract"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1589
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.subtract.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1602
+msgid "sum"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1604
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.sum.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1616
+msgid "tan"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1618
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.tan.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1626
+msgid "stablehlo.tan"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1627
+msgid "tanh"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1629
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.tanh.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1642
+msgid "transpose"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1644
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.transpose.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1658
+msgid "true_divide"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1660
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.true_divide.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1673
+msgid "trunc"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1675
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.trunc.html"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1688
+msgid "unwrap"
+msgstr ""
+
+#: ../../reference/np_op_status.md:1690
+msgid ""
+"JAX NumPy Document link: "
+"https://jax.readthedocs.io/en/latest/_autosummary/jax.numpy.unwrap.html"
+msgstr ""
+

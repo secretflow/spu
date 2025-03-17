@@ -17,9 +17,67 @@
 #include <functional>
 
 #include "google/protobuf/json/json.h"
+#include "magic_enum.hpp"
 
 #include "libspu/spu.pb.h"
 namespace spu {
+
+std::string_view GetDataTypeName(DataType dtype) {
+  return magic_enum::enum_name(dtype);
+}
+
+std::string_view GetPtTypeName(PtType pt_type) {
+  return magic_enum::enum_name(pt_type);
+}
+
+std::string_view GetVisibilityName(Visibility vis) {
+  return magic_enum::enum_name(vis);
+}
+
+std::string_view GetFieldTypeName(FieldType field) {
+  return magic_enum::enum_name(field);
+}
+
+std::string_view GetProtocolKindName(ProtocolKind kind) {
+  return magic_enum::enum_name(kind);
+}
+
+std::string_view GetSortMethodName(RuntimeConfig::SortMethod method) {
+  return magic_enum::enum_name(method);
+}
+
+std::string_view GetExpModeName(RuntimeConfig::ExpMode mode) {
+  return magic_enum::enum_name(mode);
+}
+
+std::string_view GetLogModeName(RuntimeConfig::LogMode mode) {
+  return magic_enum::enum_name(mode);
+}
+
+std::string_view GetSigmoidModeName(RuntimeConfig::SigmoidMode mode) {
+  return magic_enum::enum_name(mode);
+}
+
+std::string_view GetBeaverTypeName(RuntimeConfig::BeaverType type) {
+  return magic_enum::enum_name(type);
+}
+
+std::string_view GetSourceIRTypeName(SourceIRType type) {
+  return magic_enum::enum_name(type);
+}
+
+std::string_view GetXLAPrettyPrintKindName(XLAPrettyPrintKind kind) {
+  return magic_enum::enum_name(kind);
+}
+
+bool ParseProtocolKind(std::string_view str, ProtocolKind* protocol) {
+  auto result = magic_enum::enum_cast<ProtocolKind>(str);
+  if (result.has_value()) {
+    *protocol = result.value();
+    return true;
+  }
+  return false;
+}
 
 void convertFromPB(const pb::RuntimeConfig& src, RuntimeConfig& dst) {
   dst.protocol = ProtocolKind(src.protocol());
@@ -176,6 +234,12 @@ std::string RuntimeConfig::DebugString() const {
   pb::RuntimeConfig pb_conf;
   convertToPB(*this, pb_conf);
   return pb_conf.DebugString();
+}
+
+pb::RuntimeConfig RuntimeConfig::ToProto() const {
+  pb::RuntimeConfig pb_conf;
+  convertToPB(*this, pb_conf);
+  return pb_conf;
 }
 
 bool RuntimeConfig::ParseFromJsonString(std::string_view data) {
