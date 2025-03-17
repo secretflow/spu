@@ -27,31 +27,41 @@ from sml.preprocessing.preprocessing import (
     MaxAbsScaler,
     MinMaxScaler,
     Normalizer,
-    brier_score_loss
+    BrierScoreLoss，
 )
 from sklearn.metrics import brier_score_loss as sk_bri
 class BrierScoreLossTests(unittest.TestCase):
+    def setUp(self):
+        """初始化 BrierScoreLoss 实例"""
+        self.brier_loss = BrierScoreLoss()
+
     def test_binary_classification(self):
         y_true = np.array([0, 1, 1, 0, 1])
         y_proba = np.array([0.1, 0.7, 0.8, 0.3, 0.9])
+
         loss_sklearn = sk_bri(y_true, y_proba)
-        loss_jax = brier_score_loss(y_true, y_proba)
-        np.testing.assert_allclose(np.isclose(loss_sklearn, loss_jax, atol=1e-10))  # 调整误差范围
+        loss_jax = self.brier_loss.compute(y_true, y_proba)
+
+        np.testing.assert_allclose(loss_sklearn, loss_jax, atol=1e-10)
 
     def test_weighted_binary_classification(self):
         y_true = np.array([0, 1, 1, 0, 1])
         y_proba = np.array([0.1, 0.7, 0.8, 0.3, 0.9])
         sample_weight = np.array([1, 2, 1, 2, 1])
+
         loss_sklearn = sk_bri(y_true, y_proba, sample_weight=sample_weight)
-        loss_jax = brier_score_loss(y_true, y_proba, sample_weight=sample_weight)
-        np.testing.assert_allclose(np.isclose(loss_sklearn, loss_jax, atol=1e-10))
+        loss_jax = self.brier_loss.compute(y_true, y_proba, sample_weight=sample_weight)
+
+        np.testing.assert_allclose(loss_sklearn, loss_jax, atol=1e-10)
 
     def test_multiclass_classification(self):
         y_true = np.array([1, 2, 2, 1, 2])
         y_proba = np.array([0.2, 0.6, 0.7, 0.4, 0.8])
+
         loss_sklearn = sk_bri(y_true, y_proba, pos_label=2)
-        loss_jax = brier_score_loss(y_true, y_proba, pos_label=2)
-        np.testing.assert_allclose(np.isclose(loss_sklearn, loss_jax, atol=1e-10))
+        loss_jax = BrierScoreLoss(pos_label=2).compute(y_true, y_proba)
+
+        np.testing.assert_allclose(loss_sklearn, loss_jax, atol=1e-10)
 
     def test_text_labels(self):
         y_true = np.array(["cat", "dog", "dog", "cat", "dog"])
@@ -63,25 +73,27 @@ class BrierScoreLossTests(unittest.TestCase):
         pos_label_numeric = label_map["dog"]
 
         loss_sklearn = sk_bri(y_true_numeric, y_proba, pos_label=pos_label_numeric)
-        loss_jax = brier_score_loss(y_true_numeric, y_proba, pos_label=pos_label_numeric)
+        loss_jax = BrierScoreLoss(pos_label=pos_label_numeric).compute(y_true_numeric, y_proba)
 
-        np.testing.assert_allclose(np.isclose(loss_sklearn, loss_jax, atol=1e-10))
+        np.testing.assert_allclose(loss_sklearn, loss_jax, atol=1e-10)
 
     def test_edge_case_all_zeros(self):
         y_true = np.array([0, 0, 0, 0, 0])
         y_proba = np.array([0.1, 0.2, 0.1, 0.05, 0.3])
 
         loss_sklearn = sk_bri(y_true, y_proba, pos_label=1)
-        loss_jax = brier_score_loss(y_true, y_proba, pos_label=1)
+        loss_jax = BrierScoreLoss(pos_label=1).compute(y_true, y_proba)
 
-        np.testing.assert_allclose(np.isclose(loss_sklearn, loss_jax, atol=1e-10))
+        np.testing.assert_allclose(loss_sklearn, loss_jax, atol=1e-10)
 
     def test_edge_case_all_ones(self):
         y_true = np.array([1, 1, 1, 1, 1])
         y_proba = np.array([0.8, 0.85, 0.9, 0.75, 0.95])
+
         loss_sklearn = sk_bri(y_true, y_proba)
-        loss_jax = brier_score_loss(y_true, y_proba)
-        np.testing.assert_allclose(np.isclose(loss_sklearn, loss_jax, atol=1e-10))
+        loss_jax = self.brier_loss.compute(y_true, y_proba)
+
+        np.testing.assert_allclose(loss_sklearn, loss_jax, atol=1e-10)
 
 class UnitTests(unittest.TestCase):
     def test_labelbinarizer(self):
