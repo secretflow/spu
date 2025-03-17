@@ -164,7 +164,7 @@ gen_prefix_mult_share(SPUContext* ctx, const int64_t numel,
        std::back_inserter(rand_prod), mul_p_lambda);
 
   // rand_prod_offset is of length num_prefix - 1 storing C_0 = s_0 and C_i =
-  // r_i * s_{i+1} for i > 1
+  // r_{i-1} * s_{i} for i > 1
   rand_prod_offset.push_back(rand_s[0]);
   vmap(rand_r.cbegin(), rand_r.cend() - 1, rand_s.cbegin() + 1, rand_s.cend(),
        std::back_inserter(rand_prod_offset), mul_lambda);
@@ -178,8 +178,8 @@ gen_prefix_mult_share(SPUContext* ctx, const int64_t numel,
 
   // An unbounded multiplication instance
   // ( [r0]_t , [r0^-1]_t )
-  // ( [r1]_t , [r1 * r2^-1]_t,)
-  // ( [r2]_t , [r2 * r3^-1]_t)
+  // ( [r1]_t , [r0 * r1^-1]_t,)
+  // ( [r2]_t , [r1 * r2^-1]_t)
   // ...
   // ( [ri]_t , [ri-1 * ri^-1]_t) for i = 2, ..., k
   std::vector<NdArrayRef> rand_r_aux;
@@ -197,11 +197,10 @@ gen_prefix_mult_share(SPUContext* ctx, const int64_t numel,
 NdArrayRef gen_zero_shares(KernelEvalContext* ctx, int64_t numel,
                            int64_t threshold) {
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
-  auto* prg_state = ctx->getState<PrgState>();
   auto* comm = ctx->getState<Communicator>();
+  auto* prg_state = ctx->getState<PrgState>();
   auto ty = makeType<PubGfmpTy>(field);
-  auto r = prg_state->genPubl(field, {threshold * numel}).as(ty);
-  auto coeffs = gfmp_mod(r);
+  auto coeffs = prg_state->genPublWithMersennePrime(field, {threshold * numel}).as(ty);
   NdArrayRef zeros = ring_zeros(field, {numel}).as(makeType<GfmpTy>(field));
   auto shares =
       gfmp_rand_shamir_shares(zeros, coeffs, comm->getWorldSize(), threshold);
@@ -216,28 +215,45 @@ NdArrayRef rand_bits(SPUContext* ctx, int64_t numel) {
   std::vector<int64_t> cur_failed_indices;
   std::vector<int64_t> pre_failed_indices;
   std::mutex idx_mtx;
+  int64_t produced = 0;
+  int64_t un_produced = numel;
 
-  // TODO: To minimize round complexity, another method to handling rand_a = 0
-  // is sampling redundantly, which means that we can sample (1 + \epsilon) *
-  // `numel` elements.
-  auto rand_a = wrap_rand_a(ctx, {numel});
-  auto rand_a_square_p = wrap_mul_p(ctx, rand_a, rand_a);
+  NdArrayRef rand_a(out.eltype(), out.shape());
   NdArrayRef rand_sqrt(out.eltype(), out.shape());
-
-  DISPATCH_ALL_FIELDS(field, [&]() {
-    NdArrayView<ring2k_t> _rand_a(rand_a);
-    NdArrayView<ring2k_t> _rand_a_square_p(rand_a_square_p);
-    NdArrayView<ring2k_t> _rand_sqrt(rand_sqrt);
-    int64_t num_failed = 0;
-    pforeach(0, numel, [&](int64_t idx) {
-      if (_rand_a_square_p[idx] == 0) {
-        num_failed++;
+  while (un_produced > 0) {
+    NdArrayRef tmp_rand_sqrt(out.eltype(), out.shape());
+    auto tmp_rand_a = wrap_rand_a(ctx, {un_produced});
+    auto tmp_rand_a_square_p = wrap_mul_p(ctx, tmp_rand_a, tmp_rand_a);
+    DISPATCH_ALL_FIELDS(field, [&]() {
+      NdArrayView<ring2k_t> _rand_a(rand_a);
+      NdArrayView<ring2k_t> _tmp_rand_a(tmp_rand_a);
+      NdArrayView<ring2k_t> _tmp_rand_a_square_p(tmp_rand_a_square_p);
+      NdArrayView<ring2k_t> _rand_sqrt(rand_sqrt);
+      NdArrayView<ring2k_t> _tmp_rand_sqrt(tmp_rand_sqrt);
+      pforeach(0, un_produced, [&](int64_t idx) {
+        if(_tmp_rand_a_square_p[idx] != 0) {
+          _tmp_rand_sqrt[idx] = sqrt_mod(_tmp_rand_a_square_p[idx]);
+        } else {
+          std::unique_lock lock(idx_mtx);
+          cur_failed_indices.push_back(idx);
+        }
+      });
+      if(pre_failed_indices.empty()) {
+        ring_assign(rand_a, tmp_rand_a);
+        ring_assign(rand_sqrt, tmp_rand_sqrt);
       } else {
-        _rand_sqrt[idx] = sqrt_mod(_rand_a_square_p[idx]);
+        pforeach(0, un_produced, [&](int64_t idx) {
+          _rand_a[pre_failed_indices[idx]] = _tmp_rand_a[idx];
+          _rand_sqrt[pre_failed_indices[idx]] = _tmp_rand_sqrt[idx];
+        });
       }
+      un_produced = cur_failed_indices.size();
+      produced = numel - un_produced;
+      pre_failed_indices = cur_failed_indices;
+      cur_failed_indices.clear();
     });
-    SPU_ENFORCE_EQ(num_failed, 0);
-  });
+  }
+
   NdArrayRef rand_sqrt_inverse = gfmp_batch_inverse(rand_sqrt);
   DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> _rand_a(rand_a);
@@ -252,8 +268,8 @@ NdArrayRef rand_bits(SPUContext* ctx, int64_t numel) {
   return out;
 }
 
-// Ref: https://iacr.org/archive/tcc2006/38760286/38760286.pdf
-//  Unbounded Fan-In Multiplication
+// Ref: https://dl.acm.org/doi/10.5555/3698900.3699009 Section 2.5
+//  Unbounded Fan-In Prefix-products
 std::vector<NdArrayRef> prefix_mul(SPUContext* ctx,
                                    const std::vector<NdArrayRef>& inputs) {
   SPU_ENFORCE(!inputs.empty());
@@ -284,6 +300,7 @@ std::vector<NdArrayRef> prefix_mul(SPUContext* ctx,
 // Ref:
 // https://www.usenix.org/system/files/sec24summer-prepub-278-liu-fengrun.pdf
 //  Protocol 4.1: Prefix Or
+// FIXME There is a security issue in this protocol. 
 std::vector<NdArrayRef> prefix_or(SPUContext* ctx,
                                   const std::vector<NdArrayRef>& inputs) {
   SPU_ENFORCE(!inputs.empty());
@@ -300,9 +317,9 @@ std::vector<NdArrayRef> prefix_or(SPUContext* ctx,
 }
 
 // Ref:
-// https://www.usenix.org/system/files/sec24summer-prepub-278-liu-fengrun.pdf
+// https://dl.acm.org/doi/10.5555/3698900.3699009
 //  Protocol 4.2: Optimized bitwise less-than for public a and secret b
-NdArrayRef bit_lt_ap(SPUContext* ctx, const std::vector<NdArrayRef>& a,
+NdArrayRef bit_lt_pa(SPUContext* ctx, const std::vector<NdArrayRef>& a,
                      const std::vector<NdArrayRef>& b) {
   SPU_ENFORCE(!a.empty());
   SPU_ENFORCE_EQ(a.size(), b.size());
@@ -533,7 +550,6 @@ std::pair<std::vector<NdArrayRef>, NdArrayRef> solved_bits(SPUContext* ctx,
   std::vector<int64_t> cur_failed_indices;
   std::vector<int64_t> pre_failed_indices;
   std::mutex idx_mtx;
-  int64_t produced = 0;
   int64_t numel = shape.numel();
   int64_t un_produced = numel;
 
@@ -545,11 +561,6 @@ std::pair<std::vector<NdArrayRef>, NdArrayRef> solved_bits(SPUContext* ctx,
     for (int64_t i = 0; i < static_cast<int64_t>(exp); ++i) {
       out_bits[i] =
           randbits.slice({i * numel}, {(i + 1) * numel}, {}).reshape(shape);
-    }
-
-    std::vector<ring2k_t> bits_coeff(exp);
-    for (size_t i = 0; i < exp; ++i) {
-      bits_coeff[i] = static_cast<ring2k_t>(1) << i;
     }
 
     NdArrayView<ring2k_t> _out(out);
@@ -616,7 +627,6 @@ std::pair<std::vector<NdArrayRef>, NdArrayRef> solved_bits(SPUContext* ctx,
         });
       }
       un_produced = cur_failed_indices.size();
-      produced = numel - un_produced;
       pre_failed_indices = cur_failed_indices;
       cur_failed_indices.clear();
     }
@@ -668,20 +678,12 @@ NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& x) const {
   auto c_plus_one = wrap_add(sctx, c, k1);
   auto c_plus_one_bits = bit_decompose(sctx, c_plus_one);
 
-  std::vector<std::future<Bits>> futures;
-  std::vector<std::unique_ptr<SPUContext>> sub_ctxs;
-  for (size_t i = 0; i < 2; ++i) {
-    sub_ctxs.push_back(sctx->fork());
-  }
+  std::unique_ptr<SPUContext> sub_ctxs = sctx->fork();
 
-  auto async_res0 = std::async(bit_add, sub_ctxs[0].get(), c_bits, b_bits);
-  futures.push_back(std::move(async_res0));
-  auto async_res1 =
-      std::async(bit_add, sub_ctxs[1].get(), c_plus_one_bits, b_bits);
-  futures.push_back(std::move(async_res1));
+  auto futures = std::async(bit_add, sub_ctxs.get(), c_bits, b_bits);
 
-  auto c1 = futures[0].get();
-  auto c2 = futures[1].get();
+  auto c2 = bit_add(sctx, c_plus_one_bits, b_bits);
+  auto c1 = futures.get();
 
   NdArrayRef s = c1.back();
 
@@ -738,7 +740,7 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& x) const {
 
 // Ref:
 // https://www.usenix.org/system/files/sec24summer-prepub-278-liu-fengrun.pdf
-// Protocol 3.1: Truncation
+// Protocol 3.1: Truncation with 1-bit gap, i.e. x must be in the range of $[-2^{k-2}, 2^{k-2})$, where $k$ is the bits of the prime.
 NdArrayRef TruncA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
                         size_t bits, SignType sign) const {
   (void)sign;  // TODO: optimize me.
@@ -861,6 +863,9 @@ NdArrayRef MulAATrunc::proc(KernelEvalContext* ctx, const NdArrayRef& x,
   });
 }
 
+// Ref: 
+// https://dl.acm.org/doi/10.5555/3698900.3699009
+// Protocol 5.1: DReLU
 NdArrayRef MsbA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   auto* sctx = ctx->sctx();
   std::vector<NdArrayRef> r_bits;
@@ -872,11 +877,14 @@ NdArrayRef MsbA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
   auto y_p_bits = bit_decompose(sctx, y_p);
   auto b = wrap_xor(sctx, y_p_bits[0], r_bits[0]);
-  auto c = bit_lt_ap(sctx, y_p_bits, r_bits);
+  auto c = bit_lt_pa(sctx, y_p_bits, r_bits);
   auto msb = wrap_xor(sctx, b, c);
   return msb;
 }
 
+// Ref: 
+// https://dl.acm.org/doi/10.5555/3698900.3699009
+// Protocol 5.3: ReLU
 NdArrayRef ReLU::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   auto* sctx = ctx->sctx();
   std::vector<NdArrayRef> r_bits;
@@ -888,7 +896,7 @@ NdArrayRef ReLU::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
   auto y_p_bits = bit_decompose(sctx, y_p);
   auto b = wrap_xor(sctx, y_p_bits[0], r_bits[0]);
-  auto c = bit_lt_ap(sctx, y_p_bits, r_bits);
+  auto c = bit_lt_pa(sctx, y_p_bits, r_bits);
   NdArrayRef b_minus_c = wrap_sub(ctx->sctx(), b, c);
   NdArrayRef t = wrap_mul_aaa(ctx->sctx(), b_minus_c, b_minus_c, in);
   return wrap_sub(ctx->sctx(), in, t);

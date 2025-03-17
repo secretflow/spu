@@ -390,9 +390,9 @@ NdArrayRef ARShiftB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
 
 NdArrayRef BitrevB::proc(KernelEvalContext*, const NdArrayRef& in, size_t start,
                          size_t end) const {
-  SPU_ENFORCE(start <= end && end <= 128);
-
   const auto* in_ty = in.eltype().as<BShrTy>();
+  SPU_ENFORCE(start <= end && end < in_ty->nbits());
+  
   if (start > in_ty->nbits() || start == end) {
     return in;
   }

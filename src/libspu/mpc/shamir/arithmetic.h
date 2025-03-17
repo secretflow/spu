@@ -16,6 +16,10 @@
 
 #include "libspu/mpc/kernel.h"
 
+#ifndef NDEBUG
+#define ENABLE_MASK_DURING_SHAMIR_P2A
+#endif
+
 namespace spu::mpc::shamir {
 
 class RandA : public RandKernel {
@@ -203,6 +207,18 @@ class MatMulAA : public MatmulKernel {
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x,
                   const NdArrayRef& y) const override;
+};
+
+class LShiftA : public ShiftKernel {
+  public:
+   static constexpr const char* kBindName() { return "lshift_a"; }
+
+   ce::CExpr latency() const override { return ce::Const(0); }
+   
+   ce::CExpr comm() const override {return ce::Const(0); }
+
+   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                    const Sizes& bits) const override;
 };
 
 }  // namespace spu::mpc::shamir

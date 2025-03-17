@@ -36,8 +36,9 @@ Type ShamirIo::getShareType(Visibility vis, int owner_rank) const {
 std::vector<NdArrayRef> ShamirIo::toShares(const NdArrayRef& raw,
                                            Visibility vis,
                                            int owner_rank) const {
-  SPU_ENFORCE(raw.eltype().isa<GfmpTy>(), "expected field type, got {}",
-              raw.eltype());
+  // TODO: how to translate the ring type of NN into gfmp
+  // SPU_ENFORCE(raw.eltype().isa<GfmpTy>(), "expected field type, got {}",
+              // raw.eltype());
   const auto field = raw.eltype().as<Ring2k>()->field();
   SPU_ENFORCE(field == field_, "expect raw value encoded in field={}, got={}",
               field_, field);

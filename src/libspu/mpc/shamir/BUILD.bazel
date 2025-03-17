@@ -44,6 +44,7 @@ spu_cc_test(
         ":protocol",
         "//libspu/mpc:ab_api_test",
         "//libspu/mpc:api_test",
+        "//libspu/mpc:prot_shamir_test",
     ],
 )
 

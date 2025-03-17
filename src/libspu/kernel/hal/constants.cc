@@ -21,6 +21,7 @@
 #include "libspu/core/type_util.h"
 #include "libspu/kernel/hal/ring.h"
 #include "libspu/mpc/common/pv2k.h"
+#include "libspu/mpc/common/pv_gfmp.h"
 
 namespace spu::kernel::hal {
 namespace {
@@ -35,9 +36,14 @@ Value make_pub2k(SPUContext* ctx, const PtBufferView& bv) {
   const auto fxp_bits = ctx->getFxpBits();
 
   DataType dtype;
-  NdArrayRef encoded = encodeToRing(bv, field, fxp_bits, &dtype);
 
-  return Value(encoded.as(makeType<mpc::Pub2kTy>(field)), dtype);
+  if (ctx->config().protocol() == ProtocolKind::SHAMIR) {
+    NdArrayRef encoded = encodeToGfmp(bv, field, fxp_bits, &dtype);
+    return Value(encoded.as(makeType<mpc::PubGfmpTy>(field)), dtype);
+  } else {
+    NdArrayRef encoded = encodeToRing(bv, field, fxp_bits, &dtype);
+    return Value(encoded.as(makeType<mpc::Pub2kTy>(field)), dtype);
+  }
 }
 
 // TODO: formalize and test it.
