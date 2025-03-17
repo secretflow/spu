@@ -15,6 +15,27 @@
 import jax
 import jax.numpy as jnp
 
+def brier_score_loss(y_true, y_proba, sample_weight=None, pos_label=None):
+    """
+    Compute the Brier score loss using JAX.
+    
+    Ensures that calculations are performed in float64 for precision consistency with sklearn.
+    """
+    y_true = jnp.asarray(y_true, dtype=jnp.float64)  # 强制 float64
+    y_proba = jnp.asarray(y_proba, dtype=jnp.float64)
+
+    if pos_label is None:
+        pos_label = 1
+
+    y_true = jnp.where(y_true == pos_label, 1.0, 0.0)
+    loss = (y_proba - y_true) ** 2
+
+    if sample_weight is not None:
+        sample_weight = jnp.asarray(sample_weight, dtype=jnp.float64)
+        loss = loss * sample_weight
+        return jnp.sum(loss) / jnp.sum(sample_weight)
+    else:
+        return jnp.mean(loss)
 
 def label_binarize(y, *, classes, n_classes, neg_label=0, pos_label=1):
     """Binarize labels in a one-vs-all fashion.
