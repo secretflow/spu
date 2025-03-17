@@ -129,6 +129,8 @@ inline T pow_mod(T x, T exp) {
   return mod_p(res);
 }
 
+// Define the sqrt(x) be the unique element in {1, ..., (p-1)/2}
+// For p = 3 (mod 4), the square roots of x mod p are (-)x^{(p+1)/4}
 template <typename T, std::enable_if_t<std::is_unsigned_v<T>, bool> = true>
 inline T sqrt_mod(T x) {
   constexpr T prime = ScalarTypeToPrime<T>::prime;
@@ -225,7 +227,7 @@ inline std::vector<T> lagrange_interpolation(const std::vector<T>& x,
       }
     }
     std::transform(coeff.begin(), coeff.end(), tmp_coeff.begin(), coeff.begin(),
-                   [=](T old, T add) {
+                   [prod](T old, T add) {
                      return add_mod(old, mul_mod(add, mul_inv(prod)));
                    });
   }

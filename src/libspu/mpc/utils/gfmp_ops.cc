@@ -181,10 +181,11 @@ NdArrayRef gfmp_rand(FieldType field, const Shape& shape, uint128_t prg_seed,
   constexpr uint128_t kAesInitialVector = 0U;
 
   NdArrayRef res(makeType<GfmpTy>(field), shape);
-  *prg_counter = yacl::crypto::FillPRand(
-      kCryptoType, prg_seed, kAesInitialVector, *prg_counter,
-      absl::MakeSpan(res.data<char>(), res.buf()->size()));
-  gfmp_mod_(res);
+  DISPATCH_ALL_FIELDS(field, [&]() {
+    *prg_counter = yacl::crypto::FillPRandWithMersennePrime<ring2k_t>(
+        kCryptoType, prg_seed, kAesInitialVector, *prg_counter,
+        absl::MakeSpan(&res.at<ring2k_t>(0), res.numel()));
+  });
   return res;
 }
 
@@ -377,17 +378,14 @@ std::vector<NdArrayRef> gfmp_rand_shamir_shares(const NdArrayRef& x,
     NdArrayView<ring2k_t> _coeffs(coeffs);
     pforeach(0, x.numel(), [&](int64_t idx) {
       for (size_t i = 1; i <= world_size; ++i) {
-        ring2k_t share = _x[idx];
         size_t coeff_beg = 0 + idx * threshold;
-        for (size_t j = 1; j < threshold + 1; ++j) {
-          ring2k_t coeff = _coeffs[coeff_beg + j - 1];
-          for (size_t k = 0; k < j; k++) {
-            coeff = mul_mod(coeff, static_cast<ring2k_t>(i));
-          }
-          share = add_mod(share, coeff);
+        ring2k_t share = 0;
+        for (size_t j = 0; j < threshold; j++) {
+          ring2k_t coeff = _coeffs[coeff_beg + j];
+          share = mul_mod(static_cast<ring2k_t>(i), add_mod(share, coeff));
         }
         NdArrayView<ring2k_t> _share(shares[i - 1]);
-        _share[idx] = share;
+        _share[idx] = add_mod(share, _x[idx]);
       }
     });
   });

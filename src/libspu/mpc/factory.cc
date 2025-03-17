@@ -28,6 +28,8 @@
 #include "libspu/mpc/securenn/protocol.h"
 #include "libspu/mpc/semi2k/io.h"
 #include "libspu/mpc/semi2k/protocol.h"
+#include "libspu/mpc/shamir/io.h"
+#include "libspu/mpc/shamir/protocol.h"
 
 namespace spu::mpc {
 
@@ -52,6 +54,9 @@ void Factory::RegisterProtocol(
     }
     case ProtocolKind::SWIFT: {
       return regSwiftProtocol(ctx, lctx);
+    }
+    case ProtocolKind::SHAMIR: {
+      return regShamirProtocol(ctx, lctx);
     }
     default: {
       SPU_THROW("Invalid protocol kind {}", ctx->config().protocol);
@@ -79,6 +84,9 @@ std::unique_ptr<IoInterface> Factory::CreateIO(const RuntimeConfig& conf,
     }
     case ProtocolKind::SWIFT: {
       return swift::makeSwiftIo(conf.field, npc);
+    }
+    case ProtocolKind::SHAMIR: {
+      return shamir::makeShamirIo(conf.field(), npc, conf.sss_threshold());
     }
     default: {
       SPU_THROW("Invalid protocol kind {}", conf.protocol);

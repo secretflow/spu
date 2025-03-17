@@ -126,8 +126,8 @@ class RandP : public RandKernel {
     auto* prg_state = ctx->getState<PrgState>();
     const auto field = ctx->getState<Z2kState>()->getDefaultField();
     const auto ty = makeType<PubGfmpTy>(field);
-    auto r = prg_state->genPubl(field, shape).as(ty);
-    return gfmp_mod(r).as(ty);
+    auto r = prg_state->genPublWithMersennePrime(field, shape).as(ty);
+    return r;
   }
 };
 
@@ -431,7 +431,7 @@ class AndPP : public BinaryKernel {
   NdArrayRef proc(KernelEvalContext*, const NdArrayRef& lhs,
                   const NdArrayRef& rhs) const override {
     SPU_ENFORCE(lhs.eltype() == rhs.eltype());
-    return gfmp_mod(ring_and(lhs, rhs).as(lhs.eltype()));
+    return ring_and(lhs, rhs).as(lhs.eltype());
   }
 };
 
@@ -447,7 +447,7 @@ class AndVVV : public BinaryKernel {
                   const NdArrayRef& rhs) const override {
     SPU_ENFORCE(lhs.eltype() == rhs.eltype());
     if (isOwner(ctx, lhs.eltype())) {
-      return gfmp_mod(ring_and(lhs, rhs).as(lhs.eltype()));
+      return ring_and(lhs, rhs).as(lhs.eltype());
     } else {
       return lhs;
     }
@@ -465,7 +465,7 @@ class AndVP : public BinaryKernel {
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
                   const NdArrayRef& rhs) const override {
     if (isOwner(ctx, lhs.eltype())) {
-      return gfmp_mod(ring_and(lhs, rhs).as(lhs.eltype()));
+      return ring_and(lhs, rhs).as(lhs.eltype());
     } else {
       return lhs;
     }
@@ -581,7 +581,7 @@ class RShiftP : public ShiftKernel {
 
   NdArrayRef proc(KernelEvalContext*, const NdArrayRef& in,
                   const Sizes& bits) const override {
-    return gfmp_mod(ring_rshift(in, bits).as(in.eltype()));
+    return ring_rshift(in, bits).as(in.eltype());
   }
 };
 
@@ -596,7 +596,7 @@ class RShiftV : public ShiftKernel {
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
                   const Sizes& bits) const override {
     if (isOwner(ctx, in.eltype())) {
-      return gfmp_mod(ring_rshift(in, bits).as(in.eltype()));
+      return ring_rshift(in, bits).as(in.eltype());
     } else {
       return in;
     }
@@ -681,7 +681,7 @@ class BitrevP : public BitrevKernel {
                   size_t end) const override {
     const auto field = in.eltype().as<Ring2k>()->field();
     SPU_ENFORCE(start <= end);
-    SPU_ENFORCE(end <= SizeOf(field) * 8);
+    SPU_ENFORCE(end <= GetMersennePrimeExp(field));
 
     return gfmp_mod(ring_bitrev(in, start, end).as(in.eltype()));
   }
@@ -699,7 +699,7 @@ class BitrevV : public BitrevKernel {
                   size_t end) const override {
     const auto field = in.eltype().as<Ring2k>()->field();
     SPU_ENFORCE(start <= end);
-    SPU_ENFORCE(end <= SizeOf(field) * 8);
+    SPU_ENFORCE(end <= GetMersennePrimeExp(field));
 
     if (isOwner(ctx, in.eltype())) {
       return gfmp_mod(ring_bitrev(in, start, end).as(in.eltype()));

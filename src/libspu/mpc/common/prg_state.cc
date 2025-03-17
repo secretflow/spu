@@ -110,6 +110,26 @@ NdArrayRef PrgState::genPubl(FieldType field, const Shape& shape) {
   return res;
 }
 
+NdArrayRef PrgState::genPrivWithMersennePrime(FieldType field, const Shape& shape) {
+  NdArrayRef res(makeType<GfmpTy>(field), shape);
+  DISPATCH_ALL_FIELDS(field, [&]() {
+    priv_counter_ = yacl::crypto::FillPRandWithMersennePrime<ring2k_t>(
+      kAesType, priv_seed_, 0, priv_counter_,
+      absl::MakeSpan(&res.at<ring2k_t>(0), res.numel()));
+  });
+  return res;
+}
+
+NdArrayRef PrgState::genPublWithMersennePrime(FieldType field, const Shape& shape) {
+  NdArrayRef res(makeType<GfmpTy>(field), shape);
+  DISPATCH_ALL_FIELDS(field, [&]() {
+    pub_counter_ = yacl::crypto::FillPRandWithMersennePrime<ring2k_t>(
+      kAesType, pub_seed_, 0, pub_counter_,
+      absl::MakeSpan(&res.at<ring2k_t>(0), res.numel()));
+  });
+  return res;
+}
+
 Index PrgState::genPrivPerm(size_t numel) {
   return genRandomPerm(numel, priv_seed_, &priv_counter_);
 }

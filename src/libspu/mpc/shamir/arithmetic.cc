@@ -47,8 +47,7 @@ NdArrayRef gen_zero_shares(KernelEvalContext* ctx, int64_t numel,
   auto* prg_state = ctx->getState<PrgState>();
   auto* comm = ctx->getState<Communicator>();
   auto ty = makeType<PubGfmpTy>(field);
-  auto r = prg_state->genPubl(field, {threshold * numel}).as(ty);
-  auto coeffs = gfmp_mod(r);
+  auto coeffs = prg_state->genPublWithMersennePrime(field, {threshold * numel}).as(ty);
   NdArrayRef zeros = ring_zeros(field, {numel}).as(makeType<GfmpTy>(field));
   auto shares =
       gfmp_rand_shamir_shares(zeros, coeffs, comm->getWorldSize(), threshold);
@@ -72,7 +71,7 @@ std::pair<NdArrayRef, NdArrayRef> gen_double_shares(KernelEvalContext* ctx,
   // shares
   auto dn_times = (numel - 1) / (world_size - th) + 1;
   auto ty = makeType<AShrTy>(field);
-  auto r = gfmp_mod(prg_state->genPriv(field, {dn_times}).as(ty));
+  auto r = prg_state->genPrivWithMersennePrime(field, {dn_times}).as(ty);
   auto t_sh_local = gfmp_rand_shamir_shares(r, world_size, th);
   auto t2_sh_local = gfmp_rand_shamir_shares(r, world_size, th * 2);
 
@@ -144,7 +143,7 @@ NdArrayRef RandA::proc(KernelEvalContext* ctx, const Shape& shape) const {
   // run one-time DN protocol we can generate (world_size-th) random shares
   auto dn_times = (numel - 1) / (world_size - th) + 1;
   auto ty = makeType<GfmpTy>(field);
-  auto r = gfmp_mod(prg_state->genPriv(field, {dn_times}).as(ty));
+  auto r = prg_state->genPrivWithMersennePrime(field, {dn_times}).as(ty);
   auto shares_r = gfmp_rand_shamir_shares(r, world_size, th);
   auto rank = comm->getRank();
 
@@ -187,6 +186,18 @@ NdArrayRef RandA::proc(KernelEvalContext* ctx, const Shape& shape) const {
 
 NdArrayRef P2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const auto field = in.eltype().as<Ring2k>()->field();
+
+// for debug purpose, randomize the inputs to avoid corner cases.
+#ifdef ENABLE_MASK_DURING_SHAMIR_P2A
+  auto* prg_state = ctx->getState<PrgState>();
+  auto* comm = ctx->getState<Communicator>();
+  int64_t th = ctx->sctx()->config().sss_threshold();
+  auto ty = makeType<PubGfmpTy>(field);
+  auto coeffs = prg_state->genPublWithMersennePrime(field, {th * in.numel()}).as(ty);
+  auto shares = gfmp_rand_shamir_shares(in, coeffs, comm->getWorldSize(), th);
+  return shares[comm->getRank()].as(makeType<AShrTy>(field));
+#endif
+
   return in.as(makeType<AShrTy>(field));
 }
 
@@ -392,6 +403,24 @@ NdArrayRef MulAAP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
   });
 
   return wrap_a2p(ctx->sctx(), out);
+}
+
+NdArrayRef LShiftA::proc(KernelEvalContext*, const NdArrayRef& in,
+                          const Sizes& bits) const {
+  const auto field = in.eltype().as<Ring2k>()->field();
+  bool is_splat = bits.size() == 1;
+
+  NdArrayRef out(in.eltype(), in.shape());
+  return DISPATCH_ALL_FIELDS(field, [&]() {
+    NdArrayView<ring2k_t> _in(in);
+    NdArrayView<ring2k_t> _out(out);
+
+    pforeach(0, in.numel(), [&](int64_t idx) {
+      auto shift_bits = is_splat ? bits[0] : bits[idx];
+      _out[idx] = _in[idx] << shift_bits;
+    });
+    return out;
+  });
 }
 
 ////////////////////////////////////////////////////////////////////

@@ -67,6 +67,7 @@ spu_cc_library(
         "//libspu/mpc/ref2k",
         "//libspu/mpc/securenn",
         "//libspu/mpc/semi2k",
+        "//libspu/mpc/shamir",
     ],
 )
 
@@ -104,6 +105,24 @@ spu_cc_library(
     testonly = 1,
     srcs = ["ab_api_test.cc"],
     hdrs = ["ab_api_test.h"],
+    deps = [
+        ":ab_api",
+        ":api",
+        ":api_test_params",
+        "//libspu/core:context",
+        "//libspu/mpc:kernel",
+        "//libspu/mpc/common:communicator",
+        "//libspu/mpc/utils:simulate",
+        "@googletest//:gtest",
+    ],
+    alwayslink = True,
+)
+
+spu_cc_library(
+    name = "prot_shamir_test",
+    testonly = 1,
+    srcs = ["prot_shamir_test.cc"],
+    hdrs = ["prot_shamir_test.h"],
     deps = [
         ":ab_api",
         ":api",
