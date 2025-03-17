@@ -844,11 +844,11 @@ class UnitTests(unittest.TestCase):
             3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM64
         )
 
-        X = jnp.array([[1.1, 2.0], [3.25, 4.32], [1.1, 6.10]], dtype=jnp.float64)
-        Y = jnp.array([[1.1, 2.1], [3.21, 4.32], [1.1, 6.10]], dtype=jnp.float64)
+        X = jnp.array([[1, 2.0], [3.25, 4.32], [1.1, 6.10]], dtype=jnp.float64)
+        Y = jnp.array([[1, 2.1], [3.21, 4.32], [1.1, 6.10]], dtype=jnp.float64)
 
-        sk_X = np.array([[1.1, 2.0], [3.25, 4.32], [1.1, 6.10]], dtype=np.float64)
-        sk_Y = np.array([[1.1, 2.1], [3.21, 4.32], [1.1, 6.10]], dtype=np.float64)
+        sk_X = np.array([[1, 2.0], [3.25, 4.32], [1.1, 6.10]], dtype=np.float64)
+        sk_Y = np.array([[1, 2.1], [3.21, 4.32], [1.1, 6.10]], dtype=np.float64)
 
         def onehotEncode(X, Y):
             onehotEncoder = OneHotEncoder(categories=manual_categories)
