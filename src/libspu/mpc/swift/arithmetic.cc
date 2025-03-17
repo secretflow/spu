@@ -147,7 +147,7 @@ NdArrayRef JointMessagePassing(KernelEvalContext* ctx, const NdArrayRef& msg,
     if (send_hash) {
       auto recv_bytes = comm->recv<std::uint8_t>(rank_hash, tag);
 
-      // check Hash(v) = H_v
+      // check Hash(v) == H_v
 
       std::string recv_hash = std::string(
           reinterpret_cast<const char*>(recv_bytes.data()), recv_bytes.size());
@@ -162,8 +162,16 @@ NdArrayRef JointMessagePassing(KernelEvalContext* ctx, const NdArrayRef& msg,
       auto res_v_ = comm->recv(rank_hash, msg.eltype(), tag);
       res_v_ = res_v_.reshape(msg.shape());
 
-      // check v(from Party_send) == v_(from Party_hash)
-      if (getOrCreateCompactArray(res_v) != getOrCreateCompactArray(res_v_)) {
+      // check Hash(v) == Hash(v_)
+      std::string recv_msg_str1(getOrCreateCompactArray(res_v).data<char>(),
+                                res_v.numel() * res_v.elsize());
+
+      std::string recv_msg_str2(getOrCreateCompactArray(res_v_).data<char>(),
+                                res_v.numel() * res_v.elsize());
+      auto recv_msg_hash1 = hash_func(rank_hash, recv_msg_str1, tag, hash_len);
+      auto recv_msg_hash2 = hash_func(rank_hash, recv_msg_str2, tag, hash_len);
+
+      if (recv_msg_hash1 != recv_msg_hash2) {
         inconsistent_bit = true;
       }
     }
