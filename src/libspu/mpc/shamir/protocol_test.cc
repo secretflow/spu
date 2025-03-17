@@ -18,6 +18,7 @@
 #include "libspu/mpc/ab_api_test.h"
 #include "libspu/mpc/api.h"
 #include "libspu/mpc/api_test.h"
+#include "libspu/mpc/prot_shamir_test.h"
 
 namespace spu::mpc::test {
 namespace {
@@ -31,6 +32,18 @@ RuntimeConfig makeConfig(FieldType field) {
 }
 
 }  // namespace
+
+INSTANTIATE_TEST_SUITE_P(
+    Shamir, ShamirProtTest,
+    testing::Combine(testing::Values(makeShamirProtocol),            //
+                     testing::Values(makeConfig(FieldType::FM32),    //
+                                     makeConfig(FieldType::FM64),    //
+                                     makeConfig(FieldType::FM128)),  //
+                     testing::Values(3)),                            //
+    [](const testing::TestParamInfo<BooleanTest::ParamType>& p) {
+      return fmt::format("{}x{}", std::get<1>(p.param).field(),
+                         std::get<2>(p.param));
+    });
 
 INSTANTIATE_TEST_SUITE_P(
     Shamir, ApiTest,

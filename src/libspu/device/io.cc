@@ -86,7 +86,13 @@ std::vector<spu::Value> IoClient::makeShares(const PtBufferView &bv,
 
   // encode to ring.
   DataType dtype;
-  NdArrayRef encoded = encodeToRing(bv, config_.field, fxp_bits, &dtype);
+  NdArrayRef encoded;
+  if (config_.protocol() == ProtocolKind::SHAMIR) {
+    encoded = encodeToGfmp(bv, config_.field(), fxp_bits, &dtype);
+  }
+  else {
+    encoded = encodeToRing(bv, config_.field(), fxp_bits, &dtype);
+  }
 
   // make shares.
   if (!config_.experimental_enable_colocated_optimization) {
@@ -171,7 +177,12 @@ void IoClient::combineShares(absl::Span<Value const> values,
 
   // decode from ring.
   const DataType dtype = values.front().dtype();
-  decodeFromRing(encoded, dtype, fxp_bits, out);
+
+  if (config_.protocol() == ProtocolKind::SHAMIR) {
+    decodeFromGfmp(encoded, dtype, fxp_bits, out);
+  } else {
+    decodeFromRing(encoded, dtype, fxp_bits, out);
+  }
 }
 
 ColocatedIo::ColocatedIo(SPUContext *sctx) : sctx_(sctx) {}
