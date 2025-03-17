@@ -1225,19 +1225,16 @@ class KBinsDiscretizer:
 
         return jax.vmap(bin_func, in_axes=(1, 1), out_axes=1)(bin_edges, X)
 
+
 class OneHotEncoder:
     """JAX-based One-Hot Encoder designed for privacy-preserving computation frameworks like SPU"""
 
     def __init__(
             self,
-            categories: Union[str, List[List]] = "auto",
-            drop: Optional[Union[str, List]] = None,
-            sparse_output: bool = False,
-            dtype: jnp.dtype = jnp.float64,
-            handle_unknown: str = "ignore",
+            categories: List[List],
+            drop: str = None,
             min_frequency: Optional[int] = None,
             max_categories: Optional[int] = None,
-            feature_name_combiner: str = "concat",
     ):
         """
         Initialize one-hot encoder with privacy-preserving configurations
@@ -1246,29 +1243,18 @@ class OneHotEncoder:
 
         Args:
             categories: Category specification mode:
-                       - 'auto' (default): Learn from data
                        - Manual list of categories per feature
             drop: Category dropping strategy for collinearity prevention:
                   - None: No dropping
                   - 'first': Drop first category
                   - 'if_binary': Drop first category if binary feature
-            sparse_output: Whether to generate sparse matrices
-            dtype: Output matrix data type (default jnp.float64)
-            handle_unknown: Unknown value handling:
-                           - 'ignore': Encode as zero vector
-                           - 'error': Raise error on unknown values
             min_frequency: Minimum frequency threshold for category inclusion
             max_categories: Maximum categories per feature
-            feature_name_combiner: Feature naming strategy
         """
         self.categories = categories
         self.drop = drop
-        self.sparse_output = sparse_output
-        self.dtype = dtype
-        self.handle_unknown = handle_unknown
         self.min_frequency = min_frequency
         self.max_categories = max_categories
-        self.feature_name_combiner = feature_name_combiner
 
         self.categories_ = None
         self.drop_idx_ = None
@@ -1319,26 +1305,10 @@ class OneHotEncoder:
         max_cat_per_feature = []
 
         for i in range(self.n_features_in_):
-            X_col = X[:, i]
-
-            if self.categories == "auto":
-                unique, counts = self._custom_unique(X_col)
-
-                if self.min_frequency is not None:
-                    mask = counts >= self.min_frequency
-                    unique = unique[mask]
-
-                if self.max_categories is not None:
-                    unique = unique[: self.max_categories]
-
-                current_len = len(unique)
-                max_cat_per_feature.append(current_len)
-                categories_list.append(unique)
-            else:
-                cats = jnp.array(self.categories[i])
-                categories_list.append(cats)
-                current_len = len(cats)
-                max_cat_per_feature.append(current_len)
+            cats = jnp.array(self.categories[i])
+            categories_list.append(cats)
+            current_len = len(cats)
+            max_cat_per_feature.append(current_len)
 
         self.max_cat_ = max(max_cat_per_feature) if max_cat_per_feature else 0
 
@@ -1374,12 +1344,17 @@ class OneHotEncoder:
             if self.drop is None:
                 drop_idx.append(None)
             elif self.drop == "first":
-                drop_idx.append(
-                    jnp.where(valid_mask)[0][0] if jnp.any(valid_mask) else None
-                )
+                has_valid = jnp.any(valid_mask).item()  # 转为 Python bool
+                if has_valid:
+                    first_idx = jnp.where(valid_mask, size=1)[0][0].item()  # 转为 Python int
+                    drop_idx.append(first_idx)
+                else:
+                    drop_idx.append(None)
             elif self.drop == "if_binary":
-                if jnp.sum(valid_mask) == 2:
-                    drop_idx.append(jnp.where(valid_mask)[0][0])
+                num_valid = jnp.sum(valid_mask).item()
+                if num_valid == 2:
+                    first_idx = jnp.where(valid_mask, size=1)[0][0].item()
+                    drop_idx.append(first_idx)
                 else:
                     drop_idx.append(None)
             else:
@@ -1410,8 +1385,8 @@ class OneHotEncoder:
                 (X_col[:, None] == cats) & mask_cats, axis=1
             )
 
-            one_hot = (X_col[:, None] == cats).astype(self.dtype) * mask_cats
-            masked_one_hot = one_hot * is_valid[:, None]
+            one_hot = (X_col[:, None] == cats) * mask_cats
+            masked_one_hot = one_hot.astype(jnp.float64) * is_valid[:, None]
 
             if drop_idx is not None and drop_idx < len(cats):
                 masked_one_hot = jnp.delete(masked_one_hot, drop_idx, axis=1)
@@ -1436,9 +1411,6 @@ class OneHotEncoder:
 
         Returns:
             jnp.ndarray: Reconstructed categorical data
-
-        Raises:
-            ValueError: When unknown encoding detected with handle_unknown='error'
         """
         current_col = 0
         feature_parts = []
@@ -1456,17 +1428,6 @@ class OneHotEncoder:
 
             if drop_idx is None:
                 indices = jnp.argmax(part, axis=1)
-                if self.handle_unknown == "error":
-                    sums = jnp.sum(part, axis=1)
-                    if jnp.any(sums == 0):
-                        if not jax.config.jax_disable_jit:
-                            raise RuntimeError(
-                                "handle_unknown='error' not supported in JIT mode"
-                            )
-                        invalid = jnp.where(sums == 0)[0]
-                        raise ValueError(
-                            f"Unknown categories in feature {i} at samples {invalid}"
-                        )
             else:
                 k = drop_idx
                 left = part[:, :k]
