@@ -52,7 +52,9 @@ def emul_brier_score_loss():
 
     y_true_numeric, y_proba = emulator.seal(y_true_numeric, y_proba)
 
-    spu_loss = emulator.run(compute_brier_loss)(y_true_numeric, y_proba, None, pos_label_numeric)
+    spu_loss = emulator.run(compute_brier_loss)(
+        y_true_numeric, y_proba, None, pos_label_numeric
+    )
 
     np.testing.assert_allclose(loss_sklearn, spu_loss, rtol=0, atol=1e-10)
 
