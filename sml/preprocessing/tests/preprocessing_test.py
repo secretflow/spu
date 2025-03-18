@@ -27,7 +27,7 @@ from sml.preprocessing.preprocessing import (
     MaxAbsScaler,
     MinMaxScaler,
     Normalizer,
-    BrierScoreLoss，
+    BrierScoreLoss,
 )
 from sklearn.metrics import brier_score_loss as sk_bri
 class BrierScoreLossTests(unittest.TestCase):
