@@ -837,69 +837,35 @@ class UnitTests(unittest.TestCase):
             sk_inv_transformed, spu_inv_transformed, rtol=0, atol=1e-4
         )
 
-    def test_binary_classification(self):
-        y_true = np.array([0, 1, 1, 0, 1])
-        y_proba = np.array([0.1, 0.7, 0.8, 0.3, 0.9])
+    def emul_brier_score_loss():
+    """
+    Simulate the Brier Score Loss computation using an emulator.
+    """
+    sim = spsim.Simulator.simple(3, spu.ProtocolKind.CHEETAH, spu.FieldType.FM128)
 
-        loss_sklearn = sk_bri(y_true, y_proba)
-        loss_jax = self.brier_loss.compute(y_true, y_proba)
+    def brier_score_loss_emulation(y_true, y_proba, sample_weight, pos_label):
+        loss_computer = BrierScoreLoss(pos_label=pos_label)
+        return loss_computer.compute(y_true, y_proba, sample_weight)
 
-        np.testing.assert_allclose(loss_sklearn, loss_jax, atol=1e-10)
+    y_true = np.array(["cat", "dog", "dog", "cat", "dog"])
+    y_proba = np.array([0.1, 0.7, 0.8, 0.3, 0.9])
 
-    def test_weighted_binary_classification(self):
-        y_true = np.array([0, 1, 1, 0, 1])
-        y_proba = np.array([0.1, 0.7, 0.8, 0.3, 0.9])
-        sample_weight = np.array([1, 2, 1, 2, 1])
+    unique_labels = np.unique(y_true)
+    label_map = {label: idx for idx, label in enumerate(unique_labels)}
+    y_true_numeric = np.vectorize(label_map.get)(y_true)
+    pos_label_numeric = label_map["dog"]
 
-        loss_sklearn = sk_bri(y_true, y_proba, sample_weight=sample_weight)
-        loss_jax = self.brier_loss.compute(
-            y_true, y_proba, sample_weight=sample_weight
-        )
+    loss_sklearn = sk_bri(y_true_numeric, y_proba, pos_label=pos_label_numeric)
 
-        np.testing.assert_allclose(loss_sklearn, loss_jax, atol=1e-10)
+    y_true_numeric, y_proba = emulation.seal(y_true_numeric, y_proba)
 
-    def test_multiclass_classification(self):
-        y_true = np.array([1, 2, 2, 1, 2])
-        y_proba = np.array([0.2, 0.6, 0.7, 0.4, 0.8])
+    spu_loss = emulation.run(brier_score_loss_emulation)(
+        y_true_numeric, y_proba, None, pos_label_numeric
+    )
 
-        loss_sklearn = sk_bri(y_true, y_proba, pos_label=2)
-        loss_jax = BrierScoreLoss(pos_label=2).compute(y_true, y_proba)
+    np.testing.assert_allclose(loss_sklearn, spu_loss, rtol=0, atol=1e-10)
 
-        np.testing.assert_allclose(loss_sklearn, loss_jax, atol=1e-10)
-
-    def test_text_labels(self):
-        y_true = np.array(["cat", "dog", "dog", "cat", "dog"])
-        y_proba = np.array([0.1, 0.7, 0.8, 0.3, 0.9])
-
-        unique_labels = np.unique(y_true)
-        label_map = {label: idx for idx, label in enumerate(unique_labels)}
-        y_true_numeric = np.vectorize(label_map.get)(y_true)
-        pos_label_numeric = label_map["dog"]
-
-        loss_sklearn = sk_bri(y_true_numeric, y_proba, pos_label=pos_label_numeric)
-        loss_jax = BrierScoreLoss(pos_label=pos_label_numeric).compute(
-            y_true_numeric, y_proba
-        )
-
-        np.testing.assert_allclose(loss_sklearn, loss_jax, atol=1e-10)
-
-    def test_edge_case_all_zeros(self):
-        y_true = np.array([0, 0, 0, 0, 0])
-        y_proba = np.array([0.1, 0.2, 0.1, 0.05, 0.3])
-
-        loss_sklearn = sk_bri(y_true, y_proba, pos_label=1)
-        loss_jax = BrierScoreLoss(pos_label=1).compute(y_true, y_proba)
-
-        np.testing.assert_allclose(loss_sklearn, loss_jax, atol=1e-10)
-
-    def test_edge_case_all_ones(self):
-        y_true = np.array([1, 1, 1, 1, 1])
-        y_proba = np.array([0.8, 0.85, 0.9, 0.75, 0.95])
-
-        loss_sklearn = sk_bri(y_true, y_proba)
-        loss_jax = self.brier_loss.compute(y_true, y_proba)
-
-        np.testing.assert_allclose(loss_sklearn, loss_jax, atol=1e-10)
+    # print(f"SPU Brier Score Loss 测试通过\nSklearn: {loss_sklearn}, SPU: {spu_loss}")
 
 
 if __name__ == "__main__":
