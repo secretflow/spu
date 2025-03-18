@@ -32,7 +32,7 @@ def emul_brier_score_loss():
     """
     Simulate the Brier Score Loss computation using an emulator.
     """
-    
+
     def compute_brier_loss(y_true, y_proba, sample_weight, pos_label):
         """
         Compute Brier Score Loss using BrierScoreLoss class.
