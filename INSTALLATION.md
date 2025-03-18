@@ -1,5 +1,7 @@
 # Installation Guidelines
 
+There are three ways to install SPU: installing from Docker image, installing from PyPI, and building from source.
+
 ## Environment
 
 ### Linux
@@ -7,21 +9,18 @@
 SPU has been tested with the following settings:
 
 - Ubuntu 22.04
-- python3.10
-- 8c16g
+- Python 3.10 and 3.11
 
 ### MacOS
 
 We have conducted some successful preliminary testings on
 macOS Monterey 14.1 with Apple Silicon.
 
-### Docker Image
+## Docker Image
 
 Please check [official Docker image](https://hub.docker.com/r/secretflow/ubuntu-base-ci).
 
-## Binaries
-
-### From PyPI
+## Installing From PyPI
 
 You could install SPU via the [official PyPI package](https://pypi.org/project/spu/).
 
@@ -29,7 +28,7 @@ You could install SPU via the [official PyPI package](https://pypi.org/project/s
 pip install spu
 ```
 
-### From Source
+## Building From Source
 
 - Install dependencies listed [here](https://github.com/secretflow/spu/blob/main/CONTRIBUTING.md#prerequisite).
 - For CentOS 7 or Ubuntu 22.04, use corresponding dockerfile below as a reference:
@@ -48,13 +47,13 @@ pip install bazel-bin/spu-*.whl --force-reinstall
 bazelisk clean --expunge
 ```
 
-#### Build with GPU support
+### Build with GPU support
 
 ```bash
 bazelisk build //:spu_wheel -c opt --config=gpu
 ```
 
-#### Build with specified python version
+### Build with specified python version
 
 ```bash
 # build with python 3.10
