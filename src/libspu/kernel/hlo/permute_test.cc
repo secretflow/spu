@@ -136,6 +136,7 @@ xt::xarray<T> evalSinglePermuteOp(SPUContext* ctx, VisType x_vis,
   if (checkCommFree(x_vis, perm_vis)) {
     EXPECT_EQ(send_round, 0);
   }
+
   if (ctx->hasKernel("inv_perm_av") && checkSpPass(x_vis, perm_vis)) {
     auto n_repeat = x_v.shape().numel() / x_v.shape().dim(perm_dim);
     // For ss version, at least 3 rounds.
@@ -182,16 +183,32 @@ std::vector<xt::xarray<T>> evalMultiplePermuteOp(
 
 }  // namespace
 
-class PermuteTest : public ::testing::TestWithParam<
-                        std::tuple<VisType, VisType, ProtocolKind, size_t>> {};
+using PermuteParams = std::tuple<VisType, VisType, ProtocolKind, size_t>;
+
+std::vector<PermuteParams> GetValidParamsCombinations() {
+  std::vector<PermuteParams> valid_combinations;
+
+  for (const auto& vis_x : kVisTypes) {
+    for (const auto& vis_perm : kVisTypes) {
+      for (const auto& protocol : {SEMI2K, ABY3}) {
+        for (const auto& npc : {2, 3}) {
+          // npc=2 is not valid in ABY3
+          if (protocol == ABY3 && npc == 2) {
+            continue;  // Skip invalid combinations
+          }
+          valid_combinations.emplace_back(vis_x, vis_perm, protocol, npc);
+        }
+      }
+    }
+  }
+  return valid_combinations;
+}
+
+class PermuteTest : public ::testing::TestWithParam<PermuteParams> {};
 
 INSTANTIATE_TEST_SUITE_P(
     GeneralPermute, PermuteTest,
-    testing::Combine(testing::ValuesIn(kVisTypes),   // vis of x
-                     testing::ValuesIn(kVisTypes),   // vis of perm
-                     testing::Values(SEMI2K, ABY3),  // underlying protocol
-                     testing::Values(2, 3)  // npc=2 is not valid in ABY3
-                     ),
+    testing::ValuesIn(GetValidParamsCombinations()),
     [](const testing::TestParamInfo<PermuteTest::ParamType>& p) {
       return fmt::format("{}x{}x{}x{}", get_vis_str(std::get<0>(p.param)),
                          get_vis_str(std::get<1>(p.param)),
@@ -203,10 +220,6 @@ TEST_P(PermuteTest, SinglePermuteWork) {
   const VisType perm_vis = std::get<1>(GetParam());
   const ProtocolKind protocol = std::get<2>(GetParam());
   const size_t npc = std::get<3>(GetParam());
-
-  if (protocol == ABY3 && npc == 2) {
-    return;
-  }
 
   xt::xarray<int64_t> x = {10, 0, 2, 3, 9, 1, 5, 6};
   xt::xarray<int64_t> perm = {2, 7, 1, 6, 0, 4, 3, 5};
@@ -239,10 +252,6 @@ TEST_P(PermuteTest, PermDimWork) {
   const VisType perm_vis = std::get<1>(GetParam());
   const ProtocolKind protocol = std::get<2>(GetParam());
   const size_t npc = std::get<3>(GetParam());
-
-  if (protocol == ABY3 && npc == 2) {
-    return;
-  }
 
   xt::xarray<int64_t> x = {{10, 0, 2, 3, 9, 1, 5, 6},
                            {-10, 0, -2, -3, -9, -1, -5, -6}};
@@ -279,10 +288,6 @@ TEST_P(PermuteTest, MultiplePermuteWork) {
   const ProtocolKind protocol = std::get<2>(GetParam());
   const size_t npc = std::get<3>(GetParam());
 
-  if (protocol == ABY3 && npc == 2) {
-    return;
-  }
-
   xt::xarray<int64_t> x = {10, 0, 2, 3, 9, 1, 5, 6};
   xt::xarray<int64_t> perm = {2, 7, 1, 6, 0, 4, 3, 5};
 
@@ -317,17 +322,17 @@ TEST_P(PermuteTest, MultiplePermuteWork) {
 class PermuteEmptyTest : public ::testing::TestWithParam<ProtocolKind> {};
 
 INSTANTIATE_TEST_SUITE_P(
-    PermuteEmpty, PermuteEmptyTest,
-    testing::Values(ProtocolKind::SEMI2K, ProtocolKind::ABY3),
+    PermuteEmpty, PermuteEmptyTest, testing::Values(SEMI2K, ABY3),
     [](const testing::TestParamInfo<PermuteEmptyTest::ParamType>& p) {
       return fmt::format("{}", p.param);
     });
 
 TEST_P(PermuteEmptyTest, Empty) {
   ProtocolKind prot = GetParam();
+  size_t npc = 3;
 
   mpc::utils::simulate(
-      3, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+      npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
         SPUContext sctx = test::makeSPUContext(prot, kField, lctx);
 
         auto empty_x =

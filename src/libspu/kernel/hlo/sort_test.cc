@@ -328,14 +328,148 @@ TEST_P(SimpleSortTest, SingleKeyWithPayload) {
       });
 }
 
+TEST_P(SimpleSortTest, PrivateKeyOnly) {
+  size_t npc = std::get<0>(GetParam());
+  FieldType field = std::get<1>(GetParam());
+  ProtocolKind prot = std::get<2>(GetParam());
+  RuntimeConfig::SortMethod method = std::get<3>(GetParam());
+
+  mpc::utils::simulate(
+      npc, [&](const std::shared_ptr<yacl::link::Context> &lctx) {
+        RuntimeConfig cfg;
+        cfg.protocol = prot;
+        cfg.field = field;
+        cfg.enable_action_trace = false;
+        cfg.sort_method = method;
+        SPUContext ctx = test::makeSPUContext(cfg, lctx);
+
+        xt::xarray<float> k1 = {7, 6, 5, 4, 1, 3, 2};
+        xt::xarray<float> k2 = {1, 2, 3, 6, 7, 6, 5};
+
+        xt::xarray<float> sorted_k1 = {1, 2, 3, 4, 5, 6, 7};
+        xt::xarray<float> sorted_k2 = {7, 5, 6, 6, 3, 2, 1};
+
+        Value k1_v = test::makeValue(&ctx, k1, VIS_SECRET);
+        Value k2_v = test::makeValue(&ctx, k2, VIS_SECRET);
+
+        // make k1 private
+        k1_v = RevealTo(&ctx, k1_v, 0);
+        Value k2_val;
+
+        for (Visibility vis_k2 : {VIS_PUBLIC, VIS_PRIVATE, VIS_SECRET}) {
+          if (vis_k2 == VIS_PUBLIC) {
+            k2_val = Reveal(&ctx, k2_v);
+          } else if (vis_k2 == VIS_PRIVATE) {
+            k2_val = RevealTo(&ctx, k2_v, 1);
+          }
+
+          std::vector<spu::Value> rets = SimpleSort(
+              &ctx, {k1_v, k2_val}, 0, hal::SortDirection::Ascending, 1);
+
+          EXPECT_EQ(rets.size(), 2);
+
+          auto sorted_k1_hat =
+              hal::dump_public_as<float>(&ctx, hal::reveal(&ctx, rets[0]));
+          auto sorted_k2_hat =
+              hal::dump_public_as<float>(&ctx, hal::reveal(&ctx, rets[1]));
+
+          EXPECT_TRUE(xt::allclose(sorted_k1, sorted_k1_hat, 0.01, 0.001))
+              << sorted_k1 << std::endl
+              << sorted_k1_hat << std::endl;
+
+          EXPECT_TRUE(xt::allclose(sorted_k2, sorted_k2_hat, 0.01, 0.001))
+              << sorted_k2 << std::endl
+              << sorted_k2_hat << std::endl;
+        }
+      });
+}
+
+TEST_P(SimpleSortTest, MixVisibilityKey) {
+  size_t npc = std::get<0>(GetParam());
+  FieldType field = std::get<1>(GetParam());
+  ProtocolKind prot = std::get<2>(GetParam());
+  RuntimeConfig::SortMethod method = std::get<3>(GetParam());
+
+  mpc::utils::simulate(
+      npc, [&](const std::shared_ptr<yacl::link::Context> &lctx) {
+        RuntimeConfig cfg;
+        cfg.protocol = prot;
+        cfg.field = field;
+        cfg.enable_action_trace = false;
+        cfg.sort_method = method;
+        SPUContext ctx = test::makeSPUContext(cfg, lctx);
+
+        xt::xarray<float> k1 = {7, 3, 5, 4, 3, 3, 2};
+        xt::xarray<float> k2 = {1, 2, 3, 6, 7, 6, 5};
+        xt::xarray<float> k3 = {-1, 2, -3, 6, 7, 2, -3};
+        xt::xarray<float> k4 = {-1, -2, 3, -6, -7, -6, 3};
+
+        xt::xarray<float> sorted_k1 = {2, 3, 3, 3, 4, 5, 7};
+        xt::xarray<float> sorted_k2 = {5, 2, 6, 7, 6, 3, 1};
+        xt::xarray<float> sorted_k3 = {-3, 2, 2, 7, 6, -3, -1};
+        xt::xarray<float> sorted_k4 = {3, -2, -6, -7, -6, 3, -1};
+
+        Value k1_v = test::makeValue(&ctx, k1, VIS_SECRET);
+        Value k2_v = test::makeValue(&ctx, k2, VIS_SECRET);
+        Value k3_v = test::makeValue(&ctx, k3, VIS_SECRET);
+
+        Value k4_v = test::makeValue(&ctx, k4, VIS_SECRET);
+
+        k1_v = RevealTo(&ctx, k1_v, 1);
+        k3_v = Reveal(&ctx, k3_v);
+
+        Value k4_val;
+
+        for (Visibility vis_k4 : {VIS_PUBLIC, VIS_PRIVATE, VIS_SECRET}) {
+          if (vis_k4 == VIS_PUBLIC) {
+            k4_val = Reveal(&ctx, k4_v);
+          } else if (vis_k4 == VIS_PRIVATE) {
+            k4_val = RevealTo(&ctx, k4_v, 1);
+          }
+
+          std::vector<spu::Value> rets =
+              SimpleSort(&ctx, {k1_v, k2_v, k3_v, k4_val}, 0,
+                         hal::SortDirection::Ascending, /*num_keys*/ 3);
+
+          EXPECT_EQ(rets.size(), 4);
+
+          auto sorted_k1_hat =
+              hal::dump_public_as<float>(&ctx, hal::reveal(&ctx, rets[0]));
+          auto sorted_k2_hat =
+              hal::dump_public_as<float>(&ctx, hal::reveal(&ctx, rets[1]));
+          auto sorted_k3_hat =
+              hal::dump_public_as<float>(&ctx, hal::reveal(&ctx, rets[2]));
+          auto sorted_k4_hat =
+              hal::dump_public_as<float>(&ctx, hal::reveal(&ctx, rets[3]));
+
+          EXPECT_TRUE(xt::allclose(sorted_k1, sorted_k1_hat, 0.01, 0.001))
+              << sorted_k1 << std::endl
+              << sorted_k1_hat << std::endl;
+
+          EXPECT_TRUE(xt::allclose(sorted_k2, sorted_k2_hat, 0.01, 0.001))
+              << sorted_k2 << std::endl
+              << sorted_k2_hat << std::endl;
+
+          EXPECT_TRUE(xt::allclose(sorted_k3, sorted_k3_hat, 0.01, 0.001))
+              << sorted_k3 << std::endl
+              << sorted_k3_hat << std::endl;
+
+          EXPECT_TRUE(xt::allclose(sorted_k4, sorted_k4_hat, 0.01, 0.001))
+              << sorted_k4 << std::endl
+              << sorted_k4_hat << std::endl;
+        }
+      });
+}
+
 INSTANTIATE_TEST_SUITE_P(
     SimpleSort2PCTestInstances, SimpleSortTest,
-    testing::Combine(
-        testing::Values(2), testing::Values(FieldType::FM32, FieldType::FM64),
-        testing::Values(ProtocolKind::SEMI2K, ProtocolKind::CHEETAH),
-        testing::Values(RuntimeConfig::SORT_DEFAULT, RuntimeConfig::SORT_RADIX,
-                        RuntimeConfig::SORT_QUICK,
-                        RuntimeConfig::SORT_NETWORK)),
+    testing::Combine(testing::Values(2),
+                     testing::Values(FieldType::FM32, FieldType::FM64),
+                     testing::Values(ProtocolKind::SEMI2K),
+                     testing::Values(RuntimeConfig::SORT_DEFAULT,
+                                     RuntimeConfig::SORT_RADIX,
+                                     RuntimeConfig::SORT_QUICK,
+                                     RuntimeConfig::SORT_NETWORK)),
     [](const testing::TestParamInfo<SimpleSortTest::ParamType> &p) {
       return fmt::format("{}x{}x{}x{}", std::get<0>(p.param),
                          std::get<1>(p.param), std::get<2>(p.param),

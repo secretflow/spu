@@ -44,6 +44,22 @@ jobs:
             curl -X POST --header "Content-Type: application/json" "https://circleci.com/api/v2/workflow/${CIRCLE_WORKFLOW_ID}/cancel?circle-token=${BUILD_TIMER_TOKEN}"
       - checkout
       - run:
+          name: Install dependencies
+          command: |
+            if [ -x "$(command -v npm)" ]; then
+                npm install -g @bazel/bazelisk
+            elif [ -x "$(command -v dpkg)" ]; then
+                if [ "`uname -m`" == "x86_64" ]; then
+                    wget https://github.com/bazelbuild/bazelisk/releases/download/v1.25.0/bazelisk-amd64.deb && dpkg -i bazelisk-amd64.deb
+                elif [ "`uname -m`" == "aarch64" ]; then
+                    wget https://github.com/bazelbuild/bazelisk/releases/download/v1.25.0/bazelisk-arm64.deb && dpkg -i bazelisk-arm64.deb
+                fi
+            elif [ -x "$(command -v apt)" ]; then
+                apt install -y npm && npm install -g @bazel/bazelisk
+            elif [ -x "$(command -v yum)" ]; then
+                yum install -y npm && npm install -g @bazel/bazelisk
+            fi
+      - run:
           name: Checkout devtools
           command: git clone https://github.com/secretflow/devtools.git ../devtools
       - run:
@@ -57,14 +73,14 @@ jobs:
             mkdir bazel-testlogs
 
             pushd src
-            bazel test //... --features=asan --test_timeout=500 --ui_event_filters=-info,-debug,-warning --test_output=errors | tee test_result.log; status0=${PIPESTATUS[0]}
+            bazelisk test //... --features=asan --test_timeout=500 --ui_event_filters=-info,-debug,-warning --test_output=errors | tee test_result.log; status0=${PIPESTATUS[0]}
             sh ../../devtools/rename-junit-xml.sh
             cp -r test-results/ ../test-results/
             cp -r bazel-testlogs/ ../bazel-testlogs/
             popd
 
             # TODO
-            # bazel test //... --features=asan --test_timeout=500 --ui_event_filters=-info,-debug,-warning --test_output=errors | tee -a test_result.log; status1=${PIPESTATUS[0]}
+            # bazelisk test //... --features=asan --test_timeout=500 --ui_event_filters=-info,-debug,-warning --test_output=errors | tee -a test_result.log; status1=${PIPESTATUS[0]}
             # sh ../devtools/rename-junit-xml.sh
 
             find bazel-testlogs/ -type f -name "test.log"  -print0 | xargs -0 tar -cvzf test_logs.tar.gz

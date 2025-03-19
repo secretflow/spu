@@ -201,12 +201,17 @@ class CompilationSource:
         self.ir_txt = ir_txt
         self.input_visibility = input_visibility
 
+class XLAPrettyPrintKind(enum.IntEnum):
+    TEXT = 0
+    DOT = 1
+    HTML = 2
+
 class CompilerOptions:
     def __init__(
         self,
         enable_pretty_print: bool = False,
         pretty_print_dump_dir: str = "",
-        xla_pp_kind: RuntimeConfig.SortMethod = RuntimeConfig.SortMethod.SORT_DEFAULT,
+        xla_pp_kind: XLAPrettyPrintKind = XLAPrettyPrintKind.TEXT,
         disable_sqrt_plus_epsilon_rewrite=False,
         disable_div_sqrt_rewrite=False,
         disable_reduce_truncation_optimization=False,

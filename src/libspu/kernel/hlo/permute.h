@@ -18,6 +18,19 @@
 
 namespace spu::kernel::hlo {
 
+/// Some conventions about permutation semantic:
+///   1. The `perm` in MPC layer is so-called shared with "composition"
+///   semantic, i.e. let \pi is a perm, then P0 holds \pi0, P1 holds \pi1, and
+///   \pi = \pi1 o \pi0 (`o` means composition of two permutations).
+///   2. There exists another semantic of `perm` (We call it "Additive"
+///   semantic). The `perm` is a vector of destinations, and each element of the
+///   vector is secret shared across the parties. e.g. let \pi = \pi0 + \pi1 if
+///   we have 2 Parties. We implement the ops under this semantic of `perm` in
+///   HAL layer based on the "composition" semantic of perm.
+///   (REF: https://eprint.iacr.org/2019/695.pdf)
+///
+///   Note: In HLO layer, we always assume the perm is "Additive" semantic.
+
 // Inverse permute vector `inputs` over permutation `perm`
 // Let [n] = {0,1,2,...,n-1}, then perm: [n] -> [n] should be an invertible
 // permutation, we denote prem^{-1} as its inversion.

@@ -141,6 +141,10 @@ myst_gfm_only = True
 myst_heading_anchors = 1
 myst_title_to_header = True
 
+language = "en"
+locale_dirs = ["./locales/"]
+gettext_compact = False
+
 # app setup hook
 
 

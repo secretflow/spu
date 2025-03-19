@@ -79,6 +79,14 @@ std::vector<spu::Value> TopK(SPUContext *ctx, const spu::Value &input,
                              int64_t k_lo, int64_t k_hi, bool largest,
                              bool value_only) {
   const Shape &shape = input.shape();
+
+  if (shape.numel() == 0) {
+    if (value_only) {
+      return std::vector<spu::Value>(1, input);
+    }
+    return std::vector<spu::Value>(2, input);
+  }
+
   SPU_ENFORCE(shape.numel() > 0, "input must non-empty.");
   SPU_ENFORCE(
       k_lo <= shape.back() && k_lo > 0,

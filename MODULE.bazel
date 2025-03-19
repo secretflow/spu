@@ -21,7 +21,7 @@
 
 module(
     name = "spu",
-    version = "0.9.4.dev20250225",
+    version = "0.9.4.dev20250319",
     compatibility_level = 1,
 )
 
@@ -33,7 +33,7 @@ local_path_override(
 )
 
 bazel_dep(name = "psi", version = "0.6.0.dev250123")
-bazel_dep(name = "yacl", version = "20241212.0-871832a")
+bazel_dep(name = "yacl", version = "0.4.5b10-nightly-20250110")
 bazel_dep(name = "grpc", version = "1.66.0.bcr.3")
 single_version_override(
     module_name = "grpc",
