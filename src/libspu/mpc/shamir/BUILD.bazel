@@ -25,6 +25,16 @@ spu_cc_library(
 )
 
 spu_cc_library(
+    name = "state",
+    srcs = ["state.cc"],
+    hdrs = ["state.h"],
+    deps = [
+        "//libspu/mpc/utils:gfmp_ops",
+        "//libspu/core:context",
+    ],
+)
+
+spu_cc_library(
     name = "protocol",
     srcs = ["protocol.cc"],
     hdrs = ["protocol.h"],
@@ -33,6 +43,7 @@ spu_cc_library(
         ":boolean",
         ":conversion",
         "//libspu/mpc/standard_shape:protocol",
+        ":state",
     ],
 )
 
@@ -54,6 +65,7 @@ spu_cc_library(
     hdrs = ["arithmetic.h"],
     deps = [
         ":type",
+        ":state",
         "//libspu/core:vectorize",
         "//libspu/mpc:ab_api",
         "//libspu/mpc:kernel",

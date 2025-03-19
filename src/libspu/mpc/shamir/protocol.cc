@@ -23,6 +23,7 @@
 #include "libspu/mpc/shamir/conversion.h"
 #include "libspu/mpc/shamir/type.h"
 #include "libspu/mpc/standard_shape/protocol.h"
+#include "libspu/mpc/shamir/state.h"
 
 namespace spu::mpc {
 
@@ -38,6 +39,8 @@ void regShamirProtocol(SPUContext* ctx,
 
   // add Z2k state.
   ctx->prot()->addState<Z2kState>(ctx->config().field());
+
+  ctx->prot()->addState<shamir::ShamirPrecomputedState>(lctx->WorldSize(), ctx->config().sss_threshold());
 
   // register public kernels.
   regPVGfmpKernels(ctx->prot());

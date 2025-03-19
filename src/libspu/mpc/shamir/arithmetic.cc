@@ -27,6 +27,7 @@
 #include "libspu/mpc/utils/gfmp.h"
 #include "libspu/mpc/utils/gfmp_ops.h"
 #include "libspu/mpc/utils/ring_ops.h"
+#include "libspu/mpc/shamir/state.h"
 
 namespace spu::mpc::shamir {
 
@@ -64,6 +65,7 @@ std::pair<NdArrayRef, NdArrayRef> gen_double_shares(KernelEvalContext* ctx,
   int64_t world_size = comm->getWorldSize();
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
   auto* prg_state = ctx->getState<PrgState>();
+  auto* van_state = ctx->getState<ShamirPrecomputedState>();
   auto rank = comm->getRank();
 
   // run one-time DN protocol we can generate (world_size-th) pairs of
@@ -103,7 +105,8 @@ std::pair<NdArrayRef, NdArrayRef> gen_double_shares(KernelEvalContext* ctx,
   DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> _r_t(out.first);
     NdArrayView<ring2k_t> _r_2t(out.second);
-    auto van = GenVandermondeMatrix<ring2k_t>(world_size, world_size - th);
+    // auto van = GenVandermondeMatrix<ring2k_t>(world_size, world_size - th);
+    auto van = van_state->get_vandermonde<ring2k_t>();
     pforeach(0, dn_times, [&](int64_t idx) {
       // Optimize me: no copy need here
       GfmpMatrix<ring2k_t> s_t(1, world_size);
@@ -135,6 +138,7 @@ NdArrayRef RandA::proc(KernelEvalContext* ctx, const Shape& shape) const {
   auto* prg_state = ctx->getState<PrgState>();
   auto* comm = ctx->getState<Communicator>();
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
+  auto* van_state = ctx->getState<ShamirPrecomputedState>();
   NdArrayRef out = ring_zeros(field, shape);
   int64_t world_size = comm->getWorldSize();
   int64_t th = ctx->sctx()->config().sss_threshold();
@@ -164,7 +168,8 @@ NdArrayRef RandA::proc(KernelEvalContext* ctx, const Shape& shape) const {
   return DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayRef r_t(ty, {dn_times * (world_size - th)});
     NdArrayView<ring2k_t> _r_t(r_t);
-    auto van = GenVandermondeMatrix<ring2k_t>(world_size, world_size - th);
+    // auto van = GenVandermondeMatrix<ring2k_t>(world_size, world_size - th);
+    auto van = van_state->get_vandermonde<ring2k_t>(); 
     // TODO optimize me: all random shares can be done by a mmut between van^T *
     // r_shrs van^T is a n-t by n r_shrs is a n by dn_times matrix
     pforeach(0, dn_times, [&](int64_t idx) {
