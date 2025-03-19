@@ -21,7 +21,7 @@
 
 module(
     name = "spu",
-    version = "0.9.4.dev20250312",
+    version = "0.9.4.dev20250319",
     compatibility_level = 1,
 )
 

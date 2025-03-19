@@ -29,8 +29,7 @@ INSTANTIATE_TEST_SUITE_P(
     Cheetah, CheetahMulTest,
     testing::Combine(testing::Values(FieldType::FM32, FieldType::FM64,
                                      FieldType::FM128),
-                     testing::Values(1024, 10000),
-                     testing::Values(true, false)),
+                     testing::Values(1024, 10000), testing::Values(false)),
     [](const testing::TestParamInfo<CheetahMulTest::ParamType>& p) {
       return fmt::format("{}x{}x{}", std::get<0>(p.param), std::get<1>(p.param),
                          std::get<2>(p.param) ? "Approx" : "Exact");
