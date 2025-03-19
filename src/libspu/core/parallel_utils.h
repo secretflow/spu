@@ -24,8 +24,9 @@ namespace spu {
 constexpr int64_t kMinTaskSize = 50000;
 
 template <class F>
-inline auto pforeach(int64_t begin, int64_t end, F&& f) -> std::enable_if_t<
-    std::is_same_v<decltype(f(int64_t(), int64_t())), void>> {
+inline auto pforeach(int64_t begin, int64_t end, F&& f)
+    -> std::enable_if_t<
+        std::is_same_v<decltype(f(int64_t(), int64_t())), void>> {
   return yacl::parallel_for(begin, end, kMinTaskSize, f);
 }
 
