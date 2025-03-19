@@ -15,6 +15,7 @@
 import jax.numpy as jnp
 import numpy as np
 from sklearn import preprocessing
+from sklearn.metrics import brier_score_loss as sk_bri
 
 import sml.utils.emulation as emulation
 from sml.preprocessing.preprocessing import (
@@ -24,8 +25,40 @@ from sml.preprocessing.preprocessing import (
     MaxAbsScaler,
     MinMaxScaler,
     Normalizer,
+    BrierScoreLoss,
 )
 
+def emul_brier_score_loss():
+    """
+    Simulate the Brier Score Loss computation using an emulator.
+    """
+
+    def compute_brier_loss(y_true, y_proba, sample_weight, pos_label):
+        """
+        Compute Brier Score Loss using BrierScoreLoss class.
+        """
+        loss_computer = BrierScoreLoss(pos_label=pos_label)
+        return loss_computer.compute(y_true, y_proba, sample_weight)
+
+    y_true = np.array(["cat", "dog", "dog", "cat", "dog"])
+    y_proba = np.array([0.1, 0.7, 0.8, 0.3, 0.9])
+
+    unique_labels = np.unique(y_true)
+    label_map = {label: idx for idx, label in enumerate(unique_labels)}
+    y_true_numeric = np.vectorize(label_map.get)(y_true)
+    pos_label_numeric = label_map["dog"]
+
+    loss_sklearn = sk_bri(y_true_numeric, y_proba, pos_label=pos_label_numeric)
+
+    y_true_numeric, y_proba = emulator.seal(y_true_numeric, y_proba)
+
+    spu_loss = emulator.run(compute_brier_loss)(
+        y_true_numeric, y_proba, None, pos_label_numeric
+    )
+
+    np.testing.assert_allclose(loss_sklearn, spu_loss, rtol=0, atol=1e-10)
+
+    # print(f"SPU Brier Score Loss 测试通过\nSklearn: {loss_sklearn}, SPU: {spu_loss}")
 
 def emul_labelbinarizer():
     def labelbinarize(X, Y):
@@ -807,5 +840,6 @@ if __name__ == "__main__":
         emul_kbinsdiscretizer_quantile_sample_weight_diverse_n_bins_no_vectorize()
         emul_kbinsdiscretizer_kmeans()
         emul_kbinsdiscretizer_kmeans_diverse_n_bins_no_vectorize()
+        emul_brier_score_loss()
     finally:
         emulator.down()
