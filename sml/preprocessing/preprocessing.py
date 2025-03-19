@@ -11,11 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import List, Optional, Union
+from typing import List
 
 import jax
 import jax.numpy as jnp
-from jax.lax import associative_scan
 
 
 def label_binarize(y, *, classes, n_classes, neg_label=0, pos_label=1):
@@ -1227,7 +1226,18 @@ class KBinsDiscretizer:
 
 
 class OneHotEncoder:
-    """JAX-based One-Hot Encoder designed for privacy-preserving computation frameworks like SPU"""
+    """
+    JAX-based One-Hot Encoder designed for privacy-preserving computation frameworks like SPU.
+
+    This implementation performs one-hot encoding of categorical data, where each feature
+    is expanded into a binary vector representation. It is optimized for use in secure
+    multi-party computation (SPC) environments, ensuring compatibility with privacy-preserving
+    computation frameworks like SPU.
+
+    The encoder requires the user to explicitly specify the categories for each feature during
+    initialization. It does not automatically infer categories from the data, making it suitable
+    for scenarios where data privacy is a concern.
+    """
 
     def __init__(
         self,
@@ -1242,44 +1252,17 @@ class OneHotEncoder:
             categories: Category specification mode:
                        - Manual list of categories per feature
         """
-        self.categories = categories
-
-        self.categories_ = None
+        self.categories = [jnp.array(cats) for cats in categories]
         self.n_features_in_ = None
-        self.max_cat_ = None
         self.feature_lengths_ = None
-
-    def _custom_unique(self, arr):
-        """
-        Parallelized unique value extraction using JAX associative scan
-
-        Optimized for large-scale data and privacy-preserving environments
-
-        Args:
-            arr: Input 1D array (JAX DeviceArray)
-
-        Returns:
-            Tuple (unique_values, count): Sorted unique values and their count
-
-        Raises:
-            ValueError: If the input array is empty.
-        """
-        if arr.size == 0:
-            raise ValueError("Input array is empty. Please provide a non-empty array.")
-
-        sorted_arr = jnp.sort(arr)
-
-        def scan_fun(carry, x):
-            return jnp.where(carry == x, carry, x)
-
-        unique_values = associative_scan(scan_fun, sorted_arr)
-        return unique_values, unique_values.size
 
     def fit(self, X):
         """
-        Learn category structure from data with privacy considerations
+        Initialize the encoder with the input data.
 
-        Handles missing values (marked with -1) and implements frequency-based filtering
+        This method prepares the encoder for one-hot encoding by recording the number of features
+        and the number of categories for each feature. It based on that the categories for each feature
+        are already provided during initialization (via `self.categories`).
 
         Args:
             X: Input matrix of shape (n_samples, n_features)
@@ -1288,34 +1271,15 @@ class OneHotEncoder:
             self: Fitted encoder instance
         """
         self.n_features_in_ = X.shape[1]
-        categories_list = []
-        max_cat_per_feature = []
-
-        for i in range(self.n_features_in_):
-            cats = jnp.array(self.categories[i])
-            categories_list.append(cats)
-            current_len = len(cats)
-            max_cat_per_feature.append(current_len)
-
-        self.max_cat_ = max(max_cat_per_feature) if max_cat_per_feature else 0
-
-        self.categories_ = categories_list
-        self.feature_lengths_ = []
-
-        for i in range(self.n_features_in_):
-            cats = self.categories_[i]
-            valid_mask = cats != -1
-
-            num_valid_cats = jnp.sum(valid_mask)
-
-            self.feature_lengths_.append(num_valid_cats)
+        self.feature_lengths_ = [len(cats) for cats in self.categories]
         return self
 
     def transform(self, X):
         """
-        Transform categorical data to one-hot encoded format
+        Transform categorical data to one-hot encoded format.
 
-        Maintains differential privacy characteristics through masking
+        This function converts the input categorical data into a one-hot encoded matrix.
+        Each feature in the input matrix is expanded into a binary vector representation
 
         Args:
             X: Input matrix matching fit() dimensions
@@ -1326,31 +1290,23 @@ class OneHotEncoder:
         encoded_features = []
 
         for i in range(self.n_features_in_):
-            X_col = X[:, i]
-            cats = self.categories_[i]
+            cats = self.categories[i]
+            one_hot = (X[:, i][:, None] == cats).astype(jnp.float64)
+            encoded_features.append(one_hot)
 
-            mask_cats = cats != -1
-            is_valid = (X_col != -1) & jnp.any(
-                (X_col[:, None] == cats) & mask_cats, axis=1
-            )
-
-            one_hot = (X_col[:, None] == cats) * mask_cats
-            masked_one_hot = one_hot.astype(jnp.float64) * is_valid[:, None]
-
-            encoded_features.append(masked_one_hot)
-
-        output = jnp.concatenate(encoded_features, axis=1)
-        return output
+        return jnp.concatenate(encoded_features, axis=1)
 
     def fit_transform(self, x):
-        """Combined fit/transform operation for non-distributed scenarios"""
+        """Combined fit/transform operation"""
         return self.fit(x).transform(x)
 
     def inverse_transform(self, x):
         """
-        Reconstruct original categories from encoded data
+        Reconstruct original categorical data from one-hot encoded data.
 
-        Maintains privacy by handling unknown values through masking
+        This function converts a one-hot encoded matrix back to its original categorical
+        representation. Each feature in the one-hot encoded matrix is mapped to its
+        corresponding category value.
 
         Args:
             x: Encoded matrix from transform()
@@ -1360,25 +1316,20 @@ class OneHotEncoder:
         """
         current_col = 0
         feature_parts = []
-        for i in range(len(self.categories)):
-            length = len(self.categories[i])
+        for i in range(self.n_features_in_):
+            length = self.feature_lengths_[i]
             feature_parts.append(x[:, current_col : current_col + length])
             current_col += length
 
         inv_features = []
         for i in range(self.n_features_in_):
             part = feature_parts[i]
-            cats = self.categories_[i]
-            valid_mask = cats != -1
-            valid_cats = jnp.where(valid_mask, cats, 0)
+            cats = self.categories[i]
             indices = jnp.argmax(part, axis=1)
-            feature_values = valid_cats[indices]
+            feature_values = cats[indices]
             row_sums = jnp.sum(part, axis=1)
-
             feature_values = jnp.where(row_sums == 0, 0, feature_values)
-            feature_values_array = jnp.array(
-                [value if value is not None else jnp.nan for value in feature_values]
-            )[:, None]
+            feature_values_array = feature_values[:, None]
             inv_features.append(feature_values_array)
 
         return jnp.concatenate(inv_features, axis=1)
