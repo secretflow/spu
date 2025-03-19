@@ -553,6 +553,7 @@ std::pair<std::vector<NdArrayRef>, NdArrayRef> solved_bits(SPUContext* ctx,
   int64_t numel = shape.numel();
   int64_t un_produced = numel;
 
+if (field != FM32) {
   return DISPATCH_ALL_FIELDS(field, [&]() {
     size_t exp = ScalarTypeToPrime<ring2k_t>::exp;
     std::vector<NdArrayRef> out_bits(exp);
@@ -577,7 +578,7 @@ std::pair<std::vector<NdArrayRef>, NdArrayRef> solved_bits(SPUContext* ctx,
     ret.second = std::move(out);
     return ret;
   });
-
+} else {
   return DISPATCH_ALL_FIELDS(field, [&]() {
     size_t exp = ScalarTypeToPrime<ring2k_t>::exp;
     std::vector<NdArrayRef> out_bits(exp);
@@ -635,6 +636,7 @@ std::pair<std::vector<NdArrayRef>, NdArrayRef> solved_bits(SPUContext* ctx,
     ret.second = std::move(out);
     return ret;
   });
+}
 }
 
 std::vector<NdArrayRef> bit_decompose(SPUContext* ctx, const NdArrayRef& in) {
