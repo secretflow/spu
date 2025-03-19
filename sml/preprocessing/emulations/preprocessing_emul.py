@@ -127,9 +127,7 @@ def emul_onehotEncoder():
     sk_Y = np.array([[1, 2.1], [3.21, 4.32], [1.1, 6.10]], dtype=np.float64)
 
     def onehotEncode(X, Y):
-        onehotEncoder = OneHotEncoder(
-            categories=manual_categories
-        )
+        onehotEncoder = OneHotEncoder(categories=manual_categories)
         onehotEncoder.fit(X)
         encoded = onehotEncoder.transform(Y)
         inverse_v = onehotEncoder.inverse_transform(encoded)
@@ -153,6 +151,7 @@ def emul_onehotEncoder():
     np.testing.assert_allclose(
         sk_inv_transformed, spu_inv_transformed, rtol=1e-4, atol=1e-4
     )
+
 
 def emul_normalizer():
     def normalize_l1(X):

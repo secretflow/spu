@@ -1230,11 +1230,8 @@ class OneHotEncoder:
     """JAX-based One-Hot Encoder designed for privacy-preserving computation frameworks like SPU"""
 
     def __init__(
-            self,
-            categories: List[List],
-            drop: str = None,
-            min_frequency: Optional[int] = None,
-            max_categories: Optional[int] = None,
+        self,
+        categories: List[List],
     ):
         """
         Initialize one-hot encoder with privacy-preserving configurations
@@ -1244,20 +1241,10 @@ class OneHotEncoder:
         Args:
             categories: Category specification mode:
                        - Manual list of categories per feature
-            drop: Category dropping strategy for collinearity prevention:
-                  - None: No dropping
-                  - 'first': Drop first category
-                  - 'if_binary': Drop first category if binary feature
-            min_frequency: Minimum frequency threshold for category inclusion
-            max_categories: Maximum categories per feature
         """
         self.categories = categories
-        self.drop = drop
-        self.min_frequency = min_frequency
-        self.max_categories = max_categories
 
         self.categories_ = None
-        self.drop_idx_ = None
         self.n_features_in_ = None
         self.max_cat_ = None
         self.feature_lengths_ = None
@@ -1313,7 +1300,6 @@ class OneHotEncoder:
         self.max_cat_ = max(max_cat_per_feature) if max_cat_per_feature else 0
 
         self.categories_ = categories_list
-        self.drop_idx_ = self._compute_drop_idx()
         self.feature_lengths_ = []
 
         for i in range(self.n_features_in_):
@@ -1322,44 +1308,8 @@ class OneHotEncoder:
 
             num_valid_cats = jnp.sum(valid_mask)
 
-            if self.drop_idx_[i] is not None:
-                num_valid_cats -= 1
-
             self.feature_lengths_.append(num_valid_cats)
         return self
-
-    def _compute_drop_idx(self):
-        """
-        Compute indices to drop for collinearity prevention
-
-        Implements different dropping strategies while maintaining privacy constraints
-
-        Returns:
-            List of indices to drop (None for no dropping)
-        """
-        drop_idx = []
-        for i, cats in enumerate(self.categories_):
-            valid_mask = cats != -1
-
-            if self.drop is None:
-                drop_idx.append(None)
-            elif self.drop == "first":
-                has_valid = jnp.any(valid_mask).item()  # 转为 Python bool
-                if has_valid:
-                    first_idx = jnp.where(valid_mask, size=1)[0][0].item()  # 转为 Python int
-                    drop_idx.append(first_idx)
-                else:
-                    drop_idx.append(None)
-            elif self.drop == "if_binary":
-                num_valid = jnp.sum(valid_mask).item()
-                if num_valid == 2:
-                    first_idx = jnp.where(valid_mask, size=1)[0][0].item()
-                    drop_idx.append(first_idx)
-                else:
-                    drop_idx.append(None)
-            else:
-                raise NotImplementedError("Drop type not supported")
-        return drop_idx
 
     def transform(self, X):
         """
@@ -1378,7 +1328,6 @@ class OneHotEncoder:
         for i in range(self.n_features_in_):
             X_col = X[:, i]
             cats = self.categories_[i]
-            drop_idx = self.drop_idx_[i]
 
             mask_cats = cats != -1
             is_valid = (X_col != -1) & jnp.any(
@@ -1387,9 +1336,6 @@ class OneHotEncoder:
 
             one_hot = (X_col[:, None] == cats) * mask_cats
             masked_one_hot = one_hot.astype(jnp.float64) * is_valid[:, None]
-
-            if drop_idx is not None and drop_idx < len(cats):
-                masked_one_hot = jnp.delete(masked_one_hot, drop_idx, axis=1)
 
             encoded_features.append(masked_one_hot)
 
@@ -1414,9 +1360,10 @@ class OneHotEncoder:
         """
         current_col = 0
         feature_parts = []
-        for _ in range(len(self.feature_lengths_)):
-            feature_parts.append(x[:, current_col: current_col + self.max_cat_])
-            current_col += self.max_cat_
+        for i in range(len(self.categories)):
+            length = len(self.categories[i])
+            feature_parts.append(x[:, current_col : current_col + length])
+            current_col += length
 
         inv_features = []
         for i in range(self.n_features_in_):
@@ -1424,20 +1371,7 @@ class OneHotEncoder:
             cats = self.categories_[i]
             valid_mask = cats != -1
             valid_cats = jnp.where(valid_mask, cats, 0)
-            drop_idx = self.drop_idx_[i]
-
-            if drop_idx is None:
-                indices = jnp.argmax(part, axis=1)
-            else:
-                k = drop_idx
-                left = part[:, :k]
-                right = part[:, k:]
-                zeros = jnp.zeros((part.shape[0], 1), dtype=part.dtype)
-                inserted_part = jnp.concatenate([left, zeros, right], axis=1)
-                sums = jnp.sum(inserted_part, axis=1)
-                mask = sums == 0
-                indices = jnp.where(mask, k, jnp.argmax(inserted_part, axis=1))
-
+            indices = jnp.argmax(part, axis=1)
             feature_values = valid_cats[indices]
             row_sums = jnp.sum(part, axis=1)
 

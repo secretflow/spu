@@ -840,9 +840,7 @@ class UnitTests(unittest.TestCase):
     def test_onehotEncoder(self):
         manual_categories = [[1, 1.1, 3.25], [2.0, 4.32, 6.10]]
 
-        sim = spsim.Simulator.simple(
-            3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM64
-        )
+        sim = spsim.Simulator.simple(3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM64)
 
         X = jnp.array([[1, 2.0], [3.25, 4.32], [1.1, 6.10]], dtype=jnp.float64)
         Y = jnp.array([[1, 2.1], [3.21, 4.32], [1.1, 6.10]], dtype=jnp.float64)
@@ -870,8 +868,12 @@ class UnitTests(unittest.TestCase):
         sk_inv_transformed = sk_inv_transformed.astype(np.float64)
         spu_inv_transformed = spu_inv_transformed.astype(np.float64)
 
-        np.testing.assert_allclose(sk_transformed, spu_transformed, rtol=1e-3, atol=1e-3)
-        np.testing.assert_allclose(sk_inv_transformed, spu_inv_transformed, rtol=1e-3, atol=1e-3)
+        np.testing.assert_allclose(
+            sk_transformed, spu_transformed, rtol=1e-3, atol=1e-3
+        )
+        np.testing.assert_allclose(
+            sk_inv_transformed, spu_inv_transformed, rtol=1e-3, atol=1e-3
+        )
 
 
 if __name__ == "__main__":
