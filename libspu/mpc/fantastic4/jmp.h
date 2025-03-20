@@ -1,4 +1,20 @@
+// Copyright 2025 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #pragma once
+
+// #define OPTIMIZED_F4
 
 #include "libspu/core/context.h"
 
@@ -102,10 +118,8 @@ namespace spu::mpc::fantastic4 {
       // 1- i'm prev/next party of receiver_prev_rank
       // 2- next next
       size_t offset_from_receiver_prev = OffsetRank(myrank, receiver_prev_rank, world_size);
-      // size_t offset_from_receiver = OffsetRank(myrank, receiver, world_size);
       size_t offset_from_outsider_prev = OffsetRank(myrank, (outsider + 4 - 1)%4 , world_size);
 
-      // printf("My rank = %zu, sender_rank = %zu, receiver_rank = %zu, receiver_prev = %zu, offset_from_recv_prev = %zu, offset_from_outsider_prev = %zu \n", myrank, sender, receiver, receiver_prev_rank, offset_from_receiver_prev, offset_from_outsider_prev);
       if(myrank != receiver){
         // Non-Interactive Random Masks Generation.
         std::vector<el_t> r(output.numel());
@@ -128,8 +142,6 @@ namespace spu::mpc::fantastic4 {
 
         // For sender,backup,outsider
         // the corresponding share is set to r
-
-
         pforeach(0, output.numel(), [&](int64_t idx) {
             _out[idx][offset_from_receiver_prev] ^= r[idx];
         }); 

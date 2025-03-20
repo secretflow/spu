@@ -86,7 +86,7 @@ def emul_SGDClassifier(mode: emulation.Mode.MULTIPROCESS, num=10):
         X, y, coef, sample_weight = generate_data()
         # Create the emulator with specified mode and bandwidth/latency settings
         emulator = emulation.Emulator(
-            emulation.CLUSTER_FANTASTIC4_4PC, mode, bandwidth=300, latency=20
+            emulation.CLUSTER_ABY3_3PC, mode, bandwidth=300, latency=20
         )
         emulator.up()
 

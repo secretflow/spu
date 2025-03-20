@@ -1,3 +1,17 @@
+// Copyright 2025 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "libspu/mpc/fantastic4/arithmetic.h"
 #include <future>
 #include "libspu/mpc/fantastic4/type.h"
@@ -10,18 +24,12 @@
 
 #include "libspu/mpc/fantastic4/jmp.h"
 
+#ifdef OPTIMIZED_F4
+#define OPTIMIZED_TRUNC
+#endif
+
 namespace spu::mpc::fantastic4 {
 
-namespace {
-  
-  static NdArrayRef wrap_mul_aa(SPUContext* ctx, const NdArrayRef& x,
-                              const NdArrayRef& y) {
-    SPU_ENFORCE(x.shape() == y.shape());
-    return UnwrapValue(mul_aa(ctx, WrapValue(x), WrapValue(y)));
-  }
-
-
-}
 
 NdArrayRef RandA::proc(KernelEvalContext* ctx, const Shape& shape) const {
   auto* prg_state = ctx->getState<PrgState>();
@@ -424,65 +432,132 @@ NdArrayRef MatMulAP::proc(KernelEvalContext*, const NdArrayRef& x,
 }
 
 NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
-                          const NdArrayRef& y) const {
+  const NdArrayRef& y) const {
 
   const auto field = x.eltype().as<Ring2k>()->field();
-   auto* comm = ctx->getState<Communicator>();
+  auto* comm = ctx->getState<Communicator>();
   auto rank = comm->getRank();
-  auto next_rank = (rank + 1) % 4;
-
+  auto* prg_state = ctx->getState<PrgState>();
+  const Type ty = makeType<RingTy>(field);
   auto M = x.shape()[0];
-  auto K = x.shape()[1];
+  // auto K = x.shape()[1];
   auto N = y.shape()[1];
-  return DISPATCH_ALL_FIELDS(field, [&]() {
-    using el_t = ring2k_t;
-    using shr_t = std::array<el_t, 3>;
 
-    NdArrayRef out(makeType<AShrTy>(field), {M, N});
-    NdArrayView<shr_t> _x(x);
-    NdArrayView<shr_t> _y(y);
-    NdArrayView<shr_t> _out(out);
+  Shape mat_shape = {M, N};
+  // printf("M = %lu, K = %lu, N = %lu ", static_cast<int64_t>(M), static_cast<int64_t>(K), static_cast<int64_t>(N));
 
-    pforeach(0, M, [&](int64_t row) {
-      for(int64_t col = 0; col < N ; col++ ){
-        _out[row * N + col][0] = 0;
-        _out[row * N + col][1] = 0;
-        _out[row * N + col][2] = 0;
-      }
-    });
+  NdArrayRef out(makeType<AShrTy>(field), mat_shape);
 
-    std::array<std::vector<el_t>, 5> a;
-    for (auto& vec : a) {
-        vec = std::vector<el_t>(out.numel());
-    }
-    pforeach(0, out.numel(), [&](int64_t idx) {
-        for(auto i =0; i<5;i++){
-          a[i][idx] = 0;
-        }
-    });
+  auto x0 = getFirstShare(x);
+  auto x1 = getSecondShare(x);
+  auto x2 = getThirdShare(x);
 
-    pforeach(0, M, [&](int64_t i) {
-        for(int64_t j = 0; j < N; j++) {
-          for(int64_t k = 0; k < K; k++) {
-              // xi*yi + xi*yj + xj*yi
-              a[rank][i * N + j] += (_x[i * K + k][0] + _x[i * K + k][1]) * _y[k * N + j][0] + _x[i * K + k][0] * _y[k * N + j][1]; 
-              // xj*yj + xj*yg + xg*yj
-              a[next_rank][i * N + j] += (_x[i * K + k][1] + _x[i * K + k][2]) * _y[k * N + j][1] + _x[i * K + k][1] * _y[k * N + j][2];
-              // xi*yg + xg*yi 
-              a[4][i * N + j] += _x[i * K + k][0] * _y[k * N + j][2] + _x[i * K + k][2] * _y[k * N + j][0]; 
-          }
-        }                
-    });
+  auto y0 = getFirstShare(y);
+  auto y1 = getSecondShare(y);
+  auto y2 = getThirdShare(y);
 
-    JointInputArith<el_t>(ctx, a[1], out, 0, 1, 3, 2);
-    JointInputArith<el_t>(ctx, a[2], out, 1, 2, 0, 3);
-    JointInputArith<el_t>(ctx, a[3], out, 2, 3, 1, 0);
-    JointInputArith<el_t>(ctx, a[0], out, 3, 0, 2, 1);
-    JointInputArith<el_t>(ctx, a[4], out, 0, 2, 3, 1);
-    JointInputArith<el_t>(ctx, a[4], out, 1, 3, 2, 0);
+  auto o0 = getFirstShare(out);
+  auto o1 = getSecondShare(out);
+  auto o2 = getThirdShare(out);
 
-    return out;
-  });
+  NdArrayRef r_self(ty, mat_shape);
+  NdArrayRef r_next(ty, mat_shape);
+  NdArrayRef r_next_next(ty, mat_shape);
+
+  NdArrayRef r_1(ty, mat_shape);
+  NdArrayRef r_2(ty, mat_shape);
+  // using shr_t = std::array<el_t, 2>;
+  auto fr = std::async([&] { prg_state->fillPrssTuple(r_self.data<std::uint8_t>(), r_next.data<std::uint8_t>(), r_next_next.data<std::uint8_t>() , mat_shape.numel() * ty.size(),
+          PrgState::GenPrssCtrl::All);});
+
+  // a0 = (x0 + x1) * y0 + x0 * y1
+  auto t0 = std::async(std::launch::async, ring_mmul, x0, y1);
+  
+  auto t10 = std::async(std::launch::async, ring_mmul, x0, y0);
+  auto t11 = std::async(std::launch::async, ring_mmul, x1, y0);
+
+   // X must be the lhs
+  auto t2 = std::async(std::launch::async, ring_mmul, x1, y2);
+  auto t30 = std::async(std::launch::async, ring_mmul, x1, y1);
+  auto t31 = std::async(std::launch::async, ring_mmul, x2, y1);
+  // c = x0 * y2 + x2 * y0
+  auto c0 = std::async(std::launch::async, ring_mmul, x0, y2);
+  auto c1 = ring_mmul(x2, y0);
+
+  
+
+  auto a0 = ring_sum( {t0.get(), t10.get(), t11.get()});
+  auto a1 = ring_sum({ t2.get(), t30.get(), t31.get()});
+  auto c = ring_add(c0.get(), c1);
+
+  fr.get();
+  
+
+  auto a0_sub_r1 = ring_sub(a0, r_next);
+  auto a1_sub_r2 = ring_sub(a1, r_next_next);
+  auto a2_sub_r3 = comm->rotate(a1_sub_r2, kBindName());
+
+  auto f0 = std::async([&] { ring_assign(o0, r_self);});
+  auto f1 = std::async([&] { ring_assign(o1, r_next);});
+  ring_assign(o2, r_next_next);
+  f0.get();
+  f1.get();
+
+
+  ring_add_(o0, a0_sub_r1);
+  ring_add_(o1, a1_sub_r2);
+  ring_add_(o2, a2_sub_r3);
+
+  if ( rank == 0 ) {
+
+  prg_state->fillPrssTuple(static_cast<uint8_t*>(nullptr), r_1.data<std::uint8_t>() , static_cast<uint8_t*>(nullptr),  mat_shape.numel() * ty.size(), PrgState::GenPrssCtrl::Second);
+  ring_add_(o1, r_1);
+
+  prg_state->fillPrssTuple(static_cast<uint8_t*>(nullptr), static_cast<uint8_t*>(nullptr), r_2.data<std::uint8_t>() , mat_shape.numel() * ty.size(),
+          PrgState::GenPrssCtrl::Third);
+  auto c02_sub_r2 = ring_sub(c, r_2);
+  comm->sendAsync(3, c02_sub_r2, "0-3 1");
+  ring_add_(o0, c02_sub_r2);
+  ring_add_(o2, r_2);
+  }
+  else if ( rank == 1 ) {
+  
+  prg_state->fillPrssTuple(static_cast<uint8_t*>(nullptr), r_2.data<std::uint8_t>() , static_cast<uint8_t*>(nullptr),  mat_shape.numel() * ty.size(), PrgState::GenPrssCtrl::Second);
+  ring_add_(o1, r_2);
+
+  
+  prg_state->fillPrssTuple(r_1.data<std::uint8_t>() , static_cast<uint8_t*>(nullptr),  static_cast<uint8_t*>(nullptr),  mat_shape.numel() * ty.size(), PrgState::GenPrssCtrl::First);
+  auto c13_sub_r1 = ring_sub(c, r_1);
+  ring_add_(o0, r_1);
+  ring_add_(o2, c13_sub_r1);
+
+  }
+  else if ( rank == 2 ) {
+
+  prg_state->fillPrssTuple(r_2.data<std::uint8_t>() , static_cast<uint8_t*>(nullptr),  static_cast<uint8_t*>(nullptr),  mat_shape.numel() * ty.size(), PrgState::GenPrssCtrl::First);
+  auto c02_sub_r2 = ring_sub(c, r_2);    
+  ring_add_(o0, r_2);
+  ring_add_(o2, c02_sub_r2);
+
+  auto c13_sub_r1 = comm->recv(3, c.eltype(),"3-2 1");
+  c13_sub_r1 = c13_sub_r1.reshape(mat_shape);
+  ring_add_(o1, c13_sub_r1);
+  }
+  else if ( rank == 3 ) {
+ 
+  auto c02_sub_r2 = comm->recv(0, c.eltype(), "0-3 1");
+  c02_sub_r2 = c02_sub_r2.reshape(mat_shape);
+  ring_add_(o1, c02_sub_r2);
+
+  prg_state->fillPrssTuple(static_cast<uint8_t*>(nullptr),  static_cast<uint8_t*>(nullptr), r_1.data<std::uint8_t>() , mat_shape.numel() * ty.size(), PrgState::GenPrssCtrl::Third);
+  auto c13_sub_r1 = ring_sub(c, r_1);
+  comm->sendAsync(2, c13_sub_r1, "3-2 1");
+  ring_add_(o0, c13_sub_r1);
+  ring_add_(o2, r_1);
+  }
+
+return out;
+
 }
 
 NdArrayRef LShiftA::proc(KernelEvalContext*, const NdArrayRef& in,
@@ -508,6 +583,62 @@ NdArrayRef LShiftA::proc(KernelEvalContext*, const NdArrayRef& in,
     return out;
   });
 }
+
+NdArrayRef Opt_Mul(KernelEvalContext* ctx, const NdArrayRef& lhs, const NdArrayRef& rhs) {
+  const auto field = lhs.eltype().as<Ring2k>()->field();
+  auto* comm = ctx->getState<Communicator>();
+  auto rank = comm->getRank();
+  auto next_rank = (rank + 1) % 4;
+
+  return DISPATCH_ALL_FIELDS(field, [&]() {
+  using el_t = ring2k_t;
+  using shr_t = std::array<el_t, 3>;
+
+  NdArrayView<shr_t> _lhs(lhs);
+  NdArrayView<shr_t> _rhs(rhs);
+  NdArrayRef out(makeType<AShrTy>(field), lhs.shape());
+  NdArrayView<shr_t> _out(out);
+  pforeach(0, lhs.numel(), [&](int64_t idx) {
+    for(auto i = 0; i < 3 ; i++ ){
+    _out[idx][i] = 0;
+    }
+  });
+
+  std::array<std::vector<el_t>, 5> a;
+
+  for (auto& vec : a) {
+    vec = std::vector<el_t>(lhs.numel());
+  }
+
+  pforeach(0, lhs.numel(), [&](int64_t idx) {
+    for(auto i =0; i<5;i++){
+      a[i][idx] = 0;
+    }
+  });
+
+  pforeach(0, lhs.numel(), [&](int64_t idx) {
+    a[rank][idx] = (_lhs[idx][0] + _lhs[idx][1]) * _rhs[idx][0] + _lhs[idx][0] * _rhs[idx][1]; // xi*yi + xi*yj + xj*yi
+    a[next_rank][idx] = (_lhs[idx][1] + _lhs[idx][2]) * _rhs[idx][1] + _lhs[idx][1] * _rhs[idx][2];  // xj*yj + xj*yg + xg*yj
+    a[4][idx] = _lhs[idx][0] * _rhs[idx][2] + _lhs[idx][2] * _rhs[idx][0];                    // xi*yg + xg*yi
+  });
+
+  JointInputArith<el_t>(ctx, a[2], out, 2, 1, 0, 3);
+  JointInputArith<el_t>(ctx, a[0], out, 3, 0, 1, 2);
+  JointInputArith<el_t>(ctx, a[4], out, 0, 2, 3, 1);
+  JointInputArith<el_t>(ctx, a[4], out, 1, 3, 0, 2);
+
+  return out;
+  });
+}
+
+#ifndef OPTIMIZED_TRUNC
+static NdArrayRef wrap_mul_aa(SPUContext* ctx, const NdArrayRef& x,
+                              const NdArrayRef& y) {
+    SPU_ENFORCE(x.shape() == y.shape());
+    return UnwrapValue(mul_aa(ctx, WrapValue(x), WrapValue(y)));
+}
+
+#endif
 
 NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t bits,
                   SignType sign) const {
@@ -541,8 +672,8 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
     NdArrayRef sc_shr(makeType<AShrTy>(field), in.shape());
     NdArrayView<shr_t> _sc_shr(sc_shr);
 
-    NdArrayRef overflow(makeType<AShrTy>(field), in.shape());
-    NdArrayView<shr_t> _overflow(overflow);
+    // NdArrayRef overflow(makeType<AShrTy>(field), in.shape());
+    // NdArrayView<shr_t> _overflow(overflow);
 
     pforeach(0, out.numel(), [&](int64_t idx) {
           _out[idx][0] = 0;
@@ -552,6 +683,7 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
           _rb_shr[idx][0] = 0;
           _rb_shr[idx][1] = 0;
           _rb_shr[idx][2] = 0;
+
           _rc_shr[idx][0] = 0;
           _rc_shr[idx][1] = 0;
           _rc_shr[idx][2] = 0;
@@ -559,6 +691,7 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
           _sb_shr[idx][0] = 0;
           _sb_shr[idx][1] = 0;
           _sb_shr[idx][2] = 0;
+
           _sc_shr[idx][0] = 0;
           _sc_shr[idx][1] = 0;
           _sc_shr[idx][2] = 0;
@@ -573,29 +706,30 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
         std::vector<el_t> r1(out.numel());
         std::vector<el_t> r2(out.numel());
 
-        prg_state->fillPrssTuple<el_t>(nullptr, r1.data(), nullptr , r1.size(),
-                                PrgState::GenPrssCtrl::Second);
+        auto fr = std::async([&] { prg_state->fillPrssTuple<el_t>(nullptr, r1.data(), nullptr , r1.size(),
+                                PrgState::GenPrssCtrl::Second); } );
         prg_state->fillPrssTuple<el_t>(nullptr, nullptr, r2.data() ,r2.size(),
                                 PrgState::GenPrssCtrl::Third);
+        fr.get();
 
-        std::vector<el_t> r(out.numel());
+        // std::vector<el_t> r(out.numel());
         std::vector<el_t> rb(out.numel());
         std::vector<el_t> rc(out.numel());
         
         pforeach(0, out.numel(), [&](int64_t idx) {
           // r = r_{k-1}......r_{0}
-          r[idx] = r1[idx] + r2[idx];
+          auto r = r1[idx] + r2[idx];
           // rb = r >> k-1
-          rb[idx] = r[idx] >> (k-1);
+          rb[idx] = r >> (k-1);
           // rc = r_{k-2}.....r_{m}
-          rc[idx] = (r[idx] << 1) >> (bits + 1);
+          rc[idx] = (r << 1) >> (bits + 1);
         });
 
         // -------------------------------------
         // Step 2: Generate the share of rb, rc
         // -------------------------------------
-        JointInputArith(ctx, rb, rb_shr, 0, 1, 3, 2);
-        JointInputArith(ctx, rc, rc_shr, 0, 1, 3, 2);
+        JointInputArith(ctx, rb, rb_shr, 0, 1, 2, 3);
+        JointInputArith(ctx, rc, rc_shr, 1, 0, 3, 2);
 
         // -------------------------------------
         // Step 3: compute [x] + [r]
@@ -618,21 +752,27 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
         std::vector<el_t> sb(out.numel());
         std::vector<el_t> sc(out.numel());
         JointInputArith(ctx, sb, sb_shr, 2, 3, 0, 1);
-        JointInputArith(ctx, sc, sc_shr, 2, 3, 0, 1);
+        JointInputArith(ctx, sc, sc_shr, 3, 2, 1, 0);
 
         // -------------------------------------
         // Step 6: compute sb = s{k-1} and sc = s{k-2}.....s{m}
         // -------------------------------------
-        auto sb_mul_rb = wrap_mul_aa(ctx->sctx(), sb_shr, rb_shr);
+        
+        #ifndef OPTIMIZED_TRUNC
+        auto sb_mul_rb = wrap_mul_aa(ctx->sctx(), rb_shr, sb_shr);
+        #else
+        auto sb_mul_rb = Opt_Mul(ctx, rb_shr, sb_shr);
+        #endif
+
         NdArrayView<shr_t> _sb_mul_rb(sb_mul_rb);
         pforeach(0, out.numel(), [&](int64_t idx) {
-          _overflow[idx][0] = _rb_shr[idx][0] + _sb_shr[idx][0] - 2*_sb_mul_rb[idx][0];
-          _overflow[idx][1] = _rb_shr[idx][1] + _sb_shr[idx][1] - 2*_sb_mul_rb[idx][1];
-          _overflow[idx][2] = _rb_shr[idx][2] + _sb_shr[idx][2] - 2*_sb_mul_rb[idx][2];
+          auto overflow0 = _rb_shr[idx][0] + _sb_shr[idx][0] - 2*_sb_mul_rb[idx][0];
+          auto overflow1 = _rb_shr[idx][1] + _sb_shr[idx][1] - 2*_sb_mul_rb[idx][1];
+          auto overflow2 = _rb_shr[idx][2] + _sb_shr[idx][2] - 2*_sb_mul_rb[idx][2];
 
-          _out[idx][0] = _sc_shr[idx][0] - _rc_shr[idx][0] + (_overflow[idx][0] << (k - bits - 1));
-          _out[idx][1] = _sc_shr[idx][1] - _rc_shr[idx][1] + (_overflow[idx][1] << (k - bits - 1));
-          _out[idx][2] = _sc_shr[idx][2] - _rc_shr[idx][2] + (_overflow[idx][2] << (k - bits - 1));
+          _out[idx][0] = _sc_shr[idx][0] - _rc_shr[idx][0] + (overflow0 << (k - bits - 1));
+          _out[idx][1] = _sc_shr[idx][1] - _rc_shr[idx][1] + (overflow1 << (k - bits - 1));
+          _out[idx][2] = _sc_shr[idx][2] - _rc_shr[idx][2] + (overflow2 << (k - bits - 1));
 
         });
     }
@@ -644,29 +784,30 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
         std::vector<el_t> r1(out.numel());
         std::vector<el_t> r2(out.numel());
         // std::vector<el_t> r3(output.numel());
-        prg_state->fillPrssTuple<el_t>(r1.data(), nullptr, nullptr , r1.size(),
-                                PrgState::GenPrssCtrl::First);
+        auto fr = std::async([&] {prg_state->fillPrssTuple<el_t>(r1.data(), nullptr, nullptr , r1.size(),
+                                PrgState::GenPrssCtrl::First);});
         prg_state->fillPrssTuple<el_t>(nullptr, r2.data(), nullptr, r2.size(),
                                 PrgState::GenPrssCtrl::Second);
+        fr.get();
 
-        std::vector<el_t> r(out.numel());
+        // std::vector<el_t> r(out.numel());
         std::vector<el_t> rb(out.numel());
         std::vector<el_t> rc(out.numel());
         
         pforeach(0, out.numel(), [&](int64_t idx) {
           // r = r_{k-1}......r_{0}
-          r[idx] = r1[idx] + r2[idx];
+          auto r = r1[idx] + r2[idx];
           // rb = r >> k-1
-          rb[idx] = r[idx] >> (k-1);
+          rb[idx] = r >> (k-1);
           // rc = r_{k-2}.....r_{m}
-          rc[idx] = (r[idx] << 1) >> (bits + 1);
+          rc[idx] = (r << 1) >> (bits + 1);
         });
 
         // -------------------------------------
         // Step 2: Generate the share of rb, rc
         // -------------------------------------
-        JointInputArith(ctx, rb, rb_shr, 0, 1, 3, 2);
-        JointInputArith(ctx, rc, rc_shr, 0, 1, 3, 2);
+        JointInputArith(ctx, rb, rb_shr, 0, 1, 2, 3);
+        JointInputArith(ctx, rc, rc_shr, 1, 0, 3, 2);
 
         // -------------------------------------
         // Step 3: compute [x] + [r]
@@ -693,21 +834,44 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
         std::vector<el_t> sb(out.numel());
         std::vector<el_t> sc(out.numel());
         JointInputArith(ctx, sb, sb_shr, 2, 3, 0, 1);
-        JointInputArith(ctx, sc, sc_shr, 2, 3, 0, 1);
+        JointInputArith(ctx, sc, sc_shr, 3, 2, 1, 0);
 
         // -------------------------------------
         // Step 6: compute sb = s{k-1} and sc = s{k-2}.....s{m}
         // -------------------------------------
-        auto sb_mul_rb = wrap_mul_aa(ctx->sctx(), sb_shr, rb_shr);
+
+        // Above we let:
+        //    P0 sends P2 rb - r1
+        //    P2 sends P0 sb - r3
+        // As the result:
+        //    rb_shr = (0       ,- r1, rb - r1, 0)
+        //    sb_shr = (sb - r3 ,  0,    0    , r3) 
+        // Recall that in 4PC MulAA:
+        //    pforeach(0, lhs.numel(), [&](int64_t idx) {
+        //      a[rank][idx] = (_lhs[idx][0] + _lhs[idx][1]) * _rhs[idx][0] + _lhs[idx][0] * _rhs[idx][1]; // xi*yi + xi*yj + xj*yi
+        //      a[next_rank][idx] = (_lhs[idx][1] + _lhs[idx][2]) * _rhs[idx][1] + _lhs[idx][1] * _rhs[idx][2];  // xj*yj + xj*yg + xg*yj
+        //      a[4][idx] = _lhs[idx][0] * _rhs[idx][2] + _lhs[idx][2] * _rhs[idx][0];                    // xi*yg + xg*yi
+        //    });
+        // Here we have:
+        //    a[3] = 0
+        //    a[1] = 0
+        // For optimization, we do not send them in Opt_Mul.
+
+        #ifndef OPTIMIZED_TRUNC
+        auto sb_mul_rb = wrap_mul_aa(ctx->sctx(), rb_shr, sb_shr);
+        #else
+        auto sb_mul_rb = Opt_Mul(ctx, rb_shr, sb_shr);
+        #endif
+
         NdArrayView<shr_t> _sb_mul_rb(sb_mul_rb);
         pforeach(0, out.numel(), [&](int64_t idx) {
-          _overflow[idx][0] = _rb_shr[idx][0] + _sb_shr[idx][0] - 2*_sb_mul_rb[idx][0];
-          _overflow[idx][1] = _rb_shr[idx][1] + _sb_shr[idx][1] - 2*_sb_mul_rb[idx][1];
-          _overflow[idx][2] = _rb_shr[idx][2] + _sb_shr[idx][2] - 2*_sb_mul_rb[idx][2];
-          
-          _out[idx][0] = _sc_shr[idx][0] - _rc_shr[idx][0] + (_overflow[idx][0] << (k - bits - 1));
-          _out[idx][1] = _sc_shr[idx][1] - _rc_shr[idx][1] + (_overflow[idx][1] << (k - bits - 1));
-          _out[idx][2] = _sc_shr[idx][2] - _rc_shr[idx][2] + (_overflow[idx][2] << (k - bits - 1));
+          auto overflow0 = _rb_shr[idx][0] + _sb_shr[idx][0] - 2*_sb_mul_rb[idx][0];
+          auto overflow1 = _rb_shr[idx][1] + _sb_shr[idx][1] - 2*_sb_mul_rb[idx][1];
+          auto overflow2 = _rb_shr[idx][2] + _sb_shr[idx][2] - 2*_sb_mul_rb[idx][2];
+
+          _out[idx][0] = _sc_shr[idx][0] - _rc_shr[idx][0] + (overflow0 << (k - bits - 1));
+          _out[idx][1] = _sc_shr[idx][1] - _rc_shr[idx][1] + (overflow1 << (k - bits - 1));
+          _out[idx][2] = _sc_shr[idx][2] - _rc_shr[idx][2] + (overflow2 << (k - bits - 1));
           
         });  
     }
@@ -724,8 +888,8 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
         // -------------------------------------
         // Step 2: Generate the share of rb, rc
         // -------------------------------------
-        JointInputArith(ctx, rb, rb_shr, 0, 1, 3, 2);
-        JointInputArith(ctx, rc, rc_shr, 0, 1, 3, 2);
+        JointInputArith(ctx, rb, rb_shr, 0, 1, 2, 3);
+        JointInputArith(ctx, rc, rc_shr, 1, 0, 3, 2);
 
         // -------------------------------------
         // Step 3: compute [x] + [r]
@@ -762,21 +926,29 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
           sc[idx] = (s[idx] << 1) >> (bits + 1);
         });
         JointInputArith(ctx, sb, sb_shr, 2, 3, 0, 1);
-        JointInputArith(ctx, sc, sc_shr, 2, 3, 0, 1);
+        JointInputArith(ctx, sc, sc_shr, 3, 2, 1, 0);
 
         // -------------------------------------
         // Step 6: compute sb = s{k-1} and sc = s{k-2}.....s{m}
+
         // -------------------------------------
-        auto sb_mul_rb = wrap_mul_aa(ctx->sctx(), sb_shr, rb_shr);
+
+        #ifndef OPTIMIZED_TRUNC
+        auto sb_mul_rb = wrap_mul_aa(ctx->sctx(), rb_shr, sb_shr);
+        #else
+        auto sb_mul_rb = Opt_Mul(ctx, rb_shr, sb_shr);
+        #endif
+
+        // auto sb_mul_rb = wrap_mul_aa(ctx->sctx(), sb_shr, rb_shr);
         NdArrayView<shr_t> _sb_mul_rb(sb_mul_rb);
         pforeach(0, out.numel(), [&](int64_t idx) {
-          _overflow[idx][0] = _rb_shr[idx][0] + _sb_shr[idx][0] - 2*_sb_mul_rb[idx][0];
-          _overflow[idx][1] = _rb_shr[idx][1] + _sb_shr[idx][1] - 2*_sb_mul_rb[idx][1];
-          _overflow[idx][2] = _rb_shr[idx][2] + _sb_shr[idx][2] - 2*_sb_mul_rb[idx][2];
+          auto overflow0 = _rb_shr[idx][0] + _sb_shr[idx][0] - 2*_sb_mul_rb[idx][0];
+          auto overflow1 = _rb_shr[idx][1] + _sb_shr[idx][1] - 2*_sb_mul_rb[idx][1];
+          auto overflow2 = _rb_shr[idx][2] + _sb_shr[idx][2] - 2*_sb_mul_rb[idx][2];
 
-          _out[idx][0] = _sc_shr[idx][0] - _rc_shr[idx][0] + (_overflow[idx][0] << (k - bits - 1));
-          _out[idx][1] = _sc_shr[idx][1] - _rc_shr[idx][1] + (_overflow[idx][1] << (k - bits - 1));
-          _out[idx][2] = _sc_shr[idx][2] - _rc_shr[idx][2] + (_overflow[idx][2] << (k - bits - 1));
+          _out[idx][0] = _sc_shr[idx][0] - _rc_shr[idx][0] + (overflow0 << (k - bits - 1));
+          _out[idx][1] = _sc_shr[idx][1] - _rc_shr[idx][1] + (overflow1 << (k - bits - 1));
+          _out[idx][2] = _sc_shr[idx][2] - _rc_shr[idx][2] + (overflow2 << (k - bits - 1));
         });                 
     }
 
@@ -792,8 +964,8 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
         // -------------------------------------
         // Step 2: Generate the share of rb, rc
         // -------------------------------------
-        JointInputArith(ctx, rb, rb_shr, 0, 1, 3, 2);
-        JointInputArith(ctx, rc, rc_shr, 0, 1, 3, 2);
+        JointInputArith(ctx, rb, rb_shr, 0, 1, 2, 3);
+        JointInputArith(ctx, rc, rc_shr, 1, 0, 3, 2);
 
         // -------------------------------------
         // Step 3: compute [x] + [r]
@@ -826,21 +998,27 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
           sc[idx] = (s[idx] << 1) >> (bits + 1);
         });
         JointInputArith(ctx, sb, sb_shr, 2, 3, 0, 1);
-        JointInputArith(ctx, sc, sc_shr, 2, 3, 0, 1);
+        JointInputArith(ctx, sc, sc_shr, 3, 2, 1, 0);
 
         // -------------------------------------
         // Step 6: compute sb = s{k-1} and sc = s{k-2}.....s{m}
-        // -------------------------------------
-        auto sb_mul_rb = wrap_mul_aa(ctx->sctx(), sb_shr, rb_shr);
+        // -------------------------------------3
+
+        #ifndef OPTIMIZED_TRUNC
+        auto sb_mul_rb = wrap_mul_aa(ctx->sctx(), rb_shr, sb_shr);
+        #else
+        auto sb_mul_rb = Opt_Mul(ctx, rb_shr, sb_shr);
+        #endif
+
         NdArrayView<shr_t> _sb_mul_rb(sb_mul_rb);
         pforeach(0, out.numel(), [&](int64_t idx) {
-          _overflow[idx][0] = _rb_shr[idx][0] + _sb_shr[idx][0] - 2*_sb_mul_rb[idx][0];
-          _overflow[idx][1] = _rb_shr[idx][1] + _sb_shr[idx][1] - 2*_sb_mul_rb[idx][1];
-          _overflow[idx][2] = _rb_shr[idx][2] + _sb_shr[idx][2] - 2*_sb_mul_rb[idx][2];
+          auto overflow0 = _rb_shr[idx][0] + _sb_shr[idx][0] - 2*_sb_mul_rb[idx][0];
+          auto overflow1 = _rb_shr[idx][1] + _sb_shr[idx][1] - 2*_sb_mul_rb[idx][1];
+          auto overflow2 = _rb_shr[idx][2] + _sb_shr[idx][2] - 2*_sb_mul_rb[idx][2];
 
-          _out[idx][0] = _sc_shr[idx][0] - _rc_shr[idx][0] + (_overflow[idx][0] << (k - bits - 1));
-          _out[idx][1] = _sc_shr[idx][1] - _rc_shr[idx][1] + (_overflow[idx][1] << (k - bits - 1));
-          _out[idx][2] = _sc_shr[idx][2] - _rc_shr[idx][2] + (_overflow[idx][2] << (k - bits - 1));
+          _out[idx][0] = _sc_shr[idx][0] - _rc_shr[idx][0] + (overflow0 << (k - bits - 1));
+          _out[idx][1] = _sc_shr[idx][1] - _rc_shr[idx][1] + (overflow1 << (k - bits - 1));
+          _out[idx][2] = _sc_shr[idx][2] - _rc_shr[idx][2] + (overflow2 << (k - bits - 1));
         });                                    
     }
     return out;

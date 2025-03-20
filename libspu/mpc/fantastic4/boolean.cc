@@ -1,7 +1,19 @@
+// Copyright 2025 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "libspu/mpc/fantastic4/boolean.h"
-
 #include <algorithm>
-
 #include "libspu/core/bit_utils.h"
 #include "libspu/core/parallel_utils.h"
 #include "libspu/mpc/fantastic4/type.h"
@@ -267,31 +279,23 @@ NdArrayRef AndBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
         using out_shr_t = std::array<out_el_t, 3>;
 
         NdArrayView<out_shr_t> _out(out);
-        pforeach(0, lhs.numel(), [&](int64_t idx) {
-            for(auto i = 0; i < 3 ; i++ ){
-            _out[idx][i] = 0U;
-            }
-        });
-
+        
         std::array<std::vector<out_el_t>, 5> a;
 
         for (auto& vec : a) {
             vec = std::vector<out_el_t>(lhs.numel());
         }
-        pforeach(0, lhs.numel(), [&](int64_t idx) {
-            for(auto i =0; i<5;i++){
-            a[i][idx] = 0U;
-            }
-        });
 
         pforeach(0, lhs.numel(), [&](int64_t idx) {
-            a[rank][idx] = (_lhs[idx][0] & _rhs[idx][0]) ^ (_lhs[idx][1] & _rhs[idx][0] ) ^ (_lhs[idx][0] & _rhs[idx][1]); // xi&yi ^ xi&yj ^ xj&yi
-            a[next_rank][idx] = (_lhs[idx][1]  & _rhs[idx][1] ) ^ (_lhs[idx][2] & _rhs[idx][1] ) ^ (_lhs[idx][1] & _rhs[idx][2]);  // xj&yj ^ xj&yg ^ xg&yj
-            a[4][idx] = (_lhs[idx][0] & _rhs[idx][2]) ^ (_lhs[idx][2] & _rhs[idx][0]);                    // xi&yg ^ xg&yi
+          _out[idx][0] = 0U;
+          _out[idx][1] = 0U;
+          _out[idx][2] = 0U;
+
+          a[rank][idx] = (_lhs[idx][0] & _rhs[idx][0]) ^ (_lhs[idx][1] & _rhs[idx][0] ) ^ (_lhs[idx][0] & _rhs[idx][1]); // xi&yi ^ xi&yj ^ xj&yi
+          a[next_rank][idx] = (_lhs[idx][1]  & _rhs[idx][1] ) ^ (_lhs[idx][2] & _rhs[idx][1] ) ^ (_lhs[idx][1] & _rhs[idx][2]);  // xj&yj ^ xj&yg ^ xg&yj
+          a[4][idx] = (_lhs[idx][0] & _rhs[idx][2]) ^ (_lhs[idx][2] & _rhs[idx][0]);                    // xi&yg ^ xg&yi
         });
 
-        // JointInputBool<out_el_t>(ctx, a[1], out, 0, 1, 3, 2);
-        // JointInputBool<out_el_t>(ctx, a[2], out, 1, 2, 0, 3);
         JointInputBool<out_el_t>(ctx, a[1], out, 0, 1, 3, 2);
         JointInputBool<out_el_t>(ctx, a[2], out, 1, 2, 0, 3);
         JointInputBool<out_el_t>(ctx, a[3], out, 2, 3, 1, 0);

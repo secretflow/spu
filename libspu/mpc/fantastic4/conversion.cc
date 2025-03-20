@@ -1,7 +1,19 @@
+// Copyright 2025 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "libspu/mpc/fantastic4/conversion.h"
-
 #include <functional>
-
 #include "yacl/utils/platform_utils.h"
 
 #include "libspu/core/parallel_utils.h"
@@ -17,6 +29,10 @@
 
 #include "libspu/mpc/fantastic4/jmp.h"
 
+#ifdef OPTIMIZED_F4
+#define OPTIMIZED_CONVERSION
+#endif
+
 namespace spu::mpc::fantastic4 {
 
 static NdArrayRef wrap_add_bb(SPUContext* ctx, const NdArrayRef& x,
@@ -25,6 +41,8 @@ static NdArrayRef wrap_add_bb(SPUContext* ctx, const NdArrayRef& x,
   return UnwrapValue(add_bb(ctx, WrapValue(x), WrapValue(y)));
 }
 
+
+
 static NdArrayRef wrap_and_bb(SPUContext* ctx, const NdArrayRef& x,
                               const NdArrayRef& y) {
   SPU_ENFORCE(x.shape() == y.shape());
@@ -32,7 +50,7 @@ static NdArrayRef wrap_and_bb(SPUContext* ctx, const NdArrayRef& x,
 }
 
 
-#ifndef USE_OPTIMIZED
+#ifndef OPTIMIZED_CONVERSION
 static std::array<NdArrayRef, 2> wrap_pfa_bb(SPUContext* ctx, const NdArrayRef& x,
   const NdArrayRef& y, const NdArrayRef& cin) {
   SPU_ENFORCE(x.shape() == y.shape());
@@ -241,7 +259,13 @@ NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 #endif
 
 
-#ifndef USE_OPTIMIZED
+#ifndef OPTIMIZED_CONVERSION
+
+static NdArrayRef wrap_mul_aa(SPUContext* ctx, const NdArrayRef& x,
+  const NdArrayRef& y) {
+  SPU_ENFORCE(x.shape() == y.shape());
+  return UnwrapValue(mul_aa(ctx, WrapValue(x), WrapValue(y)));
+}
 
 static NdArrayRef wrap_a2b(SPUContext* ctx, const NdArrayRef& x) {
   
@@ -293,65 +317,135 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
     DISPATCH_ALL_FIELDS(field, [&]() {
       using ashr_el_t = ring2k_t;
       using ashr_t = std::array<ashr_el_t, 3>;
-
-      // First Generate random arithmetic share
-      std::vector<ashr_el_t> r0(numel);
-      std::vector<ashr_el_t> r1(numel);
-      std::vector<ashr_el_t> r2(numel);
-
-      prg_state->fillPrssTuple<ashr_el_t>(r0.data(), nullptr, nullptr, r0.size(),
-                                PrgState::GenPrssCtrl::First);
-      prg_state->fillPrssTuple<ashr_el_t>(nullptr, r1.data(), nullptr, r1.size(),
-                                PrgState::GenPrssCtrl::Second); 
-      prg_state->fillPrssTuple<ashr_el_t>(nullptr, nullptr, r2.data(), r2.size(),
-                                PrgState::GenPrssCtrl::Third);   
-
-      NdArrayView<ashr_t> _rand_ashr(rand_ashr);
-      NdArrayView<ashr_t> _x(x);
-
-      pforeach(0, numel, [&](int64_t idx) {
-        _rand_ashr[idx][0] = r0[idx] ;
-        _rand_ashr[idx][1] = r1[idx] ;
-        _rand_ashr[idx][2] = r2[idx] ;
-
-        // Expand the input to ensure the input bit-length = random value bit-length when input into binary adder
-        const auto& v = _in[idx];
-        _x[idx][0] = v[0];
-        _x[idx][1] = v[1];
-        _x[idx][2] = v[2];
-      });
-
-      // Compute Boolean shares of r (edabits)
-      rand_bshr = wrap_a2b(ctx->sctx(), rand_ashr);
-
-      // Compute Boolean shares of x + r
-      auto x_plus_r_shr = wrap_add_bb(ctx->sctx(), x, rand_bshr);
-      NdArrayView<ashr_t> _x_plus_r_shr(x_plus_r_shr);
-
-      // Reveal x + r to all parties
-      std::vector<ashr_el_t> third_shr(numel);
-      std::vector<ashr_el_t> x_plus_r_pub(numel);
-      
-      pforeach(0, numel, [&](int64_t idx) { third_shr[idx] = _x_plus_r_shr[idx][2]; });
-      // Pass the third share to previous party
-      auto fourth_shr = comm->rotate<ashr_el_t>(third_shr, "b2a reveal x+r");  // comm => 1, k
-
-      pforeach(0, numel, [&](int64_t idx) {
-        x_plus_r_pub[idx] = _x_plus_r_shr[idx][0] ^ _x_plus_r_shr[idx][1] ^ _x_plus_r_shr[idx][2] ^ fourth_shr[idx];
-      });
-
-      // NdArrayView<ashr_t> _rand_ashr(rand_ashr);
       NdArrayView<ashr_t> _out(out);
+      NdArrayView<ashr_t> _x(x);
+      
+      // not sure whether nbits of a bit share in Byte Type is 1 or 8
+      if (in_nbits == 1) {
+        std::vector<ashr_el_t> x1_xor_x2(numel);
+        std::vector<ashr_el_t> x0_xor_x3(numel);
 
-      pforeach(0, numel, [&](int64_t idx) {
-        _out[idx][0] = -_rand_ashr[idx][0];
-        _out[idx][1] = -_rand_ashr[idx][1];
-        _out[idx][2] = -_rand_ashr[idx][2];
-        if (rank == 0) {_out[idx][0] += x_plus_r_pub[idx];}
-        if (rank == 2) {_out[idx][2] += x_plus_r_pub[idx];}
-        if (rank == 3) {_out[idx][1] += x_plus_r_pub[idx];}
-      });
+        NdArrayRef x1_xor_x2_shr(out_ty, in.shape());
+        NdArrayView<ashr_t> _x1_xor_x2_shr(x1_xor_x2_shr);
 
+        NdArrayRef x0_xor_x3_shr(out_ty, in.shape());
+        NdArrayView<ashr_t> _x0_xor_x3_shr(x0_xor_x3_shr);
+
+        pforeach(0, numel, [&](int64_t idx) {
+          _x1_xor_x2_shr[idx][0] = 0U;
+          _x1_xor_x2_shr[idx][1] = 0U;
+          _x1_xor_x2_shr[idx][2] = 0U;
+
+          _x0_xor_x3_shr[idx][0] = 0U;
+          _x0_xor_x3_shr[idx][1] = 0U;
+          _x0_xor_x3_shr[idx][2] = 0U;
+
+          const auto& v = _in[idx];
+          _x[idx][0] = v[0] & 0x1;
+          _x[idx][1] = v[1] & 0x1;
+          _x[idx][2] = v[2] & 0x1;
+        });
+        // printf("1");
+
+
+        if (comm->getRank() == 0) {
+          pforeach(0, numel, [&](int64_t idx) {
+            x1_xor_x2[idx] = _x[idx][1] ^ _x[idx][2];
+          });
+        }
+        else if (comm->getRank() == 1) {
+          pforeach(0, numel, [&](int64_t idx) {
+            x1_xor_x2[idx] = _x[idx][0] ^ _x[idx][1];
+          });
+        }
+        else if (comm->getRank() == 2) {
+          pforeach(0, numel, [&](int64_t idx) {
+            x0_xor_x3[idx] = _x[idx][1] ^ _x[idx][2];
+          });
+        }
+        else if (comm->getRank() == 3) {
+          pforeach(0, numel, [&](int64_t idx) {
+            x0_xor_x3[idx] = _x[idx][0] ^ _x[idx][1];
+          });
+        }
+        JointInputArith(ctx, x1_xor_x2, x1_xor_x2_shr, 0, 1, 2, 3);
+        JointInputArith(ctx, x0_xor_x3, x0_xor_x3_shr, 2, 3, 0, 1);
+
+        auto mul_res = wrap_mul_aa(ctx->sctx(), x1_xor_x2_shr, x0_xor_x3_shr);
+        NdArrayView<ashr_t> _mul_res(mul_res);
+
+        pforeach(0, numel, [&](int64_t idx) {
+          _out[idx][0] = _x1_xor_x2_shr[idx][0] + _x0_xor_x3_shr[idx][0] - 2 * _mul_res[idx][0];
+          _out[idx][1] = _x1_xor_x2_shr[idx][1] + _x0_xor_x3_shr[idx][1] - 2 * _mul_res[idx][1];
+          _out[idx][2] = _x1_xor_x2_shr[idx][2] + _x0_xor_x3_shr[idx][2] - 2 * _mul_res[idx][2];
+        });
+      }
+
+      else {
+        pforeach(0, numel, [&](int64_t idx) {
+          const auto& v = _in[idx];
+          _x[idx][0] = v[0];
+          _x[idx][1] = v[1];
+          _x[idx][2] = v[2];
+        });
+        // First Generate random arithmetic share
+        std::vector<ashr_el_t> r0(numel);
+        std::vector<ashr_el_t> r1(numel);
+        std::vector<ashr_el_t> r2(numel);
+
+        prg_state->fillPrssTuple<ashr_el_t>(r0.data(), nullptr, nullptr, r0.size(),
+                                  PrgState::GenPrssCtrl::First);
+        prg_state->fillPrssTuple<ashr_el_t>(nullptr, r1.data(), nullptr, r1.size(),
+                                  PrgState::GenPrssCtrl::Second); 
+        prg_state->fillPrssTuple<ashr_el_t>(nullptr, nullptr, r2.data(), r2.size(),
+                                  PrgState::GenPrssCtrl::Third);   
+
+        NdArrayView<ashr_t> _rand_ashr(rand_ashr);
+        NdArrayView<ashr_t> _x(x);
+
+        pforeach(0, numel, [&](int64_t idx) {
+          _rand_ashr[idx][0] = r0[idx] ;
+          _rand_ashr[idx][1] = r1[idx] ;
+          _rand_ashr[idx][2] = r2[idx] ;
+
+          // Expand the input to ensure the input bit-length = random value bit-length when input into binary adder
+          const auto& v = _in[idx];
+          _x[idx][0] = v[0];
+          _x[idx][1] = v[1];
+          _x[idx][2] = v[2];
+        });
+
+        // Compute Boolean shares of r (edabits)
+        rand_bshr = wrap_a2b(ctx->sctx(), rand_ashr);
+
+        // Compute Boolean shares of x + r
+        auto x_plus_r_shr = wrap_add_bb(ctx->sctx(), x, rand_bshr);
+        NdArrayView<ashr_t> _x_plus_r_shr(x_plus_r_shr);
+
+        // Reveal x + r to all parties
+        std::vector<ashr_el_t> third_shr(numel);
+        std::vector<ashr_el_t> x_plus_r_pub(numel);
+        
+        pforeach(0, numel, [&](int64_t idx) { third_shr[idx] = _x_plus_r_shr[idx][2]; });
+        // Pass the third share to previous party
+        auto fourth_shr = comm->rotate<ashr_el_t>(third_shr, "b2a reveal x+r");  // comm => 1, k
+
+        pforeach(0, numel, [&](int64_t idx) {
+          x_plus_r_pub[idx] = _x_plus_r_shr[idx][0] ^ _x_plus_r_shr[idx][1] ^ _x_plus_r_shr[idx][2] ^ fourth_shr[idx];
+        });
+
+        // NdArrayView<ashr_t> _rand_ashr(rand_ashr);
+        
+
+        pforeach(0, numel, [&](int64_t idx) {
+          _out[idx][0] = -_rand_ashr[idx][0];
+          _out[idx][1] = -_rand_ashr[idx][1];
+          _out[idx][2] = -_rand_ashr[idx][2];
+          if (rank == 0) {_out[idx][0] += x_plus_r_pub[idx];}
+          if (rank == 2) {_out[idx][2] += x_plus_r_pub[idx];}
+          if (rank == 3) {_out[idx][1] += x_plus_r_pub[idx];}
+        });
+      }
     });
 
   });
@@ -372,6 +466,56 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 //      Jointly Compute Binary Adder to obtain [x + r]_B and reveal x + r to (P2, P3)
 //      (P2, P3) share x + r in arithmetic form
 //      All parties set [x]_A = [x + r]_A - [r]_A
+
+NdArrayRef Opt_MulAA(KernelEvalContext* ctx, const NdArrayRef& lhs, const NdArrayRef& rhs) {
+  const auto field = lhs.eltype().as<Ring2k>()->field();
+  auto* comm = ctx->getState<Communicator>();
+  auto rank = comm->getRank();
+  auto next_rank = (rank + 1) % 4;
+
+  return DISPATCH_ALL_FIELDS(field, [&]() {
+  using el_t = ring2k_t;
+  using shr_t = std::array<el_t, 3>;
+
+  NdArrayView<shr_t> _lhs(lhs);
+  NdArrayView<shr_t> _rhs(rhs);
+  NdArrayRef out(makeType<AShrTy>(field), lhs.shape());
+  NdArrayView<shr_t> _out(out);
+  pforeach(0, lhs.numel(), [&](int64_t idx) {
+    for(auto i = 0; i < 3 ; i++ ){
+    _out[idx][i] = 0;
+    }
+  });
+
+  std::array<std::vector<el_t>, 5> a;
+
+  for (auto& vec : a) {
+    vec = std::vector<el_t>(lhs.numel());
+  }
+
+  pforeach(0, lhs.numel(), [&](int64_t idx) {
+    for(auto i =0; i<5;i++){
+      a[i][idx] = 0;
+    }
+  });
+
+  pforeach(0, lhs.numel(), [&](int64_t idx) {
+    a[rank][idx] = (_lhs[idx][0] + _lhs[idx][1]) * _rhs[idx][0] + _lhs[idx][0] * _rhs[idx][1]; // xi*yi + xi*yj + xj*yi
+    a[next_rank][idx] = (_lhs[idx][1] + _lhs[idx][2]) * _rhs[idx][1] + _lhs[idx][1] * _rhs[idx][2];  // xj*yj + xj*yg + xg*yj
+    a[4][idx] = _lhs[idx][0] * _rhs[idx][2] + _lhs[idx][2] * _rhs[idx][0];                    // xi*yg + xg*yi
+  });
+
+  // JointInputArith<el_t>(ctx, a[1], out, 0, 1, 3, 2);
+  JointInputArith<el_t>(ctx, a[2], out, 1, 2, 0, 3);
+  // JointInputArith<el_t>(ctx, a[3], out, 2, 3, 1, 0);
+  JointInputArith<el_t>(ctx, a[0], out, 3, 0, 2, 1);
+  JointInputArith<el_t>(ctx, a[4], out, 0, 2, 3, 1);
+  JointInputArith<el_t>(ctx, a[4], out, 1, 3, 2, 0);
+
+  return out;
+  });
+}
+
 
 NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
@@ -411,133 +555,233 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
       // first expand b share to a share length.
       const auto expanded_ty = makeType<BShrTy>(
           calcBShareBacktype(SizeOf(field) * 8), SizeOf(field) * 8);
+
       NdArrayRef x(expanded_ty, in.shape());
       NdArrayView<ashr_t> _x(x);
 
-      pforeach(0, numel, [&](int64_t idx) {
-        const auto& v = _in[idx];
-        _x[idx][0] = v[0];
-        _x[idx][1] = v[1];
-        _x[idx][2] = v[2];
-      });
-      
-      // P0 & P1 invoke PRG[1], PRG[2]
-      // P2 invoke PRG[2], P3 invoke PRG[1]
-      std::vector<ashr_el_t> r1(numel);
-      std::vector<ashr_el_t> r2(numel);
-      std::vector<ashr_el_t> r(numel);
-      std::vector<ashr_el_t> neg_r(numel);
-
-      NdArrayRef neg_r_shr(expanded_ty, in.shape());
-      NdArrayView<ashr_t> _neg_r_shr(neg_r_shr);
-
-      NdArrayRef r_shr(expanded_ty, in.shape());
-      NdArrayView<ashr_t> _r_shr(r_shr);
-
-      NdArrayRef x_minus_r_shr(expanded_ty, in.shape());
-      NdArrayView<ashr_t> _x_minus_r_shr(x_minus_r_shr);
-
-      pforeach(0, numel, [&](int64_t idx) {
-        _neg_r_shr[idx][0] = 0U;
-        _neg_r_shr[idx][1] = 0U;
-        _neg_r_shr[idx][2] = 0U;
-
-        _r_shr[idx][0] = 0U;
-        _r_shr[idx][1] = 0U;
-        _r_shr[idx][2] = 0U;
-
-        _x_minus_r_shr[idx][0] = 0U;
-        _x_minus_r_shr[idx][1] = 0U;
-        _x_minus_r_shr[idx][2] = 0U;
-      });
-
-      if (comm->getRank() == 0) {
-        // Sample r1, r2
-        prg_state->fillPrssTuple<ashr_el_t>(nullptr, r1.data(), nullptr, r1.size(),
-                              PrgState::GenPrssCtrl::Second);
-        prg_state->fillPrssTuple<ashr_el_t>(nullptr, nullptr, r2.data(), r2.size(),
-                              PrgState::GenPrssCtrl::Third);
-        // r = r1 + r2
-        pforeach(0, numel, [&](int64_t idx) {
-            r[idx] = r1[idx] + r2[idx];
-            neg_r[idx] = - r[idx];
-        });
-
-      } else if (comm->getRank() == 1) {
-
-        prg_state->fillPrssTuple<ashr_el_t>(r1.data(), nullptr, nullptr, r1.size(),
-                              PrgState::GenPrssCtrl::First);
-        prg_state->fillPrssTuple<ashr_el_t>(nullptr, r2.data(), nullptr, r2.size(),
-                              PrgState::GenPrssCtrl::Second);
-
-        pforeach(0, numel, [&](int64_t idx) {
-            r[idx] = r1[idx] + r2[idx];
-            neg_r[idx] = - r[idx];
-        });
-
-      } else if (comm->getRank() == 2) {
-
-        prg_state->fillPrssTuple<ashr_el_t>(r2.data(), nullptr, nullptr, r2.size(),
-                              PrgState::GenPrssCtrl::First);
-
-      } else if (comm->getRank() == 3) {
-
-        prg_state->fillPrssTuple<ashr_el_t>(nullptr, nullptr, r1.data(), r1.size(),
-                              PrgState::GenPrssCtrl::Third);
-
-      }
-      
-      // P0, P1 share [-r]B
-      JointInputArith(ctx, r, r_shr, 0, 1, 2, 3);
-
-      JointInputBool(ctx, neg_r, neg_r_shr, 0, 1, 2, 3);
-
-      // compute [x-r]B
-      // comm => log(k) + 1, 2k(logk) + k
-      auto x_minus_r = wrap_add_bb(ctx->sctx(), x, neg_r_shr);
-
-      // reveal x-r to P2, P3
-      // todo: MAC
-      NdArrayView<ashr_t> _x_minus_r(x_minus_r);
-
-      std::vector<ashr_el_t> plaintext_x_minus_r(numel);
-
-      if (comm->getRank() == 2) {
-        // P2 send global shr[2] (own::shr[0]) to P3
-        std::vector<ashr_el_t> shr_for_P3(numel);
-        pforeach(0, numel,
-                 [&](int64_t idx) { shr_for_P3[idx] = _x_minus_r[idx][0]; });
-        comm->sendAsync<ashr_el_t>(3, shr_for_P3, "reveal.x_minus_r.to.P3");
-
-        std::vector<ashr_el_t> missing_shr = comm->recv<ashr_el_t>(3, "reveal.x_minus_r.to.P2");
-        
-        pforeach(0, numel,
-                 [&](int64_t idx) { plaintext_x_minus_r[idx] = _x_minus_r[idx][0] ^ _x_minus_r[idx][1] ^ _x_minus_r[idx][2] ^ missing_shr[idx]; });
-
-      }
-      if (comm->getRank() == 3) {
-        // P3 send global shr[1] (own::shr[2]) to P2
-        std::vector<ashr_el_t> shr_for_P2(numel);
-        pforeach(0, numel,
-                 [&](int64_t idx) { shr_for_P2[idx] = _x_minus_r[idx][2]; });
-        comm->sendAsync<ashr_el_t>(2, shr_for_P2, "reveal.x_minus_r.to.P2");
-
-        std::vector<ashr_el_t> missing_shr = comm->recv<ashr_el_t>(2, "reveal.x_minus_r.to.P3");
-
-        pforeach(0, numel,
-                 [&](int64_t idx) { plaintext_x_minus_r[idx] = _x_minus_r[idx][0] ^ _x_minus_r[idx][1] ^ _x_minus_r[idx][2] ^ missing_shr[idx]; });
-
-      }
-
-      JointInputArith(ctx, plaintext_x_minus_r, x_minus_r_shr, 2, 3, 0, 1);
-
       NdArrayView<ashr_t> _out(out);
-      pforeach(0, numel, [&](int64_t idx) {
-        _out[idx][0] = _x_minus_r_shr[idx][0] + _r_shr[idx][0];
-        _out[idx][1] = _x_minus_r_shr[idx][1] + _r_shr[idx][1];
-        _out[idx][2] = _x_minus_r_shr[idx][2] + _r_shr[idx][2];
-      });
 
+      
+      
+      // not sure whether nbits of a bit share in Byte Type is 1 or 8
+      if (in_nbits == 1) {
+        // printf("Bit2A!");
+        std::vector<ashr_el_t> x1_xor_x2(numel);
+        std::vector<ashr_el_t> x0_xor_x3(numel);
+
+        NdArrayRef x1_xor_x2_shr(out_ty, in.shape());
+        NdArrayView<ashr_t> _x1_xor_x2_shr(x1_xor_x2_shr);
+
+        NdArrayRef x0_xor_x3_shr(out_ty, in.shape());
+        NdArrayView<ashr_t> _x0_xor_x3_shr(x0_xor_x3_shr);
+        pforeach(0, numel, [&](int64_t idx) {
+          _x1_xor_x2_shr[idx][0] = 0U;
+          _x1_xor_x2_shr[idx][1] = 0U;
+          _x1_xor_x2_shr[idx][2] = 0U;
+
+          _x0_xor_x3_shr[idx][0] = 0U;
+          _x0_xor_x3_shr[idx][1] = 0U;
+          _x0_xor_x3_shr[idx][2] = 0U;
+
+          const auto& v = _in[idx];
+          _x[idx][0] = v[0] & 0x1;
+          _x[idx][1] = v[1] & 0x1;
+          _x[idx][2] = v[2] & 0x1;
+
+
+        });
+        if (comm->getRank() == 0) {
+          pforeach(0, numel, [&](int64_t idx) {
+            x1_xor_x2[idx] = _x[idx][1] ^ _x[idx][2];
+            // printf("My rank = %zu, ", comm->getRank());
+            // printf("x1_xor_x2 = (%llu) \n", 
+            //   (unsigned long long)x1_xor_x2[idx]);
+          });
+        }
+        else if (comm->getRank() == 1) {
+          pforeach(0, numel, [&](int64_t idx) {
+            x1_xor_x2[idx] = _x[idx][0] ^ _x[idx][1];
+          });
+        }
+        else if (comm->getRank() == 2) {
+          pforeach(0, numel, [&](int64_t idx) {
+            x0_xor_x3[idx] = _x[idx][1] ^ _x[idx][2];
+            // printf("My rank = %zu, ", comm->getRank());
+            // printf("x1_xor_x2 = (%llu) \n", 
+            //   (unsigned long long)x0_xor_x3[idx]);
+          });
+        }
+        else if (comm->getRank() == 3) {
+          pforeach(0, numel, [&](int64_t idx) {
+            x0_xor_x3[idx] = _x[idx][0] ^ _x[idx][1];
+          });
+        }
+
+  
+        JointInputArith(ctx, x1_xor_x2, x1_xor_x2_shr, 0, 1, 2, 3); 
+        JointInputArith(ctx, x0_xor_x3, x0_xor_x3_shr, 2, 3, 0, 1);
+
+        // Above we let:
+        //    P0 sends P2 x1^x2 - r1
+        //    P2 sends P0 x0^x3 - r3
+        // As the result:
+        //    x1_xor_x2_shr = (0         ,- r1, x1^x2 - r1, 0)
+        //    x0_xor_x3_shr = (x2^x3 - r3,   0,      0    , r3) 
+        // Recall that in 4PC MulAA:
+        //    pforeach(0, lhs.numel(), [&](int64_t idx) {
+        //      a[rank][idx] = (_lhs[idx][0] + _lhs[idx][1]) * _rhs[idx][0] + _lhs[idx][0] * _rhs[idx][1]; // xi*yi + xi*yj + xj*yi
+        //      a[next_rank][idx] = (_lhs[idx][1] + _lhs[idx][2]) * _rhs[idx][1] + _lhs[idx][1] * _rhs[idx][2];  // xj*yj + xj*yg + xg*yj
+        //      a[4][idx] = _lhs[idx][0] * _rhs[idx][2] + _lhs[idx][2] * _rhs[idx][0];                    // xi*yg + xg*yi
+        //    });
+        // Here we have:
+        //    a[3] = 0
+        //    a[1] = 0
+        // For optimization, we do not send them in Opt_Mul.
+        
+        auto mul_res = Opt_MulAA(ctx, x1_xor_x2_shr, x0_xor_x3_shr);// Mind the order of lhs and rhs
+
+        // auto mul_res = wrap_mul_aa(ctx->sctx(), x1_xor_x2_shr, x0_xor_x3_shr);
+
+        NdArrayView<ashr_t> _mul_res(mul_res);
+
+        pforeach(0, numel, [&](int64_t idx) {
+          _out[idx][0] = _x1_xor_x2_shr[idx][0] + _x0_xor_x3_shr[idx][0] - 2 * _mul_res[idx][0];
+          _out[idx][1] = _x1_xor_x2_shr[idx][1] + _x0_xor_x3_shr[idx][1] - 2 * _mul_res[idx][1];
+          _out[idx][2] = _x1_xor_x2_shr[idx][2] + _x0_xor_x3_shr[idx][2] - 2 * _mul_res[idx][2];
+          // if( (comm->getRank() == 0 || comm->getRank() == 2)) {
+          //   printf("My rank = %zu, ", comm->getRank());
+          //   printf("_out = (%llu, %llu, %llu) \n", 
+          //     (unsigned long long)_out[idx][0], (unsigned long long)_out[idx][1], (unsigned long long)_out[idx][2]);
+          // }
+        });
+
+        
+      }
+      else {
+        //printf("nbits != 1");
+        pforeach(0, numel, [&](int64_t idx) {
+          const auto& v = _in[idx];
+          _x[idx][0] = v[0];
+          _x[idx][1] = v[1];
+          _x[idx][2] = v[2];
+        });
+        // P0 & P1 invoke PRG[1], PRG[2]
+        // P2 invoke PRG[2], P3 invoke PRG[1]
+        std::vector<ashr_el_t> r1(numel);
+        std::vector<ashr_el_t> r2(numel);
+        std::vector<ashr_el_t> r(numel);
+        std::vector<ashr_el_t> neg_r(numel);
+
+        NdArrayRef neg_r_shr(expanded_ty, in.shape());
+        NdArrayView<ashr_t> _neg_r_shr(neg_r_shr);
+
+        NdArrayRef r_shr(expanded_ty, in.shape());
+        NdArrayView<ashr_t> _r_shr(r_shr);
+
+        NdArrayRef x_minus_r_shr(expanded_ty, in.shape());
+        NdArrayView<ashr_t> _x_minus_r_shr(x_minus_r_shr);
+
+        pforeach(0, numel, [&](int64_t idx) {
+          _neg_r_shr[idx][0] = 0U;
+          _neg_r_shr[idx][1] = 0U;
+          _neg_r_shr[idx][2] = 0U;
+
+          _r_shr[idx][0] = 0U;
+          _r_shr[idx][1] = 0U;
+          _r_shr[idx][2] = 0U;
+
+          _x_minus_r_shr[idx][0] = 0U;
+          _x_minus_r_shr[idx][1] = 0U;
+          _x_minus_r_shr[idx][2] = 0U;
+        });
+
+        if (comm->getRank() == 0) {
+          // Sample r1, r2
+          prg_state->fillPrssTuple<ashr_el_t>(nullptr, r1.data(), nullptr, r1.size(),
+                                PrgState::GenPrssCtrl::Second);
+          prg_state->fillPrssTuple<ashr_el_t>(nullptr, nullptr, r2.data(), r2.size(),
+                                PrgState::GenPrssCtrl::Third);
+          // r = r1 + r2
+          pforeach(0, numel, [&](int64_t idx) {
+              r[idx] = r1[idx] + r2[idx];
+              neg_r[idx] = - r[idx];
+          });
+
+        } else if (comm->getRank() == 1) {
+
+          prg_state->fillPrssTuple<ashr_el_t>(r1.data(), nullptr, nullptr, r1.size(),
+                                PrgState::GenPrssCtrl::First);
+          prg_state->fillPrssTuple<ashr_el_t>(nullptr, r2.data(), nullptr, r2.size(),
+                                PrgState::GenPrssCtrl::Second);
+
+          pforeach(0, numel, [&](int64_t idx) {
+              r[idx] = r1[idx] + r2[idx];
+              neg_r[idx] = - r[idx];
+          });
+
+        } else if (comm->getRank() == 2) {
+
+          prg_state->fillPrssTuple<ashr_el_t>(r2.data(), nullptr, nullptr, r2.size(),
+                                PrgState::GenPrssCtrl::First);
+
+        } else if (comm->getRank() == 3) {
+
+          prg_state->fillPrssTuple<ashr_el_t>(nullptr, nullptr, r1.data(), r1.size(),
+                                PrgState::GenPrssCtrl::Third);
+
+        }
+        
+        // P0, P1 share [-r]B
+        JointInputArith(ctx, r, r_shr, 0, 1, 2, 3);
+
+        JointInputBool(ctx, neg_r, neg_r_shr, 0, 1, 2, 3);
+
+        // compute [x-r]B
+        // comm => log(k) + 1, 2k(logk) + k
+        auto x_minus_r = wrap_add_bb(ctx->sctx(), x, neg_r_shr);
+
+        // reveal x-r to P2, P3
+        // todo: MAC
+        NdArrayView<ashr_t> _x_minus_r(x_minus_r);
+
+        std::vector<ashr_el_t> plaintext_x_minus_r(numel);
+
+        if (comm->getRank() == 2) {
+          // P2 send global shr[2] (own::shr[0]) to P3
+          std::vector<ashr_el_t> shr_for_P3(numel);
+          pforeach(0, numel,
+                  [&](int64_t idx) { shr_for_P3[idx] = _x_minus_r[idx][0]; });
+          comm->sendAsync<ashr_el_t>(3, shr_for_P3, "reveal.x_minus_r.to.P3");
+
+          std::vector<ashr_el_t> missing_shr = comm->recv<ashr_el_t>(3, "reveal.x_minus_r.to.P2");
+          
+          pforeach(0, numel,
+                  [&](int64_t idx) { plaintext_x_minus_r[idx] = _x_minus_r[idx][0] ^ _x_minus_r[idx][1] ^ _x_minus_r[idx][2] ^ missing_shr[idx]; });
+
+        }
+        if (comm->getRank() == 3) {
+          // P3 send global shr[1] (own::shr[2]) to P2
+          std::vector<ashr_el_t> shr_for_P2(numel);
+          pforeach(0, numel,
+                  [&](int64_t idx) { shr_for_P2[idx] = _x_minus_r[idx][2]; });
+          comm->sendAsync<ashr_el_t>(2, shr_for_P2, "reveal.x_minus_r.to.P2");
+
+          std::vector<ashr_el_t> missing_shr = comm->recv<ashr_el_t>(2, "reveal.x_minus_r.to.P3");
+
+          pforeach(0, numel,
+                  [&](int64_t idx) { plaintext_x_minus_r[idx] = _x_minus_r[idx][0] ^ _x_minus_r[idx][1] ^ _x_minus_r[idx][2] ^ missing_shr[idx]; });
+
+        }
+
+        JointInputArith(ctx, plaintext_x_minus_r, x_minus_r_shr, 2, 3, 0, 1);
+
+        
+        pforeach(0, numel, [&](int64_t idx) {
+          _out[idx][0] = _x_minus_r_shr[idx][0] + _r_shr[idx][0];
+          _out[idx][1] = _x_minus_r_shr[idx][1] + _r_shr[idx][1];
+          _out[idx][2] = _x_minus_r_shr[idx][2] + _r_shr[idx][2];
+        });
+      }
     });
   });
   return out;
@@ -546,7 +790,7 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 #endif
 
 
-#ifndef USE_OPTIMIZED
+#ifndef OPTIMIZED_CONVERSION
 // Fantastic4 MSB based on Local Share Conversion
 // [x] = (x0, x1, x2, x3)
 //     [x0] = (x0, 0, 0, 0)
@@ -752,7 +996,7 @@ NdArrayRef MsbA2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
                       rshift_b(sctx, xor_bb(sctx, wrap_m, wrap_n),
                                {static_cast<int64_t>(nbits)}),
                       carry);
-
+    // printf("msb nbits = %ld", static_cast<int64_t>(UnwrapValue(msb).eltype().as<BShrTy>()->nbits()));
     return UnwrapValue(msb);
   }
 }
@@ -764,7 +1008,7 @@ static NdArrayRef wrap_rshift_b(SPUContext* ctx, const NdArrayRef& x,
   return UnwrapValue(rshift_b(ctx, WrapValue(x), bits));
 }
 
-#ifndef USE_OPTIMIZED
+#ifndef OPTIMIZED_CONVERSION
 
 // Fantastic4 gives generation of edabits 
 // to enable edabits-based EQZ
@@ -936,7 +1180,7 @@ NdArrayRef eqz(KernelEvalContext* ctx, const NdArrayRef& in) {
   const auto numel = in.numel();
 
   // uint 8
-  NdArrayRef out(makeType<BShrTy>(out_bshr_btype, 8), in.shape());
+  NdArrayRef out(makeType<BShrTy>(out_bshr_btype, 1), in.shape());
 
   DISPATCH_ALL_FIELDS(field, [&]() {
     using ashr_el_t = ring2k_t;
@@ -1046,7 +1290,6 @@ NdArrayRef eqz(KernelEvalContext* ctx, const NdArrayRef& in) {
       }
 
       out = reduction_res[cur_ind];
-      
     });
   });
 

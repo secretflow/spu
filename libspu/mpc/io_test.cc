@@ -32,7 +32,7 @@ TEST_P(IoTest, MakePublicAndReconstruct) {
   auto raw = ring_rand(field, kNumel);
   auto shares = io->toShares(raw, VIS_PUBLIC);
   auto result = io->fromShares(shares);
-  // << "number of parties:" << npc << std::endl; 
+
   EXPECT_TRUE(ring_all_equal(raw, result));
 }
 
@@ -46,7 +46,7 @@ TEST_P(IoTest, MakeSecretAndReconstruct) {
   auto raw = ring_rand(field, kNumel);
   auto shares = io->toShares(raw, VIS_SECRET);
   auto result = io->fromShares(shares);
-  
+
   EXPECT_TRUE(ring_all_equal(raw, result));
 }
 

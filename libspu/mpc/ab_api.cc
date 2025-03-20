@@ -466,11 +466,11 @@ std::array<Value, 2> pfa_bb(SPUContext* ctx, const Value& x, const Value& y, con
 
 Value carry_a2b(SPUContext* ctx, const Value& x, const Value& y, size_t k) {
   // init P & G
-  auto P = xor_bb(ctx, x, y);
+  auto f = std::async(xor_bb, ctx, x, y);
 
   // k bits
   auto G = and_bb(ctx, x, y);
-
+  auto P = f.get();
   // Use kogge stone layout.
   //    (incorrect) Theoreticall: k + k/2 + k/4 + ... + 1 = 2k 
   //    (correct) Theoreticall: k + k/2 + k/4 + ... + 2 = 2k - 2
@@ -483,9 +483,9 @@ Value carry_a2b(SPUContext* ctx, const Value& x, const Value& y, size_t k) {
       P = lshift_b(ctx, P, {1});
       G = lshift_b(ctx, G, {1});
     }
-    auto [P1, P0] = bit_scatter(ctx, P, 0);
+    auto p = std::async(bit_scatter,ctx, P, 0);
     auto [G1, G0] = bit_scatter(ctx, G, 0);
-
+    auto [P1, P0] = p.get();
     // Calculate next-level of P, G
     //   P = P1 & P0
     //   G = G1 | (P1 & G0)

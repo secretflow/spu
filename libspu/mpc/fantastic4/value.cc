@@ -1,4 +1,16 @@
-
+// Copyright 2025 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include "libspu/mpc/fantastic4/value.h"
 
@@ -23,14 +35,7 @@ NdArrayRef getShare(const NdArrayRef& in, int64_t share_idx) {
         in.buf(), ty, in.shape(), new_strides,
         in.offset() + share_idx * static_cast<int64_t>(ty.size()));
   } 
-//   else if (in.eltype().isa<OShrTy>()) {
-//     const auto field = in.eltype().as<OShrTy>()->field();
-//     const auto ty = makeType<RingTy>(field);
 
-//     return NdArrayRef(
-//         in.buf(), ty, in.shape(), new_strides,
-//         in.offset() + share_idx * static_cast<int64_t>(ty.size()));
-//   } 
   else if (in.eltype().isa<BShrTy>()) {
     const auto stype = in.eltype().as<BShrTy>()->getBacktype();
     const auto ty = makeType<PtTy>(stype);
@@ -38,14 +43,7 @@ NdArrayRef getShare(const NdArrayRef& in, int64_t share_idx) {
         in.buf(), ty, in.shape(), new_strides,
         in.offset() + share_idx * static_cast<int64_t>(ty.size()));
   } 
-//   else if (in.eltype().isa<PShrTy>()) {
-//     const auto field = in.eltype().as<PShrTy>()->field();
-//     const auto ty = makeType<RingTy>(field);
 
-//     return NdArrayRef(
-//         in.buf(), ty, in.shape(), new_strides,
-//         in.offset() + share_idx * static_cast<int64_t>(ty.size()));
-//   } 
   else {
     SPU_THROW("unsupported type {}", in.eltype());
   }

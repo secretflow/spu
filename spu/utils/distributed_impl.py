@@ -552,10 +552,10 @@ def builtin_spu_init(
     link = libspu.link.create_brpc(desc, my_rank)
     spu_config = spu_pb2.RuntimeConfig()
     spu_config.ParseFromString(spu_config_str)
-    # if my_rank != 0:
-    #     spu_config.enable_action_trace = False
-    #     spu_config.enable_hal_profile = False
-    #     spu_config.enable_pphlo_profile = False
+    if my_rank != 0:
+        spu_config.enable_action_trace = False
+        spu_config.enable_hal_profile = False
+        spu_config.enable_pphlo_profile = False
     server._locals[f"{name}-rt"] = spu_api.Runtime(link, spu_config)
     server._locals[f"{name}-io"] = spu_api.Io(len(addrs), spu_config)
     logger.info(f"spu-runtime ({name}) initialized")

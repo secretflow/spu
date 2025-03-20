@@ -1,6 +1,18 @@
-#pragma once
+// Copyright 2025 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-#define USE_OPTIMIZED
+#pragma once
 
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/mpc/kernel.h"
@@ -14,15 +26,11 @@ class A2B : public UnaryKernel {
   static constexpr const char* kBindName() { return "a2b"; }
 
   ce::CExpr latency() const override {
-    // 1 * AddBB : log(k) + 1
-    // 1 * rotate: 1
     return Log(ce::K()) + 1 + 1;
   }
 
   // TODO: this depends on the adder circuit.
   ce::CExpr comm() const override {
-    // 1 * AddBB : 2 * logk * k + k
-    // 1 * rotate: k
     return 2 * Log(ce::K()) * ce::K() + ce::K() * 2;
   }
 
@@ -34,15 +42,11 @@ class B2A : public UnaryKernel {
   static constexpr const char* kBindName() { return "b2a"; }
 
   ce::CExpr latency() const override {
-    // 2 * rotate   : 2
-    // 1 * AddBB    : 1 + logk
     return ce::Const(3) + Log(ce::K());
   }
 
   // TODO: this depends on the adder circuit.
   ce::CExpr comm() const override {
-    // 2 * rotate   : 2k
-    // 1 * AddBB    : logk * k + k
     return Log(ce::K()) * ce::K() + 3 * ce::K();
   }
 
@@ -54,14 +58,10 @@ class MsbA2B : public UnaryKernel {
   static constexpr const char* kBindName() { return "msb_a2b"; }
 
   ce::CExpr latency() const override {
-    // 1 * carry : log(k) + 1
-    // 1 * rotate: 1
     return Log(ce::K()) + 1 + 1;
   }
 
   ce::CExpr comm() const override {
-    // 1 * carry : k + 2 * k + 16 * 2
-    // 1 * rotate: k
     return ce::K() + 2 * ce::K() + ce::K() + 32;
   }
 

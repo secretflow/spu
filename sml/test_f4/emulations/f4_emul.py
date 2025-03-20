@@ -35,3 +35,4 @@ def emul_f4(mode: emulation.Mode.MULTIPROCESS):
 if __name__ == "__main__":
     # Run the emul_SGDClassifier function in MULTIPROCESS mode
     emul_f4(emulation.Mode.MULTIPROCESS)
+    

@@ -148,61 +148,60 @@ class MatrixSizeArgs : public BenchArgs {
 #define DEFINE_BENCHMARK(OP, ARGS) \
   BENCHMARK(MPCBenchMark<OP, ARGS>)->Apply(ARGS::AddArgs)
 
-// DEFINE_BENCHMARK(BenchAddSS, NumelArgs);
-// DEFINE_BENCHMARK(BenchMulSS, NumelArgs);
-// DEFINE_BENCHMARK(BenchAndSS, NumelArgs);
-// DEFINE_BENCHMARK(BenchXorSS, NumelArgs);
-// DEFINE_BENCHMARK(BenchAddSP, NumelArgs);
-// DEFINE_BENCHMARK(BenchMulSP, NumelArgs);
-// DEFINE_BENCHMARK(BenchAndSP, NumelArgs);
-// DEFINE_BENCHMARK(BenchXorSP, NumelArgs);
-// DEFINE_BENCHMARK(BenchS2P, NumelArgs);
-// DEFINE_BENCHMARK(BenchP2S, NumelArgs);
-// DEFINE_BENCHMARK(BenchNegateS, NumelArgs);
-// DEFINE_BENCHMARK(BenchNegateP, NumelArgs);
-
-// DEFINE_BENCHMARK(BenchLShiftS, NumelShiftArgs);
-// DEFINE_BENCHMARK(BenchLShiftP, NumelShiftArgs);
-// DEFINE_BENCHMARK(BenchRShiftS, NumelShiftArgs);
-// DEFINE_BENCHMARK(BenchRShiftP, NumelShiftArgs);
-// DEFINE_BENCHMARK(BenchARShiftP, NumelShiftArgs);
-// DEFINE_BENCHMARK(BenchARShiftS, NumelShiftArgs);
-// DEFINE_BENCHMARK(BenchTruncS, NumelShiftArgs);
-
-// DEFINE_BENCHMARK(BenchMMulSP, MatrixSizeArgs);
-// DEFINE_BENCHMARK(BenchMMulSS, MatrixSizeArgs);
-
-// DEFINE_BENCHMARK(BenchRandA, NumelArgs);
-// DEFINE_BENCHMARK(BenchRandB, NumelArgs);
-// DEFINE_BENCHMARK(BenchP2A, NumelArgs);
-// DEFINE_BENCHMARK(BenchA2P, NumelArgs);
-
-DEFINE_BENCHMARK(BenchMsbA2b, NumelArgs);
-// DEFINE_BENCHMARK(BenchNegateA, NumelArgs);
-// DEFINE_BENCHMARK(BenchAddAP, NumelArgs);
-// DEFINE_BENCHMARK(BenchMulAP, NumelArgs);
-// DEFINE_BENCHMARK(BenchAddAA, NumelArgs);
-DEFINE_BENCHMARK(BenchMulAA, NumelArgs);
-// DEFINE_BENCHMARK(BenchMulA1B, NumelArgs);
-// DEFINE_BENCHMARK(BenchLShiftA, NumelShiftArgs);
-DEFINE_BENCHMARK(BenchTruncA, NumelShiftArgs);
-// DEFINE_BENCHMARK(BenchMMulAP, MatrixSizeArgs);
-// DEFINE_BENCHMARK(BenchMMulAA, MatrixSizeArgs);
-// DEFINE_BENCHMARK(BenchB2P, NumelArgs);
-// DEFINE_BENCHMARK(BenchP2B, NumelArgs);
-DEFINE_BENCHMARK(BenchA2B, NumelArgs);
-DEFINE_BENCHMARK(BenchB2A, NumelArgs);
-// DEFINE_BENCHMARK(BenchAddBB, NumelArgs);
-// DEFINE_BENCHMARK(BenchAndBP, NumelArgs);
-DEFINE_BENCHMARK(BenchAndBB, NumelArgs);
-// DEFINE_BENCHMARK(BenchXorBP, NumelArgs);
-// DEFINE_BENCHMARK(BenchXorBB, NumelArgs);
-// DEFINE_BENCHMARK(BenchLShiftB, NumelShiftArgs);
-// DEFINE_BENCHMARK(BenchRShiftB, NumelShiftArgs);
-// DEFINE_BENCHMARK(BenchARShiftB, NumelShiftArgs);
-// DEFINE_BENCHMARK(BenchBitRevB, NumelArgs);
-// DEFINE_BENCHMARK(BenchBitIntlB, NumelArgs);
-// DEFINE_BENCHMARK(BenchBitDentlB, NumelArgs);
+  DEFINE_BENCHMARK(BenchAddSS, NumelArgs);
+  DEFINE_BENCHMARK(BenchMulSS, NumelArgs);
+  DEFINE_BENCHMARK(BenchAndSS, NumelArgs);
+  DEFINE_BENCHMARK(BenchXorSS, NumelArgs);
+  DEFINE_BENCHMARK(BenchAddSP, NumelArgs);
+  DEFINE_BENCHMARK(BenchMulSP, NumelArgs);
+  DEFINE_BENCHMARK(BenchAndSP, NumelArgs);
+  DEFINE_BENCHMARK(BenchXorSP, NumelArgs);
+  DEFINE_BENCHMARK(BenchS2P, NumelArgs);
+  DEFINE_BENCHMARK(BenchP2S, NumelArgs);
+  DEFINE_BENCHMARK(BenchNegateS, NumelArgs);
+  DEFINE_BENCHMARK(BenchNegateP, NumelArgs);
+  
+  DEFINE_BENCHMARK(BenchLShiftS, NumelShiftArgs);
+  DEFINE_BENCHMARK(BenchLShiftP, NumelShiftArgs);
+  DEFINE_BENCHMARK(BenchRShiftS, NumelShiftArgs);
+  DEFINE_BENCHMARK(BenchRShiftP, NumelShiftArgs);
+  DEFINE_BENCHMARK(BenchARShiftP, NumelShiftArgs);
+  DEFINE_BENCHMARK(BenchARShiftS, NumelShiftArgs);
+  DEFINE_BENCHMARK(BenchTruncS, NumelShiftArgs);
+  
+  // DEFINE_BENCHMARK(BenchMMulSP, MatrixSizeArgs);
+  // DEFINE_BENCHMARK(BenchMMulSS, MatrixSizeArgs);
+  
+  DEFINE_BENCHMARK(BenchRandA, NumelArgs);
+  DEFINE_BENCHMARK(BenchRandB, NumelArgs);
+  DEFINE_BENCHMARK(BenchP2A, NumelArgs);
+  DEFINE_BENCHMARK(BenchA2P, NumelArgs);
+  DEFINE_BENCHMARK(BenchMsbA2b, NumelArgs);
+  DEFINE_BENCHMARK(BenchNegateA, NumelArgs);
+  DEFINE_BENCHMARK(BenchAddAP, NumelArgs);
+  DEFINE_BENCHMARK(BenchMulAP, NumelArgs);
+  DEFINE_BENCHMARK(BenchAddAA, NumelArgs);
+  DEFINE_BENCHMARK(BenchMulAA, NumelArgs);
+  DEFINE_BENCHMARK(BenchMulA1B, NumelArgs);
+  DEFINE_BENCHMARK(BenchLShiftA, NumelShiftArgs);
+  DEFINE_BENCHMARK(BenchTruncA, NumelShiftArgs);
+  // DEFINE_BENCHMARK(BenchMMulAP, MatrixSizeArgs);
+  // DEFINE_BENCHMARK(BenchMMulAA, MatrixSizeArgs);
+  DEFINE_BENCHMARK(BenchB2P, NumelArgs);
+  DEFINE_BENCHMARK(BenchP2B, NumelArgs);
+  DEFINE_BENCHMARK(BenchA2B, NumelArgs);
+  DEFINE_BENCHMARK(BenchB2A, NumelArgs);
+  DEFINE_BENCHMARK(BenchAddBB, NumelArgs);
+  DEFINE_BENCHMARK(BenchAndBP, NumelArgs);
+  DEFINE_BENCHMARK(BenchAndBB, NumelArgs);
+  DEFINE_BENCHMARK(BenchXorBP, NumelArgs);
+  DEFINE_BENCHMARK(BenchXorBB, NumelArgs);
+  DEFINE_BENCHMARK(BenchLShiftB, NumelShiftArgs);
+  DEFINE_BENCHMARK(BenchRShiftB, NumelShiftArgs);
+  DEFINE_BENCHMARK(BenchARShiftB, NumelShiftArgs);
+  DEFINE_BENCHMARK(BenchBitRevB, NumelArgs);
+  DEFINE_BENCHMARK(BenchBitIntlB, NumelArgs);
+  DEFINE_BENCHMARK(BenchBitDentlB, NumelArgs);
 
 void PrepareSemi2k(std::string& parties, uint32_t& party_num) {
   using BenchInteral = spu::mpc::bench::BenchConfig;

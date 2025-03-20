@@ -1,3 +1,17 @@
+// Copyright 2025 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "libspu/mpc/fantastic4/io.h"
 
 #include "yacl/crypto/rand/rand.h"
@@ -141,8 +155,8 @@ std::vector<NdArrayRef> Fantastic4Io::makeBitSecret(const PtBufferView& in) cons
 
     // P_3
     _s3[idx][0] = r3 & 0x1;
-    _s2[idx][1] = r0[idx] & 0x1;
-    _s2[idx][1] = r1[idx] & 0x1;
+    _s3[idx][1] = r0[idx] & 0x1;
+    _s3[idx][1] = r1[idx] & 0x1;
   }
   return shares;
 }
