@@ -103,7 +103,7 @@ class PCA:
 
         In the 'serial_jacobi_iteration' method, we use the Serial Jacobi Iteration algorithm to compute the eigenvalues and eigenvectors.
         The Serial Jacobi Iteration algorithm works by iteratively performing Givens Rotation to transform the off-diagonal elements of matrix to zeros,
-        until the matrix becomes almost diagonal. 
+        until the matrix becomes almost diagonal.
         Then the elements in the diagonal are approximations of the (real) eigenvalues of matrix.
 
         In the 'rsvd' method, we use the Randomized SVD to compute the eigenvalues and eigenvectors.
@@ -182,7 +182,7 @@ class PCA:
 
             self._components = components.T
             self._variances = result[0][top_k_indices]
-        
+
         elif self._method == Method.PCA_rsvd:
             result = extmath.randomized_svd(
                 X_centered,

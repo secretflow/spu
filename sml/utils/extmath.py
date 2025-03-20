@@ -176,13 +176,10 @@ def _generate_ring_sequence(n):
         # right shift
         lower_row = [lower_row[-1]] + lower_row[:-1]
 
-    return index_pairs    
+    return index_pairs
 
 
-def serial_jacobi_evd(
-    A, 
-    max_jacobi_iter = 5
-):
+def serial_jacobi_evd(A, max_jacobi_iter=5):
     """An Eigen decomposition algorithm using the Jacobi Method.
     Parameters
     ----------
@@ -278,4 +275,3 @@ def serial_jacobi_evd(
 
     eigenvalues = jnp.diag(A)
     return eigenvalues, eigenvectors
-

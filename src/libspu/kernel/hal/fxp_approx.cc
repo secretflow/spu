@@ -415,7 +415,7 @@ Value sin_chebyshev(SPUContext* ctx, const Value& x) {
 
   auto coeff_value = constant(ctx, kCoeffs, x.dtype(),
                               {1, static_cast<int64_t>(kCoeffs.size())});
-  
+
   // Normalize input to[-pi, pi]
   // theta - TWO_PI * Math.floor((theta + Math.PI) / TWO_PI)
   auto pi = constant(ctx, M_PI, x.dtype(), x.shape());

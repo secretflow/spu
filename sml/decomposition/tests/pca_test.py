@@ -123,7 +123,6 @@ class UnitTests(unittest.TestCase):
         # Create a simple dataset
         X = random.normal(random.PRNGKey(0), (10, 20))
 
-
         # Run the simulation
         result = spsim.sim_jax(self.sim64, proc_transform)(X)
 
@@ -159,10 +158,10 @@ class UnitTests(unittest.TestCase):
 
         abs_diff = np.abs(np.abs(X_transformed_sklearn) - np.abs(result[0]))
         rel_error = abs_diff / (np.abs(X_transformed_sklearn) + 1e-6)
-        
+
         print("avg absolute error:\n", np.mean(abs_diff))
         print("avg relative error:\n", np.mean(rel_error))
-    
+
     def test_rsvd(self):
         print("start test rsvd method.")
 
