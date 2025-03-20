@@ -8,7 +8,7 @@ import numpy as np
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../../'))
 
 import sml.utils.emulation as emulation
-from sml.fyy_pca.jacobi_evd import generate_ring_sequence, serial_jacobi_evd
+from sml.utils.extmath import serial_jacobi_evd
 
 
 def emul_jacobievd(mode: emulation.Mode.MULTIPROCESS):
@@ -16,7 +16,7 @@ def emul_jacobievd(mode: emulation.Mode.MULTIPROCESS):
     np.random.seed(0)
 
     # ONLY test small matrix for usage purpose
-    n = 10
+    n = 32
     mat = jnp.array(np.random.rand(n, n))
     mat = (mat + mat.T) / 2
 
@@ -24,9 +24,8 @@ def emul_jacobievd(mode: emulation.Mode.MULTIPROCESS):
         print("start jacobi evd emulation test, with shape=", mat.shape)
 
         mat_spu = emulator.seal(mat)
-        rotate_mat_spu = emulator.seal(jnp.eye(mat.shape[0]))
-        val, vec = emulator.run(serial_jacobi_evd, static_argnums=(2,))(
-            mat_spu, rotate_mat_spu, max_jacobi_iter
+        val, vec = emulator.run(serial_jacobi_evd, static_argnums=(1,))(
+            mat_spu, max_jacobi_iter
         )
         sorted_indices = jnp.argsort(val)[::-1]
         eig_vec = vec.T[sorted_indices]
@@ -52,7 +51,7 @@ def emul_jacobievd(mode: emulation.Mode.MULTIPROCESS):
         )
 
     try:
-        conf_path = "sml/fyy_pca/emulations/3pc_128.json"
+        conf_path = "sml/utils/emulations/3pc_128.json"
         emulator = emulation.Emulator(conf_path, mode, bandwidth=300, latency=20)
         emulator.up()
 

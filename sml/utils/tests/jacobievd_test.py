@@ -5,22 +5,18 @@ import numpy as np
 
 import spu.libspu as libspu
 import spu.utils.simulation as spsim
-from sml.fyy_pca.jacobi_evd import (
-    generate_ring_sequence,
-    serial_jacobi_evd,
-)
+from sml.utils.extmath import serial_jacobi_evd
 
 
 def _generate_symmetric_matric(n):
 
     mat = jnp.array(np.random.rand(n, n))
     mat = (mat + mat.T) / 2
-    # mat = jnp.eye(n)
 
     return mat
 
 
-def _generate_sample_pack(small=25, medium=50, large=100):
+def _generate_sample_pack(small=32, medium=50, large=100):
     small_pack = _generate_symmetric_matric(small)
     medium_pack = _generate_symmetric_matric(medium)
     large_pack = _generate_symmetric_matric(large)
@@ -72,10 +68,6 @@ class ExtMathTests(unittest.TestCase):
         max_jacobi_iter=5,
         is_plain=False,
         field="FM64",
-        # eig_atol=1e-2,
-        # eig_rtol=1e-2,
-        # vec_atol=1e-2,
-        # vec_rtol=1e-2,
     ):
         data_pack = self.data_pack
 
@@ -101,10 +93,10 @@ class ExtMathTests(unittest.TestCase):
             serial_jacobi_evd
             if is_plain
             else spsim.sim_jax(
-                self.sim_dict[field], serial_jacobi_evd, static_argnums=(2,)
+                self.sim_dict[field], serial_jacobi_evd, static_argnums=(1,)
             )
         )
-        val, vec = run_func(x, jnp.eye(x.shape[0]), max_jacobi_iter)
+        val, vec = run_func(x, max_jacobi_iter)
         sorted_indices = jnp.argsort(val)[::-1]
         eig_vec = vec.T[sorted_indices]
         eig_val = val[sorted_indices]
@@ -133,14 +125,14 @@ class ExtMathTests(unittest.TestCase):
 
         self._jacobi_evd_test_pack(is_plain=True)
 
-        print(" ========= test svd end plain ========= \n")
+        print(" ========= test evd end plain ========= \n")
 
     def test_jacobi_evd(self):
         print(" ========= start test jacobi_evd =========\n")
 
         self._jacobi_evd_test_pack(is_plain=False)
 
-        print(" ========= test svd end ========= \n")
+        print(" ========= test evd end ========= \n")
 
 
 if __name__ == "__main__":

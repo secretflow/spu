@@ -102,6 +102,67 @@ class UnitTests(unittest.TestCase):
             X_reconstructed_sklearn, result[2], atol=0.01, rtol=0.01
         )
 
+    def test_jacobi(self):
+        print("start test serial_jacobi method.")
+
+        def proc_transform(X):
+            model = PCA(
+                method='serial_jacobi_iteration',
+                n_components=4,
+                max_jacobi_iter=5,
+            )
+
+            model.fit(X)
+            X_transformed = model.transform(X)
+            X_variances = model._variances
+            X_reconstructed = model.inverse_transform(X_transformed)
+            X_components = model._components
+
+            return X_transformed, X_variances, X_reconstructed, X_components
+
+        # Create a simple dataset
+        X = random.normal(random.PRNGKey(0), (10, 20))
+
+
+        # Run the simulation
+        result = spsim.sim_jax(self.sim64, proc_transform)(X)
+
+        # The transformed data should have 2 dimensions
+        self.assertEqual(result[0].shape[1], 4)
+
+        # The mean of the transformed data should be approximately 0
+        self.assertTrue(jnp.allclose(jnp.mean(result[0], axis=0), 0, atol=1e-3))
+
+        X_np = np.array(X)
+
+        # Run fit_transform using sklearn
+        sklearn_pca = SklearnPCA(n_components=4)
+        X_transformed_sklearn = sklearn_pca.fit_transform(X_np)
+
+        # Compare the transform results(omit sign)
+        np.testing.assert_allclose(
+            np.abs(X_transformed_sklearn), np.abs(result[0]), rtol=0.1, atol=0.1
+        )
+
+        # Compare the variance results
+        np.testing.assert_allclose(
+            sklearn_pca.explained_variance_, result[1], rtol=0.1, atol=0.1
+        )
+
+        # Run inverse_transform using sklearn
+        X_reconstructed_sklearn = sklearn_pca.inverse_transform(X_transformed_sklearn)
+
+        # Compare the results
+        np.testing.assert_allclose(
+            X_reconstructed_sklearn, result[2], atol=0.1, rtol=0.1
+        )
+
+        abs_diff = np.abs(np.abs(X_transformed_sklearn) - np.abs(result[0]))
+        rel_error = abs_diff / (np.abs(X_transformed_sklearn) + 1e-6)
+        
+        print("avg absolute error:\n", np.mean(abs_diff))
+        print("avg relative error:\n", np.mean(rel_error))
+    
     def test_rsvd(self):
         print("start test rsvd method.")
 
