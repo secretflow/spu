@@ -21,15 +21,15 @@ msgstr ""
 
 #: ../../reference/xla_status.md:1
 msgid "XLA Implementation Status"
-msgstr ""
+msgstr "XLA实现支持状态"
 
 #: ../../reference/xla_status.md:3
 msgid "List of XLA(mhlo-mlir) Ops that SPU supports:"
-msgstr ""
+msgstr "SPU 支持的 XLA(mhlo-mlir) 算子列表："
 
 #: ../../reference/xla_status.md:12
 msgid "XLA nullary ops"
-msgstr ""
+msgstr "XLA 零操作数算子"
 
 #: ../../reference/xla_status.md
 msgid "Op Name"
@@ -73,7 +73,7 @@ msgstr ""
 
 #: ../../reference/xla_status.md:22
 msgid "XLA unary element-wise ops"
-msgstr ""
+msgstr "XLA 一元逐元素算子"
 
 #: ../../reference/xla_status.md
 msgid "`abs`"
@@ -181,7 +181,7 @@ msgstr ""
 
 #: ../../reference/xla_status.md:52
 msgid "XLA binary element-wise ops"
-msgstr ""
+msgstr "XLA 二元逐元素算子"
 
 #: ../../reference/xla_status.md
 msgid "`add`"
@@ -245,7 +245,7 @@ msgstr ""
 
 #: ../../reference/xla_status.md:72
 msgid "XLA binary logical element-wise ops"
-msgstr ""
+msgstr "XLA 二元逻辑逐元素算子"
 
 #: ../../reference/xla_status.md
 msgid "`and`"
@@ -261,7 +261,7 @@ msgstr ""
 
 #: ../../reference/xla_status.md:81
 msgid "XLA communication ops"
-msgstr ""
+msgstr "XLA 通信算子"
 
 #: ../../reference/xla_status.md
 msgid "`infeed`"
@@ -281,7 +281,7 @@ msgstr ""
 
 #: ../../reference/xla_status.md:91
 msgid "XLA parallelism related ops"
-msgstr ""
+msgstr "XLA 并行相关算子"
 
 #: ../../reference/xla_status.md
 msgid "`replica_id`"
@@ -289,7 +289,7 @@ msgstr ""
 
 #: ../../reference/xla_status.md:98
 msgid "XLA control flow ops"
-msgstr ""
+msgstr "XLA 流程控制算子"
 
 #: ../../reference/xla_status.md
 msgid "`after_all`"
@@ -337,7 +337,7 @@ msgstr ""
 
 #: ../../reference/xla_status.md:113
 msgid "XLA tuple ops"
-msgstr ""
+msgstr "XLA 元组算子"
 
 #: ../../reference/xla_status.md
 msgid "`get_tuple_element`"
@@ -349,7 +349,7 @@ msgstr ""
 
 #: ../../reference/xla_status.md:121
 msgid "XLA other ops"
-msgstr ""
+msgstr "XLA 其他算子"
 
 #: ../../reference/xla_status.md
 msgid "`slice`"
@@ -541,7 +541,7 @@ msgstr ""
 
 #: ../../reference/xla_status.md:169
 msgid "XLA RNG ops"
-msgstr ""
+msgstr "XLA RNG 算子"
 
 #: ../../reference/xla_status.md
 msgid "`rng_uniform`"
@@ -561,7 +561,7 @@ msgstr ""
 
 #: ../../reference/xla_status.md:178
 msgid "XLA quantize op"
-msgstr ""
+msgstr "XLA 量化算子"
 
 #: ../../reference/xla_status.md
 msgid "`dequantize`"
@@ -569,7 +569,7 @@ msgstr ""
 
 #: ../../reference/xla_status.md:185
 msgid "XLA miscellaneous ops"
-msgstr ""
+msgstr "XLA 杂项算子"
 
 #: ../../reference/xla_status.md
 msgid "`fusion`"

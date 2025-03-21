@@ -2334,7 +2334,7 @@ msgstr "左下方的模块是调度组件。"
 msgid ""
 "The main block is the SPU Architecture, which is the core for secure "
 "evaluation."
-msgstr "主要模块是 SPU 架构，它是安全评估的核心。"
+msgstr "主要模块是 SPU 架构，它是安全计算的核心。"
 
 #: ../../development/runtime.rst:15
 msgid "Inside SPU, there are multiple layers, from bottom to up:"
@@ -2368,7 +2368,7 @@ msgstr "**关联层** 或离线协议层，提供类似于比弗三元组和随�
 msgid ""
 "**Protocol** or the online protocol layer, applies random correlation and"
 " runs the secure evaluation."
-msgstr "**协议层** 或在线协议层，应用随机关联并运行安全评估。"
+msgstr "**协议层** 或在线协议层，应用随机关联并运行安全计算。"
 
 #: ../../development/runtime.rst:24
 msgid ""
@@ -2429,7 +2429,7 @@ msgid ""
 "virtual device when applying secure evaluation. For example, in the "
 "following computation graph, given `x`, `y`, we want to compute `f(x, "
 "y)`, the big circle represents a computing node which can evaluate f."
-msgstr "我们希望 SPU 虚拟机是*同构*的，这样在应用安全评估时可以将其视为一个普通的虚拟设备。例如，在下面的计算图中，给定 `x` 和 `y`，我们希望计算 `f(x, y)`，大圆圈代表一个可以评估 f 的计算节点。"
+msgstr "我们希望 SPU 虚拟机是*同构*的，这样在应用安全计算时可以将其视为一个普通的虚拟设备。例如，在下面的计算图中，给定 `x` 和 `y`，我们希望计算 `f(x, y)`，大圆圈代表一个可以评估 f 的计算节点。"
 
 #: ../../development/runtime.rst:43
 msgid ""
