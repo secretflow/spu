@@ -33,7 +33,8 @@ msgid ""
 "3PC-protocol, SPU provides **semi-honest** implementation, note, it's "
 "hard to resist collusion attacks if more than two computing nodes "
 "deployed together."
-msgstr "`ABY3 <https://eprint.iacr.org/2018/403.pdf>`_: 一个**诚实大多数** "
+msgstr ""
+"`ABY3 <https://eprint.iacr.org/2018/403.pdf>`_： 一个**诚实大多数** "
 "3PC 协议（Three-Party Computation）中， SPU 提供了**半诚实安全模型（semi-honest）**的实现，需注意："
 "若超过两个计算节点被共同部署，将难以抵御合谋攻击。"
 
@@ -43,8 +44,9 @@ msgid ""
 "honest** NPC-protocol similar to SPDZ but requires a trusted third party "
 "to generate offline randoms. By default this protocol now uses trusted "
 "first party. Hence, it should be used for debugging purposes only."
-msgstr "`Semi2k-SPDZ* <https://eprint.iacr.org/2018/482.pdf>`_ : "
-"一种与 SPDZ 协议类似的半诚实型（semi-honest） NPC 协议（注： NPC 通常指多方计算协议，此处可能指代特定协议类型）。"
+msgstr ""
+"`Semi2k-SPDZ* <https://eprint.iacr.org/2018/482.pdf>`_ ："
+"一种与 SPDZ 协议类似的**半诚实型（semi-honest）** NPC 协议。"
 "该协议需要依赖可信第三方生成离线随机数。目前，默认情况下该协议使用可信第一方（而非第三方）来生成随机数。"
 "因此，此协议仅应用于调试目的，不适用于生产环境。"
 
@@ -54,16 +56,18 @@ msgid ""
 "protocol, which uses carefully designed homomorphic encryption-based "
 "protocols for arithmetic operations and `Ferret "
 "<https://eprint.iacr.org/2020/924.pdf>`_ for boolean operations."
-msgstr "`Cheetah* <https://eprint.iacr.org/2022/207>`_ : "
-"一种快速的 2pc 半诚实协议，它使用精心设计的基于同态加密的协议进行算术运算，并使用 `Ferret "
- "<https://eprint.iacr.org/2020/924.pdf>`_ 进行布尔运算。"
+msgstr ""
+"`Cheetah <https://eprint.iacr.org/2022/207>`_ ： "
+"一种快速的 2pc 半诚实协议，它使用精心设计的基于同态加密的协议进行算术运算，"
+"并使用 `Ferret <https://eprint.iacr.org/2020/924.pdf>`_ 进行布尔运算。"
 
 #: ../../reference/mpc_status.rst:10
 msgid ""
 "Currently, we mainly focus on bridging existing AI frameworks to SPU via "
 "XLA, an intermediate representation where we can hook Tensorflow, Torch "
 "and Jax."
-msgstr "目前，我们主要致力于通过 XLA 将现有的 AI 框架桥接到 SPU，XLA 是一种中间表示，"
+msgstr ""
+"目前，我们主要致力于通过 XLA 将现有的 AI 框架桥接到 SPU，XLA 是一种中间表示，"
 "我们可以在其中连接 Tensorflow、Torch 和 Jax。"
 
 #: ../../reference/mpc_status.rst:13
@@ -72,17 +76,19 @@ msgstr "欢迎安全专家帮助贡献更多的安全协议。"
 
 #: ../../reference/mpc_status.rst:16
 msgid "Complexity"
-msgstr "复杂"
+msgstr "复杂性"
 
 #: ../../reference/mpc_status.rst:19
 msgid ""
 "The complexity metrics are dumped from the source code, it's supposed to "
 "be accurate and could be used as a formal cost model."
-msgstr "复杂性指标是从源代码中提取出来的，它应该是准确的，可以用作正式的成本模型。"
+msgstr ""
+"复杂性指标是从源代码中提取出来的，它应该是准确的，可以用作正式的成本模型。"
 
 #: ../../reference/mpc_status.rst:20
 msgid "In Semi2k, only *online stage* complexity is considered."
-msgstr "在 Semi2k 中，只考虑*在线阶段*的复杂性。"
+msgstr ""
+"在 Semi2k 中，只考虑*在线阶段*的复杂性。"
 
 #: ../../reference/mpc_status.rst:22
 msgid "Notation:"
@@ -90,19 +96,23 @@ msgstr "符号："
 
 #: ../../reference/mpc_status.rst:24
 msgid "**N** is short for the *number of parties*."
-msgstr "**N** 是 *参与方数量* 的缩写。"
+msgstr ""
+"**N** 是 *参与方数量* 的缩写。"
 
 #: ../../reference/mpc_status.rst:25
 msgid "**K** is short for the *k in module 2^k*."
-msgstr "**K** 是 *模 2^k* 的缩写。"
+msgstr ""
+"**K** 是 *模 2^k* 的缩写。"
 
 #: ../../reference/mpc_status.rst:26
 msgid "**m** is short for *rows of mmul lhs operand*."
-msgstr "**m** 是 *mmul 左操作数的行数* 的缩写。"
+msgstr ""
+"**m** 是 *mmul 左操作数的行数* 的缩写。"
 
 #: ../../reference/mpc_status.rst:27
 msgid "**n** is short for *cols of mmul rhs operand*."
-msgstr "**n** 是 *mmul 右操作数的列数* 的缩写。""
+msgstr ""
+"**n** 是 *mmul 右操作数的列数* 的缩写。""
 
 #: ../../reference/mpc_status.rst:29
 msgid "Naming convention:"
@@ -110,19 +120,23 @@ msgstr "命名约定："
 
 #: ../../reference/mpc_status.rst:31
 msgid "**a** for *arithmetic share*."
-msgstr "**a** 代表 *算术份额*。"
+msgstr ""
+"**a** 代表 *算术份额*。"
 
 #: ../../reference/mpc_status.rst:32
 msgid "**b** for *boolean share*."
-msgstr "**b** 代表 *布尔共享*。"
+msgstr ""
+"**b** 代表 *布尔共享*。"
 
 #: ../../reference/mpc_status.rst:33
 msgid "**p** for *public value*."
-msgstr "**p** 代表*公共值*。"
+msgstr ""
+"**p** 代表*公共值*。"
 
 #: ../../reference/mpc_status.rst:35
 msgid "For example, `mul_aa` is short for multiply of two arithmetic shares."
-msgstr "例如，“mul_aa” 是两个算术份额相乘的缩写。"
+msgstr ""
+"例如，“mul_aa” 是两个算术份额相乘的缩写。"
 
 #: ../../reference/complexity.md:1
 msgid "Semi2k"
