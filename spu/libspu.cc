@@ -671,6 +671,210 @@ void BindSPU(py::module& m) {
            [](const RuntimeConfig& self) {
              return py::bytes(self.SerializeAsString());
            })
+      .def("__str__",
+           [](const RuntimeConfig& self) {
+             std::stringstream ss;
+
+             // Protocol kind
+             ss << "protocol: ";
+             switch (self.protocol) {
+               case ProtocolKind::PROT_INVALID:
+                 ss << "INVALID";
+                 break;
+               case ProtocolKind::REF2K:
+                 ss << "REF2K";
+                 break;
+               case ProtocolKind::SEMI2K:
+                 ss << "SEMI2K";
+                 break;
+               case ProtocolKind::ABY3:
+                 ss << "ABY3";
+                 break;
+               case ProtocolKind::CHEETAH:
+                 ss << "CHEETAH";
+                 break;
+               case ProtocolKind::SECURENN:
+                 ss << "SECURENN";
+                 break;
+             }
+             ss << "\n";
+
+             // Field type
+             ss << "field: ";
+             switch (self.field) {
+               case FieldType::FT_INVALID:
+                 ss << "INVALID";
+                 break;
+               case FieldType::FM32:
+                 ss << "FM32";
+                 break;
+               case FieldType::FM64:
+                 ss << "FM64";
+                 break;
+               case FieldType::FM128:
+                 ss << "FM128";
+                 break;
+             }
+
+             // Numeric fields (only print if not default)
+             if (self.fxp_fraction_bits != 0) {
+               ss << "\nfxp_fraction_bits: " << self.fxp_fraction_bits;
+             }
+             if (self.max_concurrency != 0) {
+               ss << "\nmax_concurrency: " << self.max_concurrency;
+             }
+             if (self.public_random_seed != 0) {
+               ss << "\npublic_random_seed: " << self.public_random_seed;
+             }
+             if (self.share_max_chunk_size !=
+                 RuntimeConfig::kDefaultShareMaxChunkSize) {
+               ss << "\nshare_max_chunk_size: " << self.share_max_chunk_size;
+             }
+
+             // Sort related settings
+             if (self.sort_method != RuntimeConfig::SORT_DEFAULT) {
+               ss << "\nsort_method: ";
+               switch (self.sort_method) {
+                 case RuntimeConfig::SORT_RADIX:
+                   ss << "RADIX";
+                   break;
+                 case RuntimeConfig::SORT_QUICK:
+                   ss << "QUICK";
+                   break;
+                 case RuntimeConfig::SORT_NETWORK:
+                   ss << "NETWORK";
+                   break;
+                 default:
+                   ss << "UNKNOWN";
+                   break;
+               }
+             }
+             if (self.quick_sort_threshold !=
+                 RuntimeConfig::kDefaultQuickSortThreshold) {
+               ss << "\nquick_sort_threshold: " << self.quick_sort_threshold;
+             }
+
+             // Fixed-point arithmetic settings
+             if (self.fxp_div_goldschmidt_iters !=
+                 RuntimeConfig::kDefaultFxpDivGoldschmidtIters) {
+               ss << "\nfxp_div_goldschmidt_iters: "
+                  << self.fxp_div_goldschmidt_iters;
+             }
+
+             if (self.fxp_exp_mode != RuntimeConfig::EXP_DEFAULT) {
+               ss << "\nfxp_exp_mode: ";
+               switch (self.fxp_exp_mode) {
+                 case RuntimeConfig::EXP_PADE:
+                   ss << "PADE";
+                   break;
+                 case RuntimeConfig::EXP_TAYLOR:
+                   ss << "TAYLOR";
+                   break;
+                 case RuntimeConfig::EXP_PRIME:
+                   ss << "PRIME";
+                   break;
+                 default:
+                   ss << "UNKNOWN";
+                   break;
+               }
+             }
+
+             if (self.fxp_log_mode != RuntimeConfig::LOG_DEFAULT) {
+               ss << "\nfxp_log_mode: ";
+               switch (self.fxp_log_mode) {
+                 case RuntimeConfig::LOG_PADE:
+                   ss << "PADE";
+                   break;
+                 case RuntimeConfig::LOG_NEWTON:
+                   ss << "NEWTON";
+                   break;
+                 case RuntimeConfig::LOG_MINMAX:
+                   ss << "MINMAX";
+                   break;
+                 default:
+                   ss << "UNKNOWN";
+                   break;
+               }
+             }
+
+             if (self.sigmoid_mode != RuntimeConfig::SIGMOID_DEFAULT) {
+               ss << "\nsigmoid_mode: ";
+               switch (self.sigmoid_mode) {
+                 case RuntimeConfig::SIGMOID_MM1:
+                   ss << "MM1";
+                   break;
+                 case RuntimeConfig::SIGMOID_SEG3:
+                   ss << "SEG3";
+                   break;
+                 case RuntimeConfig::SIGMOID_REAL:
+                   ss << "REAL";
+                   break;
+                 default:
+                   ss << "UNKNOWN";
+                   break;
+               }
+             }
+
+             // Boolean flags (only print if true)
+             if (self.enable_action_trace) ss << "\nenable_action_trace: true";
+             if (self.enable_type_checker) ss << "\nenable_type_checker: true";
+             if (self.enable_pphlo_trace) ss << "\nenable_pphlo_trace: true";
+             if (self.enable_runtime_snapshot)
+               ss << "\nenable_runtime_snapshot: true";
+             if (self.enable_pphlo_profile)
+               ss << "\nenable_pphlo_profile: true";
+             if (self.enable_hal_profile) ss << "\nenable_hal_profile: true";
+             if (self.enable_lower_accuracy_rsqrt)
+               ss << "\nenable_lower_accuracy_rsqrt: true";
+             if (self.trunc_allow_msb_error)
+               ss << "\ntrunc_allow_msb_error: true";
+
+             // Optional string fields
+             if (!self.snapshot_dump_dir.empty()) {
+               ss << "\nsnapshot_dump_dir: " << self.snapshot_dump_dir;
+             }
+
+             // Beaver config
+             // if (self.beaver_type != RuntimeConfig::TrustedFirstParty) {
+             //     ss << "\nbeaver_type: ";
+             //     switch (self.beaver_type) {
+             //         case RuntimeConfig::TrustedThirdParty: ss <<
+             //         "TrustedThirdParty"; break; case
+             //         RuntimeConfig::MultiParty: ss << "MultiParty"; break;
+             //         default: ss << "UNKNOWN"; break;
+             //     }
+             // }
+
+             // Experimental features
+             // if (self.experimental_disable_mmul_split) ss <<
+             // "\nexperimental_disable_mmul_split: true"; if
+             // (self.experimental_enable_inter_op_par) ss <<
+             // "\nexperimental_enable_inter_op_par: true"; if
+             // (self.experimental_enable_intra_op_par) ss <<
+             // "\nexperimental_enable_intra_op_par: true"; if
+             // (self.experimental_disable_vectorization) ss <<
+             // "\nexperimental_disable_vectorization: true"; if
+             // (self.experimental_enable_colocated_optimization) ss <<
+             // "\nexperimental_enable_colocated_optimization: true"; if
+             // (self.experimental_enable_exp_prime) ss <<
+             // "\nexperimental_enable_exp_prime: true"; if
+             // (self.experimental_exp_prime_disable_lower_bound) ss <<
+             // "\nexperimental_exp_prime_disable_lower_bound: true"; if
+             // (self.experimental_exp_prime_enable_upper_bound) ss <<
+             // "\nexperimental_exp_prime_enable_upper_bound: true";
+
+             // if (self.experimental_inter_op_concurrency !=
+             // kDefaultExperimentalInterOpConcurrency) {
+             //     ss << "\nexperimental_inter_op_concurrency: " <<
+             //     self.experimental_inter_op_concurrency;
+             // }
+             // if (self.experimental_exp_prime_offset != 0) {
+             //     ss << "\nexperimental_exp_prime_offset: " <<
+             //     self.experimental_exp_prime_offset;
+             // }
+
+             return py::str(ss.str());
+           })
       .def_readwrite("protocol", &RuntimeConfig::protocol)
       .def_readwrite("field", &RuntimeConfig::field)
       .def_readwrite("fxp_fraction_bits", &RuntimeConfig::fxp_fraction_bits)
