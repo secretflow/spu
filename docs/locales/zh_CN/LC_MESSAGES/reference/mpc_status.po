@@ -34,8 +34,8 @@ msgid ""
 "hard to resist collusion attacks if more than two computing nodes "
 "deployed together."
 msgstr ""
-"`ABY3 <https://eprint.iacr.org/2018/403.pdf>`_： 一个诚实大多数 "
-"3PC 协议（Three-Party Computation）中， SPU 提供了**半诚实安全模型（semi-honest）**的实现，需注意："
+"`ABY3 <https://eprint.iacr.org/2018/403.pdf>`_： 一个 **诚实大多数** "
+"3PC 协议， SPU 提供了 **半诚实** 安全模型的实现，需注意："
 "若超过两个计算节点被共同部署，将难以抵御合谋攻击。"
 
 #: ../../reference/mpc_status.rst:7
@@ -45,8 +45,8 @@ msgid ""
 "to generate offline randoms. By default this protocol now uses trusted "
 "first party. Hence, it should be used for debugging purposes only."
 msgstr ""
-"`Semi2k-SPDZ <https://eprint.iacr.org/2018/482.pdf>`_ ："
-"一种与 SPDZ 协议类似的半诚实型（semi-honest） NPC 协议。"
+"`Semi2k-SPDZ* <https://eprint.iacr.org/2018/482.pdf>`_ ："
+"一种与 SPDZ 协议类似的 **半诚实** NPC 协议。"
 "该协议需要依赖可信第三方生成离线随机数。目前，默认情况下该协议使用可信第一方（而非第三方）来生成随机数。"
 "因此，此协议仅应用于调试目的，不适用于生产环境。"
 
@@ -57,7 +57,7 @@ msgid ""
 "protocols for arithmetic operations and `Ferret "
 "<https://eprint.iacr.org/2020/924.pdf>`_ for boolean operations."
 msgstr ""
-"`Cheetah <https://eprint.iacr.org/2022/207>`_ ： "
+"`Cheetah* <https://eprint.iacr.org/2022/207>`_ ： "
 "一种快速的 2pc 半诚实协议，它使用精心设计的基于同态加密的协议进行算术运算，"
 "并使用 `Ferret <https://eprint.iacr.org/2020/924.pdf>`_ 进行布尔运算。"
 
@@ -88,7 +88,7 @@ msgstr ""
 #: ../../reference/mpc_status.rst:20
 msgid "In Semi2k, only *online stage* complexity is considered."
 msgstr ""
-"在 Semi2k 中，只考虑*在线阶段*的复杂性。"
+"在 Semi2k 中，只考虑 *在线阶段* 的复杂性。"
 
 #: ../../reference/mpc_status.rst:22
 msgid "Notation:"
@@ -112,7 +112,7 @@ msgstr ""
 #: ../../reference/mpc_status.rst:27
 msgid "**n** is short for *cols of mmul rhs operand*."
 msgstr ""
-"**n** 是 *mmul 右操作数的列数* 的缩写。""
+"**n** 是 *mmul 右操作数的列数* 的缩写。"
 
 #: ../../reference/mpc_status.rst:29
 msgid "Naming convention:"
@@ -131,7 +131,7 @@ msgstr ""
 #: ../../reference/mpc_status.rst:33
 msgid "**p** for *public value*."
 msgstr ""
-"**p** 代表*公共值*。"
+"**p** 代表 *公共值*。"
 
 #: ../../reference/mpc_status.rst:35
 msgid "For example, `mul_aa` is short for multiply of two arithmetic shares."
@@ -273,4 +273,3 @@ msgstr "3"
 #: ../../reference/complexity.md
 msgid "4\\*K"
 msgstr "4\\*K"
-
