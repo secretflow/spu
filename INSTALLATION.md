@@ -1,6 +1,6 @@
 # Installation Guidelines
 
-There are three ways to install SPU: installing from Docker image, installing from PyPI, and building from source.
+There are three ways to install SPU: using official Docker image, installing from PyPI, and building from source.
 
 ## Environment
 
@@ -11,7 +11,7 @@ SPU has been tested with the following settings:
 - Ubuntu 22.04
 - Python 3.10 and 3.11
 
-### MacOS
+### macOS
 
 We have conducted some successful preliminary testings on
 macOS Monterey 14.1 with Apple Silicon.
@@ -23,8 +23,17 @@ Please check [official Docker image](https://hub.docker.com/r/secretflow/ubuntu-
 ## Installing From PyPI
 
 You could install SPU via the [official PyPI package](https://pypi.org/project/spu/).
+Note that SPU current only support Python 3.10 and 3.11.
 
 ```bash
+pip install spu
+```
+
+It is recommended to install in a virtual environment, e.g.,
+
+```bash
+conda create -n my-env python=3.11
+conda activate my-env
 pip install spu
 ```
 
@@ -41,6 +50,10 @@ bazelisk build //:spu_wheel -c opt
 pip install bazel-bin/spu-*.whl --force-reinstall
 ```
 
+- Note that:
+  - This will build with Python 3.11 by default. See [below](#build-with-specified-python-version) for specifing Python version when building.
+  - The Python version used for building (specified in `bazelisk`) must match the Python version used for `pip install` (can be checked using `pip -V`).
+  It is recommended to install in a virtual environment.
 - Once GCC/bazel/python/Xcode version or other environment settings have changed, please run the following command to ensure a clean build
 
 ```bash
@@ -48,6 +61,8 @@ bazelisk clean --expunge
 ```
 
 ### Build with GPU support
+
+This requires CUDA Toolkit to be installed.
 
 ```bash
 bazelisk build //:spu_wheel -c opt --config=gpu
