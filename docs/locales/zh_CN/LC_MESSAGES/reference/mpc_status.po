@@ -21,11 +21,11 @@ msgstr ""
 
 #: ../../reference/mpc_status.rst:2
 msgid "Supported MPC Protocol"
-msgstr ""
+msgstr "支持的MPC协议"
 
 #: ../../reference/mpc_status.rst:4
 msgid "Currently, SPU implements the following protocols."
-msgstr ""
+msgstr "目前，SPU支持了以下MPC协议。"
 
 #: ../../reference/mpc_status.rst:6
 msgid ""
@@ -33,7 +33,9 @@ msgid ""
 "3PC-protocol, SPU provides **semi-honest** implementation, note, it's "
 "hard to resist collusion attacks if more than two computing nodes "
 "deployed together."
-msgstr ""
+msgstr "`ABY3 <https://eprint.iacr.org/2018/403.pdf>`_: 一个**诚实大多数** "
+"3PC协议（Three-Party Computation）中，SPU提供了**半诚实安全模型（semi-honest）**的实现，需注意："
+"若超过两个计算节点被共同部署，将难以抵御合谋攻击。"
 
 #: ../../reference/mpc_status.rst:7
 msgid ""
@@ -41,7 +43,10 @@ msgid ""
 "honest** NPC-protocol similar to SPDZ but requires a trusted third party "
 "to generate offline randoms. By default this protocol now uses trusted "
 "first party. Hence, it should be used for debugging purposes only."
-msgstr ""
+msgstr "`Semi2k-SPDZ* <https://eprint.iacr.org/2018/482.pdf>`_ : "
+"一种与SPDZ协议类似的半诚实型（semi-honest）NPC协议（注：NPC通常指多方计算协议，此处可能指代特定协议类型）。"
+"该协议需要依赖可信第三方生成离线随机数。目前，默认情况下该协议使用可信第一方（而非第三方）来生成随机数。"
+"因此，此协议仅应用于调试目的，不适用于生产环境。"
 
 #: ../../reference/mpc_status.rst:8
 msgid ""
@@ -49,206 +54,209 @@ msgid ""
 "protocol, which uses carefully designed homomorphic encryption-based "
 "protocols for arithmetic operations and `Ferret "
 "<https://eprint.iacr.org/2020/924.pdf>`_ for boolean operations."
-msgstr ""
+msgstr "`Cheetah* <https://eprint.iacr.org/2022/207>`_ : "
+"一种快速的 2pc 半诚实协议，它使用精心设计的基于同态加密的协议进行算术运算，并使用 `Ferret "
+ "<https://eprint.iacr.org/2020/924.pdf>`_ 进行布尔运算。"
 
 #: ../../reference/mpc_status.rst:10
 msgid ""
 "Currently, we mainly focus on bridging existing AI frameworks to SPU via "
 "XLA, an intermediate representation where we can hook Tensorflow, Torch "
 "and Jax."
-msgstr ""
+msgstr "目前，我们主要致力于通过 XLA 将现有的 AI 框架桥接到 SPU，XLA 是一种中间表示，"
+"我们可以在其中连接 Tensorflow、Torch 和 Jax。"
 
 #: ../../reference/mpc_status.rst:13
 msgid "We welcome security experts to help contribute more security protocols."
-msgstr ""
+msgstr "欢迎安全专家帮助贡献更多的安全协议。"
 
 #: ../../reference/mpc_status.rst:16
 msgid "Complexity"
-msgstr ""
+msgstr "复杂"
 
 #: ../../reference/mpc_status.rst:19
 msgid ""
 "The complexity metrics are dumped from the source code, it's supposed to "
 "be accurate and could be used as a formal cost model."
-msgstr ""
+msgstr "复杂性指标是从源代码中提取出来的，它应该是“准确的，可以用作正式的成本模型。"
 
 #: ../../reference/mpc_status.rst:20
 msgid "In Semi2k, only *online stage* complexity is considered."
-msgstr ""
+msgstr "在 Semi2k 中，只考虑*在线阶段*的复杂性。"
 
 #: ../../reference/mpc_status.rst:22
 msgid "Notation:"
-msgstr ""
+msgstr "符号："
 
 #: ../../reference/mpc_status.rst:24
 msgid "**N** is short for the *number of parties*."
-msgstr ""
+msgstr "**N** 是 *参与方数量* 的缩写。"
 
 #: ../../reference/mpc_status.rst:25
 msgid "**K** is short for the *k in module 2^k*."
-msgstr ""
+msgstr "**K** 是 *模 2^k* 的缩写。"
 
 #: ../../reference/mpc_status.rst:26
 msgid "**m** is short for *rows of mmul lhs operand*."
-msgstr ""
+msgstr "**m** 是 *mmul 左操作数的行数* 的缩写。"
 
 #: ../../reference/mpc_status.rst:27
 msgid "**n** is short for *cols of mmul rhs operand*."
-msgstr ""
+msgstr "**n** 是 *mmul 右操作数的列数* 的缩写。""
 
 #: ../../reference/mpc_status.rst:29
 msgid "Naming convention:"
-msgstr ""
+msgstr "命名约定："
 
 #: ../../reference/mpc_status.rst:31
 msgid "**a** for *arithmetic share*."
-msgstr ""
+msgstr "**a** 代表 *算术份额*。"
 
 #: ../../reference/mpc_status.rst:32
 msgid "**b** for *boolean share*."
-msgstr ""
+msgstr "**b** 代表 *布尔共享*。"
 
 #: ../../reference/mpc_status.rst:33
 msgid "**p** for *public value*."
-msgstr ""
+msgstr "**p** 代表*公共值*。"
 
 #: ../../reference/mpc_status.rst:35
 msgid "For example, `mul_aa` is short for multiply of two arithmetic shares."
-msgstr ""
+msgstr "例如，“mul_aa” 是两个算术份额相乘的缩写。"
 
 #: ../../reference/complexity.md:1
 msgid "Semi2k"
-msgstr ""
+msgstr "Semi2k"
 
 #: ../../reference/complexity.md
 msgid "kernel"
-msgstr ""
+msgstr "kernel"
 
 #: ../../reference/complexity.md
 msgid "latency"
-msgstr ""
+msgstr "latency"
 
 #: ../../reference/complexity.md
 msgid "comm"
-msgstr ""
+msgstr "comm"
 
 #: ../../reference/complexity.md
 msgid "a2b"
-msgstr ""
+msgstr "a2b"
 
 #: ../../reference/complexity.md
 msgid "(log(K)+1)\\*log(N)"
-msgstr ""
+msgstr "(log(K)+1)\\*log(N)"
 
 #: ../../reference/complexity.md
 msgid "(2\\*log(K)+1)\\*2\\*K\\*(N-1)\\*(N-1)"
-msgstr ""
+msgstr "(2\\*log(K)+1)\\*2\\*K\\*(N-1)\\*(N-1)"
 
 #: ../../reference/complexity.md
 msgid "b2a"
-msgstr ""
+msgstr "b2a"
 
 #: ../../reference/complexity.md
 msgid "1"
-msgstr ""
+msgstr "1"
 
 #: ../../reference/complexity.md
 msgid "K\\*(N-1)"
-msgstr ""
+msgstr "K\\*(N-1)"
 
 #: ../../reference/complexity.md
 msgid "a2p"
-msgstr ""
+msgstr "a2p"
 
 #: ../../reference/complexity.md
 msgid "b2p"
-msgstr ""
+msgstr "b2p"
 
 #: ../../reference/complexity.md
 msgid "add_aa"
-msgstr ""
+msgstr "add_aa"
 
 #: ../../reference/complexity.md
 msgid "0"
-msgstr ""
+msgstr "0"
 
 #: ../../reference/complexity.md
 msgid "add_ap"
-msgstr ""
+msgstr "add_ap"
 
 #: ../../reference/complexity.md
 msgid "mul_aa"
-msgstr ""
+msgstr "mul_aa"
 
 #: ../../reference/complexity.md
 msgid "K\\*2\\*(N-1)"
-msgstr ""
+msgstr "K\\*2\\*(N-1)"
 
 #: ../../reference/complexity.md
 msgid "mul_ap"
-msgstr ""
+msgstr "mul_ap"
 
 #: ../../reference/complexity.md
 msgid "mmul_aa"
-msgstr ""
+msgstr "mmul_aa"
 
 #: ../../reference/complexity.md
 msgid "K\\*(N-1)\\*(m+n)\\*k"
-msgstr ""
+msgstr "K\\*(N-1)\\*(m+n)\\*k"
 
 #: ../../reference/complexity.md
 msgid "mmul_ap"
-msgstr ""
+msgstr "mmul_ap"
 
 #: ../../reference/complexity.md
 msgid "trunc_a"
-msgstr ""
+msgstr "trunc_a"
 
 #: ../../reference/complexity.md
 msgid "xor_bb"
-msgstr ""
+msgstr "xor_bb"
 
 #: ../../reference/complexity.md
 msgid "xor_bp"
-msgstr ""
+msgstr "xor_bp"
 
 #: ../../reference/complexity.md
 msgid "and_bb"
-msgstr ""
+msgstr "and_bb"
 
 #: ../../reference/complexity.md
 msgid "and_bp"
-msgstr ""
+msgstr "and_bp"
 
 #: ../../reference/complexity.md:19
 msgid "Aby3"
-msgstr ""
+msgstr "Aby3"
 
 #: ../../reference/complexity.md
 msgid "log(K)+1+1"
-msgstr ""
+msgstr "log(K)+1+1"
 
 #: ../../reference/complexity.md
 msgid "2\\*log(K)\\*K+K\\*2"
-msgstr ""
+msgstr "2\\*log(K)\\*K+K\\*2"
 
 #: ../../reference/complexity.md
 msgid "TODO"
-msgstr ""
+msgstr "TODO"
 
 #: ../../reference/complexity.md
 msgid "K"
-msgstr ""
+msgstr "K"
 
 #: ../../reference/complexity.md
 msgid "K\\*m\\*n"
-msgstr ""
+msgstr "K\\*m\\*n"
 
 #: ../../reference/complexity.md
 msgid "3"
-msgstr ""
+msgstr "3"
 
 #: ../../reference/complexity.md
 msgid "4\\*K"
-msgstr ""
+msgstr "4\\*K"
 
