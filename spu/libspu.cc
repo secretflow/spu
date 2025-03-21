@@ -713,7 +713,6 @@ void BindSPU(py::module& m) {
                  break;
                case FieldType::FM128:
                  ss << "FM128";
-                 break;
              }
 
             // Numeric fields (only print if not default)
