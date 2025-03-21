@@ -21,11 +21,11 @@ msgstr ""
 
 #: ../../reference/mpc_status.rst:2
 msgid "Supported MPC Protocol"
-msgstr "支持的MPC协议"
+msgstr "支持的 MPC 协议"
 
 #: ../../reference/mpc_status.rst:4
 msgid "Currently, SPU implements the following protocols."
-msgstr "目前，SPU支持了以下MPC协议。"
+msgstr "目前，SPU 支持了以下MPC协议。"
 
 #: ../../reference/mpc_status.rst:6
 msgid ""
@@ -34,7 +34,7 @@ msgid ""
 "hard to resist collusion attacks if more than two computing nodes "
 "deployed together."
 msgstr "`ABY3 <https://eprint.iacr.org/2018/403.pdf>`_: 一个**诚实大多数** "
-"3PC协议（Three-Party Computation）中，SPU提供了**半诚实安全模型（semi-honest）**的实现，需注意："
+"3PC 协议（Three-Party Computation）中， SPU 提供了**半诚实安全模型（semi-honest）**的实现，需注意："
 "若超过两个计算节点被共同部署，将难以抵御合谋攻击。"
 
 #: ../../reference/mpc_status.rst:7
@@ -44,7 +44,7 @@ msgid ""
 "to generate offline randoms. By default this protocol now uses trusted "
 "first party. Hence, it should be used for debugging purposes only."
 msgstr "`Semi2k-SPDZ* <https://eprint.iacr.org/2018/482.pdf>`_ : "
-"一种与SPDZ协议类似的半诚实型（semi-honest）NPC协议（注：NPC通常指多方计算协议，此处可能指代特定协议类型）。"
+"一种与 SPDZ 协议类似的半诚实型（semi-honest） NPC 协议（注： NPC 通常指多方计算协议，此处可能指代特定协议类型）。"
 "该协议需要依赖可信第三方生成离线随机数。目前，默认情况下该协议使用可信第一方（而非第三方）来生成随机数。"
 "因此，此协议仅应用于调试目的，不适用于生产环境。"
 
@@ -78,7 +78,7 @@ msgstr "复杂"
 msgid ""
 "The complexity metrics are dumped from the source code, it's supposed to "
 "be accurate and could be used as a formal cost model."
-msgstr "复杂性指标是从源代码中提取出来的，它应该是“准确的，可以用作正式的成本模型。"
+msgstr "复杂性指标是从源代码中提取出来的，它应该是准确的，可以用作正式的成本模型。"
 
 #: ../../reference/mpc_status.rst:20
 msgid "In Semi2k, only *online stage* complexity is considered."
