@@ -121,7 +121,7 @@ msgstr "命名约定："
 #: ../../reference/mpc_status.rst:31
 msgid "**a** for *arithmetic share*."
 msgstr ""
-"**a** 代表 *算术份额*。"
+"**a** 代表 *算术共享*。"
 
 #: ../../reference/mpc_status.rst:32
 msgid "**b** for *boolean share*."
@@ -136,7 +136,7 @@ msgstr ""
 #: ../../reference/mpc_status.rst:35
 msgid "For example, `mul_aa` is short for multiply of two arithmetic shares."
 msgstr ""
-"例如，“mul_aa” 是两个算术份额相乘的缩写。"
+"例如，“mul_aa” 是两个算术共享相乘的缩写。"
 
 #: ../../reference/complexity.md:1
 msgid "Semi2k"
