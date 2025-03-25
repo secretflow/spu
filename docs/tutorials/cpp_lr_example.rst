@@ -22,10 +22,10 @@ In the first terminal.
 
 .. code-block:: bash
 
-  bazel run //examples/cpp:simple_lr -- -rank 0 -dataset examples/data/perfect_logit_a.csv -has_label=true
+  bazelisk run //examples/cpp:simple_lr -- -rank 0 -dataset examples/data/perfect_logit_a.csv -has_label=true
 
 In the second terminal.
 
 .. code-block:: bash
 
-  bazel run //examples/cpp:simple_lr -- -rank 1 -dataset examples/data/perfect_logit_b.csv
+  bazelisk run //examples/cpp:simple_lr -- -rank 1 -dataset examples/data/perfect_logit_b.csv
