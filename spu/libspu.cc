@@ -715,8 +715,9 @@ void BindSPU(py::module& m) {
                  ss << "FM128";
              }
 
-            // Numeric fields (only print if not default)
-            if (self.fxp_fraction_bits != 0) {
+             // Numeric fields (only print if not default)
+             if (self.fxp_fraction_bits != 0) {
+               ss << "\nfxp_fraction_bits: " << self.fxp_fraction_bits;
              }
              if (self.max_concurrency != 0) {
                ss << "\nmax_concurrency: " << self.max_concurrency;
