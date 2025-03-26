@@ -24,6 +24,7 @@ from sml.preprocessing.preprocessing import (
     MaxAbsScaler,
     MinMaxScaler,
     Normalizer,
+    OneHotEncoder,
 )
 
 
@@ -114,6 +115,42 @@ def emul_binarizer():
     # print("spu:\n", spu_result)
 
     np.testing.assert_allclose(sk_result, spu_result, rtol=0, atol=0)
+
+
+def emul_onehotEncoder():
+    manual_categories = [[1, 1.1, 3.25], [2.0, 4.32, 6.10]]
+
+    X = jnp.array([[1, 2.0], [3.25, 4.32], [1.1, 6.10]], dtype=jnp.float64)
+    Y = jnp.array([[1, 2.1], [3.21, 4.32], [1.1, 6.10]], dtype=jnp.float64)
+
+    sk_X = np.array([[1, 2.0], [3.25, 4.32], [1.1, 6.10]], dtype=np.float64)
+    sk_Y = np.array([[1, 2.1], [3.21, 4.32], [1.1, 6.10]], dtype=np.float64)
+
+    def onehotEncode(X, Y):
+        onehotEncoder = OneHotEncoder(categories=manual_categories)
+        onehotEncoder.fit(X)
+        encoded = onehotEncoder.transform(Y)
+        inverse_v = onehotEncoder.inverse_transform(encoded)
+        return encoded, inverse_v
+
+    sk_onehotEncoder = preprocessing.OneHotEncoder(
+        categories=manual_categories, handle_unknown="ignore", sparse_output=False
+    )
+    sk_onehotEncoder.fit(sk_X)
+    sk_transformed = sk_onehotEncoder.transform(sk_Y)
+    sk_inv_transformed = sk_onehotEncoder.inverse_transform(sk_transformed)
+    sk_inv_transformed = np.where(sk_inv_transformed == None, 0.0, sk_inv_transformed)
+
+    X, Y = emulator.seal(X, Y)
+    spu_transformed, spu_inv_transformed = emulator.run(onehotEncode)(X, Y)
+
+    sk_inv_transformed = sk_inv_transformed.astype(np.float64)
+    spu_inv_transformed = spu_inv_transformed.astype(np.float64)
+
+    np.testing.assert_allclose(sk_transformed, spu_transformed, rtol=1e-4, atol=1e-4)
+    np.testing.assert_allclose(
+        sk_inv_transformed, spu_inv_transformed, rtol=1e-4, atol=1e-4
+    )
 
 
 def emul_normalizer():
@@ -807,5 +844,6 @@ if __name__ == "__main__":
         emul_kbinsdiscretizer_quantile_sample_weight_diverse_n_bins_no_vectorize()
         emul_kbinsdiscretizer_kmeans()
         emul_kbinsdiscretizer_kmeans_diverse_n_bins_no_vectorize()
+        emul_onehotEncoder()
     finally:
         emulator.down()
