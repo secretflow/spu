@@ -18,7 +18,6 @@ from sml.manifold.floyd import floyd_opt
 from sml.manifold.jacobi import Jacobi
 from sml.manifold.kneighbors import mpc_kneighbors_graph
 
-
 class ISOMAP:
     """Isomap Embedding.
 
@@ -46,6 +45,9 @@ class ISOMAP:
     p : int, default=2
         The power parameter for the Minkowski distance. p=2 indicates Euclidean distance.
 
+    max_iterations : int
+        Maximum number of iterations of jacobi algorithm.
+    
     Attributes
     ----------
     nbrs_ : ndarray
@@ -84,11 +86,13 @@ class ISOMAP:
         n_components=2,
         metric="minkowski",
         p=2,
+        max_iterations=5,
     ):
         self.n_components = n_components
         self.n_neighbors = n_neighbors
         self.n_samples = n_samples
         self.n_features = n_features
+        self.max_iterations = max_iterations
 
     def _get_knn_matrix(self, X):
         """Computes the k-nearest neighbors graph.
@@ -150,12 +154,10 @@ class ISOMAP:
         # sum all
         dist_2 = jnp.sum(dist_2_i)
         dist_2 = dist_2 / (self.n_samples)
-        for i in range(self.n_samples):
-            for j in range(self.n_samples):
-                B = B.at[i, j].set(B[i][j] - dist_2_i[i] - dist_2_j[j] + dist_2)
-
+        B = B - dist_2_i[:, None] - dist_2_j[None, :] + dist_2
+        
         # Compute eigenvalues and eigenvectors
-        values, vectors = Jacobi(B, self.n_samples)
+        values, vectors = Jacobi(B, self.n_samples, self.max_iterations)
 
         values = jnp.diag(values)
         values = jnp.array(values)

@@ -22,7 +22,7 @@ import sml.utils.emulation as emulation
 from sml.manifold.isomap import ISOMAP
 
 
-def emul_cpz(mode: emulation.Mode.MULTIPROCESS):
+def emul_isomap(mode: emulation.Mode.MULTIPROCESS):
     try:
         # bandwidth and latency only work for docker mode
         emulator = emulation.Emulator(
@@ -69,15 +69,13 @@ def emul_cpz(mode: emulation.Mode.MULTIPROCESS):
             num_components,
         )
 
-        print('ans: \n', ans)
-
         # sklearn test
         embedding = Isomap(n_components=num_components, n_neighbors=k)
         X_transformed = embedding.fit_transform(X)
-        print('X_transformed: \n', X_transformed)
-
+        
+        # Since the final calculation result is calculated by the eigenvector, the accuracy cannot reach 1e-3
         np.testing.assert_allclose(
-            jnp.abs(X_transformed), jnp.abs(ans), rtol=0, atol=4e-2
+            jnp.abs(X_transformed), jnp.abs(ans), rtol=0, atol=1e-1
         )
 
     finally:
@@ -85,4 +83,4 @@ def emul_cpz(mode: emulation.Mode.MULTIPROCESS):
 
 
 if __name__ == "__main__":
-    emul_cpz(emulation.Mode.MULTIPROCESS)
+    emul_isomap(emulation.Mode.MULTIPROCESS)

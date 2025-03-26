@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import jax.numpy as jnp
+import numpy as np
 
 
 def set_value(x, index, value, n):
@@ -80,7 +81,7 @@ def get_value_2(x, index_1, index_2, n):
     return jnp.sum(flag * x[:, index_2])
 
 
-def mpc_dijkstra(adj_matrix, num_samples, start, dist_inf):
+def mpc_dijkstra(adj_matrix, start):
     """Use Dijkstra's algorithm to compute the shortest paths from the starting point to all other points.
 
     Parameters
@@ -88,30 +89,26 @@ def mpc_dijkstra(adj_matrix, num_samples, start, dist_inf):
     adj_matrix : ndarray
         The adjacency matrix used to compute the shortest paths.
 
-    num_samples : int
-        The size of the adjacency matrix (number of nodes).
-
     start : int
         The starting point for which to compute the shortest paths.
-
-    dist_inf : ndarray
-        The initialized shortest path array, usually set to infinity (inf).
 
     Returns
     -------
     distances : ndarray
         The shortest paths from the starting point to all other points.
     """
+    
+    num_samples=adj_matrix.shape[0]
 
     # Initialize with Inf value
-    sinf = dist_inf[0]
-    distances = dist_inf
+    sinf = np.inf
+    distances = jnp.full(num_samples, np.inf)
 
     # Calculate the shortest path from the starting point to other points using Dijkstra's algorithm
     distances = distances.at[start].set(0)
     # visited = [False] * num_samples
     visited = jnp.zeros(num_samples, dtype=bool)  # Initialize an array to False
-    visited = jnp.array(visited)
+    # visited = jnp.array(visited)
 
     for i in range(num_samples):
         # Find the nearest node that is not currently visited

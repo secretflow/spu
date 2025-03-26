@@ -14,10 +14,8 @@
 import jax
 import jax.numpy as jnp
 
-MAX_ITERATIONS = 5  # Generally, convergence is achieved within five iterations.
 
-
-def compute_elements(X, k, l, num_samples):
+def compute_elements(X, k, l):
     """Compute the rotation angle (cosine and sine) for the element X[k][l] in a matrix.
 
     This function calculates the cosine and sine values required for a Jacobi rotation to eliminate the off-diagonal element X[k][l].
@@ -26,7 +24,6 @@ def compute_elements(X, k, l, num_samples):
         X: The input matrix for which the rotation angle is computed.
         k: The row index of the target element.
         l: The column index of the target element.
-        num_samples: The size of the matrix (number of rows/columns).
 
     Returns:
         cos: The cosine of the rotation angle.
@@ -38,6 +35,7 @@ def compute_elements(X, k, l, num_samples):
     cos_2theta = jnp.reciprocal(
         jnp.sqrt(1 + 4 * jnp.square(tar_elements * jnp.reciprocal(tar_diff)))
     )
+    
     cos2 = 0.5 + 0.5 * cos_2theta
     sin2 = 0.5 - 0.5 * cos_2theta
     flag_zero = jnp.equal(tar_elements, 0)
@@ -73,8 +71,8 @@ def rotation_matrix(X, k, l, num_samples):
     l_values = jnp.array(l)
 
     # Parallelize using vmap
-    cos_values, sin_values = jax.vmap(compute_elements, in_axes=(None, 0, 0, None))(
-        X, k_values, l_values, num_samples
+    cos_values, sin_values = jax.vmap(compute_elements, in_axes=(None, 0, 0))(
+        X, k_values, l_values
     )
 
     J = J.at[k, k].set(cos_values)
@@ -87,7 +85,7 @@ def rotation_matrix(X, k, l, num_samples):
 
 # Ref:
 # https://arxiv.org/abs/2105.07612
-def Jacobi(X, num_samples):
+def Jacobi(X, num_samples, max_iterations = 5):
     """
     Perform Jacobi eigenvalue decomposition on matrix X.
 
@@ -98,14 +96,15 @@ def Jacobi(X, num_samples):
     Args:
         X: The input symmetric matrix (num_samples x num_samples) to be diagonalized.
         num_samples: The size of the matrix (number of rows/columns).
+        max_iterations: The maximum number of iterations has little impact on the accuracy, and the default value is 5.
 
     Returns:
         X: The diagonalized matrix (eigenvalues on the diagonal).
-        Q: The accumulated orthogonal transformation matrix (eigenvectors).
+        Q: The accumulated orthogonal transformation matrix (eigenvectors). Each row of the matrix represents a corresponding eigenvector.
     """
     Q = jnp.eye(num_samples)
     k = 0
-    while k < MAX_ITERATIONS:
+    while k < max_iterations:
         # For each iteration, it is necessary to rotate all elements in the lower triangular part.
         # To reduce the number of rounds, elements with non-repeating indices should be rotated in parallel as much as possible.
         for i in range(1, num_samples + (num_samples - 1) // 2):

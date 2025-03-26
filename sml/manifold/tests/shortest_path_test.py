@@ -26,54 +26,43 @@ from sml.manifold.dijkstra import mpc_dijkstra
 from sml.manifold.floyd import floyd_opt
 
 # Add the sml directory to the path
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../../'))
-
-# from sml.neighbors.knn import KNNClassifer
+# sys.path.append(os.path.join(os.path.dirname(__file__), '../../../'))
 
 
 class UnitTests(unittest.TestCase):
-    def test_knn(self):
+    def test_shortest_path(self):
         sim = spsim.Simulator.simple(3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM64)
 
-        def dijkstra_all_pairs(
-            Knn,
-            mpc_dist_inf,
-            num_samples,
-        ):
+        def dijkstra_all_pairs(D):
+            num_samples=D.shape[0]
 
-            def compute_distances_for_sample(i, Knn, num_samples, mpc_dist_inf):
-                return mpc_dijkstra(Knn, num_samples, i, mpc_dist_inf)
+            def compute_distances_for_sample(i, D):
+                return mpc_dijkstra(D, i)
 
             compute_distances = jax.vmap(
-                compute_distances_for_sample, in_axes=(0, None, None, None)
+                compute_distances_for_sample, in_axes=(0, None)
             )
 
             indices = jnp.arange(num_samples)  # 样本索引
-            mpc_shortest_paths = compute_distances(
-                indices, Knn, num_samples, mpc_dist_inf
-            )
+            mpc_shortest_paths = compute_distances(indices, D)
             return mpc_shortest_paths
 
-        num_samples = 6
-        dist_inf = jnp.full(num_samples, np.inf)
+        num_samples = 20
 
         X = np.random.rand(num_samples, num_samples)
         X = (X + X.T) / 2
         X[X == 0] = np.inf
         np.fill_diagonal(X, 0)
 
-        dijkstra_ans = spsim.sim_jax(sim, dijkstra_all_pairs, static_argnums=(2,))(
-            X, dist_inf, num_samples
-        )
-
-        print('dijkstra_ans: \n', dijkstra_ans)
+        dijkstra_ans = spsim.sim_jax(sim, dijkstra_all_pairs)(X)
 
         floyd_ans = spsim.sim_jax(sim, floyd_opt)(X)
-        print('floyd_ans: \n', floyd_ans)
 
         # sklearn test
         sklearn_ans = shortest_path(X, method="D", directed=False)
-        print('sklearn_ans: \n', sklearn_ans)
+
+        np.testing.assert_allclose(dijkstra_ans, sklearn_ans, rtol=0, atol=1e-3)
+        np.testing.assert_allclose(floyd_ans, sklearn_ans, rtol=0, atol=1e-3)
 
 
 if __name__ == "__main__":

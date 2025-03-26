@@ -17,6 +17,8 @@ import time
 import unittest
 
 import jax
+import numpy as np
+import jax.numpy as jnp
 from sklearn.neighbors import kneighbors_graph
 
 import spu.libspu as libspu
@@ -24,7 +26,7 @@ import spu.utils.simulation as spsim
 from sml.manifold.kneighbors import mpc_kneighbors_graph
 
 # Add the sml directory to the path
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../../'))
+# sys.path.append(os.path.join(os.path.dirname(__file__), '../../../'))
 
 
 class UnitTests(unittest.TestCase):
@@ -32,7 +34,7 @@ class UnitTests(unittest.TestCase):
         sim = spsim.Simulator.simple(3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM64)
 
         # Set sample size and dimensions
-        num_samples = 6  # Number of samples
+        num_samples = 20  # Number of samples
         num_features = 4  # Sample dimension
         k = 4  # Number of nearest neighbors
 
@@ -53,13 +55,15 @@ class UnitTests(unittest.TestCase):
             ),
         )(X, num_samples, num_features, k)
 
-        print('mpc_knn: \n', knn)
-
         # sklearn test
         affinity_matrix = kneighbors_graph(
             X, n_neighbors=k, mode="distance", include_self=False
         )
-        print('sklearn_knn: \n', affinity_matrix.toarray())
+        
+        np.testing.assert_allclose(
+            jnp.abs(knn), jnp.abs(affinity_matrix.toarray()), rtol=0, atol=1e-3
+        )
+
 
 
 if __name__ == "__main__":

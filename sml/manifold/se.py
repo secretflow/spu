@@ -50,6 +50,9 @@ class SE:
 
     n_features : int
         The number of features.
+    
+    max_iterations : int
+        Maximum number of iterations of jacobi algorithm.
 
     Attributes
     ----------
@@ -87,12 +90,14 @@ class SE:
         n_features,
         *,
         n_components=2,
+        max_iterations=5,
         affinity="nearest_neighbors",
     ):
         self.n_components = n_components
         self.n_neighbors = n_neighbors
         self.n_samples = n_samples
         self.n_features = n_features
+        self.max_iterations = max_iterations
 
     def _get_affinity_matrix(self, X):
         """Computes the affinity matrix and makes it symmetric.
@@ -160,7 +165,7 @@ class SE:
         self._get_affinity_matrix(X)
         D, L = self._normalization_affinity_matrix()
 
-        L, Q = Jacobi(L, self.n_samples)
+        L, Q = Jacobi(L, self.n_samples, self.max_iterations)
         L = jnp.diag(L)
         L = jnp.array(L)
 
