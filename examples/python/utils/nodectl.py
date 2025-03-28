@@ -20,7 +20,7 @@ from spu.utils.polyfill import Process
 
 parser = argparse.ArgumentParser(description='SPU node service.')
 parser.add_argument(
-    "-c", "--config", default="examples/python/conf/3pc.json", help="the config"
+    "-c", "--config", default="/Users/freya/Code/mpc/spu-new/examples/python/conf/3pc_shamir.json", help="the config"
 )
 subparsers = parser.add_subparsers(dest='command')
 parser_start = subparsers.add_parser('start', help='to start a single node')

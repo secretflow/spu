@@ -392,6 +392,7 @@ std::vector<NdArrayRef> gfmp_rand_shamir_shares(const NdArrayRef& x,
   return shares;
 }
 
+
 NdArrayRef gfmp_reconstruct_shamir_shares(absl::Span<const NdArrayRef> shares,
                                           size_t world_size, size_t threshold) {
   SPU_ENFORCE(std::all_of(shares.begin(), shares.end(),
@@ -401,7 +402,7 @@ NdArrayRef gfmp_reconstruct_shamir_shares(absl::Span<const NdArrayRef> shares,
                                    x.eltype().isa<GfmpTy>();
                           }),
               "Share shape and type should be the same");
-  SPU_ENFORCE_GE(shares.size(), threshold,
+  SPU_ENFORCE_GT(shares.size(), threshold,
                  "Shares size and threshold are not matched");
   SPU_ENFORCE(world_size >= threshold * 2 + 1 && threshold >= 1,
               "invalid party numbers {} or threshold {}", world_size,
@@ -410,8 +411,10 @@ NdArrayRef gfmp_reconstruct_shamir_shares(absl::Span<const NdArrayRef> shares,
   const auto field = ty->field();
   const auto numel = shares[0].numel();
   NdArrayRef out(makeType<GfmpTy>(field), shares[0].shape());
-
+  
   DISPATCH_ALL_FIELDS(field, [&]() {
+    auto rec = GenReconstructVector<ring2k_t>(shares.size());
+    
     NdArrayView<ring2k_t> _out(out);
     pforeach(0, numel, [&](int64_t idx) {
       ring2k_t secret = 0;
@@ -419,23 +422,23 @@ NdArrayRef gfmp_reconstruct_shamir_shares(absl::Span<const NdArrayRef> shares,
       // pre-computed
       for (size_t i = 0; i < shares.size(); ++i) {
         NdArrayView<ring2k_t> _share(shares[i]);
-        ring2k_t y = _share[idx];
-        ring2k_t prod = 1;
-        for (size_t j = 0; j < shares.size(); ++j) {
-          if (i != j) {
-            ring2k_t xi = i + 1;
-            ring2k_t xj = j + 1;
-            auto tmp = mul_mod(xj, mul_inv(add_mod(xj, add_inv(xi))));
-            prod = mul_mod(prod, tmp);
-          }
-        }
-        auto tmp = mul_mod(y, prod);
-        secret = add_mod(secret, tmp);
+        // ring2k_t y = _share[idx];
+        // ring2k_t prod = 1;
+        // for (size_t j = 0; j < shares.size(); ++j) {
+        //   if (i != j) {
+        //     ring2k_t xi = i + 1;
+        //     ring2k_t xj = j + 1;
+        //     auto tmp = mul_mod(xj, mul_inv(add_mod(xj, add_inv(xi))));
+        //     prod = mul_mod(prod, tmp);
+        //   }
+        // }
+        // auto tmp = mul_mod(y, prod);
+        // secret = add_mod(secret, tmp);
+        secret = add_mod(secret, mul_mod(_share[idx], rec[i]));
       }
       _out[idx] = secret;
     });
   });
   return out;
 }
-
 }  // namespace spu::mpc

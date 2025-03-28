@@ -39,9 +39,10 @@ from examples.python.ml.stax_nn import models
 
 parser = argparse.ArgumentParser(description='distributed driver.')
 parser.add_argument("--model", default='network_a', type=str)
-parser.add_argument("-c", "--config", default="examples/python/conf/3pc.json", type=str)
-parser.add_argument("-e", "--epoch", default=5, type=int)
-parser.add_argument("-b", "--batch_size", default=128, type=int)
+parser.add_argument("-c", "--config", default="/Users/freya/Code/mpc/spu-new/examples/python/conf/3pc_shamir.json", type=str)
+# parser.add_argument("-c", "--config", default="/Users/freya/Code/mpc/spu-new/examples/python/conf/3pc.json", type=str)
+parser.add_argument("-e", "--epoch", default=1, type=int)
+parser.add_argument("-b", "--batch_size", default=1, type=int)
 parser.add_argument("-o", "--optimizer", default="SGD", type=str)
 parser.add_argument('--run_cpu', default=False, action='store_true')
 args = parser.parse_args()
@@ -91,6 +92,7 @@ def train(
             y = predict_fun(params, imgs)
             return ce_loss(y, labels), y
 
+        print('update model', i)
         grad_fn = jax.value_and_grad(loss_func, has_aux=True)
         (loss, y), grads = grad_fn(get_params(state))
         return opt_update(i, grads, state)
@@ -103,7 +105,7 @@ def train(
 
     print('Start training...')
     for i in range(1, epochs + 1):
-        for batch_idx in range(math.ceil(len(train_x) / batch_size)):
+        for batch_idx in range(2):
             batch_images = train_x[
                 batch_idx * batch_size : (batch_idx + 1) * batch_size
             ]

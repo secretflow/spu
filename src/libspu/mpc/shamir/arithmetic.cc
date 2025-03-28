@@ -105,7 +105,6 @@ std::pair<NdArrayRef, NdArrayRef> gen_double_shares(KernelEvalContext* ctx,
   DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> _r_t(out.first);
     NdArrayView<ring2k_t> _r_2t(out.second);
-    // auto van = GenVandermondeMatrix<ring2k_t>(world_size, world_size - th);
     auto van = van_state->get_vandermonde<ring2k_t>();
     pforeach(0, dn_times, [&](int64_t idx) {
       // Optimize me: no copy need here
@@ -168,7 +167,6 @@ NdArrayRef RandA::proc(KernelEvalContext* ctx, const Shape& shape) const {
   return DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayRef r_t(ty, {dn_times * (world_size - th)});
     NdArrayView<ring2k_t> _r_t(r_t);
-    // auto van = GenVandermondeMatrix<ring2k_t>(world_size, world_size - th);
     auto van = van_state->get_vandermonde<ring2k_t>(); 
     // TODO optimize me: all random shares can be done by a mmut between van^T *
     // r_shrs van^T is a n-t by n r_shrs is a n by dn_times matrix
@@ -212,11 +210,16 @@ NdArrayRef A2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   // we choose rank 0 as the P_pking for reconstructing secrets
   auto arrays = comm->gather(in, 0, "send to pking");
   NdArrayRef out = ring_zeros(field, in.shape());
-  if (comm->getRank() == 0) {
-    out = gfmp_reconstruct_shamir_shares(arrays, comm->getWorldSize(),
-                                         ctx->sctx()->config().sss_threshold());
-  }
-  out = comm->broadcast(out, 0, in.eltype(), in.shape(), "distribute");
+  auto* shamir_state = ctx->getState<ShamirPrecomputedState>();
+
+  DISPATCH_ALL_FIELDS(field, [&]() {
+    auto rec = shamir_state->get_recontruction<ring2k_t>(arrays.size());
+    if (comm->getRank() == 0) {
+      out = gfmp_reconstruct_shamir_shares<ring2k_t>(arrays, comm->getWorldSize(),
+                                           ctx->sctx()->config().sss_threshold(), rec);
+    }
+    out = comm->broadcast(out, 0, in.eltype(), in.shape(), "distribute");
+  });
   return out.as(makeType<PubGfmpTy>(field));
 }
 
@@ -227,10 +230,14 @@ NdArrayRef A2V::proc(KernelEvalContext* ctx, const NdArrayRef& in,
   auto out_ty = makeType<PrivGfmpTy>(field, rank);
   auto arrays = comm->gather(in, rank, "gather");
   if (comm->getRank() == rank) {
+    auto* shamir_state = ctx->getState<ShamirPrecomputedState>();
     SPU_ENFORCE(arrays.size() == comm->getWorldSize());
-    auto out = gfmp_reconstruct_shamir_shares(
-        arrays, comm->getWorldSize(), ctx->sctx()->config().sss_threshold());
-    return out.as(out_ty);
+    return DISPATCH_ALL_FIELDS(field, [&]() {
+      auto rec = shamir_state->get_recontruction<ring2k_t>(arrays.size());
+      auto out = gfmp_reconstruct_shamir_shares<ring2k_t>(arrays, comm->getWorldSize(),
+                                           ctx->sctx()->config().sss_threshold(), rec);
+      return out.as(out_ty);
+    });
   } else {
     return makeConstantArrayRef(out_ty, in.shape());
   }

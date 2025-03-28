@@ -15,6 +15,7 @@
 #pragma once
 
 #include "libspu/core/ndarray_ref.h"
+#include "libspu/mpc/utils/gfmp.h"
 
 namespace spu::mpc {
 
@@ -55,6 +56,45 @@ std::vector<NdArrayRef> gfmp_rand_shamir_shares(const NdArrayRef& x,
 std::vector<NdArrayRef> gfmp_rand_shamir_shares(const NdArrayRef& x,
                                                 size_t world_size,
                                                 size_t threshold);
+
+template <typename T>
+NdArrayRef gfmp_reconstruct_shamir_shares(
+    absl::Span<const NdArrayRef> shares, size_t world_size, size_t threshold,
+    std::vector<T> reconstruction_vector) {
+  SPU_ENFORCE(std::all_of(shares.begin(), shares.end(),
+                          [&](const NdArrayRef& x) {
+                            return x.eltype() == shares[0].eltype() &&
+                                   x.shape() == shares[0].shape() &&
+                                   x.eltype().isa<GfmpTy>();
+                          }),
+              "Share shape and type should be the same");
+  SPU_ENFORCE_GT(shares.size(), threshold,
+                 "Shares size and threshold are not matched");
+  SPU_ENFORCE(world_size >= threshold * 2 + 1 && threshold >= 1,
+              "invalid party numbers {} or threshold {}", world_size,
+              threshold);
+  const auto* ty = shares[0].eltype().as<GfmpTy>();
+  const auto field = ty->field();
+  const auto numel = shares[0].numel();
+  NdArrayRef out(makeType<GfmpTy>(field), shares[0].shape());
+
+  DISPATCH_ALL_FIELDS(field, [&]() {
+    NdArrayView<ring2k_t> _out(out);
+    pforeach(0, numel, [&](int64_t idx) {
+      ring2k_t secret = 0;
+      // TODO optimize me: the reconstruction vector for a fixed point can be
+      // pre-computed
+      for (size_t i = 0; i < shares.size(); ++i) {
+        NdArrayView<ring2k_t> _share(shares[i]);
+        secret = add_mod(
+            secret, mul_mod(_share[idx],
+                            static_cast<ring2k_t>(reconstruction_vector[i])));
+      }
+      _out[idx] = secret;
+    });
+  });
+  return out;
+}
 
 NdArrayRef gfmp_reconstruct_shamir_shares(absl::Span<const NdArrayRef> shares,
                                           size_t world_size, size_t threshold);
