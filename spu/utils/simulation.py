@@ -75,8 +75,9 @@ class Simulator(object):
             # config.cheetah_2pc_config.enable_mul_lsb_error = True
             # config.cheetah_2pc_config.ot_kind = spu_pb2.CheetahOtKind.YACL_Softspoken
             pass
-        # config.enable_hal_profile = True
-        # config.enable_pphlo_profile = True
+        config.sss_threshold = 1
+        config.enable_hal_profile = True
+        config.enable_pphlo_profile = True
         # config.enable_pphlo_trace = True
         # config.enable_action_trace = True
         # config.enable_type_checker = True

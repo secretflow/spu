@@ -310,4 +310,22 @@ GfmpMatrix<T> GenVandermondeMatrix(size_t rows, size_t cols) {
   }
   return vander;
 }
+
+template <typename T>
+std::vector<T> GenReconstructVector(size_t n_shares) {
+  std::vector<T> recon(n_shares);
+  for (size_t i = 0; i < n_shares; ++i) {
+    T prod = 1;
+    for (size_t j = 0; j < n_shares; ++j) {
+      if (i != j) {
+        T xi = i + 1;
+        T xj = j + 1;
+        auto tmp = mul_mod(xj, mul_inv(add_mod(xj, add_inv(xi))));
+        prod = mul_mod(prod, tmp);
+      }
+    }
+    recon[i] = prod;
+  }
+  return recon;
+}
 }  // namespace spu::mpc

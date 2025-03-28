@@ -29,7 +29,7 @@ import numpy as np
 import spu.utils.distributed as ppd
 
 parser = argparse.ArgumentParser(description="distributed driver.")
-parser.add_argument("-c", "--config", default="examples/python/conf/3pc.json")
+parser.add_argument("-c", "--config", default="/Users/freya/Code/mpc/spu-new/examples/python/conf/3pc_shamir.json")
 args = parser.parse_args()
 
 with open(args.config, "r") as file:

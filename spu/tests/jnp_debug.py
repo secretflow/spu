@@ -24,7 +24,7 @@ if __name__ == "__main__":
     Please DONT commit it unless it will cause build break.
     """
 
-    sim = ppsim.Simulator.simple(3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64)
+    sim = ppsim.Simulator.simple(3, spu_pb2.ProtocolKind.SHAMIR, spu_pb2.FieldType.FM64)
     copts = spu_pb2.CompilerOptions()
     # Tweak compiler options
     copts.disable_div_sqrt_rewrite = True

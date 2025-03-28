@@ -34,10 +34,16 @@ class ShamirPrecomputedState : public State {
  private:
   size_t world_size;
   size_t threshold;
+  // FieldType field{FT_INVALID};
   GfmpMatrix<uint32_t> Vandermonde_n_by_n_minus_t_32;
   GfmpMatrix<uint64_t> Vandermonde_n_by_n_minus_t_64;
   GfmpMatrix<uint128_t> Vandermonde_n_by_n_minus_t_128;
-  // NdArrayRef ReconstructionVec;
+  std::vector<uint32_t> reconstruct_t_32;
+  std::vector<uint64_t> reconstruct_t_64;
+  std::vector<uint128_t> reconstruct_t_128;
+  std::vector<uint32_t> reconstruct_2t_32;
+  std::vector<uint64_t> reconstruct_2t_64;
+  std::vector<uint128_t> reconstruct_2t_128;
 
  public:
   static constexpr const char* kBindName() { return "ShamirPrecompute"; }
@@ -59,6 +65,36 @@ class ShamirPrecomputedState : public State {
       return Vandermonde_n_by_n_minus_t_128;
     } else {
       SPU_THROW("Type T is not supported");
+    }
+  }
+
+  template<typename T,
+  std::enable_if_t<yacl::crypto::IsSupportedMersennePrimeContainerType<T>::value, bool> = true>
+  std::vector<T>get_recontruction(size_t n_shares) {
+    if (n_shares == threshold + 1) {
+      if constexpr (std::is_same_v<T, uint32_t>) {
+        return reconstruct_t_32;
+      } else if constexpr (std::is_same_v<T, uint64_t>) {
+        return reconstruct_t_64;
+      } else if constexpr (std::is_same_v<T, uint128_t>) {
+        return reconstruct_t_128;
+      } else {
+        SPU_THROW("Type T is not supported");
+      }
+    }
+    else if (n_shares == (threshold << 1) + 1) {
+      if constexpr (std::is_same_v<T, uint32_t>) {
+        return reconstruct_2t_32;
+      } else if constexpr (std::is_same_v<T, uint64_t>) {
+        return reconstruct_2t_64;
+      } else if constexpr (std::is_same_v<T, uint128_t>) {
+        return reconstruct_2t_128;
+      } else {
+        SPU_THROW("Type T is not supported");
+      }
+    }
+    else {
+      SPU_THROW("Degree is not supported");
     }
   }
 };
