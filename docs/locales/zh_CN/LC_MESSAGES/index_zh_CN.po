@@ -14,7 +14,7 @@ msgstr ""
 msgid "SPU"
 msgstr ""
 
-msgid "SPU (Secure Processing Unit) 由前端 **编辑器** 以及后端 **runtime** 环境组成。"
+msgid "SPU (Secure Processing Unit) 由前端 **编译器** 以及后端 **runtime** 环境组成。"
 msgstr ""
 
 msgid "前端编译器接受机器学习项目作为输入并将其转换为 **多方安全计算 (MPC) 的特定中间表征形式**。"
