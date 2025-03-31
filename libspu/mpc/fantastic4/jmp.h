@@ -23,6 +23,7 @@
 #include "libspu/mpc/fantastic4/value.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
+#include "libspu/mpc/fantastic4/state.h"
 
 namespace spu::mpc::fantastic4 {
     size_t PrevRank(size_t rank, size_t world_size);
@@ -34,6 +35,8 @@ namespace spu::mpc::fantastic4 {
       size_t world_size =  comm->getWorldSize();
       auto* prg_state = ctx->getState<PrgState>();
       auto myrank = comm->getRank();
+
+      auto* mac_state = ctx->getState<Fantastic4MacState>();
 
       using shr_t = std::array<el_t, 3>;
       NdArrayView<shr_t> _out(output);
@@ -81,8 +84,7 @@ namespace spu::mpc::fantastic4 {
 
           // Backup update x-r for sender-to-receiver channel
           if(myrank == backup) {
-            // Todo:
-            // MAC update input_minus_r
+            mac_state->update_msg<el_t>(sender, backup, receiver, input_minus_r);
           }
         }
       }
@@ -91,8 +93,7 @@ namespace spu::mpc::fantastic4 {
         pforeach(0, output.numel(), [&](int64_t idx) {
             _out[idx][offset_from_outsider_prev] += input_minus_r[idx];
         });
-        // Todo:
-        // Mac update sender-backup channel
+        mac_state->update_msg<el_t>(sender, backup, receiver, input_minus_r);
       }
     }
 
@@ -102,6 +103,8 @@ namespace spu::mpc::fantastic4 {
       size_t world_size =  comm->getWorldSize();
       auto* prg_state = ctx->getState<PrgState>();
       auto myrank = comm->getRank();
+
+      auto* mac_state = ctx->getState<Fantastic4MacState>();
 
       using shr_t = std::array<el_t, 3>;
       NdArrayView<shr_t> _out(output);
@@ -152,8 +155,7 @@ namespace spu::mpc::fantastic4 {
 
           // Backup update x-r for sender-to-receiver channel
           if(myrank == backup) {
-            // Todo:
-            // MAC update input_minus_r
+            mac_state->update_msg<el_t>(sender, backup, receiver, input_minus_r);
           }
         }
       }
@@ -163,8 +165,7 @@ namespace spu::mpc::fantastic4 {
         pforeach(0, output.numel(), [&](int64_t idx) {
             _out[idx][offset_from_outsider_prev] ^= input_minus_r[idx];
         });
-        // Todo:
-        // Mac update sender-backup channel
+        mac_state->update_msg<el_t>(sender, backup, receiver, input_minus_r);
       }
     }
 

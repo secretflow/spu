@@ -69,7 +69,8 @@ NdArrayRef B2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   auto* comm = ctx->getState<Communicator>();
   const PtType btype = in.eltype().as<BShrTy>()->getBacktype();
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
-
+  auto* mac_state = ctx->getState<Fantastic4MacState>();
+  auto rank = comm->getRank();
   return DISPATCH_UINT_PT_TYPES(btype, [&]() {
     using bshr_el_t = ScalarT;
     using bshr_t = std::array<bshr_el_t, 3>;
@@ -81,14 +82,19 @@ NdArrayRef B2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
       NdArrayView<pshr_el_t> _out(out);
       NdArrayView<bshr_t> _in(in);
+      std::vector<bshr_el_t> x1(in.numel());
+      std::vector<bshr_el_t> x2(in.numel());
+      pforeach(0, in.numel(), [&](int64_t idx){
+        x1[idx] = _in[idx][1];
+        x2[idx] = _in[idx][2];
+      });
 
-      std::vector<bshr_el_t> x3(in.numel());
-      pforeach(0, in.numel(), [&](int64_t idx){  x3[idx] = _in[idx][2];});
-      auto x4 = comm->rotate<bshr_el_t>(x3, "b2p");
+      auto x3 = comm->rotate<bshr_el_t>(x2, "b2p");
+      mac_state->update_msg<bshr_el_t>( (rank + 3) % 4, rank, (rank + 2) % 4, x1);
 
       pforeach(0, in.numel(), [&](int64_t idx) {
         const auto& v = _in[idx];
-        _out[idx] = static_cast<pshr_el_t>(v[0] ^ v[1] ^ v[2] ^ x4[idx]);
+        _out[idx] = static_cast<pshr_el_t>(v[0] ^ v[1] ^ v[2] ^ x3[idx]);
       });
 
       return out;

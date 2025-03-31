@@ -66,7 +66,8 @@ NdArrayRef A2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   auto* comm = ctx->getState<Communicator>();
   const auto field = in.eltype().as<AShrTy>()->field();
   auto numel = in.numel();
-
+  auto rank = comm->getRank();
+  auto* mac_state = ctx->getState<Fantastic4MacState>();
   return DISPATCH_ALL_FIELDS(field, [&]() {
     using pshr_el_t = ring2k_t;
     using ashr_el_t = ring2k_t;
@@ -75,14 +76,20 @@ NdArrayRef A2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
     NdArrayRef out(makeType<Pub2kTy>(field), in.shape());
     NdArrayView<pshr_el_t> _out(out);
     NdArrayView<ashr_t> _in(in);
-    std::vector<ashr_el_t> x3(numel);
-
-    pforeach(0, numel, [&](int64_t idx) { x3[idx] = _in[idx][2]; });
-    // Pass the third share to previous party
-    auto x4 = comm->rotate<ashr_el_t>(x3, "a2p");// comm => 1, k
+    std::vector<ashr_el_t> x1(numel);
+    std::vector<ashr_el_t> x2(numel);
 
     pforeach(0, numel, [&](int64_t idx) {
-      _out[idx] = _in[idx][0] + _in[idx][1] + _in[idx][2] + x4[idx];
+      x1[idx] = _in[idx][1];
+      x2[idx] = _in[idx][2];
+    });
+    // Pass the third share to previous party
+    auto x3 = comm->rotate<ashr_el_t>(x2, "a2p");// comm => 1, k
+
+    mac_state->update_msg<ashr_el_t>( (rank + 3) % 4, rank, (rank + 2) % 4, x1);
+
+    pforeach(0, numel, [&](int64_t idx) {
+      _out[idx] = _in[idx][0] + _in[idx][1] + _in[idx][2] + x3[idx];
     });
     return out;
   });
@@ -114,6 +121,7 @@ NdArrayRef P2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
 // for debug purpose, randomize the inputs to avoid corner cases.
 #ifdef ENABLE_MASK_DURING_FANTASTIC4_P2A
+    auto* mac_state = ctx->getState<Fantastic4MacState>();
     std::vector<ashr_el_t> r0(in.numel());
     std::vector<ashr_el_t> r1(in.numel());
     std::vector<ashr_el_t> r2(in.numel());
@@ -135,7 +143,7 @@ NdArrayRef P2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
       }
 
     s2 = comm->rotate<ashr_el_t>(s1, "p2a.zero");
-
+    mac_state->update_msg<ashr_el_t>( (rank + 3) % 4, rank, (rank + 2) % 4, s0);
     for (int64_t idx = 0; idx < in.numel(); idx++) {
       _out[idx][0] += s0[idx];
       _out[idx][1] += s1[idx];
@@ -150,7 +158,7 @@ NdArrayRef A2V::proc(KernelEvalContext* ctx, const NdArrayRef& in,
                      size_t rank) const {
   auto* comm = ctx->getState<Communicator>();
   const auto field = in.eltype().as<AShrTy>()->field();
-
+  auto* mac_state = ctx->getState<Fantastic4MacState>();
   return DISPATCH_ALL_FIELDS(field, [&]() {
     using vshr_el_t = ring2k_t;
     using ashr_el_t = ring2k_t;
@@ -161,6 +169,8 @@ NdArrayRef A2V::proc(KernelEvalContext* ctx, const NdArrayRef& in,
 
     if (comm->getRank() == rank) {
       auto x4 = comm->recv<ashr_el_t>(comm->nextRank(), "a2v");// comm => 1, k
+      mac_state->update_msg<ashr_el_t>((rank + 1) % 4, (rank + 3) % 4, rank, x4);
+
       NdArrayRef out(out_ty, in.shape());
       NdArrayView<vshr_el_t> _out(out);
 
@@ -174,8 +184,15 @@ NdArrayRef A2V::proc(KernelEvalContext* ctx, const NdArrayRef& in,
 
       pforeach(0, in.numel(), [&](int64_t idx) { x3[idx] = _in[idx][2];});
 
-      comm->sendAsync<ashr_el_t>(comm->prevRank(), x3,
-                                 "a2v");// comm => 1, k
+      comm->sendAsync<ashr_el_t>(comm->prevRank(), x3, "a2v");// comm => 1, k
+      return makeConstantArrayRef(out_ty, in.shape());
+    }
+    else if (comm->getRank() == (rank + 3) % 4) {
+      std::vector<ashr_el_t> x0(in.numel());
+
+      pforeach(0, in.numel(), [&](int64_t idx) { x0[idx] = _in[idx][0];});
+      mac_state->update_msg<ashr_el_t>((rank + 1) % 4, (rank + 3) % 4, rank, x0);
+
       return makeConstantArrayRef(out_ty, in.shape());
     }
     else {
@@ -439,6 +456,7 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
   auto* comm = ctx->getState<Communicator>();
   auto rank = comm->getRank();
   auto* prg_state = ctx->getState<PrgState>();
+  auto* mac_state = ctx->getState<Fantastic4MacState>();
   const Type ty = makeType<RingTy>(field);
   auto M = x.shape()[0];
   // auto K = x.shape()[1];
@@ -493,7 +511,11 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
 
   auto a0_sub_r1 = ring_sub(a0, r_next);
   auto a1_sub_r2 = ring_sub(a1, r_next_next);
+
+  // Pi-1, Pi joint send Pi::share[0] to Pi-2
   auto a2_sub_r3 = comm->rotate(a1_sub_r2, kBindName());
+  // rank = i, sender = prev rank = i-1, receiver = next next rank = i+2
+  mac_state->update_msg( (rank + 3) % 4, rank, (rank + 2) % 4, a0_sub_r1);
 
   auto f0 = std::async([&] { ring_assign(o0, r_self);});
   auto f1 = std::async([&] { ring_assign(o1, r_next);});
@@ -528,6 +550,7 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
     auto c13_sub_r1 = ring_sub(c, r_1);
     ring_add_(o0, r_1);
     ring_add_(o2, c13_sub_r1);
+    mac_state->update_msg(3, 1, 2, c13_sub_r1);
 
   }
   else if ( rank == 2 ) {
@@ -535,15 +558,18 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
     auto c02_sub_r2 = ring_sub(c, r_2);
     ring_add_(o0, r_2);
     ring_add_(o2, c02_sub_r2);
+    mac_state->update_msg(0, 2, 3, c02_sub_r2);
 
     auto c13_sub_r1 = comm->recv(3, c.eltype(),"3-2 1");
     c13_sub_r1 = c13_sub_r1.reshape(mat_shape);
     ring_add_(o1, c13_sub_r1);
+    mac_state->update_msg(3, 1, 2, c13_sub_r1);
   }
   else if ( rank == 3 ) {
     auto c02_sub_r2 = comm->recv(0, c.eltype(), "0-3 1");
     c02_sub_r2 = c02_sub_r2.reshape(mat_shape);
     ring_add_(o1, c02_sub_r2);
+    mac_state->update_msg(0, 2, 3, c02_sub_r2);
 
     prg_state->fillPrssTuple(static_cast<uint8_t*>(nullptr),  static_cast<uint8_t*>(nullptr), r_1.data<std::uint8_t>() , mat_shape.numel() * ty.size(), PrgState::GenPrssCtrl::Third);
     auto c13_sub_r1 = ring_sub(c, r_1);
@@ -650,7 +676,7 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
   auto* prg_state = ctx->getState<PrgState>();
   auto* comm = ctx->getState<Communicator>();
   auto rank = comm->getRank();
-
+  auto* mac_state = ctx->getState<Fantastic4MacState>();
 
   return DISPATCH_ALL_FIELDS(field, [&]() {
     using el_t = ring2k_t;
@@ -695,7 +721,8 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
         // std::vector<el_t> r(out.numel());
         std::vector<el_t> rb(out.numel());
         std::vector<el_t> rc(out.numel());
-
+        std::vector<el_t> masked_input_shr_1(out.numel());
+        std::vector<el_t> masked_input_shr_2(out.numel());
         pforeach(0, out.numel(), [&](int64_t idx) {
           // _in[idx][0] += (el_t(1) << (k - 2));
           _rb_shr[idx][0] = 0;
@@ -732,6 +759,9 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
           _masked_input[idx][0] = _in[idx][0] + (el_t(1) << (k - 2));// r0 = 0
           _masked_input[idx][1] = _in[idx][1] + r1[idx];
           _masked_input[idx][2] = _in[idx][2] + r2[idx];
+
+          masked_input_shr_1[idx] = _masked_input[idx][1];
+          masked_input_shr_2[idx] = _masked_input[idx][2];
         });
 
         // -------------------------------------
@@ -742,9 +772,12 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
 
         // -------------------------------------
         // Step 4: Let P2 and P3 reconstruct s = x + r
-        //         by P1 sends s1 to P2
-        //            P2 sends s2 to P3
+        //         by P1 sends s1 to P2, P0 as backup
+        //            P2 sends s2 to P3, P0 as backup
         // -------------------------------------
+
+        mac_state->update_msg<el_t>(1, 0, 2, masked_input_shr_1);
+        mac_state->update_msg<el_t>(2, 0, 3, masked_input_shr_2);
         // -------------------------------------
         // Step 5: compute sb = s{k-1} and sc = s{k-2}.....s{m}
         // -------------------------------------
@@ -931,6 +964,7 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
 
         comm->sendAsync<el_t>(3, masked_input_shr_2, "masked shr 2");
         auto missing_shr = comm->recv<el_t>(1, "masked shr 1");
+        mac_state->update_msg<el_t>(1, 0, 2, missing_shr);
         std::vector<el_t> s(out.numel());
         std::vector<el_t> sb(out.numel());
         std::vector<el_t> sc(out.numel());
@@ -1004,6 +1038,8 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
         JointInputArith(ctx, rc, rc_shr, 1, 0, 3, 2);
 
         auto missing_shr = comm->recv<el_t>(2, "masked shr 2");
+        mac_state->update_msg<el_t>(2, 0, 3, missing_shr);
+
         std::vector<el_t> s(out.numel());
         std::vector<el_t> sb(out.numel());
         std::vector<el_t> sc(out.numel());

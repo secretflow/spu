@@ -22,6 +22,8 @@
 #include "libspu/mpc/fantastic4/type.h"
 #include "libspu/mpc/standard_shape/protocol.h"
 
+#include "libspu/mpc/fantastic4/state.h"
+
 namespace spu::mpc {
 
 void regFantastic4Protocol(SPUContext* ctx,
@@ -35,6 +37,9 @@ void regFantastic4Protocol(SPUContext* ctx,
 
   // register random states & kernels.
   ctx->prot()->addState<PrgState>(lctx);
+
+  // add MAC state
+  ctx->prot()->addState<spu::mpc::fantastic4::Fantastic4MacState>(lctx);
 
   // register public kernels.
   regPV2kKernels(ctx->prot());

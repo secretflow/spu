@@ -252,7 +252,7 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
   const auto* in_ty = in.eltype().as<BShrTy>();
   const size_t in_nbits = in_ty->nbits();
-
+  auto* mac_state = ctx->getState<Fantastic4MacState>();
   SPU_ENFORCE(in_nbits <= SizeOf(field) * 8, "invalid nbits={}", in_nbits);
   const auto out_ty = makeType<AShrTy>(field);
 
@@ -395,12 +395,17 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
         NdArrayView<ashr_t> _x_plus_r_shr(x_plus_r_shr);
 
         // Reveal x + r to all parties
+        std::vector<ashr_el_t> second_shr(numel);
         std::vector<ashr_el_t> third_shr(numel);
         std::vector<ashr_el_t> x_plus_r_pub(numel);
-        pforeach(0, numel, [&](int64_t idx) { third_shr[idx] = _x_plus_r_shr[idx][2];});
+        pforeach(0, numel, [&](int64_t idx) {
+          second_shr[idx] = _x_plus_r_shr[idx][1];
+          third_shr[idx] = _x_plus_r_shr[idx][2];
+        });
 
         // Pass the third share to previous party
         auto fourth_shr = comm->rotate<ashr_el_t>(third_shr, "b2a reveal x+r");
+        mac_state->update_msg<ashr_el_t>( (rank + 3) % 4, rank, (rank + 2) % 4, second_shr);
 
         pforeach(0, numel, [&](int64_t idx) {
           x_plus_r_pub[idx] = _x_plus_r_shr[idx][0] ^ _x_plus_r_shr[idx][1] ^ _x_plus_r_shr[idx][2] ^ fourth_shr[idx];
@@ -508,6 +513,7 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
   auto* comm = ctx->getState<Communicator>();
   auto* prg_state = ctx->getState<PrgState>();
+  auto* mac_state = ctx->getState<Fantastic4MacState>();
 
   DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), [&]() {
     using bshr_t = std::array<ScalarT, 3>;
@@ -686,6 +692,17 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
         std::vector<ashr_el_t> plaintext_x_minus_r(numel);
 
+        // P1 serves as backup for both (P2-->P3) (P3-->P2)
+        if(comm->getRank() == 1) {
+          std::vector<ashr_el_t> shr_for_P3(numel);
+          std::vector<ashr_el_t> shr_for_P2(numel);
+          pforeach(0, numel, [&](int64_t idx) {
+              shr_for_P2[idx] = _x_minus_r[idx][0];
+              shr_for_P3[idx] = _x_minus_r[idx][1];
+          });
+          mac_state->update_msg<ashr_el_t>(2, 1, 3, shr_for_P3);
+          mac_state->update_msg<ashr_el_t>(3, 1, 2, shr_for_P2);
+        }
         if (comm->getRank() == 2) {
           // P2 send global shr[2] (own::shr[0]) to P3
           std::vector<ashr_el_t> shr_for_P3(numel);
@@ -723,6 +740,7 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
       }
     });
   });
+  
   return out;
 }
 
@@ -998,6 +1016,8 @@ NdArrayRef eqz(KernelEvalContext* ctx, const NdArrayRef& in) {
   const auto field = in.eltype().as<AShrTy>()->field();
   const auto numel = in.numel();
   auto rank = comm->getRank();
+  auto* mac_state = ctx->getState<Fantastic4MacState>();
+
   // length-k boolean type
   const PtType in_bshr_btype = calcBShareBacktype(SizeOf(field) * 8);
   const PtType out_bshr_btype = calcBShareBacktype(8);
@@ -1031,6 +1051,7 @@ NdArrayRef eqz(KernelEvalContext* ctx, const NdArrayRef& in) {
     NdArrayView<ashr_t> _rand_ashr(rand_ashr);
 
     std::vector<ashr_el_t> plaintext_x_plus_r(numel);
+    std::vector<ashr_el_t> second_shr(numel);
     std::vector<ashr_el_t> third_shr(numel);
 
     pforeach(0, numel, [&](int64_t idx) {
@@ -1039,6 +1060,8 @@ NdArrayRef eqz(KernelEvalContext* ctx, const NdArrayRef& in) {
       _rand_ashr[idx][2] = r2[idx];
 
       plaintext_x_plus_r[idx] = _x[idx][0] + _rand_ashr[idx][0] + _x[idx][1] + _rand_ashr[idx][1] + _x[idx][2] + _rand_ashr[idx][2];
+
+      second_shr[idx] = _x[idx][1] + _rand_ashr[idx][1];
       third_shr[idx] = _x[idx][2] + _rand_ashr[idx][2];
     });
 
@@ -1046,7 +1069,8 @@ NdArrayRef eqz(KernelEvalContext* ctx, const NdArrayRef& in) {
     rand_bshr = wrap_a2b(ctx->sctx(), rand_ashr);
 
     auto fourth_shr = comm->rotate<ashr_el_t>(third_shr, "eqz reveal x+r");
-
+    mac_state->update_msg<ashr_el_t>( (rank + 3) % 4, rank, (rank + 2) % 4, second_shr);
+    
     pforeach(0, numel, [&](int64_t idx) { plaintext_x_plus_r[idx] += fourth_shr[idx];  });
 
     NdArrayRef test_all_one(makeType<BShrTy>(in_bshr_btype, SizeOf(in_bshr_btype) * 8), in.shape());
@@ -1119,6 +1143,7 @@ NdArrayRef eqz(KernelEvalContext* ctx, const NdArrayRef& in) {
       out = reduction_res[cur_ind];
     });
   });
+  
   return out;
 }
 

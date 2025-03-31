@@ -34,6 +34,7 @@ spu_cc_library(
         ":conversion",
         ":value",
         ":jmp",
+        ":state",
         "//libspu/mpc/standard_shape:protocol",
     ],
 )
@@ -72,6 +73,7 @@ spu_cc_library(
         "//libspu/mpc:ab_api",
         "//libspu/mpc/common:communicator",
         "//libspu/mpc/common:prg_state",
+        ":state",
     ],
 )
 
@@ -85,6 +87,7 @@ spu_cc_library(
         ":jmp",
         "//libspu/mpc/common:communicator",
         "//libspu/mpc/common:prg_state",
+        ":state",
     ],
 )
 
@@ -108,6 +111,7 @@ spu_cc_library(
         "//libspu/mpc:ab_api",
         "//libspu/mpc/common:communicator",
         "//libspu/mpc/common:prg_state",
+        ":state",
         "//libspu/mpc/utils:circuits",
         "@yacl//yacl/utils:platform_utils",
     ],
@@ -121,6 +125,7 @@ spu_cc_library(
         ":value",
         "//libspu/mpc/common:communicator",
         "//libspu/mpc/common:prg_state",
+        ":state",
     ],
 )
 
@@ -135,6 +140,18 @@ spu_cc_library(
     ],
 )
 
+spu_cc_library(
+    name = "state",
+    hdrs = ["state.h"],
+    deps = [
+        "//libspu/core:prelude",
+        "@yacl//yacl/crypto/hash:blake3",
+        "@yacl//yacl/crypto/hash:hash_utils",
+        "@yacl//yacl/crypto/rand",
+        "@yacl//yacl/link",
+    ],
+)
+
 spu_cc_test(
     name = "io_test",
     srcs = ["io_test.cc"],
@@ -143,3 +160,5 @@ spu_cc_test(
         "//libspu/mpc:io_test",
     ],
 )
+
+
