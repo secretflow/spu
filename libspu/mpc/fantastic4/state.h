@@ -25,7 +25,7 @@ namespace spu::mpc::fantastic4 {
 
 // TODO: complete me
 class Fantastic4MacState : public State {
-    std::unique_ptr<yacl::crypto::HashInterface> hash_algo_; 
+    std::unique_ptr<yacl::crypto::HashInterface> hash_algo_;
     size_t mac_len_;
     NdArrayRef send_hashes_(ring2k_t, {4, 4});
     NdArrayRef used_channels_(bool, {4, 4});

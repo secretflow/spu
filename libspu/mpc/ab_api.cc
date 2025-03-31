@@ -330,7 +330,7 @@ Value ppa_kogge_stone(SPUContext* ctx, const Value& lhs, const Value& rhs,
     P = std::move(res[0]);
     G = xor_bb(ctx, G, res[1]);
   }
-  
+
   // out = (G << 1) ^ p0
   auto C = lshift_b(ctx, G, {1});
   return xor_bb(ctx, xor_bb(ctx, lhs, rhs), C);
@@ -453,10 +453,10 @@ Value add_bb(SPUContext* ctx, const Value& x, const Value& y) {
 //     cin0 cin1 ... cink
 // Output:
 //     si = xi ^ yi ^ cini
-//     couti = xi^( (xi^yi) & (xi & cini) ) 
+//     couti = xi^( (xi^yi) & (xi & cini) )
 std::array<Value, 2> pfa_bb(SPUContext* ctx, const Value& x, const Value& y, const Value& cin) {
   auto s = xor_bb(ctx, xor_bb(ctx, x, y), cin);
-  
+
   auto carry_out = xor_bb(ctx, x, and_bb(ctx, xor_bb(ctx, x, y), xor_bb(ctx, x, cin)));
 
   std::array<Value, 2> res = {s, carry_out};
@@ -472,7 +472,7 @@ Value carry_a2b(SPUContext* ctx, const Value& x, const Value& y, size_t k) {
   auto G = and_bb(ctx, x, y);
   auto P = f.get();
   // Use kogge stone layout.
-  //    (incorrect) Theoreticall: k + k/2 + k/4 + ... + 1 = 2k 
+  //    (incorrect) Theoreticall: k + k/2 + k/4 + ... + 1 = 2k
   //    (correct) Theoreticall: k + k/2 + k/4 + ... + 2 = 2k - 2
 
   //    (incorrect) Actually: k + k/2 + k/4 + ... + 8 (8) + 8 (4) + 8 (2) + 8 (1) = 2k + 16

@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "libspu/mpc/fantastic4/type.h"
-
 #include "libspu/mpc/common/pv2k.h"
 
 namespace spu::mpc::fantastic4 {

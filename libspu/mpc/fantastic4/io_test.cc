@@ -27,4 +27,4 @@ INSTANTIATE_TEST_SUITE_P(
       return fmt::format("{}x{}", std::get<1>(p.param), std::get<2>(p.param));
     });
 
-} 
+}

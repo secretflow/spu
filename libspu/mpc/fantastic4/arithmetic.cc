@@ -177,7 +177,7 @@ NdArrayRef A2V::proc(KernelEvalContext* ctx, const NdArrayRef& in,
       comm->sendAsync<ashr_el_t>(comm->prevRank(), x3,
                                  "a2v");// comm => 1, k
       return makeConstantArrayRef(out_ty, in.shape());
-    } 
+    }
     else {
       return makeConstantArrayRef(out_ty, in.shape());
     }
@@ -216,17 +216,17 @@ NdArrayRef V2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
         _out[idx][1] = _s1[idx];
         _out[idx][2] = _s2[idx];
       });
-    } 
+    }
     else if (comm->getRank() == (owner_rank + 1) % 4) {
       auto x1 = comm->recv<ashr_el_t>((comm->getRank() + 3) % 4, "v2a 1");
       auto x2 = comm->recv<ashr_el_t>((comm->getRank() + 3) % 4, "v2a 2");
       pforeach(0, in.numel(), [&](int64_t idx) {
-        
+
         _out[idx][0] = x1[idx];
         _out[idx][1] = x2[idx];
         _out[idx][2] = 0;
       });
-    } 
+    }
     else if (comm->getRank() == (owner_rank + 2) % 4) {
       auto x2 = comm->recv<ashr_el_t>((comm->getRank() + 2) % 4, "v2a 1");
       auto x0 = comm->recv<ashr_el_t>((comm->getRank() + 2) % 4, "v2a 2");
@@ -382,7 +382,7 @@ NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
           _out[idx][i] = 0;
         }
     });
-    
+
     std::array<std::vector<el_t>, 5> a;
 
     for (auto& vec : a) {
@@ -472,7 +472,7 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
 
   // a0 = (x0 + x1) * y0 + x0 * y1
   auto t0 = std::async(std::launch::async, ring_mmul, x0, y1);
-  
+
   auto t10 = std::async(std::launch::async, ring_mmul, x0, y0);
   auto t11 = std::async(std::launch::async, ring_mmul, x1, y0);
 
@@ -489,7 +489,7 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
   auto c = ring_add(c0.get(), c1);
 
   fr.get();
-  
+
 
   auto a0_sub_r1 = ring_sub(a0, r_next);
   auto a1_sub_r2 = ring_sub(a1, r_next_next);
@@ -519,11 +519,11 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
     ring_add_(o2, r_2);
   }
   else if ( rank == 1 ) {
-  
+
     prg_state->fillPrssTuple(static_cast<uint8_t*>(nullptr), r_2.data<std::uint8_t>() , static_cast<uint8_t*>(nullptr),  mat_shape.numel() * ty.size(), PrgState::GenPrssCtrl::Second);
     ring_add_(o1, r_2);
 
-    
+
     prg_state->fillPrssTuple(r_1.data<std::uint8_t>() , static_cast<uint8_t*>(nullptr),  static_cast<uint8_t*>(nullptr),  mat_shape.numel() * ty.size(), PrgState::GenPrssCtrl::First);
     auto c13_sub_r1 = ring_sub(c, r_1);
     ring_add_(o0, r_1);
@@ -532,7 +532,7 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
   }
   else if ( rank == 2 ) {
     prg_state->fillPrssTuple(r_2.data<std::uint8_t>() , static_cast<uint8_t*>(nullptr),  static_cast<uint8_t*>(nullptr),  mat_shape.numel() * ty.size(), PrgState::GenPrssCtrl::First);
-    auto c02_sub_r2 = ring_sub(c, r_2);    
+    auto c02_sub_r2 = ring_sub(c, r_2);
     ring_add_(o0, r_2);
     ring_add_(o2, c02_sub_r2);
 
@@ -619,7 +619,7 @@ NdArrayRef Opt_Mul(KernelEvalContext* ctx, const NdArrayRef& lhs, const NdArrayR
       a[4][idx] = _lhs[idx][0] * _rhs[idx][2] + _lhs[idx][2] * _rhs[idx][0];                    // xi*yg + xg*yi
     });
 
-    
+
     // let P2 send async to P3, P3 wait to recv
     JointInputArith<el_t>(ctx, a[2], out, 2, 1, 3, 0);
     JointInputArith<el_t>(ctx, a[4], out, 2, 0, 3, 0);
@@ -651,7 +651,7 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
   auto* comm = ctx->getState<Communicator>();
   auto rank = comm->getRank();
 
-  
+
   return DISPATCH_ALL_FIELDS(field, [&]() {
     using el_t = ring2k_t;
     using shr_t = std::array<el_t, 3>;
@@ -677,7 +677,7 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
     NdArrayRef sb_mul_rb(makeType<AShrTy>(field), in.shape());
     NdArrayView<shr_t> _sb_mul_rb(sb_mul_rb);
 
-    if(rank == (size_t)0){ 
+    if(rank == (size_t)0){
         // -------------------------------------
         // Step 1: Generate r and rb, rc
         // -------------------------------------
@@ -695,7 +695,7 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
         // std::vector<el_t> r(out.numel());
         std::vector<el_t> rb(out.numel());
         std::vector<el_t> rc(out.numel());
-        
+
         pforeach(0, out.numel(), [&](int64_t idx) {
           // _in[idx][0] += (el_t(1) << (k - 2));
           _rb_shr[idx][0] = 0;
@@ -756,7 +756,7 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
         // -------------------------------------
         // Step 6: compute sb = s{k-1} and sc = s{k-2}.....s{m}
         // -------------------------------------
-        
+
         #ifndef OPTIMIZED_TRUNC
         sb_mul_rb = wrap_mul_aa(ctx->sctx(), rb_shr, sb_shr);
         #else
@@ -822,7 +822,7 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
           _sb_mul_rb[idx][0] = 0;
           _sb_mul_rb[idx][1] = 0;
           _sb_mul_rb[idx][2] = 0;
-          
+
           // r = r_{k-1}......r_{0}
           auto r = r1[idx] + r2[idx];
           // rb = r >> k-1
@@ -850,7 +850,7 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
         //    P2 sends P0 sb - r3
         // As the result:
         //    rb_shr = (0       ,- r1, rb - r1, 0)
-        //    sb_shr = (sb - r3 ,  0,    0    , r3) 
+        //    sb_shr = (sb - r3 ,  0,    0    , r3)
         // Recall that in 4PC MulAA:
         //    pforeach(0, lhs.numel(), [&](int64_t idx) {
         //      a[rank][idx] = (_lhs[idx][0] + _lhs[idx][1]) * _rhs[idx][0] + _lhs[idx][0] * _rhs[idx][1]; // xi*yi + xi*yj + xj*yi
@@ -886,7 +886,7 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
           _out[idx][0] = _sc_shr[idx][0] - _rc_shr[idx][0] + ((_rb_shr[idx][0] + _sb_shr[idx][0] - 2*_sb_mul_rb[idx][0]) << (k - bits - 1));
           _out[idx][1] = _sc_shr[idx][1] - _rc_shr[idx][1] + ((_rb_shr[idx][1] + _sb_shr[idx][1] - 2*_sb_mul_rb[idx][1]) << (k - bits - 1));
           _out[idx][2] = _sc_shr[idx][2] - _rc_shr[idx][2] + ((_rb_shr[idx][2] + _sb_shr[idx][2] - 2*_sb_mul_rb[idx][2]) << (k - bits - 1));
-          
+
         });
     }
 
@@ -897,7 +897,7 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
         std::vector<el_t> masked_input_shr_2(out.numel());
 
         prg_state->fillPrssTuple<el_t>(r2.data(), nullptr, nullptr, r2.size(), PrgState::GenPrssCtrl::First);
-        
+
         pforeach(0, out.numel(), [&](int64_t idx) {
           _rb_shr[idx][0] = 0;
           _rb_shr[idx][1] = 0;

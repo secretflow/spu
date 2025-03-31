@@ -37,4 +37,4 @@ class Fantastic4Io final : public BaseIo {
 
 std::unique_ptr<Fantastic4Io> makeFantastic4Io(FieldType field, size_t npc);
 
-} 
+}

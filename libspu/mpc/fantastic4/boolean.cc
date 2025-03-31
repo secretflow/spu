@@ -139,12 +139,12 @@ NdArrayRef XorBP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
     NdArrayView<rhs_scalar_t> _rhs(rhs);
 
     NdArrayRef out(makeType<BShrTy>(out_btype, out_nbits), lhs.shape());
-    
+
     return DISPATCH_UINT_PT_TYPES(lhs_ty->getBacktype(), [&]() {
       using lhs_el_t = ScalarT;
       using lhs_shr_t = std::array<lhs_el_t, 3>;
       auto rank = comm->getRank();
-    
+
       NdArrayView<lhs_shr_t> _lhs(lhs);
 
       return DISPATCH_UINT_PT_TYPES(out_btype, [&]() {
@@ -279,7 +279,7 @@ NdArrayRef AndBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
         using out_shr_t = std::array<out_el_t, 3>;
 
         NdArrayView<out_shr_t> _out(out);
-        
+
         std::array<std::vector<out_el_t>, 5> a;
 
         for (auto& vec : a) {

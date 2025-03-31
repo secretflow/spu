@@ -121,7 +121,7 @@ std::vector<NdArrayRef> Fantastic4Io::makeBitSecret(const PtBufferView& in) cons
   for (size_t idx = 0; idx < numel; idx++) {
     const bshr_el_t r3 =
         static_cast<bshr_el_t>(in.get<bool>(idx)) ^ r0[idx] ^ r1[idx] ^ r2[idx];
-    
+
     // P_0
     _s0[idx][0] = r0[idx] & 0x1;
     _s0[idx][1] = r1[idx] & 0x1;
@@ -206,4 +206,4 @@ std::unique_ptr<Fantastic4Io> makeFantastic4Io(FieldType field, size_t npc) {
   return std::make_unique<Fantastic4Io>(field, npc);
 }
 
-}  
+}

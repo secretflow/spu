@@ -53,4 +53,4 @@ std::vector<T> getShareAs(const NdArrayRef& in, size_t share_idx) {
 
 #define PFOR_GRAIN_SIZE 8192
 
-} 
+}

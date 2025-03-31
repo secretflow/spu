@@ -34,14 +34,14 @@ namespace spu::mpc::fantastic4 {
       size_t world_size =  comm->getWorldSize();
       auto* prg_state = ctx->getState<PrgState>();
       auto myrank = comm->getRank();
-  
+
       using shr_t = std::array<el_t, 3>;
       NdArrayView<shr_t> _out(output);
-      
+
       size_t receiver_prev_rank = PrevRank(receiver, world_size);
       size_t offset_from_receiver_prev = OffsetRank(myrank, receiver_prev_rank, world_size);
       size_t offset_from_outsider_prev = OffsetRank(myrank, (outsider + 4 - 1)%4 , world_size);
-  
+
       if(myrank != receiver){
         // Non-Interactive Random Masks Generation.
         std::vector<el_t> r(output.numel());
@@ -57,13 +57,13 @@ namespace spu::mpc::fantastic4 {
             // should use PRG[2]
             prg_state->fillPrssTuple<el_t>(nullptr, nullptr, r.data(), r.size(), PrgState::GenPrssCtrl::Third);
         }
-  
+
         // For sender,backup,outsider
         // the corresponding share is set to r
         pforeach(0, output.numel(), [&](int64_t idx) {
             _out[idx][offset_from_receiver_prev] += r[idx];
-        }); 
-  
+        });
+
         if(myrank != outsider){
           std::vector<el_t> input_minus_r(output.numel());
           // For sender, backup
@@ -71,14 +71,14 @@ namespace spu::mpc::fantastic4 {
           pforeach(0, output.numel(), [&](int64_t idx) {
             input_minus_r[idx] = (input[idx] - r[idx]);
             _out[idx][offset_from_outsider_prev] +=  input_minus_r[idx];
-            
-            }); 
-  
+
+            });
+
           // Sender send x-r to receiver
           if(myrank == sender) {
             comm->sendAsync<el_t>(receiver, input_minus_r, "Joint Input");
           }
-  
+
           // Backup update x-r for sender-to-receiver channel
           if(myrank == backup) {
             // Todo:
@@ -90,8 +90,8 @@ namespace spu::mpc::fantastic4 {
         auto input_minus_r = comm->recv<el_t>(sender, "Joint Input");
         pforeach(0, output.numel(), [&](int64_t idx) {
             _out[idx][offset_from_outsider_prev] += input_minus_r[idx];
-        }); 
-        // Todo: 
+        });
+        // Todo:
         // Mac update sender-backup channel
       }
     }
@@ -105,7 +105,7 @@ namespace spu::mpc::fantastic4 {
 
       using shr_t = std::array<el_t, 3>;
       NdArrayView<shr_t> _out(output);
-      
+
       // Receiver's Previous Party Rank
       // The mask corresponds to the prev party of receiver, receiver doesn't have the correpsonding PRG of its prev party
       size_t receiver_prev_rank = PrevRank(receiver, world_size);
@@ -133,7 +133,7 @@ namespace spu::mpc::fantastic4 {
         // the corresponding share is set to r
         pforeach(0, output.numel(), [&](int64_t idx) {
             _out[idx][offset_from_receiver_prev] ^= r[idx];
-        }); 
+        });
 
         if(myrank != outsider){
           std::vector<el_t> input_minus_r(output.numel());
@@ -143,7 +143,7 @@ namespace spu::mpc::fantastic4 {
           pforeach(0, output.numel(), [&](int64_t idx) {
             input_minus_r[idx] = (input[idx] ^ r[idx]);
             _out[idx][offset_from_outsider_prev] ^=  input_minus_r[idx];
-          }); 
+          });
 
           // Sender send x-r to receiver
           if(myrank == sender) {
@@ -162,8 +162,8 @@ namespace spu::mpc::fantastic4 {
         auto input_minus_r = comm->recv<el_t>(sender, "Joint Input");
         pforeach(0, output.numel(), [&](int64_t idx) {
             _out[idx][offset_from_outsider_prev] ^= input_minus_r[idx];
-        }); 
-        // Todo: 
+        });
+        // Todo:
         // Mac update sender-backup channel
       }
     }

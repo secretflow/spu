@@ -61,7 +61,7 @@ PrgState::PrgState(const std::shared_ptr<yacl::link::Context>& lctx) {
     lctx->SendAsync(lctx->PrevRank(), yacl::SerializeUint128(self_seed_),
                     "Random:PRSS next");
     lctx->SendAsync(lctx->PrevRank(2), yacl::SerializeUint128(self_seed_),
-                    "Random:PRSS next next");                
+                    "Random:PRSS next next");
     next_seed_ =
         yacl::DeserializeUint128(lctx->Recv(lctx->NextRank(), "Random:PRSS next"));
     next_next_seed_ =

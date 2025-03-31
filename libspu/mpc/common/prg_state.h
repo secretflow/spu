@@ -101,7 +101,7 @@ class PrgState : public State {
       }
       case GenPrssCtrl::Third:
       case GenPrssCtrl::All: {
-        SPU_THROW("PrssPair has only 2 elements!");   
+        SPU_THROW("PrssPair has only 2 elements!");
         return;
       }
     }
@@ -140,7 +140,7 @@ class PrgState : public State {
         r1_counter_ = yacl::crypto::FillPRand(
             kAesType, next_seed_, 0, r1_counter_, absl::MakeSpan(r1, numel));
         r2_counter_ = yacl::crypto::FillPRand(
-            kAesType, next_next_seed_, 0, r2_counter_, absl::MakeSpan(r2, numel));    
+            kAesType, next_next_seed_, 0, r2_counter_, absl::MakeSpan(r2, numel));
         return;
       }
     }

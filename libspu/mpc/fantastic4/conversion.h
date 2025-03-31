@@ -88,9 +88,9 @@ class EqualAP : public BinaryKernel {
 class CommonTypeV : public Kernel {
   public:
    static constexpr const char* kBindName() { return "common_type_v"; }
- 
+
    Kind kind() const override { return Kind::Dynamic; }
- 
+
    void evaluate(KernelEvalContext* ctx) const override;
  };
 
