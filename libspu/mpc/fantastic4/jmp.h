@@ -47,18 +47,15 @@ namespace spu::mpc::fantastic4 {
         std::vector<el_t> r(output.numel());
         if(offset_from_receiver_prev == 0){
             // should use PRG[0]
-            prg_state->fillPrssTuple<el_t>(r.data(), nullptr, nullptr , r.size(),
-                                PrgState::GenPrssCtrl::First);
+            prg_state->fillPrssTuple<el_t>(r.data(), nullptr, nullptr , r.size(), PrgState::GenPrssCtrl::First);
         }
         if(offset_from_receiver_prev == 1){
             // should use PRG[1]
-            prg_state->fillPrssTuple<el_t>(nullptr, r.data(), nullptr , r.size(),
-                                PrgState::GenPrssCtrl::Second);
+            prg_state->fillPrssTuple<el_t>(nullptr, r.data(), nullptr , r.size(), PrgState::GenPrssCtrl::Second);
         }
         if(offset_from_receiver_prev == 2){
             // should use PRG[2]
-            prg_state->fillPrssTuple<el_t>(nullptr, nullptr, r.data(), r.size(),
-                                PrgState::GenPrssCtrl::Third);
+            prg_state->fillPrssTuple<el_t>(nullptr, nullptr, r.data(), r.size(), PrgState::GenPrssCtrl::Third);
         }
   
         // For sender,backup,outsider
@@ -112,11 +109,6 @@ namespace spu::mpc::fantastic4 {
       // Receiver's Previous Party Rank
       // The mask corresponds to the prev party of receiver, receiver doesn't have the correpsonding PRG of its prev party
       size_t receiver_prev_rank = PrevRank(receiver, world_size);
-
-      // My offset from the receiver_prev_rank. 
-      // 0- i'm the receiver_prev_rank
-      // 1- i'm prev/next party of receiver_prev_rank
-      // 2- next next
       size_t offset_from_receiver_prev = OffsetRank(myrank, receiver_prev_rank, world_size);
       size_t offset_from_outsider_prev = OffsetRank(myrank, (outsider + 4 - 1)%4 , world_size);
 
@@ -126,18 +118,15 @@ namespace spu::mpc::fantastic4 {
 
         if(offset_from_receiver_prev == 0){
             // should use PRG[0]
-            prg_state->fillPrssTuple<el_t>(r.data(), nullptr, nullptr , r.size(),
-                                PrgState::GenPrssCtrl::First);
+            prg_state->fillPrssTuple<el_t>(r.data(), nullptr, nullptr , r.size(), PrgState::GenPrssCtrl::First);
         }
         if(offset_from_receiver_prev == 1){
             // should use PRG[1]
-            prg_state->fillPrssTuple<el_t>(nullptr, r.data(), nullptr , r.size(),
-                                PrgState::GenPrssCtrl::Second);
+            prg_state->fillPrssTuple<el_t>(nullptr, r.data(), nullptr , r.size(), PrgState::GenPrssCtrl::Second);
         }
         if(offset_from_receiver_prev == 2){
             // should use PRG[2]
-            prg_state->fillPrssTuple<el_t>(nullptr, nullptr, r.data(), r.size(),
-                                PrgState::GenPrssCtrl::Third);
+            prg_state->fillPrssTuple<el_t>(nullptr, nullptr, r.data(), r.size(), PrgState::GenPrssCtrl::Third);
         }
 
         // For sender,backup,outsider
@@ -147,7 +136,6 @@ namespace spu::mpc::fantastic4 {
         }); 
 
         if(myrank != outsider){
-
           std::vector<el_t> input_minus_r(output.numel());
 
           // For sender, backup
@@ -175,7 +163,6 @@ namespace spu::mpc::fantastic4 {
         pforeach(0, output.numel(), [&](int64_t idx) {
             _out[idx][offset_from_outsider_prev] ^= input_minus_r[idx];
         }); 
-
         // Todo: 
         // Mac update sender-backup channel
       }

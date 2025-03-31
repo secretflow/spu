@@ -82,9 +82,9 @@ NdArrayRef B2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
       NdArrayView<pshr_el_t> _out(out);
       NdArrayView<bshr_t> _in(in);
 
-      std::vector<bshr_el_t> x3(in.numel()); 
-      pforeach(0, in.numel(), [&](int64_t idx){  x3[idx] = _in[idx][2];  });  
-      auto x4 = comm->rotate<bshr_el_t>(x3, "b2p");  // comm => 1, k
+      std::vector<bshr_el_t> x3(in.numel());
+      pforeach(0, in.numel(), [&](int64_t idx){  x3[idx] = _in[idx][2];});
+      auto x4 = comm->rotate<bshr_el_t>(x3, "b2p");
 
       pforeach(0, in.numel(), [&](int64_t idx) {
         const auto& v = _in[idx];
@@ -125,7 +125,7 @@ NdArrayRef P2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
 NdArrayRef XorBP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
                        const NdArrayRef& rhs) const {
-  auto* comm = ctx->getState<Communicator>();                      
+  auto* comm = ctx->getState<Communicator>();
   const auto* lhs_ty = lhs.eltype().as<BShrTy>();
   const auto* rhs_ty = rhs.eltype().as<Pub2kTy>();
 
@@ -290,10 +290,12 @@ NdArrayRef AndBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
           _out[idx][0] = 0U;
           _out[idx][1] = 0U;
           _out[idx][2] = 0U;
-
-          a[rank][idx] = (_lhs[idx][0] & _rhs[idx][0]) ^ (_lhs[idx][1] & _rhs[idx][0] ) ^ (_lhs[idx][0] & _rhs[idx][1]); // xi&yi ^ xi&yj ^ xj&yi
-          a[next_rank][idx] = (_lhs[idx][1]  & _rhs[idx][1] ) ^ (_lhs[idx][2] & _rhs[idx][1] ) ^ (_lhs[idx][1] & _rhs[idx][2]);  // xj&yj ^ xj&yg ^ xg&yj
-          a[4][idx] = (_lhs[idx][0] & _rhs[idx][2]) ^ (_lhs[idx][2] & _rhs[idx][0]);                    // xi&yg ^ xg&yi
+          // xi&yi ^ xi&yj ^ xj&yi
+          a[rank][idx] = (_lhs[idx][0] & _rhs[idx][0]) ^ (_lhs[idx][1] & _rhs[idx][0] ) ^ (_lhs[idx][0] & _rhs[idx][1]);
+          // xj&yj ^ xj&yg ^ xg&yj
+          a[next_rank][idx] = (_lhs[idx][1]  & _rhs[idx][1] ) ^ (_lhs[idx][2] & _rhs[idx][1] ) ^ (_lhs[idx][1] & _rhs[idx][2]);
+          // xi&yg ^ xg&yi
+          a[4][idx] = (_lhs[idx][0] & _rhs[idx][2]) ^ (_lhs[idx][2] & _rhs[idx][0]);
         });
 
         JointInputBool<out_el_t>(ctx, a[1], out, 0, 1, 3, 2);
@@ -313,8 +315,6 @@ NdArrayRef AndBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
 NdArrayRef LShiftB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
                          const Sizes& bits) const {
   const auto* in_ty = in.eltype().as<BShrTy>();
-
-  // TODO: the hal dtype should tell us about the max number of possible bits.
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
   const size_t out_nbits = std::min<size_t>(
       in_ty->nbits() + *std::max_element(bits.begin(), bits.end()),
@@ -387,8 +387,6 @@ NdArrayRef ARShiftB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
   const auto* in_ty = in.eltype().as<BShrTy>();
   bool is_splat = bits.size() == 1;
 
-  // arithmetic right shift expects to work on ring, or the behaviour is
-  // undefined.
   SPU_ENFORCE(in_ty->nbits() == SizeOf(field) * 8, "in.type={}, field={}",
               in.eltype(), field);
   const PtType out_btype = in_ty->getBacktype();
@@ -461,7 +459,6 @@ NdArrayRef BitrevB::proc(KernelEvalContext*, const NdArrayRef& in, size_t start,
 
 NdArrayRef BitIntlB::proc(KernelEvalContext*, const NdArrayRef& in,
                           size_t stride) const {
-  // void BitIntlB::evaluate(KernelEvalContext* ctx) const {
   const auto* in_ty = in.eltype().as<BShrTy>();
   const size_t nbits = in_ty->nbits();
   SPU_ENFORCE(absl::has_single_bit(nbits));

@@ -13,10 +13,8 @@
 // limitations under the License.
 
 #include "libspu/mpc/fantastic4/io.h"
-
 #include "yacl/crypto/rand/rand.h"
 #include "yacl/crypto/tools/prg.h"
-
 #include "libspu/core/context.h"
 #include "libspu/mpc/fantastic4/type.h"
 #include "libspu/mpc/fantastic4/value.h"
@@ -35,7 +33,6 @@ Type Fantastic4Io::getShareType(Visibility vis, int owner_rank) const {
       return makeType<AShrTy>(field_);
     }
   }
-
   SPU_THROW("unsupported vis type {}", vis);
 }
 
@@ -67,7 +64,6 @@ std::vector<NdArrayRef> Fantastic4Io::toShares(const NdArrayRef& raw, Visibility
     } else {
       // normal secret
       SPU_ENFORCE(owner_rank == -1, "not a valid owner {}", owner_rank);
-
       // by default, make as arithmetic share.
       std::vector<NdArrayRef> splits =
           ring_rand_additive_splits(raw, world_size_);
@@ -90,7 +86,6 @@ size_t Fantastic4Io::getBitSecretShareSize(size_t numel) const {
 }
 
 std::vector<NdArrayRef> Fantastic4Io::makeBitSecret(const PtBufferView& in) const {
-  // printf("makeBitSecret F4");
   PtType in_pt_type = in.pt_type;
   SPU_ENFORCE(in_pt_type == PT_I1);
 
@@ -102,25 +97,14 @@ std::vector<NdArrayRef> Fantastic4Io::makeBitSecret(const PtBufferView& in) cons
   const auto out_type = makeType<BShrTy>(PT_U8, /* out_nbits */ 1);
   const size_t numel = in.shape.numel();
 
-
-  //////////////////////////////////////////////////////////////////////////////
-  // 4PC: 4 shares
-  //////////////////////////////////////////////////////////////////////////////
   std::vector<NdArrayRef> shares = {NdArrayRef(out_type, in.shape),
                                     NdArrayRef(out_type, in.shape),
                                     NdArrayRef(out_type, in.shape),
                                     NdArrayRef(out_type, in.shape)};
 
   using bshr_el_t = uint8_t;
-
-  //////////////////////////////////////////////////////////////////////////////
-  // 4PC: each holds 3 elements
-  //////////////////////////////////////////////////////////////////////////////
   using bshr_t = std::array<bshr_el_t, 3>;
 
-  //////////////////////////////////////////////////////////////////////////////
-  // 4PC: 3 random shares
-  //////////////////////////////////////////////////////////////////////////////
   std::vector<bshr_el_t> r0(numel);
   std::vector<bshr_el_t> r1(numel);
   std::vector<bshr_el_t> r2(numel);
@@ -143,7 +127,6 @@ std::vector<NdArrayRef> Fantastic4Io::makeBitSecret(const PtBufferView& in) cons
     _s0[idx][1] = r1[idx] & 0x1;
     _s0[idx][2] = r2[idx] & 0x1;
 
-
     // P_1
     _s1[idx][0] = r1[idx] & 0x1;
     _s1[idx][1] = r2[idx] & 0x1;
@@ -164,7 +147,6 @@ std::vector<NdArrayRef> Fantastic4Io::makeBitSecret(const PtBufferView& in) cons
 
 NdArrayRef Fantastic4Io::fromShares(const std::vector<NdArrayRef>& shares) const {
   const auto& eltype = shares.at(0).eltype();
-  // printf("Use fromShares");
   if (eltype.isa<Pub2kTy>()) {
     SPU_ENFORCE(field_ == eltype.as<Ring2k>()->field());
     return shares[0].as(makeType<RingTy>(field_));
@@ -178,10 +160,8 @@ NdArrayRef Fantastic4Io::fromShares(const std::vector<NdArrayRef>& shares) const
 
     DISPATCH_ALL_FIELDS(field_, [&]() {
       using el_t = ring2k_t;
-  //////////////////////////////////////////////////////////////////////////////
-  // 4PC: 3 elements
-  //////////////////////////////////////////////////////////////////////////////
       using shr_t = std::array<el_t, 3>;
+
       NdArrayView<ring2k_t> _out(out);
       for (size_t si = 0; si < shares.size(); si++) {
         NdArrayView<shr_t> _s(shares[si]);
@@ -201,10 +181,8 @@ NdArrayRef Fantastic4Io::fromShares(const std::vector<NdArrayRef>& shares) const
       NdArrayView<ring2k_t> _out(out);
 
       DISPATCH_UINT_PT_TYPES(eltype.as<BShrTy>()->getBacktype(), [&] {
-  //////////////////////////////////////////////////////////////////////////////
-  // 4PC: 3 elements
-  //////////////////////////////////////////////////////////////////////////////
         using shr_t = std::array<ScalarT, 3>;
+
         for (size_t si = 0; si < shares.size(); si++) {
           NdArrayView<shr_t> _s(shares[si]);
           for (auto idx = 0; idx < shares[0].numel(); ++idx) {

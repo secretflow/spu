@@ -24,24 +24,19 @@ NdArrayRef getShare(const NdArrayRef& in, int64_t share_idx) {
   SPU_ENFORCE(share_idx == 0 || share_idx == 1 || share_idx == 2);
 
   auto new_strides = in.strides();
-  std::transform(new_strides.cbegin(), new_strides.cend(), new_strides.begin(),
-                 [](int64_t s) { return 3 * s; });
+  std::transform(new_strides.cbegin(), new_strides.cend(), new_strides.begin(), [](int64_t s) { return 3 * s;});
 
   if (in.eltype().isa<AShrTy>()) {
     const auto field = in.eltype().as<AShrTy>()->field();
     const auto ty = makeType<RingTy>(field);
 
-    return NdArrayRef(
-        in.buf(), ty, in.shape(), new_strides,
-        in.offset() + share_idx * static_cast<int64_t>(ty.size()));
+    return NdArrayRef(in.buf(), ty, in.shape(), new_strides, in.offset() + share_idx * static_cast<int64_t>(ty.size()));
   } 
 
   else if (in.eltype().isa<BShrTy>()) {
     const auto stype = in.eltype().as<BShrTy>()->getBacktype();
     const auto ty = makeType<PtTy>(stype);
-    return NdArrayRef(
-        in.buf(), ty, in.shape(), new_strides,
-        in.offset() + share_idx * static_cast<int64_t>(ty.size()));
+    return NdArrayRef(in.buf(), ty, in.shape(), new_strides, in.offset() + share_idx * static_cast<int64_t>(ty.size()));
   } 
 
   else {
@@ -49,11 +44,11 @@ NdArrayRef getShare(const NdArrayRef& in, int64_t share_idx) {
   }
 }
 
-NdArrayRef getFirstShare(const NdArrayRef& in) { return getShare(in, 0); }
+NdArrayRef getFirstShare(const NdArrayRef& in) { return getShare(in, 0);}
 
-NdArrayRef getSecondShare(const NdArrayRef& in) { return getShare(in, 1); }
+NdArrayRef getSecondShare(const NdArrayRef& in) { return getShare(in, 1);}
 
-NdArrayRef getThirdShare(const NdArrayRef& in) { return getShare(in, 2); }
+NdArrayRef getThirdShare(const NdArrayRef& in) { return getShare(in, 2);}
 
 // 3 shares
 NdArrayRef makeAShare(const NdArrayRef& s1, const NdArrayRef& s2, const NdArrayRef& s3,

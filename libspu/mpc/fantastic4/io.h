@@ -22,8 +22,7 @@ class Fantastic4Io final : public BaseIo {
  public:
   using BaseIo::BaseIo;
 
-  std::vector<NdArrayRef> toShares(const NdArrayRef& raw, Visibility vis,
-                                   int owner_rank) const override;
+  std::vector<NdArrayRef> toShares(const NdArrayRef& raw, Visibility vis, int owner_rank) const override;
 
   Type getShareType(Visibility vis, int owner_rank = -1) const override;
 

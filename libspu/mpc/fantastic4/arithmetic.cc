@@ -46,9 +46,9 @@ NdArrayRef RandA::proc(KernelEvalContext* ctx, const Shape& shape) const {
     prg_state->fillPrssTuple<el_t>(r0.data(), nullptr, nullptr, r0.size(),
                               PrgState::GenPrssCtrl::First);
     prg_state->fillPrssTuple<el_t>(nullptr, r1.data(), nullptr, r1.size(),
-                              PrgState::GenPrssCtrl::Second); 
+                              PrgState::GenPrssCtrl::Second);
     prg_state->fillPrssTuple<el_t>(nullptr, nullptr, r2.data(), r2.size(),
-                              PrgState::GenPrssCtrl::Third);   
+                              PrgState::GenPrssCtrl::Third);
 
     NdArrayView<std::array<el_t, 3>> _out(out);
     pforeach(0, out.numel(), [&](int64_t idx) {
@@ -79,7 +79,7 @@ NdArrayRef A2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
     pforeach(0, numel, [&](int64_t idx) { x3[idx] = _in[idx][2]; });
     // Pass the third share to previous party
-    auto x4 = comm->rotate<ashr_el_t>(x3, "a2p");  // comm => 1, k
+    auto x4 = comm->rotate<ashr_el_t>(x3, "a2p");// comm => 1, k
 
     pforeach(0, numel, [&](int64_t idx) {
       _out[idx] = _in[idx][0] + _in[idx][1] + _in[idx][2] + x4[idx];
@@ -125,9 +125,9 @@ NdArrayRef P2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
     prg_state->fillPrssTuple<ashr_el_t>(r0.data(), nullptr, nullptr, r0.size(),
                               PrgState::GenPrssCtrl::First);
     prg_state->fillPrssTuple<ashr_el_t>(nullptr, r1.data(), nullptr, r1.size(),
-                              PrgState::GenPrssCtrl::Second); 
+                              PrgState::GenPrssCtrl::Second);
     prg_state->fillPrssTuple<ashr_el_t>(nullptr, nullptr, r2.data(), r2.size(),
-                              PrgState::GenPrssCtrl::Third);    
+                              PrgState::GenPrssCtrl::Third);
 
     for (int64_t idx = 0; idx < in.numel(); idx++) {
       s0[idx] = r0[idx] - r1[idx];
@@ -160,7 +160,7 @@ NdArrayRef A2V::proc(KernelEvalContext* ctx, const NdArrayRef& in,
     auto out_ty = makeType<Priv2kTy>(field, rank);
 
     if (comm->getRank() == rank) {
-      auto x4 = comm->recv<ashr_el_t>(comm->nextRank(), "a2v");  // comm => 1, k
+      auto x4 = comm->recv<ashr_el_t>(comm->nextRank(), "a2v");// comm => 1, k
       NdArrayRef out(out_ty, in.shape());
       NdArrayView<vshr_el_t> _out(out);
 
@@ -172,10 +172,10 @@ NdArrayRef A2V::proc(KernelEvalContext* ctx, const NdArrayRef& in,
     else if (comm->getRank() == (rank + 1) % 4) {
       std::vector<ashr_el_t> x3(in.numel());
 
-      pforeach(0, in.numel(), [&](int64_t idx) { x3[idx] = _in[idx][2]; });
+      pforeach(0, in.numel(), [&](int64_t idx) { x3[idx] = _in[idx][2];});
 
       comm->sendAsync<ashr_el_t>(comm->prevRank(), x3,
-                                 "a2v");  // comm => 1, k
+                                 "a2v");// comm => 1, k
       return makeConstantArrayRef(out_ty, in.shape());
     } 
     else {
@@ -200,12 +200,12 @@ NdArrayRef V2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
     // x = (x0, x1, x2, 0)
     if (comm->getRank() == owner_rank) {
       auto splits = ring_rand_additive_splits(in, 3);
-      comm->sendAsync(((owner_rank + 1) % 4), splits[1], "v2a 1");  
-      comm->sendAsync(((owner_rank + 1) % 4), splits[2], "v2a 2"); 
-      comm->sendAsync(((owner_rank + 2) % 4), splits[2], "v2a 1");  
-      comm->sendAsync(((owner_rank + 2) % 4), splits[0], "v2a 2"); 
-      comm->sendAsync(((owner_rank + 3) % 4), splits[0], "v2a 1"); 
-      comm->sendAsync(((owner_rank + 3) % 4), splits[1], "v2a 2");  
+      comm->sendAsync(((owner_rank + 1) % 4), splits[1], "v2a 1");
+      comm->sendAsync(((owner_rank + 1) % 4), splits[2], "v2a 2");
+      comm->sendAsync(((owner_rank + 2) % 4), splits[2], "v2a 1");
+      comm->sendAsync(((owner_rank + 2) % 4), splits[0], "v2a 2");
+      comm->sendAsync(((owner_rank + 3) % 4), splits[0], "v2a 1");
+      comm->sendAsync(((owner_rank + 3) % 4), splits[1], "v2a 2");
 
       NdArrayView<ashr_el_t> _s0(splits[0]);
       NdArrayView<ashr_el_t> _s1(splits[1]);
@@ -218,7 +218,7 @@ NdArrayRef V2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
       });
     } 
     else if (comm->getRank() == (owner_rank + 1) % 4) {
-      auto x1 = comm->recv<ashr_el_t>((comm->getRank() + 3) % 4, "v2a 1");  
+      auto x1 = comm->recv<ashr_el_t>((comm->getRank() + 3) % 4, "v2a 1");
       auto x2 = comm->recv<ashr_el_t>((comm->getRank() + 3) % 4, "v2a 2");
       pforeach(0, in.numel(), [&](int64_t idx) {
         
@@ -228,8 +228,8 @@ NdArrayRef V2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
       });
     } 
     else if (comm->getRank() == (owner_rank + 2) % 4) {
-      auto x2 = comm->recv<ashr_el_t>((comm->getRank() + 2) % 4, "v2a 1"); 
-      auto x0 = comm->recv<ashr_el_t>((comm->getRank() + 2) % 4, "v2a 2"); 
+      auto x2 = comm->recv<ashr_el_t>((comm->getRank() + 2) % 4, "v2a 1");
+      auto x0 = comm->recv<ashr_el_t>((comm->getRank() + 2) % 4, "v2a 2");
 
       pforeach(0, in.numel(), [&](int64_t idx) {
         _out[idx][0] = x2[idx];
@@ -237,8 +237,8 @@ NdArrayRef V2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
         _out[idx][2] = x0[idx];
       });
     } else {
-      auto x0 = comm->recv<ashr_el_t>((comm->getRank() + 1) % 4, "v2a 1"); 
-      auto x1 = comm->recv<ashr_el_t>((comm->getRank() + 1) % 4, "v2a 2"); 
+      auto x0 = comm->recv<ashr_el_t>((comm->getRank() + 1) % 4, "v2a 1");
+      auto x1 = comm->recv<ashr_el_t>((comm->getRank() + 1) % 4, "v2a 2");
 
       pforeach(0, in.numel(), [&](int64_t idx) {
         _out[idx][0] = 0;
@@ -395,9 +395,9 @@ NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
     });
 
     pforeach(0, lhs.numel(), [&](int64_t idx) {
-        a[rank][idx] = (_lhs[idx][0] + _lhs[idx][1]) * _rhs[idx][0] + _lhs[idx][0] * _rhs[idx][1]; // xi*yi + xi*yj + xj*yi
-        a[next_rank][idx] = (_lhs[idx][1] + _lhs[idx][2]) * _rhs[idx][1] + _lhs[idx][1] * _rhs[idx][2];  // xj*yj + xj*yg + xg*yj
-        a[4][idx] = _lhs[idx][0] * _rhs[idx][2] + _lhs[idx][2] * _rhs[idx][0];                    // xi*yg + xg*yi
+        a[rank][idx] = (_lhs[idx][0] + _lhs[idx][1]) * _rhs[idx][0] + _lhs[idx][0] * _rhs[idx][1];// xi*yi + xi*yj + xj*yi
+        a[next_rank][idx] = (_lhs[idx][1] + _lhs[idx][2]) * _rhs[idx][1] + _lhs[idx][1] * _rhs[idx][2];// xj*yj + xj*yg + xg*yj
+        a[4][idx] = _lhs[idx][0] * _rhs[idx][2] + _lhs[idx][2] * _rhs[idx][0];// xi*yg + xg*yi
     });
 
     JointInputArith<el_t>(ctx, a[0], out, 3, 0, 1, 2);
@@ -445,7 +445,6 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
   auto N = y.shape()[1];
 
   Shape mat_shape = {M, N};
-  // printf("M = %lu, K = %lu, N = %lu ", static_cast<int64_t>(M), static_cast<int64_t>(K), static_cast<int64_t>(N));
 
   NdArrayRef out(makeType<AShrTy>(field), mat_shape);
 
@@ -552,36 +551,7 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
     ring_add_(o0, c13_sub_r1);
     ring_add_(o2, r_1);
   }
-  // DISPATCH_ALL_FIELDS(field, [&]() {
-  //   using el_t = ring2k_t;
-  //   using shr_t = std::array<el_t, 3>;
-  //   NdArrayView<shr_t> _x(x);
-  //   NdArrayView<shr_t> _y(y);
-  //   NdArrayView<shr_t> _out(out);
-  //   pforeach(0, 1, [&](int64_t row) {
-  //     for(int64_t col = 0; col < 10 ; col++ ){
-  //       auto idx = row * N + col;
-  //       if(rank == 0){printf("P0 _x[%ld][%ld] = (%llu, %llu, %llu)\n", row, col, (unsigned long long)(_x[idx][0]), (unsigned long long)(_x[idx][1]), (unsigned long long)(_x[idx][2]));}
-  //       if(rank == 1){printf("P1 _x[%ld][%ld] = (%llu, %llu, %llu)\n", row, col, (unsigned long long)(_x[idx][0]), (unsigned long long)(_x[idx][1]), (unsigned long long)(_x[idx][2]));}
-  //       if(rank == 2){printf("P2 _x[%ld][%ld] = (%llu, %llu, %llu)\n", row, col, (unsigned long long)(_x[idx][0]), (unsigned long long)(_x[idx][1]), (unsigned long long)(_x[idx][2]));}
-  //       if(rank == 3){printf("P3 _x[%ld][%ld] = (%llu, %llu, %llu)\n", row, col, (unsigned long long)(_x[idx][0]), (unsigned long long)(_x[idx][1]), (unsigned long long)(_x[idx][2]));}
-        
-  //       if(rank == 0){printf("P0 _y[%ld][%ld] = (%llu, %llu, %llu)\n", row, col, (unsigned long long)(_y[idx][0]), (unsigned long long)(_y[idx][1]), (unsigned long long)(_y[idx][2]));}
-  //       if(rank == 1){printf("P1 _y[%ld][%ld] = (%llu, %llu, %llu)\n", row, col, (unsigned long long)(_y[idx][0]), (unsigned long long)(_y[idx][1]), (unsigned long long)(_y[idx][2]));}
-  //       if(rank == 2){printf("P2 _y[%ld][%ld] = (%llu, %llu, %llu)\n", row, col, (unsigned long long)(_y[idx][0]), (unsigned long long)(_y[idx][1]), (unsigned long long)(_y[idx][2]));}
-  //       if(rank == 3){printf("P3 _y[%ld][%ld] = (%llu, %llu, %llu)\n", row, col, (unsigned long long)(_y[idx][0]), (unsigned long long)(_y[idx][1]), (unsigned long long)(_y[idx][2]));}
-        
-  //       // printf("_y[%ld][%ld] = (%llu, %llu)", row, col, (unsigned long long)(_y[idx][0]), (unsigned long long)(_y[idx][1]));
-  //       // printf("_out[%ld][%ld] = (%llu, %llu)", row, col, (unsigned long long)(_out[idx][0]), (unsigned long long)(_out[idx][1]));}
-        
-  //       if(rank == 0){printf("P0 _out = (%llu, %llu, %llu) \n", (unsigned long long)(_out[idx][0]), (unsigned long long)(_out[idx][1]), (unsigned long long)(_out[idx][2]));} 
-  //       if(rank == 1){printf("P1 _out = (%llu, %llu, %llu) \n", (unsigned long long)(_out[idx][0]), (unsigned long long)(_out[idx][1]), (unsigned long long)(_out[idx][2]));} 
-  //       if(rank == 2){printf("P2 _out = (%llu, %llu, %llu) \n", (unsigned long long)(_out[idx][0]), (unsigned long long)(_out[idx][1]), (unsigned long long)(_out[idx][2]));} 
-  //       if(rank == 3){printf("P3 _out = (%llu, %llu, %llu) \n", (unsigned long long)(_out[idx][0]), (unsigned long long)(_out[idx][1]), (unsigned long long)(_out[idx][2]));} 
-  //     }
-  //   });
-  // });
-  
+
   return out;
 
 }
@@ -690,11 +660,6 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
     NdArrayView<shr_t> _out(out);
     NdArrayView<shr_t> _in(in);
 
-    // if(rank == 0){printf("P0 input = (%llu, %llu, %llu) \n", (unsigned long long)(_in[0][0]), (unsigned long long)(_in[0][1]), (unsigned long long)(_in[0][2]));} 
-    // if(rank == 1){printf("P1 input = (%llu, %llu, %llu) \n", (unsigned long long)(_in[0][0]), (unsigned long long)(_in[0][1]), (unsigned long long)(_in[0][2]));} 
-    // if(rank == 2){printf("P2 input = (%llu, %llu, %llu) \n", (unsigned long long)(_in[0][0]), (unsigned long long)(_in[0][1]), (unsigned long long)(_in[0][2]));} 
-    // if(rank == 3){printf("P3 input = (%llu, %llu, %llu) \n", (unsigned long long)(_in[0][0]), (unsigned long long)(_in[0][1]), (unsigned long long)(_in[0][2]));} 
-          
     NdArrayRef rb_shr(makeType<AShrTy>(field), in.shape());
     NdArrayView<shr_t> _rb_shr(rb_shr);
 
@@ -764,7 +729,7 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
           // -------------------------------------
           //
           //  [r] = r0 + r1 + r2 + r3, only r1 and r2 are non-zero
-          _masked_input[idx][0] = _in[idx][0] + (el_t(1) << (k - 2)); // r0 = 0
+          _masked_input[idx][0] = _in[idx][0] + (el_t(1) << (k - 2));// r0 = 0
           _masked_input[idx][1] = _in[idx][1] + r1[idx];
           _masked_input[idx][2] = _in[idx][2] + r2[idx];
         });
@@ -801,9 +766,9 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
         }
 
         pforeach(0, out.numel(), [&](int64_t idx) {
-          a[rank][idx] = (_rb_shr[idx][0] + _rb_shr[idx][1]) * _sb_shr[idx][0] + _rb_shr[idx][0] * _sb_shr[idx][1]; // xi*yi + xi*yj + xj*yi
-          a[(rank + 1) % 4][idx] = (_rb_shr[idx][1] + _rb_shr[idx][2]) * _sb_shr[idx][1] + _rb_shr[idx][1] * _sb_shr[idx][2];  // xj*yj + xj*yg + xg*yj
-          a[4][idx] = _rb_shr[idx][0] * _sb_shr[idx][2] + _rb_shr[idx][2] * _sb_shr[idx][0];                    // xi*yg + xg*yi
+          a[rank][idx] = (_rb_shr[idx][0] + _rb_shr[idx][1]) * _sb_shr[idx][0] + _rb_shr[idx][0] * _sb_shr[idx][1];// xi*yi + xi*yj + xj*yi
+          a[(rank + 1) % 4][idx] = (_rb_shr[idx][1] + _rb_shr[idx][2]) * _sb_shr[idx][1] + _rb_shr[idx][1] * _sb_shr[idx][2];// xj*yj + xj*yg + xg*yj
+          a[4][idx] = _rb_shr[idx][0] * _sb_shr[idx][2] + _rb_shr[idx][2] * _sb_shr[idx][0];// xi*yg + xg*yi
         });
 
         // let P2 send async to P3, P3 wait to recv
@@ -820,24 +785,19 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
           _out[idx][1] = _sc_shr[idx][1] - _rc_shr[idx][1] + ((_rb_shr[idx][1] + _sb_shr[idx][1] - 2*_sb_mul_rb[idx][1]) << (k - bits - 1));
           _out[idx][2] = _sc_shr[idx][2] - _rc_shr[idx][2] + ((_rb_shr[idx][2] + _sb_shr[idx][2] - 2*_sb_mul_rb[idx][2]) << (k - bits - 1));
 
-          // _out[idx][0] -= (el_t(1) << (k - bits - 2));
         });
     }
 
     if(rank == (size_t)1){
-        // -------------------------------------
-        // Step 1: Generate r and rb, rc
-        // -------------------------------------
         std::vector<el_t> r1(out.numel());
         std::vector<el_t> r2(out.numel());
-        // std::vector<el_t> r3(output.numel());
+
         auto fr = std::async([&] {prg_state->fillPrssTuple<el_t>(r1.data(), nullptr, nullptr , r1.size(),
                                 PrgState::GenPrssCtrl::First);});
         prg_state->fillPrssTuple<el_t>(nullptr, r2.data(), nullptr, r2.size(),
                                 PrgState::GenPrssCtrl::Second);
         fr.get();
 
-        // std::vector<el_t> r(out.numel());
         std::vector<el_t> rb(out.numel());
         std::vector<el_t> rc(out.numel());
         std::vector<el_t> masked_input_shr_1(out.numel());
@@ -870,40 +830,21 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
           // rc = r_{k-2}.....r_{m}
           rc[idx] = (r << 1) >> (bits + 1);
 
-          // -------------------------------------
-          // Step 2: compute [x] + [r]
-          // -------------------------------------
           _masked_input[idx][0] = _in[idx][0] + r1[idx];
           _masked_input[idx][1] = _in[idx][1] + r2[idx];
           _masked_input[idx][2] = _in[idx][2];
           masked_input_shr_1[idx] = _masked_input[idx][0];
         });
 
-        // -------------------------------------
-        // Step 3: Generate the share of rb, rc
-        // -------------------------------------
         JointInputArith(ctx, rb, rb_shr, 0, 1, 2, 3);
         JointInputArith(ctx, rc, rc_shr, 1, 0, 3, 2);
 
-        // -------------------------------------
-        // Step 4: Let P2 and P3 reconstruct s = x + r
-        //         by P1 sends s1 to P2
-        //            P2 sends s2 to P3
-        // -------------------------------------
-        comm->sendAsync<el_t>(2, masked_input_shr_1, "masked shr 1"); 
+        comm->sendAsync<el_t>(2, masked_input_shr_1, "masked shr 1");
 
-        // -------------------------------------
-        // Step 5: compute sb = s{k-1} and sc = s{k-2}.....s{m}
-        // -------------------------------------
         std::vector<el_t> sb(out.numel());
         std::vector<el_t> sc(out.numel());
         JointInputArith(ctx, sb, sb_shr, 2, 3, 0, 1);
         JointInputArith(ctx, sc, sc_shr, 3, 2, 1, 0);
-
-        // -------------------------------------
-        // Step 6: compute sb = s{k-1} and sc = s{k-2}.....s{m}
-        // -------------------------------------
-
         // Above we let:
         //    P0 sends P2 rb - r1
         //    P2 sends P0 sb - r3
@@ -930,16 +871,13 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
         }
 
         pforeach(0, out.numel(), [&](int64_t idx) {
-          a[rank][idx] = (_rb_shr[idx][0] + _rb_shr[idx][1]) * _sb_shr[idx][0] + _rb_shr[idx][0] * _sb_shr[idx][1]; // xi*yi + xi*yj + xj*yi
-          a[(rank + 1) % 4][idx] = (_rb_shr[idx][1] + _rb_shr[idx][2]) * _sb_shr[idx][1] + _rb_shr[idx][1] * _sb_shr[idx][2];  // xj*yj + xj*yg + xg*yj
-          a[4][idx] = _rb_shr[idx][0] * _sb_shr[idx][2] + _rb_shr[idx][2] * _sb_shr[idx][0];                    // xi*yg + xg*yi
+          a[rank][idx] = (_rb_shr[idx][0] + _rb_shr[idx][1]) * _sb_shr[idx][0] + _rb_shr[idx][0] * _sb_shr[idx][1];
+          a[(rank + 1) % 4][idx] = (_rb_shr[idx][1] + _rb_shr[idx][2]) * _sb_shr[idx][1] + _rb_shr[idx][1] * _sb_shr[idx][2];
+          a[4][idx] = _rb_shr[idx][0] * _sb_shr[idx][2] + _rb_shr[idx][2] * _sb_shr[idx][0];
         });
 
-        // let P2 send async to P3, P3 wait to recv
         JointInputArith<el_t>(ctx, a[2], sb_mul_rb, 2, 1, 3, 0);
         JointInputArith<el_t>(ctx, a[4], sb_mul_rb, 2, 0, 3, 1);
-
-        // let P01 send async to P2, P2 wait to recv
         JointInputArith<el_t>(ctx, a[0], sb_mul_rb, 0, 3, 2, 1);
         JointInputArith<el_t>(ctx, a[4], sb_mul_rb, 1, 3, 2, 0);
         #endif
@@ -949,13 +887,11 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
           _out[idx][1] = _sc_shr[idx][1] - _rc_shr[idx][1] + ((_rb_shr[idx][1] + _sb_shr[idx][1] - 2*_sb_mul_rb[idx][1]) << (k - bits - 1));
           _out[idx][2] = _sc_shr[idx][2] - _rc_shr[idx][2] + ((_rb_shr[idx][2] + _sb_shr[idx][2] - 2*_sb_mul_rb[idx][2]) << (k - bits - 1));
           
-        });  
+        });
     }
 
     if(rank == (size_t)2){
         std::vector<el_t> r2(out.numel());
-        // std::vector<el_t> r3(out.numel());
-        // std::vector<el_t> r0(out.numel());
         std::vector<el_t> rb(out.numel());
         std::vector<el_t> rc(out.numel());
         std::vector<el_t> masked_input_shr_2(out.numel());
@@ -993,17 +929,9 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
         JointInputArith(ctx, rb, rb_shr, 0, 1, 2, 3);
         JointInputArith(ctx, rc, rc_shr, 1, 0, 3, 2);
 
-        // -------------------------------------
-        // Step 4: Let P2 and P3 reconstruct s = x + r
-        //         by P1 sends s1 to P2
-        //            P2 sends s2 to P3
-        // -------------------------------------
         comm->sendAsync<el_t>(3, masked_input_shr_2, "masked shr 2");
         auto missing_shr = comm->recv<el_t>(1, "masked shr 1");
         std::vector<el_t> s(out.numel());
-        // -------------------------------------
-        // Step 5: compute sb = s{k-1} and sc = s{k-2}.....s{m}
-        // -------------------------------------
         std::vector<el_t> sb(out.numel());
         std::vector<el_t> sc(out.numel());
         pforeach(0, out.numel(), [&](int64_t idx) {
@@ -1014,11 +942,6 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
         JointInputArith(ctx, sb, sb_shr, 2, 3, 0, 1);
         JointInputArith(ctx, sc, sc_shr, 3, 2, 1, 0);
 
-        // -------------------------------------
-        // Step 6: compute sb = s{k-1} and sc = s{k-2}.....s{m}
-
-        // -------------------------------------
-
         #ifndef OPTIMIZED_TRUNC
         sb_mul_rb = wrap_mul_aa(ctx->sctx(), rb_shr, sb_shr);
         #else
@@ -1028,16 +951,13 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
         }
 
         pforeach(0, out.numel(), [&](int64_t idx) {
-          a[rank][idx] = (_rb_shr[idx][0] + _rb_shr[idx][1]) * _sb_shr[idx][0] + _rb_shr[idx][0] * _sb_shr[idx][1]; // xi*yi + xi*yj + xj*yi
-          a[(rank + 1) % 4][idx] = (_rb_shr[idx][1] + _rb_shr[idx][2]) * _sb_shr[idx][1] + _rb_shr[idx][1] * _sb_shr[idx][2];  // xj*yj + xj*yg + xg*yj
-          a[4][idx] = _rb_shr[idx][0] * _sb_shr[idx][2] + _rb_shr[idx][2] * _sb_shr[idx][0];                    // xi*yg + xg*yi
+          a[rank][idx] = (_rb_shr[idx][0] + _rb_shr[idx][1]) * _sb_shr[idx][0] + _rb_shr[idx][0] * _sb_shr[idx][1];
+          a[(rank + 1) % 4][idx] = (_rb_shr[idx][1] + _rb_shr[idx][2]) * _sb_shr[idx][1] + _rb_shr[idx][1] * _sb_shr[idx][2];
+          a[4][idx] = _rb_shr[idx][0] * _sb_shr[idx][2] + _rb_shr[idx][2] * _sb_shr[idx][0];
         });
 
-        // let P2 send async to P3, P3 wait to recv
         JointInputArith<el_t>(ctx, a[2], sb_mul_rb, 2, 1, 3, 0);
         JointInputArith<el_t>(ctx, a[4], sb_mul_rb, 2, 0, 3, 1);
-
-        // let P01 send async to P2, P2 wait to recv
         JointInputArith<el_t>(ctx, a[0], sb_mul_rb, 0, 3, 2, 1);
         JointInputArith<el_t>(ctx, a[4], sb_mul_rb, 1, 3, 2, 0);
         #endif
@@ -1046,12 +966,10 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
           _out[idx][0] = _sc_shr[idx][0] - _rc_shr[idx][0] + ((_rb_shr[idx][0] + _sb_shr[idx][0] - 2*_sb_mul_rb[idx][0]) << (k - bits - 1));
           _out[idx][1] = _sc_shr[idx][1] - _rc_shr[idx][1] + ((_rb_shr[idx][1] + _sb_shr[idx][1] - 2*_sb_mul_rb[idx][1]) << (k - bits - 1));
           _out[idx][2] = _sc_shr[idx][2] - _rc_shr[idx][2] + ((_rb_shr[idx][2] + _sb_shr[idx][2] - 2*_sb_mul_rb[idx][2]) << (k - bits - 1)) - (el_t(1) << (k - bits - 2));
-        });                 
+        });
     }
 
     if(rank == (size_t)3){
-        // std::vector<el_t> r3(out.numel());
-        // std::vector<el_t> r0(out.numel());
         std::vector<el_t> r1(out.numel());
         std::vector<el_t> rb(out.numel());
         std::vector<el_t> rc(out.numel());
@@ -1106,14 +1024,13 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
         }
 
         pforeach(0, out.numel(), [&](int64_t idx) {
-          a[rank][idx] = (_rb_shr[idx][0] + _rb_shr[idx][1]) * _sb_shr[idx][0] + _rb_shr[idx][0] * _sb_shr[idx][1]; // xi*yi + xi*yj + xj*yi
-          a[(rank + 1) % 4][idx] = (_rb_shr[idx][1] + _rb_shr[idx][2]) * _sb_shr[idx][1] + _rb_shr[idx][1] * _sb_shr[idx][2];  // xj*yj + xj*yg + xg*yj
-          a[4][idx] = _rb_shr[idx][0] * _sb_shr[idx][2] + _rb_shr[idx][2] * _sb_shr[idx][0];                    // xi*yg + xg*yi
+          a[rank][idx] = (_rb_shr[idx][0] + _rb_shr[idx][1]) * _sb_shr[idx][0] + _rb_shr[idx][0] * _sb_shr[idx][1];
+          a[(rank + 1) % 4][idx] = (_rb_shr[idx][1] + _rb_shr[idx][2]) * _sb_shr[idx][1] + _rb_shr[idx][1] * _sb_shr[idx][2];
+          a[4][idx] = _rb_shr[idx][0] * _sb_shr[idx][2] + _rb_shr[idx][2] * _sb_shr[idx][0];
         });
 
         JointInputArith<el_t>(ctx, a[2], sb_mul_rb, 2, 1, 3, 0);
         JointInputArith<el_t>(ctx, a[4], sb_mul_rb, 2, 0, 3, 1);
-
         JointInputArith<el_t>(ctx, a[0], sb_mul_rb, 0, 3, 2, 1);
         JointInputArith<el_t>(ctx, a[4], sb_mul_rb, 1, 3, 2, 0);
         #endif
@@ -1124,9 +1041,7 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
           _out[idx][2] = _sc_shr[idx][2] - _rc_shr[idx][2] + ((_rb_shr[idx][2] + _sb_shr[idx][2] - 2*_sb_mul_rb[idx][2]) << (k - bits - 1));
         });
     }
-                                       
-    // printf("TruncA output[0] = (%llu, %llu) \n", (unsigned long long)(_out[0][0]), (unsigned long long)(_out[0][1]));
-    return out;
+  return out;
   });
 }
 } // namespace spu::mpc::fantastic4

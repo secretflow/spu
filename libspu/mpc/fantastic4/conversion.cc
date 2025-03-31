@@ -15,7 +15,6 @@
 #include "libspu/mpc/fantastic4/conversion.h"
 #include <functional>
 #include "yacl/utils/platform_utils.h"
-
 #include "libspu/core/parallel_utils.h"
 #include "libspu/core/prelude.h"
 #include "libspu/core/trace.h"
@@ -28,7 +27,6 @@
 #include "libspu/mpc/utils/ring_ops.h"
 
 #include "libspu/mpc/fantastic4/jmp.h"
-
 #ifdef OPTIMIZED_F4
 #define OPTIMIZED_CONVERSION
 #endif
@@ -41,14 +39,11 @@ static NdArrayRef wrap_add_bb(SPUContext* ctx, const NdArrayRef& x,
   return UnwrapValue(add_bb(ctx, WrapValue(x), WrapValue(y)));
 }
 
-
-
 static NdArrayRef wrap_and_bb(SPUContext* ctx, const NdArrayRef& x,
                               const NdArrayRef& y) {
   SPU_ENFORCE(x.shape() == y.shape());
   return UnwrapValue(and_bb(ctx, WrapValue(x), WrapValue(y)));
 }
-
 
 #ifndef OPTIMIZED_CONVERSION
 static std::array<NdArrayRef, 2> wrap_pfa_bb(SPUContext* ctx, const NdArrayRef& x,
@@ -61,7 +56,6 @@ static std::array<NdArrayRef, 2> wrap_pfa_bb(SPUContext* ctx, const NdArrayRef& 
 }
 
 static NdArrayRef wrap_lshift_b(SPUContext* ctx, const NdArrayRef& x, size_t k) {
-  
   return UnwrapValue(lshift_b(ctx, WrapValue(x), {static_cast<int64_t>(k)}));
 }
 
@@ -74,20 +68,16 @@ static NdArrayRef wrap_lshift_b(SPUContext* ctx, const NdArrayRef& x, size_t k) 
 // Fantastic4 uses FA to reduce 4 operands to 2 operands
 NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const auto field = in.eltype().as<Ring2k>()->field();
-
   auto* comm = ctx->getState<Communicator>();
-
   auto rank = comm->getRank();
-
   const PtType out_btype = calcBShareBacktype(SizeOf(field) * 8);
   const auto out_ty = makeType<BShrTy>(out_btype, SizeOf(out_btype) * 8);
+  auto numel = in.numel();
 
   NdArrayRef shr0(out_ty, in.shape());
   NdArrayRef shr1(out_ty, in.shape());
   NdArrayRef shr2(out_ty, in.shape());
   NdArrayRef shr3(out_ty, in.shape());
-
-  auto numel = in.numel();
 
   DISPATCH_ALL_FIELDS(field, [&]() {
     using ashr_t = std::array<ring2k_t, 3>;
@@ -103,8 +93,6 @@ NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
       NdArrayView<bshr_t> _shr3(shr3);
 
       pforeach(0, numel, [&](int64_t idx) {
-
-
         _shr0[idx][0] = 0U;
         _shr0[idx][1] = 0U;
         _shr0[idx][2] = 0U;
@@ -120,12 +108,10 @@ NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
         _shr3[idx][0] = 0U;
         _shr3[idx][1] = 0U;
         _shr3[idx][2] = 0U;
-
       });
       if(rank == 0){
         pforeach(0, numel, [&](int64_t idx) { 
             // P0 holds _in(x0, x1, x2)
-
             _shr0[idx][0] = _in[idx][0];
             _shr1[idx][1] = _in[idx][1];
             _shr2[idx][2] = _in[idx][2];
@@ -133,7 +119,6 @@ NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
       }
       else if(rank == 1){
         pforeach(0, numel, [&](int64_t idx) { 
-
             // P1 holds _in(x1, x2, x3)
             _shr1[idx][0] = _in[idx][0];
             _shr2[idx][1] = _in[idx][1];
@@ -156,24 +141,18 @@ NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
             _shr1[idx][2] = _in[idx][2];
         });
       }
-
     });
   });
-
 
   auto s_cout_0 = wrap_pfa_bb(ctx->sctx(), shr0, shr1, shr2);
   NdArrayRef s0 = s_cout_0[0];
   NdArrayRef cout0 = s_cout_0[1];
-
   auto cout0_times_2 = wrap_lshift_b(ctx->sctx(), cout0, 1);
-
 
   auto s_cout_1 = wrap_pfa_bb(ctx->sctx(), s0, cout0_times_2, shr3);
   NdArrayRef s1 = s_cout_1[0];
   NdArrayRef cout1 = s_cout_1[1];
-
   auto cout1_times_2 = wrap_lshift_b(ctx->sctx(), cout1, 1);
-
 
   return wrap_add_bb(ctx->sctx(), s1, cout1_times_2);  
 }
@@ -187,7 +166,6 @@ NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 //      (P0, P1) share (x1 + x2)
 //      (P2, P3) share (x0 + x3)
 //      Jointly Compute Binary Adder, e.g. PPA((x1 + x2), (x0 + x3)) without the need of tree reduction (2k Full Adders)
-
 NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const auto field = in.eltype().as<Ring2k>()->field();
 
@@ -217,13 +195,12 @@ NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
       std::vector<bshr_el_t> half1(numel);
       pforeach(0, numel, [&](int64_t idx) {
         half0[idx] = 0U;
-        
-       
         half1[idx] = 0U;
 
         _m[idx][0] = 0U;
         _m[idx][1] = 0U;
         _m[idx][2] = 0U;
+
         _n[idx][0] = 0U;
         _n[idx][1] = 0U;
         _n[idx][2] = 0U;
@@ -258,7 +235,6 @@ NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
 #endif
 
-
 #ifndef OPTIMIZED_CONVERSION
 
 static NdArrayRef wrap_mul_aa(SPUContext* ctx, const NdArrayRef& x,
@@ -279,7 +255,6 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
   SPU_ENFORCE(in_nbits <= SizeOf(field) * 8, "invalid nbits={}", in_nbits);
   const auto out_ty = makeType<AShrTy>(field);
-
 
   NdArrayRef out(out_ty, in.shape());
 
@@ -311,7 +286,7 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
   DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), [&]() {
     using bshr_t = std::array<ScalarT, 3>;
-    
+
     NdArrayView<bshr_t> _in(in);
 
     DISPATCH_ALL_FIELDS(field, [&]() {
@@ -319,10 +294,8 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
       using ashr_t = std::array<ashr_el_t, 3>;
       NdArrayView<ashr_t> _out(out);
       NdArrayView<ashr_t> _x(x);
-      
-      // not sure whether nbits of a bit share in Byte Type is 1 or 8
+
       if (in_nbits == 1) {
-        // printf("Bit2A In: (%llu, %llu, %llu)", (unsigned long long)(_in[0][0]), (unsigned long long)(_in[0][1]),(unsigned long long)(_in[0][2]));
         std::vector<ashr_el_t> x1_xor_x2(numel);
         std::vector<ashr_el_t> x0_xor_x3(numel);
 
@@ -346,8 +319,6 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
           _x[idx][1] = v[1] & 0x1;
           _x[idx][2] = v[2] & 0x1;
         });
-        // printf("1");
-
 
         if (comm->getRank() == 0) {
           pforeach(0, numel, [&](int64_t idx) {
@@ -380,7 +351,6 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
           _out[idx][1] = _x1_xor_x2_shr[idx][1] + _x0_xor_x3_shr[idx][1] - 2 * _mul_res[idx][1];
           _out[idx][2] = _x1_xor_x2_shr[idx][2] + _x0_xor_x3_shr[idx][2] - 2 * _mul_res[idx][2];
         });
-        // printf("Bit2A: (%llu, %llu, %llu)", (unsigned long long)(_out[0][0]), (unsigned long long)(_out[0][1]), (unsigned long long)(_out[0][2]));
       }
 
       else {
@@ -427,17 +397,14 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
         // Reveal x + r to all parties
         std::vector<ashr_el_t> third_shr(numel);
         std::vector<ashr_el_t> x_plus_r_pub(numel);
-        
         pforeach(0, numel, [&](int64_t idx) { third_shr[idx] = _x_plus_r_shr[idx][2]; });
+
         // Pass the third share to previous party
         auto fourth_shr = comm->rotate<ashr_el_t>(third_shr, "b2a reveal x+r");  // comm => 1, k
 
         pforeach(0, numel, [&](int64_t idx) {
           x_plus_r_pub[idx] = _x_plus_r_shr[idx][0] ^ _x_plus_r_shr[idx][1] ^ _x_plus_r_shr[idx][2] ^ fourth_shr[idx];
         });
-
-        // NdArrayView<ashr_t> _rand_ashr(rand_ashr);
-        
 
         pforeach(0, numel, [&](int64_t idx) {
           _out[idx][0] = -_rand_ashr[idx][0];
@@ -454,10 +421,7 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   return out;
 }
 
-
-
 #else
-
 // Optimized B2A By Ranyang Liu, Nankai University
 // Fantastic4 gives the 4-party generation of edabits based on its A2B
 // Given edabitsthe B2A can be implemented using Binary Adders
@@ -468,7 +432,6 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 //      Jointly Compute Binary Adder to obtain [x + r]_B and reveal x + r to (P2, P3)
 //      (P2, P3) share x + r in arithmetic form
 //      All parties set [x]_A = [x + r]_A - [r]_A
-
 NdArrayRef Opt_MulAA(KernelEvalContext* ctx, const NdArrayRef& lhs, const NdArrayRef& rhs) {
   const auto field = lhs.eltype().as<Ring2k>()->field();
   auto* comm = ctx->getState<Communicator>();
@@ -507,9 +470,9 @@ NdArrayRef Opt_MulAA(KernelEvalContext* ctx, const NdArrayRef& lhs, const NdArra
     a[4][idx] = _lhs[idx][0] * _rhs[idx][2] + _lhs[idx][2] * _rhs[idx][0];                    // xi*yg + xg*yi
   });
 
-  // JointInputArith<el_t>(ctx, a[1], out, 0, 1, 3, 2);
+  // Do not send JointInputArith<el_t>(ctx, a[1], out, 0, 1, 3, 2);
   JointInputArith<el_t>(ctx, a[2], out, 1, 2, 0, 3);
-  // JointInputArith<el_t>(ctx, a[3], out, 2, 3, 1, 0);
+  // Do not send JointInputArith<el_t>(ctx, a[3], out, 2, 3, 1, 0);
   JointInputArith<el_t>(ctx, a[0], out, 3, 0, 2, 1);
   JointInputArith<el_t>(ctx, a[4], out, 0, 2, 3, 1);
   JointInputArith<el_t>(ctx, a[4], out, 1, 3, 2, 0);
@@ -562,13 +525,8 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
       NdArrayView<ashr_t> _x(x);
 
       NdArrayView<ashr_t> _out(out);
-
       
-      
-      // not sure whether nbits of a bit share in Byte Type is 1 or 8
       if (in_nbits == 1) {
-
-        
         std::vector<ashr_el_t> x1_xor_x2(numel);
         std::vector<ashr_el_t> x0_xor_x3(numel);
 
@@ -578,7 +536,6 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
         NdArrayRef x0_xor_x3_shr(out_ty, in.shape());
         NdArrayView<ashr_t> _x0_xor_x3_shr(x0_xor_x3_shr);
         pforeach(0, numel, [&](int64_t idx) {
-          
           _x1_xor_x2_shr[idx][0] = 0U;
           _x1_xor_x2_shr[idx][1] = 0U;
           _x1_xor_x2_shr[idx][2] = 0U;
@@ -591,18 +548,11 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
           _x[idx][0] = v[0] & 0x1;
           _x[idx][1] = v[1] & 0x1;
           _x[idx][2] = v[2] & 0x1;
-
-          // if( (comm->getRank() == 0 || comm->getRank() == 2) && idx < 100 ) {
-          //   printf("P%zu Bit2A in[%lu] = (%llu, %llu, %llu)/((%llu, %llu, %llu)) \n", comm->getRank(),
-          //     idx, (unsigned long long)(_in[idx][0]), (unsigned long long)(_in[idx][1]),(unsigned long long)(_in[idx][2]) ,(unsigned long long)(_x[idx][0]), (unsigned long long)(_x[idx][1]),(unsigned long long)(_x[idx][2]));
-          // }
         });
+
         if (comm->getRank() == 0) {
           pforeach(0, numel, [&](int64_t idx) {
             x1_xor_x2[idx] = _x[idx][1] ^ _x[idx][2];
-            // printf("My rank = %zu, ", comm->getRank());
-            // printf("x1_xor_x2 = (%llu) \n", 
-            //   (unsigned long long)x1_xor_x2[idx]);
           });
         }
         else if (comm->getRank() == 1) {
@@ -613,9 +563,6 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
         else if (comm->getRank() == 2) {
           pforeach(0, numel, [&](int64_t idx) {
             x0_xor_x3[idx] = _x[idx][1] ^ _x[idx][2];
-            // printf("My rank = %zu, ", comm->getRank());
-            // printf("x1_xor_x2 = (%llu) \n", 
-            //   (unsigned long long)x0_xor_x3[idx]);
           });
         }
         else if (comm->getRank() == 3) {
@@ -623,11 +570,9 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
             x0_xor_x3[idx] = _x[idx][0] ^ _x[idx][1];
           });
         }
-
-  
+        
         JointInputArith(ctx, x1_xor_x2, x1_xor_x2_shr, 0, 1, 2, 3); 
         JointInputArith(ctx, x0_xor_x3, x0_xor_x3_shr, 2, 3, 0, 1);
-
         // Above we let:
         //    P0 sends P2 x1^x2 - r1
         //    P2 sends P0 x0^x3 - r3
@@ -644,10 +589,7 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
         //    a[3] = 0
         //    a[1] = 0
         // For optimization, we do not send them in Opt_Mul.
-        
         auto mul_res = Opt_MulAA(ctx, x1_xor_x2_shr, x0_xor_x3_shr);// Mind the order of lhs and rhs
-
-        // auto mul_res = wrap_mul_aa(ctx->sctx(), x1_xor_x2_shr, x0_xor_x3_shr);
 
         NdArrayView<ashr_t> _mul_res(mul_res);
 
@@ -655,16 +597,11 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
           _out[idx][0] = _x1_xor_x2_shr[idx][0] + _x0_xor_x3_shr[idx][0] - 2 * _mul_res[idx][0];
           _out[idx][1] = _x1_xor_x2_shr[idx][1] + _x0_xor_x3_shr[idx][1] - 2 * _mul_res[idx][1];
           _out[idx][2] = _x1_xor_x2_shr[idx][2] + _x0_xor_x3_shr[idx][2] - 2 * _mul_res[idx][2];
-          // if( (comm->getRank() == 0 || comm->getRank() == 2) && idx < 100) {
-          //   printf("P%zu Bit2A out[%lu] = (%llu, %llu, %llu) \n", comm->getRank(),
-          //     idx, (unsigned long long)_out[idx][0], (unsigned long long)_out[idx][1], (unsigned long long)_out[idx][2]);
-          // }
         });
 
         
       }
       else {
-        //printf("nbits != 1");
         pforeach(0, numel, [&](int64_t idx) {
           const auto& v = _in[idx];
           _x[idx][0] = v[0];
@@ -714,7 +651,6 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
           });
 
         } else if (comm->getRank() == 1) {
-
           prg_state->fillPrssTuple<ashr_el_t>(r1.data(), nullptr, nullptr, r1.size(),
                                 PrgState::GenPrssCtrl::First);
           prg_state->fillPrssTuple<ashr_el_t>(nullptr, r2.data(), nullptr, r2.size(),
@@ -726,12 +662,10 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
           });
 
         } else if (comm->getRank() == 2) {
-
           prg_state->fillPrssTuple<ashr_el_t>(r2.data(), nullptr, nullptr, r2.size(),
                                 PrgState::GenPrssCtrl::First);
 
         } else if (comm->getRank() == 3) {
-
           prg_state->fillPrssTuple<ashr_el_t>(nullptr, nullptr, r1.data(), r1.size(),
                                 PrgState::GenPrssCtrl::Third);
 
@@ -781,7 +715,6 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
         JointInputArith(ctx, plaintext_x_minus_r, x_minus_r_shr, 2, 3, 0, 1);
 
-        
         pforeach(0, numel, [&](int64_t idx) {
           _out[idx][0] = _x_minus_r_shr[idx][0] + _r_shr[idx][0];
           _out[idx][1] = _x_minus_r_shr[idx][1] + _r_shr[idx][1];
@@ -795,7 +728,6 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
 #endif
 
-
 #ifndef OPTIMIZED_CONVERSION
 // Fantastic4 MSB based on Local Share Conversion
 // [x] = (x0, x1, x2, x3)
@@ -806,11 +738,9 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 // Fantastic4 uses FA to reduce 4 operands to 2 operands
 NdArrayRef MsbA2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const auto field = in.eltype().as<Ring2k>()->field();
-
   auto* comm = ctx->getState<Communicator>();
-
   auto rank = comm->getRank();
-
+  auto numel = in.numel();
   const PtType out_btype = calcBShareBacktype(SizeOf(field) * 8);
   const auto out_ty = makeType<BShrTy>(out_btype, SizeOf(out_btype) * 8);
 
@@ -818,8 +748,6 @@ NdArrayRef MsbA2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   NdArrayRef shr1(out_ty, in.shape());
   NdArrayRef shr2(out_ty, in.shape());
   NdArrayRef shr3(out_ty, in.shape());
-
-  auto numel = in.numel();
 
   DISPATCH_ALL_FIELDS(field, [&]() {
     using ashr_t = std::array<ring2k_t, 3>;
@@ -834,19 +762,6 @@ NdArrayRef MsbA2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
       NdArrayView<bshr_t> _shr2(shr2);
       NdArrayView<bshr_t> _shr3(shr3);
 
-      pforeach(0, numel, [&](int64_t idx) {
-        _shr0[idx][0] = 0U;
-        
-
-        _shr1[idx][0] = 0U;
-        _shr1[idx][1] = 0U;
-        _shr1[idx][2] = 0U;
-
-
-        _shr2[idx][2] = 0U;
-
-
-      });
       if(rank == 0){
         pforeach(0, numel, [&](int64_t idx) { 
             // P0 holds _in(x0, x1, x2)
@@ -972,7 +887,6 @@ NdArrayRef MsbA2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const auto numel = in.numel();
   auto* comm = ctx->getState<Communicator>();
   auto rank = comm->getRank();
-
   const Type bshr_type =
       makeType<BShrTy>(GetStorageType(field), SizeOf(field) * 8);
 
@@ -989,13 +903,6 @@ NdArrayRef MsbA2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
     std::vector<el_t> half0(numel);
     std::vector<el_t> half1(numel);
-
-    // pforeach(0, numel, [&](int64_t idx) { 
-    //   if( (comm->getRank() == 0 || comm->getRank() == 2)) {
-    //     printf("P%zu MsbA2B in[%lu] = (%llu, %llu, %llu) \n", comm->getRank(),
-    //       idx, (unsigned long long)(_in[idx][0]), (unsigned long long)(_in[idx][1]),(unsigned long long)(_in[idx][2]));
-    //   }
-    // });
 
     if(rank == 0){
       pforeach(0, numel, [&](int64_t idx) { 
@@ -1052,7 +959,6 @@ NdArrayRef MsbA2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   // Compute the k-1'th carry bit.
   size_t nbits = SizeOf(field) * 8 - 1;
   auto* sctx = ctx->sctx();
-
   const Shape shape = {in.numel()};
   auto wrap_m = WrapValue(m);
   auto wrap_n = WrapValue(n);
@@ -1066,26 +972,7 @@ NdArrayRef MsbA2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
                     rshift_b(sctx, xor_bb(sctx, wrap_m, wrap_n),
                               {static_cast<int64_t>(nbits)}),
                     carry);
-  // printf("msb nbits = %ld", static_cast<int64_t>(UnwrapValue(msb).eltype().as<BShrTy>()->nbits()));
-
-  // auto msb_shr = UnwrapValue(msb);
-  // const auto* out_ty = msb_shr.eltype().as<BShrTy>();
-  // const size_t out_nbits = out_ty->nbits();
-  // const PtType out_btype = calcBShareBacktype(out_nbits);
-  // DISPATCH_UINT_PT_TYPES(out_btype, [&]() {
-  //   using bshr_el_t = ScalarT;
-  //   using bshr_t = std::array<bshr_el_t, 3>;
-  //   NdArrayView<bshr_t> _msb_shr(msb_shr);
-  //   pforeach(0, msb_shr.numel(), [&](int64_t idx) { 
-  //     if( (comm->getRank() == 0 || comm->getRank() == 2) && idx < 100) {
-  //       printf("P%zu MsbA2B out[%lu] = (%llu, %llu, %llu) \n", comm->getRank(),
-  //         idx, (unsigned long long)(_msb_shr[idx][0]), (unsigned long long)(_msb_shr[idx][1]),(unsigned long long)(_msb_shr[idx][2]));
-  //     }
-  //   });
-  // });
-
   return UnwrapValue(msb);
-  
 }
 
 #endif
@@ -1096,7 +983,6 @@ static NdArrayRef wrap_rshift_b(SPUContext* ctx, const NdArrayRef& x,
 }
 
 #ifndef OPTIMIZED_CONVERSION
-
 // Fantastic4 gives generation of edabits 
 // to enable edabits-based EQZ
 // Ref. "New primitives for actively-secure MPC over rings with applications to private machine learning." https://eprint.iacr.org/2019/599
@@ -1114,8 +1000,8 @@ NdArrayRef eqz(KernelEvalContext* ctx, const NdArrayRef& in) {
   auto rank = comm->getRank();
   // length-k boolean type
   const PtType in_bshr_btype = calcBShareBacktype(SizeOf(field) * 8);
-
   const PtType out_bshr_btype = calcBShareBacktype(8);
+
   // uint 8 for bit share
   NdArrayRef out(makeType<BShrTy>(out_bshr_btype, 8), in.shape());
 
@@ -1170,7 +1056,6 @@ NdArrayRef eqz(KernelEvalContext* ctx, const NdArrayRef& in) {
       using bshr_t = std::array<bshr_el_t, 3>;
 
       NdArrayView<bshr_t> _test_all_one(test_all_one);
-
       NdArrayView<bshr_t> _rand_bshr(rand_bshr);
       
       if(rank == 0) {
@@ -1178,7 +1063,6 @@ NdArrayRef eqz(KernelEvalContext* ctx, const NdArrayRef& in) {
           _test_all_one[idx][0] = _rand_bshr[idx][0] ^ ~plaintext_x_plus_r[idx];
           _test_all_one[idx][1] = _rand_bshr[idx][1];
           _test_all_one[idx][2] = _rand_bshr[idx][2];
-    
         });
       }
 
@@ -1187,7 +1071,6 @@ NdArrayRef eqz(KernelEvalContext* ctx, const NdArrayRef& in) {
           _test_all_one[idx][0] = _rand_bshr[idx][0];
           _test_all_one[idx][1] = _rand_bshr[idx][1];
           _test_all_one[idx][2] = _rand_bshr[idx][2];
-    
         });
       }
 
@@ -1196,7 +1079,6 @@ NdArrayRef eqz(KernelEvalContext* ctx, const NdArrayRef& in) {
           _test_all_one[idx][0] = _rand_bshr[idx][0];
           _test_all_one[idx][1] = _rand_bshr[idx][1];
           _test_all_one[idx][2] = _rand_bshr[idx][2] ^ ~plaintext_x_plus_r[idx];
-    
         });
       }
 
@@ -1205,7 +1087,6 @@ NdArrayRef eqz(KernelEvalContext* ctx, const NdArrayRef& in) {
           _test_all_one[idx][0] = _rand_bshr[idx][0];
           _test_all_one[idx][1] = _rand_bshr[idx][1] ^ ~plaintext_x_plus_r[idx];
           _test_all_one[idx][2] = _rand_bshr[idx][2];
-    
         });
       }
 
@@ -1236,14 +1117,12 @@ NdArrayRef eqz(KernelEvalContext* ctx, const NdArrayRef& in) {
       }
 
       out = reduction_res[cur_ind];
-    
     });
   });
   return out;
 }
 
 #else
-
 // Optimized EQZ By Ranyang Liu, Nankai University
 // Fantastic4 gives the 4-party generation of edabits based on its A2B
 // Given edabits the EQZ can be implemented using Binary Adders
@@ -1257,15 +1136,11 @@ NdArrayRef eqz(KernelEvalContext* ctx, const NdArrayRef& in) {
 //      Jointly Compute AND of all bits of s, [s_0] & .... & [s_k-1] (k AND gates, logk rounds)
 
 NdArrayRef eqz(KernelEvalContext* ctx, const NdArrayRef& in) {
-  // auto* prg_state = ctx->getState<PrgState>();
   auto* comm = ctx->getState<Communicator>();
-
   const auto field = in.eltype().as<AShrTy>()->field();
-  
   const PtType in_bshr_btype = calcBShareBacktype(SizeOf(field) * 8);
   const PtType out_bshr_btype = calcBShareBacktype(8);
   const auto numel = in.numel();
-
   // uint 8
   NdArrayRef out(makeType<BShrTy>(out_bshr_btype, 1), in.shape());
 
@@ -1290,11 +1165,6 @@ NdArrayRef eqz(KernelEvalContext* ctx, const NdArrayRef& in) {
       std::vector<bshr_el_t> plaintext_first_half(numel);
       std::vector<bshr_el_t> plaintext_second_half(numel);
 
-      pforeach(0, numel, [&](int64_t idx) {
-        
-
-      });
-      
       if (comm->getRank() == 0) {
         pforeach(0, numel, [&](int64_t idx) {
           // ~(x1 + x2)
@@ -1377,7 +1247,6 @@ NdArrayRef eqz(KernelEvalContext* ctx, const NdArrayRef& in) {
         _test_all_one[idx][0] = _first_half[idx][0] ^ _second_half[idx][0];
         _test_all_one[idx][1] = _first_half[idx][1] ^ _second_half[idx][1];
         _test_all_one[idx][2] = _first_half[idx][2] ^ _second_half[idx][2];
-
       });
 
       std::vector<NdArrayRef> reduction_res;
@@ -1389,7 +1258,6 @@ NdArrayRef eqz(KernelEvalContext* ctx, const NdArrayRef& in) {
       int64_t cur_ind = 0;
 
       //    Theoreticall: k/2 + k/4 + k/8 + ... + 1 = k - 1 AND gates
-
       //    Actually: k/2 + k/4 + ... + 8 + 8 (4) + 8 (2) + 8 (1) = k + 16 AND gates
       while (cur_bits != 1) {
         cur_bits /= 2;
@@ -1409,11 +1277,9 @@ NdArrayRef eqz(KernelEvalContext* ctx, const NdArrayRef& in) {
         }
         reduction_res.push_back(cur_out);
       }
-
       out = reduction_res[cur_ind];
     });
   });
-
   return out;
 }
 

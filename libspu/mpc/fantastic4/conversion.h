@@ -19,8 +19,6 @@
 
 namespace spu::mpc::fantastic4 {
 
-// Reference:
-
 class A2B : public UnaryKernel {
  public:
   static constexpr const char* kBindName() { return "a2b"; }
@@ -74,8 +72,7 @@ class EqualAA : public BinaryKernel {
 
   Kind kind() const override { return Kind::Dynamic; }
 
-  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
-                  const NdArrayRef& rhs) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs, const NdArrayRef& rhs) const override;
 };
 
 class EqualAP : public BinaryKernel {
@@ -97,4 +94,4 @@ class CommonTypeV : public Kernel {
    void evaluate(KernelEvalContext* ctx) const override;
  };
 
-}  // namespace spu::mpc::fantastic4
+} // namespace spu::mpc::fantastic4
