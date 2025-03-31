@@ -740,7 +740,7 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
       }
     });
   });
-  
+
   return out;
 }
 
@@ -1070,7 +1070,7 @@ NdArrayRef eqz(KernelEvalContext* ctx, const NdArrayRef& in) {
 
     auto fourth_shr = comm->rotate<ashr_el_t>(third_shr, "eqz reveal x+r");
     mac_state->update_msg<ashr_el_t>( (rank + 3) % 4, rank, (rank + 2) % 4, second_shr);
-    
+
     pforeach(0, numel, [&](int64_t idx) { plaintext_x_plus_r[idx] += fourth_shr[idx];  });
 
     NdArrayRef test_all_one(makeType<BShrTy>(in_bshr_btype, SizeOf(in_bshr_btype) * 8), in.shape());
@@ -1143,7 +1143,7 @@ NdArrayRef eqz(KernelEvalContext* ctx, const NdArrayRef& in) {
       out = reduction_res[cur_ind];
     });
   });
-  
+
   return out;
 }
 
