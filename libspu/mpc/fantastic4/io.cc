@@ -90,6 +90,7 @@ size_t Fantastic4Io::getBitSecretShareSize(size_t numel) const {
 }
 
 std::vector<NdArrayRef> Fantastic4Io::makeBitSecret(const PtBufferView& in) const {
+  // printf("makeBitSecret F4");
   PtType in_pt_type = in.pt_type;
   SPU_ENFORCE(in_pt_type == PT_I1);
 
@@ -135,13 +136,13 @@ std::vector<NdArrayRef> Fantastic4Io::makeBitSecret(const PtBufferView& in) cons
 
   for (size_t idx = 0; idx < numel; idx++) {
     const bshr_el_t r3 =
-        static_cast<bshr_el_t>(in.get<bool>(idx)) - r0[idx] - r1[idx] - r2[idx];
-
+        static_cast<bshr_el_t>(in.get<bool>(idx)) ^ r0[idx] ^ r1[idx] ^ r2[idx];
+    
     // P_0
     _s0[idx][0] = r0[idx] & 0x1;
     _s0[idx][1] = r1[idx] & 0x1;
     _s0[idx][2] = r2[idx] & 0x1;
-    
+
 
     // P_1
     _s1[idx][0] = r1[idx] & 0x1;
@@ -151,19 +152,19 @@ std::vector<NdArrayRef> Fantastic4Io::makeBitSecret(const PtBufferView& in) cons
     // P_2
     _s2[idx][0] = r2[idx] & 0x1;
     _s2[idx][1] = r3 & 0x1;
-    _s2[idx][1] = r0[idx] & 0x1;
+    _s2[idx][2] = r0[idx] & 0x1;
 
     // P_3
     _s3[idx][0] = r3 & 0x1;
     _s3[idx][1] = r0[idx] & 0x1;
-    _s3[idx][1] = r1[idx] & 0x1;
+    _s3[idx][2] = r1[idx] & 0x1;
   }
   return shares;
 }
 
 NdArrayRef Fantastic4Io::fromShares(const std::vector<NdArrayRef>& shares) const {
   const auto& eltype = shares.at(0).eltype();
-
+  // printf("Use fromShares");
   if (eltype.isa<Pub2kTy>()) {
     SPU_ENFORCE(field_ == eltype.as<Ring2k>()->field());
     return shares[0].as(makeType<RingTy>(field_));

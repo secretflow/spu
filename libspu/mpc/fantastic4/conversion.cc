@@ -311,7 +311,7 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
   DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), [&]() {
     using bshr_t = std::array<ScalarT, 3>;
-
+    
     NdArrayView<bshr_t> _in(in);
 
     DISPATCH_ALL_FIELDS(field, [&]() {
@@ -322,6 +322,7 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
       
       // not sure whether nbits of a bit share in Byte Type is 1 or 8
       if (in_nbits == 1) {
+        // printf("Bit2A In: (%llu, %llu, %llu)", (unsigned long long)(_in[0][0]), (unsigned long long)(_in[0][1]),(unsigned long long)(_in[0][2]));
         std::vector<ashr_el_t> x1_xor_x2(numel);
         std::vector<ashr_el_t> x0_xor_x3(numel);
 
@@ -379,6 +380,7 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
           _out[idx][1] = _x1_xor_x2_shr[idx][1] + _x0_xor_x3_shr[idx][1] - 2 * _mul_res[idx][1];
           _out[idx][2] = _x1_xor_x2_shr[idx][2] + _x0_xor_x3_shr[idx][2] - 2 * _mul_res[idx][2];
         });
+        // printf("Bit2A: (%llu, %llu, %llu)", (unsigned long long)(_out[0][0]), (unsigned long long)(_out[0][1]), (unsigned long long)(_out[0][2]));
       }
 
       else {
@@ -565,7 +567,8 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
       
       // not sure whether nbits of a bit share in Byte Type is 1 or 8
       if (in_nbits == 1) {
-        // printf("Bit2A!");
+
+        
         std::vector<ashr_el_t> x1_xor_x2(numel);
         std::vector<ashr_el_t> x0_xor_x3(numel);
 
@@ -575,6 +578,7 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
         NdArrayRef x0_xor_x3_shr(out_ty, in.shape());
         NdArrayView<ashr_t> _x0_xor_x3_shr(x0_xor_x3_shr);
         pforeach(0, numel, [&](int64_t idx) {
+          
           _x1_xor_x2_shr[idx][0] = 0U;
           _x1_xor_x2_shr[idx][1] = 0U;
           _x1_xor_x2_shr[idx][2] = 0U;
@@ -588,7 +592,10 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
           _x[idx][1] = v[1] & 0x1;
           _x[idx][2] = v[2] & 0x1;
 
-
+          // if( (comm->getRank() == 0 || comm->getRank() == 2) && idx < 100 ) {
+          //   printf("P%zu Bit2A in[%lu] = (%llu, %llu, %llu)/((%llu, %llu, %llu)) \n", comm->getRank(),
+          //     idx, (unsigned long long)(_in[idx][0]), (unsigned long long)(_in[idx][1]),(unsigned long long)(_in[idx][2]) ,(unsigned long long)(_x[idx][0]), (unsigned long long)(_x[idx][1]),(unsigned long long)(_x[idx][2]));
+          // }
         });
         if (comm->getRank() == 0) {
           pforeach(0, numel, [&](int64_t idx) {
@@ -648,10 +655,9 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
           _out[idx][0] = _x1_xor_x2_shr[idx][0] + _x0_xor_x3_shr[idx][0] - 2 * _mul_res[idx][0];
           _out[idx][1] = _x1_xor_x2_shr[idx][1] + _x0_xor_x3_shr[idx][1] - 2 * _mul_res[idx][1];
           _out[idx][2] = _x1_xor_x2_shr[idx][2] + _x0_xor_x3_shr[idx][2] - 2 * _mul_res[idx][2];
-          // if( (comm->getRank() == 0 || comm->getRank() == 2)) {
-          //   printf("My rank = %zu, ", comm->getRank());
-          //   printf("_out = (%llu, %llu, %llu) \n", 
-          //     (unsigned long long)_out[idx][0], (unsigned long long)_out[idx][1], (unsigned long long)_out[idx][2]);
+          // if( (comm->getRank() == 0 || comm->getRank() == 2) && idx < 100) {
+          //   printf("P%zu Bit2A out[%lu] = (%llu, %llu, %llu) \n", comm->getRank(),
+          //     idx, (unsigned long long)_out[idx][0], (unsigned long long)_out[idx][1], (unsigned long long)_out[idx][2]);
           // }
         });
 
@@ -830,35 +836,54 @@ NdArrayRef MsbA2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
       pforeach(0, numel, [&](int64_t idx) {
         _shr0[idx][0] = 0U;
-        _shr0[idx][1] = 0U;
-        _shr0[idx][2] = 0U;
+        
 
         _shr1[idx][0] = 0U;
         _shr1[idx][1] = 0U;
         _shr1[idx][2] = 0U;
 
-        _shr2[idx][0] = 0U;
-        _shr2[idx][1] = 0U;
+
         _shr2[idx][2] = 0U;
 
-        _shr3[idx][0] = 0U;
-        _shr3[idx][1] = 0U;
-        _shr3[idx][2] = 0U;
+
       });
       if(rank == 0){
         pforeach(0, numel, [&](int64_t idx) { 
             // P0 holds _in(x0, x1, x2)
             _shr0[idx][0] = _in[idx][0];
+            _shr0[idx][1] = 0U;
+            _shr0[idx][2] = 0U;
+
+            _shr1[idx][0] = 0U;
             _shr1[idx][1] = _in[idx][1];
+            _shr1[idx][2] = 0U;
+
+            _shr2[idx][0] = 0U;
+            _shr2[idx][1] = 0U;
             _shr2[idx][2] = _in[idx][2];
+
+            _shr3[idx][0] = 0U;
+            _shr3[idx][1] = 0U;
+            _shr3[idx][2] = 0U;
         });
       }
       else if(rank == 1){
         pforeach(0, numel, [&](int64_t idx) { 
-
+            _shr0[idx][0] = 0U;
+            _shr0[idx][1] = 0U;
+            _shr0[idx][2] = 0U;
             // P1 holds _in(x1, x2, x3)
+          
             _shr1[idx][0] = _in[idx][0];
+            _shr1[idx][1] = 0U;
+            _shr1[idx][2] = 0U;
+            
+            _shr2[idx][0] = 0U;
             _shr2[idx][1] = _in[idx][1];
+            _shr2[idx][2] = 0U;
+
+            _shr3[idx][0] = 0U;
+            _shr3[idx][1] = 0U;
             _shr3[idx][2] = _in[idx][2];
         });
       }
@@ -866,16 +891,40 @@ NdArrayRef MsbA2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
         pforeach(0, numel, [&](int64_t idx) {
             // P2 holds _in(x2, x3, x0)
             _shr2[idx][0] = _in[idx][0];
+            _shr2[idx][1] = 0U;
+            _shr2[idx][2] = 0U;
+
+            _shr3[idx][0] = 0U;
             _shr3[idx][1] = _in[idx][1];
+            _shr3[idx][2] = 0U;
+
+            _shr0[idx][0] = 0U;
+            _shr0[idx][1] = 0U;
             _shr0[idx][2] = _in[idx][2];
+
+            _shr1[idx][0] = 0U;
+            _shr1[idx][1] = 0U;
+            _shr1[idx][2] = 0U;
         });
       }
       else if(rank == 3){
         pforeach(0, numel, [&](int64_t idx) { 
             // P3 holds _in(x3, x0, x1)
             _shr3[idx][0] = _in[idx][0];
+            _shr3[idx][1] = 0U;
+            _shr3[idx][2] = 0U;
+
+            _shr0[idx][0] = 0U;
             _shr0[idx][1] = _in[idx][1];
+            _shr0[idx][2] = 0U;
+
+            _shr1[idx][0] = 0U;
+            _shr1[idx][1] = 0U;
             _shr1[idx][2] = _in[idx][2];
+
+            _shr2[idx][0] = 0U;
+            _shr2[idx][1] = 0U;
+            _shr2[idx][2] = 0U;
         });
       }
 
@@ -911,7 +960,6 @@ NdArrayRef MsbA2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
                       rshift_b(sctx, xor_bb(sctx, wrap_m, wrap_n),
                                {static_cast<int64_t>(nbits)}),
                       carry);
-
     return UnwrapValue(msb);
   }
 }
@@ -942,37 +990,59 @@ NdArrayRef MsbA2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
     std::vector<el_t> half0(numel);
     std::vector<el_t> half1(numel);
 
-    pforeach(0, numel, [&](int64_t idx) {
-      half0[idx] = 0U;
-      half1[idx] = 0U;
-
-      _m[idx][0] = 0U;
-      _m[idx][1] = 0U;
-      _m[idx][2] = 0U;
-
-      _n[idx][0] = 0U;
-      _n[idx][1] = 0U;
-      _n[idx][2] = 0U;
-    });
+    // pforeach(0, numel, [&](int64_t idx) { 
+    //   if( (comm->getRank() == 0 || comm->getRank() == 2)) {
+    //     printf("P%zu MsbA2B in[%lu] = (%llu, %llu, %llu) \n", comm->getRank(),
+    //       idx, (unsigned long long)(_in[idx][0]), (unsigned long long)(_in[idx][1]),(unsigned long long)(_in[idx][2]));
+    //   }
+    // });
 
     if(rank == 0){
       pforeach(0, numel, [&](int64_t idx) { 
-          half0[idx] ^= _in[idx][1] + _in[idx][2]; 
+          half0[idx] ^= _in[idx][1] + _in[idx][2];
+          _m[idx][0] = 0U;
+          _m[idx][1] = 0U;
+          _m[idx][2] = 0U;
+
+          _n[idx][0] = 0U;
+          _n[idx][1] = 0U;
+          _n[idx][2] = 0U;
       });
     }
     else if(rank == 1){
       pforeach(0, numel, [&](int64_t idx) { 
-          half0[idx] ^= _in[idx][0] + _in[idx][1]; 
+          half0[idx] ^= _in[idx][0] + _in[idx][1];
+          _m[idx][0] = 0U;
+          _m[idx][1] = 0U;
+          _m[idx][2] = 0U;
+
+          _n[idx][0] = 0U;
+          _n[idx][1] = 0U;
+          _n[idx][2] = 0U;
       });
     }
     else if(rank == 2){
       pforeach(0, numel, [&](int64_t idx) { 
-          half1[idx] ^= _in[idx][1] + _in[idx][2]; 
+          half1[idx] ^= _in[idx][1] + _in[idx][2];
+          _m[idx][0] = 0U;
+          _m[idx][1] = 0U;
+          _m[idx][2] = 0U;
+
+          _n[idx][0] = 0U;
+          _n[idx][1] = 0U;
+          _n[idx][2] = 0U; 
       });
     }
     else if(rank == 3){
       pforeach(0, numel, [&](int64_t idx) { 
-          half1[idx] ^= _in[idx][0] + _in[idx][1]; 
+          half1[idx] ^= _in[idx][0] + _in[idx][1];
+          _m[idx][0] = 0U;
+          _m[idx][1] = 0U;
+          _m[idx][2] = 0U;
+
+          _n[idx][0] = 0U;
+          _n[idx][1] = 0U;
+          _n[idx][2] = 0U; 
       });
     }
     JointInputBool(ctx, half0, m, 0, 1, 2, 3);
@@ -986,19 +1056,36 @@ NdArrayRef MsbA2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const Shape shape = {in.numel()};
   auto wrap_m = WrapValue(m);
   auto wrap_n = WrapValue(n);
-  {
-    // 2. 2k + 16 * 2 bits
-    auto carry = carry_a2b(sctx, wrap_m, wrap_n, nbits);
+  
+  // 2. 2k + 16 * 2 bits
+  auto carry = carry_a2b(sctx, wrap_m, wrap_n, nbits);
 
-    // Compute the k'th bit.
-    //   (m^n)[k] ^ carry
-    auto msb = xor_bb(sctx,
-                      rshift_b(sctx, xor_bb(sctx, wrap_m, wrap_n),
-                               {static_cast<int64_t>(nbits)}),
-                      carry);
-    // printf("msb nbits = %ld", static_cast<int64_t>(UnwrapValue(msb).eltype().as<BShrTy>()->nbits()));
-    return UnwrapValue(msb);
-  }
+  // Compute the k'th bit.
+  //   (m^n)[k] ^ carry
+  auto msb = xor_bb(sctx,
+                    rshift_b(sctx, xor_bb(sctx, wrap_m, wrap_n),
+                              {static_cast<int64_t>(nbits)}),
+                    carry);
+  // printf("msb nbits = %ld", static_cast<int64_t>(UnwrapValue(msb).eltype().as<BShrTy>()->nbits()));
+
+  // auto msb_shr = UnwrapValue(msb);
+  // const auto* out_ty = msb_shr.eltype().as<BShrTy>();
+  // const size_t out_nbits = out_ty->nbits();
+  // const PtType out_btype = calcBShareBacktype(out_nbits);
+  // DISPATCH_UINT_PT_TYPES(out_btype, [&]() {
+  //   using bshr_el_t = ScalarT;
+  //   using bshr_t = std::array<bshr_el_t, 3>;
+  //   NdArrayView<bshr_t> _msb_shr(msb_shr);
+  //   pforeach(0, msb_shr.numel(), [&](int64_t idx) { 
+  //     if( (comm->getRank() == 0 || comm->getRank() == 2) && idx < 100) {
+  //       printf("P%zu MsbA2B out[%lu] = (%llu, %llu, %llu) \n", comm->getRank(),
+  //         idx, (unsigned long long)(_msb_shr[idx][0]), (unsigned long long)(_msb_shr[idx][1]),(unsigned long long)(_msb_shr[idx][2]));
+  //     }
+  //   });
+  // });
+
+  return UnwrapValue(msb);
+  
 }
 
 #endif
@@ -1204,17 +1291,7 @@ NdArrayRef eqz(KernelEvalContext* ctx, const NdArrayRef& in) {
       std::vector<bshr_el_t> plaintext_second_half(numel);
 
       pforeach(0, numel, [&](int64_t idx) {
-        _first_half[idx][0] = 0U;
-        _first_half[idx][1] = 0U;
-        _first_half[idx][2] = 0U;
-
-        _second_half[idx][0] = 0U;
-        _second_half[idx][1] = 0U;
-        _second_half[idx][2] = 0U;
-
-        _test_all_one[idx][0] = 0U;
-        _test_all_one[idx][1] = 0U;
-        _test_all_one[idx][2] = 0U;
+        
 
       });
       
@@ -1222,24 +1299,68 @@ NdArrayRef eqz(KernelEvalContext* ctx, const NdArrayRef& in) {
         pforeach(0, numel, [&](int64_t idx) {
           // ~(x1 + x2)
           plaintext_first_half[idx] = ~(_in[idx][1] + _in[idx][2]);
+          _first_half[idx][0] = 0U;
+          _first_half[idx][1] = 0U;
+          _first_half[idx][2] = 0U;
+
+          _second_half[idx][0] = 0U;
+          _second_half[idx][1] = 0U;
+          _second_half[idx][2] = 0U;
+
+          _test_all_one[idx][0] = 0U;
+          _test_all_one[idx][1] = 0U;
+          _test_all_one[idx][2] = 0U;
         });
       }
       if (comm->getRank() == 1) {
         pforeach(0, numel, [&](int64_t idx) {
           // ~(x1 + x2)
           plaintext_first_half[idx] = ~(_in[idx][0] + _in[idx][1]);
+          _first_half[idx][0] = 0U;
+          _first_half[idx][1] = 0U;
+          _first_half[idx][2] = 0U;
+
+          _second_half[idx][0] = 0U;
+          _second_half[idx][1] = 0U;
+          _second_half[idx][2] = 0U;
+
+          _test_all_one[idx][0] = 0U;
+          _test_all_one[idx][1] = 0U;
+          _test_all_one[idx][2] = 0U;
         });
       }
       if (comm->getRank() == 2) {
         pforeach(0, numel, [&](int64_t idx) {
           // -(x3 + x0)
           plaintext_second_half[idx] = -(_in[idx][1] + _in[idx][2]);
+          _first_half[idx][0] = 0U;
+          _first_half[idx][1] = 0U;
+          _first_half[idx][2] = 0U;
+
+          _second_half[idx][0] = 0U;
+          _second_half[idx][1] = 0U;
+          _second_half[idx][2] = 0U;
+
+          _test_all_one[idx][0] = 0U;
+          _test_all_one[idx][1] = 0U;
+          _test_all_one[idx][2] = 0U;
         });
       }
       if (comm->getRank() == 3) {
         pforeach(0, numel, [&](int64_t idx) {
           // -(x3 + x0)
           plaintext_second_half[idx] = -(_in[idx][0] + _in[idx][1]);
+          _first_half[idx][0] = 0U;
+          _first_half[idx][1] = 0U;
+          _first_half[idx][2] = 0U;
+
+          _second_half[idx][0] = 0U;
+          _second_half[idx][1] = 0U;
+          _second_half[idx][2] = 0U;
+
+          _test_all_one[idx][0] = 0U;
+          _test_all_one[idx][1] = 0U;
+          _test_all_one[idx][2] = 0U;
         });
       }
       

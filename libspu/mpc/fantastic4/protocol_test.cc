@@ -31,17 +31,17 @@ RuntimeConfig makeConfig(FieldType field) {
 
 }  // namespace
 
-// INSTANTIATE_TEST_SUITE_P(
-//     Fantastic4, ApiTest,
-//     testing::Combine(testing::Values(makeFantastic4Protocol),              //
-//                      testing::Values(makeConfig(FieldType::FM32),    //
-//                                      makeConfig(FieldType::FM64),    //
-//                                      makeConfig(FieldType::FM128)),  //
-//                      testing::Values(4)),                            //
-//     [](const testing::TestParamInfo<ApiTest::ParamType>& p) {
-//       return fmt::format("{}x{}", std::get<1>(p.param).field(),
-//                          std::get<2>(p.param));
-//     });
+INSTANTIATE_TEST_SUITE_P(
+    Fantastic4, ApiTest,
+    testing::Combine(testing::Values(makeFantastic4Protocol),              //
+                     testing::Values(makeConfig(FieldType::FM32),    //
+                                     makeConfig(FieldType::FM64),    //
+                                     makeConfig(FieldType::FM128)),  //
+                     testing::Values(4)),                            //
+    [](const testing::TestParamInfo<ApiTest::ParamType>& p) {
+      return fmt::format("{}x{}", std::get<1>(p.param).field(),
+                         std::get<2>(p.param));
+    });
 
 INSTANTIATE_TEST_SUITE_P(
     Fantastic4, ArithmeticTest,

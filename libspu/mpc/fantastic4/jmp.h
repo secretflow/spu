@@ -14,7 +14,7 @@
 
 #pragma once
 
-// #define OPTIMIZED_F4
+#define OPTIMIZED_F4
 
 #include "libspu/core/context.h"
 
