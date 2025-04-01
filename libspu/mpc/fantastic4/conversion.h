@@ -32,6 +32,8 @@ class A2B : public UnaryKernel {
     return 2 * Log(ce::K()) * ce::K() + ce::K() * 2;
   }
 
+  Kind kind() const override { return Kind::Dynamic; }
+
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
 
@@ -48,6 +50,8 @@ class B2A : public UnaryKernel {
     return Log(ce::K()) * ce::K() + 3 * ce::K();
   }
 
+  Kind kind() const override { return Kind::Dynamic; }
+
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
 
@@ -62,6 +66,8 @@ class MsbA2B : public UnaryKernel {
   ce::CExpr comm() const override {
     return ce::K() + 2 * ce::K() + ce::K() + 32;
   }
+
+  Kind kind() const override { return Kind::Dynamic; }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };

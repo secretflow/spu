@@ -187,6 +187,8 @@ class MulAA : public BinaryKernel {
     return 2 * ce::K();
   }
 
+  Kind kind() const override { return Kind::Dynamic; }
+
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
                   const NdArrayRef& rhs) const override;
 };
@@ -224,6 +226,8 @@ class MatMulAA : public MatmulKernel {
     return ce::K() * m * n * 2;
   }
 
+  Kind kind() const override { return Kind::Dynamic; }
+
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x,
                   const NdArrayRef& y) const override;
 };
@@ -247,6 +251,8 @@ class TruncAPr : public TruncAKernel {
   ce::CExpr latency() const override { return ce::Const(3); }
 
   ce::CExpr comm() const override { return 4 * ce::K(); }
+
+  Kind kind() const override { return Kind::Dynamic; }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t bits,
                   SignType sign) const override;
