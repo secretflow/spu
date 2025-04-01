@@ -26,6 +26,12 @@
 
 namespace spu::mpc {
 
+//  For Rep4 / Fantastic Four
+//    Secret is split into 4 shares x_0, x_1, x_2, x_3
+//    Differently from the paper, we let Party i (i in {0, 1, 2, 3}) holds x_i, x_i+1, x_i+2 (mod 4)
+//    Similarly in prg_state.h, PRG keys are k_0, k_1, k_2, k_3, we let Party i holds k_i--self, k_i+1 --next, k_i+2--next next
+//    Each x_i, k_i is unknown to next party P_i+1
+
 void regFantastic4Protocol(SPUContext* ctx,
                            const std::shared_ptr<yacl::link::Context>& lctx) {
   fantastic4::registerTypes();

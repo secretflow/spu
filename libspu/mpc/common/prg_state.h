@@ -44,11 +44,11 @@ class PrgState : public State {
   uint64_t r0_counter_ = 0;  // cnt for self_seed
   uint64_t r1_counter_ = 0;  // cnt for next_seed
 
-  // /////////////////////////////////////////////
   //  For Rep4
-  //  Pi holds ki--self, kj--next, kg--next next
-  //  ki is unknown to next party Pj
-  // //////////////////////////////////////////////
+  //    Secret is split into 4 shares x_0, x_1, x_2, x_3, we let Party i (i in {0, 1, 2, 3}) holds x_i, x_i+1, x_i+2
+  //  Similarly
+  //    Preprocessed PRG keys are k_0, k_1, k_2, k_3, we let Party i (i in {0, 1, 2, 3}) k_i--self, k_i+1 --next, k_i+2--next next
+  //  Each ki is unknown to next party P_i+1
   uint128_t next_next_seed_ = 0;
   uint64_t r2_counter_ = 0;
 
@@ -108,7 +108,9 @@ class PrgState : public State {
   }
 
 
-  // For Rep4
+  // For Fantastic Four, each party has 3 PRGs
+  //                     every three parties have a common PRG
+  // Use fillPrssTuple to Non-interactively generate common randomness
   template <typename T>
   void fillPrssTuple(T* r0, T* r1, T* r2, size_t numel, GenPrssCtrl ctrl) {
     switch (ctrl) {

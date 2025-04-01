@@ -30,6 +30,11 @@
 
 namespace spu::mpc::fantastic4 {
 
+//  For Rep4 / Fantastic Four
+//    Secret is split into 4 shares x_0, x_1, x_2, x_3
+//    Differently from the paper, we let Party i (i in {0, 1, 2, 3}) holds x_i, x_i+1, x_i+2 (mod 4)
+//    Similarly in prg_state.h, PRG keys are k_0, k_1, k_2, k_3, we let Party i holds k_i--self, k_i+1 --next, k_i+2--next next
+//    Each x_i, k_i is unknown to next party P_i+1
 
 NdArrayRef RandA::proc(KernelEvalContext* ctx, const Shape& shape) const {
   auto* prg_state = ctx->getState<PrgState>();
@@ -718,7 +723,6 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
                                 PrgState::GenPrssCtrl::Third);
         fr.get();
 
-        // std::vector<el_t> r(out.numel());
         std::vector<el_t> rb(out.numel());
         std::vector<el_t> rc(out.numel());
         std::vector<el_t> masked_input_shr_1(out.numel());
@@ -744,6 +748,7 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
           _sb_mul_rb[idx][0] = 0;
           _sb_mul_rb[idx][1] = 0;
           _sb_mul_rb[idx][2] = 0;
+
           // r = r_{k-1}......r_{0}
           auto r = r1[idx] + r2[idx];
           // rb = r >> k-1
@@ -821,7 +826,7 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
         });
     }
 
-    if(rank == (size_t)1){
+    else if(rank == (size_t)1){
         std::vector<el_t> r1(out.numel());
         std::vector<el_t> r2(out.numel());
 
@@ -919,11 +924,10 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
           _out[idx][0] = _sc_shr[idx][0] - _rc_shr[idx][0] + ((_rb_shr[idx][0] + _sb_shr[idx][0] - 2*_sb_mul_rb[idx][0]) << (k - bits - 1));
           _out[idx][1] = _sc_shr[idx][1] - _rc_shr[idx][1] + ((_rb_shr[idx][1] + _sb_shr[idx][1] - 2*_sb_mul_rb[idx][1]) << (k - bits - 1));
           _out[idx][2] = _sc_shr[idx][2] - _rc_shr[idx][2] + ((_rb_shr[idx][2] + _sb_shr[idx][2] - 2*_sb_mul_rb[idx][2]) << (k - bits - 1));
-
         });
     }
 
-    if(rank == (size_t)2){
+    else if(rank == (size_t)2){
         std::vector<el_t> r2(out.numel());
         std::vector<el_t> rb(out.numel());
         std::vector<el_t> rc(out.numel());
@@ -1003,7 +1007,7 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
         });
     }
 
-    if(rank == (size_t)3){
+    else if(rank == (size_t)3){
         std::vector<el_t> r1(out.numel());
         std::vector<el_t> rb(out.numel());
         std::vector<el_t> rc(out.numel());
@@ -1077,6 +1081,7 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
           _out[idx][2] = _sc_shr[idx][2] - _rc_shr[idx][2] + ((_rb_shr[idx][2] + _sb_shr[idx][2] - 2*_sb_mul_rb[idx][2]) << (k - bits - 1));
         });
     }
+  mac_state->print_MAC();
   return out;
   });
 }

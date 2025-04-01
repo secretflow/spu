@@ -70,6 +70,9 @@ std::vector<NdArrayRef> Fantastic4Io::toShares(const NdArrayRef& raw, Visibility
 
       SPU_ENFORCE(splits.size() == 4, "expect 4PC, got={}", splits.size());
       std::vector<NdArrayRef> shares;
+
+      // Secret is split into 4 shares x_0, x_1, x_2, x_3
+      // In our implementation, we let Party i (i in {0, 1, 2, 3}) holds x_i, x_i+1, x_i+2
       for (std::size_t i = 0; i < 4; i++) {
         shares.push_back(makeAShare(splits[i], splits[(i + 1) % 4], splits[(i + 2) % 4], field));
       }
@@ -117,7 +120,9 @@ std::vector<NdArrayRef> Fantastic4Io::makeBitSecret(const PtBufferView& in) cons
   NdArrayView<bshr_t> _s1(shares[1]);
   NdArrayView<bshr_t> _s2(shares[2]);
   NdArrayView<bshr_t> _s3(shares[3]);
-
+  
+  // Secret is split into 4 shares x_0, x_1, x_2, x_3
+  // In our implementation, we let Party i (i in {0, 1, 2, 3}) holds x_i, x_i+1, x_i+2
   for (size_t idx = 0; idx < numel; idx++) {
     const bshr_el_t r3 =
         static_cast<bshr_el_t>(in.get<bool>(idx)) ^ r0[idx] ^ r1[idx] ^ r2[idx];

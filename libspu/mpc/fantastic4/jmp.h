@@ -14,7 +14,7 @@
 
 #pragma once
 
-#define OPTIMIZED_F4
+// #define OPTIMIZED_F4
 
 #include "libspu/core/context.h"
 
@@ -29,6 +29,16 @@ namespace spu::mpc::fantastic4 {
     size_t PrevRank(size_t rank, size_t world_size);
     size_t OffsetRank(size_t myrank, size_t other, size_t world_size);
 
+    // Protocol 3 Shared Input in Section 2.3
+    // Joint Input by two parties and share the secret in arithmetic sharing
+    // Here we do not implement Joint Message Passing as an interface, but directly let the parties do what they should do
+    //   - input: the secret common input of sender and backup
+    //   - output: the output shares
+    //   - sender: has secret input and send the masked input to receiver, adds the mask to corresponding output share
+    //   - backup: has secret input and record the hash(masked input), adds the mask to corresponding output share
+    //   - receiver: receives masked input from sender and record the hash, adds the masked input to corresponding output share
+    //   - outsider: adds the mask to corresponding output share
+
     template <typename el_t>
     void JointInputArith(KernelEvalContext* ctx, std::vector<el_t>& input, NdArrayRef& output, size_t sender, size_t backup, size_t receiver, size_t outsider){
       auto* comm = ctx->getState<Communicator>();
@@ -41,9 +51,9 @@ namespace spu::mpc::fantastic4 {
       using shr_t = std::array<el_t, 3>;
       NdArrayView<shr_t> _out(output);
 
-      size_t receiver_prev_rank = PrevRank(receiver, world_size);
-      size_t offset_from_receiver_prev = OffsetRank(myrank, receiver_prev_rank, world_size);
-      size_t offset_from_outsider_prev = OffsetRank(myrank, (outsider + 4 - 1)%4 , world_size);
+      // The mask corresponds to the prev party of receiver, receiver doesn't have the correpsonding PRG of its prev party
+      size_t offset_from_receiver_prev = OffsetRank(myrank, PrevRank(receiver, world_size), world_size);
+      size_t offset_from_outsider_prev = OffsetRank(myrank, PrevRank(outsider, world_size), world_size);
 
       if(myrank != receiver){
         // Non-Interactive Random Masks Generation.
@@ -52,11 +62,11 @@ namespace spu::mpc::fantastic4 {
             // should use PRG[0]
             prg_state->fillPrssTuple<el_t>(r.data(), nullptr, nullptr , r.size(), PrgState::GenPrssCtrl::First);
         }
-        if(offset_from_receiver_prev == 1){
+        else if(offset_from_receiver_prev == 1){
             // should use PRG[1]
             prg_state->fillPrssTuple<el_t>(nullptr, r.data(), nullptr , r.size(), PrgState::GenPrssCtrl::Second);
         }
-        if(offset_from_receiver_prev == 2){
+        else{
             // should use PRG[2]
             prg_state->fillPrssTuple<el_t>(nullptr, nullptr, r.data(), r.size(), PrgState::GenPrssCtrl::Third);
         }
@@ -74,16 +84,13 @@ namespace spu::mpc::fantastic4 {
           pforeach(0, output.numel(), [&](int64_t idx) {
             input_minus_r[idx] = (input[idx] - r[idx]);
             _out[idx][offset_from_outsider_prev] +=  input_minus_r[idx];
-
-            });
-
+          });
           // Sender send x-r to receiver
           if(myrank == sender) {
             comm->sendAsync<el_t>(receiver, input_minus_r, "Joint Input");
           }
-
           // Backup update x-r for sender-to-receiver channel
-          if(myrank == backup) {
+          else {
             mac_state->update_msg<el_t>(sender, backup, receiver, input_minus_r);
           }
         }
@@ -97,6 +104,7 @@ namespace spu::mpc::fantastic4 {
       }
     }
 
+    // Joint Input by two parties, and share the secret in Boolean sharing
     template <typename el_t>
     void JointInputBool(KernelEvalContext* ctx, std::vector<el_t>& input, NdArrayRef& output, size_t sender, size_t backup, size_t receiver, size_t outsider){
       auto* comm = ctx->getState<Communicator>();
@@ -109,11 +117,10 @@ namespace spu::mpc::fantastic4 {
       using shr_t = std::array<el_t, 3>;
       NdArrayView<shr_t> _out(output);
 
-      // Receiver's Previous Party Rank
+
       // The mask corresponds to the prev party of receiver, receiver doesn't have the correpsonding PRG of its prev party
-      size_t receiver_prev_rank = PrevRank(receiver, world_size);
-      size_t offset_from_receiver_prev = OffsetRank(myrank, receiver_prev_rank, world_size);
-      size_t offset_from_outsider_prev = OffsetRank(myrank, (outsider + 4 - 1)%4 , world_size);
+      size_t offset_from_receiver_prev = OffsetRank(myrank, PrevRank(receiver, world_size), world_size);
+      size_t offset_from_outsider_prev = OffsetRank(myrank, PrevRank(outsider, world_size), world_size);
 
       if(myrank != receiver){
         // Non-Interactive Random Masks Generation.
@@ -123,11 +130,11 @@ namespace spu::mpc::fantastic4 {
             // should use PRG[0]
             prg_state->fillPrssTuple<el_t>(r.data(), nullptr, nullptr , r.size(), PrgState::GenPrssCtrl::First);
         }
-        if(offset_from_receiver_prev == 1){
+        else if(offset_from_receiver_prev == 1){
             // should use PRG[1]
             prg_state->fillPrssTuple<el_t>(nullptr, r.data(), nullptr , r.size(), PrgState::GenPrssCtrl::Second);
         }
-        if(offset_from_receiver_prev == 2){
+        else{
             // should use PRG[2]
             prg_state->fillPrssTuple<el_t>(nullptr, nullptr, r.data(), r.size(), PrgState::GenPrssCtrl::Third);
         }
@@ -152,9 +159,8 @@ namespace spu::mpc::fantastic4 {
           if(myrank == sender) {
             comm->sendAsync<el_t>(receiver, input_minus_r, "Joint Input");
           }
-
           // Backup update x-r for sender-to-receiver channel
-          if(myrank == backup) {
+          else{
             mac_state->update_msg<el_t>(sender, backup, receiver, input_minus_r);
           }
         }
