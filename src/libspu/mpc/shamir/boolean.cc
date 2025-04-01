@@ -168,6 +168,15 @@ NdArrayRef AndBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
   const auto* lhs_ty = lhs.eltype().as<BShrTy>();
   const auto* rhs_ty = rhs.eltype().as<BShrTy>();
   SPU_ENFORCE_EQ(lhs_ty->field(), rhs_ty->field());
+
+  if (0 == lhs_ty->nbits()) {
+    return lhs;
+  }
+
+  if (0 == rhs_ty->nbits()) {
+    return rhs;
+  }
+
   auto b_field = lhs_ty->field();
   const size_t out_nbits = std::min(lhs_ty->nbits(), rhs_ty->nbits());
   auto out_ty = makeType<BShrTy>(b_field, out_nbits);
@@ -392,7 +401,7 @@ NdArrayRef BitrevB::proc(KernelEvalContext*, const NdArrayRef& in, size_t start,
                          size_t end) const {
   const auto* in_ty = in.eltype().as<BShrTy>();
   SPU_ENFORCE(start <= end && end < in_ty->nbits());
-  
+
   if (start > in_ty->nbits() || start == end) {
     return in;
   }
