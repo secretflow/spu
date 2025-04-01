@@ -328,14 +328,11 @@ Value msb_s(SPUContext* ctx, const Value& x) {
     // fast path, directly apply msb x AShare, result a BShare.
     if (ctx->hasKernel("msb_a2b")) {
       return msb_a2b(ctx, x);
+    } else if (ctx->hasKernel("msb_a")) {
+      return msb_a(ctx, x);
     } else {
       return msb_s(ctx, _2b(ctx, x));
     }
-  } else if (ctx->hasKernel("msb_a") && IsA(x)) {
-    return msb_a(ctx, x);
-  } else {
-    return rshift_b(ctx, _2b(ctx, x),
-                    {static_cast<int64_t>(SizeOf(field) * 8 - 1)});
   }
 
   // BShare
