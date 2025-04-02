@@ -112,7 +112,7 @@ class AndBB : public BinaryKernel {
     // rotate : k
     return ce::K();
   }
-  
+
   Kind kind() const override { return Kind::Dynamic; }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,

@@ -51,7 +51,41 @@ namespace spu::mpc::fantastic4 {
       using shr_t = std::array<el_t, 3>;
       NdArrayView<shr_t> _out(output);
 
-      // The mask corresponds to the prev party of receiver, receiver doesn't have the correpsonding PRG of its prev party
+      // The sender, backup and outsider will use their common PRG to generate the mask unknown to the receiver
+      // Since in our sharing scheme,
+      //    we let Party i (i in {0, 1, 2, 3}) holds x_i, x_i+1, x_i+2 (mod 4)
+      //    for PRGs, we let Party i holds k_i--self, k_i+1 --next, k_i+2--next next (mod 4), see prg_state.h
+      //    any party doesn't have the correpsonding PRG/share of its prev party
+      //
+      // Thus, this PRG corresponds to the PRG of the previous party of receiver,
+      //    that is, global k_{receiver-1 mod 4}, which is held by sender, backup and outsider
+      //
+      // Specifically, in the own context of sender, backup or outsider,
+      //    each party has three local PRGs in its view
+      //    this global k_{receiver-1 mod 4} can be loacated by the rank offset from the previous party of receiver k_{receiver-1 mod 4}.
+      //    should use own::PRG[offset_from_receiver_prev] to generate mask r (see fillPrssTuple: first, second, third)
+
+      // Similarly, the sender, backup and outsider should set the share unknown to the receiver as the mask r
+      //    this also corresponds the x_{receiver-1 mod 4} and can be loacated by offset_from_receiver_prev
+      //
+      // Also, the sender, backup and receiver will have x-r in common which should be add to the share unknown to the outsider
+      //    in the own context of them, this share can be located by the rank offset from the previous party of outsider
+
+      // For example, (P0, P2) jointly input x, and choose P0 as sender, P1 as the receiver, P2 as backup, P3 as outsider
+      //    P1 has k1, k2, k3 and doesn't know k0, while P0, P2, P3 have k0 in common
+      //    P0 is the previous party of receiver, thus P0, P2, P3 should use PRG(k0) to generate r, and add r to the global output share x0
+      //    Let's see the view of each party and analyse the index location:
+      //        P0::k = (k0, k1, k2). since P0's offset from P0 is 0, it uses k[0] = k0 -> correct (also holds for locate x0)
+      //        P2::k = (k2, k3, k0). since P2's offset from P0 is 2, it uses k[2] = k0 -> correct (also holds for locate x0)
+      //        P3::k = (k3, k0, k1). since P3's offset from P0 is 1, it uses k[1] = k0 -> correct (also holds for locate x0)
+      //
+      //    After the communication, P0, P1, P2 have masked input x-r in common that outsider P3 doesn't have
+      //    x-r should be add to the global output share x2 corresponding outsider's previous party P2
+      //    Let's see the view of each party and analyse the index location:
+      //        P0::x = (x0, x1, x2). since P0's offset from P2 is 2, it locates x[2] = x2 -> correct
+      //        P1::x = (x1, x2, x3). since P1's offset from P2 is 1, it locates x[1] = x2 -> correct
+      //        P2::x = (k2, k3, k0). since P2's offset from P2 is 0, it locates x[0] = x2 -> correct
+
       size_t offset_from_receiver_prev = OffsetRank(myrank, PrevRank(receiver, world_size), world_size);
       size_t offset_from_outsider_prev = OffsetRank(myrank, PrevRank(outsider, world_size), world_size);
 

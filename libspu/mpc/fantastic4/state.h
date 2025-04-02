@@ -31,6 +31,7 @@ namespace spu::mpc::fantastic4{
 //  For better efficiency, one party (sender) send the msg while the other party (backup) locally records the MAC across many JMP instances
 //  The amortized cost is thus 1 element per JMP
 // We implement this by using MacState to record MACs for different channels
+// Same as MP-SPDZ, we only provide MAC state for abort security without further involved procedure for robustness
 class Fantastic4MacState : public State {
     std::unique_ptr<yacl::crypto::HashInterface> hash_algo_;
 
@@ -39,10 +40,12 @@ class Fantastic4MacState : public State {
     // my rank in the 4PC
     int64_t my_rank_;
 
+    // refer MP-SPDZ implementation https://github.com/data61/MP-SPDZ/blob/f051dc7222203adaa5161a0e37b8bfaaf7691c16/Protocols/Rep4.hpp#L124
     // when as backup, record MAC of the msg should be sent from sender to receiver
     //   my send_mac_[sender][receiver] should be consistent with the receiver's recv_mac_[sender][me]
     std::vector<std::vector<uint8_t>> send_mac_;
 
+    // refer MP-SPDZ implementation https://github.com/data61/MP-SPDZ/blob/f051dc7222203adaa5161a0e37b8bfaaf7691c16/Protocols/Rep4.hpp#L190
     // when as receiver, record MAC of the msg sent from sender and recorded by backup
     //   my recv_mac_[sender][backup] should be consistent with the backup's send_mac_[sender][me]
     std::vector<std::vector<uint8_t>> recv_mac_;
@@ -166,8 +169,8 @@ class Fantastic4MacState : public State {
                 auto& target_send_mac = send_mac_[index];
                 auto& target_recv_mac = recv_mac_[index];
                 for(int64_t idx = 0; idx < mac_len_; idx++){
-                    printf("My rank = %ld, send_mac_[%ld][%ld][%ld] = %ld", my_rank_, sender, receiver, idx, static_cast<uint64_t>(target_send_mac[idx]));
-                    printf("My rank = %ld, recv_mac_[%ld][%ld][%ld] = %ld", my_rank_, sender, receiver, idx, static_cast<uint64_t>(target_recv_mac[idx]));
+                    printf("My rank = %ld, send_mac_[%ld][%ld][%ld] = %ld\n", my_rank_, sender, receiver, idx, static_cast<uint64_t>(target_send_mac[idx]));
+                    printf("My rank = %ld, recv_mac_[%ld][%ld][%ld] = %ld\n", my_rank_, sender, receiver, idx, static_cast<uint64_t>(target_recv_mac[idx]));
                 }
             }
         }
