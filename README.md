@@ -1,6 +1,8 @@
 This repo stores the implementation code of Alkaid.
 
-## Usage
+## 1. Follow SPU_Readme.md to setup SPU
+
+## 2. Benchmarking Alkaid
 
 ```shell
 # microbenchmark from cpp side.
