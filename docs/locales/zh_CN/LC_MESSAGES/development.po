@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: SPU \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-02-25 19:46+0800\n"
+"POT-Creation-Date: 2025-03-13 15:14+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -293,17 +293,17 @@ msgstr ""
 
 #: ../../development/basic_concepts.rst:2
 msgid "Basic concepts"
-msgstr ""
+msgstr "基本概念"
 
 #: ../../development/basic_concepts.rst:4
 msgid ""
 "SPU has quite a different programming model than CPU/GPU, this guide "
 "introduces the basic concepts."
-msgstr ""
+msgstr "本文档旨在阐述 SPU 的核心概念，SPU 的编程模型与 CPU/GPU 存在显著差异。"
 
 #: ../../development/basic_concepts.rst:7
 msgid "Machine model"
-msgstr ""
+msgstr "机器模型"
 
 #: ../../development/basic_concepts.rst:9
 msgid ""
@@ -311,11 +311,11 @@ msgid ""
 "blackbox*, which accepts user's *code* and *data*, runs the computation, "
 "and returns result *data* to user. If we draw a picture to show the "
 "relationship between user and machine, it's something like this."
-msgstr ""
+msgstr "在传统 CPU 模型中，机器可视为一个算术黑箱，其接收用户的代码与数据，执行计算后返回结果数据。用户与机器的关系可示意如下。"
 
 #: ../../development/basic_concepts.rst:13
 msgid "user and CPU"
-msgstr ""
+msgstr "CPU 模型"
 
 #: ../../development/basic_concepts.rst:16
 msgid ""
@@ -325,10 +325,12 @@ msgid ""
 "another party. So **SPU is born to be used in a distributed context**. It"
 " looks like:"
 msgstr ""
+"SPU 的显著特征在于：输入数据来源于多方，代码可能由独立参与方提供，计算结果亦可由不同参与方接收。因此，SPU "
+"专为分布式场景设计，其交互模型如下。"
 
 #: ../../development/basic_concepts.rst:20
 msgid "multi-user and SPU"
-msgstr ""
+msgstr "SPU 模型"
 
 #: ../../development/basic_concepts.rst:23
 msgid ""
@@ -338,30 +340,32 @@ msgid ""
 "that work together with some MPC protocols, and provide computation "
 "service as a **virtual machine**."
 msgstr ""
+"进一步观察，SPU 并非物理实体机器，而是由互不信任的多个参与方共同托管。例如，下图展示三个参与方（红、蓝、绿）通过 MPC "
+"协议协作，共同构建虚拟机服务："
 
 #: ../../development/basic_concepts.rst:27
 msgid "inside SPU"
-msgstr ""
+msgstr "SPU 内部架构"
 
 #: ../../development/basic_concepts.rst:30
 msgid ""
 "So we have treated SPU as a (multi-party visualized) **secure arithmetic "
 "blackbox**, which can evaluate computations securely."
-msgstr ""
+msgstr "综上，SPU 可抽象为多方协同的安全算术黑箱，提供安全计算能力。"
 
 #: ../../development/basic_concepts.rst:33
 msgid "Programming model"
-msgstr ""
+msgstr "编程模型"
 
 #: ../../development/basic_concepts.rst:35
 msgid "With the above VM model, the next question is **how to program on it**?"
-msgstr ""
+msgstr "基于上述虚拟机模型，SPU 的编程需解决以下问题：如何为多方协同计算编写程序？"
 
 #: ../../development/basic_concepts.rst:37
 msgid ""
 "Inside SPU, each physical node behaves differently for the same progress,"
 " i.e. some nodes act as senders, while others act as receivers."
-msgstr ""
+msgstr "SPU 中，各物理节点在同一计算流程中执行不同操作（如发送方与接收方）。"
 
 #: ../../development/basic_concepts.rst:39
 msgid ""
@@ -369,91 +373,91 @@ msgid ""
 "One important responsibility of SPU compiler/runtime pipeline is to "
 "translate **homogeneous** program to another for **heterogeneous** "
 "runtime engines."
-msgstr ""
+msgstr "但对用户而言，SPU 表现为单一虚拟机。SPU 编译器/运行时的核心职责是将同构程序转换为适配异构运行时引擎的指令。"
 
 #: ../../development/basic_concepts.rst:41
 msgid ""
 "For example, in the following computation graph, given `x`, `y`, we want "
 "to compute `f(x, y)`, and the big circle represent a compute node which "
 "can evaluate f."
-msgstr ""
+msgstr "例如，在下面的计算图中，给定 `x`，`y`，我们想要计算 `f（x，y）`，大圆圈表示可以评估 f 的计算节点。"
 
 #: ../../development/basic_concepts.rst:45
 msgid ""
 "In SPU, a group of nodes work together to provide functionality of `f`, "
 "as shown blow."
-msgstr ""
+msgstr "而在 SPU 中，多个节点通过协议协作实现等效功能："
 
 #: ../../development/basic_concepts.rst:49
 msgid "With the above abstraction, SPU can:"
-msgstr ""
+msgstr "通过此抽象，SPU 具备以下特性："
 
 #: ../../development/basic_concepts.rst:51
 msgid "Hide the underline protocols, *write once, run on all protocols*."
-msgstr ""
+msgstr "协议透明化，一次编码，支持多种底层协议。"
 
 #: ../../development/basic_concepts.rst:52
 msgid ""
 "Hide the number of parties, *write once, run for a variable number of "
 "parties*."
-msgstr ""
+msgstr "规模弹性化，一次编码，适配可变参与方数量。"
 
 #: ../../development/basic_concepts.rst:56
 msgid "API level"
-msgstr ""
+msgstr "API 层级"
 
 #: ../../development/basic_concepts.rst:58
 msgid ""
 "With the above programming model, the next question is **which language "
 "is supported**? SPU provides multi-level API, from upper to lower:"
-msgstr ""
+msgstr "基于上述编程模型，接下来支持哪些语言呢？SPU 提供多层 API，从高阶到低阶依次为："
 
 #: ../../development/basic_concepts.rst:60
 msgid ""
 "**Frontend API** (like TensorFlow/JAX), SPU compiles them into SPU IR "
 "before running."
-msgstr ""
+msgstr "Frontend API（如 TensorFlow/JAX），通过 SPU 编译转换为 SPU IR。"
 
 #: ../../development/basic_concepts.rst:61
 msgid ""
 "**SPU IR**, an Intermediate Representation format defined by SPU, which "
 "is not quite readable but easier for computers to understand."
-msgstr ""
+msgstr "SPU IR，一种由 SPU 定义的中间表示格式，其可读性不强，但更易于计算机理解。"
 
 #: ../../development/basic_concepts.rst:62
 msgid "**C++ API**, which could directly access the underline MPC protocols."
-msgstr ""
+msgstr "C++ API，可以直接访问底层MPC协议。"
 
 #: ../../development/basic_concepts.rst:64
 msgid "The API hierarchy looks like:"
-msgstr ""
+msgstr "API 层次结构如下："
 
 #: ../../development/basic_concepts.rst:69
 msgid "SPU API hierarchy"
-msgstr ""
+msgstr "SPU API 层次结构"
 
 #: ../../development/basic_concepts.rst:72
 msgid ""
 "An important goal of SPU is to allow people to write secure programs with"
 " their familiar frameworks they are familiar with, so it's recommended to"
 " use Frontend API."
-msgstr ""
+msgstr "SPU 的核心设计目标是让用户使用他们熟悉的框架编写安全程序，推荐优先使用 Frontend API。"
 
 #: ../../development/basic_concepts.rst:74
 msgid ""
 "Currently, only JAX frontend is supported for now. Please check :doc:`JAX"
 " on SPU <../tutorials/quick_start>`."
-msgstr ""
+msgstr "当前仅支持 JAX 前端，详见 :doc:`JAX on SPU <../tutorials/quick_start>`。"
 
 #: ../../development/compiler.rst:2
 msgid "SPU Compiler"
-msgstr ""
+msgstr "SPU 编译器"
 
 #: ../../development/compiler.rst:4
 msgid ""
 "The SPU compiler aims to provide first-party compiler support from the "
 "different ML frameworks to SPU runtime."
-msgstr ""
+msgstr "SPU 编译器旨在为 SPU 运行时提供来自不同 ML 框架的原生编译器支持。"
 
 #: ../../development/compiler.rst:7
 msgid ""
@@ -463,6 +467,8 @@ msgid ""
 "hardware, significantly reduce the cost of building domain specific "
 "compilers, and aid in connecting existing compilers together."
 msgstr ""
+"MLIR：MLIR 项目是一种构建可重复使用、可扩展的编译器基础架构的新方法。MLIR "
+"旨在解决软件碎片化问题、改进异构硬件的编译、大幅降低构建特定领域编译器的成本，并帮助将现有编译器连接在一起。"
 
 #: ../../development/compiler.rst:9
 msgid ""
@@ -470,13 +476,13 @@ msgid ""
 " XLA as the middle layer, mapping from platform frameworks like PyTorch, "
 "JAX, and TensorFlow into XLA and then progressively lowering down to "
 "their target hardware."
-msgstr ""
+msgstr "XLA：多家供应商使用 XLA 作为中间层，从 PyTorch、JAX 和 TensorFlow 等平台框架映射到 XLA，然后逐步翻译到目标硬件。"
 
 #: ../../development/compiler.rst:11
 msgid ""
 "`MLIR-HLO <https://github.com/tensorflow/mlir-hlo>`_ MLIR-HLO project "
 "connects XLA into MLIR world."
-msgstr ""
+msgstr "MLIR-HLO：MLIR-HLO 项目将 XLA 连接到 MLIR。"
 
 #: ../../development/compiler.rst:13
 msgid ""
@@ -487,10 +493,13 @@ msgid ""
 "support instead of implementing separate Clang/C++ frontends. MLIR-HLO is"
 " achieving similar goal."
 msgstr ""
+"将不同前端框架的规范翻译到 MLIR 生态系统，将为硬件供应商提供有效的帮助，使他们能够专注于其独特价值，而不是为 SPU "
+"实现另一个前端。对于当前的硬件供应商，他们只需添加 LLVM 支持，而不是实现单独的 Clang/C++ 前端。MLIR-HLO "
+"正在实现类似的目标。"
 
 #: ../../development/compiler.rst:17
 msgid "All the roads from ML frameworks to SPU"
-msgstr ""
+msgstr "ML 框架到 SPU 的层次结构"
 
 #: ../../development/design_device.rst:2
 msgid "Design: generic device"
@@ -507,7 +516,7 @@ msgstr ""
 #: ../../development/type_system.rst:5
 #: ../../development/visibility_inference_rule.rst:5
 msgid "Overview"
-msgstr ""
+msgstr "概述"
 
 #: ../../development/design_device.rst:10
 msgid ""
@@ -1842,108 +1851,108 @@ msgstr ""
 
 #: ../../development/pipeline.rst:2
 msgid "SPU Pipeline"
-msgstr ""
+msgstr "SPU 管道"
 
 #: ../../development/pipeline.rst:4
 msgid ""
 "Recall that SPU could be treated as a :ref:`virtual device "
 "<development/basic_concepts:Machine model>`. When working with a (virtual"
 " or physical) device, we need several steps."
-msgstr ""
+msgstr "前面提到，SPU 可以被视为虚拟设备。使用（虚拟或物理）设备时，我们需要几个步骤。"
 
 #: ../../development/pipeline.rst:6
 msgid "infeed code to it"
-msgstr ""
+msgstr "输入代码"
 
 #: ../../development/pipeline.rst:7
 msgid "infeed data to it"
-msgstr ""
+msgstr "输入数据"
 
 #: ../../development/pipeline.rst:8
 msgid "trigger it to run"
-msgstr ""
+msgstr "触发运行"
 
 #: ../../development/pipeline.rst:9
 msgid "get result from it"
-msgstr ""
+msgstr "获取结果"
 
 #: ../../development/pipeline.rst:11
 msgid "This page describes details of each step."
-msgstr ""
+msgstr "本页将描述每个步骤的详细信息。"
 
 #: ../../development/pipeline.rst:16
 msgid ""
 "Before diving into the details, let's first take a closer look of SPU "
 "pipeline, it's something like this:"
-msgstr ""
+msgstr "在深入了解细节之前，让我们先仔细看看 SPU 管道，它是这样的："
 
 #: ../../development/pipeline.rst:21
 msgid "code and data pipeline"
-msgstr ""
+msgstr "代码和数据管道"
 
 #: ../../development/pipeline.rst:24
 msgid "Compilation"
-msgstr ""
+msgstr "编译"
 
 #: ../../development/pipeline.rst:26
 msgid "The vertical part depicts the compilation pipeline, from top to bottom."
-msgstr ""
+msgstr "垂直部分从上到下描绘了编译管道。"
 
 #: ../../development/pipeline.rst:28
 msgid "Programmer writes code in AI frameworks(like TensorFlow/JAX)."
-msgstr ""
+msgstr "程序员在 AI 框架（如 TensorFlow/JAX）中编写代码。"
 
 #: ../../development/pipeline.rst:29
 msgid "AI frontend traces the DAG, and emits as XLA IR."
-msgstr ""
+msgstr "AI frontend 跟踪 DAG，并以 XLA IR 形式发出。"
 
 #: ../../development/pipeline.rst:30
 msgid ""
 "SPU compiler takes XLA IR, and compiles it to SPU IR, the format that SPU"
 " runtime understands."
-msgstr ""
+msgstr "SPU 编译器接收 XLA IR，并将其编译为 SPU IR，即 SPU 运行时可以理解的格式。"
 
 #: ../../development/pipeline.rst:32
 msgid "For more details, please see :doc:`compiler` for details."
-msgstr ""
+msgstr "更多详细信息请参见 SPU 编译器详情。"
 
 #: ../../development/pipeline.rst:35
 msgid "Data pipeline"
-msgstr ""
+msgstr "数据管道"
 
 #: ../../development/pipeline.rst:37
 msgid "The horizontal part depicts the data pipeline, from left to right."
-msgstr ""
+msgstr "水平部分从左到右描绘数据管道。"
 
 #: ../../development/pipeline.rst:39
 msgid ""
 "Data providers use :ref:`SPU io <reference/py_api:Runtime IO>` module to "
 "encrypt input data."
-msgstr ""
+msgstr "数据提供者使用 SPU io 模块来加密输入数据。"
 
 #: ../../development/pipeline.rst:41
 msgid "For SPU MPC backend, *encrypt* means to split plaintext data into shares."
-msgstr ""
+msgstr "对于 SPU MPC 后端，加密意味着将明文数据分成几部分。"
 
 #: ../../development/pipeline.rst:42
 msgid "For floating-point data, encoding to fixed-point may be also required."
-msgstr ""
+msgstr "对于浮点数据，可能还需要编码为定点。"
 
 #: ../../development/pipeline.rst:44
 msgid ""
 "The encrypted data is sent to :ref:`SPU runtime <reference/py_api:Runtime"
 " Setup>`."
-msgstr ""
+msgstr "加密数据被发送到 SPU 运行时。"
 
 #: ../../development/pipeline.rst:45
 msgid ""
 "The output data is fetched by *result owner*, and decrypted by the "
 ":ref:`SPU io <reference/py_api:Runtime IO>` module."
-msgstr ""
+msgstr "输出数据由SPU io 模块解密后提供给数据获取者。"
 
 #: ../../development/pipeline.rst:49
 msgid "Just in time"
-msgstr ""
+msgstr "即时编译"
 
 #: ../../development/pipeline.rst:51
 msgid ""
@@ -1954,6 +1963,8 @@ msgid ""
 "introduce more evaluation overhead, but it's really trivial in secure "
 "computation setting."
 msgstr ""
+"JIT 是即时编译 (Just-in-time compilation) 的缩写，通过这种方式，编译器可以比 AOT "
+"模式获取更多信息，例如输入形状。JIT 可能会引入更多的评估开销，但在安全计算场景中这是微不足道的。"
 
 #: ../../development/pipeline.rst:53
 msgid ""
@@ -1965,16 +1976,19 @@ msgid ""
 "should *mark* as much data as possible to be *public* (if it doesn't need"
 " to be protected), and tell the compiler these information."
 msgstr ""
+"在 SPU 中，JIT 具有更多优势，因为如果后端引擎知道数据是可见的，那么它的速度可能会快几个数量级。例如，在将两方秘密数据相乘时，后端 MPC"
+" "
+"运算可能涉及昂贵的三重运算，但当其中一方数据是所有各方都知道的公共数据时，运算会快得多。因此，我们应该将尽可能多的数据标记为公开（如果数据不需要保护），并告诉编译器这些信息。"
 
 #: ../../development/pipeline.rst:55
 msgid ""
 "So, SPU compilation normally happens after all data infeed is done, and "
 "`just in time` before the real evaluation."
-msgstr ""
+msgstr "因此，SPU 编译通常在所有数据输入完成后进行，并且在实际评估之前进行即时编译。"
 
 #: ../../development/policy_sgd_insight.rst:2
 msgid "Background: SGD in MPC-ML"
-msgstr ""
+msgstr "背景：随机梯度下降法在MPC-ML"
 
 #: ../../development/policy_sgd_insight.rst:4
 msgid ""
@@ -1989,6 +2003,10 @@ msgid ""
 "and learning_rate, else we get some loss or very strong vibration of auc "
 "within 10 epochs(we leave 10000 samples as test dataset randomly)."
 msgstr ""
+"随机梯度下降法（SGD）是一个著名的优化算法，它沿着负梯度方向来更新模型的权重。然而，这种方法要求使用者仔细地选择超参数。网格搜索虽然可以解决此问题，但在实际应用中训练耗时过长，因此并不实用。例如，在"
+" credit card 数据集上使用随机梯度下降法训练线性回归模型时（批量大小为 4096，学习率为 "
+"0.1），我们发现，若批量大小和学习率设置不当，在 10 个轮次内损失值会偏大，且 AUC 值波动剧烈。（随机选择 10000 "
+"个样本作为测试数据集）。"
 
 #: ../../development/policy_sgd_insight.rst:12
 msgid ""
@@ -1996,25 +2014,25 @@ msgid ""
 "batch_size leads to huge training time under limited network resources. "
 "Besides, even you have high bandwidth, small batch_size can not utilize "
 "it!"
-msgstr ""
+msgstr "但是，但处于MPC模式下，即使简单的算法，例如SSLR，小的批量大小在网络资源有限的环境下也会导致训练时间的大幅增加。而且，即使你拥有较高的网络带宽，小的批量也无法充分利用带宽资源。"
 
 #: ../../development/policy_sgd_insight.rst:16
 msgid "How to improve SGD"
-msgstr ""
+msgstr "如何优化 SGD 方法"
 
 #: ../../development/policy_sgd_insight.rst:17
 msgid ""
 "Indeed, after our elaborated experiments, we can find two drawbacks of "
 "naive SGD:"
-msgstr ""
+msgstr "在我们的全面的实验下，我们发现朴素 SGD 方法的两个缺点"
 
 #: ../../development/policy_sgd_insight.rst:19
 msgid "slow update(because of small learning_rate) at the beginning."
-msgstr ""
+msgstr "起始阶段，模型权重更新缓慢是由于学习率较小造成的。"
 
 #: ../../development/policy_sgd_insight.rst:21
 msgid "vibration happens when near to optimal point."
-msgstr ""
+msgstr "当模型权重接近最优点时，模型的表现开始波动。"
 
 #: ../../development/policy_sgd_insight.rst:23
 msgid ""
@@ -2022,11 +2040,11 @@ msgid ""
 "beginning, and \"slow down\" as training goes on. But the ensuing "
 "question is how to determine specific \"large\" and \"slow down\" for "
 "different datasets."
-msgstr ""
+msgstr "所以，应该在起步阶段使用较大的学习率，随着训练的进行，逐渐减小学习率。问题是，对于不同的数据集，如何确定“较大的”和“逐渐减小”的具体情况。"
 
 #: ../../development/policy_sgd_insight.rst:27
 msgid "What's Policy sgd"
-msgstr ""
+msgstr "什么是Policy sgd"
 
 #: ../../development/policy_sgd_insight.rst:28
 msgid ""
@@ -2034,10 +2052,12 @@ msgid ""
 "implemented on `SSRegression` in Secretflow when setting "
 "`strategy=policy_sgd`)."
 msgstr ""
+"对于 SSLR 算法，我们已经在隐语 Secretflow 中实现了 policy-sgd 方法。（在 SSRegression 中设置 "
+"strategy=policy_sgd）"
 
 #: ../../development/policy_sgd_insight.rst:33
 msgid "The core of this optimizer consists of two parts:"
-msgstr ""
+msgstr "policy-sgd 优化算法的核心包含两部分"
 
 #: ../../development/policy_sgd_insight.rst:35
 #, python-brace-format
@@ -2046,6 +2066,8 @@ msgid ""
 " weight move unit-norm in gradient direction and record "
 ":math:`\\frac{1}{||grad||_2}` as scale factor for this batch."
 msgstr ""
+"自适应学习率缩放机制：在第一个轮次（epoch）中，我们强制权重在梯度方向上移动单位范数，并将 "
+":math:`\\frac{1}{||grad||_2}` 记录为该批次的缩放因子。"
 
 #: ../../development/policy_sgd_insight.rst:38
 msgid ""
@@ -2055,10 +2077,12 @@ msgid ""
 "`exp`, `log`) and weight based, and choose the latter in our final "
 "implementation."
 msgstr ""
+"学习率衰减与早停策略：我们采用步长衰减（step-"
+"decay）策略进行学习率衰减。关于早停，我们比较了基于损失（利用泰勒展开避免指数、对数等耗时运算）和基于权重的两种策略，最终选择了后者。"
 
 #: ../../development/policy_sgd_insight.rst:44
 msgid "Experiments"
-msgstr ""
+msgstr "实验"
 
 #: ../../development/policy_sgd_insight.rst:45
 #, python-brace-format
@@ -2073,104 +2097,108 @@ msgid ""
 "out about :math:`\\frac{1}{3}` data for test data and evaluate auc on it."
 " The baseline auc is computed when using sklearn for model training."
 msgstr ""
+"我们使用四个数据集进行实验，包含三个开源数据集（credit_card, Bank Marketing, "
+"Aps）和一个工业界数据集（wzdata）。对于开源数据集，我们仅仅做一些基本的 one-hot 和 min-max "
+"的归一化操作，以此来满足线性回归模型的需要。我们留出三分之一的数据作为测试数据集，并在其上评估了 auc 指标作为基线。我们使用 sklearn "
+"进行模型训练，并计算 auc。"
 
 #: ../../development/policy_sgd_insight.rst:53
 #: ../../development/policy_sgd_insight.rst:107
 msgid "Dataset"
-msgstr ""
+msgstr "数据集"
 
 #: ../../development/policy_sgd_insight.rst:53
 msgid "Training shape"
-msgstr ""
+msgstr "训练集的维度"
 
 #: ../../development/policy_sgd_insight.rst:53
 msgid "baseline auc"
-msgstr ""
+msgstr "基线 auc"
 
 #: ../../development/policy_sgd_insight.rst:55
 #: ../../development/policy_sgd_insight.rst:109
 msgid "business dataset"
-msgstr ""
+msgstr "wzdata"
 
 #: ../../development/policy_sgd_insight.rst:55
 msgid "111618，23"
-msgstr ""
+msgstr "111618，23"
 
 #: ../../development/policy_sgd_insight.rst:55
 msgid "0.8175"
-msgstr ""
+msgstr "0.8175"
 
 #: ../../development/policy_sgd_insight.rst:57
 #: ../../development/policy_sgd_insight.rst:111
 msgid "Bank Marketing"
-msgstr ""
+msgstr "Bank Marketing"
 
 #: ../../development/policy_sgd_insight.rst:57
 msgid "40787，48"
-msgstr ""
+msgstr "40787，48"
 
 #: ../../development/policy_sgd_insight.rst:57
 msgid "0.93"
-msgstr ""
+msgstr "0.93"
 
 #: ../../development/policy_sgd_insight.rst:59
 #: ../../development/policy_sgd_insight.rst:113
 msgid "credit_card"
-msgstr ""
+msgstr "credit_card"
 
 #: ../../development/policy_sgd_insight.rst:59
 msgid "20000, 23"
-msgstr ""
+msgstr "20000, 23"
 
 #: ../../development/policy_sgd_insight.rst:59
 msgid "0.718"
-msgstr ""
+msgstr "0.718"
 
 #: ../../development/policy_sgd_insight.rst:61
 #: ../../development/policy_sgd_insight.rst:115
 msgid "Aps"
-msgstr ""
+msgstr "Aps"
 
 #: ../../development/policy_sgd_insight.rst:61
 msgid "60000，170"
-msgstr ""
+msgstr "60000，170"
 
 #: ../../development/policy_sgd_insight.rst:61
 msgid "0.9666"
-msgstr ""
+msgstr "0.9666"
 
 #: ../../development/policy_sgd_insight.rst:65
 msgid "Precision"
-msgstr ""
+msgstr "精确度"
 
 #: ../../development/policy_sgd_insight.rst:67
 msgid ""
 "We first test how precision of fixed point influence SSLR and test three "
 "settings:"
-msgstr ""
+msgstr "我们首先测试定点精度如何影响 SSLR，并测试了三种设置："
 
 #: ../../development/policy_sgd_insight.rst:69
 msgid "low precision: `FM64` + 18 fxp"
-msgstr ""
+msgstr "低精度：64 位定点数格式（FM64）加上 18 位小数部分（fxp）"
 
 #: ../../development/policy_sgd_insight.rst:71
 msgid "medium precision: `FM128` + 28 fxp"
-msgstr ""
+msgstr "中精度：128 位定点数格式（FM128）加上 28 位小数部分（fxp）"
 
 #: ../../development/policy_sgd_insight.rst:73
 msgid "high precision: `FM128` + 42 fxp"
-msgstr ""
+msgstr "高精度：128 位定点数格式（FM128）加上 42 位小数部分（fxp）"
 
 #: ../../development/policy_sgd_insight.rst:81
 msgid ""
 "We can find that for both optimizer, precision has little influence on "
 "final auc, so it's safe for user to choose low precision when training "
 "LR."
-msgstr ""
+msgstr "我们可以发现，对于这两种优化器而言，精度对 auc 影响很小，因此用户在训练线性回归（LR）模型时选择低精度是安全的。"
 
 #: ../../development/policy_sgd_insight.rst:85
 msgid "Naive v.s Policy"
-msgstr ""
+msgstr "Naive sgd 与 Policy sgd 对比"
 
 #: ../../development/policy_sgd_insight.rst:87
 msgid ""
@@ -2185,6 +2213,11 @@ msgid ""
 "batch_size(2048 for these experiments),and we set learning_rate decay a "
 "half every 2 epochs."
 msgstr ""
+"我们对比了 naive-sgd (v1) 和 policy-sgd (v2) 的总运行时间。对于 naive-"
+"sgd，我们遵循“稳妥策略”（常用于明文机器学习）：采用较小的学习率（如 0.1）和较小的批量大小（如 1024，若使用 2048 "
+"则部分数据无法收敛）。此外，naive-sgd 难以确定合适的默认早停值（设置不当可能导致 AUC 大幅下降）。为避免繁琐的网格搜索，naive-"
+"sgd 运行时不采用任何学习率衰减（推荐做法）。但对于 policy-sgd，使用较大的批量大小通常无害（本实验中为 2048），且每 2 "
+"个轮次学习率减半。"
 
 #: ../../development/policy_sgd_insight.rst:93
 msgid ""
@@ -2193,6 +2226,8 @@ msgid ""
 " in WAN, providing 20Mbps and 20ms RTT, which is a typical setting in "
 "real world project."
 msgstr ""
+"至于其他超参数，我们将总运行轮次设置为 20，学习率设置为 0.1，并使用低精度、CHEETAH协议。我们在广域网中进行测试，提供 20Mbps "
+"的带宽以及 20 毫秒的往返时间（RTT），这是现实世界项目中的一种典型设置。"
 
 #: ../../development/policy_sgd_insight.rst:99
 msgid ""
@@ -2203,6 +2238,9 @@ msgid ""
 "purple line) after the model converges. Besides, checking the auc of "
 "stopping time, it has very low gap(<0.01) between baseline."
 msgstr ""
+"首先，我们发现 naive-sgd (v1) 在四个数据集上均未能在 20 轮内满足早停条件（因此图中未标出）。而 policy-sgd (v2)"
+" 在所有四个数据集上均能在模型收敛后实现“早停”（红色点划线表示满足基于损失的早停标准，紫色表示基于权重的早停标准）。此外，早停时的 AUC "
+"值与基线差距极小（<0.01）。"
 
 #: ../../development/policy_sgd_insight.rst:103
 msgid ""
@@ -2210,161 +2248,163 @@ msgid ""
 "naive_sgd(based on weight early stop). Policy_sgd can reduce the time by "
 "2-5 times compared to naive_sgd."
 msgstr ""
+"下方的表格展示了两种方法的运行时间，其中 policy-sgd 是基于模型权重进行早停判断的。 policy-sgd 相比 naive-sgd "
+"在时间上缩短了 2-5 倍。"
 
 #: ../../development/policy_sgd_insight.rst:107
 msgid "naive_sgd(s)"
-msgstr ""
+msgstr "naive_sgd(s)"
 
 #: ../../development/policy_sgd_insight.rst:107
 msgid "policy_sgd(s)"
-msgstr ""
+msgstr "policy_sgd(s)"
 
 #: ../../development/policy_sgd_insight.rst:107
 msgid "naive/policy"
-msgstr ""
+msgstr "naive/policy"
 
 #: ../../development/policy_sgd_insight.rst:109
 msgid "~8000"
-msgstr ""
+msgstr "~8000"
 
 #: ../../development/policy_sgd_insight.rst:109
 #: ../../development/policy_sgd_insight.rst:113
 msgid "~1600"
-msgstr ""
+msgstr "~1600"
 
 #: ../../development/policy_sgd_insight.rst:109
 msgid "5x"
-msgstr ""
+msgstr "5x"
 
 #: ../../development/policy_sgd_insight.rst:111
 msgid "~3000"
-msgstr ""
+msgstr "~3000"
 
 #: ../../development/policy_sgd_insight.rst:111
 msgid "~800"
-msgstr ""
+msgstr "~800"
 
 #: ../../development/policy_sgd_insight.rst:111
 msgid "3.75x"
-msgstr ""
+msgstr "3.75x"
 
 #: ../../development/policy_sgd_insight.rst:113
 msgid "~350"
-msgstr ""
+msgstr "~350"
 
 #: ../../development/policy_sgd_insight.rst:113
 msgid "4.57x"
-msgstr ""
+msgstr "4.57x"
 
 #: ../../development/policy_sgd_insight.rst:115
 msgid "~10000"
-msgstr ""
+msgstr "~10000"
 
 #: ../../development/policy_sgd_insight.rst:115
 msgid "~4200"
-msgstr ""
+msgstr "~4200"
 
 #: ../../development/policy_sgd_insight.rst:115
 msgid "2.38x"
-msgstr ""
+msgstr "2.38x"
 
 #: ../../development/runtime.rst:2
 msgid "SPU Runtime"
-msgstr ""
+msgstr "SPU 运行时"
 
 #: ../../development/runtime.rst:5
 msgid "Architecture"
-msgstr ""
+msgstr "架构"
 
 #: ../../development/runtime.rst:7
 msgid "Here is the big picture of SPU VM."
-msgstr ""
+msgstr "以下是 SPU 虚拟机的整体概况。"
 
 #: ../../development/runtime.rst:11
 msgid ""
 "The top 3 blocks above *SPU VM* are applications, we could ignore them "
 "for now."
-msgstr ""
+msgstr "SPU 虚拟机上方的三个模块是应用程序，我们暂时可以忽略它们。"
 
 #: ../../development/runtime.rst:12
 msgid "The bottom left block is the scheduling component."
-msgstr ""
+msgstr "左下方的模块是调度组件。"
 
 #: ../../development/runtime.rst:13
 msgid ""
 "The main block is the SPU Architecture, which is the core for secure "
 "evaluation."
-msgstr ""
+msgstr "主要模块是 SPU 架构，它是安全计算的核心。"
 
 #: ../../development/runtime.rst:15
 msgid "Inside SPU, there are multiple layers, from bottom to up:"
-msgstr ""
+msgstr "在 SPU 内部，有多个层次，从下到上分别是："
 
 #: ../../development/runtime.rst:17
 msgid ""
 "**System layer** provides the basic computation and communication ability"
 " for the upper layers."
-msgstr ""
+msgstr "**系统层** 为上层提供基本的计算和通信能力。"
 
 #: ../../development/runtime.rst:18
 msgid ""
 "**Crypto layer** is the key for secure computation, it's composed by 3 "
 "sub layers."
-msgstr ""
+msgstr "**加密层** 是安全计算的关键，它由三个子层组成。"
 
 #: ../../development/runtime.rst:20
 msgid ""
 "**Basic** or classic layer, provides classic cryptography, OT, HE also "
 "lives in this layer."
-msgstr ""
+msgstr "**基础层** 或经典层，提供经典的加密技术、OT 和 HE 也在这一层。"
 
 #: ../../development/runtime.rst:21
 msgid ""
 "**Correlation** or the offline protocol layer, provides correlation like "
 "beaver triple and randbit."
-msgstr ""
+msgstr "**关联层** 或离线协议层，提供类似于比弗三元组和随机位的关联。"
 
 #: ../../development/runtime.rst:22
 msgid ""
 "**Protocol** or the online protocol layer, applies random correlation and"
 " runs the secure evaluation."
-msgstr ""
+msgstr "**协议层** 或在线协议层，应用随机关联并运行安全计算。"
 
 #: ../../development/runtime.rst:24
 msgid ""
 "**ALU layer** converts MPC protocols into a programmable machine, which "
 "has two sub layers."
-msgstr ""
+msgstr "**ALU层** 将 MPC 协议转换为可编程机器，它有两个子层。"
 
 #: ../../development/runtime.rst:26
 msgid ""
 "**Ring 2^k** layer, just like normal CPU, hides cryptography layer's "
 "details and provides standard ring2k arithmetic."
-msgstr ""
+msgstr "**Ring 2^k层**，就像普通 CPU 一样，隐藏了加密层的细节，并提供标准的 ring2k 算术运算能力。"
 
 #: ../../development/runtime.rst:27
 msgid ""
 "**Fixed point** layer uses fixed point encoding to represent a fractional"
 " number and provides basic arithmetic operations over them."
-msgstr ""
+msgstr "**定点层** 使用定点编码来表示小数，并提供基本的算术运算。"
 
 #: ../../development/runtime.rst:29
 msgid ""
 "**OPS layer** is designed to be extensible, in this layer we can define "
 "multiple modules based on *ALU layer* and finally exposed to VM clients "
 "via bindings or SPU IR."
-msgstr ""
+msgstr "**OPS 层** 被设计为可扩展的，在这一层我们可以基于 *ALU 层* 定义多个模块，最终通过绑定或 SPU IR 暴露给 VM 客户端。"
 
 #: ../../development/runtime.rst:32
 msgid "Homogeneous and Heterogeneous"
-msgstr ""
+msgstr "同构和异构"
 
 #: ../../development/runtime.rst:34
 msgid ""
 "Recall that SPU VM is composed of multiple physical engines, the "
 "definitions of *homogeneous* and *heterogeneous* come from an *engines*' "
 "perspective."
-msgstr ""
+msgstr "回想一下，SPU 虚拟机由多个物理引擎组成，*同构* 和 *异构* 的定义来自 *引擎* 的角度。"
 
 #: ../../development/runtime.rst:36
 msgid ""
@@ -2373,7 +2413,7 @@ msgid ""
 "to distinguish between engines, they cannot and should not send/recv "
 "messages between engines, in other words, they can treat all engines the "
 "same, and program them as one machine."
-msgstr ""
+msgstr "**同构**：一个层次是*同构*的，意味着所有引擎在这一层运行完全相同的代码。该层次的用户不需要区分引擎，他们不能也不应该在引擎之间发送/接收消息，换句话说，他们可以将所有引擎视为一个机器来编程。"
 
 #: ../../development/runtime.rst:37
 msgid ""
@@ -2381,7 +2421,7 @@ msgid ""
 "engines in this layer behave differently (following some protocols). The "
 "author of this layer should take care of the behavior of each engine to "
 "make things correct."
-msgstr ""
+msgstr "**异构**：相反，一个层次是*异构*的，意味着这一层的引擎行为不同（遵循某些协议）。该层次的作者应注意每个引擎的行为以确保正确性。"
 
 #: ../../development/runtime.rst:39
 msgid ""
@@ -2389,13 +2429,13 @@ msgid ""
 "virtual device when applying secure evaluation. For example, in the "
 "following computation graph, given `x`, `y`, we want to compute `f(x, "
 "y)`, the big circle represents a computing node which can evaluate f."
-msgstr ""
+msgstr "我们希望 SPU 虚拟机是*同构*的，这样在应用安全计算时可以将其视为一个普通的虚拟设备。例如，在下面的计算图中，给定 `x` 和 `y`，我们希望计算 `f(x, y)`，大圆圈代表一个可以评估 f 的计算节点。"
 
 #: ../../development/runtime.rst:43
 msgid ""
 "In secure computation mode, we have a group of servers working together "
 "to provide the functionality of `f`, as shown blow."
-msgstr ""
+msgstr "在安全计算模式下，我们有一组服务器协同工作来提供 `f` 的功能，如下所示。"
 
 #: ../../development/runtime.rst:47
 msgid ""
@@ -2403,7 +2443,7 @@ msgid ""
 "servers inside the big circle may behave differently, in this pic, the "
 "lower part is blue, which means three servers act and interact "
 "differently."
-msgstr ""
+msgstr "安全协议（MPC 协议）本身是**异构**的，大圆圈内的三台服务器可能表现不同（遵循某些协议）。在这张图中，下半部分是蓝色的，表示三台服务器的行为和交互不同。"
 
 #: ../../development/runtime.rst:49
 msgid ""
@@ -2411,110 +2451,110 @@ msgid ""
 " in this pic, the upper half is orange, three servers behave exactly the "
 "same, so in the whole computation DAG, the big circle could be treated as"
 " one (virtual) node."
-msgstr ""
+msgstr "但它们共同为上层提供了一个**同构**接口，在这张图中，上半部分是橙色的，三台服务器的行为完全相同，因此在整个计算 DAG 中，大圆圈可以被视为一个（虚拟）节点。"
 
 #: ../../development/runtime.rst:51
 msgid ""
 "Another reason to use **homogeneous** IR is to hide the number of "
 "parties, so the application can switch to an m-PC protocol from an n-PC "
 "protocol without code change."
-msgstr ""
+msgstr "使用**同构**IR的另一个原因是隐藏参与方的数量，这样应用程序可以在不更改代码的情况下从n-PC协议切换到m-PC协议。"
 
 #: ../../development/runtime.rst:53
 msgid ""
 "One of *SPU*'s goal is to hide the heterogeneous part and expose "
 "homogeneous API."
-msgstr ""
+msgstr "SPU 的目标之一是隐藏异构部分并暴露同构 API。"
 
 #: ../../development/runtime.rst:56
 msgid "VM Layout"
-msgstr ""
+msgstr "虚拟机布局"
 
 #: ../../development/runtime.rst:58
 msgid ""
 "SPU, as a virtual device, is hosted by multiple physical devices. The "
 "relationship between physical devices and SPU is very flexible. Now let's"
 " use some examples to illustrate the possible layouts."
-msgstr ""
+msgstr "SPU 作为一个虚拟设备，由多个物理设备托管。物理设备与 SPU 之间的关系非常灵活。现在让我们用一些例子来说明可能的布局。"
 
 #: ../../development/runtime.rst:61
 msgid ""
 "Programmers coding toward the virtual layout, the underline physical is "
 "**transparent** from the programmer's perspective. It's free to use "
 "different physical layouts, without changing a single line of code."
-msgstr ""
+msgstr "程序员面向虚拟布局进行编码，从程序员的角度来看，底层物理布局是**透明**的。可以自由使用不同的物理布局，而无需更改一行代码。"
 
 #: ../../development/runtime.rst:64
 msgid "Outsourcing"
-msgstr ""
+msgstr "数据托管模式"
 
 #: ../../development/runtime.rst:66
 msgid ""
 "In this mode, data providers send data shares to a group of non-colluding"
 " computation providers who cooperate to evaluate secure computations."
-msgstr ""
+msgstr "在这种模式下，数据提供者将数据份额发送给一组不串通的计算提供者，这些提供者协同工作以进行安全计算。"
 
 #: ../../development/runtime.rst:70
 msgid ""
 "The figure to left depicts the physical layout, there are 6 physical "
 "nodes, mutually connected but untrusted to each other."
-msgstr ""
+msgstr "左图描绘了物理布局，有 6 个物理节点，彼此相互连接但不互相信任。"
 
 #: ../../development/runtime.rst:72
 msgid "The circle stands for data provider."
-msgstr ""
+msgstr "圆圈代表数据提供者。"
 
 #: ../../development/runtime.rst:73
 msgid ""
 "The triangle stands for computing provider, three triangle nodes agree on"
 " some MPC protocol."
-msgstr ""
+msgstr "三角形代表计算提供者，三个三角形节点表示同意某些 MPC 协议。"
 
 #: ../../development/runtime.rst:75
 msgid "The figure to the right depicts the virtual layout."
-msgstr ""
+msgstr "右图描绘了虚拟布局。"
 
 #: ../../development/runtime.rst:77
 msgid "The circle has one-to-one relation to the physical nodes."
-msgstr ""
+msgstr "圆圈与物理节点是一对一的关系。"
 
 #: ../../development/runtime.rst:78
 msgid "3 triangle nodes are treated as a single virtual device."
-msgstr ""
+msgstr "三个三角形节点被视为一个虚拟设备。"
 
 #: ../../development/runtime.rst:81
 msgid "Colocated"
-msgstr ""
+msgstr "联合计算模式"
 
 #: ../../development/runtime.rst:83
 msgid ""
 "In this mode, data providers also participate in the computation "
 "progress, that is, data providers are **colocated** with computing "
 "providers."
-msgstr ""
+msgstr "在这种模式下，数据提供者也参与计算过程，即数据提供者与计算提供者**联合**计算。"
 
 #: ../../development/runtime.rst:87
 msgid ""
 "On the left side, there are 3 physical nodes, each of which acts as data "
 "provider as well as computing provider."
-msgstr ""
+msgstr "左侧有 3 个物理节点，每个节点既是数据提供者也是计算提供者。"
 
 #: ../../development/runtime.rst:88
 msgid ""
 "On the right side, **SPU is a pure virtual node, constructed by physical "
 "nodes**."
-msgstr ""
+msgstr "右侧，**SPU 是一个由物理节点构建的纯虚拟节点**。"
 
 #: ../../development/runtime.rst:91
 msgid ""
 "The number of computing nodes could be larger than that of data nodes in "
 "this mode, for example, a computing node without data source could act as"
 " a *random correlation generator*, for example:"
-msgstr ""
+msgstr "在这种模式下，计算节点的数量可能多于数据节点，例如，没有数据源的计算节点可以作为*随机关联生成器*，例如："
 
 #: ../../development/runtime.rst:97
 msgid "There are two notable optimizations in this mode."
-msgstr ""
+msgstr "在这种模式下有两个显著的优化。"
 
 #: ../../development/runtime.rst:99
 msgid ""
@@ -2522,117 +2562,117 @@ msgid ""
 "manipulations to accelerate MPC computation, for example, in *HESS "
 "protocol*, we can do :code:`HShare x Private` without online "
 "communication."
-msgstr ""
+msgstr "**私有语义**，计算节点可以进行私有数据操作以加速 MPC 计算，例如，在 *HESS 协议* 中，我们可以进行 :code:`HShare x Private` 而无需在线通信。"
 
 #: ../../development/runtime.rst:100
 msgid ""
 "The **zero share data infeed**, when a data provider tries to share data "
 "cross nodes, it can use :code:`ZeroShare + Private` trick to avoid online"
 " communication."
-msgstr ""
+msgstr "**零份额数据输入**，当数据提供者尝试跨节点共享数据时，可以使用 :code:`ZeroShare + Private` 技巧来避免在线通信。"
 
 #: ../../development/runtime.rst:103
 msgid "Hybrid"
-msgstr ""
+msgstr "混合部署模式"
 
 #: ../../development/runtime.rst:105
 msgid ""
 "This is the most general form, some data providers participate in the "
 "secure computation while others do not."
-msgstr ""
+msgstr "这是最常见的模式，一些数据提供者参与安全计算，而另一些则不参与。"
 
 #: ../../development/runtime.rst:110
 msgid ""
 "the **private semantic** and **zero share data infeed** also apply to "
 "data providers that participate in the computation."
-msgstr ""
+msgstr "**私有语义**和**零份额数据输入**也适用于参与计算的数据提供者。"
 
 #: ../../development/type_system.rst:2
 msgid "Type System"
-msgstr ""
+msgstr "类型系统"
 
 #: ../../development/type_system.rst:7
 msgid "This document is for VM developers."
-msgstr ""
+msgstr "本文档面向虚拟机开发者。"
 
 #: ../../development/type_system.rst:9
 msgid "Everything in SPU could be treated as an object, each object has a type."
-msgstr ""
+msgstr "在 SPU 中的一切都是一个对象，每个对象都有一个类型。"
 
 #: ../../development/type_system.rst:11
 msgid ""
 "There are only two types of objects, *value* or *operator*, which means "
 "if a symbol is not a *value*, it's an *operator*."
-msgstr ""
+msgstr "对象只有两种类型：值或操作符，也就是说如果一个符号不是值，那么它就是操作符。"
 
 #: ../../development/type_system.rst:13
 msgid ""
 "**value**: an object that is managed by SPU runtime, representing a "
 "public/secret data."
-msgstr ""
+msgstr "值：由 SPU 运行时管理的对象，表示公开/秘密数据。"
 
 #: ../../development/type_system.rst:14
 msgid ""
 "**operator**: an object that takes one or more values and outputs a "
 "return value, i.e. `multiply` is an operator."
-msgstr ""
+msgstr "操作符：接受一个或多个值并给出一个返回值的对象，例如 `multiply` 就是一个操作符。"
 
 #: ../../development/type_system.rst:17
 msgid "Value type"
-msgstr ""
+msgstr "值类型"
 
 #: ../../development/type_system.rst:19
 msgid "A value type is a tuple (**V**, **D**, **S**), where:"
-msgstr ""
+msgstr "值类型是一个元组 (V, D, S)，其含义如下："
 
 #: ../../development/type_system.rst:21
 #, python-brace-format
 msgid "**V** is *visibility*, could be one of *{public, secret}*"
-msgstr ""
+msgstr "V 为可见性（visibility），可以是 {public, secret} 之一。"
 
 #: ../../development/type_system.rst:22
 #, python-brace-format
 msgid "**D** is *data type*, could be one of *{int, fxp}*"
-msgstr ""
+msgstr "D 为数据类型（data type），可以是 {int, fxp} 之一。"
 
 #: ../../development/type_system.rst:23
 msgid "**S** is *shape*, which makes the value a tensor."
-msgstr ""
+msgstr "S 为形状（shape），它将值构建为张量。"
 
 #: ../../development/type_system.rst:25
 msgid ""
 "We can define a hyper type function, which takes three parameters and "
 "return a concrete value type."
-msgstr ""
+msgstr "我们可以定义一个超类型函数，它接受三个参数并返回一个具体的值类型。"
 
 #: ../../development/type_system.rst:31
 msgid ""
 "To simplify things a little bit, we can ignore *shape* for now and assume"
 " that runtime will handle it correctly."
-msgstr ""
+msgstr "为了简化问题，我们可以暂时忽略形状，并假设运行时会正确处理它。"
 
 #: ../../development/type_system.rst:37
 msgid ""
 "With this type function, we can define a list of types in the SPU type "
 "system."
-msgstr ""
+msgstr "通过这个类型函数，我们可以在SPU类型系统中定义一系列类型。"
 
 #: ../../development/type_system.rst:47
 msgid "Operator type"
-msgstr ""
+msgstr "操作符类型"
 
 #: ../../development/type_system.rst:49
 msgid ""
 "*Operators* takes a list of values as parameters and returns exactly one "
 "value as result, operator's type is determined by the types of input "
 "parameters and return values."
-msgstr ""
+msgstr "操作符以值列表作为参数，并返回一个具体的值作为结果，操作符类型由输入参数和返回值的类型决定。"
 
 #: ../../development/type_system.rst:51
 msgid ""
 "In SPU IR, an operator could take a polymorphic typed parameter and the "
 "return type could be deduced from the parameters. For example:"
-msgstr ""
+msgstr "在 SPU IR 中，操作符可以接受多种类型的参数，并且从中推导出返回的类型。例如："
 
 #: ../../development/type_system.rst:62
 msgid ""
@@ -2640,12 +2680,14 @@ msgid ""
 "2x2x2x2 = 16 different kinds of combinations. To support this type of "
 "operators, we introduce the following *type functor*."
 msgstr ""
+"`add` 操作符接受一对 `type(V, D)` 作为参数，共有 2x2x2x2 = 16 "
+"种不同的组合。为了支持这种类型的操作符，我们引入了以下类型函子。"
 
 #: ../../development/type_system.rst:64
 msgid ""
 "**dtype promotion**, which promotes two dtypes to a more relaxed type, in"
 " SPU system, *int* is always promoted to *fxp*."
-msgstr ""
+msgstr "数据类型提升（dtype promotion）：将两个 dtype 提升为更宽松的类型，在 SPU 系统中，int 总是被提升为 fxp。"
 
 #: ../../development/type_system.rst:72
 msgid ""
@@ -2655,72 +2697,74 @@ msgid ""
 "visibility of ops will always be more strict. i.e. if one of operands is "
 "*secret*, the result is a *secret*."
 msgstr ""
+"可见性收窄（visibility narrow）：当两个或多个操作数具有不同的可见性属性时窄化可见性。这是保持 SPU VM "
+"“语义安全”的关键，因为操作的结果可见性总是更严格。例如，如果其中一个操作数是 secret，则结果是 secret。"
 
 #: ../../development/type_system.rst:82
 msgid "Now we can represent the polymorphic mul op as:"
-msgstr ""
+msgstr "现在我们可以将多态的 mul 操作符表示为："
 
 #: ../../development/type_system.rst:88
 msgid ""
 "the op takes two parameters, first type is :code:`type(V0, D0)`, second "
 "type is :code:`type(V1, D1)`."
-msgstr ""
+msgstr "该操作符接受两个参数，第一个类型是 :code:`type(V0, D0)`，第二个类型是 :code:`type(V1, D1)`。"
 
 #: ../../development/type_system.rst:89
 msgid "the op returns :code:`type(narrow(V0, V1), promote(D0, D1))` as a result."
-msgstr ""
+msgstr "该操作符返回 :code:`type(narrow(V0, V1), promote(D0, D1))` 作为结果。"
 
 #: ../../development/type_system.rst:90
 msgid ""
 "when applying the op to two arbitrary arguments, the result could be "
 "deduced from the above type expressions."
-msgstr ""
+msgstr "当将操作符应用于两个任意参数时，结果都可以从上述类型表达式中推导出来\""
 
 #: ../../development/type_system.rst:94
 msgid "Use of type"
-msgstr ""
+msgstr "类型的用途"
 
 #: ../../development/type_system.rst:96
 msgid "There are many uses for types."
-msgstr ""
+msgstr "类型有许多用途。"
 
 #: ../../development/type_system.rst:98
 msgid ""
 "First, the most important one, type is self descriptive, with an accurate"
 " defined type system, we can describe *SPU IR* more accurately."
-msgstr ""
+msgstr "首先，最重要的是类型是自描述的，通过准确定义的类型系统，我们可以更准确地描述 SPU IR。"
 
 #: ../../development/type_system.rst:99
 msgid ""
 "Second, runtime type information is used to do runtime dispatch, which is"
 " important for polymorphic operators."
-msgstr ""
+msgstr "其次，在进行运行时调度会使用运行时类型信息，这对于多态操作符非常重要。"
 
 #: ../../development/type_system.rst:100
 msgid ""
 "Third, the type system could be used by static type checker, and could be"
 " used to double check runtime implementation."
-msgstr ""
+msgstr "第三，类型系统可以用于静态类型检查，并可以用于双重检查运行时的实现。"
 
 #: ../../development/type_system.rst:104
 msgid "Ops dispatch"
-msgstr ""
+msgstr "操作调度"
 
 #: ../../development/type_system.rst:106
 msgid ""
 "As described above, type helps for dispatching, here we use `MUL` "
 "instruction as an example."
-msgstr ""
+msgstr "如上所述，类型有助于调度，这里我们以 `MUL` 指令为例。"
 
 #: ../../development/type_system.rst:113
 msgid ""
 "The above `MUL` instruction does element-wise multiplication, `%1` and "
 "`%2` are parameters and `%3` is the return value."
-msgstr ""
+msgstr "上面的 `MUL` 指令执行逐元素乘法，`%1` 和 `%2` 是参数，`%3` 是返回值。"
 
 #: ../../development/type_system.rst:116
 msgid "The dispatch problem"
-msgstr ""
+msgstr "调度问题"
 
 #: ../../development/type_system.rst:118
 #, python-brace-format
@@ -2728,6 +2772,8 @@ msgid ""
 "In this example, `%1` and `%2` are SPU values, each of them belongs one "
 "of four types `{sint, pint, sfxp, pfxp}`, the type of `MUL` is:"
 msgstr ""
+"在这个例子中，`%1` 和 `%2` 是 SPU 值，每个值都属于四种类型 `{sint, pint, sfxp, pfxp}` 之一，`MUL`"
+" 的类型是："
 
 #: ../../development/type_system.rst:120
 #, python-brace-format
@@ -2736,63 +2782,66 @@ msgid ""
 "\\times\n"
 "\\begin{Bmatrix} sint \\\\ pint \\\\ sfxp \\\\ pfxp \\end{Bmatrix}"
 msgstr ""
+"\\begin{Bmatrix} sint \\\\ pint \\\\ sfxp \\\\ pfxp \\end{Bmatrix}\n"
+"\\times\n"
+"\\begin{Bmatrix} sint \\\\ pint \\\\ sfxp \\\\ pfxp \\end{Bmatrix}"
 
 #: ../../development/type_system.rst:126
 msgid ""
 "**The problem is how to dispatch operations to correct kernel according "
 "to the arguments' type information**."
-msgstr ""
+msgstr "问题是如何根据参数的类型信息将操作调度到正确的内核。"
 
 #: ../../development/type_system.rst:128
 msgid ""
 "A simple idea is to pattern match all these type combinations and "
 "dispatch to different kernels accordingly, with this way we got 4x4=16 "
 "different kernels."
-msgstr ""
+msgstr "一个简单的想法是使用模式匹配所有这些类型组合，并相应地调度到不同的内核，这样我们就有 4x4=16 个不同的内核了。"
 
 #: ../../development/type_system.rst:146
 msgid "Layered dispatch"
-msgstr ""
+msgstr "分层调度"
 
 #: ../../development/type_system.rst:148
 msgid ""
 "A better way is to dispatch layer by layer, for example, first dispatch "
 "by dtype, then dispatch by vtype."
-msgstr ""
+msgstr "更好的方法是逐层调度，例如，首先按 dtype 调度，然后按 vtype 调度。"
 
 #: ../../development/type_system.rst:172
 msgid "In the above diagram:"
-msgstr ""
+msgstr "在上图中："
 
 #: ../../development/type_system.rst:174
 msgid "**mul** is general *multiplication* method."
-msgstr ""
+msgstr "mul 是通用的乘法方法。"
 
 #: ../../development/type_system.rst:175
 msgid "**imul** is integer multiplication method."
-msgstr ""
+msgstr "imul 是整数乘法方法。"
 
 #: ../../development/type_system.rst:176
 msgid "**fmul** is fixedpoint multiplication method."
-msgstr ""
+msgstr "fmul 是定点乘法方法。"
 
 #: ../../development/type_system.rst:177
 msgid "**rmul** is untyped multiplication method over ring 2k."
-msgstr ""
+msgstr "rmul 是在环2k上的无类型乘法方法。"
 
 #: ../../development/type_system.rst:178
 msgid ""
 "**mulss** multiplies two secrets, the domain and behavior are secure "
 "protocol dependent."
-msgstr ""
+msgstr "mulss 是两个秘密值的乘法，其域和行为依赖于安全协议。"
 
 #: ../../development/type_system.rst:180
 msgid "The above idea can be expressed in code like:"
-msgstr ""
+msgstr "上述思想用代码可以表示为："
 
 #: ../../development/type_system.rst:215
 msgid "Fast dispatch"
-msgstr ""
+msgstr "快速调度"
 
 #: ../../development/type_system.rst:217
 msgid ""
@@ -2801,43 +2850,45 @@ msgid ""
 "`fxp` and later convert back, these two conversion introduce non-trivial "
 "computation overhead in MPC setting."
 msgstr ""
+"在上面的例子中，我们观察到 `i2f` 和 `truncation` 可以被优化，直觉是当一个值从 `int` 转换为 `fxp` "
+"然后再转换回来时，这两个转换在 MPC 设置中引入了不小的计算开销。"
 
 #: ../../development/type_system.rst:219
 msgid ""
 "We use the so called *fast dispatch* to optimize it, when doing cross "
 "`int` and `fxp` multiplication, we could directly do `imul` without type "
 "lift and truncation."
-msgstr ""
+msgstr "我们使用所谓的快速调度来优化它，当进行跨 `int` 和 `fxp` 乘法时，我们可以直接进行 `imul` 而不需要类型提升和截断。"
 
 #: ../../development/type_system.rst:239 ../../development/type_system.rst:274
 msgid "Note:"
-msgstr ""
+msgstr "注意："
 
 #: ../../development/type_system.rst:241
 msgid "in the above implementation we didn't maintain the type correctness."
-msgstr ""
+msgstr "在上述实现中，我们没有维护类型的正确性。"
 
 #: ../../development/type_system.rst:242
 msgid ""
 "this pattern match based *fast dispatch* is exactly the same as compile-"
 "time *peephole optimization*."
-msgstr ""
+msgstr "这种基于模式匹配的快速调度与编译时的窥孔优化完全相同。"
 
 #: ../../development/type_system.rst:243
 msgid ""
 "dispatch inside a protocol is also complicated and beyond the scope of "
 "this article."
-msgstr ""
+msgstr "协议内部的调度也很复杂，超出了本文的范围。"
 
 #: ../../development/type_system.rst:247
 msgid "Implementation"
-msgstr ""
+msgstr "实现"
 
 #: ../../development/type_system.rst:249
 msgid ""
 "With *type functor*, we have the following op definitions in `mul` "
 "dispatch chain."
-msgstr ""
+msgstr "通过类型函子，我们在 `mul` 调度链中有以下操作定义。"
 
 #: ../../development/type_system.rst:258
 msgid ""
@@ -2846,16 +2897,18 @@ msgid ""
 " pattern matching we got `(V0=SECRET,D0=FXP), (V1=SECRET,D1=FXP)`, and "
 "the dispatch stack looks like:"
 msgstr ""
+"在调度阶段，SPU运行时使用类型信息来选择下一个调度操作。在这个例子中，`(x:sfxp, y:sfxp)` 被应用于操作 "
+"`mul`，通过模式匹配我们得到 `(V0=SECRET,D0=FXP), (V1=SECRET,D1=FXP)`，调度栈如下所示："
 
 #: ../../development/type_system.rst:276
 msgid ""
 "We use C++-like template type notation to represent polymorphic type "
 "constraints."
-msgstr ""
+msgstr "我们使用类似 C++ 模板类型的符号来表示多态类型约束。"
 
 #: ../../development/type_system.rst:279
 msgid "Partial type"
-msgstr ""
+msgstr "部分类型"
 
 #: ../../development/type_system.rst:281
 msgid ""
@@ -2867,6 +2920,8 @@ msgid ""
 "implementation, we don't erase the type explicitly, just leave it there "
 "without further use."
 msgstr ""
+"在类型调度步骤中类型信息用于选择下一个操作，当使用部分类型信息时它会被擦除。在上面的例子中，当使用 `dtype` 选择 `fmul` "
+"时，dtype 在之后是无用的，可以被擦除，"
 
 #: ../../development/type_system.rst:283
 msgid ""
@@ -2878,6 +2933,9 @@ msgid ""
 "stack popup, and eventually be completed as a full type when the whole "
 "dispatch progress is done."
 msgstr ""
+"返回值采用调度的反向处理。返回类型从下到上填充。例如，在上述的过程中，当调用 :code:`z=rmul(x,y)` 时，`rmul` 知道 "
+"`z` 的可见性类型是 `SECRET`，但还不知道其 `dtype`，所以这里 `z` 有一个部分类型 `type(SECRET, "
+"$UNKNOWN)`。类型将在栈弹出过程中逐步填充，最终在整个调度过程完成时作为一个完整类型完成。"
 
 #: ../../development/visibility_inference_rule.rst:2
 msgid "Visibility Inference"
@@ -3013,4 +3071,38 @@ msgstr ""
 #: ../../development/visibility_inference_rule.rst:123
 msgid "visibility(result) == common_visibility(operand, source, init)"
 msgstr ""
+
+#~ msgid ""
+#~ "Try **Larger** field(``FM128``) first. Larger"
+#~ " field can accommodate larger number "
+#~ "when fxp is fixed, so overflow can"
+#~ " be avoided. But it will drag "
+#~ "down the efficiency of **nearly all "
+#~ "op** dramatically."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "When numerator is very large(:math:`>2^{28}`"
+#~ " for ``FM64`` and ``fxp=18``), then "
+#~ "the integer part may overflow under "
+#~ "large probability, and this brings huge"
+#~ " error."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "Try **Larger** field(\\ ``FM128``) first. "
+#~ "Larger field can accommodate larger "
+#~ "number when fxp is fixed, so "
+#~ "overflow can be avoided. But it "
+#~ "will drag down the efficiency of "
+#~ "**nearly all op** dramatically."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "When numerator is very large(\\ "
+#~ ":math:`>2^{28}` for ``FM64`` and ``fxp=18``),"
+#~ " then the integer part may overflow"
+#~ " under large probability, and this "
+#~ "brings huge error."
+#~ msgstr ""
 

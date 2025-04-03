@@ -23,6 +23,10 @@ namespace spu::kernel::hal {
 Value soprf(SPUContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
+  if (x.numel() == 0) {
+    return x;
+  }
+
   // currently, wo only support LowMC block cipher
   SPU_ENFORCE(ctx->hasKernel("lowmc_b"));
   auto inp = x;
@@ -63,6 +67,10 @@ Value soprf(SPUContext* ctx, absl::Span<const spu::Value> inputs) {
                             return v.dtype() == inputs.front().dtype();
                           }),
               "not all element has same dtype");
+
+  if (inputs.front().numel() == 0) {
+    return inputs.front();
+  }
 
   std::vector<Value> inp;
   inp.reserve(inputs.size());

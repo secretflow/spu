@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: SPU \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-02-25 19:46+0800\n"
+"POT-Creation-Date: 2025-03-13 15:14+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -846,74 +846,78 @@ msgid "Virtually, it looks like below picture."
 msgstr ""
 
 #: ../../tutorials/quick_start.ipynb:238
+msgid "|alt text|"
+msgstr ""
+
+#: ../../tutorials/quick_start.ipynb:245
 msgid "alt text"
 msgstr ""
 
-#: ../../tutorials/quick_start.ipynb:241
+#: ../../tutorials/quick_start.ipynb:240
 msgid ""
 "On the left side, there are three physical nodes, a circle means the node"
 " runs a ``PYU Device`` and a triangle means the node runs a ``SPU Device "
 "Slice``."
 msgstr ""
 
-#: ../../tutorials/quick_start.ipynb:242
+#: ../../tutorials/quick_start.ipynb:241
 msgid ""
 "On the right side, its virtual device layout is constructed by the left "
 "physical node."
 msgstr ""
 
-#: ../../tutorials/quick_start.ipynb:244
+#: ../../tutorials/quick_start.ipynb:243
 msgid "We can also check the detail of ``SPU device``."
 msgstr ""
 
-#: ../../tutorials/quick_start.ipynb:307
+#: ../../tutorials/quick_start.ipynb:308
 msgid ""
 "The ``SPU`` device uses ``ABY3`` as the its backend protocol and runs on "
 "``Ring128`` field."
 msgstr ""
 
-#: ../../tutorials/quick_start.ipynb:310
+#: ../../tutorials/quick_start.ipynb:311
 msgid "Move JAX program to SPU"
 msgstr ""
 
-#: ../../tutorials/quick_start.ipynb:312
+#: ../../tutorials/quick_start.ipynb:313
 msgid "Now, let's move the JAX program from CPU to SPU."
 msgstr ""
 
-#: ../../tutorials/quick_start.ipynb:340
+#: ../../tutorials/quick_start.ipynb:341
 msgid ""
 "``ppd.device(\"P1\")(make_rand)`` convert a python function to a "
 "``DeviceFunction`` which will be called on ``P1`` device."
 msgstr ""
 
-#: ../../tutorials/quick_start.ipynb:342
+#: ../../tutorials/quick_start.ipynb:343
 msgid ""
 "The terminal that starts the cluster will print log like this, which "
 "means the ``make_rand`` function is relocated to another node and "
 "executed there."
 msgstr ""
 
-#: ../../tutorials/quick_start.ipynb:358
+#: ../../tutorials/quick_start.ipynb:359
 msgid ""
 "The result of ``make_rand`` is also stored on ``P1`` and invisible for "
 "other device/node. For example, when printing them, all the above objects"
 " are ``DeviceObject``, the plaintext object is invisible."
 msgstr ""
 
-#: ../../tutorials/quick_start.ipynb:410
+#: ../../tutorials/quick_start.ipynb:411
 msgid ""
 "And finally, we can reveal the result via ``ppd.get``, which will fetch "
 "the plaintext from devices to this host(notebook)."
 msgstr ""
 
-#: ../../tutorials/quick_start.ipynb:456
+#: ../../tutorials/quick_start.ipynb:457
 msgid ""
 "The result shows that the random variable ``x`` from ``P1`` is greater "
 "than ``y`` from ``P2``, we can check the result by revealing origin "
 "inputs."
 msgstr ""
 
-#: ../../tutorials/quick_start.ipynb:504
+#: ../../tutorials/quick_start.ipynb:505
 #, python-format
 msgid ""
 "With above code, we implements the classic `Yao's millionares' problem "
@@ -921,41 +925,41 @@ msgid ""
 "SPU. Note:"
 msgstr ""
 
-#: ../../tutorials/quick_start.ipynb:506
+#: ../../tutorials/quick_start.ipynb:507
 msgid ""
 "SPU re-uses ``jax`` api, and translates it to SPU executable, there is no"
 " ``import spu.jax as jax`` stuffs."
 msgstr ""
 
-#: ../../tutorials/quick_start.ipynb:507
+#: ../../tutorials/quick_start.ipynb:508
 msgid ""
 "SPU hides secure semantic, to compute a function *securely*, just simply "
 "mark it on SPU."
 msgstr ""
 
-#: ../../tutorials/quick_start.ipynb:519
+#: ../../tutorials/quick_start.ipynb:520
 msgid "Logistic regression"
 msgstr ""
 
-#: ../../tutorials/quick_start.ipynb:521
+#: ../../tutorials/quick_start.ipynb:522
 msgid ""
 "Now, let's check a more complicated example, privacy-preserving logistic "
 "regression."
 msgstr ""
 
-#: ../../tutorials/quick_start.ipynb:523
+#: ../../tutorials/quick_start.ipynb:524
 msgid "First, write the raw JAX program."
 msgstr ""
 
-#: ../../tutorials/quick_start.ipynb:592
+#: ../../tutorials/quick_start.ipynb:593
 msgid "Run the program on CPU, the result (AUC) works as expected."
 msgstr ""
 
-#: ../../tutorials/quick_start.ipynb:640
+#: ../../tutorials/quick_start.ipynb:641
 msgid "Now, use ``ppd.device`` to make the above code run on SPU."
 msgstr ""
 
-#: ../../tutorials/quick_start.ipynb:668
+#: ../../tutorials/quick_start.ipynb:669
 msgid ""
 "``P1`` loads the features(X) only, ``P2`` loads the labels(Y) only, and "
 "for convenience, P1/P2 uses the same dataset, but only loads partial "
@@ -964,42 +968,42 @@ msgid ""
 "``train`` function."
 msgstr ""
 
-#: ../../tutorials/quick_start.ipynb:670
+#: ../../tutorials/quick_start.ipynb:671
 msgid ""
 "It takes a little while to run the above program since privacy preserving"
 " program runs much slower than plaintext version."
 msgstr ""
 
-#: ../../tutorials/quick_start.ipynb:672
+#: ../../tutorials/quick_start.ipynb:673
 msgid ""
 "The parameters W and bias B are also located at SPU (no one knows the "
 "result). Finally, let's reveal the parameters to check correctness."
 msgstr ""
 
-#: ../../tutorials/quick_start.ipynb:720
+#: ../../tutorials/quick_start.ipynb:721
 msgid ""
 "For this simple dataset, AUC metric shows exactly the same, but since SPU"
 " uses fixed point arithmetic, which is not as accurate as IEEE floating "
 "point arithmetic, the trained parameters are not exactly the same."
 msgstr ""
 
-#: ../../tutorials/quick_start.ipynb:842
+#: ../../tutorials/quick_start.ipynb:843
 msgid "Visibility inference"
 msgstr ""
 
-#: ../../tutorials/quick_start.ipynb:844
+#: ../../tutorials/quick_start.ipynb:845
 msgid ""
 "SPU compiler/runtime pipeline works together to protect privacy "
 "information."
 msgstr ""
 
-#: ../../tutorials/quick_start.ipynb:846
+#: ../../tutorials/quick_start.ipynb:847
 msgid ""
 "When an object is transferred from PYU to SPU device, the data is first "
 "encrypted (secret shared) and then sent to SPU hosts."
 msgstr ""
 
-#: ../../tutorials/quick_start.ipynb:848
+#: ../../tutorials/quick_start.ipynb:849
 msgid ""
 "The SPU compiler deduces the visibility of the entire program, including "
 "all nodes in the compute DAG, from the input's visibility with a very "
@@ -1008,56 +1012,56 @@ msgid ""
 "through the entire DAG."
 msgstr ""
 
-#: ../../tutorials/quick_start.ipynb:850
+#: ../../tutorials/quick_start.ipynb:851
 msgid "For example,"
 msgstr ""
 
-#: ../../tutorials/quick_start.ipynb:900
+#: ../../tutorials/quick_start.ipynb:901
 msgid ""
 "It shows that ``ppd.device`` decorated ``sigmoid`` is a "
 "``DeviceFunction`` which could be launched by SPU."
 msgstr ""
 
-#: ../../tutorials/quick_start.ipynb:902
+#: ../../tutorials/quick_start.ipynb:903
 msgid "We can print the SPU bytecode via"
 msgstr ""
 
-#: ../../tutorials/quick_start.ipynb:989
+#: ../../tutorials/quick_start.ipynb:990
 msgid "It shows that the function type signature is:"
 msgstr ""
 
-#: ../../tutorials/quick_start.ipynb:995
+#: ../../tutorials/quick_start.ipynb:996
 msgid ""
 "Note, since the input is random from the driver (this notebook), which is"
 " not privacy information by default, so the input is ``tensor<3x3xf32>``,"
 " which means it accepts a ``3x3 public f32 tensor``."
 msgstr ""
 
-#: ../../tutorials/quick_start.ipynb:997
+#: ../../tutorials/quick_start.ipynb:998
 msgid ""
 "The compiler deduces the whole program's visibility type, and finds "
 "output should be ``tensor<3x3xf32>``, which means a ``3x3 public f32 "
 "tensor``."
 msgstr ""
 
-#: ../../tutorials/quick_start.ipynb:999
+#: ../../tutorials/quick_start.ipynb:1000
 msgid "Now let's generate input from ``P1`` and run the program again."
 msgstr ""
 
-#: ../../tutorials/quick_start.ipynb:1094
+#: ../../tutorials/quick_start.ipynb:1095
 msgid ""
 "Since the input comes from ``P1``, which is private, so the function "
 "signature becomes:"
 msgstr ""
 
-#: ../../tutorials/quick_start.ipynb:1100
+#: ../../tutorials/quick_start.ipynb:1101
 msgid ""
 "This means accepts ``1 secret i32`` data and outputs ``1 secret f32`` "
 "data, inside the compiled function, all internal instruction's visibility"
 " type is also correctly deduced."
 msgstr ""
 
-#: ../../tutorials/quick_start.ipynb:1102
+#: ../../tutorials/quick_start.ipynb:1103
 msgid ""
 "With the JIT(just in time) type deduction, SPU protects the clients' "
 "privacy."

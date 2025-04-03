@@ -18,7 +18,7 @@
 SCRIPT=`realpath $0`
 SCRIPTPATH=`dirname $SCRIPT`
 
-bazel build //libspu/dialect/pphlo/IR:op_doc
+cd `bazelisk info workspace`/src && bazelisk build //libspu/dialect/pphlo/IR:op_doc
 
-cp `bazel info workspace`/bazel-bin/libspu/dialect/pphlo/IR/op_doc.md $SCRIPTPATH/pphlo_op_doc.md
+cp `bazelisk info workspace`/bazel-bin/libspu/dialect/pphlo/IR/op_doc.md $SCRIPTPATH/pphlo_op_doc.md
 
