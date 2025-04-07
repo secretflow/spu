@@ -1,4 +1,4 @@
-# Copyright 2024 Ant Group Co., Ltd.
+# Copyright 2025 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,18 +15,18 @@ import jax.numpy as jnp
 import numpy as np
 
 
-def set_value(x, index, value, n):
+def set_value(x, index, value):
     """Change the value at the specified index of array x to a given value, where the index is secretly shared.
 
     Args:
         x: The input array to be modified.
         index: The index at which the value should be set (secretly shared).
         value: The new value to set at the specified index.
-        n: The length of the array x.
 
     Returns:
         The modified array with the value updated at the specified index.
     """
+    n = x.shape[0]
     perm = jnp.arange(n)
     perm_2 = jnp.ones(n) * index
 
@@ -35,50 +35,22 @@ def set_value(x, index, value, n):
     return set_x
 
 
-def get_value_1(x, index, n):
+def get_value_1(x, index):
     """Retrieve the value at the specified index of array x, where the index is secretly shared.
 
     Args:
         x: The input array from which to retrieve the value.
         index: The index to retrieve the value from (secretly shared).
-        n: The length of the array x.
 
     Returns:
         The value at the specified index.
     """
 
+    n = x.shape[0]
     perm = jnp.arange(n)
     perm_2 = jnp.ones(n) * index
     flag = jnp.equal(perm, perm_2)
     return jnp.sum(flag * x)
-
-
-def get_value_2(x, index_1, index_2, n):
-    """Retrieve the value at the specified 2D index of array x, where index_1 is secretly shared and index_2 is plaintext.
-
-    Args:
-        x: The input 2D array from which to retrieve the value.
-        index_1: The row index (secretly shared).
-        index_2: The column index (plaintext).
-        n: The size of the array x (assuming it is square).
-
-    Returns:
-        The value at the specified 2D index.
-    """
-
-    # Initialize row index
-    perm_1 = jnp.arange(n)[:, None]
-    perm_1 = jnp.tile(perm_1, (1, index_2 + 1))
-
-    perm_2_row = jnp.ones((n, index_2 + 1)) * index_1
-
-    # Match rows
-    flag_row = jnp.equal(perm_1, perm_2_row)
-
-    # Extract column values directly using plaintext index_2
-    flag = flag_row[:, index_2]
-    # Return the value at the matching index
-    return jnp.sum(flag * x[:, index_2])
 
 
 def mpc_dijkstra(adj_matrix, start):
@@ -97,8 +69,8 @@ def mpc_dijkstra(adj_matrix, start):
     distances : ndarray
         The shortest paths from the starting point to all other points.
     """
-    
-    num_samples=adj_matrix.shape[0]
+
+    num_samples = adj_matrix.shape[0]
 
     # Initialize with Inf value
     sinf = np.inf
@@ -106,9 +78,7 @@ def mpc_dijkstra(adj_matrix, start):
 
     # Calculate the shortest path from the starting point to other points using Dijkstra's algorithm
     distances = distances.at[start].set(0)
-    # visited = [False] * num_samples
     visited = jnp.zeros(num_samples, dtype=bool)  # Initialize an array to False
-    # visited = jnp.array(visited)
 
     for i in range(num_samples):
         # Find the nearest node that is not currently visited
@@ -120,13 +90,13 @@ def mpc_dijkstra(adj_matrix, start):
             min_distance = min_distance + flag * (distances[v] - min_distance)
             min_index = min_index + flag * (v - min_index)
 
-        visited = set_value(visited, min_index, True, num_samples)
+        visited = set_value(visited, min_index, True)
 
         # Update the distance between adjacent nodes
-        temp_dis = get_value_1(distances, min_index, num_samples)
+        temp_dis = get_value_1(distances, min_index)
 
         for v in range(num_samples):
-            temp_adj = get_value_2(adj_matrix, min_index, v, num_samples)
+            temp_adj = get_value_1(adj_matrix[:, v], min_index)
             dist_new = temp_dis + temp_adj
             distances = distances.at[v].set(
                 distances[v]

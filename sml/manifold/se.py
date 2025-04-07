@@ -1,4 +1,4 @@
-# Copyright 2024 Ant Group Co., Ltd.
+# Copyright 2025 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -50,7 +50,7 @@ class SE:
 
     n_features : int
         The number of features.
-    
+
     max_iterations : int
         Maximum number of iterations of jacobi algorithm.
 
@@ -93,6 +93,7 @@ class SE:
         max_iterations=5,
         affinity="nearest_neighbors",
     ):
+        assert affinity == "nearest_neighbors", "affinity must be 'nearest_neighbors'"
         self.n_components = n_components
         self.n_neighbors = n_neighbors
         self.n_samples = n_samples
@@ -112,9 +113,7 @@ class SE:
         affinity_matrix_ : ndarray
             The symmetric affinity matrix.
         """
-        self.affinity_matrix_ = mpc_kneighbors_graph(
-            X, self.n_samples, self.n_features, self.n_neighbors
-        )
+        self.affinity_matrix_ = mpc_kneighbors_graph(X, self.n_neighbors)
         # currently only symmetric affinity_matrix supported
         self.affinity_matrix_ = 0.5 * (self.affinity_matrix_ + self.affinity_matrix_.T)
         return self.affinity_matrix_
@@ -165,7 +164,7 @@ class SE:
         self._get_affinity_matrix(X)
         D, L = self._normalization_affinity_matrix()
 
-        L, Q = Jacobi(L, self.n_samples, self.max_iterations)
+        L, Q = Jacobi(L, self.max_iterations)
         L = jnp.diag(L)
         L = jnp.array(L)
 

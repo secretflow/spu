@@ -1,4 +1,4 @@
-# Copyright 2024 Ant Group Co., Ltd.
+# Copyright 2025 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -35,7 +35,7 @@ def compute_elements(X, k, l):
     cos_2theta = jnp.reciprocal(
         jnp.sqrt(1 + 4 * jnp.square(tar_elements * jnp.reciprocal(tar_diff)))
     )
-    
+
     cos2 = 0.5 + 0.5 * cos_2theta
     sin2 = 0.5 - 0.5 * cos_2theta
     flag_zero = jnp.equal(tar_elements, 0)
@@ -49,7 +49,7 @@ def compute_elements(X, k, l):
     return cos, sin
 
 
-def rotation_matrix(X, k, l, num_samples):
+def rotation_matrix(X, k, l):
     """
     Compute the Jacobi rotation matrix for eliminating the off-diagonal element X[k][l].
 
@@ -61,11 +61,11 @@ def rotation_matrix(X, k, l, num_samples):
         X: The input matrix for which the rotation matrix is computed.
         k: The row index of the target off-diagonal element.
         l: The column index of the target off-diagonal element.
-        num_samples: The size of the matrix (number of rows/columns).
 
     Returns:
         J: The Jacobi rotation matrix of size (num_samples, num_samples).
     """
+    num_samples = X.shape[0]
     J = jnp.eye(num_samples)
     k_values = jnp.array(k)
     l_values = jnp.array(l)
@@ -85,7 +85,7 @@ def rotation_matrix(X, k, l, num_samples):
 
 # Ref:
 # https://arxiv.org/abs/2105.07612
-def Jacobi(X, num_samples, max_iterations = 5):
+def Jacobi(X, max_iterations=5):
     """
     Perform Jacobi eigenvalue decomposition on matrix X.
 
@@ -95,13 +95,13 @@ def Jacobi(X, num_samples, max_iterations = 5):
 
     Args:
         X: The input symmetric matrix (num_samples x num_samples) to be diagonalized.
-        num_samples: The size of the matrix (number of rows/columns).
         max_iterations: The maximum number of iterations has little impact on the accuracy, and the default value is 5.
 
     Returns:
         X: The diagonalized matrix (eigenvalues on the diagonal).
         Q: The accumulated orthogonal transformation matrix (eigenvectors). Each row of the matrix represents a corresponding eigenvector.
     """
+    num_samples = X.shape[0]
     Q = jnp.eye(num_samples)
     k = 0
     while k < max_iterations:
@@ -132,7 +132,7 @@ def Jacobi(X, num_samples, max_iterations = 5):
                 r = jnp.concatenate([r, r_1])
 
             # Calculate rotation matrix
-            J = rotation_matrix(X, l, r, num_samples)
+            J = rotation_matrix(X, l, r)
             # Update X and Q with rotation matrix
             X = jnp.dot(J.T, jnp.dot(X, J))
             Q = jnp.dot(J.T, Q)

@@ -1,4 +1,4 @@
-# Copyright 2024 Ant Group Co., Ltd.
+# Copyright 2025 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -41,8 +41,12 @@ def emul_se(mode: emulation.Mode.MULTIPROCESS):
             return X_transformed
 
         # Set sample size and dimensions
-        num_samples = 20  # Number of samples
-        num_features = 4  # Sample dimension
+        num_samples = (
+            6  # Number of samples, se can meet larger num_samples, such as 150
+        )
+        num_features = (
+            4  # Sample dimension, se can meet larger num_features, such as 12
+        )
         k = 6  # Number of nearest neighbors
         num_components = 3  # Dimension after dimensionality reduction
 
@@ -75,7 +79,7 @@ def emul_se(mode: emulation.Mode.MULTIPROCESS):
         embedding = spectral_embedding(
             affinity_matrix, n_components=num_components, random_state=None
         )
-        
+
         # Since the final calculation result is calculated by the eigenvector, the accuracy cannot reach 1e-3
         np.testing.assert_allclose(jnp.abs(embedding), jnp.abs(ans), rtol=0, atol=1e-2)
 

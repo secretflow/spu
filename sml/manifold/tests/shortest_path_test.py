@@ -1,4 +1,4 @@
-# Copyright 2024 Ant Group Co., Ltd.
+# Copyright 2025 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
-import sys
 import unittest
 
 import jax
@@ -25,16 +23,13 @@ import spu.utils.simulation as spsim
 from sml.manifold.dijkstra import mpc_dijkstra
 from sml.manifold.floyd import floyd_opt
 
-# Add the sml directory to the path
-# sys.path.append(os.path.join(os.path.dirname(__file__), '../../../'))
-
 
 class UnitTests(unittest.TestCase):
     def test_shortest_path(self):
         sim = spsim.Simulator.simple(3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM64)
 
         def dijkstra_all_pairs(D):
-            num_samples=D.shape[0]
+            num_samples = D.shape[0]
 
             def compute_distances_for_sample(i, D):
                 return mpc_dijkstra(D, i)
@@ -43,7 +38,7 @@ class UnitTests(unittest.TestCase):
                 compute_distances_for_sample, in_axes=(0, None)
             )
 
-            indices = jnp.arange(num_samples)  # 样本索引
+            indices = jnp.arange(num_samples)
             mpc_shortest_paths = compute_distances(indices, D)
             return mpc_shortest_paths
 

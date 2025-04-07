@@ -1,4 +1,4 @@
-# Copyright 2024 Ant Group Co., Ltd.
+# Copyright 2025 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,22 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
-import sys
 import time
 import unittest
 
 import jax
-import numpy as np
 import jax.numpy as jnp
+import numpy as np
 from sklearn.neighbors import kneighbors_graph
 
 import spu.libspu as libspu
 import spu.utils.simulation as spsim
 from sml.manifold.kneighbors import mpc_kneighbors_graph
-
-# Add the sml directory to the path
-# sys.path.append(os.path.join(os.path.dirname(__file__), '../../../'))
 
 
 class UnitTests(unittest.TestCase):
@@ -48,22 +43,17 @@ class UnitTests(unittest.TestCase):
         knn = spsim.sim_jax(
             sim,
             mpc_kneighbors_graph,
-            static_argnums=(
-                1,
-                2,
-                3,
-            ),
-        )(X, num_samples, num_features, k)
+            static_argnums=(1,),
+        )(X, k)
 
         # sklearn test
         affinity_matrix = kneighbors_graph(
             X, n_neighbors=k, mode="distance", include_self=False
         )
-        
+
         np.testing.assert_allclose(
             jnp.abs(knn), jnp.abs(affinity_matrix.toarray()), rtol=0, atol=1e-3
         )
-
 
 
 if __name__ == "__main__":

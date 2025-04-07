@@ -1,4 +1,4 @@
-# Copyright 2024 Ant Group Co., Ltd.
+# Copyright 2025 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ import jax.numpy as jnp
 from sml.manifold.floyd import floyd_opt
 from sml.manifold.jacobi import Jacobi
 from sml.manifold.kneighbors import mpc_kneighbors_graph
+
 
 class ISOMAP:
     """Isomap Embedding.
@@ -47,7 +48,7 @@ class ISOMAP:
 
     max_iterations : int
         Maximum number of iterations of jacobi algorithm.
-    
+
     Attributes
     ----------
     nbrs_ : ndarray
@@ -88,6 +89,8 @@ class ISOMAP:
         p=2,
         max_iterations=5,
     ):
+        assert metric == "minkowski", "metric must be 'minkowski'"
+        assert p == 2, "p must be 2"
         self.n_components = n_components
         self.n_neighbors = n_neighbors
         self.n_samples = n_samples
@@ -107,9 +110,7 @@ class ISOMAP:
         nbrs_ : ndarray
             The k-nearest neighbors graph.
         """
-        self.nbrs_ = mpc_kneighbors_graph(
-            X, self.n_samples, self.n_features, self.n_neighbors
-        )
+        self.nbrs_ = mpc_kneighbors_graph(X, self.n_neighbors)
         return self.nbrs_
 
     def _get_shortest_paths(self):
@@ -155,9 +156,9 @@ class ISOMAP:
         dist_2 = jnp.sum(dist_2_i)
         dist_2 = dist_2 / (self.n_samples)
         B = B - dist_2_i[:, None] - dist_2_j[None, :] + dist_2
-        
+
         # Compute eigenvalues and eigenvectors
-        values, vectors = Jacobi(B, self.n_samples, self.max_iterations)
+        values, vectors = Jacobi(B, self.max_iterations)
 
         values = jnp.diag(values)
         values = jnp.array(values)

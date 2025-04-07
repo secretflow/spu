@@ -1,4 +1,4 @@
-# Copyright 2024 Ant Group Co., Ltd.
+# Copyright 2025 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
-import sys
 import time
 import unittest
 
@@ -25,8 +23,7 @@ import spu.libspu as libspu
 import spu.utils.simulation as spsim
 from sml.manifold.isomap import ISOMAP
 
-# Add the sml directory to the path
-# sys.path.append(os.path.join(os.path.dirname(__file__), '../../../'))
+
 class UnitTests(unittest.TestCase):
     def test_isomap(self):
         sim = spsim.Simulator.simple(3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM64)
@@ -48,8 +45,12 @@ class UnitTests(unittest.TestCase):
             return X_transformed
 
         # Set sample size and dimensions
-        num_samples = 20  # Number of samples
-        num_features = 4  # Sample dimension
+        num_samples = (
+            20  # Number of samples, isomap can meet larger num_samples, such as 150
+        )
+        num_features = (
+            4  # Sample dimension, isomap can meet larger num_features, such as 12
+        )
         k = 5  # Number of nearest neighbors
         num_components = 3  # Dimension after dimensionality reduction
 

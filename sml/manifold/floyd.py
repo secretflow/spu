@@ -1,4 +1,4 @@
-# Copyright 2024 Ant Group Co., Ltd.
+# Copyright 2025 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ def floyd(dist):
     return dist
 
 
-# Optimized Floyd algorithm, but due to the. at.set problem, the run time is relatively long
+# Optimized Floyd algorithm, but due to the .at.set problem, the run time is relatively long
 def floyd_opt_1(dist):
     # 1. Require that dist is a symmetric matrix.
     # 2. Require that the diagonal elements of dist are 0.
@@ -76,7 +76,7 @@ def floyd_opt_1(dist):
     return dist
 
 
-# Floyd optimized without using. at.set
+# Floyd optimized without using .at.set
 def floyd_opt(D):
     """Optimized Floyd-Warshall algorithm to compute the shortest paths between all pairs of nodes in a graph.
 

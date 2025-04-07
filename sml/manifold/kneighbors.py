@@ -1,4 +1,4 @@
-# Copyright 2024 Ant Group Co., Ltd.
+# Copyright 2025 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,8 +17,6 @@ import jax.numpy as jnp
 
 def mpc_kneighbors_graph(
     X,
-    num_samples,
-    num_features,
     n_neighbors,
     *,
     mode="distance",
@@ -34,8 +32,6 @@ def mpc_kneighbors_graph(
 
     Args:
         X: A (num_samples, num_features) matrix containing the input samples.
-        num_samples: Total number of samples in X.
-        num_features: Number of features in each sample.
         n_neighbors: The number of nearest neighbors to retain for each sample, excluding the sample itself.
         mode: Specifies the output format (default: "distance").
         metric: The distance metric used (default: "minkowski").
@@ -45,6 +41,12 @@ def mpc_kneighbors_graph(
         Knn3: A (num_samples, num_samples) matrix where each row contains the distances
               to its k-nearest neighbors, with all other entries set to zero.
     """
+
+    assert mode == "distance", "mode must be 'distance'"
+    assert metric == "minkowski", "metric must be 'minkowski'"
+    assert p == 2, "p must be 2"
+
+    num_samples = X.shape[0]
 
     # Calculate the square of the Euclidean distance between every two samples
     X_expanded = jnp.expand_dims(X, axis=1) - jnp.expand_dims(X, axis=0)
