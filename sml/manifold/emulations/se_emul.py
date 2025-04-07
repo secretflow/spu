@@ -42,7 +42,7 @@ def emul_se(mode: emulation.Mode.MULTIPROCESS):
 
         # Set sample size and dimensions
         num_samples = (
-            6  # Number of samples, se can meet larger num_samples, such as 150
+            20  # Number of samples, se can meet larger num_samples, such as 150
         )
         num_features = (
             4  # Sample dimension, se can meet larger num_features, such as 12
