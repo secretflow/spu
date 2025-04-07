@@ -22,14 +22,9 @@ namespace spu::mpc::swift {
 // rank_hash : send H(msg)
 // rank_recv : receiver
 // P_send, P_hash -> P_recv : msg
-// latency: 3
-// comm:
-// Party_send: ce::K()
-// Party_hash, Party_recv: 0
-// ignore the const comm which is independent with numel
-NdArrayRef JointMessagePassing(KernelEvalContext* ctx, const NdArrayRef& msg,
-                               size_t rank_send, size_t rank_hash,
-                               size_t rank_recv, std::string_view tag);
+void JointMessagePassing(KernelEvalContext* ctx, NdArrayRef& msg,
+                         size_t rank_send, size_t rank_hash, size_t rank_recv,
+                         std::string_view tag);
 
 // Pi, Pj jonit generate share of a value that is known to both
 NdArrayRef JointSharing(KernelEvalContext* ctx, const NdArrayRef& msg,
@@ -152,20 +147,6 @@ class MulAP : public BinaryKernel {
   ce::CExpr latency() const override { return ce::Const(0); }
 
   ce::CExpr comm() const override { return ce::Const(0); }
-
-  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
-                  const NdArrayRef& rhs) const override;
-};
-
-class MulAA_semi : public BinaryKernel {
- public:
-  static constexpr const char* kBindName() { return "mul_aa_semi"; }
-
-  ce::CExpr latency() const override { return ce::Const(2); }
-
-  ce::CExpr comm() const override { return ce::K() * 4; }
-
-  Kind kind() const override { return Kind::Dynamic; }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
                   const NdArrayRef& rhs) const override;

@@ -41,6 +41,9 @@ size_t getNumBits(const NdArrayRef& in) {
 }
 }  // namespace
 
+#define BUCKET_SIZE 3
+#define OPEN_SIZE 3
+
 NdArrayRef B2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const auto field = in.eltype().as<Ring2k>()->field();
   auto* comm = ctx->getState<Communicator>();
@@ -69,9 +72,9 @@ NdArrayRef B2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   // P1, P2 -> P0 : beta
   // P0, P1 -> P2 : alpha1
   // P2, P0 -> P1 : alpha2
-  beta = JointMessagePassing(ctx, beta, 1, 2, 0, "beta");
-  alpha1 = JointMessagePassing(ctx, alpha1, 0, 1, 2, "alpha1");
-  alpha2 = JointMessagePassing(ctx, alpha2, 2, 0, 1, "alpha2");
+  JointMessagePassing(ctx, beta, 1, 2, 0, "beta");
+  JointMessagePassing(ctx, alpha1, 0, 1, 2, "alpha1");
+  JointMessagePassing(ctx, alpha2, 2, 0, 1, "alpha2");
 
   out = ring_xor(ring_xor(beta, alpha1), alpha2);
 
@@ -268,6 +271,41 @@ NdArrayRef RSS_B2P(KernelEvalContext* ctx, const NdArrayRef& in,
   });
 }
 
+NdArrayRef RSS_XorBP(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                     const NdArrayRef& rhs) {
+  // semi-honest XorBP for RSS
+  // store the shares like RSS
+  // P0 : x0  x1  dummy
+  // P1 : x1  x2  dummy
+  // P2 : x2  x0  dummy
+  auto* comm = ctx->getState<Communicator>();
+  const auto* lhs_ty = lhs.eltype().as<BShrTy>();
+
+  const size_t out_nbits = std::max(getNumBits(lhs), getNumBits(rhs));
+  const auto field = lhs_ty->field();
+
+  auto rank = comm->getRank();
+
+  return DISPATCH_ALL_FIELDS(field, [&]() {
+    using el_t = ring2k_t;
+    using ashr_t = std::array<el_t, 3>;
+
+    NdArrayRef out(makeType<BShrTy>(field, out_nbits), lhs.shape());
+    NdArrayView<ashr_t> _out(out);
+    NdArrayView<ashr_t> _lhs(lhs);
+    NdArrayView<el_t> _rhs(rhs);
+
+    pforeach(0, lhs.numel(), [&](int64_t idx) {
+      _out[idx][0] = _lhs[idx][0];
+      _out[idx][1] = _lhs[idx][1];
+      _out[idx][2] = el_t(0);
+      if (rank == 0) _out[idx][1] ^= _rhs[idx];
+      if (rank == 1) _out[idx][0] ^= _rhs[idx];
+    });
+    return out.as(makeType<BShrTy>(field, out_nbits));
+  });
+}
+
 NdArrayRef RssAnd_semi(KernelEvalContext* ctx, const NdArrayRef& lhs,
                        const NdArrayRef& rhs, std::string_view tag) {
   // semi-honest mult based on RSS
@@ -314,72 +352,250 @@ NdArrayRef RssAnd_semi(KernelEvalContext* ctx, const NdArrayRef& lhs,
   });
 }
 
-// The boolean version of the MulPre protocol
-// The security is limited since we can't extend the field for the boolean share
-// For the MulPre, the probability of accepting incorrect triple is 2^{-sigma}
-// For the AndPre, the probability of accepting incorrect triple is 1/2
-// However, when we are handling a boolean share with nbits, the probability
-// will be 2^{-nbits}
+// permutation of an array of elements
+// (where each element is a "multiplication triple")
+// ref: https://link.springer.com/chapter/10.1007/978-3-319-56614-6_8
+// <High-Throughput Secure Three-Party Computation for Malicious Adversaries and
+// an Honest Majority>
+// P14: protocol 2.13
+void permute(KernelEvalContext* ctx, NdArrayRef& a, NdArrayRef& b,
+             NdArrayRef& c) {
+  auto* prg_state = ctx->getState<PrgState>();
+  const auto field = a.eltype().as<Ring2k>()->field();
+  auto numel = a.numel();
+  auto random_idx = prg_state->genPubl(field, {numel});
+
+  DISPATCH_ALL_FIELDS(field, [&]() {
+    using el_t = ring2k_t;
+    using shr_t = std::array<el_t, 3>;
+
+    el_t tmp0, tmp1, tmp2;
+    el_t idx;
+    NdArrayView<shr_t> _a(a);
+    NdArrayView<shr_t> _b(b);
+    NdArrayView<shr_t> _c(c);
+    NdArrayView<el_t> _random_idx(random_idx);
+
+    for (auto j = 0; j < numel; j++) {
+      // idx \in {j, ..., M}
+      idx = (_random_idx[j] % (numel - j)) + j;
+
+      // swap a[i] and a[j]
+      tmp0 = _a[idx][0];
+      tmp1 = _a[idx][1];
+      tmp2 = _a[idx][2];
+      _a[idx][0] = _a[j][0];
+      _a[idx][1] = _a[j][1];
+      _a[idx][2] = _a[j][2];
+      _a[j][0] = tmp0;
+      _a[j][1] = tmp1;
+      _a[j][2] = tmp2;
+
+      // swap b[i] and b[j]
+      tmp0 = _b[idx][0];
+      tmp1 = _b[idx][1];
+      tmp2 = _b[idx][2];
+      _b[idx][0] = _b[j][0];
+      _b[idx][1] = _b[j][1];
+      _b[idx][2] = _b[j][2];
+      _b[j][0] = tmp0;
+      _b[j][1] = tmp1;
+      _b[j][2] = tmp2;
+
+      // swap c[i] and c[j]
+      tmp0 = _c[idx][0];
+      tmp1 = _c[idx][1];
+      tmp2 = _c[idx][2];
+      _c[idx][0] = _c[j][0];
+      _c[idx][1] = _c[j][1];
+      _c[idx][2] = _c[j][2];
+      _c[j][0] = tmp0;
+      _c[j][1] = tmp1;
+      _c[j][2] = tmp2;
+    }
+  });
+}
+
+// ref: https://link.springer.com/chapter/10.1007/978-3-319-56614-6_8
+// P17: protocol 2.22
+bool verifyByOpen(KernelEvalContext* ctx, const NdArrayRef& a,
+                  const NdArrayRef& b, const NdArrayRef& c) {
+  auto reconstruct_a = RSS_B2P(ctx, a, "reconstruct a");
+  auto reconstruct_b = RSS_B2P(ctx, b, "reconstruct b");
+  auto reconstruct_c = RSS_B2P(ctx, c, "reconstruct c");
+
+  if (ring_all_equal(reconstruct_c, ring_and(reconstruct_a, reconstruct_b))) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+// ref: https://link.springer.com/chapter/10.1007/978-3-319-56614-6_8
+// P18: protocol 2.24
+bool verifyByOther(KernelEvalContext* ctx, const NdArrayRef& x,
+                   const NdArrayRef& y, const NdArrayRef& z,
+                   const NdArrayRef& a, const NdArrayRef& b,
+                   const NdArrayRef& c) {
+  auto* comm = ctx->getState<Communicator>();
+  auto xorbb = XorBB();
+  auto andbp = AndBP();
+
+  // rho   = x ^ a
+  // sigma = y ^ b
+  auto rho = xorbb.proc(ctx, x, a);
+  auto sigma = xorbb.proc(ctx, y, b);
+
+  // open rho, sigma
+  auto reconstruct_rho = RSS_B2P(ctx, rho, "reconstruct rho");
+  auto reconstruct_sigma = RSS_B2P(ctx, sigma, "reconstruct sigma");
+
+  // compareview(rho, sigma)
+  auto recv_reconstruct_rho = comm->rotate(reconstruct_rho, "rotate rho");
+  auto recv_reconstruct_sigma = comm->rotate(reconstruct_sigma, "rotate sigma");
+  SPU_ENFORCE(ring_all_equal(reconstruct_rho, recv_reconstruct_rho));
+  SPU_ENFORCE(ring_all_equal(reconstruct_sigma, recv_reconstruct_sigma));
+
+  // res = [z] ^ [c] ^ (sigma & [a]) ^ (rho & [b]) ^ (sigma & rho)
+  // expect: res = 0
+  auto res = xorbb.proc(ctx, z, c);
+  res = xorbb.proc(ctx, res, andbp.proc(ctx, a, reconstruct_sigma));
+  res = xorbb.proc(ctx, res, andbp.proc(ctx, b, reconstruct_rho));
+  res = RSS_XorBP(ctx, res, ring_and(reconstruct_rho, reconstruct_sigma));
+
+  auto t = getFirstShare(res);
+  auto s = getSecondShare(res);
+
+  // different from the secret sharing scheme in
+  // https://link.springer.com/chapter/10.1007/978-3-319-56614-6_8
+  // for RSS, so (res = 0) <=> (s_{j} = t_{j-1} ^ s_{j-1})
+  auto s_recv = comm->rotate(s, "rotate s_{j}");
+
+  return ring_all_equal(s_recv, ring_xor(t, s));
+}
+
+// ref:
+// <High-Throughput Secure Three-Party Computation for Malicious Adversaries and
+// an Honest Majority> P24: protocol 3.2
 NdArrayRef AndPre(KernelEvalContext* ctx, const NdArrayRef& lhs,
                   const NdArrayRef& rhs) {
   const auto field = lhs.eltype().as<RingTy>()->field();
-  auto* prg_state = ctx->getState<PrgState>();
-  const int64_t out_nbits = std::min(getNumBits(lhs), getNumBits(rhs));
+  // auto* prg_state = ctx->getState<PrgState>();
+  // const int64_t out_nbits = std::min(getNumBits(lhs), getNumBits(rhs));
   auto numel = lhs.numel();
+  SPU_ENFORCE(BUCKET_SIZE > 1);
 
-  // 1. calculate lhs & rhs in the semi-honest setting
-  auto res = RssAnd_semi(ctx, lhs, rhs, "and: lhs & rhs");
+  const auto default_nbits = SizeOf(field) * 8;
 
-  // 2. generate potentially incorrect triple (a, b, c)
-  SPU_ENFORCE(lhs.shape() == rhs.shape());
-  auto a = RandB_RSS(ctx, lhs.shape(), field, out_nbits);
-  // b = rhs
-  auto c = RssAnd_semi(ctx, a, rhs, "and: a & b");
+  // generate random sharings
+  auto a =
+      RandB_RSS(ctx, {numel * BUCKET_SIZE + OPEN_SIZE}, field, default_nbits);
+  auto b =
+      RandB_RSS(ctx, {numel * BUCKET_SIZE + OPEN_SIZE}, field, default_nbits);
 
-  // 3. sample a random bit r
-  auto r = prg_state->genPubl(field, lhs.shape());
-  auto v = NdArrayRef(makeType<BShrTy>(field, out_nbits), lhs.shape());
-  auto w = NdArrayRef(makeType<BShrTy>(field, out_nbits), lhs.shape());
-  return DISPATCH_ALL_FIELDS(field, [&]() {
-    using bshr_t = std::array<ring2k_t, 3>;
-    NdArrayView<ring2k_t> _r(r);
-    NdArrayView<bshr_t> _lhs(lhs);
-    NdArrayView<bshr_t> _a(a);
-    NdArrayView<bshr_t> _v(v);
+  // generate multiplication triples
+  auto c = RssAnd_semi(ctx, a, b, "and: a & b");
 
-    pforeach(0, numel, [&](int64_t idx) {
-      _v[idx][0] = (_r[idx] & _lhs[idx][0]) ^ _a[idx][0];
-      _v[idx][1] = (_r[idx] & _lhs[idx][1]) ^ _a[idx][1];
-      _v[idx][2] = (_r[idx] & _lhs[idx][2]) ^ _a[idx][2];
+  // permute the triples
+  permute(ctx, a, b, c);
+
+  // cut the first OPEN_SIZE triples and run verifyByOpen
+  NdArrayRef open_a(makeType<BShrTy>(field), {OPEN_SIZE});
+  NdArrayRef open_b(makeType<BShrTy>(field), {OPEN_SIZE});
+  NdArrayRef open_c(makeType<BShrTy>(field), {OPEN_SIZE});
+
+  DISPATCH_ALL_FIELDS(field, [&]() {
+    using shr_t = std::array<ring2k_t, 3>;
+
+    NdArrayView<shr_t> _open_a(open_a);
+    NdArrayView<shr_t> _open_b(open_b);
+    NdArrayView<shr_t> _open_c(open_c);
+
+    NdArrayView<shr_t> _a(a);
+    NdArrayView<shr_t> _b(b);
+    NdArrayView<shr_t> _c(c);
+
+    pforeach(0, OPEN_SIZE, [&](int64_t idx) {
+      _open_a[idx][0] = _a[idx][0];
+      _open_a[idx][1] = _a[idx][1];
+      _open_a[idx][2] = _a[idx][2];
+
+      _open_b[idx][0] = _b[idx][0];
+      _open_b[idx][1] = _b[idx][1];
+      _open_b[idx][2] = _b[idx][2];
+
+      _open_c[idx][0] = _c[idx][0];
+      _open_c[idx][1] = _c[idx][1];
+      _open_c[idx][2] = _c[idx][2];
     });
-
-    auto reconstruct_v = RSS_B2P(ctx, v, "reconstruct v in AndPre");
-
-    NdArrayView<ring2k_t> _reconstruct_v(reconstruct_v);
-    NdArrayView<bshr_t> _w(w);
-    NdArrayView<bshr_t> _c(c);
-    NdArrayView<bshr_t> _rhs(rhs);
-    NdArrayView<bshr_t> _res(res);
-
-    pforeach(0, numel, [&](int64_t idx) {
-      _w[idx][0] = (_reconstruct_v[idx] & _rhs[idx][0]) ^
-                   (_r[idx] & _res[idx][0]) ^ _c[idx][0];
-      _w[idx][1] = (_reconstruct_v[idx] & _rhs[idx][1]) ^
-                   (_r[idx] & _res[idx][1]) ^ _c[idx][1];
-      _w[idx][2] = (_reconstruct_v[idx] & _rhs[idx][2]) ^
-                   (_r[idx] & _res[idx][2]) ^ _c[idx][2];
-    });
-
-    auto reconstruct_w = RSS_B2P(ctx, w, "reconstruct w in And Pre");
-    auto zeros = ring_zeros(field, lhs.shape());
-    // only check the nbits
-    int64_t ring_bit = SizeOf(field) * 8;
-    reconstruct_w = ring_lshift(reconstruct_w, {ring_bit - out_nbits});
-    reconstruct_w = ring_rshift(reconstruct_w, {ring_bit - out_nbits});
-    SPU_ENFORCE(ring_all_equal(zeros, reconstruct_w), "malicious in AndPre");
-
-    return res;
   });
+
+  if (!verifyByOpen(ctx, open_a, open_b, open_c)) {
+    SPU_THROW("abort in openByOpen");
+  }
+
+  // divide remaining triples into numel buckets, each of size BUCKET_SIZE
+  // we put the j-th elements in each bucket into one vector
+  // so that:
+  // 1. we can get the first vector directly as output
+  // 2. we can deal with each bucket parallel
+  auto buckets_a = std::vector<NdArrayRef>(BUCKET_SIZE);
+  auto buckets_b = std::vector<NdArrayRef>(BUCKET_SIZE);
+  auto buckets_c = std::vector<NdArrayRef>(BUCKET_SIZE);
+  DISPATCH_ALL_FIELDS(field, [&]() {
+    using shr_t = std::array<ring2k_t, 3>;
+
+    NdArrayView<shr_t> _a(a);
+    NdArrayView<shr_t> _b(b);
+    NdArrayView<shr_t> _c(c);
+
+    for (auto idx = 0; idx < BUCKET_SIZE; idx++) {
+      buckets_a[idx] = NdArrayRef(makeType<BShrTy>(field), {numel});
+      buckets_b[idx] = NdArrayRef(makeType<BShrTy>(field), {numel});
+      buckets_c[idx] = NdArrayRef(makeType<BShrTy>(field), {numel});
+      NdArrayView<shr_t> _bucket_a(buckets_a[idx]);
+      NdArrayView<shr_t> _bucket_b(buckets_b[idx]);
+      NdArrayView<shr_t> _bucket_c(buckets_c[idx]);
+
+      pforeach(0, numel, [&](int64_t j) {
+        _bucket_a[j][0] = _a[OPEN_SIZE + j * BUCKET_SIZE + idx][0];
+        _bucket_a[j][1] = _a[OPEN_SIZE + j * BUCKET_SIZE + idx][1];
+        _bucket_a[j][2] = _a[OPEN_SIZE + j * BUCKET_SIZE + idx][2];
+
+        _bucket_b[j][0] = _b[OPEN_SIZE + j * BUCKET_SIZE + idx][0];
+        _bucket_b[j][1] = _b[OPEN_SIZE + j * BUCKET_SIZE + idx][1];
+        _bucket_b[j][2] = _b[OPEN_SIZE + j * BUCKET_SIZE + idx][2];
+
+        _bucket_c[j][0] = _c[OPEN_SIZE + j * BUCKET_SIZE + idx][0];
+        _bucket_c[j][1] = _c[OPEN_SIZE + j * BUCKET_SIZE + idx][1];
+        _bucket_c[j][2] = _c[OPEN_SIZE + j * BUCKET_SIZE + idx][2];
+      });
+    }
+  });
+
+  // check buckets
+  // using the j-th triple in each bucket to verify the first triple
+  for (auto j = 1; j < BUCKET_SIZE; j++) {
+    if (!verifyByOther(ctx, buckets_a[0], buckets_b[0], buckets_c[0],
+                       buckets_a[j], buckets_b[j], buckets_c[j])) {
+      SPU_THROW("abort in openByOther");
+    }
+  }
+
+  // consuming the generated triple (bucket_a[0], bucket_b[0], bucket_c[0]) =
+  // (a, b, c) [z] = [c] ^ (x ^ a) * [b] ^ (y ^ b) * [c] ^ (x ^ a) * (y ^ b)
+  auto xorbb = XorBB();
+  auto andbp = AndBP();
+  auto x_xor_a = xorbb.proc(ctx, lhs, buckets_a[0]);
+  auto y_xor_b = xorbb.proc(ctx, rhs, buckets_b[0]);
+
+  x_xor_a = RSS_B2P(ctx, x_xor_a, "reconstruct x ^ a");
+  y_xor_b = RSS_B2P(ctx, y_xor_b, "reconstruct y ^ b");
+
+  auto res = xorbb.proc(ctx, buckets_c[0], andbp.proc(ctx, rhs, x_xor_a));
+  res = xorbb.proc(ctx, res, andbp.proc(ctx, lhs, y_xor_b));
+  res = RSS_XorBP(ctx, res, ring_and(x_xor_a, y_xor_b));
+  return res;
 }
 
 NdArrayRef AndBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
@@ -526,10 +742,9 @@ NdArrayRef AndBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
       });
     }
 
-    beta_z1_start =
-        JointMessagePassing(ctx, beta_z1_start, 0, 1, 2, "beta_z1_start");
-    beta_z2_start =
-        JointMessagePassing(ctx, beta_z2_start, 0, 2, 1, "beta_z2_start");
+    JointMessagePassing(ctx, beta_z1_start, 0, 1, 2, "beta_z1_start");
+
+    JointMessagePassing(ctx, beta_z2_start, 0, 2, 1, "beta_z2_start");
     auto beta_z_start = ring_xor(beta_z1_start, beta_z2_start);
 
     NdArrayView<el_t> _beta_z_start(beta_z_start);
@@ -543,8 +758,7 @@ NdArrayRef AndBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
         _beta_plus_gamma_z[idx] = _out[idx][1] ^ _out[idx][2];
       });
     }
-    beta_plus_gamma_z = JointMessagePassing(ctx, beta_plus_gamma_z, 1, 2, 0,
-                                            "beta_plus_gamma_z");
+    JointMessagePassing(ctx, beta_plus_gamma_z, 1, 2, 0, "beta_plus_gamma_z");
     if (rank == 0) {
       pforeach(0, numel,
                [&](int64_t idx) { _out[idx][2] = _beta_plus_gamma_z[idx]; });

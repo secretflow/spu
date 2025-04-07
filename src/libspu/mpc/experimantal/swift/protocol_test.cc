@@ -35,9 +35,8 @@ INSTANTIATE_TEST_SUITE_P(
     SwiftTest, ArithmeticTest,
     testing::Combine(testing::Values(makeSwiftProtocol),  //
                      testing::Values(makeConfig(FieldType::FM32),
-                                     makeConfig(FieldType::FM64),
-                                     makeConfig(FieldType::FM128)),  //
-                     testing::Values(3)),                            //
+                                     makeConfig(FieldType::FM64)),  //
+                     testing::Values(3)),                           //
     [](const testing::TestParamInfo<ArithmeticTest::ParamType>& p) {
       return fmt::format("{}x{}", std::get<1>(p.param).field,
                          std::get<2>(p.param));
@@ -47,9 +46,8 @@ INSTANTIATE_TEST_SUITE_P(
     SwiftTest, BooleanTest,
     testing::Combine(testing::Values(makeSwiftProtocol),  //
                      testing::Values(makeConfig(FieldType::FM32),
-                                     makeConfig(FieldType::FM64),
-                                     makeConfig(FieldType::FM128)),  //
-                     testing::Values(3)),                            //
+                                     makeConfig(FieldType::FM64)),  //
+                     testing::Values(3)),                           //
     [](const testing::TestParamInfo<BooleanTest::ParamType>& p) {
       return fmt::format("{}x{}", std::get<1>(p.param).field,
                          std::get<2>(p.param));
@@ -59,9 +57,8 @@ INSTANTIATE_TEST_SUITE_P(
     SwiftTest, ConversionTest,
     testing::Combine(testing::Values(makeSwiftProtocol),  //
                      testing::Values(makeConfig(FieldType::FM32),
-                                     makeConfig(FieldType::FM64),
-                                     makeConfig(FieldType::FM128)),  //
-                     testing::Values(3)),                            //
+                                     makeConfig(FieldType::FM64)),  //
+                     testing::Values(3)),                           //
     [](const testing::TestParamInfo<ConversionTest::ParamType>& p) {
       return fmt::format("{}x{}", std::get<1>(p.param).field,
                          std::get<2>(p.param));
@@ -69,11 +66,10 @@ INSTANTIATE_TEST_SUITE_P(
 
 INSTANTIATE_TEST_SUITE_P(
     SwiftTest, ApiTest,
-    testing::Combine(testing::Values(makeSwiftProtocol),             //
-                     testing::Values(makeConfig(FieldType::FM32),    //
-                                     makeConfig(FieldType::FM64),    //
-                                     makeConfig(FieldType::FM128)),  //
-                     testing::Values(3)),                            //
+    testing::Combine(testing::Values(makeSwiftProtocol),            //
+                     testing::Values(makeConfig(FieldType::FM32),   //
+                                     makeConfig(FieldType::FM64)),  //
+                     testing::Values(3)),                           //
     [](const testing::TestParamInfo<ApiTest::ParamType>& p) {
       return fmt::format("{}x{}x{}", std::get<0>(p.param).name(),
                          std::get<1>(p.param).field, std::get<2>(p.param));

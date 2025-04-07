@@ -28,13 +28,6 @@ class SwiftIo final : public BaseIo {
   Type getShareType(Visibility vis, int owner_rank = -1) const override;
 
   NdArrayRef fromShares(const std::vector<NdArrayRef>& shares) const override;
-
-  // std::vector<NdArrayRef> makeBitSecret(const PtBufferView& in) const
-  // override;
-
-  // size_t getBitSecretShareSize(size_t numel) const override;
-
-  // bool hasBitSecretSupport() const override { return true; }
 };
 
 std::unique_ptr<SwiftIo> makeSwiftIo(FieldType field, size_t npc);
