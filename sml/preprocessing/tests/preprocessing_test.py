@@ -16,10 +16,9 @@ import unittest
 
 import jax.numpy as jnp
 import numpy as np
-from sklearn import preprocessing
-
 import spu.libspu as libspu
 import spu.utils.simulation as spsim
+from sklearn import preprocessing
 from sml.preprocessing.preprocessing import (
     Binarizer,
     KBinsDiscretizer,
@@ -27,6 +26,7 @@ from sml.preprocessing.preprocessing import (
     MaxAbsScaler,
     MinMaxScaler,
     Normalizer,
+    OneHotEncoder,
 )
 
 
@@ -327,7 +327,7 @@ class UnitTests(unittest.TestCase):
         sim = spsim.Simulator.simple(3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM64)
 
         def kbinsdiscretize(X):
-            transformer = KBinsDiscretizer(n_bins=5, strategy='uniform')
+            transformer = KBinsDiscretizer(n_bins=5, strategy="uniform")
             transformed = transformer.fit_transform(X)
             inv_transformed = transformer.inverse_transform(transformed)
             return transformed, inv_transformed
@@ -337,7 +337,7 @@ class UnitTests(unittest.TestCase):
         )
 
         transformer = preprocessing.KBinsDiscretizer(
-            n_bins=5, encode='ordinal', strategy='uniform', subsample=None
+            n_bins=5, encode="ordinal", strategy="uniform", subsample=None
         )
         sk_transformed = transformer.fit_transform(X)
         sk_inv_transformed = transformer.inverse_transform(sk_transformed)
@@ -358,7 +358,7 @@ class UnitTests(unittest.TestCase):
 
         def kbinsdiscretize(X, n_bins):
             transformer = KBinsDiscretizer(
-                n_bins=max_bins, diverse_n_bins=n_bins, strategy='uniform'
+                n_bins=max_bins, diverse_n_bins=n_bins, strategy="uniform"
             )
             transformed = transformer.fit_transform(X)
             inv_transformed = transformer.inverse_transform(transformed)
@@ -369,7 +369,7 @@ class UnitTests(unittest.TestCase):
         max_bins = int(jnp.max(n_bins))
 
         transformer = preprocessing.KBinsDiscretizer(
-            n_bins=n_bins, encode='ordinal', strategy='uniform', subsample=None
+            n_bins=n_bins, encode="ordinal", strategy="uniform", subsample=None
         )
         sk_transformed = transformer.fit_transform(X)
         sk_inv_transformed = transformer.inverse_transform(sk_transformed)
@@ -395,7 +395,7 @@ class UnitTests(unittest.TestCase):
             transformer = KBinsDiscretizer(
                 n_bins=max_bins,
                 diverse_n_bins=np.array([3, 5, 5, 5]),
-                strategy='uniform',
+                strategy="uniform",
             )
             transformed = transformer.fit_transform(X, vectorize=False)
             inv_transformed = transformer.inverse_transform(transformed)
@@ -406,7 +406,7 @@ class UnitTests(unittest.TestCase):
         max_bins = int(jnp.max(n_bins))
 
         transformer = preprocessing.KBinsDiscretizer(
-            n_bins=n_bins, encode='ordinal', strategy='uniform', subsample=None
+            n_bins=n_bins, encode="ordinal", strategy="uniform", subsample=None
         )
         sk_transformed = transformer.fit_transform(X)
         sk_inv_transformed = transformer.inverse_transform(sk_transformed)
@@ -426,7 +426,7 @@ class UnitTests(unittest.TestCase):
         sim = spsim.Simulator.simple(3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM64)
 
         def kbinsdiscretize(X):
-            transformer = KBinsDiscretizer(n_bins=5, strategy='quantile')
+            transformer = KBinsDiscretizer(n_bins=5, strategy="quantile")
             transformed = transformer.fit_transform(X)
             inv_transformed = transformer.inverse_transform(transformed)
             return transformed, inv_transformed
@@ -436,7 +436,7 @@ class UnitTests(unittest.TestCase):
         )
 
         transformer = preprocessing.KBinsDiscretizer(
-            5, encode='ordinal', strategy='quantile', subsample=None
+            5, encode="ordinal", strategy="quantile", subsample=None
         )
         sk_transformed = transformer.fit_transform(X)
         sk_inv_transformed = transformer.inverse_transform(sk_transformed)
@@ -458,7 +458,7 @@ class UnitTests(unittest.TestCase):
 
         def kbinsdiscretize(X, n_bins):
             transformer = KBinsDiscretizer(
-                n_bins=max_bins, diverse_n_bins=n_bins, strategy='quantile'
+                n_bins=max_bins, diverse_n_bins=n_bins, strategy="quantile"
             )
             transformed = transformer.fit_transform(X, remove_bin=True)
             inv_transformed = transformer.inverse_transform(transformed)
@@ -469,7 +469,7 @@ class UnitTests(unittest.TestCase):
         max_bins = int(jnp.max(n_bins))
 
         transformer = preprocessing.KBinsDiscretizer(
-            n_bins=n_bins, encode='ordinal', strategy='quantile', subsample=None
+            n_bins=n_bins, encode="ordinal", strategy="quantile", subsample=None
         )
         sk_transformed = transformer.fit_transform(X)
         sk_inv_transformed = transformer.inverse_transform(sk_transformed)
@@ -493,7 +493,7 @@ class UnitTests(unittest.TestCase):
 
         def kbinsdiscretize(X, n_bins):
             transformer = KBinsDiscretizer(
-                n_bins=max_bins, diverse_n_bins=n_bins, strategy='quantile'
+                n_bins=max_bins, diverse_n_bins=n_bins, strategy="quantile"
             )
             transformed = transformer.fit_transform(X, remove_bin=True)
             inv_transformed = transformer.inverse_transform(transformed)
@@ -504,7 +504,7 @@ class UnitTests(unittest.TestCase):
         max_bins = int(jnp.max(n_bins))
 
         transformer = preprocessing.KBinsDiscretizer(
-            n_bins=n_bins, encode='ordinal', strategy='quantile', subsample=None
+            n_bins=n_bins, encode="ordinal", strategy="quantile", subsample=None
         )
         sk_transformed = transformer.fit_transform(X)
         sk_inv_transformed = transformer.inverse_transform(sk_transformed)
@@ -530,7 +530,7 @@ class UnitTests(unittest.TestCase):
             transformer = KBinsDiscretizer(
                 n_bins=max_bins,
                 diverse_n_bins=np.array([3, 5, 5, 5]),
-                strategy='quantile',
+                strategy="quantile",
             )
             transformed = transformer.fit_transform(X, vectorize=False, remove_bin=True)
             inv_transformed = transformer.inverse_transform(transformed)
@@ -541,7 +541,7 @@ class UnitTests(unittest.TestCase):
         max_bins = int(jnp.max(n_bins))
 
         transformer = preprocessing.KBinsDiscretizer(
-            n_bins=n_bins, encode='ordinal', strategy='quantile', subsample=None
+            n_bins=n_bins, encode="ordinal", strategy="quantile", subsample=None
         )
         sk_transformed = transformer.fit_transform(X)
         sk_inv_transformed = transformer.inverse_transform(sk_transformed)
@@ -562,7 +562,7 @@ class UnitTests(unittest.TestCase):
         sim = spsim.Simulator.simple(3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM64)
 
         def kbinsdiscretize(X):
-            transformer = KBinsDiscretizer(n_bins=2, strategy='quantile')
+            transformer = KBinsDiscretizer(n_bins=2, strategy="quantile")
             transformed = transformer.fit_transform(X, remove_bin=True)
             inv_transformed = transformer.inverse_transform(transformed)
             return transformed, inv_transformed
@@ -577,7 +577,7 @@ class UnitTests(unittest.TestCase):
         )
 
         transformer = preprocessing.KBinsDiscretizer(
-            2, encode='ordinal', strategy='quantile', subsample=None
+            2, encode="ordinal", strategy="quantile", subsample=None
         )
         sk_transformed = transformer.fit_transform(X)
         sk_inv_transformed = transformer.inverse_transform(sk_transformed)
@@ -597,7 +597,7 @@ class UnitTests(unittest.TestCase):
         sim = spsim.Simulator.simple(3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM64)
 
         def kbinsdiscretize(X, sample_weight):
-            transformer = KBinsDiscretizer(n_bins=2, strategy='quantile')
+            transformer = KBinsDiscretizer(n_bins=2, strategy="quantile")
             transformed = transformer.fit_transform(
                 X, sample_weight=sample_weight, remove_bin=True
             )
@@ -615,7 +615,7 @@ class UnitTests(unittest.TestCase):
         sample_weight = jnp.array([1, 1, 3, 1])
 
         transformer = preprocessing.KBinsDiscretizer(
-            2, encode='ordinal', strategy='quantile', subsample=None
+            2, encode="ordinal", strategy="quantile", subsample=None
         )
         transformer.fit(X, sample_weight=sample_weight)
         sk_transformed = transformer.transform(X)
@@ -639,7 +639,7 @@ class UnitTests(unittest.TestCase):
 
         def kbinsdiscretize(X, n_bins, sample_weight):
             transformer = KBinsDiscretizer(
-                n_bins=3, diverse_n_bins=n_bins, strategy='quantile'
+                n_bins=3, diverse_n_bins=n_bins, strategy="quantile"
             )
             transformed = transformer.fit_transform(
                 X, sample_weight=sample_weight, remove_bin=True
@@ -661,7 +661,7 @@ class UnitTests(unittest.TestCase):
         sample_weight = jnp.array([1, 1, 3, 1, 1, 1])
 
         transformer = preprocessing.KBinsDiscretizer(
-            n_bins=n_bins, encode='ordinal', strategy='quantile', subsample=None
+            n_bins=n_bins, encode="ordinal", strategy="quantile", subsample=None
         )
         transformer.fit(X, sample_weight=sample_weight)
         sk_transformed = transformer.transform(X)
@@ -685,7 +685,7 @@ class UnitTests(unittest.TestCase):
 
         def kbinsdiscretize(X, n_bins, sample_weight):
             transformer = KBinsDiscretizer(
-                n_bins=5, diverse_n_bins=n_bins, strategy='quantile'
+                n_bins=5, diverse_n_bins=n_bins, strategy="quantile"
             )
             transformed = transformer.fit_transform(
                 X, sample_weight=sample_weight, remove_bin=True
@@ -708,7 +708,7 @@ class UnitTests(unittest.TestCase):
         sample_weight = jnp.array([1, 1, 3, 1, 2, 1, 1])
 
         transformer = preprocessing.KBinsDiscretizer(
-            n_bins=n_bins, encode='ordinal', strategy='quantile', subsample=None
+            n_bins=n_bins, encode="ordinal", strategy="quantile", subsample=None
         )
         transformer.fit(X, sample_weight=sample_weight)
         sk_transformed = transformer.transform(X)
@@ -732,7 +732,7 @@ class UnitTests(unittest.TestCase):
 
         def kbinsdiscretize(X, sample_weight):
             transformer = KBinsDiscretizer(
-                n_bins=5, diverse_n_bins=n_bins, strategy='quantile'
+                n_bins=5, diverse_n_bins=n_bins, strategy="quantile"
             )
             transformed = transformer.fit_transform(
                 X, vectorize=False, sample_weight=sample_weight, remove_bin=True
@@ -755,7 +755,7 @@ class UnitTests(unittest.TestCase):
         sample_weight = jnp.array([1, 1, 3, 1, 2, 1, 1])
 
         transformer = preprocessing.KBinsDiscretizer(
-            n_bins=n_bins, encode='ordinal', strategy='quantile', subsample=None
+            n_bins=n_bins, encode="ordinal", strategy="quantile", subsample=None
         )
         sk_transformed = transformer.fit_transform(X, sample_weight=sample_weight)
         sk_inv_transformed = transformer.inverse_transform(sk_transformed)
@@ -778,7 +778,7 @@ class UnitTests(unittest.TestCase):
         sim = spsim.Simulator.simple(3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM64)
 
         def kbinsdiscretize(X):
-            transformer = KBinsDiscretizer(n_bins=4, strategy='kmeans')
+            transformer = KBinsDiscretizer(n_bins=4, strategy="kmeans")
             transformed = transformer.fit_transform(X)
             inv_transformed = transformer.inverse_transform(transformed)
             return transformed, inv_transformed
@@ -788,7 +788,7 @@ class UnitTests(unittest.TestCase):
         )
 
         transformer = preprocessing.KBinsDiscretizer(
-            4, encode='ordinal', strategy='kmeans', subsample=None
+            4, encode="ordinal", strategy="kmeans", subsample=None
         )
         sk_transformed = transformer.fit_transform(X)
         sk_inv_transformed = transformer.inverse_transform(sk_transformed)
@@ -809,7 +809,7 @@ class UnitTests(unittest.TestCase):
 
         def kbinsdiscretize(X):
             transformer = KBinsDiscretizer(
-                n_bins=3, diverse_n_bins=np.array([2, 3, 3, 3]), strategy='kmeans'
+                n_bins=3, diverse_n_bins=np.array([2, 3, 3, 3]), strategy="kmeans"
             )
             transformed = transformer.fit_transform(X, vectorize=False, remove_bin=True)
             inv_transformed = transformer.inverse_transform(transformed)
@@ -819,7 +819,7 @@ class UnitTests(unittest.TestCase):
         n_bins = jnp.array([2, 3, 3, 3])
 
         transformer = preprocessing.KBinsDiscretizer(
-            n_bins=n_bins, encode='ordinal', strategy='kmeans', subsample=None
+            n_bins=n_bins, encode="ordinal", strategy="kmeans", subsample=None
         )
         sk_transformed = transformer.fit_transform(X)
         sk_inv_transformed = transformer.inverse_transform(sk_transformed)
@@ -834,6 +834,44 @@ class UnitTests(unittest.TestCase):
         np.testing.assert_allclose(sk_transformed, spu_transformed, rtol=0, atol=1e-3)
         np.testing.assert_allclose(
             sk_inv_transformed, spu_inv_transformed, rtol=0, atol=1e-4
+        )
+
+    def test_onehotEncoder(self):
+        manual_categories = [[1, 1.1, 3.25], [2.0, 4.32, 6.10]]
+
+        sim = spsim.Simulator.simple(3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM64)
+
+        X = jnp.array([[1, 2.0], [3.25, 4.32], [1.1, 6.10]], dtype=jnp.float64)
+        Y = jnp.array([[1, 2.1], [3.21, 4.32], [1.1, 6.10]], dtype=jnp.float64)
+
+        sk_X = np.array([[1, 2.0], [3.25, 4.32], [1.1, 6.10]], dtype=np.float64)
+        sk_Y = np.array([[1, 2.1], [3.21, 4.32], [1.1, 6.10]], dtype=np.float64)
+
+        def onehotEncode(X, Y):
+            onehotEncoder = OneHotEncoder(categories=manual_categories)
+            onehotEncoder.fit(X)
+            encoded = onehotEncoder.transform(Y)
+            inverse_v = onehotEncoder.inverse_transform(encoded)
+            return encoded, inverse_v
+
+        sk_onehotEncoder = preprocessing.OneHotEncoder(
+            categories=manual_categories, handle_unknown="ignore", sparse_output=False
+        )
+        sk_onehotEncoder.fit(sk_X)
+        sk_transformed = sk_onehotEncoder.transform(sk_Y)
+        sk_inv_transformed = sk_onehotEncoder.inverse_transform(sk_transformed)
+        sk_inv_transformed = np.where(
+            sk_inv_transformed == None, 0.0, sk_inv_transformed
+        )
+        spu_transformed, spu_inv_transformed = spsim.sim_jax(sim, onehotEncode)(X, Y)
+        sk_inv_transformed = sk_inv_transformed.astype(np.float64)
+        spu_inv_transformed = spu_inv_transformed.astype(np.float64)
+
+        np.testing.assert_allclose(
+            sk_transformed, spu_transformed, rtol=1e-3, atol=1e-3
+        )
+        np.testing.assert_allclose(
+            sk_inv_transformed, spu_inv_transformed, rtol=1e-3, atol=1e-3
         )
 
 

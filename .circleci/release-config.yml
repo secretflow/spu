@@ -52,7 +52,6 @@ commands:
             conda create -n build python=<< parameters.python_ver >> -y
             conda activate build
 
-            if [ ! -e "/usr/bin/python3" ]; then ln -s `which python3` /usr/bin/python3; fi
             cd src && bazelisk build //... -c opt --ui_event_filters=-info,-debug,-warning
             cd - && bazelisk build //:spu_wheel -c opt --@rules_python//python/config_settings:python_version=<< parameters.python_ver >>
 

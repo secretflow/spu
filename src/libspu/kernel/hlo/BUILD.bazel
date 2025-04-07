@@ -349,6 +349,9 @@ spu_cc_test(
     deps = [
         ":shuffle",
         "//libspu/kernel:test_util",
+        "//libspu/kernel/hlo:casting",
+        "//libspu/kernel/hlo:const",
+        "//libspu/mpc/utils:simulate",
     ],
 )
 

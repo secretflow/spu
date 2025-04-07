@@ -123,8 +123,6 @@ xt::xarray<T> evalSinglePermuteOp(SPUContext* ctx, VisType x_vis,
                                   PtBufferView perm,
                                   const PermuteFunc& perm_func,
                                   int64_t perm_dim = 0) {
-  const auto prot = ctx->config().protocol;
-
   auto x_v = makeTestValue(ctx, x, x_vis);
   auto perm_v = makeTestValue(ctx, perm, perm_vis);
 
@@ -139,9 +137,7 @@ xt::xarray<T> evalSinglePermuteOp(SPUContext* ctx, VisType x_vis,
     EXPECT_EQ(send_round, 0);
   }
 
-  // costs of cheetah is highly dependant of OT kind, so we skip it.
-  if (prot != CHEETAH && ctx->hasKernel("inv_perm_av") &&
-      checkSpPass(x_vis, perm_vis)) {
+  if (ctx->hasKernel("inv_perm_av") && checkSpPass(x_vis, perm_vis)) {
     auto n_repeat = x_v.shape().numel() / x_v.shape().dim(perm_dim);
     // For ss version, at least 3 rounds.
     EXPECT_LE(std::min(send_round, recv_round), 2 * n_repeat);
@@ -194,11 +190,10 @@ std::vector<PermuteParams> GetValidParamsCombinations() {
 
   for (const auto& vis_x : kVisTypes) {
     for (const auto& vis_perm : kVisTypes) {
-      for (const auto& protocol : {CHEETAH, SEMI2K, ABY3}) {
+      for (const auto& protocol : {SEMI2K, ABY3}) {
         for (const auto& npc : {2, 3}) {
-          // npc=2/3 is not valid in ABY3/CHEETAH
-          if ((protocol == ABY3 && npc == 2) ||
-              (protocol == CHEETAH && npc == 3)) {
+          // npc=2 is not valid in ABY3
+          if (protocol == ABY3 && npc == 2) {
             continue;  // Skip invalid combinations
           }
           valid_combinations.emplace_back(vis_x, vis_perm, protocol, npc);
@@ -327,7 +322,7 @@ TEST_P(PermuteTest, MultiplePermuteWork) {
 class PermuteEmptyTest : public ::testing::TestWithParam<ProtocolKind> {};
 
 INSTANTIATE_TEST_SUITE_P(
-    PermuteEmpty, PermuteEmptyTest, testing::Values(CHEETAH, SEMI2K, ABY3),
+    PermuteEmpty, PermuteEmptyTest, testing::Values(SEMI2K, ABY3),
     [](const testing::TestParamInfo<PermuteEmptyTest::ParamType>& p) {
       return fmt::format("{}", p.param);
     });
@@ -335,9 +330,6 @@ INSTANTIATE_TEST_SUITE_P(
 TEST_P(PermuteEmptyTest, Empty) {
   ProtocolKind prot = GetParam();
   size_t npc = 3;
-  if (prot == CHEETAH) {
-    npc = 2;
-  }
 
   mpc::utils::simulate(
       npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {

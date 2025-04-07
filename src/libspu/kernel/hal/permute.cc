@@ -611,8 +611,8 @@ std::vector<spu::Value> PrepareSort(SPUContext *ctx,
   // use a random permutation to break link of values, such that the following
   // comparison can be revealed without loss of information.
   for (const auto &input : inputs) {
-    inp.emplace_back(
-        std::move(_perm_ss(ctx, input, rand_perm).setDtype(input.dtype())));
+    inp.emplace_back(std::move(
+        _perm_ss(ctx, _2s(ctx, input), rand_perm).setDtype(input.dtype())));
   }
 
   return inp;
@@ -1608,6 +1608,12 @@ std::vector<spu::Value> simple_sort1d(SPUContext *ctx,
   //   and the number of rounds increases (poly) logarithmically. In contrast,
   //   when the ring size doubles in radix sort, the communication （roughly）
   //   quadruples and the number of rounds doubles.
+  //   6. The above conclusions regarding performance apply only to
+  //   the cases of SECRET input and SECRET permutation. In reality, only radix
+  //   sort has implemented a complete mechanism for selecting the best
+  //   implementation based on visibility. The other implementations will use
+  //   local computation only when all keys are public; in other cases, they
+  //   will revert to the scenarios of SECRET input and SECRET permutation.
   //
 
   // if all keys are public, fallback to plaintext sort.

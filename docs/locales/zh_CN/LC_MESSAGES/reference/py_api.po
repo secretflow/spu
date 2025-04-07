@@ -21,30 +21,30 @@ msgstr ""
 
 #: ../../reference/py_api.rst:2
 msgid "Python API Reference"
-msgstr ""
+msgstr "Python API 参考文档"
 
 #: ../../reference/py_api.rst:4
 msgid ""
 "Python API is used to control & access SPU, for example, to do data "
 "infeed/outfeed, to compile an XLA program to PPHlo, or to fire a PPHlo on"
 " an SPU runtime."
-msgstr ""
+msgstr "Python API 用于控制和访问 SPU，例如，执行数据输入/输出、将 XLA 程序编译为 PPHlo，或在 SPU 运行时启动 PPHlo。"
 
 #: ../../reference/py_api.rst:8
 msgid "Runtime Setup"
-msgstr ""
+msgstr "运行时配置"
 
 #: of spu.api.Runtime:1
 msgid "The SPU Virtual Machine Slice."
-msgstr ""
+msgstr "SPU 虚拟机实例。"
 
 #: of spu.api.Runtime.clear:1
 msgid "Delete all SPU values."
-msgstr ""
+msgstr "删除所有的 SPU 变量。"
 
 #: of spu.api.Runtime.del_var:1
 msgid "Delete an SPU value."
-msgstr ""
+msgstr "删除一个 SPU 变量。"
 
 #: of spu.api.Io.make_shares:3 spu.api.Io.reconstruct:3
 #: spu.api.Runtime.del_var:3 spu.api.Runtime.get_var:3
@@ -52,146 +52,150 @@ msgstr ""
 #: spu.api.Runtime.run:3 spu.api.Runtime.set_var:3 spu.api.compile:3
 #: spu.utils.simulation.Simulator.simple:3
 msgid "Args:"
-msgstr ""
+msgstr "参数："
 
 #: of spu.api.Runtime.del_var:4
 msgid "name (str): Id of the value."
-msgstr ""
+msgstr "name (str): 变量的 Id。"
 
 #: of spu.api.Runtime.get_var:1 spu.api.Runtime.get_var_chunk_count:1
 msgid "Get an SPU value."
-msgstr ""
+msgstr "返回一个 SPU 变量。"
 
 #: of spu.api.Runtime.get_var:4 spu.api.Runtime.get_var_chunk_count:4
 #: spu.api.Runtime.get_var_meta:4
 msgid "name (str): Id of value."
-msgstr ""
+msgstr "name (str): 变量的 Id。"
 
 #: of spu.api.Io.make_shares:8 spu.api.Io.reconstruct:6
 #: spu.api.Runtime.get_var:6 spu.api.Runtime.get_var_chunk_count:6
 #: spu.api.Runtime.get_var_meta:6 spu.api.compile:7
 #: spu.utils.simulation.Simulator.simple:10
 msgid "Returns:"
-msgstr ""
+msgstr "返回类型和返回值："
 
 #: of spu.api.Runtime.get_var:7
 msgid "libspu.Share: Data data."
-msgstr ""
+msgstr "libspu.Share: 相应的数据。"
 
 #: of spu.api.Runtime.get_var_chunk_count:7
 msgid "int: chunks count in libspu.Share"
-msgstr ""
+msgstr "int: :code:`libspu.Share` 中数据块的数量。"
 
 #: of spu.api.Runtime.get_var_meta:1
 msgid "Get an SPU value without content."
-msgstr ""
+msgstr "返回一个 SPU 变量的元数据（无变量内容）。"
 
 #: of spu.api.Runtime.get_var_meta:7
 msgid "libspu.ValueMeta: Data meta with out content."
-msgstr ""
+msgstr "libspu.ValueMeta: 变量的元数据（无变量内容）。"
 
 #: of spu.api.Runtime.run:1
 msgid "Run an SPU executable."
-msgstr ""
+msgstr "返回一个 SPU 的可执行代码。"
 
 #: of spu.api.Runtime.run:4
 msgid "executable (libspu.ExecutableProto): executable."
-msgstr ""
+msgstr "executable (libspu.ExecutableProto): 可执行代码。"
 
 #: of spu.api.Runtime.set_var:1
 msgid "Set an SPU value."
-msgstr ""
+msgstr "设置一个 SPU 变量。"
 
 #: of spu.api.Runtime.set_var:4
 msgid "name (str): Id of value. value (libspu.Share): value data."
-msgstr ""
+msgstr "name (str): 变量的Id。"
+"value (libspu.Share): 变量的值。"
 
 #: ../../reference/py_api.rst:15
 msgid "Runtime IO"
-msgstr ""
+msgstr "运行时输入/输出"
 
 #: of spu.api.Io:1
 msgid "The SPU IO interface."
-msgstr ""
+msgstr "SPU 的输入/输出接口。"
 
 #: of spu.api.Io.make_shares:1
 msgid "Convert from NumPy array to list of SPU value(s)."
-msgstr ""
+msgstr "将 NumPy array 转为 SPU 变量的 list。"
 
 #: of spu.api.Io.make_shares:4
 msgid ""
 "x (np.ndarray): input. vtype (libspu.Visibility): visibility. owner_rank "
 "(int): the index of the trusted piece. if >= 0, colocation optimization "
 "may be applied."
-msgstr ""
+msgstr "x (np.ndarray): 输入。\n"
+"vtype (libspu.Visibility): 可见性。\n"
+"owner_rank (int): 可信部分的下标，如果该参数 >=0，那么可能会用 colocation 优化。"
 
 #: of spu.api.Io.make_shares:9
 msgid "[libspu.Share]: output."
-msgstr ""
+msgstr "libspu.Share: 输出。"
 
 #: of spu.api.Io.reconstruct:1
 msgid "Convert from list of SPU value(s) to NumPy array."
-msgstr ""
+msgstr "将 SPU 变量的 list 转为 NumPy array。"
 
 #: of spu.api.Io.reconstruct:4
 msgid "xs ([libspu.Share]): input."
-msgstr ""
+msgstr "xs (libspu.Share): 输入。"
 
 #: of spu.api.Io.reconstruct:7
 msgid "np.ndarray: output."
-msgstr ""
+msgstr "np.ndarray: 输出。"
 
 #: ../../reference/py_api.rst:21
 msgid "Compiler"
-msgstr ""
+msgstr "编译器"
 
 #: of spu.api.compile:1
 msgid "Compile from textual HLO/MHLO IR to SPU bytecode."
-msgstr ""
+msgstr "将文本的 HLO/MHLO 中间代码编译为 SPU 虚拟机的字节码"
 
 #: of spu.api.compile:4
 msgid ""
 "source (libspu.CompilationSource): input to compiler. copts "
 "(libspu.CompilerOptions): compiler options."
-msgstr ""
+msgstr "source (libspu.CompilationSource): 编译器输入。\n"
+"copts (libspu.CompilerOptions): 编译器选项。\n"
 
 #: of spu.api.compile:8
 msgid "[libspu.ValueProto]: output."
-msgstr ""
+msgstr "libspu.ValueProto: 输出。"
 
 #: ../../reference/py_api.rst:26
 msgid "Simulation"
-msgstr ""
+msgstr "模拟器"
 
 #: of spu.utils.simulation.Simulator.simple:1
 msgid "helper method to create an SPU Simulator"
-msgstr ""
+msgstr "用于创建一个 SPU 模拟器的工具函数。"
 
 #: of spu.utils.simulation.Simulator.simple:4
 msgid "wsize (int): the world size."
-msgstr ""
+msgstr "wsize (int): world 大小。"
 
 #: of spu.utils.simulation.Simulator.simple:6
 msgid "prot (libspu.ProtocolKind): protocol."
-msgstr ""
+msgstr "prot (libspu.ProtocolKind): 协议。"
 
 #: of spu.utils.simulation.Simulator.simple:8
 msgid "field (libspu.FieldType): field type."
-msgstr ""
+msgstr "field (libspu.FieldType): 有限域类型。"
 
 #: of spu.utils.simulation.Simulator.simple:11
 msgid "A SPU Simulator"
-msgstr ""
+msgstr "一个 SPU 模拟器。"
 
 #: of spu.utils.simulation.sim_jax:1
 msgid "Decorates a jax numpy fn that simulated on SPU."
-msgstr ""
+msgstr "一个 jax numpy 函数的装饰器，用于在 SPU 上模拟该函数："
 
 #: of spu.utils.simulation.sim_jax:6
 msgid "Then we can call spu_fn like normal jnp fn."
-msgstr ""
+msgstr "装饰后，我们调用普通 jnp 函数就可以达到调用 SPU 函数的效果："
 
 #: of spu.utils.simulation.sim_jax:12
 msgid "The function will be evaluated in an spu simulator."
-msgstr ""
+msgstr "相应的函数会在 SPU 模拟器中运行。"
 

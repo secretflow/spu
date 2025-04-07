@@ -242,6 +242,217 @@ pb::RuntimeConfig RuntimeConfig::ToProto() const {
   return pb_conf;
 }
 
+std::string RuntimeConfig::DumpToString() const {
+  std::string ss;
+
+  // Protocol kind
+  ss += "protocol: ";
+  switch (this->protocol) {
+    case ProtocolKind::PROT_INVALID:
+      ss += "INVALID";
+      break;
+    case ProtocolKind::REF2K:
+      ss += "REF2K";
+      break;
+    case ProtocolKind::SEMI2K:
+      ss += "SEMI2K";
+      break;
+    case ProtocolKind::ABY3:
+      ss += "ABY3";
+      break;
+    case ProtocolKind::CHEETAH:
+      ss += "CHEETAH";
+      break;
+    case ProtocolKind::SECURENN:
+      ss += "SECURENN";
+      break;
+  }
+  ss += "\n";
+
+  // Field type
+  ss += "field: ";
+  switch (this->field) {
+    case FieldType::FT_INVALID:
+      ss += "INVALID";
+      break;
+    case FieldType::FM32:
+      ss += "FM32";
+      break;
+    case FieldType::FM64:
+      ss += "FM64";
+      break;
+    case FieldType::FM128:
+      ss += "FM128";
+      break;
+  }
+
+  // Numeric fields (only print if not default)
+  if (this->fxp_fraction_bits != 0) {
+    ss += "\nfxp_fraction_bits: " + std::to_string(this->fxp_fraction_bits);
+  }
+  if (this->max_concurrency != 0) {
+    ss += "\nmax_concurrency: " + std::to_string(this->max_concurrency);
+  }
+  if (this->public_random_seed != 0) {
+    ss += "\npublic_random_seed: " + std::to_string(this->public_random_seed);
+  }
+  if (this->share_max_chunk_size != RuntimeConfig::kDefaultShareMaxChunkSize) {
+    ss +=
+        "\nshare_max_chunk_size: " + std::to_string(this->share_max_chunk_size);
+  }
+
+  // Sort related settings
+  if (this->sort_method != RuntimeConfig::SORT_DEFAULT) {
+    ss += "\nsort_method: ";
+    switch (this->sort_method) {
+      case RuntimeConfig::SORT_RADIX:
+        ss += "RADIX";
+        break;
+      case RuntimeConfig::SORT_QUICK:
+        ss += "QUICK";
+        break;
+      case RuntimeConfig::SORT_NETWORK:
+        ss += "NETWORK";
+        break;
+      default:
+        ss += "UNKNOWN";
+        break;
+    }
+  }
+  if (this->quick_sort_threshold != RuntimeConfig::kDefaultQuickSortThreshold) {
+    ss +=
+        "\nquick_sort_threshold: " + std::to_string(this->quick_sort_threshold);
+  }
+
+  // Fixed-point arithmetic settings
+  if (this->fxp_div_goldschmidt_iters !=
+      RuntimeConfig::kDefaultFxpDivGoldschmidtIters) {
+    ss += "\nfxp_div_goldschmidt_iters: " +
+          std::to_string(this->fxp_div_goldschmidt_iters);
+  }
+
+  if (this->fxp_exp_mode != RuntimeConfig::EXP_DEFAULT) {
+    ss += "\nfxp_exp_mode: ";
+    switch (this->fxp_exp_mode) {
+      case RuntimeConfig::EXP_PADE:
+        ss += "PADE";
+        break;
+      case RuntimeConfig::EXP_TAYLOR:
+        ss += "TAYLOR";
+        break;
+      case RuntimeConfig::EXP_PRIME:
+        ss += "PRIME";
+        break;
+      default:
+        ss += "UNKNOWN";
+        break;
+    }
+  }
+
+  if (this->fxp_log_mode != RuntimeConfig::LOG_DEFAULT) {
+    ss += "\nfxp_log_mode: ";
+    switch (this->fxp_log_mode) {
+      case RuntimeConfig::LOG_PADE:
+        ss += "PADE";
+        break;
+      case RuntimeConfig::LOG_NEWTON:
+        ss += "NEWTON";
+        break;
+      case RuntimeConfig::LOG_MINMAX:
+        ss += "MINMAX";
+        break;
+      default:
+        ss += "UNKNOWN";
+        break;
+    }
+  }
+
+  if (this->sigmoid_mode != RuntimeConfig::SIGMOID_DEFAULT) {
+    ss += "\nsigmoid_mode: ";
+    switch (this->sigmoid_mode) {
+      case RuntimeConfig::SIGMOID_MM1:
+        ss += "MM1";
+        break;
+      case RuntimeConfig::SIGMOID_SEG3:
+        ss += "SEG3";
+        break;
+      case RuntimeConfig::SIGMOID_REAL:
+        ss += "REAL";
+        break;
+      default:
+        ss += "UNKNOWN";
+        break;
+    }
+  }
+
+  // Boolean flags (only print if true)
+  if (this->enable_action_trace) ss += "\nenable_action_trace: true";
+  if (this->enable_type_checker) ss += "\nenable_type_checker: true";
+  if (this->enable_pphlo_trace) ss += "\nenable_pphlo_trace: true";
+  if (this->enable_runtime_snapshot) ss += "\nenable_runtime_snapshot: true";
+  if (this->enable_pphlo_profile) ss += "\nenable_pphlo_profile: true";
+  if (this->enable_hal_profile) ss += "\nenable_hal_profile: true";
+  if (this->enable_lower_accuracy_rsqrt)
+    ss += "\nenable_lower_accuracy_rsqrt: true";
+  if (this->trunc_allow_msb_error) ss += "\ntrunc_allow_msb_error: true";
+
+  // Optional string fields
+  if (!this->snapshot_dump_dir.empty()) {
+    ss += "\nsnapshot_dump_dir: " + this->snapshot_dump_dir;
+  }
+
+#if 0
+  // TODO: Not sure that should we print all configurations
+
+  // Beaver config
+  if (this->beaver_type != RuntimeConfig::TrustedFirstParty) {
+    ss += "\nbeaver_type: ";
+    switch (this->beaver_type) {
+      case RuntimeConfig::TrustedThirdParty:
+        ss += "TrustedThirdParty";
+        break;
+      case RuntimeConfig::MultiParty:
+        ss += "MultiParty";
+        break;
+      default:
+        ss += "UNKNOWN";
+        break;
+    }
+  }
+
+  // Experimental features
+  if (this->experimental_disable_mmul_split)
+    ss += "\nexperimental_disable_mmul_split: true";
+  if (this->experimental_enable_inter_op_par)
+    ss += "\nexperimental_enable_inter_op_par: true";
+  if (this->experimental_enable_intra_op_par)
+    ss += "\nexperimental_enable_intra_op_par: true";
+  if (this->experimental_disable_vectorization)
+    ss += "\nexperimental_disable_vectorization: true";
+  if (this->experimental_enable_colocated_optimization)
+    ss += "\nexperimental_enable_colocated_optimization: true";
+  if (this->experimental_enable_exp_prime)
+    ss += "\nexperimental_enable_exp_prime: true";
+  if (this->experimental_exp_prime_disable_lower_bound)
+    ss += "\nexperimental_exp_prime_disable_lower_bound: true";
+  if (this->experimental_exp_prime_enable_upper_bound)
+    ss += "\nexperimental_exp_prime_enable_upper_bound: true";
+
+  if (this->experimental_inter_op_concurrency !=
+      kDefaultExperimentalInterOpConcurrency) {
+    ss += "\nexperimental_inter_op_concurrency: "
+       + std::to_string(this->experimental_inter_op_concurrency);
+  }
+  if (this->experimental_exp_prime_offset != 0) {
+    ss += "\nexperimental_exp_prime_offset: "
+       + std::to_string(this->experimental_exp_prime_offset);
+  }
+
+#endif  // 0
+
+  return ss;
+}
+
 bool RuntimeConfig::ParseFromJsonString(std::string_view data) {
   pb::RuntimeConfig pb_conf;
   auto status = google::protobuf::json::JsonStringToMessage(data, &pb_conf);

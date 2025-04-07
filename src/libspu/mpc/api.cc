@@ -324,20 +324,18 @@ Value msb_s(SPUContext* ctx, const Value& x) {
   SPU_TRACE_MPC_DISP(ctx, x);
   TRY_DISPATCH(ctx, x);
 
-  // TODO: this is buggy.
-  const auto field = ctx->getField();
-
-  if (ctx->hasKernel("msb_a2b")) {
-    if (IsB(x)) {
-      return rshift_b(ctx, x, {static_cast<int64_t>(SizeOf(field) * 8 - 1)});
-    } else {
-      // fast path, directly apply msb x AShare, result a BShare.
+  if (IsA(x)) {
+    // fast path, directly apply msb x AShare, result a BShare.
+    if (ctx->hasKernel("msb_a2b")) {
       return msb_a2b(ctx, x);
+    } else {
+      return msb_s(ctx, _2b(ctx, x));
     }
-  } else {
-    return rshift_b(ctx, _2b(ctx, x),
-                    {static_cast<int64_t>(SizeOf(field) * 8 - 1)});
   }
+
+  // BShare
+  auto shift = std::max<int64_t>(0, SizeOf(ctx->getField()) * 8 - 1);
+  return rshift_b(ctx, x, {shift});
 }
 
 Value msb_v(SPUContext* ctx, const Value& x) { FORCE_DISPATCH(ctx, x); }

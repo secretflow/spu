@@ -30,10 +30,9 @@ inline int64_t getOwner(const NdArrayRef& x) {
   return x.eltype().as<Priv2kTy>()->owner();
 }
 
-// x is secret, y is private
-NdArrayRef wrap_mulav(SPUContext* ctx, const NdArrayRef& x,
+NdArrayRef wrap_mulaa(SPUContext* ctx, const NdArrayRef& x,
                       const NdArrayRef& y) {
-  return UnwrapValue(mul_av(ctx, WrapValue(x), WrapValue(y)).value());
+  return UnwrapValue(mul_aa(ctx, WrapValue(x), WrapValue(y)));
 }
 
 // MUX(flag, rhs, lhs)
@@ -41,21 +40,20 @@ NdArrayRef route_to_next_layer_top(SPUContext* ctx, const NdArrayRef& lhs,
                                    const NdArrayRef& rhs,
                                    const NdArrayRef& flag) {
   auto delta = ring_sub(rhs, lhs);
-  // Indeed, flag is a private bool, so `mul_a1bv` can also be used.
-  // Although `mul_a1bv` is friendly to communication amount (maybe 10+
-  // times less), the rounds cost is much higher than `mul_av` (maybe 5+ times
-  // more). As a result, `mul_av` is used here.
-  return ring_add(lhs, wrap_mulav(ctx, delta, flag));
+  // Indeed, flag is a private bool, so `mul_a1bv` or `mul_av` can also be used
+  // here. However, we find some potential bugs which may destroy the data, so
+  // we use the naive `mul_aa` finally.
+  return ring_add(lhs, wrap_mulaa(ctx, delta, flag));
 }
 
-NdArrayRef get_private_flag(absl::Span<uint8_t> flag, int64_t flag_size,
-                            size_t rank, const FieldType field) {
+NdArrayRef get_ashr_flag(absl::Span<uint8_t> flag, int64_t flag_size,
+                         size_t rank, const FieldType field) {
   // only perm Party will get the exactly switch flag.
   bool is_cur_rank = !flag.empty();
-  auto const out_ty = makeType<Priv2kTy>(field, rank);
+  const auto out_ty = makeType<AShrTy>(field);
 
   if (!is_cur_rank) {
-    return makeConstantArrayRef(out_ty, {flag_size});
+    return ring_zeros(field, {flag_size}).as(out_ty);
   }
 
   return DISPATCH_ALL_FIELDS(field, [&]() {
@@ -70,7 +68,7 @@ NdArrayRef get_private_flag(absl::Span<uint8_t> flag, int64_t flag_size,
   });
 }
 
-NdArrayRef SecureInvPerm(KernelEvalContext* ctx, const NdArrayRef& x,
+NdArrayRef SecureInvPerm(KernelEvalContext* ctx, NdArrayRef& x,
                          size_t perm_rank, const Index& pv) {
   const auto is_cur_rank = ctx->lctx()->Rank() == perm_rank;
   const auto field = x.eltype().as<RingTy>()->field();
@@ -137,7 +135,7 @@ NdArrayRef SecureInvPerm(KernelEvalContext* ctx, const NdArrayRef& x,
     auto lhs_value = ret.linear_gather(lhs_indices);
     auto rhs_value = ret.linear_gather(rhs_indices);
     auto flag_value =
-        get_private_flag(absl::MakeSpan(flag), flag_size, perm_rank, field);
+        get_ashr_flag(absl::MakeSpan(flag), flag_size, perm_rank, field);
 
     // top
     auto p =
