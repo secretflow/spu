@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/mpc/swift/value.h"
+#include "libspu/mpc/experimental/swift/value.h"
 
 #include "libspu/core/prelude.h"
-#include "libspu/mpc/swift/type.h"
+#include "libspu/mpc/experimental/swift/type.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc::swift {
@@ -84,25 +84,6 @@ NdArrayRef makeAShare(const NdArrayRef& s1, const NdArrayRef& s2,
   }
 
   return res;
-}
-
-PtType calcBShareBacktype(size_t nbits) {
-  if (nbits <= 8) {
-    return PT_U8;
-  }
-  if (nbits <= 16) {
-    return PT_U16;
-  }
-  if (nbits <= 32) {
-    return PT_U32;
-  }
-  if (nbits <= 64) {
-    return PT_U64;
-  }
-  if (nbits <= 128) {
-    return PT_U128;
-  }
-  SPU_THROW("invalid number of bits={}", nbits);
 }
 
 }  // namespace spu::mpc::swift

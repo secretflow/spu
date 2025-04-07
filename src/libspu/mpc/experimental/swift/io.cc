@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/mpc/swift/io.h"
+#include "libspu/mpc/experimental/swift/io.h"
 
 #include "yacl/crypto/rand/rand.h"
 #include "yacl/crypto/tools/prg.h"
 
 #include "libspu/core/context.h"
 #include "libspu/mpc/common/pv2k.h"
-#include "libspu/mpc/swift/type.h"
-#include "libspu/mpc/swift/value.h"
+#include "libspu/mpc/experimental/swift/type.h"
+#include "libspu/mpc/experimental/swift/value.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc::swift {
