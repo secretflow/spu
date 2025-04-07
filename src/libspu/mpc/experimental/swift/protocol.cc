@@ -17,12 +17,12 @@
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pv2k.h"
-#include "libspu/mpc/swift/arithmetic.h"
-#include "libspu/mpc/swift/boolean.h"
-#include "libspu/mpc/swift/conversion.h"
-#include "libspu/mpc/swift/protocol.h"
-#include "libspu/mpc/swift/type.h"
-#include "libspu/mpc/swift/value.h"
+#include "libspu/mpc/experimental/swift/arithmetic.h"
+#include "libspu/mpc/experimental/swift/boolean.h"
+#include "libspu/mpc/experimental/swift/conversion.h"
+#include "libspu/mpc/experimental/swift/protocol.h"
+#include "libspu/mpc/experimental/swift/type.h"
+#include "libspu/mpc/experimental/swift/value.h"
 
 namespace spu::mpc {
 

@@ -14,7 +14,7 @@
 
 #include "libspu/mpc/io_test.h"
 
-#include "libspu/mpc/swift/io.h"
+#include "libspu/mpc/experimental/swift/io.h"
 
 namespace spu::mpc::swift {
 

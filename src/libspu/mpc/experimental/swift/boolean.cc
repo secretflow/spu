@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/mpc/swift/boolean.h"
+#include "libspu/mpc/experimental/swift/boolean.h"
 
 #include <functional>
 
@@ -20,9 +20,9 @@
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pv2k.h"
-#include "libspu/mpc/swift/arithmetic.h"
-#include "libspu/mpc/swift/type.h"
-#include "libspu/mpc/swift/value.h"
+#include "libspu/mpc/experimental/swift/arithmetic.h"
+#include "libspu/mpc/experimental/swift/type.h"
+#include "libspu/mpc/experimental/swift/value.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc::swift {

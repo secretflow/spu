@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/mpc/swift/hash_func.h"
+#include "libspu/mpc/experimental/swift/hash_func.h"
 
 #include "yacl/crypto/hash/blake3.h"
 #include "yacl/crypto/hash/hash_utils.h"
