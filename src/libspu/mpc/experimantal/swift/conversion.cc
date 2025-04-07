@@ -143,9 +143,8 @@ NdArrayRef MsbA2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   auto bshr_res = wrap_a2b(ctx->sctx(), in);
 
   // get Msb from boolean share directly
-  size_t k = SizeOf(field) * 8 - 1;
-  auto msb_res =
-      wrap_rshift_b(ctx->sctx(), bshr_res, {static_cast<int64_t>(k)});
+  int64_t k = SizeOf(field) * 8 - 1;
+  auto msb_res = wrap_rshift_b(ctx->sctx(), bshr_res, {k});
 
   return msb_res.as(bty);
 }
@@ -191,7 +190,7 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   auto add = AddAA();
   auto neg = NegateA();
 
-  auto decompose_numel = numel * static_cast<int64_t>(nbits);
+  auto decompose_numel = numel * nbits;
 
   auto decompose_in = NdArrayRef(makeType<AShrTy>(field), {decompose_numel});
 
@@ -271,13 +270,11 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
     NdArrayView<ashr_t> _res(res);
     NdArrayView<ashr_t> _decompose_out(decompose_out);
 
-    el_t tmp_sum0, tmp_sum1, tmp_sum2;
-
     pforeach(0, numel, [&](int64_t idx) {
       // use _decompose_out[i*nbits, (i+1)*nbits) to construct res[i]
-      tmp_sum0 = static_cast<el_t>(0);
-      tmp_sum1 = static_cast<el_t>(0);
-      tmp_sum2 = static_cast<el_t>(0);
+      el_t tmp_sum0 = static_cast<el_t>(0);
+      el_t tmp_sum1 = static_cast<el_t>(0);
+      el_t tmp_sum2 = static_cast<el_t>(0);
       for (int64_t bit = 0; bit < nbits; bit++) {
         tmp_sum0 +=
             (static_cast<el_t>(_decompose_out[idx * nbits + bit][0]) << bit);
