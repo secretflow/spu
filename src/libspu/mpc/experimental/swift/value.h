@@ -30,8 +30,6 @@ NdArrayRef getThirdShare(const NdArrayRef& in);
 NdArrayRef makeAShare(const NdArrayRef& s1, const NdArrayRef& s2,
                       const NdArrayRef& s3, FieldType field);
 
-PtType calcBShareBacktype(size_t nbits);
-
 template <typename T>
 std::vector<T> getShareAs(const NdArrayRef& in, size_t share_idx) {
   SPU_ENFORCE(share_idx == 0 || share_idx == 1 || share_idx == 2);
