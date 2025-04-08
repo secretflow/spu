@@ -50,12 +50,15 @@ class Fantastic4MacState : public State {
     //   my recv_mac_[sender][backup] should be consistent with the backup's send_mac_[sender][me]
     std::vector<std::vector<uint8_t>> recv_mac_;
 
+    const std::shared_ptr<yacl::link::Context> lctx_;
+
  private:
   Fantastic4MacState() = default;
  public:
     static constexpr const char* kBindName() { return "Fantastic4MacState"; }
 
     explicit Fantastic4MacState(const std::shared_ptr<yacl::link::Context>& lctx) {
+
         hash_algo_ = std::make_unique<yacl::crypto::Blake3Hash>();
         // 128 bit
         mac_len_ = 16;
@@ -171,6 +174,50 @@ class Fantastic4MacState : public State {
                 for(int64_t idx = 0; idx < mac_len_; idx++){
                     printf("My rank = %ld, send_mac_[%ld][%ld][%ld] = %ld\n", my_rank_, sender, receiver, idx, static_cast<uint64_t>(target_send_mac[idx]));
                     printf("My rank = %ld, recv_mac_[%ld][%ld][%ld] = %ld\n", my_rank_, sender, receiver, idx, static_cast<uint64_t>(target_recv_mac[idx]));
+                }
+            }
+        }
+    }
+
+    // An interactive exchange and check of corressponding MACs
+    // It is expected to be invoked in the end of computation
+    void exchange_check(KernelEvalContext* ctx) {
+        auto* comm = ctx->getState<Communicator>();
+        for(int64_t sender = 0; sender < 4; sender++) {
+            // For each sender
+            if(my_rank_ != sender){
+                for(int64_t receiver = 0; receiver < 4; receiver++){
+                    // For each receiver
+                    if(receiver != sender) {
+                        // As backup
+                        if(my_rank_ != receiver) {
+                            size_t index = sender * 4 + receiver;
+                            std::vector<uint8_t> backup_mac = send_mac_[index];
+                            comm->sendAsync<uint8_t>((size_t)receiver, backup_mac, "mac"+std::to_string(sender)+std::to_string(my_rank_)+std::to_string(receiver));
+                        }
+                        // As receiver
+                        else{
+                            // For each backup
+                            for(int64_t backup = 0; backup < 4; backup++){
+                                if(backup != sender && backup != receiver){
+                                    auto backup_mac = comm->recv<uint8_t>(backup, "mac"+std::to_string(sender)+std::to_string(backup)+std::to_string(my_rank_));
+                                    bool eq = 1;
+                                    // For each byte
+                                    for(int64_t idx = 0; idx < mac_len_; idx ++){
+                                        if(backup_mac[idx] != recv_mac_[sender * 4 + backup][idx]){
+                                            eq = 0;
+                                        }
+                                    }
+                                    if(eq == 0){
+                                        printf("MAC mismatch for (%ld, %ld) to %ld\n", sender, backup, receiver);
+                                    }
+                                    else{
+                                        printf("MAC match for (%ld, %ld) to %ld\n", sender, backup, receiver);
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
