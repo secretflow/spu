@@ -74,10 +74,19 @@ NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const auto out_ty = makeType<BShrTy>(out_btype, SizeOf(out_btype) * 8);
   auto numel = in.numel();
 
-  NdArrayRef shr0(out_ty, in.shape());
-  NdArrayRef shr1(out_ty, in.shape());
-  NdArrayRef shr2(out_ty, in.shape());
-  NdArrayRef shr3(out_ty, in.shape());
+  auto shr0_buf = std::make_shared<yacl::Buffer>(in.shape().numel() * out_ty.size());
+  auto shr1_buf = std::make_shared<yacl::Buffer>(in.shape().numel() * out_ty.size());
+  auto shr2_buf = std::make_shared<yacl::Buffer>(in.shape().numel() * out_ty.size());
+  auto shr3_buf = std::make_shared<yacl::Buffer>(in.shape().numel() * out_ty.size());
+  memset(shr0_buf->data(), 0, in.shape().numel() * out_ty.size());
+  memset(shr1_buf->data(), 0, in.shape().numel() * out_ty.size());
+  memset(shr2_buf->data(), 0, in.shape().numel() * out_ty.size());
+  memset(shr3_buf->data(), 0, in.shape().numel() * out_ty.size());
+
+  NdArrayRef shr0(shr0_buf, out_ty, in.shape());
+  NdArrayRef shr1(shr1_buf, out_ty, in.shape());
+  NdArrayRef shr2(shr2_buf, out_ty, in.shape());
+  NdArrayRef shr3(shr3_buf, out_ty, in.shape());
 
   DISPATCH_ALL_FIELDS(field, [&]() {
     using ashr_t = std::array<ring2k_t, 3>;
@@ -92,23 +101,6 @@ NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
       NdArrayView<bshr_t> _shr2(shr2);
       NdArrayView<bshr_t> _shr3(shr3);
 
-      pforeach(0, numel, [&](int64_t idx) {
-        _shr0[idx][0] = 0U;
-        _shr0[idx][1] = 0U;
-        _shr0[idx][2] = 0U;
-
-        _shr1[idx][0] = 0U;
-        _shr1[idx][1] = 0U;
-        _shr1[idx][2] = 0U;
-
-        _shr2[idx][0] = 0U;
-        _shr2[idx][1] = 0U;
-        _shr2[idx][2] = 0U;
-
-        _shr3[idx][0] = 0U;
-        _shr3[idx][1] = 0U;
-        _shr3[idx][2] = 0U;
-      });
       if(rank == 0){
         pforeach(0, numel, [&](int64_t idx) {
             // P0 holds _in(x0, x1, x2)
@@ -175,8 +167,13 @@ NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
   const PtType out_btype = calcBShareBacktype(SizeOf(field) * 8);
   const auto out_ty = makeType<BShrTy>(out_btype, SizeOf(out_btype) * 8);
-  NdArrayRef m(out_ty, in.shape());
-  NdArrayRef n(out_ty, in.shape());
+
+  auto x1_plus_x2_buf = std::make_shared<yacl::Buffer>(in.shape().numel() * out_ty.size());
+  auto x0_plus_x3_buf = std::make_shared<yacl::Buffer>(in.shape().numel() * out_ty.size());
+  memset(x1_plus_x2_buf->data(), 0, in.shape().numel() * out_ty.size());
+  memset(x0_plus_x3_buf->data(), 0, in.shape().numel() * out_ty.size());
+  NdArrayRef x1_plus_x2_shr(x1_plus_x2_buf, out_ty, in.shape());
+  NdArrayRef x0_plus_x3_shr(x0_plus_x3_buf, out_ty, in.shape());
 
   auto numel = in.numel();
 
@@ -186,51 +183,35 @@ NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
     DISPATCH_UINT_PT_TYPES(out_btype, [&]() {
       using bshr_el_t = ScalarT;
-      using bshr_t = std::array<bshr_el_t, 3>;
 
-      NdArrayView<bshr_t> _m(m);
-      NdArrayView<bshr_t> _n(n);
-
-      std::vector<bshr_el_t> half0(numel);
-      std::vector<bshr_el_t> half1(numel);
-      pforeach(0, numel, [&](int64_t idx) {
-        half0[idx] = 0U;
-        half1[idx] = 0U;
-
-        _m[idx][0] = 0U;
-        _m[idx][1] = 0U;
-        _m[idx][2] = 0U;
-
-        _n[idx][0] = 0U;
-        _n[idx][1] = 0U;
-        _n[idx][2] = 0U;
-      });
+      std::vector<bshr_el_t> x1_plus_x2(numel);
+      std::vector<bshr_el_t> x0_plus_x3(numel);
       if(rank == 0){
         pforeach(0, numel, [&](int64_t idx) {
-            half0[idx] ^= _in[idx][1] + _in[idx][2];
+            x1_plus_x2[idx] ^= _in[idx][1] + _in[idx][2];
         });
       }
       else if(rank == 1){
         pforeach(0, numel, [&](int64_t idx) {
-            half0[idx] ^= _in[idx][0] + _in[idx][1];
+            x1_plus_x2[idx] ^= _in[idx][0] + _in[idx][1];
         });
       }
       else if(rank == 2){
         pforeach(0, numel, [&](int64_t idx) {
-            half1[idx] ^= _in[idx][1] + _in[idx][2];
+            x0_plus_x3[idx] ^= _in[idx][1] + _in[idx][2];
         });
       }
       else if(rank == 3){
         pforeach(0, numel, [&](int64_t idx) {
-            half1[idx] ^= _in[idx][0] + _in[idx][1];
+            x0_plus_x3[idx] ^= _in[idx][0] + _in[idx][1];
         });
       }
-      JointInputBool(ctx, half0, m, 0, 1, 2, 3);
-      JointInputBool(ctx, half1, n, 3, 2, 1, 0);
+      JointInputBool(ctx, x1_plus_x2, x1_plus_x2_shr, 0, 1, 2, 3);
+      JointInputBool(ctx, x0_plus_x3, x0_plus_x3_shr, 3, 2, 1, 0);
     });
   });
 
-  return wrap_add_bb(ctx->sctx(), m, n);
+  return wrap_add_bb(ctx->sctx(), x1_plus_x2_shr, x0_plus_x3_shr);
 }
 
 #endif
@@ -252,7 +233,6 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
   const auto* in_ty = in.eltype().as<BShrTy>();
   const size_t in_nbits = in_ty->nbits();
-  auto* mac_state = ctx->getState<Fantastic4MacState>();
   SPU_ENFORCE(in_nbits <= SizeOf(field) * 8, "invalid nbits={}", in_nbits);
   const auto out_ty = makeType<AShrTy>(field);
 
@@ -299,21 +279,17 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
         std::vector<ashr_el_t> x1_xor_x2(numel);
         std::vector<ashr_el_t> x0_xor_x3(numel);
 
-        NdArrayRef x1_xor_x2_shr(out_ty, in.shape());
+        auto x1_xor_x2_buf = std::make_shared<yacl::Buffer>(in.shape().numel() * out_ty.size());
+        memset(x1_xor_x2_buf->data(), 0, in.shape().numel() * out_ty.size());
+        NdArrayRef x1_xor_x2_shr(x1_xor_x2_buf, out_ty, in.shape());
         NdArrayView<ashr_t> _x1_xor_x2_shr(x1_xor_x2_shr);
 
-        NdArrayRef x0_xor_x3_shr(out_ty, in.shape());
+        auto x0_xor_x3_buf = std::make_shared<yacl::Buffer>(in.shape().numel() * out_ty.size());
+        memset(x0_xor_x3_buf->data(), 0, in.shape().numel() * out_ty.size());
+        NdArrayRef x0_xor_x3_shr(x0_xor_x3_buf, out_ty, in.shape());
         NdArrayView<ashr_t> _x0_xor_x3_shr(x0_xor_x3_shr);
 
         pforeach(0, numel, [&](int64_t idx) {
-          _x1_xor_x2_shr[idx][0] = 0U;
-          _x1_xor_x2_shr[idx][1] = 0U;
-          _x1_xor_x2_shr[idx][2] = 0U;
-
-          _x0_xor_x3_shr[idx][0] = 0U;
-          _x0_xor_x3_shr[idx][1] = 0U;
-          _x0_xor_x3_shr[idx][2] = 0U;
-
           const auto& v = _in[idx];
           _x[idx][0] = v[0] & 0x1;
           _x[idx][1] = v[1] & 0x1;
@@ -340,8 +316,11 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
             x0_xor_x3[idx] = _x[idx][0] ^ _x[idx][1];
           });
         }
-        JointInputArith(ctx, x1_xor_x2, x1_xor_x2_shr, 0, 1, 2, 3);
-        JointInputArith(ctx, x0_xor_x3, x0_xor_x3_shr, 2, 3, 0, 1);
+        JointInputArithSend(ctx, x1_xor_x2, x1_xor_x2_shr, 0, 1, 2, 3);
+        JointInputArithSend(ctx, x0_xor_x3, x0_xor_x3_shr, 2, 3, 0, 1);
+
+        JointInputArithRecv(ctx, x1_xor_x2, x1_xor_x2_shr, 0, 1, 2, 3);
+        JointInputArithRecv(ctx, x0_xor_x3, x0_xor_x3_shr, 2, 3, 0, 1);
 
         auto mul_res = wrap_mul_aa(ctx->sctx(), x1_xor_x2_shr, x0_xor_x3_shr);
         NdArrayView<ashr_t> _mul_res(mul_res);
@@ -404,8 +383,7 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
         });
 
         // Pass the third share to previous party
-        auto fourth_shr = comm->rotate<ashr_el_t>(third_shr, "b2a reveal x+r");
-        mac_state->update_msg<ashr_el_t>( (rank + 3) % 4, rank, (rank + 2) % 4, second_shr);
+        auto fourth_shr = JointMsgRotate<ashr_el_t>(ctx, third_shr, second_shr);
 
         pforeach(0, numel, [&](int64_t idx) {
           x_plus_r_pub[idx] = _x_plus_r_shr[idx][0] ^ _x_plus_r_shr[idx][1] ^ _x_plus_r_shr[idx][2] ^ fourth_shr[idx];
@@ -449,13 +427,11 @@ NdArrayRef Opt_MulAA(KernelEvalContext* ctx, const NdArrayRef& lhs, const NdArra
 
   NdArrayView<shr_t> _lhs(lhs);
   NdArrayView<shr_t> _rhs(rhs);
-  NdArrayRef out(makeType<AShrTy>(field), lhs.shape());
+  auto out_ty = makeType<AShrTy>(field);
+  auto out_buf = std::make_shared<yacl::Buffer>(lhs.shape().numel() * out_ty.size());
+  memset(out_buf->data(), 0, lhs.shape().numel() * out_ty.size());
+  NdArrayRef out(out_buf ,out_ty, lhs.shape());
   NdArrayView<shr_t> _out(out);
-  pforeach(0, lhs.numel(), [&](int64_t idx) {
-    for(auto i = 0; i < 3 ; i++ ){
-    _out[idx][i] = 0;
-    }
-  });
 
   std::array<std::vector<el_t>, 5> a;
 
@@ -476,11 +452,16 @@ NdArrayRef Opt_MulAA(KernelEvalContext* ctx, const NdArrayRef& lhs, const NdArra
   });
 
   // Do not send JointInputArith<el_t>(ctx, a[1], out, 0, 1, 3, 2);
-  JointInputArith<el_t>(ctx, a[2], out, 1, 2, 0, 3);
   // Do not send JointInputArith<el_t>(ctx, a[3], out, 2, 3, 1, 0);
-  JointInputArith<el_t>(ctx, a[0], out, 3, 0, 2, 1);
-  JointInputArith<el_t>(ctx, a[4], out, 0, 2, 3, 1);
-  JointInputArith<el_t>(ctx, a[4], out, 1, 3, 2, 0);
+  JointInputArithSend<el_t>(ctx, a[0], out, 0, 3, 1, 2);
+  JointInputArithSend<el_t>(ctx, a[2], out, 1, 2, 0, 3);
+  JointInputArithSend<el_t>(ctx, a[4], out, 2, 0, 3, 1);
+  JointInputArithSend<el_t>(ctx, a[4], out, 3, 1, 2, 0);
+
+  JointInputArithRecv<el_t>(ctx, a[0], out, 0, 3, 1, 2);
+  JointInputArithRecv<el_t>(ctx, a[2], out, 1, 2, 0, 3);
+  JointInputArithRecv<el_t>(ctx, a[4], out, 2, 0, 3, 1);
+  JointInputArithRecv<el_t>(ctx, a[4], out, 3, 1, 2, 0);
 
   return out;
   });
@@ -513,7 +494,6 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 
   auto* comm = ctx->getState<Communicator>();
   auto* prg_state = ctx->getState<PrgState>();
-  auto* mac_state = ctx->getState<Fantastic4MacState>();
 
   DISPATCH_UINT_PT_TYPES(in_ty->getBacktype(), [&]() {
     using bshr_t = std::array<ScalarT, 3>;
@@ -536,20 +516,17 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
         std::vector<ashr_el_t> x1_xor_x2(numel);
         std::vector<ashr_el_t> x0_xor_x3(numel);
 
-        NdArrayRef x1_xor_x2_shr(out_ty, in.shape());
+        auto x1_xor_x2_buf = std::make_shared<yacl::Buffer>(in.shape().numel() * out_ty.size());
+        memset(x1_xor_x2_buf->data(), 0, in.shape().numel() * out_ty.size());
+        NdArrayRef x1_xor_x2_shr(x1_xor_x2_buf, out_ty, in.shape());
         NdArrayView<ashr_t> _x1_xor_x2_shr(x1_xor_x2_shr);
 
-        NdArrayRef x0_xor_x3_shr(out_ty, in.shape());
+        auto x0_xor_x3_buf = std::make_shared<yacl::Buffer>(in.shape().numel() * out_ty.size());
+        memset(x0_xor_x3_buf->data(), 0, in.shape().numel() * out_ty.size());
+        NdArrayRef x0_xor_x3_shr(x0_xor_x3_buf, out_ty, in.shape());
         NdArrayView<ashr_t> _x0_xor_x3_shr(x0_xor_x3_shr);
+
         pforeach(0, numel, [&](int64_t idx) {
-          _x1_xor_x2_shr[idx][0] = 0U;
-          _x1_xor_x2_shr[idx][1] = 0U;
-          _x1_xor_x2_shr[idx][2] = 0U;
-
-          _x0_xor_x3_shr[idx][0] = 0U;
-          _x0_xor_x3_shr[idx][1] = 0U;
-          _x0_xor_x3_shr[idx][2] = 0U;
-
           const auto& v = _in[idx];
           _x[idx][0] = v[0] & 0x1;
           _x[idx][1] = v[1] & 0x1;
@@ -577,8 +554,11 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
           });
         }
 
-        JointInputArith(ctx, x1_xor_x2, x1_xor_x2_shr, 0, 1, 2, 3);
-        JointInputArith(ctx, x0_xor_x3, x0_xor_x3_shr, 2, 3, 0, 1);
+        JointInputArithSend(ctx, x1_xor_x2, x1_xor_x2_shr, 0, 1, 2, 3);
+        JointInputArithSend(ctx, x0_xor_x3, x0_xor_x3_shr, 2, 3, 0, 1);
+
+        JointInputArithRecv(ctx, x1_xor_x2, x1_xor_x2_shr, 0, 1, 2, 3);
+        JointInputArithRecv(ctx, x0_xor_x3, x0_xor_x3_shr, 2, 3, 0, 1);
         // Above we let:
         //    P0 sends P2 x1^x2 - r1
         //    P2 sends P0 x0^x3 - r3
@@ -621,28 +601,22 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
         std::vector<ashr_el_t> r(numel);
         std::vector<ashr_el_t> neg_r(numel);
 
-        NdArrayRef neg_r_shr(expanded_ty, in.shape());
+        auto neg_r_buf = std::make_shared<yacl::Buffer>(in.shape().numel() * expanded_ty.size());
+        auto r_buf = std::make_shared<yacl::Buffer>(in.shape().numel() * expanded_ty.size());
+        auto x_minus_r_buf = std::make_shared<yacl::Buffer>(in.shape().numel() * expanded_ty.size());
+        
+        memset(neg_r_buf->data(), 0, in.shape().numel() * expanded_ty.size());
+        memset(r_buf->data(), 0, in.shape().numel() * expanded_ty.size());
+        memset(x_minus_r_buf->data(), 0, in.shape().numel() * expanded_ty.size());
+
+        NdArrayRef neg_r_shr(neg_r_buf, expanded_ty, in.shape());
         NdArrayView<ashr_t> _neg_r_shr(neg_r_shr);
 
-        NdArrayRef r_shr(expanded_ty, in.shape());
+        NdArrayRef r_shr(r_buf, expanded_ty, in.shape());
         NdArrayView<ashr_t> _r_shr(r_shr);
 
-        NdArrayRef x_minus_r_shr(expanded_ty, in.shape());
+        NdArrayRef x_minus_r_shr(x_minus_r_buf, expanded_ty, in.shape());
         NdArrayView<ashr_t> _x_minus_r_shr(x_minus_r_shr);
-
-        pforeach(0, numel, [&](int64_t idx) {
-          _neg_r_shr[idx][0] = 0U;
-          _neg_r_shr[idx][1] = 0U;
-          _neg_r_shr[idx][2] = 0U;
-
-          _r_shr[idx][0] = 0U;
-          _r_shr[idx][1] = 0U;
-          _r_shr[idx][2] = 0U;
-
-          _x_minus_r_shr[idx][0] = 0U;
-          _x_minus_r_shr[idx][1] = 0U;
-          _x_minus_r_shr[idx][2] = 0U;
-        });
 
         if (comm->getRank() == 0) {
           // Sample r1, r2
@@ -687,7 +661,6 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
         auto x_minus_r = wrap_add_bb(ctx->sctx(), x, neg_r_shr);
 
         // reveal x-r to P2, P3
-        // todo: MAC
         NdArrayView<ashr_t> _x_minus_r(x_minus_r);
 
         std::vector<ashr_el_t> plaintext_x_minus_r(numel);
@@ -700,33 +673,32 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
               shr_for_P2[idx] = _x_minus_r[idx][0];
               shr_for_P3[idx] = _x_minus_r[idx][1];
           });
-          mac_state->update_msg<ashr_el_t>(2, 1, 3, shr_for_P3);
-          mac_state->update_msg<ashr_el_t>(3, 1, 2, shr_for_P2);
+          JointMsgPass(ctx, shr_for_P3, 2, 1, 3);
+          JointMsgPass(ctx, shr_for_P2, 3, 1, 2);
         }
         if (comm->getRank() == 2) {
           // P2 send global shr[2] (own::shr[0]) to P3
           std::vector<ashr_el_t> shr_for_P3(numel);
-          pforeach(0, numel,
-                  [&](int64_t idx) { shr_for_P3[idx] = _x_minus_r[idx][0]; });
-          comm->sendAsync<ashr_el_t>(3, shr_for_P3, "reveal.x_minus_r.to.P3");
+          std::vector<ashr_el_t> shr_for_P2(numel);
+          pforeach(0, numel, [&](int64_t idx) { shr_for_P3[idx] = _x_minus_r[idx][0]; });
 
-          std::vector<ashr_el_t> missing_shr = comm->recv<ashr_el_t>(3, "reveal.x_minus_r.to.P2");
+          JointMsgPass(ctx, shr_for_P3, 2, 1, 3);
+          JointMsgPass(ctx, shr_for_P2, 3, 1, 2);
 
           pforeach(0, numel,
-                  [&](int64_t idx) { plaintext_x_minus_r[idx] = _x_minus_r[idx][0] ^ _x_minus_r[idx][1] ^ _x_minus_r[idx][2] ^ missing_shr[idx]; });
+                  [&](int64_t idx) { plaintext_x_minus_r[idx] = _x_minus_r[idx][0] ^ _x_minus_r[idx][1] ^ _x_minus_r[idx][2] ^ shr_for_P2[idx]; });
 
         }
         if (comm->getRank() == 3) {
           // P3 send global shr[1] (own::shr[2]) to P2
           std::vector<ashr_el_t> shr_for_P2(numel);
-          pforeach(0, numel,
-                  [&](int64_t idx) { shr_for_P2[idx] = _x_minus_r[idx][2]; });
-          comm->sendAsync<ashr_el_t>(2, shr_for_P2, "reveal.x_minus_r.to.P2");
+          std::vector<ashr_el_t> shr_for_P3(numel);
+          pforeach(0, numel, [&](int64_t idx) { shr_for_P2[idx] = _x_minus_r[idx][2]; });
 
-          std::vector<ashr_el_t> missing_shr = comm->recv<ashr_el_t>(2, "reveal.x_minus_r.to.P3");
+          JointMsgPass(ctx, shr_for_P2, 3, 1, 2);
+          JointMsgPass(ctx, shr_for_P3, 2, 1, 3);
 
-          pforeach(0, numel,
-                  [&](int64_t idx) { plaintext_x_minus_r[idx] = _x_minus_r[idx][0] ^ _x_minus_r[idx][1] ^ _x_minus_r[idx][2] ^ missing_shr[idx]; });
+          pforeach(0, numel, [&](int64_t idx) { plaintext_x_minus_r[idx] = _x_minus_r[idx][0] ^ _x_minus_r[idx][1] ^ _x_minus_r[idx][2] ^ shr_for_P3[idx]; });
 
         }
 
@@ -884,7 +856,6 @@ NdArrayRef MsbA2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   auto wrap_m = WrapValue(s1);
   auto wrap_n = WrapValue(cout1_times_2);
   {
-    // 2. 2k + 16 * 2 bits
     auto carry = carry_a2b(sctx, wrap_m, wrap_n, nbits);
 
     // Compute the k'th bit.
@@ -905,89 +876,65 @@ NdArrayRef MsbA2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const auto numel = in.numel();
   auto* comm = ctx->getState<Communicator>();
   auto rank = comm->getRank();
-  const Type bshr_type =
-      makeType<BShrTy>(GetStorageType(field), SizeOf(field) * 8);
+  const Type bshr_type = makeType<BShrTy>(GetStorageType(field), SizeOf(field) * 8);
 
-  NdArrayRef m(bshr_type, in.shape());
-  NdArrayRef n(bshr_type, in.shape());
+  auto x1_plus_x2_buf = std::make_shared<yacl::Buffer>(in.shape().numel() * bshr_type.size());
+  auto x0_plus_x3_buf = std::make_shared<yacl::Buffer>(in.shape().numel() * bshr_type.size());
+  memset(x1_plus_x2_buf->data(), 0, in.shape().numel() * bshr_type.size());
+  memset(x0_plus_x3_buf->data(), 0, in.shape().numel() * bshr_type.size());
+
+  NdArrayRef x1_plus_x2_shr(x1_plus_x2_buf, bshr_type, in.shape());
+  NdArrayRef x0_plus_x3_shr(x0_plus_x3_buf, bshr_type, in.shape());
 
   DISPATCH_ALL_FIELDS(field, [&]() {
     using el_t = ring2k_t;
     using shr_t = std::array<el_t, 3>;
 
     NdArrayView<shr_t> _in(in);
-    NdArrayView<shr_t> _m(m);
-    NdArrayView<shr_t> _n(n);
+    NdArrayView<shr_t> _x1_plus_x2_shr(x1_plus_x2_shr);
+    NdArrayView<shr_t> _x0_plus_x3_shr(x0_plus_x3_shr);
 
-    std::vector<el_t> half0(numel);
-    std::vector<el_t> half1(numel);
+    std::vector<el_t> x1_plus_x2(numel);
+    std::vector<el_t> x0_plus_x3(numel);
 
     if(rank == 0){
       pforeach(0, numel, [&](int64_t idx) {
-          half0[idx] ^= _in[idx][1] + _in[idx][2];
-          _m[idx][0] = 0U;
-          _m[idx][1] = 0U;
-          _m[idx][2] = 0U;
-
-          _n[idx][0] = 0U;
-          _n[idx][1] = 0U;
-          _n[idx][2] = 0U;
+          x1_plus_x2[idx] ^= _in[idx][1] + _in[idx][2];
       });
     }
     else if(rank == 1){
       pforeach(0, numel, [&](int64_t idx) {
-          half0[idx] ^= _in[idx][0] + _in[idx][1];
-          _m[idx][0] = 0U;
-          _m[idx][1] = 0U;
-          _m[idx][2] = 0U;
-
-          _n[idx][0] = 0U;
-          _n[idx][1] = 0U;
-          _n[idx][2] = 0U;
+          x1_plus_x2[idx] ^= _in[idx][0] + _in[idx][1];
       });
     }
     else if(rank == 2){
       pforeach(0, numel, [&](int64_t idx) {
-          half1[idx] ^= _in[idx][1] + _in[idx][2];
-          _m[idx][0] = 0U;
-          _m[idx][1] = 0U;
-          _m[idx][2] = 0U;
-
-          _n[idx][0] = 0U;
-          _n[idx][1] = 0U;
-          _n[idx][2] = 0U;
+          x0_plus_x3[idx] ^= _in[idx][1] + _in[idx][2];
       });
     }
     else if(rank == 3){
       pforeach(0, numel, [&](int64_t idx) {
-          half1[idx] ^= _in[idx][0] + _in[idx][1];
-          _m[idx][0] = 0U;
-          _m[idx][1] = 0U;
-          _m[idx][2] = 0U;
-
-          _n[idx][0] = 0U;
-          _n[idx][1] = 0U;
-          _n[idx][2] = 0U;
+          x0_plus_x3[idx] ^= _in[idx][0] + _in[idx][1];
       });
     }
-    JointInputBool(ctx, half0, m, 0, 1, 2, 3);
-    JointInputBool(ctx, half1, n, 3, 2, 1, 0);
+    JointInputBool(ctx, x1_plus_x2, x1_plus_x2_shr, 0, 1, 2, 3);
+    JointInputBool(ctx, x0_plus_x3, x0_plus_x3_shr, 3, 2, 1, 0);
   });
 
   // Compute the k-1'th carry bit.
   size_t nbits = SizeOf(field) * 8 - 1;
   auto* sctx = ctx->sctx();
   const Shape shape = {in.numel()};
-  auto wrap_m = WrapValue(m);
-  auto wrap_n = WrapValue(n);
+  auto wrap_x1_plus_x2_shr = WrapValue(x1_plus_x2_shr);
+  auto wrap_x0_plus_x3_shr = WrapValue(x0_plus_x3_shr);
 
-  // 2. 2k + 16 * 2 bits
-  auto carry = carry_a2b(sctx, wrap_m, wrap_n, nbits);
+  // 2k + 16 * 2 bits
+  auto carry = carry_a2b(sctx, wrap_x1_plus_x2_shr, wrap_x0_plus_x3_shr, nbits);
 
   // Compute the k'th bit.
   //   (m^n)[k] ^ carry
   auto msb = xor_bb(sctx,
-                    rshift_b(sctx, xor_bb(sctx, wrap_m, wrap_n),
+                    rshift_b(sctx, xor_bb(sctx, wrap_x1_plus_x2_shr, wrap_x0_plus_x3_shr),
                               {static_cast<int64_t>(nbits)}),
                     carry);
   return UnwrapValue(msb);
@@ -1016,7 +963,6 @@ NdArrayRef eqz(KernelEvalContext* ctx, const NdArrayRef& in) {
   const auto field = in.eltype().as<AShrTy>()->field();
   const auto numel = in.numel();
   auto rank = comm->getRank();
-  auto* mac_state = ctx->getState<Fantastic4MacState>();
 
   // length-k boolean type
   const PtType in_bshr_btype = calcBShareBacktype(SizeOf(field) * 8);
@@ -1068,8 +1014,7 @@ NdArrayRef eqz(KernelEvalContext* ctx, const NdArrayRef& in) {
     // Compute Boolean shares of r (edabits)
     rand_bshr = wrap_a2b(ctx->sctx(), rand_ashr);
 
-    auto fourth_shr = comm->rotate<ashr_el_t>(third_shr, "eqz reveal x+r");
-    mac_state->update_msg<ashr_el_t>( (rank + 3) % 4, rank, (rank + 2) % 4, second_shr);
+    auto fourth_shr = JointMsgRotate<ashr_el_t>(ctx, third_shr, second_shr);
 
     pforeach(0, numel, [&](int64_t idx) { plaintext_x_plus_r[idx] += fourth_shr[idx];  });
 
@@ -1179,83 +1124,48 @@ NdArrayRef eqz(KernelEvalContext* ctx, const NdArrayRef& in) {
       using bshr_el_t = ScalarT;
       using bshr_t = std::array<bshr_el_t, 3>;
 
-      NdArrayRef first_half(makeType<BShrTy>(in_bshr_btype, SizeOf(in_bshr_btype) * 8), in.shape());
-      NdArrayView<bshr_t> _first_half(first_half);
-      NdArrayRef second_half(makeType<BShrTy>(in_bshr_btype, SizeOf(in_bshr_btype) * 8), in.shape());
-      NdArrayView<bshr_t> _second_half(second_half);
+      auto in_ty = makeType<BShrTy>(in_bshr_btype, SizeOf(in_bshr_btype) * 8);
 
-      NdArrayRef test_all_one(makeType<BShrTy>(in_bshr_btype, SizeOf(in_bshr_btype) * 8), in.shape());
+      auto x1_plus_x2_buf = std::make_shared<yacl::Buffer>(in.shape().numel() * in_ty.size());
+      auto x0_plus_x3_buf = std::make_shared<yacl::Buffer>(in.shape().numel() * in_ty.size());
+      auto test_all_one_buf = std::make_shared<yacl::Buffer>(in.shape().numel() * in_ty.size());
+      memset(x1_plus_x2_buf->data(), 0, in.shape().numel() * in_ty.size());
+      memset(x0_plus_x3_buf->data(), 0, in.shape().numel() * in_ty.size());
+      memset(test_all_one_buf->data(), 0, in.shape().numel() * in_ty.size());
+
+      NdArrayRef x1_plus_x2_shr(x1_plus_x2_buf, in_ty, in.shape());
+      NdArrayView<bshr_t> _x1_plus_x2_shr(x1_plus_x2_shr);
+      NdArrayRef x0_plus_x3_shr(x0_plus_x3_buf, in_ty, in.shape());
+      NdArrayView<bshr_t> _x0_plus_x3_shr(x0_plus_x3_shr);
+
+      NdArrayRef test_all_one(test_all_one_buf, in_ty, in.shape());
       NdArrayView<bshr_t> _test_all_one(test_all_one);
 
-      std::vector<bshr_el_t> plaintext_first_half(numel);
-      std::vector<bshr_el_t> plaintext_second_half(numel);
+      std::vector<bshr_el_t> plaintext_x1_plus_x2(numel);
+      std::vector<bshr_el_t> plaintext_x0_plus_x3(numel);
 
       if (comm->getRank() == 0) {
         pforeach(0, numel, [&](int64_t idx) {
           // ~(x1 + x2)
-          plaintext_first_half[idx] = ~(_in[idx][1] + _in[idx][2]);
-          _first_half[idx][0] = 0U;
-          _first_half[idx][1] = 0U;
-          _first_half[idx][2] = 0U;
-
-          _second_half[idx][0] = 0U;
-          _second_half[idx][1] = 0U;
-          _second_half[idx][2] = 0U;
-
-          _test_all_one[idx][0] = 0U;
-          _test_all_one[idx][1] = 0U;
-          _test_all_one[idx][2] = 0U;
+          plaintext_x1_plus_x2[idx] = ~(_in[idx][1] + _in[idx][2]);
         });
       }
       if (comm->getRank() == 1) {
         pforeach(0, numel, [&](int64_t idx) {
           // ~(x1 + x2)
-          plaintext_first_half[idx] = ~(_in[idx][0] + _in[idx][1]);
-          _first_half[idx][0] = 0U;
-          _first_half[idx][1] = 0U;
-          _first_half[idx][2] = 0U;
-
-          _second_half[idx][0] = 0U;
-          _second_half[idx][1] = 0U;
-          _second_half[idx][2] = 0U;
-
-          _test_all_one[idx][0] = 0U;
-          _test_all_one[idx][1] = 0U;
-          _test_all_one[idx][2] = 0U;
+          plaintext_x1_plus_x2[idx] = ~(_in[idx][0] + _in[idx][1]);
         });
       }
       if (comm->getRank() == 2) {
         pforeach(0, numel, [&](int64_t idx) {
           // -(x3 + x0)
-          plaintext_second_half[idx] = -(_in[idx][1] + _in[idx][2]);
-          _first_half[idx][0] = 0U;
-          _first_half[idx][1] = 0U;
-          _first_half[idx][2] = 0U;
-
-          _second_half[idx][0] = 0U;
-          _second_half[idx][1] = 0U;
-          _second_half[idx][2] = 0U;
-
-          _test_all_one[idx][0] = 0U;
-          _test_all_one[idx][1] = 0U;
-          _test_all_one[idx][2] = 0U;
+          plaintext_x0_plus_x3[idx] = -(_in[idx][1] + _in[idx][2]);
         });
       }
       if (comm->getRank() == 3) {
         pforeach(0, numel, [&](int64_t idx) {
           // -(x3 + x0)
-          plaintext_second_half[idx] = -(_in[idx][0] + _in[idx][1]);
-          _first_half[idx][0] = 0U;
-          _first_half[idx][1] = 0U;
-          _first_half[idx][2] = 0U;
-
-          _second_half[idx][0] = 0U;
-          _second_half[idx][1] = 0U;
-          _second_half[idx][2] = 0U;
-
-          _test_all_one[idx][0] = 0U;
-          _test_all_one[idx][1] = 0U;
-          _test_all_one[idx][2] = 0U;
+          plaintext_x0_plus_x3[idx] = -(_in[idx][0] + _in[idx][1]);
         });
       }
 
@@ -1265,13 +1175,13 @@ NdArrayRef eqz(KernelEvalContext* ctx, const NdArrayRef& in) {
       //   < ---- >(x1 + x2)[i] == (- x0 - x3)[i], for all i
       //   < ---- >(x1 + x2)[i] XOR (- x0 - x3)[i] == 0, for all i
       //   < ---- >~(x1 + x2)[i] XOR (- x0 - x3)[i] == 1, for all i
-      JointInputBool(ctx, plaintext_first_half, first_half, 0, 1, 2, 3);
-      JointInputBool(ctx, plaintext_second_half, second_half, 2, 3, 0, 1);
+      JointInputBool(ctx, plaintext_x1_plus_x2, x1_plus_x2_shr, 0, 1, 2, 3);
+      JointInputBool(ctx, plaintext_x0_plus_x3, x0_plus_x3_shr, 2, 3, 0, 1);
 
       pforeach(0, numel, [&](int64_t idx) {
-        _test_all_one[idx][0] = _first_half[idx][0] ^ _second_half[idx][0];
-        _test_all_one[idx][1] = _first_half[idx][1] ^ _second_half[idx][1];
-        _test_all_one[idx][2] = _first_half[idx][2] ^ _second_half[idx][2];
+        _test_all_one[idx][0] = _x1_plus_x2_shr[idx][0] ^ _x0_plus_x3_shr[idx][0];
+        _test_all_one[idx][1] = _x1_plus_x2_shr[idx][1] ^ _x0_plus_x3_shr[idx][1];
+        _test_all_one[idx][2] = _x1_plus_x2_shr[idx][2] ^ _x0_plus_x3_shr[idx][2];
       });
 
       std::vector<NdArrayRef> reduction_res;

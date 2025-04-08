@@ -39,6 +39,8 @@ class A2P : public UnaryKernel {
     return ce::K();
   }
 
+  Kind kind() const override { return Kind::Dynamic; }
+
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
 
@@ -61,6 +63,8 @@ class P2A : public UnaryKernel {
     return ce::Const(0);
 #endif
   }
+
+  Kind kind() const override { return Kind::Dynamic; }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };

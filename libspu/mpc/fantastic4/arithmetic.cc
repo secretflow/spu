@@ -28,6 +28,10 @@
 #define OPTIMIZED_TRUNC
 #endif
 
+// We can alternatively check MAC in Trunc Kernel since it's widely used in applications
+//    but it will output much times log infomation
+// #define TRUNC_CHECKMAC
+
 namespace spu::mpc::fantastic4 {
 
 //  For Rep4 / Fantastic Four
@@ -68,11 +72,9 @@ NdArrayRef RandA::proc(KernelEvalContext* ctx, const Shape& shape) const {
 }
 
 NdArrayRef A2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
-  auto* comm = ctx->getState<Communicator>();
   const auto field = in.eltype().as<AShrTy>()->field();
   auto numel = in.numel();
-  auto rank = comm->getRank();
-  auto* mac_state = ctx->getState<Fantastic4MacState>();
+
   return DISPATCH_ALL_FIELDS(field, [&]() {
     using pshr_el_t = ring2k_t;
     using ashr_el_t = ring2k_t;
@@ -89,9 +91,7 @@ NdArrayRef A2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
       x2[idx] = _in[idx][2];
     });
     // Pass the third share to previous party
-    auto x3 = comm->rotate<ashr_el_t>(x2, "a2p");// comm => 1, k
-
-    mac_state->update_msg<ashr_el_t>( (rank + 3) % 4, rank, (rank + 2) % 4, x1);
+    auto x3 = JointMsgRotate<ashr_el_t>(ctx, x2, x1);
 
     pforeach(0, numel, [&](int64_t idx) {
       _out[idx] = _in[idx][0] + _in[idx][1] + _in[idx][2] + x3[idx];
@@ -99,9 +99,6 @@ NdArrayRef A2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
     return out;
   });
 }
-
-// x1 = x
-// x2 = x3 = x4 = 0
 
 NdArrayRef P2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   auto* comm = ctx->getState<Communicator>();
@@ -123,38 +120,6 @@ NdArrayRef P2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
       _out[idx][1] = rank == 3 ? _in[idx] : 0;
       _out[idx][2] = rank == 2 ? _in[idx] : 0;
     });
-
-// for debug purpose, randomize the inputs to avoid corner cases.
-#ifdef ENABLE_MASK_DURING_FANTASTIC4_P2A
-    auto* mac_state = ctx->getState<Fantastic4MacState>();
-    std::vector<ashr_el_t> r0(in.numel());
-    std::vector<ashr_el_t> r1(in.numel());
-    std::vector<ashr_el_t> r2(in.numel());
-    std::vector<ashr_el_t> s0(in.numel());
-    std::vector<ashr_el_t> s1(in.numel());
-    std::vector<ashr_el_t> s2(in.numel());
-
-    auto* prg_state = ctx->getState<PrgState>();
-    prg_state->fillPrssTuple<ashr_el_t>(r0.data(), nullptr, nullptr, r0.size(),
-                              PrgState::GenPrssCtrl::First);
-    prg_state->fillPrssTuple<ashr_el_t>(nullptr, r1.data(), nullptr, r1.size(),
-                              PrgState::GenPrssCtrl::Second);
-    prg_state->fillPrssTuple<ashr_el_t>(nullptr, nullptr, r2.data(), r2.size(),
-                              PrgState::GenPrssCtrl::Third);
-
-    for (int64_t idx = 0; idx < in.numel(); idx++) {
-      s0[idx] = r0[idx] - r1[idx];
-      s1[idx] = r1[idx] - r2[idx];
-      }
-
-    s2 = comm->rotate<ashr_el_t>(s1, "p2a.zero");
-    mac_state->update_msg<ashr_el_t>( (rank + 3) % 4, rank, (rank + 2) % 4, s0);
-    for (int64_t idx = 0; idx < in.numel(); idx++) {
-      _out[idx][0] += s0[idx];
-      _out[idx][1] += s1[idx];
-      _out[idx][2] += s2[idx];
-    }
-#endif
     return out;
   });
 }
@@ -163,7 +128,7 @@ NdArrayRef A2V::proc(KernelEvalContext* ctx, const NdArrayRef& in,
                      size_t rank) const {
   auto* comm = ctx->getState<Communicator>();
   const auto field = in.eltype().as<AShrTy>()->field();
-  auto* mac_state = ctx->getState<Fantastic4MacState>();
+
   return DISPATCH_ALL_FIELDS(field, [&]() {
     using vshr_el_t = ring2k_t;
     using ashr_el_t = ring2k_t;
@@ -173,8 +138,8 @@ NdArrayRef A2V::proc(KernelEvalContext* ctx, const NdArrayRef& in,
     auto out_ty = makeType<Priv2kTy>(field, rank);
 
     if (comm->getRank() == rank) {
-      auto x4 = comm->recv<ashr_el_t>(comm->nextRank(), "a2v");// comm => 1, k
-      mac_state->update_msg<ashr_el_t>((rank + 1) % 4, (rank + 3) % 4, rank, x4);
+      std::vector<ashr_el_t> x4(in.numel());
+      JointMsgPass(ctx, x4, (rank + 1) % 4, (rank + 3) % 4, rank);
 
       NdArrayRef out(out_ty, in.shape());
       NdArrayView<vshr_el_t> _out(out);
@@ -189,14 +154,14 @@ NdArrayRef A2V::proc(KernelEvalContext* ctx, const NdArrayRef& in,
 
       pforeach(0, in.numel(), [&](int64_t idx) { x3[idx] = _in[idx][2];});
 
-      comm->sendAsync<ashr_el_t>(comm->prevRank(), x3, "a2v");// comm => 1, k
+      JointMsgPass(ctx, x3, (rank + 1) % 4, (rank + 3) % 4, rank);
       return makeConstantArrayRef(out_ty, in.shape());
     }
     else if (comm->getRank() == (rank + 3) % 4) {
       std::vector<ashr_el_t> x0(in.numel());
 
       pforeach(0, in.numel(), [&](int64_t idx) { x0[idx] = _in[idx][0];});
-      mac_state->update_msg<ashr_el_t>((rank + 1) % 4, (rank + 3) % 4, rank, x0);
+      JointMsgPass(ctx, x0, (rank + 1) % 4, (rank + 3) % 4, rank);
 
       return makeConstantArrayRef(out_ty, in.shape());
     }
@@ -206,6 +171,9 @@ NdArrayRef A2V::proc(KernelEvalContext* ctx, const NdArrayRef& in,
   });
 }
 
+
+// Fantastic Four is for outsourced model, that is, the four parties are not the data owners
+// This kernel is implemented for completeness, and in case for semi-honest security which ensures a party provide consistent input
 NdArrayRef V2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   auto* comm = ctx->getState<Communicator>();
   const auto* in_ty = in.eltype().as<Priv2kTy>();
@@ -219,7 +187,6 @@ NdArrayRef V2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
     NdArrayRef out(makeType<AShrTy>(field), in.shape());
     NdArrayView<ashr_t> _out(out);
 
-    // x = (x0, x1, x2, 0)
     if (comm->getRank() == owner_rank) {
       auto splits = ring_rand_additive_splits(in, 3);
       comm->sendAsync(((owner_rank + 1) % 4), splits[1], "v2a 1");
@@ -390,20 +357,18 @@ NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
   auto* comm = ctx->getState<Communicator>();
   auto rank = comm->getRank();
   auto next_rank = (rank + 1) % 4;
-
+  auto out_ty = makeType<AShrTy>(field);
   return DISPATCH_ALL_FIELDS(field, [&]() {
     using el_t = ring2k_t;
     using shr_t = std::array<el_t, 3>;
 
     NdArrayView<shr_t> _lhs(lhs);
     NdArrayView<shr_t> _rhs(rhs);
-    NdArrayRef out(makeType<AShrTy>(field), lhs.shape());
+
+    auto out_buf = std::make_shared<yacl::Buffer>(lhs.shape().numel() * out_ty.size());
+    memset(out_buf->data(), 0, lhs.shape().numel() * out_ty.size());
+    NdArrayRef out(out_buf ,out_ty, lhs.shape());
     NdArrayView<shr_t> _out(out);
-    pforeach(0, lhs.numel(), [&](int64_t idx) {
-        for(auto i = 0; i < 3 ; i++ ){
-          _out[idx][i] = 0;
-        }
-    });
 
     std::array<std::vector<el_t>, 5> a;
 
@@ -422,12 +387,19 @@ NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
         a[4][idx] = _lhs[idx][0] * _rhs[idx][2] + _lhs[idx][2] * _rhs[idx][0];// xi*yg + xg*yi
     });
 
-    JointInputArith<el_t>(ctx, a[0], out, 3, 0, 1, 2);
-    JointInputArith<el_t>(ctx, a[3], out, 2, 3, 1, 0);
-    JointInputArith<el_t>(ctx, a[1], out, 0, 1, 3, 2);
-    JointInputArith<el_t>(ctx, a[4], out, 0, 2, 3, 1);
-    JointInputArith<el_t>(ctx, a[2], out, 1, 2, 0, 3);
-    JointInputArith<el_t>(ctx, a[4], out, 1, 3, 2, 0);
+    JointInputArithSend<el_t>(ctx, a[0], out, 3, 0, 1, 2);
+    JointInputArithSend<el_t>(ctx, a[3], out, 2, 3, 1, 0);
+    JointInputArithSend<el_t>(ctx, a[1], out, 0, 1, 3, 2);
+    JointInputArithSend<el_t>(ctx, a[4], out, 0, 2, 3, 1);
+    JointInputArithSend<el_t>(ctx, a[2], out, 1, 2, 0, 3);
+    JointInputArithSend<el_t>(ctx, a[4], out, 1, 3, 2, 0);
+
+    JointInputArithRecv<el_t>(ctx, a[0], out, 3, 0, 1, 2);
+    JointInputArithRecv<el_t>(ctx, a[3], out, 2, 3, 1, 0);
+    JointInputArithRecv<el_t>(ctx, a[1], out, 0, 1, 3, 2);
+    JointInputArithRecv<el_t>(ctx, a[4], out, 0, 2, 3, 1);
+    JointInputArithRecv<el_t>(ctx, a[2], out, 1, 2, 0, 3);
+    JointInputArithRecv<el_t>(ctx, a[4], out, 1, 3, 2, 0);
 
     return out;
   });
@@ -487,40 +459,37 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
   NdArrayRef r_next(ty, mat_shape);
   NdArrayRef r_next_next(ty, mat_shape);
 
-  NdArrayRef r_1(ty, mat_shape);
-  NdArrayRef r_2(ty, mat_shape);
-  // using shr_t = std::array<el_t, 2>;
-  auto fr = std::async([&] { prg_state->fillPrssTuple(r_self.data<std::uint8_t>(), r_next.data<std::uint8_t>(), r_next_next.data<std::uint8_t>() , mat_shape.numel() * ty.size(),
-          PrgState::GenPrssCtrl::All);});
+  prg_state->fillPrssTuple(r_self.data<std::uint8_t>(), r_next.data<std::uint8_t>(), r_next_next.data<std::uint8_t>() , mat_shape.numel() * ty.size(),
+          PrgState::GenPrssCtrl::All);
 
   // a0 = (x0 + x1) * y0 + x0 * y1
-  auto t0 = std::async(std::launch::async, ring_mmul, x0, y1);
+  auto x0y1 = std::async(std::launch::async, ring_mmul, x0, y1);
+  auto x0y0 = std::async(std::launch::async, ring_mmul, x0, y0);
+  auto x1y0 = std::async(std::launch::async, ring_mmul, x1, y0);
 
-  auto t10 = std::async(std::launch::async, ring_mmul, x0, y0);
-  auto t11 = std::async(std::launch::async, ring_mmul, x1, y0);
+  // a0 = (x1 + x2) * y1 + x1 * y2
+  auto x1y2 = std::async(std::launch::async, ring_mmul, x1, y2);
+  auto x1y1 = std::async(std::launch::async, ring_mmul, x1, y1);
+  auto x2y1 = std::async(std::launch::async, ring_mmul, x2, y1);
 
-   // X must be the lhs
-  auto t2 = std::async(std::launch::async, ring_mmul, x1, y2);
-  auto t30 = std::async(std::launch::async, ring_mmul, x1, y1);
-  auto t31 = std::async(std::launch::async, ring_mmul, x2, y1);
   // c = x0 * y2 + x2 * y0
-  auto c0 = std::async(std::launch::async, ring_mmul, x0, y2);
-  auto c1 = ring_mmul(x2, y0);
+  auto x0y2 = std::async(std::launch::async, ring_mmul, x0, y2);
+  auto x2y0 = ring_mmul(x2, y0);
 
-  auto a0 = ring_sum({t0.get(), t10.get(), t11.get()});
-  auto a1 = ring_sum({t2.get(), t30.get(), t31.get()});
-  auto c = ring_add(c0.get(), c1);
-
-  fr.get();
-
+  auto a0 = ring_sum({x0y1.get(), x0y0.get(), x1y0.get()});
+  auto a1 = ring_sum({x1y2.get(), x1y1.get(), x2y1.get()});
+  auto c = ring_add(x0y2.get(), x2y0);
 
   auto a0_sub_r1 = ring_sub(a0, r_next);
   auto a1_sub_r2 = ring_sub(a1, r_next_next);
 
   // Pi-1, Pi joint send Pi::share[0] to Pi-2
   auto a2_sub_r3 = comm->rotate(a1_sub_r2, kBindName());
-  // rank = i, sender = prev rank = i-1, receiver = next next rank = i+2
-  mac_state->update_msg( (rank + 3) % 4, rank, (rank + 2) % 4, a0_sub_r1);
+
+  // As receiver, rank = i, sender = next rank = i+1, backup = next next rank = i+2
+  mac_state->update_msg((rank + 1) % 4, (rank + 2) % 4, rank, a2_sub_r3);
+  // As backup, rank = i, sender = prev rank = i-1, receiver = next next rank = i+2
+  mac_state->update_msg((rank + 3) % 4, rank, (rank + 2) % 4, a0_sub_r1);
 
   auto f0 = std::async([&] { ring_assign(o0, r_self);});
   auto f1 = std::async([&] { ring_assign(o1, r_next);});
@@ -528,28 +497,26 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
   f0.get();
   f1.get();
 
-
   ring_add_(o0, a0_sub_r1);
   ring_add_(o1, a1_sub_r2);
   ring_add_(o2, a2_sub_r3);
 
+  NdArrayRef r_1(ty, mat_shape);
+  NdArrayRef r_2(ty, mat_shape);
   if ( rank == 0 ) {
-
     prg_state->fillPrssTuple(static_cast<uint8_t*>(nullptr), r_1.data<std::uint8_t>() , static_cast<uint8_t*>(nullptr),  mat_shape.numel() * ty.size(), PrgState::GenPrssCtrl::Second);
     ring_add_(o1, r_1);
 
     prg_state->fillPrssTuple(static_cast<uint8_t*>(nullptr), static_cast<uint8_t*>(nullptr), r_2.data<std::uint8_t>() , mat_shape.numel() * ty.size(),
             PrgState::GenPrssCtrl::Third);
     auto c02_sub_r2 = ring_sub(c, r_2);
-    comm->sendAsync(3, c02_sub_r2, "0-3 1");
+    comm->sendAsync(3, c02_sub_r2, "0-3");
     ring_add_(o0, c02_sub_r2);
     ring_add_(o2, r_2);
   }
   else if ( rank == 1 ) {
-
     prg_state->fillPrssTuple(static_cast<uint8_t*>(nullptr), r_2.data<std::uint8_t>() , static_cast<uint8_t*>(nullptr),  mat_shape.numel() * ty.size(), PrgState::GenPrssCtrl::Second);
     ring_add_(o1, r_2);
-
 
     prg_state->fillPrssTuple(r_1.data<std::uint8_t>() , static_cast<uint8_t*>(nullptr),  static_cast<uint8_t*>(nullptr),  mat_shape.numel() * ty.size(), PrgState::GenPrssCtrl::First);
     auto c13_sub_r1 = ring_sub(c, r_1);
@@ -565,22 +532,22 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
     ring_add_(o2, c02_sub_r2);
     mac_state->update_msg(0, 2, 3, c02_sub_r2);
 
-    auto c13_sub_r1 = comm->recv(3, c.eltype(),"3-2 1");
+    auto c13_sub_r1 = comm->recv(3, c.eltype(),"3-2");
     c13_sub_r1 = c13_sub_r1.reshape(mat_shape);
     ring_add_(o1, c13_sub_r1);
     mac_state->update_msg(3, 1, 2, c13_sub_r1);
   }
   else if ( rank == 3 ) {
-    auto c02_sub_r2 = comm->recv(0, c.eltype(), "0-3 1");
+    prg_state->fillPrssTuple(static_cast<uint8_t*>(nullptr),  static_cast<uint8_t*>(nullptr), r_1.data<std::uint8_t>() , mat_shape.numel() * ty.size(), PrgState::GenPrssCtrl::Third);
+    auto c13_sub_r1 = ring_sub(c, r_1);
+    comm->sendAsync(2, c13_sub_r1, "3-2");
+    ring_add_(o0, c13_sub_r1);
+    ring_add_(o2, r_1);
+
+    auto c02_sub_r2 = comm->recv(0, c.eltype(), "0-3");
     c02_sub_r2 = c02_sub_r2.reshape(mat_shape);
     ring_add_(o1, c02_sub_r2);
     mac_state->update_msg(0, 2, 3, c02_sub_r2);
-
-    prg_state->fillPrssTuple(static_cast<uint8_t*>(nullptr),  static_cast<uint8_t*>(nullptr), r_1.data<std::uint8_t>() , mat_shape.numel() * ty.size(), PrgState::GenPrssCtrl::Third);
-    auto c13_sub_r1 = ring_sub(c, r_1);
-    comm->sendAsync(2, c13_sub_r1, "3-2 1");
-    ring_add_(o0, c13_sub_r1);
-    ring_add_(o2, r_1);
   }
 
   return out;
@@ -611,6 +578,29 @@ NdArrayRef LShiftA::proc(KernelEvalContext*, const NdArrayRef& in,
   });
 }
 
+#ifndef OPTIMIZED_TRUNC
+static NdArrayRef wrap_mul_aa(SPUContext* ctx, const NdArrayRef& x,
+                              const NdArrayRef& y) {
+    SPU_ENFORCE(x.shape() == y.shape());
+    return UnwrapValue(mul_aa(ctx, WrapValue(x), WrapValue(y)));
+}
+#else
+// In truncA we let:
+//    P0 sends P2 rb - r1
+//    P2 sends P0 sb - r3
+// As the result:
+//    rb_shr = (0       ,- r1, rb - r1, 0)
+//    sb_shr = (sb - r3 ,  0,    0    , r3)
+// Recall that in 4PC MulAA:
+//    pforeach(0, lhs.numel(), [&](int64_t idx) {
+//      a[rank][idx] = (_lhs[idx][0] + _lhs[idx][1]) * _rhs[idx][0] + _lhs[idx][0] * _rhs[idx][1]; // xi*yi + xi*yj + xj*yi
+//      a[next_rank][idx] = (_lhs[idx][1] + _lhs[idx][2]) * _rhs[idx][1] + _lhs[idx][1] * _rhs[idx][2];  // xj*yj + xj*yg + xg*yj
+//      a[4][idx] = _lhs[idx][0] * _rhs[idx][2] + _lhs[idx][2] * _rhs[idx][0];                    // xi*yg + xg*yi
+//    });
+// Here we have:
+//    a[3] = 0
+//    a[1] = 0
+// For optimization, we do not send them in Opt_Mul.
 NdArrayRef Opt_Mul(KernelEvalContext* ctx, const NdArrayRef& lhs, const NdArrayRef& rhs) {
   const auto field = lhs.eltype().as<Ring2k>()->field();
   auto* comm = ctx->getState<Communicator>();
@@ -638,42 +628,29 @@ NdArrayRef Opt_Mul(KernelEvalContext* ctx, const NdArrayRef& lhs, const NdArrayR
       vec = std::vector<el_t>(lhs.numel(), el_t(0));
     }
 
-    // pforeach(0, lhs.numel(), [&](int64_t idx) {
-    //   for(auto i =0; i<5;i++){
-    //     a[i][idx] = 0;
-    //   }
-    // });
-
     pforeach(0, lhs.numel(), [&](int64_t idx) {
       a[rank][idx] = (_lhs[idx][0] + _lhs[idx][1]) * _rhs[idx][0] + _lhs[idx][0] * _rhs[idx][1]; // xi*yi + xi*yj + xj*yi
       a[next_rank][idx] = (_lhs[idx][1] + _lhs[idx][2]) * _rhs[idx][1] + _lhs[idx][1] * _rhs[idx][2];  // xj*yj + xj*yg + xg*yj
       a[4][idx] = _lhs[idx][0] * _rhs[idx][2] + _lhs[idx][2] * _rhs[idx][0];                    // xi*yg + xg*yi
     });
+    // All parties send async their msgs
+    JointInputArithSend<el_t>(ctx, a[0], out, 0, 3, 1, 2);
+    JointInputArithSend<el_t>(ctx, a[2], out, 1, 2, 0, 3);
+    JointInputArithSend<el_t>(ctx, a[4], out, 2, 0, 3, 1);
+    JointInputArithSend<el_t>(ctx, a[4], out, 3, 1, 2, 0);
 
-
-    // let P2 send async to P3, P3 wait to recv
-    JointInputArith<el_t>(ctx, a[2], out, 2, 1, 3, 0);
-    JointInputArith<el_t>(ctx, a[4], out, 2, 0, 3, 0);
-
-    // let P01 send async to P2, P2 wait to recv
-    JointInputArith<el_t>(ctx, a[0], out, 0, 3, 2, 1);
-    JointInputArith<el_t>(ctx, a[4], out, 1, 3, 2, 0);
+    // All parties recv
+    JointInputArithRecv<el_t>(ctx, a[0], out, 0, 3, 1, 2);
+    JointInputArithRecv<el_t>(ctx, a[2], out, 1, 2, 0, 3);
+    JointInputArithRecv<el_t>(ctx, a[4], out, 2, 0, 3, 1);
+    JointInputArithRecv<el_t>(ctx, a[4], out, 3, 1, 2, 0);
 
     return out;
   });
 }
-
-#ifndef OPTIMIZED_TRUNC
-static NdArrayRef wrap_mul_aa(SPUContext* ctx, const NdArrayRef& x,
-                              const NdArrayRef& y) {
-    SPU_ENFORCE(x.shape() == y.shape());
-    return UnwrapValue(mul_aa(ctx, WrapValue(x), WrapValue(y)));
-}
-
 #endif
 
-NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t bits,
-                  SignType sign) const {
+NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t bits, SignType sign) const {
   (void)sign;
 
   const auto field = in.eltype().as<Ring2k>()->field();
@@ -681,37 +658,50 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
   auto* prg_state = ctx->getState<PrgState>();
   auto* comm = ctx->getState<Communicator>();
   auto rank = comm->getRank();
+  auto out_ty = makeType<AShrTy>(field);
+
+  #ifdef TRUNC_CHECKMAC
   auto* mac_state = ctx->getState<Fantastic4MacState>();
+  #endif
 
   return DISPATCH_ALL_FIELDS(field, [&]() {
     using el_t = ring2k_t;
     using shr_t = std::array<el_t, 3>;
+    auto buf_size = in.shape().numel() * out_ty.size();
+    NdArrayRef out(out_ty, in.shape());
 
-    NdArrayRef out(makeType<AShrTy>(field), in.shape());
+    // init zero buffer
+    auto rb_buf = std::make_shared<yacl::Buffer>(buf_size);
+    auto rc_buf = std::make_shared<yacl::Buffer>(buf_size);
+    auto sb_buf = std::make_shared<yacl::Buffer>(buf_size);
+    auto sc_buf = std::make_shared<yacl::Buffer>(buf_size);
+    auto sb_mul_rb_buf = std::make_shared<yacl::Buffer>(buf_size);
+    memset(rb_buf->data(), 0, buf_size);
+    memset(rc_buf->data(), 0, buf_size);
+    memset(sb_buf->data(), 0, buf_size);
+    memset(sc_buf->data(), 0, buf_size);
+    memset(sb_mul_rb_buf->data(), 0, buf_size);
+
+    NdArrayRef rb_shr(rb_buf ,out_ty, in.shape());
+    NdArrayRef rc_shr(rc_buf ,out_ty, in.shape());
+    NdArrayRef sb_shr(sb_buf ,out_ty, in.shape());
+    NdArrayRef sc_shr(sc_buf ,out_ty, in.shape());
+    NdArrayRef sb_mul_rb(sb_mul_rb_buf ,out_ty, in.shape());
+
     NdArrayView<shr_t> _out(out);
     NdArrayView<shr_t> _in(in);
-
-    NdArrayRef rb_shr(makeType<AShrTy>(field), in.shape());
     NdArrayView<shr_t> _rb_shr(rb_shr);
-
-    NdArrayRef rc_shr(makeType<AShrTy>(field), in.shape());
     NdArrayView<shr_t> _rc_shr(rc_shr);
+    NdArrayView<shr_t> _sb_shr(sb_shr);
+    NdArrayView<shr_t> _sc_shr(sc_shr);
+    NdArrayView<shr_t> _sb_mul_rb(sb_mul_rb);
 
     NdArrayRef masked_input(makeType<AShrTy>(field), in.shape());
     NdArrayView<shr_t> _masked_input(masked_input);
 
-    NdArrayRef sb_shr(makeType<AShrTy>(field), in.shape());
-    NdArrayView<shr_t> _sb_shr(sb_shr);
-    NdArrayRef sc_shr(makeType<AShrTy>(field), in.shape());
-    NdArrayView<shr_t> _sc_shr(sc_shr);
-
-    NdArrayRef sb_mul_rb(makeType<AShrTy>(field), in.shape());
-    NdArrayView<shr_t> _sb_mul_rb(sb_mul_rb);
-
+    // Party 0
     if(rank == (size_t)0){
-        // -------------------------------------
         // Step 1: Generate r and rb, rc
-        // -------------------------------------
         // locally compute PRG[1] (unknown to P2), PRG[2] (unknown to P3)
         // std::vector<el_t> r0(output.numel());
         std::vector<el_t> r1(out.numel());
@@ -728,27 +718,6 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
         std::vector<el_t> masked_input_shr_1(out.numel());
         std::vector<el_t> masked_input_shr_2(out.numel());
         pforeach(0, out.numel(), [&](int64_t idx) {
-          // _in[idx][0] += (el_t(1) << (k - 2));
-          _rb_shr[idx][0] = 0;
-          _rb_shr[idx][1] = 0;
-          _rb_shr[idx][2] = 0;
-
-          _rc_shr[idx][0] = 0;
-          _rc_shr[idx][1] = 0;
-          _rc_shr[idx][2] = 0;
-
-          _sb_shr[idx][0] = 0;
-          _sb_shr[idx][1] = 0;
-          _sb_shr[idx][2] = 0;
-
-          _sc_shr[idx][0] = 0;
-          _sc_shr[idx][1] = 0;
-          _sc_shr[idx][2] = 0;
-
-          _sb_mul_rb[idx][0] = 0;
-          _sb_mul_rb[idx][1] = 0;
-          _sb_mul_rb[idx][2] = 0;
-
           // r = r_{k-1}......r_{0}
           auto r = r1[idx] + r2[idx];
           // rb = r >> k-1
@@ -756,12 +725,9 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
           // rc = r_{k-2}.....r_{m}
           rc[idx] = (r << 1) >> (bits + 1);
 
-          // -------------------------------------
           // Step 2: compute [x] + [r]
-          // -------------------------------------
-          //
           //  [r] = r0 + r1 + r2 + r3, only r1 and r2 are non-zero
-          _masked_input[idx][0] = _in[idx][0] + (el_t(1) << (k - 2));// r0 = 0
+          _masked_input[idx][0] = _in[idx][0] + (el_t(1) << (k - 2));
           _masked_input[idx][1] = _in[idx][1] + r1[idx];
           _masked_input[idx][2] = _in[idx][2] + r2[idx];
 
@@ -769,64 +735,36 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
           masked_input_shr_2[idx] = _masked_input[idx][2];
         });
 
-        // -------------------------------------
         // Step 3: Generate the share of rb, rc
-        // -------------------------------------
         JointInputArith(ctx, rb, rb_shr, 0, 1, 2, 3);
         JointInputArith(ctx, rc, rc_shr, 1, 0, 3, 2);
 
-        // -------------------------------------
         // Step 4: Let P2 and P3 reconstruct s = x + r
         //         by P1 sends s1 to P2, P0 as backup
         //            P2 sends s2 to P3, P0 as backup
-        // -------------------------------------
+        JointMsgPass(ctx, masked_input_shr_2, 2, 0, 3);
+        JointMsgPass(ctx, masked_input_shr_1, 1, 0, 2);
 
-        mac_state->update_msg<el_t>(1, 0, 2, masked_input_shr_1);
-        mac_state->update_msg<el_t>(2, 0, 3, masked_input_shr_2);
-        // -------------------------------------
         // Step 5: compute sb = s{k-1} and sc = s{k-2}.....s{m}
-        // -------------------------------------
         std::vector<el_t> sb(out.numel());
         std::vector<el_t> sc(out.numel());
         JointInputArith(ctx, sb, sb_shr, 2, 3, 0, 1);
         JointInputArith(ctx, sc, sc_shr, 3, 2, 1, 0);
-
-        // -------------------------------------
-        // Step 6: compute sb = s{k-1} and sc = s{k-2}.....s{m}
-        // -------------------------------------
-
+        
         #ifndef OPTIMIZED_TRUNC
         sb_mul_rb = wrap_mul_aa(ctx->sctx(), rb_shr, sb_shr);
         #else
-        std::array<std::vector<el_t>, 5> a;
-        for (auto& vec : a) {
-          vec = std::vector<el_t>(out.numel());
-        }
-
-        pforeach(0, out.numel(), [&](int64_t idx) {
-          a[rank][idx] = (_rb_shr[idx][0] + _rb_shr[idx][1]) * _sb_shr[idx][0] + _rb_shr[idx][0] * _sb_shr[idx][1];// xi*yi + xi*yj + xj*yi
-          a[(rank + 1) % 4][idx] = (_rb_shr[idx][1] + _rb_shr[idx][2]) * _sb_shr[idx][1] + _rb_shr[idx][1] * _sb_shr[idx][2];// xj*yj + xj*yg + xg*yj
-          a[4][idx] = _rb_shr[idx][0] * _sb_shr[idx][2] + _rb_shr[idx][2] * _sb_shr[idx][0];// xi*yg + xg*yi
-        });
-
-        // let P2 send async to P3, P3 wait to recv
-        JointInputArith<el_t>(ctx, a[2], sb_mul_rb, 2, 1, 3, 0);
-        JointInputArith<el_t>(ctx, a[4], sb_mul_rb, 2, 0, 3, 1);
-
-        // let P01 send async to P2, P2 wait to recv
-        JointInputArith<el_t>(ctx, a[0], sb_mul_rb, 0, 3, 2, 1);
-        JointInputArith<el_t>(ctx, a[4], sb_mul_rb, 1, 3, 2, 0);
+        sb_mul_rb = Opt_Mul(ctx, rb_shr, sb_shr);
         #endif
 
         pforeach(0, out.numel(), [&](int64_t idx) {
           _out[idx][0] = _sc_shr[idx][0] - _rc_shr[idx][0] + ((_rb_shr[idx][0] + _sb_shr[idx][0] - 2*_sb_mul_rb[idx][0]) << (k - bits - 1)) - (el_t(1) << (k - bits - 2));
           _out[idx][1] = _sc_shr[idx][1] - _rc_shr[idx][1] + ((_rb_shr[idx][1] + _sb_shr[idx][1] - 2*_sb_mul_rb[idx][1]) << (k - bits - 1));
           _out[idx][2] = _sc_shr[idx][2] - _rc_shr[idx][2] + ((_rb_shr[idx][2] + _sb_shr[idx][2] - 2*_sb_mul_rb[idx][2]) << (k - bits - 1));
-
         });
     }
-
-    else if(rank == (size_t)1){
+    // Party 1
+    else if(rank == 1){
         std::vector<el_t> r1(out.numel());
         std::vector<el_t> r2(out.numel());
 
@@ -841,26 +779,6 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
         std::vector<el_t> masked_input_shr_1(out.numel());
 
         pforeach(0, out.numel(), [&](int64_t idx) {
-          _rb_shr[idx][0] = 0;
-          _rb_shr[idx][1] = 0;
-          _rb_shr[idx][2] = 0;
-
-          _rc_shr[idx][0] = 0;
-          _rc_shr[idx][1] = 0;
-          _rc_shr[idx][2] = 0;
-
-          _sb_shr[idx][0] = 0;
-          _sb_shr[idx][1] = 0;
-          _sb_shr[idx][2] = 0;
-
-          _sc_shr[idx][0] = 0;
-          _sc_shr[idx][1] = 0;
-          _sc_shr[idx][2] = 0;
-
-          _sb_mul_rb[idx][0] = 0;
-          _sb_mul_rb[idx][1] = 0;
-          _sb_mul_rb[idx][2] = 0;
-
           // r = r_{k-1}......r_{0}
           auto r = r1[idx] + r2[idx];
           // rb = r >> k-1
@@ -877,47 +795,16 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
         JointInputArith(ctx, rb, rb_shr, 0, 1, 2, 3);
         JointInputArith(ctx, rc, rc_shr, 1, 0, 3, 2);
 
-        comm->sendAsync<el_t>(2, masked_input_shr_1, "masked shr 1");
+        JointMsgPass(ctx, masked_input_shr_1, 1, 0, 2);
 
         std::vector<el_t> sb(out.numel());
         std::vector<el_t> sc(out.numel());
         JointInputArith(ctx, sb, sb_shr, 2, 3, 0, 1);
         JointInputArith(ctx, sc, sc_shr, 3, 2, 1, 0);
-        // Above we let:
-        //    P0 sends P2 rb - r1
-        //    P2 sends P0 sb - r3
-        // As the result:
-        //    rb_shr = (0       ,- r1, rb - r1, 0)
-        //    sb_shr = (sb - r3 ,  0,    0    , r3)
-        // Recall that in 4PC MulAA:
-        //    pforeach(0, lhs.numel(), [&](int64_t idx) {
-        //      a[rank][idx] = (_lhs[idx][0] + _lhs[idx][1]) * _rhs[idx][0] + _lhs[idx][0] * _rhs[idx][1]; // xi*yi + xi*yj + xj*yi
-        //      a[next_rank][idx] = (_lhs[idx][1] + _lhs[idx][2]) * _rhs[idx][1] + _lhs[idx][1] * _rhs[idx][2];  // xj*yj + xj*yg + xg*yj
-        //      a[4][idx] = _lhs[idx][0] * _rhs[idx][2] + _lhs[idx][2] * _rhs[idx][0];                    // xi*yg + xg*yi
-        //    });
-        // Here we have:
-        //    a[3] = 0
-        //    a[1] = 0
-        // For optimization, we do not send them in Opt_Mul.
-
         #ifndef OPTIMIZED_TRUNC
         sb_mul_rb = wrap_mul_aa(ctx->sctx(), rb_shr, sb_shr);
         #else
-        std::array<std::vector<el_t>, 5> a;
-        for (auto& vec : a) {
-          vec = std::vector<el_t>(out.numel());
-        }
-
-        pforeach(0, out.numel(), [&](int64_t idx) {
-          a[rank][idx] = (_rb_shr[idx][0] + _rb_shr[idx][1]) * _sb_shr[idx][0] + _rb_shr[idx][0] * _sb_shr[idx][1];
-          a[(rank + 1) % 4][idx] = (_rb_shr[idx][1] + _rb_shr[idx][2]) * _sb_shr[idx][1] + _rb_shr[idx][1] * _sb_shr[idx][2];
-          a[4][idx] = _rb_shr[idx][0] * _sb_shr[idx][2] + _rb_shr[idx][2] * _sb_shr[idx][0];
-        });
-
-        JointInputArith<el_t>(ctx, a[2], sb_mul_rb, 2, 1, 3, 0);
-        JointInputArith<el_t>(ctx, a[4], sb_mul_rb, 2, 0, 3, 1);
-        JointInputArith<el_t>(ctx, a[0], sb_mul_rb, 0, 3, 2, 1);
-        JointInputArith<el_t>(ctx, a[4], sb_mul_rb, 1, 3, 2, 0);
+        sb_mul_rb = Opt_Mul(ctx, rb_shr, sb_shr);
         #endif
 
         pforeach(0, out.numel(), [&](int64_t idx) {
@@ -926,36 +813,17 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
           _out[idx][2] = _sc_shr[idx][2] - _rc_shr[idx][2] + ((_rb_shr[idx][2] + _sb_shr[idx][2] - 2*_sb_mul_rb[idx][2]) << (k - bits - 1));
         });
     }
-
-    else if(rank == (size_t)2){
+    // Party 2
+    else if(rank == 2){
         std::vector<el_t> r2(out.numel());
         std::vector<el_t> rb(out.numel());
         std::vector<el_t> rc(out.numel());
         std::vector<el_t> masked_input_shr_2(out.numel());
+        std::vector<el_t> missing_shr(out.numel());
 
         prg_state->fillPrssTuple<el_t>(r2.data(), nullptr, nullptr, r2.size(), PrgState::GenPrssCtrl::First);
 
         pforeach(0, out.numel(), [&](int64_t idx) {
-          _rb_shr[idx][0] = 0;
-          _rb_shr[idx][1] = 0;
-          _rb_shr[idx][2] = 0;
-
-          _rc_shr[idx][0] = 0;
-          _rc_shr[idx][1] = 0;
-          _rc_shr[idx][2] = 0;
-
-          _sb_shr[idx][0] = 0;
-          _sb_shr[idx][1] = 0;
-          _sb_shr[idx][2] = 0;
-
-          _sc_shr[idx][0] = 0;
-          _sc_shr[idx][1] = 0;
-          _sc_shr[idx][2] = 0;
-
-          _sb_mul_rb[idx][0] = 0;
-          _sb_mul_rb[idx][1] = 0;
-          _sb_mul_rb[idx][2] = 0;
-
           _masked_input[idx][0] = _in[idx][0] + r2[idx];
           _masked_input[idx][1] = _in[idx][1];
           _masked_input[idx][2] = _in[idx][2] + (el_t(1) << (k - 2));
@@ -963,12 +831,13 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
 
         });
 
+        JointMsgPass(ctx, masked_input_shr_2, 2, 0, 3);
+
         JointInputArith(ctx, rb, rb_shr, 0, 1, 2, 3);
         JointInputArith(ctx, rc, rc_shr, 1, 0, 3, 2);
 
-        comm->sendAsync<el_t>(3, masked_input_shr_2, "masked shr 2");
-        auto missing_shr = comm->recv<el_t>(1, "masked shr 1");
-        mac_state->update_msg<el_t>(1, 0, 2, missing_shr);
+        JointMsgPass(ctx, missing_shr, 1, 0, 2);
+
         std::vector<el_t> s(out.numel());
         std::vector<el_t> sb(out.numel());
         std::vector<el_t> sc(out.numel());
@@ -983,21 +852,7 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
         #ifndef OPTIMIZED_TRUNC
         sb_mul_rb = wrap_mul_aa(ctx->sctx(), rb_shr, sb_shr);
         #else
-        std::array<std::vector<el_t>, 5> a;
-        for (auto& vec : a) {
-          vec = std::vector<el_t>(out.numel());
-        }
-
-        pforeach(0, out.numel(), [&](int64_t idx) {
-          a[rank][idx] = (_rb_shr[idx][0] + _rb_shr[idx][1]) * _sb_shr[idx][0] + _rb_shr[idx][0] * _sb_shr[idx][1];
-          a[(rank + 1) % 4][idx] = (_rb_shr[idx][1] + _rb_shr[idx][2]) * _sb_shr[idx][1] + _rb_shr[idx][1] * _sb_shr[idx][2];
-          a[4][idx] = _rb_shr[idx][0] * _sb_shr[idx][2] + _rb_shr[idx][2] * _sb_shr[idx][0];
-        });
-
-        JointInputArith<el_t>(ctx, a[2], sb_mul_rb, 2, 1, 3, 0);
-        JointInputArith<el_t>(ctx, a[4], sb_mul_rb, 2, 0, 3, 1);
-        JointInputArith<el_t>(ctx, a[0], sb_mul_rb, 0, 3, 2, 1);
-        JointInputArith<el_t>(ctx, a[4], sb_mul_rb, 1, 3, 2, 0);
+        sb_mul_rb = Opt_Mul(ctx, rb_shr, sb_shr);
         #endif
 
         pforeach(0, out.numel(), [&](int64_t idx) {
@@ -1006,44 +861,25 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
           _out[idx][2] = _sc_shr[idx][2] - _rc_shr[idx][2] + ((_rb_shr[idx][2] + _sb_shr[idx][2] - 2*_sb_mul_rb[idx][2]) << (k - bits - 1)) - (el_t(1) << (k - bits - 2));
         });
     }
-
-    else if(rank == (size_t)3){
+    // Party 3
+    else if(rank == 3){
         std::vector<el_t> r1(out.numel());
         std::vector<el_t> rb(out.numel());
         std::vector<el_t> rc(out.numel());
+        std::vector<el_t> missing_shr(out.numel());
+
         prg_state->fillPrssTuple<el_t>(nullptr, nullptr, r1.data(), r1.size(), PrgState::GenPrssCtrl::Third);
         pforeach(0, out.numel(), [&](int64_t idx) {
-          _rb_shr[idx][0] = 0;
-          _rb_shr[idx][1] = 0;
-          _rb_shr[idx][2] = 0;
-
-          _rc_shr[idx][0] = 0;
-          _rc_shr[idx][1] = 0;
-          _rc_shr[idx][2] = 0;
-
-          _sb_shr[idx][0] = 0;
-          _sb_shr[idx][1] = 0;
-          _sb_shr[idx][2] = 0;
-
-          _sc_shr[idx][0] = 0;
-          _sc_shr[idx][1] = 0;
-          _sc_shr[idx][2] = 0;
-
-          _sb_mul_rb[idx][0] = 0;
-          _sb_mul_rb[idx][1] = 0;
-          _sb_mul_rb[idx][2] = 0;
-
           _masked_input[idx][0] = _in[idx][0] +  (el_t(1) << (k - 2));
           _masked_input[idx][1] = _in[idx][1];
           _masked_input[idx][2] = _in[idx][2] + r1[idx];
         });
 
+
         JointInputArith(ctx, rb, rb_shr, 0, 1, 2, 3);
         JointInputArith(ctx, rc, rc_shr, 1, 0, 3, 2);
 
-        auto missing_shr = comm->recv<el_t>(2, "masked shr 2");
-        mac_state->update_msg<el_t>(2, 0, 3, missing_shr);
-
+        JointMsgPass(ctx, missing_shr, 2, 0, 3);
         std::vector<el_t> s(out.numel());
         std::vector<el_t> sb(out.numel());
         std::vector<el_t> sc(out.numel());
@@ -1058,21 +894,7 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
         #ifndef OPTIMIZED_TRUNC
         sb_mul_rb = wrap_mul_aa(ctx->sctx(), rb_shr, sb_shr);
         #else
-        std::array<std::vector<el_t>, 5> a;
-        for (auto& vec : a) {
-          vec = std::vector<el_t>(out.numel());
-        }
-
-        pforeach(0, out.numel(), [&](int64_t idx) {
-          a[rank][idx] = (_rb_shr[idx][0] + _rb_shr[idx][1]) * _sb_shr[idx][0] + _rb_shr[idx][0] * _sb_shr[idx][1];
-          a[(rank + 1) % 4][idx] = (_rb_shr[idx][1] + _rb_shr[idx][2]) * _sb_shr[idx][1] + _rb_shr[idx][1] * _sb_shr[idx][2];
-          a[4][idx] = _rb_shr[idx][0] * _sb_shr[idx][2] + _rb_shr[idx][2] * _sb_shr[idx][0];
-        });
-
-        JointInputArith<el_t>(ctx, a[2], sb_mul_rb, 2, 1, 3, 0);
-        JointInputArith<el_t>(ctx, a[4], sb_mul_rb, 2, 0, 3, 1);
-        JointInputArith<el_t>(ctx, a[0], sb_mul_rb, 0, 3, 2, 1);
-        JointInputArith<el_t>(ctx, a[4], sb_mul_rb, 1, 3, 2, 0);
+        sb_mul_rb = Opt_Mul(ctx, rb_shr, sb_shr);
         #endif
 
         pforeach(0, out.numel(), [&](int64_t idx) {
@@ -1080,8 +902,12 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
           _out[idx][1] = _sc_shr[idx][1] - _rc_shr[idx][1] + ((_rb_shr[idx][1] + _sb_shr[idx][1] - 2*_sb_mul_rb[idx][1]) << (k - bits - 1)) - (el_t(1) << (k - bits - 2));
           _out[idx][2] = _sc_shr[idx][2] - _rc_shr[idx][2] + ((_rb_shr[idx][2] + _sb_shr[idx][2] - 2*_sb_mul_rb[idx][2]) << (k - bits - 1));
         });
-    }
-  mac_state->print_MAC();
+  }
+
+  #ifdef TRUNC_CHECKMAC
+  mac_state->exchange_check(ctx);
+  #endif
+
   return out;
   });
 }

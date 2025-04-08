@@ -66,11 +66,8 @@ NdArrayRef CastTypeB::proc(KernelEvalContext*, const NdArrayRef& in,
 }
 
 NdArrayRef B2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
-  auto* comm = ctx->getState<Communicator>();
   const PtType btype = in.eltype().as<BShrTy>()->getBacktype();
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
-  auto* mac_state = ctx->getState<Fantastic4MacState>();
-  auto rank = comm->getRank();
   return DISPATCH_UINT_PT_TYPES(btype, [&]() {
     using bshr_el_t = ScalarT;
     using bshr_t = std::array<bshr_el_t, 3>;
@@ -89,14 +86,12 @@ NdArrayRef B2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
         x2[idx] = _in[idx][2];
       });
 
-      auto x3 = comm->rotate<bshr_el_t>(x2, "b2p");
-      mac_state->update_msg<bshr_el_t>( (rank + 3) % 4, rank, (rank + 2) % 4, x1);
+      auto x3 = JointMsgRotate<bshr_el_t>(ctx, x2, x1);
 
       pforeach(0, in.numel(), [&](int64_t idx) {
         const auto& v = _in[idx];
         _out[idx] = static_cast<pshr_el_t>(v[0] ^ v[1] ^ v[2] ^ x3[idx]);
       });
-
       return out;
     });
   });
@@ -268,7 +263,10 @@ NdArrayRef AndBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
 
   const size_t out_nbits = std::min(lhs_ty->nbits(), rhs_ty->nbits());
   const PtType out_btype = calcBShareBacktype(out_nbits);
-  NdArrayRef out(makeType<BShrTy>(out_btype, out_nbits), lhs.shape());
+  auto out_ty = makeType<BShrTy>(out_btype, out_nbits);
+  auto out_buf = std::make_shared<yacl::Buffer>(lhs.shape().numel() * out_ty.size());
+  memset(out_buf->data(), 0, lhs.shape().numel() * out_ty.size());
+  NdArrayRef out(out_buf ,out_ty, lhs.shape());
 
   return DISPATCH_UINT_PT_TYPES(rhs_ty->getBacktype(), [&]() {
     using rhs_el_t = ScalarT;
@@ -293,9 +291,6 @@ NdArrayRef AndBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
         }
 
         pforeach(0, lhs.numel(), [&](int64_t idx) {
-          _out[idx][0] = 0U;
-          _out[idx][1] = 0U;
-          _out[idx][2] = 0U;
           // xi&yi ^ xi&yj ^ xj&yi
           a[rank][idx] = (_lhs[idx][0] & _rhs[idx][0]) ^ (_lhs[idx][1] & _rhs[idx][0] ) ^ (_lhs[idx][0] & _rhs[idx][1]);
           // xj&yj ^ xj&yg ^ xg&yj
@@ -304,12 +299,19 @@ NdArrayRef AndBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
           a[4][idx] = (_lhs[idx][0] & _rhs[idx][2]) ^ (_lhs[idx][2] & _rhs[idx][0]);
         });
 
-        JointInputBool<out_el_t>(ctx, a[1], out, 0, 1, 3, 2);
-        JointInputBool<out_el_t>(ctx, a[2], out, 1, 2, 0, 3);
-        JointInputBool<out_el_t>(ctx, a[3], out, 2, 3, 1, 0);
-        JointInputBool<out_el_t>(ctx, a[0], out, 3, 0, 2, 1);
-        JointInputBool<out_el_t>(ctx, a[4], out, 0, 2, 3, 1);
-        JointInputBool<out_el_t>(ctx, a[4], out, 1, 3, 2, 0);
+        JointInputBoolSend<out_el_t>(ctx, a[1], out, 0, 1, 3, 2);
+        JointInputBoolSend<out_el_t>(ctx, a[2], out, 1, 2, 0, 3);
+        JointInputBoolSend<out_el_t>(ctx, a[3], out, 2, 3, 1, 0);
+        JointInputBoolSend<out_el_t>(ctx, a[0], out, 3, 0, 2, 1);
+        JointInputBoolSend<out_el_t>(ctx, a[4], out, 0, 2, 3, 1);
+        JointInputBoolSend<out_el_t>(ctx, a[4], out, 1, 3, 2, 0);
+
+        JointInputBoolRecv<out_el_t>(ctx, a[1], out, 0, 1, 3, 2);
+        JointInputBoolRecv<out_el_t>(ctx, a[2], out, 1, 2, 0, 3);
+        JointInputBoolRecv<out_el_t>(ctx, a[3], out, 2, 3, 1, 0);
+        JointInputBoolRecv<out_el_t>(ctx, a[0], out, 3, 0, 2, 1);
+        JointInputBoolRecv<out_el_t>(ctx, a[4], out, 0, 2, 3, 1);
+        JointInputBoolRecv<out_el_t>(ctx, a[4], out, 1, 3, 2, 0);
 
         return out;
       });

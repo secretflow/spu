@@ -32,6 +32,8 @@ namespace spu::mpc {
 //    Similarly in prg_state.h, PRG keys are k_0, k_1, k_2, k_3, we let Party i holds k_i--self, k_i+1 --next, k_i+2--next next
 //    Each x_i, k_i is unknown to next party P_i+1
 
+//  If use optimized protocol, define OPTIMIZED_F4 in jmp.h
+
 void regFantastic4Protocol(SPUContext* ctx,
                            const std::shared_ptr<yacl::link::Context>& lctx) {
   fantastic4::registerTypes();
