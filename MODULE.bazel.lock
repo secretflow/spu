@@ -1674,7 +1674,7 @@
     "@@rules_python~//python/extensions:pip.bzl%pip": {
       "general": {
         "bzlTransitiveDigest": "NN5TvAiNC563zvWGDaX6eq9DKLiiHs2wL2DwZeOFuDg=",
-        "usagesDigest": "VEkoY49w0mUn8F1jSYEZxSAu7A00+yb4iRx2ICczj1o=",
+        "usagesDigest": "D/WBJX7M7OJ9+vaYYrsnvRtHTKwieuvjegJD0seNf7Y=",
         "recordedFileInputs": {
           "@@rules_proto_grpc_python~//requirements.txt": "1743e3a13a42d7d9c26ebf1e2db260b166928f4303c5ff511f7a998fc2ceb7d3",
           "@@//requirements_lock_3_10.txt": "d02c353cac157e2dacbfad7384cc67428d331b51a6c79e30a93294bdbf250655",
@@ -9014,7 +9014,7 @@
     "@@spulib~//bazel:defs.bzl%non_module_dependencies": {
       "general": {
         "bzlTransitiveDigest": "JT8ZLEUdrYXN19gijrHtztFq/cEAhJlRlNjhtQUlDIE=",
-        "usagesDigest": "Du0NKFZ2kmy/p3CNzZqnkx33cRIJcCjiAGg86SAJK6s=",
+        "usagesDigest": "nyZQ7hqm8OHSKynwUHH3ABvr7XTAMSRcQnCszrMQtyU=",
         "recordedFileInputs": {},
         "recordedDirentsInputs": {},
         "envVariables": {},
