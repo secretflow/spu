@@ -16,10 +16,16 @@ import jax.numpy as jnp
 import numpy as np
 import sml.utils.emulation as emulation
 from sklearn import preprocessing
-from sml.preprocessing.preprocessing import (Binarizer, KBinsDiscretizer,
-                                             LabelBinarizer, MaxAbsScaler,
-                                             MinMaxScaler, Normalizer,
-                                             OneHotEncoder, RobustScaler)
+from sml.preprocessing.preprocessing import (
+    Binarizer,
+    KBinsDiscretizer,
+    LabelBinarizer,
+    MaxAbsScaler,
+    MinMaxScaler,
+    Normalizer,
+    OneHotEncoder,
+    RobustScaler,
+)
 
 
 def emul_labelbinarizer():
