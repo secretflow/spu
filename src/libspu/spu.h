@@ -434,6 +434,7 @@ struct RuntimeConfig {
   std::string SerializeAsString() const;
   std::string DebugString() const;
   pb::RuntimeConfig ToProto() const;
+  std::string DumpToString() const;
 };
 
 //////////////////////////////////////////////////////////////////////////

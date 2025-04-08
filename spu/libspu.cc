@@ -671,6 +671,7 @@ void BindSPU(py::module& m) {
            [](const RuntimeConfig& self) {
              return py::bytes(self.SerializeAsString());
            })
+      .def("__str__", &RuntimeConfig::DumpToString)
       .def_readwrite("protocol", &RuntimeConfig::protocol)
       .def_readwrite("field", &RuntimeConfig::field)
       .def_readwrite("fxp_fraction_bits", &RuntimeConfig::fxp_fraction_bits)
