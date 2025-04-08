@@ -296,6 +296,131 @@ class Normalizer:
         return normalize(X, norm=self.norm)
 
 
+class RobustScaler:
+    """Scale features using statistics robust to outliers.
+
+    This scaler removes the median and scales the data according to the quantile range.
+    Standardization is performed using median and interquartile range (IQR).
+
+    Parameters
+    ----------
+    with_centering : bool, default=True
+        If True, center the data by subtracting the median.
+
+    with_scaling : bool, default=True
+        If True, scale the data using interquartile range (IQR).
+
+    quantile_range : tuple (q_min, q_max), default=(25.0, 75.0)
+        Quantile range used to calculate scale_. Both values must be in [0, 100].
+
+    clip : bool, default=False
+        Set to True to clip transformed values within quantile boundaries.
+    """
+
+    def __init__(
+        self,
+        with_centering=True,
+        with_scaling=True,
+        quantile_range=(25.0, 75.0),
+        clip=False,
+    ):
+        self.with_centering = with_centering
+        self.with_scaling = with_scaling
+        self.quantile_range = quantile_range
+        self.clip = clip
+
+    def _reset(self):
+        """Reset internal state of the scaler."""
+        for attr in ["center_", "scale_", "quantiles_"]:
+            if hasattr(self, attr):
+                delattr(self, attr)
+
+    def _validate_quantiles(self):
+        """Verify quantile range validity."""
+        q_min, q_max = self.quantile_range
+        if not 0 <= q_min <= q_max <= 100:
+            raise ValueError(f"Invalid quantile range: ({q_min}, {q_max})")
+        if q_max == q_min:
+            raise ValueError("Quantile range width is zero")
+
+    def fit(self, X, contain_nan=False):
+        """Compute median and IQR for subsequent scaling.
+
+        Parameters
+        ----------
+        X : {array-like} of shape (n_samples, n_features)
+            Training data used for parameter estimation.
+
+        contain_nan : bool, default=False
+            Set True to enable NaN-aware computation using nanmedian/nanpercentile.
+        """
+        self._reset()
+        self._validate_quantiles()
+        q_min, q_max = self.quantile_range
+
+        if self.with_scaling:
+            # 独立计算IQR分位数
+            if contain_nan:
+                iqr_quantiles = jnp.nanpercentile(X, jnp.array([q_min, q_max]), axis=0)
+            else:
+                iqr_quantiles = jnp.percentile(X, jnp.array([q_min, q_max]), axis=0)
+            self.scale_ = iqr_quantiles[1] - iqr_quantiles[0]
+            self.scale_ = jnp.where(self.scale_ == 0, 1.0, self.scale_)
+            self.quantiles_ = iqr_quantiles
+
+        if self.with_centering:
+            # 独立计算中位数
+            if contain_nan:
+                self.center_ = jnp.nanmedian(X, axis=0)
+            else:
+                self.center_ = jnp.median(X, axis=0)
+        return self
+
+    def transform(self, X):
+        """Apply centering and scaling transformations.
+
+        Parameters
+        ----------
+        X : {array-like} of shape (n_samples, n_features)
+            Data to be transformed.
+
+        Returns
+        -------
+        ndarray of shape (n_samples, n_features)
+            Transformed array with outlier-robust scaling.
+        """
+        if self.with_centering:
+            X = X - self.center_
+        if self.with_scaling:
+            X = X / self.scale_
+        if self.clip:
+            X = jnp.clip(X, self.quantile_range[0], self.quantile_range[1])
+        return X
+
+    def fit_transform(self, X, contain_nan=False):
+        """Combine fit and transform operations in single call."""
+        return self.fit(X, contain_nan=contain_nan).transform(X)
+
+    def inverse_transform(self, X):
+        """Revert scaling transformations while preserving original data distribution.
+
+        Parameters
+        ----------
+        X : {array-like} of shape (n_samples, n_features)
+            Transformed data to be restored.
+
+        Returns
+        -------
+        ndarray of shape (n_samples, n_features)
+            Original data scale reconstruction.
+        """
+        if self.with_scaling:
+            X = X * self.scale_
+        if self.with_centering:
+            X = X + self.center_
+        return X
+
+
 class MinMaxScaler:
     """Transform features by scaling each feature to a given range.
 
