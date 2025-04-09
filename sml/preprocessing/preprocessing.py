@@ -329,6 +329,9 @@ class RobustScaler:
         self.quantile_range = quantile_range
         self.clip = clip
 
+        self._reset()
+        self._validate_quantiles()
+
     def _reset(self):
         """Reset internal state of the scaler."""
         for attr in ["center_", "scale_", "quantiles_"]:
@@ -343,37 +346,39 @@ class RobustScaler:
         if q_max == q_min:
             raise ValueError("Quantile range width is zero")
 
-    def fit(self, X, contain_nan=False):
+    def fit(self, X):
         """Compute median and IQR for subsequent scaling.
 
         Parameters
         ----------
         X : {array-like} of shape (n_samples, n_features)
             Training data used for parameter estimation.
-
-        contain_nan : bool, default=False
-            Set True to enable NaN-aware computation using nanmedian/nanpercentile.
         """
-        self._reset()
-        self._validate_quantiles()
         q_min, q_max = self.quantile_range
 
-        if self.with_scaling:
-            # 独立计算IQR分位数
-            if contain_nan:
-                iqr_quantiles = jnp.nanpercentile(X, jnp.array([q_min, q_max]), axis=0)
-            else:
-                iqr_quantiles = jnp.percentile(X, jnp.array([q_min, q_max]), axis=0)
-            self.scale_ = iqr_quantiles[1] - iqr_quantiles[0]
-            self.scale_ = jnp.where(self.scale_ == 0, 1.0, self.scale_)
-            self.quantiles_ = iqr_quantiles
+        if not self.with_scaling and self.with_centering:
+            self.center_ = jnp.median(X, axis=0)
+            return self
 
-        if self.with_centering:
-            # 独立计算中位数
-            if contain_nan:
-                self.center_ = jnp.nanmedian(X, axis=0)
-            else:
-                self.center_ = jnp.median(X, axis=0)
+        if self.with_scaling:
+            quantiles_to_compute = [q_min, q_max]
+            if self.with_centering and 50.0 not in [q_min, q_max]:
+                quantiles_to_compute.append(50.0)
+
+            computed = jnp.percentile(X, jnp.array(quantiles_to_compute), axis=0)
+
+            self.quantiles_ = computed[:2]
+            self.scale_ = self.quantiles_[1] - self.quantiles_[0]
+            self.scale_ = jnp.where(self.scale_ == 0, 1.0, self.scale_)
+
+            if self.with_centering:
+                if 50.0 in [q_min, q_max]:
+                    self.center_ = (
+                        self.quantiles_[0] if q_min == 50.0 else self.quantiles_[1]
+                    )
+                else:
+                    self.center_ = computed[2]
+
         return self
 
     def transform(self, X):
@@ -397,9 +402,9 @@ class RobustScaler:
             X = jnp.clip(X, self.quantile_range[0], self.quantile_range[1])
         return X
 
-    def fit_transform(self, X, contain_nan=False):
+    def fit_transform(self, X):
         """Combine fit and transform operations in single call."""
-        return self.fit(X, contain_nan=contain_nan).transform(X)
+        return self.fit(X).transform(X)
 
     def inverse_transform(self, X):
         """Revert scaling transformations while preserving original data distribution.

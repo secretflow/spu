@@ -16,16 +16,10 @@ import jax.numpy as jnp
 import numpy as np
 import sml.utils.emulation as emulation
 from sklearn import preprocessing
-from sml.preprocessing.preprocessing import (
-    Binarizer,
-    KBinsDiscretizer,
-    LabelBinarizer,
-    MaxAbsScaler,
-    MinMaxScaler,
-    Normalizer,
-    OneHotEncoder,
-    RobustScaler,
-)
+from sml.preprocessing.preprocessing import (Binarizer, KBinsDiscretizer,
+                                             LabelBinarizer, MaxAbsScaler,
+                                             MinMaxScaler, Normalizer,
+                                             OneHotEncoder, RobustScaler)
 
 
 def emul_labelbinarizer():
@@ -191,7 +185,7 @@ def emul_normalizer():
     np.testing.assert_allclose(sk_result_max, spu_result_max, rtol=0, atol=1e-4)
 
 
-def emul_robustscaler(self):
+def emul_robustscaler():
 
     def robustscale(X, Y):
         transformer = RobustScaler(quantile_range=(25.0, 75.0))
@@ -882,5 +876,6 @@ if __name__ == "__main__":
         emul_kbinsdiscretizer_kmeans()
         emul_kbinsdiscretizer_kmeans_diverse_n_bins_no_vectorize()
         emul_onehotEncoder()
+        emul_robustscaler()
     finally:
         emulator.down()
