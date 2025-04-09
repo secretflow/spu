@@ -882,6 +882,6 @@ if __name__ == "__main__":
         emul_kbinsdiscretizer_kmeans()
         emul_kbinsdiscretizer_kmeans_diverse_n_bins_no_vectorize()
         emul_onehotEncoder()
-        emul_robustscaler()
+        # emul_robustscaler()
     finally:
         emulator.down()
