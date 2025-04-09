@@ -604,7 +604,7 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
         auto neg_r_buf = std::make_shared<yacl::Buffer>(in.shape().numel() * expanded_ty.size());
         auto r_buf = std::make_shared<yacl::Buffer>(in.shape().numel() * expanded_ty.size());
         auto x_minus_r_buf = std::make_shared<yacl::Buffer>(in.shape().numel() * expanded_ty.size());
-        
+
         memset(neg_r_buf->data(), 0, in.shape().numel() * expanded_ty.size());
         memset(r_buf->data(), 0, in.shape().numel() * expanded_ty.size());
         memset(x_minus_r_buf->data(), 0, in.shape().numel() * expanded_ty.size());

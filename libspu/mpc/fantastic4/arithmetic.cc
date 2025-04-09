@@ -750,7 +750,7 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t b
         std::vector<el_t> sc(out.numel());
         JointInputArith(ctx, sb, sb_shr, 2, 3, 0, 1);
         JointInputArith(ctx, sc, sc_shr, 3, 2, 1, 0);
-        
+
         #ifndef OPTIMIZED_TRUNC
         sb_mul_rb = wrap_mul_aa(ctx->sctx(), rb_shr, sb_shr);
         #else

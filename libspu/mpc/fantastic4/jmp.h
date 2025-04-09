@@ -14,7 +14,7 @@
 
 #pragma once
 
-// Use optimized F4 protocol 
+// Use optimized F4 protocol
 // #define OPTIMIZED_F4
 
 #include "libspu/core/context.h"
@@ -53,7 +53,7 @@ namespace spu::mpc::fantastic4 {
     }
 
     // Joint message rotate in single round, each party sends a msg to its previous party while serving as backup for next party's msg
-    // The reason we do not use 4 sequential invocations of JointMsgPass is, 
+    // The reason we do not use 4 sequential invocations of JointMsgPass is,
     //  here, we can let parties send "async" msgs first and then recv in single round
     template <typename el_t>
     std::vector<el_t> JointMsgRotate(KernelEvalContext* ctx, std::vector<el_t>& msg_to_send, std::vector<el_t>& msg_to_backup){
@@ -81,7 +81,7 @@ namespace spu::mpc::fantastic4 {
     //   - receiver: receives masked input from sender and record the hash, adds the masked input to corresponding output share
     //   - outsider: adds the mask to corresponding output share
 
-    // Note: since we accumulate shares of input on the NdArrayRef output instead of assignment, 
+    // Note: since we accumulate shares of input on the NdArrayRef output instead of assignment,
     //    ensure NdArrayRef elements are initiated as 0 (refer to the out_buf in MulAA)
 
     // Note: if there are crossing communications in a single round, e.g. MulAA in arithmetic.cc
