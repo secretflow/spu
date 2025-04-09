@@ -222,8 +222,8 @@ def emul_robustscaler():
     np.testing.assert_allclose(sk_result_2, spu_result_2, rtol=1e-4, atol=1e-4)
 
     # 逆变换断言
-    np.testing.assert_allclose(X, spu_restore_1, rtol=1e-4, atol=1e-4)
-    np.testing.assert_allclose(Y, spu_restore_2, rtol=1e-4, atol=1e-4)
+    np.testing.assert_allclose(jnp.array([[-2, 0.5], [-0.5, 1.5], [0, 10.0], [1, 15.0], [5, 20.0]]), spu_restore_1, rtol=1e-4, atol=1e-4)
+    np.testing.assert_allclose(jnp.array([[3, 2]]), spu_restore_2, rtol=1e-4, atol=1e-4)
     np.testing.assert_allclose(sk_restore_1, spu_restore_1, rtol=1e-4, atol=1e-4)
     np.testing.assert_allclose(sk_restore_2, spu_restore_2, rtol=1e-4, atol=1e-4)
 
