@@ -327,7 +327,7 @@ class RobustScaler:
         self.with_centering = with_centering
         self.with_scaling = with_scaling
         self.quantile_range = quantile_range
-        self.clip = clip
+        self.clip = clip if with_scaling else False
 
         self._validate_quantiles()
 
