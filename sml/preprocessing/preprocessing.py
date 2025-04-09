@@ -313,7 +313,7 @@ class RobustScaler:
     quantile_range : tuple (q_min, q_max), default=(25.0, 75.0)
         Quantile range used to calculate scale_. Both values must be in [0, 100].
 
-    clip : bool, default=False
+    clip : bool, default=False.
         Set to True to clip transformed values within quantile boundaries.
     """
 
