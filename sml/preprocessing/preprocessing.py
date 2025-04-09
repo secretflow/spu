@@ -24,9 +24,6 @@ def brier_score_loss(y_true, y_proba, sample_weight=None, pos_label=None):
     y_true = jnp.asarray(y_true)
     y_proba = jnp.asarray(y_proba)
 
-    if pos_label is None:
-        pos_label = 1
-
     y_true = jnp.where(y_true == pos_label, 1.0, 0.0)
     loss = (y_proba - y_true) ** 2
 
