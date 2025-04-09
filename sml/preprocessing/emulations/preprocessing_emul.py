@@ -192,40 +192,49 @@ def emul_normalizer():
 
 
 def emul_robustscaler():
-
-    def robustscale(X, Y):
-        transformer = RobustScaler(quantile_range=(25.0, 75.0))
-        result1 = transformer.fit_transform(X)
-        result2 = transformer.transform(Y)
-        result1_restore = transformer.inverse_transform(result1)
-        result2_restore = transformer.inverse_transform(result2)
-        return result1, result2, result1_restore, result2_restore
-
     X = jnp.array([[-2, 0.5], [-0.5, 1.5], [0, 10.0], [1, 15.0], [5, 20.0]])
     Y = jnp.array([[3, 2]])
 
-    # sklearn基准计算
-    sk_transformer = preprocessing.RobustScaler(quantile_range=(25.0, 75.0))
-    sk_result_1 = sk_transformer.fit_transform(X)
-    sk_result_2 = sk_transformer.transform(Y)
-    sk_restore_1 = sk_transformer.inverse_transform(sk_result_1)
-    sk_restore_2 = sk_transformer.inverse_transform(sk_result_2)
+    param_combinations = [(True, True), (True, False), (False, True)]
 
-    # SPU模拟计算
-    X, Y = emulator.seal(X, Y)
-    spu_result_1, spu_result_2, spu_restore_1, spu_restore_2 = emulator.run(
-        robustscale
-    )(X, Y)
+    for with_centering, with_scaling in param_combinations:
+        print(f"\nTesting with_centering={with_centering}, with_scaling={with_scaling}")
 
-    # 正向变换断言
-    np.testing.assert_allclose(sk_result_1, spu_result_1, rtol=1e-4, atol=1e-4)
-    np.testing.assert_allclose(sk_result_2, spu_result_2, rtol=1e-4, atol=1e-4)
+        def robustscale(X, Y):
+            transformer = RobustScaler(
+                with_centering=with_centering,
+                with_scaling=with_scaling,
+                quantile_range=(25.0, 75.0),
+            )
+            result1 = transformer.fit_transform(X)
+            result2 = transformer.transform(Y)
+            result1_restore = transformer.inverse_transform(result1)
+            result2_restore = transformer.inverse_transform(result2)
+            return result1, result2, result1_restore, result2_restore
 
-    # 逆变换断言
-    np.testing.assert_allclose(jnp.array([[-2, 0.5], [-0.5, 1.5], [0, 10.0], [1, 15.0], [5, 20.0]]), spu_restore_1, rtol=1e-4, atol=1e-4)
-    np.testing.assert_allclose(jnp.array([[3, 2]]), spu_restore_2, rtol=1e-4, atol=1e-4)
-    np.testing.assert_allclose(sk_restore_1, spu_restore_1, rtol=1e-4, atol=1e-4)
-    np.testing.assert_allclose(sk_restore_2, spu_restore_2, rtol=1e-4, atol=1e-4)
+        sk_transformer = preprocessing.RobustScaler(
+            with_centering=with_centering,
+            with_scaling=with_scaling,
+            quantile_range=(25.0, 75.0),
+        )
+
+        sk_result_1 = sk_transformer.fit_transform(X)
+        sk_result_2 = sk_transformer.transform(Y)
+        sk_restore_1 = sk_transformer.inverse_transform(sk_result_1)
+        sk_restore_2 = sk_transformer.inverse_transform(sk_result_2)
+
+        emulator_X, emulator_Y = emulator.seal(X, Y)
+        spu_result_1, spu_result_2, spu_restore_1, spu_restore_2 = emulator.run(
+            robustscale
+        )(emulator_X, emulator_Y)
+
+        np.testing.assert_allclose(sk_result_1, spu_result_1, rtol=1e-4, atol=1e-4)
+        np.testing.assert_allclose(sk_result_2, spu_result_2, rtol=1e-4, atol=1e-4)
+
+        np.testing.assert_allclose(X, spu_restore_1, rtol=1e-4, atol=1e-4)
+        np.testing.assert_allclose(Y, spu_restore_2, rtol=1e-4, atol=1e-4)
+        np.testing.assert_allclose(sk_restore_1, spu_restore_1, rtol=1e-4, atol=1e-4)
+        np.testing.assert_allclose(sk_restore_2, spu_restore_2, rtol=1e-4, atol=1e-4)
 
 
 def emul_minmaxscaler():

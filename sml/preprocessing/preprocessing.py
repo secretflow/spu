@@ -329,7 +329,6 @@ class RobustScaler:
         self.quantile_range = quantile_range
         self.clip = clip
 
-        self._reset()
         self._validate_quantiles()
 
     def _reset(self):
@@ -354,6 +353,7 @@ class RobustScaler:
         X : {array-like} of shape (n_samples, n_features)
             Training data used for parameter estimation.
         """
+        self._reset()
         q_min, q_max = self.quantile_range
 
         if not self.with_scaling and self.with_centering:
@@ -399,7 +399,7 @@ class RobustScaler:
         if self.with_scaling:
             X = X / self.scale_
         if self.clip:
-            X = jnp.clip(X, self.quantile_range[0], self.quantile_range[1])
+            X = jnp.clip(X, self.quantiles_[0], self.quantiles_[1])
         return X
 
     def fit_transform(self, X):
