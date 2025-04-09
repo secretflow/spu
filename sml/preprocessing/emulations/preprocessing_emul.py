@@ -37,10 +37,11 @@ def emul_brier_score_loss():
         X = jnp.array([0, 1, 1, 0, 1])
         Y = np.array([0.1, 0.7, 0.8, 0.3, 0.9])
 
-        score = BrierScoreLoss(pos_label=1)
+        score = preprocessing.BrierScoreLoss(pos_label=1)
         sk_result = score.score(X, Y)
 
-        spu_result = spsim.sim_jax(sim, brier_score_loss)(X, Y)
+        X, Y = emulator.seal(X, Y)
+        spu_result = emulator.run(brier_score_loss)(X,Y)
 
         np.testing.assert_allclose(sk_result, spu_result, rtol=1e-3, atol=1e-3)
 
