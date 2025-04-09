@@ -59,7 +59,7 @@ class BrierScoreLoss:
         """
         self.pos_label = pos_label
 
-    def compute(self, y_true, y_proba, sample_weight=None):
+    def score(self, y_true, y_proba, sample_weight=None):
         """
         Compute the Brier score loss.
 
