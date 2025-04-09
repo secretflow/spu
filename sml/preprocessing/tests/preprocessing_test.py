@@ -19,10 +19,16 @@ import numpy as np
 import spu.libspu as libspu
 import spu.utils.simulation as spsim
 from sklearn import preprocessing
-from sml.preprocessing.preprocessing import (Binarizer, KBinsDiscretizer,
-                                             LabelBinarizer, MaxAbsScaler,
-                                             MinMaxScaler, Normalizer,
-                                             OneHotEncoder, RobustScaler)
+from sml.preprocessing.preprocessing import (
+    Binarizer,
+    KBinsDiscretizer,
+    LabelBinarizer,
+    MaxAbsScaler,
+    MinMaxScaler,
+    Normalizer,
+    OneHotEncoder,
+    RobustScaler,
+)
 
 
 class UnitTests(unittest.TestCase):
