@@ -28,6 +28,7 @@ from sml.preprocessing.preprocessing import (
     BrierScoreLoss,
 )
 
+
 def emul_brier_score_loss():
     def brier_score_loss(X, Y):
             score = BrierScoreLoss()
@@ -42,6 +43,7 @@ def emul_brier_score_loss():
         spu_result = spsim.sim_jax(sim, brier_score_loss)(X, Y)
 
         np.testing.assert_allclose(sk_result, spu_result, rtol=1e-3, atol=1e-3)
+
 
 def emul_labelbinarizer():
     def labelbinarize(X, Y):
