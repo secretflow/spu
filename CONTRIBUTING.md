@@ -89,6 +89,25 @@ brew install nasm
 # build and test spu python bindings and applicatons
 ####################################################
 # build as debug
+bazel build //... -c dbg
+
+# build as release
+bazel build //... -c opt
+
+# test
+bazel test //...
+
+
+############################################
+# build and test spu core c++ implementation
+############################################
+cd src
+
+``` sh
+####################################################
+# build and test spu python bindings and applicatons
+####################################################
+# build as debug
 bazelisk build //... -c dbg
 
 # build as release

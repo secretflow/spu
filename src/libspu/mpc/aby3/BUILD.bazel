@@ -46,6 +46,9 @@ spu_cc_test(
         ":protocol",
         "//libspu/mpc:ab_api_test",
         "//libspu/mpc:api_test",
+        "//libspu/mpc/common:pv2k",
+        "//libspu/mpc/utils:ring_ops",
+        "//libspu/mpc/utils:simulate",
     ],
 )
 

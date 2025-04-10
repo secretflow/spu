@@ -680,4 +680,81 @@ TEST_P(LowMCTest, EncryptCorrect) {
   });
 }
 
+namespace {
+#define EXPECT_VALUE_ALMOST_EQ(X, Y)                        \
+  {                                                         \
+    EXPECT_EQ((X).shape(), (Y).shape());                    \
+    EXPECT_TRUE(ring_all_equal((X).data(), (Y).data(), 1)); \
+  }
+}  // namespace
+
+// test for 2pc quick truncation
+TEST_P(ApiTest, TruncP_2PC) {
+  const auto factory = std::get<0>(GetParam());
+  const RuntimeConfig& conf = std::get<1>(GetParam());
+  const size_t npc = std::get<2>(GetParam());
+
+  if (npc != 2) {
+    return;
+  }
+
+  utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+    auto sctx = factory(conf, lctx);
+
+    auto p0 = rand_p(sctx.get(), Shape({300, 20}));
+    // only valid when |x| < L / 4
+    p0 = arshift_p(sctx.get(), p0, {static_cast<int64_t>(2)});
+    auto s0 = p2s(sctx.get(), p0);
+
+    // test case 1: truncate small bits
+    size_t b0 = lctx->GetStats()->sent_bytes;
+    size_t r0 = lctx->GetStats()->sent_actions;
+    const size_t small_bits = 2;
+    auto r_s = trunc_s(sctx.get(), s0, small_bits, SignType::Unknown);
+    size_t b1 = lctx->GetStats()->sent_bytes;
+    size_t r1 = lctx->GetStats()->sent_actions;
+
+    r_s = s2p(sctx.get(), r_s);
+    auto r_p = arshift_p(sctx.get(), p0, {small_bits});
+
+    size_t comm_small = b1 - b0;
+    SPDLOG_INFO(
+        "TruncP_2PC: small_bits = {}, sent {} MiB ({} B per), "
+        "actions {}.",
+        small_bits, comm_small * 1. / 1024. / 1024.,
+        comm_small * 1. / p0.numel(), r1 - r0);
+
+    /* THEN */
+    EXPECT_VALUE_ALMOST_EQ(r_s, r_p);
+
+    // test case 2: truncate large bits
+    b0 = lctx->GetStats()->sent_bytes;
+    r0 = lctx->GetStats()->sent_actions;
+    const size_t large_bits = (SizeOf(conf.field) * 8) / 2 + 2;
+    r_s = trunc_s(sctx.get(), s0, large_bits, SignType::Unknown);
+    b1 = lctx->GetStats()->sent_bytes;
+    r1 = lctx->GetStats()->sent_actions;
+
+    r_s = s2p(sctx.get(), r_s);
+    r_p = arshift_p(sctx.get(), p0, {static_cast<int64_t>(large_bits)});
+
+    size_t comm_large = b1 - b0;
+    SPDLOG_INFO(
+        "TruncP_2PC: large_bits = {}, sent {} MiB ({} B per), "
+        "actions {}.",
+        large_bits, comm_large * 1. / 1024. / 1024.,
+        comm_large * 1. / p0.numel(), r1 - r0);
+
+    EXPECT_VALUE_ALMOST_EQ(r_s, r_p);
+
+    // the comm. should be different
+    // TODO: the minimal field in SPU is FM32, so bits<=32 will get the same
+    // comm., open this test after more small fields are supported.
+    if (conf.field == FieldType::FM32) {
+      return;
+    }
+    EXPECT_GT(comm_large, comm_small);
+  });
+}
+
 }  // namespace spu::mpc::test
