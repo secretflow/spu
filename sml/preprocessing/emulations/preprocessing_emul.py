@@ -25,25 +25,7 @@ from sml.preprocessing.preprocessing import (
     MaxAbsScaler,
     MinMaxScaler,
     Normalizer,
-    BrierScoreLoss,
 )
-
-
-def emul_brier_score_loss():
-    def brier_score_loss(X, Y):
-        score = BrierScoreLoss()
-        return score.score(X, Y)
-
-    X = jnp.array([0, 1, 1, 0, 1])
-    Y = np.array([0.1, 0.7, 0.8, 0.3, 0.9])
-
-    score = preprocessing.BrierScoreLoss(pos_label=1)
-    sk_result = score.score(X, Y)
-
-    X, Y = emulator.seal(X, Y)
-    spu_result = emulator.run(brier_score_loss)(X, Y)
-
-    np.testing.assert_allclose(sk_result, spu_result, rtol=1e-3, atol=1e-3)
 
 
 def emul_labelbinarizer():
@@ -826,6 +808,5 @@ if __name__ == "__main__":
         emul_kbinsdiscretizer_quantile_sample_weight_diverse_n_bins_no_vectorize()
         emul_kbinsdiscretizer_kmeans()
         emul_kbinsdiscretizer_kmeans_diverse_n_bins_no_vectorize()
-        emul_brier_score_loss()
     finally:
         emulator.down()
