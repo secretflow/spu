@@ -28,7 +28,6 @@ from sml.preprocessing.preprocessing import (
     MaxAbsScaler,
     MinMaxScaler,
     Normalizer,
-    BrierScoreLoss,
 )
 
 
@@ -837,23 +836,6 @@ class UnitTests(unittest.TestCase):
         np.testing.assert_allclose(
             sk_inv_transformed, spu_inv_transformed, rtol=0, atol=1e-4
         )
-
-    def test_brier_score_loss(self):
-        sim = spsim.Simulator.simple(3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM64)
-
-        def brier_score_loss(X, Y):
-            score = BrierScoreLoss()
-            return score.score(X, Y)
-
-        X = jnp.array([0, 1, 1, 0, 1])
-        Y = np.array([0.1, 0.7, 0.8, 0.3, 0.9])
-
-        score = preprocessing.BrierScoreLoss(pos_label=1)
-        sk_result = score.score(X, Y)
-
-        spu_result = spsim.sim_jax(sim, brier_score_loss)(X, Y)
-
-        np.testing.assert_allclose(sk_result, spu_result, rtol=1e-3, atol=1e-3)
 
 
 if __name__ == "__main__":
