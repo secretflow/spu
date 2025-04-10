@@ -22,6 +22,57 @@ from spu.ops.groupby import groupby, groupby_sum
 
 from .auc import binary_clf_curve, binary_roc_auc
 
+def brier_score_loss(
+    y_true: jnp.ndarray,
+    y_proba: jnp.ndarray,
+    sample_weight: Optional[jnp.ndarray] = None,
+    pos_label: Optional[int] = None,
+) -> float:
+    """
+    Compute the Brier score loss.
+
+    The Brier score measures the mean squared difference between
+    predicted probability and the actual binary outcome.
+
+    Parameters
+    ----------
+    y_true : jnp.ndarray of shape (n_samples,)
+        True binary labels.
+
+    y_proba : jnp.ndarray of shape (n_samples,)
+        Estimated probabilities for the positive class.
+
+    sample_weight : Optional[jnp.ndarray] of shape (n_samples,), default=None
+        Sample weights. If None, all samples are weighted equally.
+
+    pos_label : Optional[int], default=None
+        Label of the positive class. If None, will be inferred as the max of y_true.
+
+    Returns
+    -------
+    score : float
+        Brier score loss.
+    """
+    y_true = jnp.asarray(y_true).flatten()
+    y_proba = jnp.asarray(y_proba).flatten()
+
+    if pos_label is None:
+        pos_label = jnp.max(y_true)
+
+    # Convert y_true to binary (1 for pos_label, 0 otherwise)
+    y_true_bin = jnp.where(y_true == pos_label, 1.0, 0.0)
+
+    # Compute squared error
+    errors = (y_proba - y_true_bin) ** 2
+
+    if sample_weight is not None:
+        sample_weight = jnp.asarray(sample_weight).flatten()
+        weighted_sum = jnp.sum(errors * sample_weight)
+        total_weight = jnp.sum(sample_weight)
+        return weighted_sum / total_weight
+    else:
+        return jnp.mean(errors)
+
 
 def roc_auc_score(y_true, y_pred):
     sorted_arr = create_sorted_label_score_pair(y_true, y_pred)
