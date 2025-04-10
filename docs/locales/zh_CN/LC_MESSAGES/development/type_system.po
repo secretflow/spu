@@ -1,0 +1,357 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2021 Ant Group Co., Ltd.
+# This file is distributed under the same license as the SPU package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2025.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: SPU \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-03-13 15:10+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: ../../development/type_system.rst:2
+msgid "Type System"
+msgstr "类型系统"
+
+#: ../../development/type_system.rst:5
+msgid "Overview"
+msgstr "概述"
+
+#: ../../development/type_system.rst:7
+msgid "This document is for VM developers."
+msgstr "本文档面向虚拟机开发者。"
+
+#: ../../development/type_system.rst:9
+msgid "Everything in SPU could be treated as an object, each object has a type."
+msgstr "在 SPU 中的一切都是一个对象，每个对象都有一个类型。"
+
+#: ../../development/type_system.rst:11
+msgid ""
+"There are only two types of objects, *value* or *operator*, which means "
+"if a symbol is not a *value*, it's an *operator*."
+msgstr "对象只有两种类型：值或操作符，也就是说如果一个符号不是值，那么它就是操作符。"
+
+#: ../../development/type_system.rst:13
+msgid ""
+"**value**: an object that is managed by SPU runtime, representing a "
+"public/secret data."
+msgstr "值：由 SPU 运行时管理的对象，表示公开/秘密数据。"
+
+#: ../../development/type_system.rst:14
+msgid ""
+"**operator**: an object that takes one or more values and outputs a "
+"return value, i.e. `multiply` is an operator."
+msgstr "操作符：接受一个或多个值并给出一个返回值的对象，例如 `multiply` 就是一个操作符。"
+
+#: ../../development/type_system.rst:17
+msgid "Value type"
+msgstr "值类型"
+
+#: ../../development/type_system.rst:19
+msgid "A value type is a tuple (**V**, **D**, **S**), where:"
+msgstr "值类型是一个元组 (V, D, S)，其含义如下："
+
+#: ../../development/type_system.rst:21
+#, python-brace-format
+msgid "**V** is *visibility*, could be one of *{public, secret}*"
+msgstr "V 为可见性（visibility），可以是 {public, secret} 之一。"
+
+#: ../../development/type_system.rst:22
+#, python-brace-format
+msgid "**D** is *data type*, could be one of *{int, fxp}*"
+msgstr "D 为数据类型（data type），可以是 {int, fxp} 之一。"
+
+#: ../../development/type_system.rst:23
+msgid "**S** is *shape*, which makes the value a tensor."
+msgstr "S 为形状（shape），它将值构建为张量。"
+
+#: ../../development/type_system.rst:25
+msgid ""
+"We can define a hyper type function, which takes three parameters and "
+"return a concrete value type."
+msgstr "我们可以定义一个超类型函数，它接受三个参数并返回一个具体的值类型。"
+
+#: ../../development/type_system.rst:31
+msgid ""
+"To simplify things a little bit, we can ignore *shape* for now and assume"
+" that runtime will handle it correctly."
+msgstr "为了简化问题，我们可以暂时忽略形状，并假设运行时会正确处理它。"
+
+#: ../../development/type_system.rst:37
+msgid ""
+"With this type function, we can define a list of types in the SPU type "
+"system."
+msgstr "通过这个类型函数，我们可以在SPU类型系统中定义一系列类型。"
+
+#: ../../development/type_system.rst:47
+msgid "Operator type"
+msgstr "操作符类型"
+
+#: ../../development/type_system.rst:49
+msgid ""
+"*Operators* takes a list of values as parameters and returns exactly one "
+"value as result, operator's type is determined by the types of input "
+"parameters and return values."
+msgstr "操作符以值列表作为参数，并返回一个具体的值作为结果，操作符类型由输入参数和返回值的类型决定。"
+
+#: ../../development/type_system.rst:51
+msgid ""
+"In SPU IR, an operator could take a polymorphic typed parameter and the "
+"return type could be deduced from the parameters. For example:"
+msgstr "在 SPU IR 中，操作符可以接受多种类型的参数，并且从中推导出返回的类型。例如："
+
+#: ../../development/type_system.rst:62
+msgid ""
+"The `add` operator takes a pair of `type(V, D)` as parameter, which has "
+"2x2x2x2 = 16 different kinds of combinations. To support this type of "
+"operators, we introduce the following *type functor*."
+msgstr ""
+
+#: ../../development/type_system.rst:64
+msgid ""
+"**dtype promotion**, which promotes two dtypes to a more relaxed type, in"
+" SPU system, *int* is always promoted to *fxp*."
+msgstr "数据类型提升（dtype promotion）：将两个 dtype 提升为更宽松的类型，在 SPU 系统中，int 总是被提升为 fxp。"
+
+#: ../../development/type_system.rst:72
+msgid ""
+"**visibility narrow**, which narrows the visibility when two or more "
+"operands have different visibility properties, this is the key to "
+"maintain the \"secure semantic\" of SPU VM, since the resulting "
+"visibility of ops will always be more strict. i.e. if one of operands is "
+"*secret*, the result is a *secret*."
+msgstr ""
+
+#: ../../development/type_system.rst:82
+msgid "Now we can represent the polymorphic mul op as:"
+msgstr "现在我们可以将多态的 mul 操作符表示为："
+
+#: ../../development/type_system.rst:88
+msgid ""
+"the op takes two parameters, first type is :code:`type(V0, D0)`, second "
+"type is :code:`type(V1, D1)`."
+msgstr "该操作符接受两个参数，第一个类型是 :code:`type(V0, D0)`，第二个类型是 :code:`type(V1, D1)`。"
+
+#: ../../development/type_system.rst:89
+msgid "the op returns :code:`type(narrow(V0, V1), promote(D0, D1))` as a result."
+msgstr "该操作符返回 :code:`type(narrow(V0, V1), promote(D0, D1))` 作为结果。"
+
+#: ../../development/type_system.rst:90
+msgid ""
+"when applying the op to two arbitrary arguments, the result could be "
+"deduced from the above type expressions."
+msgstr "当将操作符应用于两个任意参数时，结果都可以从上述类型表达式中推导出来\""
+
+#: ../../development/type_system.rst:94
+msgid "Use of type"
+msgstr "类型的用途"
+
+#: ../../development/type_system.rst:96
+msgid "There are many uses for types."
+msgstr "类型有许多用途。"
+
+#: ../../development/type_system.rst:98
+msgid ""
+"First, the most important one, type is self descriptive, with an accurate"
+" defined type system, we can describe *SPU IR* more accurately."
+msgstr "首先，最重要的是类型是自描述的，通过准确定义的类型系统，我们可以更准确地描述 SPU IR。"
+
+#: ../../development/type_system.rst:99
+msgid ""
+"Second, runtime type information is used to do runtime dispatch, which is"
+" important for polymorphic operators."
+msgstr "其次，在进行运行时调度会使用运行时类型信息，这对于多态操作符非常重要。"
+
+#: ../../development/type_system.rst:100
+msgid ""
+"Third, the type system could be used by static type checker, and could be"
+" used to double check runtime implementation."
+msgstr "第三，类型系统可以用于静态类型检查，并可以用于双重检查运行时的实现。"
+
+#: ../../development/type_system.rst:104
+msgid "Ops dispatch"
+msgstr "操作调度"
+
+#: ../../development/type_system.rst:106
+msgid ""
+"As described above, type helps for dispatching, here we use `MUL` "
+"instruction as an example."
+msgstr "如上所述，类型有助于调度，这里我们以 `MUL` 指令为例。"
+
+#: ../../development/type_system.rst:113
+msgid ""
+"The above `MUL` instruction does element-wise multiplication, `%1` and "
+"`%2` are parameters and `%3` is the return value."
+msgstr "上面的 `MUL` 指令执行逐元素乘法，`%1` 和 `%2` 是参数，`%3` 是返回值。"
+
+#: ../../development/type_system.rst:116
+msgid "The dispatch problem"
+msgstr "调度问题"
+
+#: ../../development/type_system.rst:118
+#, python-brace-format
+msgid ""
+"In this example, `%1` and `%2` are SPU values, each of them belongs one "
+"of four types `{sint, pint, sfxp, pfxp}`, the type of `MUL` is:"
+msgstr ""
+
+#: ../../development/type_system.rst:120
+#, python-brace-format
+msgid ""
+"\\begin{Bmatrix} sint \\\\ pint \\\\ sfxp \\\\ pfxp \\end{Bmatrix}\n"
+"\\times\n"
+"\\begin{Bmatrix} sint \\\\ pint \\\\ sfxp \\\\ pfxp \\end{Bmatrix}"
+msgstr ""
+
+#: ../../development/type_system.rst:126
+msgid ""
+"**The problem is how to dispatch operations to correct kernel according "
+"to the arguments' type information**."
+msgstr "问题是如何根据参数的类型信息将操作调度到正确的内核。"
+
+#: ../../development/type_system.rst:128
+msgid ""
+"A simple idea is to pattern match all these type combinations and "
+"dispatch to different kernels accordingly, with this way we got 4x4=16 "
+"different kernels."
+msgstr "一个简单的想法是使用模式匹配所有这些类型组合，并相应地调度到不同的内核，这样我们就有 4x4=16 个不同的内核了。"
+
+#: ../../development/type_system.rst:146
+msgid "Layered dispatch"
+msgstr "分层调度"
+
+#: ../../development/type_system.rst:148
+msgid ""
+"A better way is to dispatch layer by layer, for example, first dispatch "
+"by dtype, then dispatch by vtype."
+msgstr "更好的方法是逐层调度，例如，首先按 dtype 调度，然后按 vtype 调度。"
+
+#: ../../development/type_system.rst:172
+msgid "In the above diagram:"
+msgstr "在上图中："
+
+#: ../../development/type_system.rst:174
+msgid "**mul** is general *multiplication* method."
+msgstr "mul 是通用的乘法方法。"
+
+#: ../../development/type_system.rst:175
+msgid "**imul** is integer multiplication method."
+msgstr "imul 是整数乘法方法。"
+
+#: ../../development/type_system.rst:176
+msgid "**fmul** is fixedpoint multiplication method."
+msgstr "fmul 是定点乘法方法。"
+
+#: ../../development/type_system.rst:177
+msgid "**rmul** is untyped multiplication method over ring 2k."
+msgstr "rmul 是在环2k上的无类型乘法方法。"
+
+#: ../../development/type_system.rst:178
+msgid ""
+"**mulss** multiplies two secrets, the domain and behavior are secure "
+"protocol dependent."
+msgstr "mulss 是两个秘密值的乘法，其域和行为依赖于安全协议。"
+
+#: ../../development/type_system.rst:180
+msgid "The above idea can be expressed in code like:"
+msgstr "上述思想用代码可以表示为："
+
+#: ../../development/type_system.rst:215
+msgid "Fast dispatch"
+msgstr "快速调度"
+
+#: ../../development/type_system.rst:217
+msgid ""
+"In the above example, we observe that `i2f` and `truncation` could be "
+"optimized, the intuition is that when a value is converted from `int` to "
+"`fxp` and later convert back, these two conversion introduce non-trivial "
+"computation overhead in MPC setting."
+msgstr ""
+
+#: ../../development/type_system.rst:219
+msgid ""
+"We use the so called *fast dispatch* to optimize it, when doing cross "
+"`int` and `fxp` multiplication, we could directly do `imul` without type "
+"lift and truncation."
+msgstr "我们使用所谓的快速调度来优化它，当进行跨 `int` 和 `fxp` 乘法时，我们可以直接进行 `imul` 而不需要类型提升和截断。"
+
+#: ../../development/type_system.rst:239 ../../development/type_system.rst:274
+msgid "Note:"
+msgstr "注意："
+
+#: ../../development/type_system.rst:241
+msgid "in the above implementation we didn't maintain the type correctness."
+msgstr "在上述实现中，我们没有维护类型的正确性。"
+
+#: ../../development/type_system.rst:242
+msgid ""
+"this pattern match based *fast dispatch* is exactly the same as compile-"
+"time *peephole optimization*."
+msgstr "这种基于模式匹配的快速调度与编译时的窥孔优化完全相同。"
+
+#: ../../development/type_system.rst:243
+msgid ""
+"dispatch inside a protocol is also complicated and beyond the scope of "
+"this article."
+msgstr "协议内部的调度也很复杂，超出了本文的范围。"
+
+#: ../../development/type_system.rst:247
+msgid "Implementation"
+msgstr "实现"
+
+#: ../../development/type_system.rst:249
+msgid ""
+"With *type functor*, we have the following op definitions in `mul` "
+"dispatch chain."
+msgstr "通过类型函子，我们在 `mul` 调度链中有以下操作定义。"
+
+#: ../../development/type_system.rst:258
+msgid ""
+"In dispatch phrase, SPU runtime uses type information to select next "
+"dispatch op. In this example, `(x:sfxp, y:sfxp)` is applied op `mul`, via"
+" pattern matching we got `(V0=SECRET,D0=FXP), (V1=SECRET,D1=FXP)`, and "
+"the dispatch stack looks like:"
+msgstr ""
+
+#: ../../development/type_system.rst:276
+msgid ""
+"We use C++-like template type notation to represent polymorphic type "
+"constraints."
+msgstr "我们使用类似 C++ 模板类型的符号来表示多态类型约束。"
+
+#: ../../development/type_system.rst:279
+msgid "Partial type"
+msgstr "部分类型"
+
+#: ../../development/type_system.rst:281
+msgid ""
+"In the type dispatch step, type information is used to select next op, "
+"and when partial of type information is used, it's *erased*. For example,"
+" when `dtype` is used to select `fmul` in the above example, dtype is "
+"useless in the future and could be erased, the lower level op does not "
+"distinguish dtype (via a generic type parameter). In a real "
+"implementation, we don't erase the type explicitly, just leave it there "
+"without further use."
+msgstr ""
+
+#: ../../development/type_system.rst:283
+msgid ""
+"The return value takes the `reverse progress` of dispatch. The return "
+"type is filled from bottom to up. For example, in the above progress, "
+"when :code:`z=rmul(x,y)` is called, `rmul` knows `z`'s visibility type is"
+" `SECRET` but does not know its dtype yet, so here `z` has a partial type"
+" `type(SECRET, $UNKNOWN)`. The type will be filled step by step during "
+"stack popup, and eventually be completed as a full type when the whole "
+"dispatch progress is done."
+msgstr ""
+
