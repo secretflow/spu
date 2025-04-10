@@ -46,6 +46,7 @@ class UnitTests(unittest.TestCase):
             field=libspu.FieldType.FM128,
             fxp_fraction_bits=30,
         )
+        config128.enable_pphlo_profile = True
         cls.sim128 = spsim.Simulator(3, config128)
 
     def test_power(self):
@@ -126,7 +127,7 @@ class UnitTests(unittest.TestCase):
         # Run the simulation
         result = spsim.sim_jax(self.sim64, proc_transform)(X)
 
-        # The transformed data should have 2 dimensions
+        # The transformed data should have 4 dimensions
         self.assertEqual(result[0].shape[1], 4)
 
         # The mean of the transformed data should be approximately 0
