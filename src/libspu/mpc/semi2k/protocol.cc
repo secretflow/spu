@@ -75,12 +75,18 @@ void regSemi2kProtocol(SPUContext* ctx,
   if (ctx->config().trunc_allow_msb_error) {
     ctx->prot()->regKernel<semi2k::TruncA>();
   } else {
-    ctx->prot()->regKernel<semi2k::TruncAPr>();
+    if (lctx->WorldSize() > 2) {
+      ctx->prot()->regKernel<semi2k::TruncAPr>();
+    } else {
+      // quick prob trunc for 2pc
+      ctx->prot()->regKernel<semi2k::TruncAPr2>();
+    }
   }
 
   if (lctx->WorldSize() == 2) {
     ctx->prot()->regKernel<semi2k::MsbA2B>();
     ctx->prot()->regKernel<semi2k::MulA1B>();
+    ctx->prot()->regKernel<semi2k::MulVVS>();
 
     // only supports 2pc fm128 for now
     if (ctx->getField() == FieldType::FM128 &&
