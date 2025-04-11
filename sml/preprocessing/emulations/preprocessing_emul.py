@@ -14,10 +14,8 @@
 
 import jax.numpy as jnp
 import numpy as np
-from sklearn import preprocessing
-from sklearn.metrics import brier_score_loss as sk_bri
-
 import sml.utils.emulation as emulation
+from sklearn import preprocessing
 from sml.preprocessing.preprocessing import (
     Binarizer,
     KBinsDiscretizer,
