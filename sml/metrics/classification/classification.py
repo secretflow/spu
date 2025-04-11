@@ -22,6 +22,7 @@ from spu.ops.groupby import groupby, groupby_sum
 
 from .auc import binary_clf_curve, binary_roc_auc
 
+
 def brier_score_loss(
     y_true: jnp.ndarray,
     y_proba: jnp.ndarray,
@@ -133,7 +134,7 @@ def equal_obs(x: jnp.ndarray, n_bin: int) -> jnp.ndarray:
         x=jnp.linspace(0, n_len, n_bin + 1),
         xp=jnp.arange(n_len),
         fp=jnp.sort(x),
-        right='extrapolate',
+        right="extrapolate",
     )
 
 
@@ -191,7 +192,7 @@ def transform_binary(y_true, y_pred, label):
 
 
 def f1_score(
-    y_true, y_pred, average='binary', labels=None, pos_label=1, transform=True
+    y_true, y_pred, average="binary", labels=None, pos_label=1, transform=True
 ):
     f1_result = fun_score(
         _f1_score, y_true, y_pred, average, labels, pos_label, transform
@@ -200,7 +201,7 @@ def f1_score(
 
 
 def precision_score(
-    y_true, y_pred, average='binary', labels=None, pos_label=1, transform=True
+    y_true, y_pred, average="binary", labels=None, pos_label=1, transform=True
 ):
     f1_result = fun_score(
         _precision_score, y_true, y_pred, average, labels, pos_label, transform
@@ -209,7 +210,7 @@ def precision_score(
 
 
 def recall_score(
-    y_true, y_pred, average='binary', labels=None, pos_label=1, transform=True
+    y_true, y_pred, average="binary", labels=None, pos_label=1, transform=True
 ):
     f1_result = fun_score(
         _recall_score, y_true, y_pred, average, labels, pos_label, transform
@@ -218,7 +219,7 @@ def recall_score(
 
 
 def fun_score(
-    fun, y_true, y_pred, average='binary', labels=None, pos_label=1, transform=True
+    fun, y_true, y_pred, average="binary", labels=None, pos_label=1, transform=True
 ):
     """
     Compute precision, recall, f1.
@@ -266,7 +267,7 @@ def fun_score(
         for i in labels:
             y_true_binary, y_pred_binary = transform_binary(y_true, y_pred, i)
             fun_result.append(fun(y_true_binary, y_pred_binary))
-    elif average == 'binary':
+    elif average == "binary":
         if transform:
             y_true_binary, y_pred_binary = transform_binary(y_true, y_pred, pos_label)
         else:
@@ -381,8 +382,8 @@ def average_precision_score(
     """
 
     assert average in (
-        'macro',
-        'micro',
+        "macro",
+        "micro",
         None,
     ), 'average must be either "macro", "micro" or None'
 
