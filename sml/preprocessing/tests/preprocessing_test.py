@@ -17,8 +17,6 @@ import unittest
 import jax.numpy as jnp
 import numpy as np
 from sklearn import preprocessing
-from sklearn.metrics import brier_score_loss as sk_bri
-
 import spu.libspu as libspu
 import spu.utils.simulation as spsim
 from sml.preprocessing.preprocessing import (
