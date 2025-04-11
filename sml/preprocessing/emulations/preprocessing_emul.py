@@ -23,6 +23,8 @@ from sml.preprocessing.preprocessing import (
     MaxAbsScaler,
     MinMaxScaler,
     Normalizer,
+    OneHotEncoder,
+    RobustScaler,
 )
 
 
@@ -115,6 +117,42 @@ def emul_binarizer():
     np.testing.assert_allclose(sk_result, spu_result, rtol=0, atol=0)
 
 
+def emul_onehotEncoder():
+    manual_categories = [[1, 1.1, 3.25], [2.0, 4.32, 6.10]]
+
+    X = jnp.array([[1, 2.0], [3.25, 4.32], [1.1, 6.10]], dtype=jnp.float64)
+    Y = jnp.array([[1, 2.1], [3.21, 4.32], [1.1, 6.10]], dtype=jnp.float64)
+
+    sk_X = np.array([[1, 2.0], [3.25, 4.32], [1.1, 6.10]], dtype=np.float64)
+    sk_Y = np.array([[1, 2.1], [3.21, 4.32], [1.1, 6.10]], dtype=np.float64)
+
+    def onehotEncode(X, Y):
+        onehotEncoder = OneHotEncoder(categories=manual_categories)
+        onehotEncoder.fit(X)
+        encoded = onehotEncoder.transform(Y)
+        inverse_v = onehotEncoder.inverse_transform(encoded)
+        return encoded, inverse_v
+
+    sk_onehotEncoder = preprocessing.OneHotEncoder(
+        categories=manual_categories, handle_unknown="ignore", sparse_output=False
+    )
+    sk_onehotEncoder.fit(sk_X)
+    sk_transformed = sk_onehotEncoder.transform(sk_Y)
+    sk_inv_transformed = sk_onehotEncoder.inverse_transform(sk_transformed)
+    sk_inv_transformed = np.where(sk_inv_transformed == None, 0.0, sk_inv_transformed)
+
+    X, Y = emulator.seal(X, Y)
+    spu_transformed, spu_inv_transformed = emulator.run(onehotEncode)(X, Y)
+
+    sk_inv_transformed = sk_inv_transformed.astype(np.float64)
+    spu_inv_transformed = spu_inv_transformed.astype(np.float64)
+
+    np.testing.assert_allclose(sk_transformed, spu_transformed, rtol=1e-4, atol=1e-4)
+    np.testing.assert_allclose(
+        sk_inv_transformed, spu_inv_transformed, rtol=1e-4, atol=1e-4
+    )
+
+
 def emul_normalizer():
     def normalize_l1(X):
         transformer = Normalizer(norm="l1")
@@ -151,6 +189,52 @@ def emul_normalizer():
     np.testing.assert_allclose(sk_result_l1, spu_result_l1, rtol=0, atol=1e-4)
     np.testing.assert_allclose(sk_result_l2, spu_result_l2, rtol=0, atol=1e-4)
     np.testing.assert_allclose(sk_result_max, spu_result_max, rtol=0, atol=1e-4)
+
+
+def emul_robustscaler():
+    X = jnp.array([[-2, 0.5], [-0.5, 1.5], [0, 10.0], [1, 15.0], [5, 20.0]])
+    Y = jnp.array([[3, 2]])
+
+    param_combinations = [(True, True), (True, False), (False, True)]
+
+    for with_centering, with_scaling in param_combinations:
+        print(f"\nTesting with_centering={with_centering}, with_scaling={with_scaling}")
+
+        def robustscale(X, Y):
+            transformer = RobustScaler(
+                with_centering=with_centering,
+                with_scaling=with_scaling,
+                quantile_range=(25.0, 75.0),
+            )
+            result1 = transformer.fit_transform(X)
+            result2 = transformer.transform(Y)
+            result1_restore = transformer.inverse_transform(result1)
+            result2_restore = transformer.inverse_transform(result2)
+            return result1, result2, result1_restore, result2_restore
+
+        sk_transformer = preprocessing.RobustScaler(
+            with_centering=with_centering,
+            with_scaling=with_scaling,
+            quantile_range=(25.0, 75.0),
+        )
+
+        sk_result_1 = sk_transformer.fit_transform(X)
+        sk_result_2 = sk_transformer.transform(Y)
+        sk_restore_1 = sk_transformer.inverse_transform(sk_result_1)
+        sk_restore_2 = sk_transformer.inverse_transform(sk_result_2)
+
+        emulator_X, emulator_Y = emulator.seal(X, Y)
+        spu_result_1, spu_result_2, spu_restore_1, spu_restore_2 = emulator.run(
+            robustscale
+        )(emulator_X, emulator_Y)
+
+        np.testing.assert_allclose(sk_result_1, spu_result_1, rtol=1e-4, atol=1e-4)
+        np.testing.assert_allclose(sk_result_2, spu_result_2, rtol=1e-4, atol=1e-4)
+
+        np.testing.assert_allclose(X, spu_restore_1, rtol=1e-4, atol=1e-4)
+        np.testing.assert_allclose(Y, spu_restore_2, rtol=1e-4, atol=1e-4)
+        np.testing.assert_allclose(sk_restore_1, spu_restore_1, rtol=1e-4, atol=1e-4)
+        np.testing.assert_allclose(sk_restore_2, spu_restore_2, rtol=1e-4, atol=1e-4)
 
 
 def emul_minmaxscaler():
@@ -806,5 +890,7 @@ if __name__ == "__main__":
         emul_kbinsdiscretizer_quantile_sample_weight_diverse_n_bins_no_vectorize()
         emul_kbinsdiscretizer_kmeans()
         emul_kbinsdiscretizer_kmeans_diverse_n_bins_no_vectorize()
+        emul_onehotEncoder()
+        emul_robustscaler()
     finally:
         emulator.down()

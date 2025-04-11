@@ -39,19 +39,26 @@ std::vector<spu::Value> Shuffle(SPUContext* ctx,
                                 absl::Span<const spu::Value> inputs,
                                 int64_t axis) {
   SPU_ENFORCE_GT(inputs.size(), 0U);
-  if (inputs[0].numel() == 0) {
+  auto input_shape = inputs[0].shape();
+  SPU_ENFORCE(std::all_of(inputs.begin() + 1, inputs.end(),
+                          [&](const spu::Value& v) {
+                            return v.shape() == input_shape;
+                          }),
+              "all inputs should have the same shape");
+
+  // edge case: empty or single element tensor
+  if (inputs[0].numel() <= 1) {
     return std::vector<spu::Value>(inputs.begin(), inputs.end());
   }
-  auto input_shape = inputs[0].shape();
 
   // TODO: Rename permute-related kernels
   if (ctx->hasKernel("rand_perm_m") && ctx->hasKernel("perm_am")) {
     auto shuffle_fn = [&](absl::Span<const spu::Value> input) {
       std::vector<spu::Value> rets;
-      auto rand_perm = hal::_rand_perm_s(ctx, input_shape);
-      for (size_t i = 0; i < input.size(); ++i) {
-        rets.emplace_back(hal::_perm_ss(ctx, _2s(ctx, input[i]), rand_perm)
-                              .setDtype(input[i].dtype()));
+      auto rand_perm = hal::_rand_perm_s(ctx, {input_shape.dim(axis)});
+      for (const auto& inp : input) {
+        rets.emplace_back(
+            hal::_perm_ss(ctx, _2s(ctx, inp), rand_perm).setDtype(inp.dtype()));
       }
       return rets;
     };

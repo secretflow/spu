@@ -423,7 +423,7 @@ struct RuntimeConfig {
                 int64_t fxp_fraction_bits = 0)
       : protocol(protocol),
         field(field),
-        fxp_fraction_bits(fxp_fraction_bits){};
+        fxp_fraction_bits(fxp_fraction_bits) {};
   RuntimeConfig(const RuntimeConfig& other) = default;
   explicit RuntimeConfig(const pb::RuntimeConfig& pb_conf);
 
@@ -434,6 +434,7 @@ struct RuntimeConfig {
   std::string SerializeAsString() const;
   std::string DebugString() const;
   pb::RuntimeConfig ToProto() const;
+  std::string DumpToString() const;
 };
 
 //////////////////////////////////////////////////////////////////////////
