@@ -29,7 +29,7 @@ msgid ""
 "source<getting_started/install:Building From Source>`, this document "
 "shows how to write a privacy preserving logistic regression program with "
 "SPU C++ API."
-msgstr "使用 SPU C++ API 必须要 `从源码编译安装 <../getting_started/install.html>`_。本文档描述如何使用 SPU C++ API 编写一个隐私保护逻辑回归程序。"
+msgstr "使用 SPU C++ API 必须 `从源码编译安装 <../getting_started/install.html>`_。本文档描述如何使用 SPU C++ API 编写一个隐私保护逻辑回归程序。"
 
 #: ../../tutorials/cpp_lr_example.rst:8
 msgid "Logistic Regression"
