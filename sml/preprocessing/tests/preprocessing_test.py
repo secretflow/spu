@@ -16,9 +16,9 @@ import unittest
 
 import jax.numpy as jnp
 import numpy as np
-from sklearn import preprocessing
 import spu.libspu as libspu
 import spu.utils.simulation as spsim
+from sklearn import preprocessing
 from sml.preprocessing.preprocessing import (
     Binarizer,
     KBinsDiscretizer,
