@@ -28,7 +28,7 @@ msgid ""
 "SPU is a virtual device backed by an MPC engine, which provides an "
 "*arithmetic black box* abstraction to front-end users. Just like other "
 "*black boxes*, it's not easy to understand what happened inside it."
-msgstr "SPU是一种由多方安全计算（MPC）引擎支持的虚拟设备，它为前端用户提供了*算术黑箱*的概念。就像其他黑箱一样，理解其内部机制并不容易。"
+msgstr "SPU是一种由多方安全计算（MPC）引擎支持的虚拟设备，它为前端用户提供了算术黑箱的概念。就像其他黑箱一样，理解其内部机制并不容易。"
 
 #: ../../tutorials/spu_inside.ipynb:22
 msgid ""
@@ -48,7 +48,7 @@ msgid ""
 "simulate multi-parties in a single process. All parties acts exactly the "
 "same as in production environment, so we can use it as a playground to "
 "inspect the internals of SPU."
-msgstr "多方计算，顾名思义本质上是一个涉及多个参与者的分布式系统，所以部署、调试和监控难度显著增加。因此， SPU 提供了一个模拟模块，通过在单个进程中使用线程来模拟多个参与方。所有参与方的行为与生产环境中的表现完全一致，因此我们可以将其当成一个生产环境来检查SPU的内部运行情况。"
+msgstr "多方计算，顾名思义本质上是一个涉及多个参与者的分布式系统，所以部署、调试和监控难度显著增加。因此， SPU 提供了一个模拟模块，通过在单个进程中使用线程来模拟多个参与方。所有参与方的行为与生产环境中的表现完全一致，因此我们可以将其当成一个生产环境来检查 SPU 的内部运行情况。"
 
 #: ../../tutorials/spu_inside.ipynb:29
 msgid "To use the simulation module, we can simple do"
@@ -95,7 +95,7 @@ msgstr "上述代码是用 `MLIR <https://mlir.llvm.org/>`_ 的 pphlo 编写的�
 msgid ""
 "Besides single ``jax.numpy`` op, we can simulate any jax function on SPU,"
 " i.e."
-msgstr "除了单个:code:`jax.numpy`操作外，我们还可以在SPU上模拟任何 JAX 函数，例如"
+msgstr "除了单个 :code:`jax.numpy` 操作外，我们还可以在SPU上模拟任何 JAX 函数，例如"
 
 #: ../../tutorials/spu_inside.ipynb:284
 msgid "The above code is ``spu function`` which is composed of spu builtin ops."
@@ -127,7 +127,7 @@ msgstr "为了使用性能分析，我们启用了一些功能标志。"
 msgid ""
 "``enable_pphlo_profile`` tells SPU runtime to print information about "
 "pphlo, now, let's run the function on this new runtime."
-msgstr " :code:`enable_pphlo_profile` 告诉 SPU 运行时打印有关 pphlo 的信息，现在，让我们在这个新的运行时上运行该函数。"
+msgstr "功能标志 :code:`enable_pphlo_profile` 告诉 SPU 运行时打印有关 pphlo 的信息，现在，让我们在这个新的运行时上运行该函数。"
 
 #: ../../tutorials/spu_inside.ipynb:395
 msgid ""
@@ -216,7 +216,7 @@ msgid ""
 "The ``Value<2x2xSFXP,s=2,1>`` means it's a **S**\\ ecret **F**\\ i\\ "
 "**X**\\ ed **P**\\ ointed tensor with shape(**2x2**) and "
 "strides(**2,1**)."
-msgstr " :code:`Value<2x2xSFXP,s=2,1>` 表示这是个形状为（2x2）步长为（2,1）的密文定点张量。"
+msgstr "代码 :code:`Value<2x2xSFXP,s=2,1>` 表示这是个形状为（2x2）步长为（2,1）的密文定点张量。"
 
 #: ../../tutorials/spu_inside.ipynb:570
 msgid ""
@@ -313,7 +313,7 @@ msgstr "是的，这就是为什么多方计算（MPC）仍然相对较慢，也
 msgid ""
 "The ``reciprocal`` is still a relative simple operator, you can try more "
 "complicated op like ``convolution``."
-msgstr " :code:`reciprocal` （倒数）仍然是一个相对简单的操作符，你可以尝试更复杂的操作符，比如 :code:`convolution` （卷积）"
+msgstr "操作符 :code:`reciprocal` （倒数）仍然是一个相对简单的操作符，你可以尝试更复杂的操作符，比如 :code:`convolution` （卷积）"
 
 #: ../../tutorials/spu_inside.ipynb:3531
 msgid "Misc"
