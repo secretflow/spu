@@ -14,9 +14,8 @@
 
 import jax.numpy as jnp
 import numpy as np
-from sklearn import preprocessing
-
 import sml.utils.emulation as emulation
+from sklearn import preprocessing
 from sml.preprocessing.preprocessing import (
     Binarizer,
     KBinsDiscretizer,
@@ -25,6 +24,7 @@ from sml.preprocessing.preprocessing import (
     MinMaxScaler,
     Normalizer,
     OneHotEncoder,
+    RobustScaler,
 )
 
 
@@ -191,6 +191,52 @@ def emul_normalizer():
     np.testing.assert_allclose(sk_result_max, spu_result_max, rtol=0, atol=1e-4)
 
 
+def emul_robustscaler():
+    X = jnp.array([[-2, 0.5], [-0.5, 1.5], [0, 10.0], [1, 15.0], [5, 20.0]])
+    Y = jnp.array([[3, 2]])
+
+    param_combinations = [(True, True), (True, False), (False, True)]
+
+    for with_centering, with_scaling in param_combinations:
+        print(f"\nTesting with_centering={with_centering}, with_scaling={with_scaling}")
+
+        def robustscale(X, Y):
+            transformer = RobustScaler(
+                with_centering=with_centering,
+                with_scaling=with_scaling,
+                quantile_range=(25.0, 75.0),
+            )
+            result1 = transformer.fit_transform(X)
+            result2 = transformer.transform(Y)
+            result1_restore = transformer.inverse_transform(result1)
+            result2_restore = transformer.inverse_transform(result2)
+            return result1, result2, result1_restore, result2_restore
+
+        sk_transformer = preprocessing.RobustScaler(
+            with_centering=with_centering,
+            with_scaling=with_scaling,
+            quantile_range=(25.0, 75.0),
+        )
+
+        sk_result_1 = sk_transformer.fit_transform(X)
+        sk_result_2 = sk_transformer.transform(Y)
+        sk_restore_1 = sk_transformer.inverse_transform(sk_result_1)
+        sk_restore_2 = sk_transformer.inverse_transform(sk_result_2)
+
+        emulator_X, emulator_Y = emulator.seal(X, Y)
+        spu_result_1, spu_result_2, spu_restore_1, spu_restore_2 = emulator.run(
+            robustscale
+        )(emulator_X, emulator_Y)
+
+        np.testing.assert_allclose(sk_result_1, spu_result_1, rtol=1e-4, atol=1e-4)
+        np.testing.assert_allclose(sk_result_2, spu_result_2, rtol=1e-4, atol=1e-4)
+
+        np.testing.assert_allclose(X, spu_restore_1, rtol=1e-4, atol=1e-4)
+        np.testing.assert_allclose(Y, spu_restore_2, rtol=1e-4, atol=1e-4)
+        np.testing.assert_allclose(sk_restore_1, spu_restore_1, rtol=1e-4, atol=1e-4)
+        np.testing.assert_allclose(sk_restore_2, spu_restore_2, rtol=1e-4, atol=1e-4)
+
+
 def emul_minmaxscaler():
     def minmaxscale(X, Y):
         transformer = MinMaxScaler()
@@ -353,7 +399,7 @@ def emul_maxabsscaler_zero_maxabs():
 
 def emul_kbinsdiscretizer_uniform():
     def kbinsdiscretize(X):
-        transformer = KBinsDiscretizer(n_bins=3, strategy='uniform')
+        transformer = KBinsDiscretizer(n_bins=3, strategy="uniform")
         transformed = transformer.fit_transform(X)
         inv_transformed = transformer.inverse_transform(transformed)
         return transformed, inv_transformed
@@ -361,7 +407,7 @@ def emul_kbinsdiscretizer_uniform():
     X = jnp.array([[-2, 1, -4, -1], [-1, 2, -3, -0.5], [0, 3, -2, 0.5], [1, 4, -1, 2]])
 
     transformer = preprocessing.KBinsDiscretizer(
-        n_bins=3, encode='ordinal', strategy='uniform', subsample=None
+        n_bins=3, encode="ordinal", strategy="uniform", subsample=None
     )
     sk_transformed = transformer.fit_transform(X)
     sk_inv_transformed = transformer.inverse_transform(sk_transformed)
@@ -382,7 +428,7 @@ def emul_kbinsdiscretizer_uniform():
 def emul_kbinsdiscretizer_uniform_diverse_n_bins():
     def kbinsdiscretize(X, n_bins):
         transformer = KBinsDiscretizer(
-            n_bins=3, diverse_n_bins=n_bins, strategy='uniform'
+            n_bins=3, diverse_n_bins=n_bins, strategy="uniform"
         )
         transformed = transformer.fit_transform(X)
         inv_transformed = transformer.inverse_transform(transformed)
@@ -392,7 +438,7 @@ def emul_kbinsdiscretizer_uniform_diverse_n_bins():
     n_bins = jnp.array([2, 3, 3, 3])
 
     transformer = preprocessing.KBinsDiscretizer(
-        n_bins=n_bins, encode='ordinal', strategy='uniform', subsample=None
+        n_bins=n_bins, encode="ordinal", strategy="uniform", subsample=None
     )
     sk_transformed = transformer.fit_transform(X)
     sk_inv_transformed = transformer.inverse_transform(sk_transformed)
@@ -413,7 +459,7 @@ def emul_kbinsdiscretizer_uniform_diverse_n_bins():
 def emul_kbinsdiscretizer_uniform_diverse_n_bins_no_vectorize():
     def kbinsdiscretize(X):
         transformer = KBinsDiscretizer(
-            n_bins=3, diverse_n_bins=np.array([2, 3, 3, 3]), strategy='uniform'
+            n_bins=3, diverse_n_bins=np.array([2, 3, 3, 3]), strategy="uniform"
         )
         transformed = transformer.fit_transform(X, vectorize=False)
         inv_transformed = transformer.inverse_transform(transformed)
@@ -423,7 +469,7 @@ def emul_kbinsdiscretizer_uniform_diverse_n_bins_no_vectorize():
     n_bins = jnp.array([2, 3, 3, 3])
 
     transformer = preprocessing.KBinsDiscretizer(
-        n_bins=n_bins, encode='ordinal', strategy='uniform', subsample=None
+        n_bins=n_bins, encode="ordinal", strategy="uniform", subsample=None
     )
     sk_transformed = transformer.fit_transform(X)
     sk_inv_transformed = transformer.inverse_transform(sk_transformed)
@@ -443,7 +489,7 @@ def emul_kbinsdiscretizer_uniform_diverse_n_bins_no_vectorize():
 
 def emul_kbinsdiscretizer_quantile():
     def kbinsdiscretize(X):
-        transformer = KBinsDiscretizer(n_bins=3, strategy='quantile')
+        transformer = KBinsDiscretizer(n_bins=3, strategy="quantile")
         transformed = transformer.fit_transform(X)
         inv_transformed = transformer.inverse_transform(transformed)
         return transformed, inv_transformed
@@ -453,7 +499,7 @@ def emul_kbinsdiscretizer_quantile():
     )
 
     transformer = preprocessing.KBinsDiscretizer(
-        3, encode='ordinal', strategy='quantile', subsample=None
+        3, encode="ordinal", strategy="quantile", subsample=None
     )
     sk_transformed = transformer.fit_transform(X)
     sk_inv_transformed = transformer.inverse_transform(sk_transformed)
@@ -475,7 +521,7 @@ def emul_kbinsdiscretizer_quantile():
 def emul_kbinsdiscretizer_quantile_diverse_n_bins():
     def kbinsdiscretize(X, n_bins):
         transformer = KBinsDiscretizer(
-            n_bins=3, diverse_n_bins=n_bins, strategy='quantile'
+            n_bins=3, diverse_n_bins=n_bins, strategy="quantile"
         )
         transformed = transformer.fit_transform(X, remove_bin=True)
         inv_transformed = transformer.inverse_transform(transformed)
@@ -485,7 +531,7 @@ def emul_kbinsdiscretizer_quantile_diverse_n_bins():
     n_bins = jnp.array([2, 3, 3, 3])
 
     transformer = preprocessing.KBinsDiscretizer(
-        n_bins=n_bins, encode='ordinal', strategy='quantile', subsample=None
+        n_bins=n_bins, encode="ordinal", strategy="quantile", subsample=None
     )
     sk_transformed = transformer.fit_transform(X)
     sk_inv_transformed = transformer.inverse_transform(sk_transformed)
@@ -507,7 +553,7 @@ def emul_kbinsdiscretizer_quantile_diverse_n_bins():
 def emul_kbinsdiscretizer_quantile_diverse_n_bins2():
     def kbinsdiscretize(X, n_bins):
         transformer = KBinsDiscretizer(
-            n_bins=4, diverse_n_bins=n_bins, strategy='quantile'
+            n_bins=4, diverse_n_bins=n_bins, strategy="quantile"
         )
         transformed = transformer.fit_transform(X, remove_bin=True)
         inv_transformed = transformer.inverse_transform(transformed)
@@ -517,7 +563,7 @@ def emul_kbinsdiscretizer_quantile_diverse_n_bins2():
     n_bins = jnp.array([2, 4, 4, 4])
 
     transformer = preprocessing.KBinsDiscretizer(
-        n_bins=n_bins, encode='ordinal', strategy='quantile', subsample=None
+        n_bins=n_bins, encode="ordinal", strategy="quantile", subsample=None
     )
     sk_transformed = transformer.fit_transform(X)
     sk_inv_transformed = transformer.inverse_transform(sk_transformed)
@@ -539,7 +585,7 @@ def emul_kbinsdiscretizer_quantile_diverse_n_bins2():
 def emul_kbinsdiscretizer_quantile_diverse_n_bins_no_vectorize():
     def kbinsdiscretize(X):
         transformer = KBinsDiscretizer(
-            n_bins=3, diverse_n_bins=np.array([2, 3, 3, 3]), strategy='quantile'
+            n_bins=3, diverse_n_bins=np.array([2, 3, 3, 3]), strategy="quantile"
         )
         transformed = transformer.fit_transform(X, vectorize=False, remove_bin=True)
         inv_transformed = transformer.inverse_transform(transformed)
@@ -549,7 +595,7 @@ def emul_kbinsdiscretizer_quantile_diverse_n_bins_no_vectorize():
     n_bins = jnp.array([2, 3, 3, 3])
 
     transformer = preprocessing.KBinsDiscretizer(
-        n_bins=n_bins, encode='ordinal', strategy='quantile', subsample=None
+        n_bins=n_bins, encode="ordinal", strategy="quantile", subsample=None
     )
     sk_transformed = transformer.fit_transform(X)
     sk_inv_transformed = transformer.inverse_transform(sk_transformed)
@@ -570,7 +616,7 @@ def emul_kbinsdiscretizer_quantile_diverse_n_bins_no_vectorize():
 
 def emul_kbinsdiscretizer_quantile_eliminate():
     def kbinsdiscretize(X):
-        transformer = KBinsDiscretizer(n_bins=3, strategy='quantile')
+        transformer = KBinsDiscretizer(n_bins=3, strategy="quantile")
         transformed = transformer.fit_transform(X, remove_bin=True)
         inv_transformed = transformer.inverse_transform(transformed)
         return transformed, inv_transformed
@@ -585,7 +631,7 @@ def emul_kbinsdiscretizer_quantile_eliminate():
     )
 
     transformer = preprocessing.KBinsDiscretizer(
-        3, encode='ordinal', strategy='quantile', subsample=None
+        3, encode="ordinal", strategy="quantile", subsample=None
     )
     sk_transformed = transformer.fit_transform(X)
     sk_inv_transformed = transformer.inverse_transform(sk_transformed)
@@ -605,7 +651,7 @@ def emul_kbinsdiscretizer_quantile_eliminate():
 
 def emul_kbinsdiscretizer_quantile_sample_weight():
     def kbinsdiscretize(X, sample_weight):
-        transformer = KBinsDiscretizer(n_bins=3, strategy='quantile')
+        transformer = KBinsDiscretizer(n_bins=3, strategy="quantile")
         transformed = transformer.fit_transform(
             X, sample_weight=sample_weight, remove_bin=True
         )
@@ -616,7 +662,7 @@ def emul_kbinsdiscretizer_quantile_sample_weight():
     sample_weight = jnp.array([1, 1, 3, 1])
 
     transformer = preprocessing.KBinsDiscretizer(
-        3, encode='ordinal', strategy='quantile', subsample=None
+        3, encode="ordinal", strategy="quantile", subsample=None
     )
     transformer.fit(X, sample_weight=sample_weight)
     sk_transformed = transformer.transform(X)
@@ -640,7 +686,7 @@ def emul_kbinsdiscretizer_quantile_sample_weight():
 def emul_kbinsdiscretizer_quantile_sample_weight_diverse_n_bins():
     def kbinsdiscretize(X, n_bins, sample_weight):
         transformer = KBinsDiscretizer(
-            n_bins=3, diverse_n_bins=n_bins, strategy='quantile'
+            n_bins=3, diverse_n_bins=n_bins, strategy="quantile"
         )
         transformed = transformer.fit_transform(
             X, sample_weight=sample_weight, remove_bin=True
@@ -653,7 +699,7 @@ def emul_kbinsdiscretizer_quantile_sample_weight_diverse_n_bins():
     sample_weight = jnp.array([1, 1, 3, 1])
 
     transformer = preprocessing.KBinsDiscretizer(
-        n_bins=n_bins, encode='ordinal', strategy='quantile', subsample=None
+        n_bins=n_bins, encode="ordinal", strategy="quantile", subsample=None
     )
     transformer.fit(X, sample_weight=sample_weight)
     sk_transformed = transformer.transform(X)
@@ -677,7 +723,7 @@ def emul_kbinsdiscretizer_quantile_sample_weight_diverse_n_bins():
 def emul_kbinsdiscretizer_quantile_sample_weight_diverse_n_bins2():
     def kbinsdiscretize(X, n_bins, sample_weight):
         transformer = KBinsDiscretizer(
-            n_bins=4, diverse_n_bins=n_bins, strategy='quantile'
+            n_bins=4, diverse_n_bins=n_bins, strategy="quantile"
         )
         transformed = transformer.fit_transform(
             X, sample_weight=sample_weight, remove_bin=True
@@ -690,7 +736,7 @@ def emul_kbinsdiscretizer_quantile_sample_weight_diverse_n_bins2():
     sample_weight = jnp.array([1, 1, 3, 1])
 
     transformer = preprocessing.KBinsDiscretizer(
-        n_bins=n_bins, encode='ordinal', strategy='quantile', subsample=None
+        n_bins=n_bins, encode="ordinal", strategy="quantile", subsample=None
     )
     transformer.fit(X, sample_weight=sample_weight)
     sk_transformed = transformer.transform(X)
@@ -714,7 +760,7 @@ def emul_kbinsdiscretizer_quantile_sample_weight_diverse_n_bins2():
 def emul_kbinsdiscretizer_quantile_sample_weight_diverse_n_bins_no_vectorize():
     def kbinsdiscretize(X, sample_weight):
         transformer = KBinsDiscretizer(
-            n_bins=3, diverse_n_bins=np.array([2, 3, 3, 3]), strategy='quantile'
+            n_bins=3, diverse_n_bins=np.array([2, 3, 3, 3]), strategy="quantile"
         )
         transformed = transformer.fit_transform(
             X, vectorize=False, sample_weight=sample_weight, remove_bin=True
@@ -727,7 +773,7 @@ def emul_kbinsdiscretizer_quantile_sample_weight_diverse_n_bins_no_vectorize():
     sample_weight = jnp.array([1, 1, 3, 1])
 
     transformer = preprocessing.KBinsDiscretizer(
-        n_bins=n_bins, encode='ordinal', strategy='quantile', subsample=None
+        n_bins=n_bins, encode="ordinal", strategy="quantile", subsample=None
     )
     sk_transformed = transformer.fit_transform(X, sample_weight=sample_weight)
     sk_inv_transformed = transformer.inverse_transform(sk_transformed)
@@ -750,7 +796,7 @@ def emul_kbinsdiscretizer_quantile_sample_weight_diverse_n_bins_no_vectorize():
 
 def emul_kbinsdiscretizer_kmeans():
     def kbinsdiscretize(X):
-        transformer = KBinsDiscretizer(n_bins=4, strategy='kmeans')
+        transformer = KBinsDiscretizer(n_bins=4, strategy="kmeans")
         transformed = transformer.fit_transform(X)
         inv_transformed = transformer.inverse_transform(transformed)
         return transformed, inv_transformed
@@ -760,7 +806,7 @@ def emul_kbinsdiscretizer_kmeans():
     )
 
     transformer = preprocessing.KBinsDiscretizer(
-        4, encode='ordinal', strategy='kmeans', subsample=None
+        4, encode="ordinal", strategy="kmeans", subsample=None
     )
     sk_transformed = transformer.fit_transform(X)
     sk_inv_transformed = transformer.inverse_transform(sk_transformed)
@@ -781,7 +827,7 @@ def emul_kbinsdiscretizer_kmeans():
 def emul_kbinsdiscretizer_kmeans_diverse_n_bins_no_vectorize():
     def kbinsdiscretize(X):
         transformer = KBinsDiscretizer(
-            n_bins=3, diverse_n_bins=np.array([2, 3, 3, 3]), strategy='kmeans'
+            n_bins=3, diverse_n_bins=np.array([2, 3, 3, 3]), strategy="kmeans"
         )
         transformed = transformer.fit_transform(X, vectorize=False, remove_bin=True)
         inv_transformed = transformer.inverse_transform(transformed)
@@ -791,7 +837,7 @@ def emul_kbinsdiscretizer_kmeans_diverse_n_bins_no_vectorize():
     n_bins = jnp.array([2, 3, 3, 3])
 
     transformer = preprocessing.KBinsDiscretizer(
-        n_bins=n_bins, encode='ordinal', strategy='kmeans', subsample=None
+        n_bins=n_bins, encode="ordinal", strategy="kmeans", subsample=None
     )
     sk_transformed = transformer.fit_transform(X)
     sk_inv_transformed = transformer.inverse_transform(sk_transformed)
@@ -845,5 +891,6 @@ if __name__ == "__main__":
         emul_kbinsdiscretizer_kmeans()
         emul_kbinsdiscretizer_kmeans_diverse_n_bins_no_vectorize()
         emul_onehotEncoder()
+        emul_robustscaler()
     finally:
         emulator.down()

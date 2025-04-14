@@ -96,6 +96,7 @@ spu_cc_library(
         ":state",
         ":type",
         "//libspu/core:vectorize",
+        "//libspu/mpc:api",
         "//libspu/mpc:kernel",
         "//libspu/mpc/common:communicator",
         "//libspu/mpc/utils:circuits",

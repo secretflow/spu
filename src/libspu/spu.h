@@ -141,7 +141,7 @@ struct ClientSSLConfig {
   std::string ca_file_path;
   // Maximum depth of the certificate chain for verification
   // If 0, turn off the verification
-  int32_t verify_depth;
+  int32_t verify_depth = 0;
 
   ClientSSLConfig() = default;
   ClientSSLConfig(std::string certificate, std::string private_key,
@@ -190,11 +190,11 @@ enum CheetahOtKind { YACL_Ferret = 0, YACL_Softspoken = 1, EMP_Ferret = 2 };
 
 struct CheetahConfig {
   // disable the ciphertext packing for matmul
-  bool disable_matmul_pack;
+  bool disable_matmul_pack = false;
   // allow least significant bits error for point-wise mul
-  bool enable_mul_lsb_error;
+  bool enable_mul_lsb_error = false;
   // Setup for cheetah ot
-  CheetahOtKind ot_kind;
+  CheetahOtKind ot_kind = CheetahOtKind::YACL_Ferret;
 
   CheetahConfig() = default;
   CheetahConfig(bool disable_matmul_pack, bool enable_mul_lsb_error,
@@ -448,7 +448,7 @@ enum SourceIRType { XLA = 0, STABLEHLO = 1 };
 
 struct CompilationSource {
   // Input IR type
-  SourceIRType ir_type;
+  SourceIRType ir_type = SourceIRType::XLA;
 
   // IR
   std::string ir_txt;

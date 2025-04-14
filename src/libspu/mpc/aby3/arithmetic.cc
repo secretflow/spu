@@ -750,6 +750,317 @@ std::vector<T> openWith(Communicator* comm, size_t peer_rank,
   return out;
 }
 
+namespace {
+
+// TODO: define more smaller fields.
+FieldType getTruncField(size_t bits) {
+  if (bits <= 32) {
+    return FM32;
+  } else if (bits <= 64) {
+    return FM64;
+  } else if (bits <= 128) {
+    return FM128;
+  } else {
+    SPU_THROW("Unsupported truncation bits: {}", bits);
+  }
+}
+
+// Basic idea is to use Beaver's private multiplication protocol
+// Let P2 to serve as a helper
+// P2: Generate (c0, c1), (a, b) s.t. ab = c0 + c1
+//     Send (a, c0) to P0, (b, c1) to P1
+// P0: Compute x+a and send to P1
+//     return z0 = x(y+b) + c0
+// P1: Compute y+b and send to P0
+//     return z1 = -b(x+a) + c1
+NdArrayRef PrivateMul(KernelEvalContext* ctx, const NdArrayRef& x,
+                      const std::array<size_t, 3>& party) {
+  auto* comm = ctx->getState<Communicator>();
+  auto* prg_state = ctx->getState<PrgState>();
+
+  const auto P0 = party[0];
+  const auto P1 = party[1];
+  const auto P2 = party[2];
+  const auto wrap_field = x.eltype().as<RingTy>()->field();
+  const auto numel = x.numel();
+
+  NdArrayRef out(x.eltype(), x.shape());
+  DISPATCH_ALL_FIELDS(wrap_field, [&]() {
+    using el_t = ring2k_t;
+    NdArrayView<el_t> _out(out);
+    NdArrayView<el_t> _x(x);
+
+    if (comm->getRank() == P0) {
+      std::vector<el_t> ac0(2 * numel);
+      // P0, P2
+      prg_state->fillPrssPair<el_t>(ac0.data(), nullptr, 2 * numel,
+                                    PrgState::GenPrssCtrl::First);
+
+      auto a = absl::MakeSpan(ac0).subspan(0, numel);
+      auto c0 = absl::MakeSpan(ac0).subspan(numel, numel);
+      std::vector<el_t> x_plus_a(numel);
+      pforeach(0, numel, [&](int64_t idx) {  //
+        x_plus_a[idx] = _x[idx] + a[idx];
+      });
+      comm->sendAsync<el_t>(P1, x_plus_a, "x_plus_a");  // 1 round, k comm.
+      auto y_plus_b = comm->recv<el_t>(P1, "y_plus_b");
+
+      pforeach(0, numel, [&](int64_t idx) {  //
+        _out[idx] = _x[idx] * y_plus_b[idx] + c0[idx];
+      });
+
+    } else if (comm->getRank() == P1) {
+      std::vector<el_t> bc1(2 * numel);
+      // P1, P2
+      prg_state->fillPrssPair<el_t>(nullptr, bc1.data(), 2 * numel,
+                                    PrgState::GenPrssCtrl::Second);
+
+      auto b = absl::MakeSpan(bc1).subspan(0, numel);
+      auto c1 = absl::MakeSpan(bc1).subspan(numel, numel);
+      std::vector<el_t> y_plus_b(numel);
+      pforeach(0, numel, [&](int64_t idx) {  //
+        y_plus_b[idx] = _x[idx] + b[idx];
+      });
+      comm->sendAsync<el_t>(P0, y_plus_b, "y_plus_b");  // 1 round, k comm.
+
+      // FIXME: the logic of P2 sending is in outer function...
+      auto adjusted = comm->recv<el_t>(P2, "adjusted_c1");
+      auto x_plus_a = comm->recv<el_t>(P0, "x_plus_a");
+
+      pforeach(0, numel, [&](int64_t idx) {
+        // adjust c1
+        c1[idx] += adjusted[idx];
+        _out[idx] = -b[idx] * x_plus_a[idx] + c1[idx];
+      });
+
+    } else {
+      SPU_THROW("should not reach here.");
+    }
+  });
+
+  return out;
+}
+
+// Idea:
+// First do 2-2 re-sharing,
+// x = x0 + x1 - 2^l * w , where w is the wrap bit and <w>_i \in Z_{2^k}
+// so (x>>k) = (x0 >> k) - 2^{l-k} * <w>0
+//           + (x1 >> k) - 2^{l-k} * <w>1
+//
+// 1. When MSB(x)=0, then w = m0 || m1, where mi = MSB(xi)
+// To avoid B2A, compute w = ~ (~m0 * ~m1)
+// 2. When MSB(x)=1, then w = m0 && m1, where mi = MSB(xi)
+// To avoid B2A, compute w = (m0 * m1)
+NdArrayRef TruncPrWithMsbKnown(KernelEvalContext* ctx, const NdArrayRef& in,
+                               size_t bits, SignType sign) {
+  SPU_ENFORCE(sign != SignType::Unknown);
+
+  const auto field = in.eltype().as<AShrTy>()->field();
+  const auto numel = in.numel();
+  const size_t ell = SizeOf(field) * 8;
+  const auto wrap_field = getTruncField(bits);
+
+  auto* prg_state = ctx->getState<PrgState>();
+  auto* comm = ctx->getState<Communicator>();
+
+  size_t pivot;
+  prg_state->fillPubl(absl::MakeSpan(&pivot, 1));
+  size_t P0 = pivot % 3;
+  size_t P1 = (pivot + 1) % 3;
+  size_t P2 = (pivot + 2) % 3;
+
+  NdArrayRef out(in.eltype(), in.shape());
+
+  DISPATCH_ALL_FIELDS(field, [&]() {
+    using el_t = std::make_unsigned_t<ring2k_t>;
+    using shr_t = std::array<el_t, 2>;
+
+    NdArrayView<shr_t> _out(out);
+    NdArrayView<shr_t> _in(in);
+
+    DISPATCH_ALL_FIELDS(wrap_field, [&]() {
+      using wrap_el_t = std::make_unsigned<ring2k_t>::type;
+
+      if (comm->getRank() == P0) {
+        NdArrayRef shifted_in(makeType<RingTy>(field), {numel});
+        NdArrayView<el_t> _shifted_in(shifted_in);
+        // step1: P0 and P1 do 2-2 re-sharing and extract MSB
+        NdArrayRef m0(makeType<RingTy>(wrap_field), {numel});
+        NdArrayView<wrap_el_t> _m0(m0);
+
+        // IMPORTANT NOTES: We will implement the logic right shift first by:
+        // 1. x^' = x + 2^{l-1} (so we should revert the sign hint!)
+        // 2. y^' = (x^') >> k (logical right shift)
+        // 3. y = (y^') - 2^{l-k-1}
+        if (sign == SignType::Positive) {
+          pforeach(0, numel, [&](int64_t idx) {
+            auto x = _in[idx][0] + _in[idx][1];
+            // We convert to logical right shift first.
+            x += (static_cast<el_t>(1) << (ell - 1));
+
+            _shifted_in[idx] = (x >> bits);
+
+            _m0[idx] = ((x >> (ell - 1)) & 1);
+          });
+        } else {
+          pforeach(0, numel, [&](int64_t idx) {
+            auto x = _in[idx][0] + _in[idx][1];
+            // We convert to logical right shift first.
+            x += (static_cast<el_t>(1) << (ell - 1));
+
+            _shifted_in[idx] = (x >> bits);
+
+            _m0[idx] = 1 - ((x >> (ell - 1)) & 1);
+          });
+        }
+
+        // step2: P0 and P1 compute wrap
+        auto wrap = PrivateMul(ctx, m0, {P0, P1, P2});
+        NdArrayView<wrap_el_t> _wrap(wrap);
+
+        if (sign == SignType::Negative) {
+          pforeach(0, numel, [&](int64_t idx) {  //
+            _wrap[idx] = 1 - _wrap[idx];
+          });
+        }
+
+        // step3: do local right-shift
+        std::vector<el_t> tmp(numel);
+        const el_t factor = static_cast<el_t>(1) << (ell - bits - 1);
+        pforeach(0, numel, [&](int64_t idx) {
+          // (x0 >> k) - 2^{l-k} * <w>0
+          tmp[idx] = _shifted_in[idx] -
+                     ((static_cast<el_t>(_wrap[idx])) << (ell - bits));
+          // P0 only, convert back to arithmetic right shift
+          tmp[idx] -= factor;
+        });
+
+        // step4: do 3-3 re-sharing
+        std::vector<el_t> y0(numel);
+        prg_state->fillPrssPair<el_t>(y0.data(), nullptr, numel,
+                                      PrgState::GenPrssCtrl::First);
+        pforeach(0, numel, [&](int64_t idx) {  //
+          tmp[idx] -= y0[idx];
+        });
+
+        comm->sendAsync<el_t>(P1, tmp, "2to3");  // 1 round, ell comm.
+        auto recv_tmp = comm->recv<el_t>(P1, "2to3");
+
+        // rebuild ABY3 Ashare
+        pforeach(0, numel, [&](int64_t idx) {
+          _out[idx][0] = y0[idx];
+          _out[idx][1] = tmp[idx] + recv_tmp[idx];
+        });
+
+      } else if (comm->getRank() == P1) {
+        NdArrayRef shifted_in(makeType<RingTy>(field), {numel});
+        NdArrayView<el_t> _shifted_in(shifted_in);
+        // step1: P0 and P1 do 2-2 re-sharing and extract MSB
+        NdArrayRef m1(makeType<RingTy>(wrap_field), {numel});
+        NdArrayView<wrap_el_t> _m1(m1);
+
+        if (sign == SignType::Positive) {
+          pforeach(0, numel, [&](int64_t idx) {
+            auto x = _in[idx][1];
+
+            _shifted_in[idx] = (x >> bits);
+
+            _m1[idx] = ((x >> (ell - 1)) & 1);
+          });
+        } else {
+          pforeach(0, numel, [&](int64_t idx) {
+            auto x = _in[idx][1];
+
+            _shifted_in[idx] = (x >> bits);
+
+            _m1[idx] = 1 - ((x >> (ell - 1)) & 1);
+          });
+        }
+
+        // step2: P0 and P1 compute wrap
+        auto wrap = PrivateMul(ctx, m1, {P0, P1, P2});
+        NdArrayView<wrap_el_t> _wrap(wrap);
+
+        if (sign == SignType::Negative) {
+          pforeach(0, numel, [&](int64_t idx) {  //
+            _wrap[idx] = 0 - _wrap[idx];
+          });
+        }
+
+        // step3: do local right-shift
+        std::vector<el_t> tmp(numel);
+        pforeach(0, numel, [&](int64_t idx) {
+          // (x1 >> k) - 2^{l-k} * <w>1
+          tmp[idx] = _shifted_in[idx] -
+                     ((static_cast<el_t>(_wrap[idx])) << (ell - bits));
+        });
+
+        // step4: do 3-3 re-sharing
+        std::vector<el_t> y2(numel);
+        prg_state->fillPrssPair<el_t>(nullptr, y2.data(), numel,
+                                      PrgState::GenPrssCtrl::Second);
+
+        pforeach(0, numel, [&](int64_t idx) {  //
+          tmp[idx] -= y2[idx];
+        });
+
+        comm->sendAsync<el_t>(P0, tmp, "2to3");  // 1 round, ell comm.
+        auto recv_tmp = comm->recv<el_t>(P0, "2to3");
+
+        // rebuild ABY3 Ashare
+        pforeach(0, numel, [&](int64_t idx) {
+          _out[idx][0] = tmp[idx] + recv_tmp[idx];
+          _out[idx][1] = y2[idx];
+        });
+
+      } else if (comm->getRank() == P2) {
+        // step1: P0 and P1 do 2-2 re-sharing and extract MSB (skip for P2)
+        // step2: P0 and P1 compute wrap, P2 serves as a helper
+        std::vector<wrap_el_t> ac0(2 * numel);
+        std::vector<wrap_el_t> bc1(2 * numel);
+        // P0, P2
+        prg_state->fillPrssPair<wrap_el_t>(nullptr, ac0.data(), 2 * numel,
+                                           PrgState::GenPrssCtrl::Second);
+        // P1, P2
+        prg_state->fillPrssPair<wrap_el_t>(bc1.data(), nullptr, 2 * numel,
+                                           PrgState::GenPrssCtrl::First);
+
+        auto a = absl::MakeSpan(ac0).subspan(0, numel);
+        auto c0 = absl::MakeSpan(ac0).subspan(numel, numel);
+        auto b = absl::MakeSpan(bc1).subspan(0, numel);
+        auto c1 = absl::MakeSpan(bc1).subspan(numel, numel);
+
+        // adjust to a*b = c0 + c1
+        pforeach(0, numel, [&](int64_t idx) {  //
+          c1[idx] = a[idx] * b[idx] - c0[idx] - c1[idx];
+        });
+
+        // send adjusted to P1
+        comm->sendAsync<wrap_el_t>(P1, c1, "adjusted_c1");  // 1 round, k comm.
+
+        // step3: do local right-shift (skip for P2)
+
+        // step4: do 3-3 re-sharing
+        std::vector<el_t> y2(numel);
+        std::vector<el_t> y0(numel);
+        prg_state->fillPrssPair(y2.data(), y0.data(), numel,
+                                PrgState::GenPrssCtrl::Both);
+        pforeach(0, numel, [&](int64_t idx) {
+          _out[idx][0] = y2[idx];
+          _out[idx][1] = y0[idx];
+        });
+
+      } else {
+        SPU_THROW("Party number exceeds 3!");
+      }
+    });
+  });
+
+  return out;
+}
+
+}  // namespace
+
 // PRECISE VERSION
 // Refer to:
 // 3.2.2 Truncation by a public value, P10,
@@ -757,8 +1068,9 @@ std::vector<T> openWith(Communicator* comm, size_t peer_rank,
 // - https://arxiv.org/pdf/1910.12435.pdf
 NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in,
                           size_t bits, SignType sign) const {
-  (void)sign;  // TODO, optimize me.
-
+  if (sign != SignType::Unknown) {
+    return TruncPrWithMsbKnown(ctx, in, bits, sign);
+  }
   const auto field = in.eltype().as<AShrTy>()->field();
   const auto numel = in.numel();
   const size_t k = SizeOf(field) * 8;
@@ -767,7 +1079,7 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in,
   auto* comm = ctx->getState<Communicator>();
 
   // TODO: cost model is asymmetric, but test framework requires the same.
-  comm->addCommStatsManually(3, 4 * SizeOf(field) * numel);
+  comm->addCommStatsManually(2, 4 * SizeOf(field) * numel);
 
   // 1. P0 & P1 samples r together.
   // 2. P2 knows r and compute correlated random r{k-1} & sum(r{m~(k-2)})
@@ -939,6 +1251,234 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in,
     } else {
       SPU_THROW("Party number exceeds 3!");
     }
+  });
+
+  return out;
+}
+
+namespace {
+// Ref: Improved secure two-party computation from a geometric perspective
+// Algorithm 2: Compute MW(x, L) with |x| < L / 4
+// Now, in is the 2-out-of-2 sharing of x.
+NdArrayRef computeMW(KernelEvalContext* ctx, const NdArrayRef& in, size_t bits,
+                     const std::array<size_t, 3>& party) {
+  const auto field = in.eltype().as<Ring2k>()->field();
+  const auto numel = in.numel();
+  const size_t k = SizeOf(field) * 8;
+  const auto trunc_field = getTruncField(bits);
+  const auto P0 = party[0];
+  const auto P1 = party[1];
+
+  auto* comm = ctx->getState<Communicator>();
+
+  NdArrayRef mw;
+
+  DISPATCH_ALL_FIELDS(field, [&]() {
+    using ele_t = ring2k_t;
+    const ele_t L_4 = ele_t(1) << (k - TruncAPr2::kBitsLeftOut);
+    const ele_t L_2 = L_4 << 1;
+
+    DISPATCH_ALL_FIELDS(trunc_field, [&]() {
+      using mw_t = ring2k_t;
+      const auto trunc_ty = makeType<RingTy>(trunc_field);
+      NdArrayRef in_star(trunc_ty, in.shape());
+
+      NdArrayView<ele_t> _in(in);
+      NdArrayView<mw_t> _in_star(in_star);
+
+      if (comm->getRank() == P0) {
+        pforeach(0, numel, [&](int64_t idx) {  //
+          _in_star[idx] = static_cast<mw_t>((_in[idx] - L_4) >= L_2);
+        });
+        mw = PrivateMul(ctx, in_star, party);
+
+        NdArrayView<mw_t> _mw(mw);
+        pforeach(0, numel, [&](int64_t idx) {  //
+          _mw[idx] +=
+              (static_cast<mw_t>(1) - static_cast<mw_t>(_in[idx] < L_4));
+        });
+
+      } else if (comm->getRank() == P1) {
+        pforeach(0, numel, [&](int64_t idx) {  //
+          _in_star[idx] = static_cast<mw_t>(_in[idx] >= L_2);
+        });
+        mw = PrivateMul(ctx, in_star, party);
+      } else {
+        SPU_THROW("Party number exceeds 2!");
+      }
+    });
+  });
+
+  return mw;
+}
+}  // namespace
+
+// Ref: Improved secure two-party computation from a geometric perspective
+// Algorithm 4: One-bit error truncation with constraint
+// We first do 2-2 re-sharing, after computing the truncation result,
+// we do 3-3 re-sharing to get the final result.
+NdArrayRef TruncAPr2::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                           size_t bits, SignType sign) const {
+  (void)sign;
+  const auto numel = in.numel();
+  const auto field = in.eltype().as<Ring2k>()->field();
+  const size_t k = SizeOf(field) * 8;
+  const auto trunc_field = getTruncField(bits);
+
+  auto* prg_state = ctx->getState<PrgState>();
+  auto* comm = ctx->getState<Communicator>();
+
+  size_t pivot;
+  prg_state->fillPubl(absl::MakeSpan(&pivot, 1));
+  size_t P0 = pivot % 3;
+  size_t P1 = (pivot + 1) % 3;
+  size_t P2 = (pivot + 2) % 3;
+
+  NdArrayRef out(in.eltype(), in.shape());
+  DISPATCH_ALL_FIELDS(field, [&]() {
+    using el_t = ring2k_t;
+    using shr_t = std::array<el_t, 2>;
+
+    NdArrayView<shr_t> _out(out);
+    NdArrayView<shr_t> _in(in);
+
+    DISPATCH_ALL_FIELDS(trunc_field, [&]() {
+      using mw_el_t = ring2k_t;
+
+      if (comm->getRank() == P0) {
+        // 1. 2-2 re-sharing
+        NdArrayRef x(makeType<RingTy>(field), {numel});
+        NdArrayView<el_t> _x(x);
+
+        pforeach(0, numel, [&](int64_t idx) {  //
+          _x[idx] = _in[idx][0] + _in[idx][1];
+        });
+
+        // 2. compute mw in 2-2 sharing
+        auto mw = computeMW(ctx, x, bits, {P0, P1, P2});
+
+        // 3. do local computation
+        // truncation result in 2-2 sharing
+        NdArrayRef trunc_x(makeType<RingTy>(field), {numel});
+        NdArrayView<el_t> _trunc_x(trunc_x);
+        NdArrayView<mw_el_t> _mw(mw);
+
+        // (x >> k) = (x0 >> k) + (x1 >> k) - MW(x) * (2^{l-k}) + 1, with
+        // one-bit error at most.
+        // Note: we choose to add 1 rather ignore it, because we want to make
+        // trunc(0, fxp_bits) = 0, else the result will be -2**{-fxp_bits},
+        // which may cause some confusion.
+        pforeach(0, numel, [&](int64_t idx) {
+          _trunc_x[idx] = (_x[idx] >> bits) -
+                          static_cast<el_t>(_mw[idx]) *
+                              (static_cast<el_t>(1) << (k - bits)) +
+                          1;
+        });
+
+        // 4. 3-3 re-sharing
+        std::vector<el_t> y0(numel);
+        prg_state->fillPrssPair<el_t>(y0.data(), nullptr, numel,
+                                      PrgState::GenPrssCtrl::First);
+        pforeach(0, numel, [&](int64_t idx) {  //
+          _trunc_x[idx] -= y0[idx];
+        });
+
+        comm->sendAsync(P1, trunc_x, "2to3");  // 1 round, ell comm.
+        auto recv_tmp = comm->recv(P1, makeType<RingTy>(field), "2to3");
+        NdArrayView<el_t> _recv_tmp(recv_tmp);
+
+        // rebuild ABY3 Ashare
+        pforeach(0, numel, [&](int64_t idx) {
+          _out[idx][0] = y0[idx];
+          _out[idx][1] = _trunc_x[idx] + _recv_tmp[idx];
+        });
+
+      } else if (comm->getRank() == P1) {
+        // 1. 2-2 re-sharing
+        NdArrayRef x(makeType<RingTy>(field), {numel});
+        NdArrayView<el_t> _x(x);
+
+        pforeach(0, numel, [&](int64_t idx) {  //
+          _x[idx] = _in[idx][1];
+        });
+
+        // 2. compute mw in 2-2 sharing
+        auto mw = computeMW(ctx, x, bits, {P0, P1, P2});
+
+        // 3. do local computation
+        // truncation result in 2-2 sharing
+        NdArrayRef trunc_x(makeType<RingTy>(field), {numel});
+        NdArrayView<el_t> _trunc_x(trunc_x);
+        NdArrayView<mw_el_t> _mw(mw);
+
+        // (x >> k) = (x0 >> k) + (x1 >> k) - MW(x) * (2^{l-k}), with one-bit
+        // error at most.
+        pforeach(0, numel, [&](int64_t idx) {
+          _trunc_x[idx] =
+              (_x[idx] >> bits) - static_cast<el_t>(_mw[idx]) *
+                                      (static_cast<el_t>(1) << (k - bits));
+        });
+
+        // 4. 3-3 re-sharing
+        std::vector<el_t> y2(numel);
+        prg_state->fillPrssPair<el_t>(nullptr, y2.data(), numel,
+                                      PrgState::GenPrssCtrl::Second);
+
+        pforeach(0, numel, [&](int64_t idx) {  //
+          _trunc_x[idx] -= y2[idx];
+        });
+
+        comm->sendAsync(P0, trunc_x, "2to3");  // 1 round, ell comm.
+        auto recv_tmp = comm->recv(P0, makeType<RingTy>(field), "2to3");
+        NdArrayView<el_t> _recv_tmp(recv_tmp);
+
+        // rebuild ABY3 Ashare
+        pforeach(0, numel, [&](int64_t idx) {
+          _out[idx][0] = _trunc_x[idx] + _recv_tmp[idx];
+          _out[idx][1] = y2[idx];
+        });
+
+      } else if (comm->getRank() == P2) {
+        // 1. 2-2 re-sharing (skip for P2)
+        //
+        // 2. P0,P1 compute mw (by private bit mul), P2 Send Adjust to P1
+        std::vector<mw_el_t> ac0(2 * numel);
+        std::vector<mw_el_t> bc1(2 * numel);
+        // P0, P2
+        prg_state->fillPrssPair<mw_el_t>(nullptr, ac0.data(), 2 * numel,
+                                         PrgState::GenPrssCtrl::Second);
+        // P1, P2
+        prg_state->fillPrssPair<mw_el_t>(bc1.data(), nullptr, 2 * numel,
+                                         PrgState::GenPrssCtrl::First);
+
+        auto a = absl::MakeSpan(ac0).subspan(0, numel);
+        auto c0 = absl::MakeSpan(ac0).subspan(numel, numel);
+        auto b = absl::MakeSpan(bc1).subspan(0, numel);
+        auto c1 = absl::MakeSpan(bc1).subspan(numel, numel);
+
+        // adjust to a*b = c0 + c1
+        pforeach(0, numel, [&](int64_t idx) {  //
+          c1[idx] = a[idx] * b[idx] - c0[idx] - c1[idx];
+        });
+
+        // send adjusted to P1
+        comm->sendAsync<mw_el_t>(P1, c1, "adjusted_c1");  // 1 round, k comm.
+
+        // 3. do local computation (skip for P2)
+
+        // 4. 3-3 re-sharing
+        std::vector<el_t> y2(numel);
+        std::vector<el_t> y0(numel);
+        prg_state->fillPrssPair(y2.data(), y0.data(), numel,
+                                PrgState::GenPrssCtrl::Both);
+        pforeach(0, numel, [&](int64_t idx) {
+          _out[idx][0] = y2[idx];
+          _out[idx][1] = y0[idx];
+        });
+      } else {
+        SPU_THROW("Party number exceeds 3!");
+      }
+    });
   });
 
   return out;
