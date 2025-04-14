@@ -32,7 +32,6 @@ from spu import spu_pb2
 from spu.utils.polyfill import Process
 
 CLUSTER_ABY3_3PC = "examples/python/conf/3pc.json"
-CLUSTER_FANTASTIC4_4PC = "examples/python/conf/4pc.json"
 SML_HOME = pathlib.Path(__file__).resolve().parent.parent
 SAMPLE_CIDR = "172.16.238.0/24"
 # FIXME: use a released image
