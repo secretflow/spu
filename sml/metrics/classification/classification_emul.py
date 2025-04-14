@@ -236,5 +236,6 @@ if __name__ == "__main__":
         emul_auc(emulation.Mode.MULTIPROCESS)
         emul_Classification(emulation.Mode.MULTIPROCESS)
         emul_average_precision_score(emulation.Mode.MULTIPROCESS)
+        emul_brier_score_loss(emulation.Mode.MULTIPROCESS)
     finally:
         emulator.down()
