@@ -127,7 +127,7 @@ msgid ""
 "This will build with Python 3.11 by default. See [below](#build-with-"
 "specified-python-version) for specifing Python version when building."
 msgstr "上述命令默认使用 Python 3.11 进行项目编译。"
-"如需使用其他 Python 版本，请参考下文。"
+"如需使用其他 Python 版本，请参考 `使用指定的 Python 版本编译 <#build-with-specified-python-version>`_。"
 
 #: ../../../INSTALLATION.md:55
 msgid ""
