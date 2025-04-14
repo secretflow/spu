@@ -36,6 +36,7 @@ namespace spu::mpc::swift {
 // We don't split the offline and online phases
 // We only implement the 3PC protocol of
 // https://eprint.iacr.org/2020/592
+// author: Weixin Liu (email: sy2339130lwx@buaa.edu.cn)
 
 NdArrayRef getOrCreateCompactArray(const NdArrayRef& in) {
   if (!in.isCompact()) {
