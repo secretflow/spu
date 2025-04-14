@@ -66,6 +66,8 @@ static NdArrayRef wrap_lshift_b(SPUContext* ctx, const NdArrayRef& x, size_t k) 
 //     [x2] = (0, 0, x2, 0)
 //     [x3] = (0, 0, 0, x3)
 // Fantastic4 uses FA to reduce 4 operands to 2 operands
+// Ref: Malicious A2B in ABY3, which is generalized to 4PC in Fantastic4 
+//      P10 "...with the local share conversion for replicated secret sharing [4, 30], which we call share splitting..."
 NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const auto field = in.eltype().as<Ring2k>()->field();
   auto* comm = ctx->getState<Communicator>();
@@ -449,6 +451,8 @@ NdArrayRef Opt_MulAA(KernelEvalContext* ctx, const NdArrayRef& lhs, const NdArra
     a[rank][idx] = (_lhs[idx][0] + _lhs[idx][1]) * _rhs[idx][0] + _lhs[idx][0] * _rhs[idx][1];
     a[next_rank][idx] = (_lhs[idx][1] + _lhs[idx][2]) * _rhs[idx][1] + _lhs[idx][1] * _rhs[idx][2];
     a[4][idx] = _lhs[idx][0] * _rhs[idx][2] + _lhs[idx][2] * _rhs[idx][0];
+    SPU_ENFORCE(a[3][idx] == 0);
+    SPU_ENFORCE(a[1][idx] == 0);
   });
 
   // Do not send JointInputArith<el_t>(ctx, a[1], out, 0, 1, 3, 2);
@@ -949,7 +953,9 @@ static NdArrayRef wrap_rshift_b(SPUContext* ctx, const NdArrayRef& x,
 
 #ifndef OPTIMIZED_CONVERSION
 // Fantastic4 gives generation of edabits
-// to enable edabits-based EQZ
+// to enable edabits-based EQZ (Sec 3)
+//    "For general conversion, Rotaru and Wood have established the concept of double-authenticated bits (daBits)..."
+//    "On top of introducing the concept of edaBits and their applications to practical MPC, Escudero et al. have .... present more efficient protocols to preprocess edaBits in the context considered in our work"
 // Ref. "New primitives for actively-secure MPC over rings with applications to private machine learning." https://eprint.iacr.org/2019/599
 
 // Here we implement it by

@@ -275,7 +275,7 @@ T carry_out(const CircuitBasicBlock<T>& ctx, const T& x, const T& y,
 
 
 // Input: x y cin
-// Output: s = x^y^cin    cout=x^( (x^y) & (x & cin) )
+// Output: s = x^y^cin    cout=x^( (x^y) & (x ^ cin) )
 template <typename T>
 std::array<T, 2> full_adder(const CircuitBasicBlock<T>& ctx, const T& x, const T& y, const T& cin) {
 

@@ -172,7 +172,8 @@ NdArrayRef A2V::proc(KernelEvalContext* ctx, const NdArrayRef& in,
 }
 
 
-// Fantastic Four is for outsourced model, that is, the four parties are not the data owners
+// Note: Fantastic Four is for outsourced model, that is, the four parties are not the data owners
+// In the 4pc.json, we use outsourced model where two parties holding private input distribute the shares
 // This kernel is implemented for completeness, and in case for semi-honest security which ensures a party provide consistent input
 NdArrayRef V2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   auto* comm = ctx->getState<Communicator>();
@@ -632,6 +633,8 @@ NdArrayRef Opt_Mul(KernelEvalContext* ctx, const NdArrayRef& lhs, const NdArrayR
       a[rank][idx] = (_lhs[idx][0] + _lhs[idx][1]) * _rhs[idx][0] + _lhs[idx][0] * _rhs[idx][1]; // xi*yi + xi*yj + xj*yi
       a[next_rank][idx] = (_lhs[idx][1] + _lhs[idx][2]) * _rhs[idx][1] + _lhs[idx][1] * _rhs[idx][2];  // xj*yj + xj*yg + xg*yj
       a[4][idx] = _lhs[idx][0] * _rhs[idx][2] + _lhs[idx][2] * _rhs[idx][0];                    // xi*yg + xg*yi
+      SPU_ENFORCE(a[3][idx] == 0);
+      SPU_ENFORCE(a[1][idx] == 0);
     });
     // All parties send async their msgs
     JointInputArithSend<el_t>(ctx, a[0], out, 0, 3, 1, 2);
