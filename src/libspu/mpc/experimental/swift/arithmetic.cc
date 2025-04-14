@@ -1055,8 +1055,8 @@ NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
   NdArrayRef chi_2(ty, shape);
   NdArrayRef Phi(ty, shape);
 
-  NdArrayRef beta_z1_start(ty, shape);
-  NdArrayRef beta_z2_start(ty, shape);
+  NdArrayRef beta_z1_star(ty, shape);
+  NdArrayRef beta_z2_star(ty, shape);
 
   NdArrayRef beta_plus_gamma_z(ty, shape);
 
@@ -1150,37 +1150,37 @@ NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
       });
     }
 
-    NdArrayView<el_t> _beta_z1_start(beta_z1_start);
-    NdArrayView<el_t> _beta_z2_start(beta_z2_start);
+    NdArrayView<el_t> _beta_z1_star(beta_z1_star);
+    NdArrayView<el_t> _beta_z2_star(beta_z2_star);
     // [beta*_z] = -(beta_x + gamma_x)[alpha_y] - (beta_y + gamma_y)[alpha_x]
     //             +[alpha_z] + [chi]
     if (rank == 0) {
       pforeach(0, numel, [&](int64_t idx) {
-        _beta_z1_start[idx] = -_lhs[idx][2] * _rhs[idx][0] -
-                              _rhs[idx][2] * _lhs[idx][0] + _alpha_z1[idx] +
-                              _chi_1[idx];
-        _beta_z2_start[idx] = -_lhs[idx][2] * _rhs[idx][1] -
-                              _rhs[idx][2] * _lhs[idx][1] + _alpha_z2[idx] +
-                              _chi_2[idx];
+        _beta_z1_star[idx] = -_lhs[idx][2] * _rhs[idx][0] -
+                             _rhs[idx][2] * _lhs[idx][0] + _alpha_z1[idx] +
+                             _chi_1[idx];
+        _beta_z2_star[idx] = -_lhs[idx][2] * _rhs[idx][1] -
+                             _rhs[idx][2] * _lhs[idx][1] + _alpha_z2[idx] +
+                             _chi_2[idx];
       });
     } else if (rank == 1) {
       pforeach(0, numel, [&](int64_t idx) {
-        _beta_z1_start[idx] = -(_lhs[idx][1] + _lhs[idx][2]) * _rhs[idx][0] -
-                              (_rhs[idx][1] + _rhs[idx][2]) * _lhs[idx][0] +
-                              _alpha_z1[idx] + _chi_1[idx];
+        _beta_z1_star[idx] = -(_lhs[idx][1] + _lhs[idx][2]) * _rhs[idx][0] -
+                             (_rhs[idx][1] + _rhs[idx][2]) * _lhs[idx][0] +
+                             _alpha_z1[idx] + _chi_1[idx];
       });
     } else if (rank == 2) {
       pforeach(0, numel, [&](int64_t idx) {
-        _beta_z2_start[idx] = -(_lhs[idx][1] + _lhs[idx][2]) * _rhs[idx][0] -
-                              (_rhs[idx][1] + _rhs[idx][2]) * _lhs[idx][0] +
-                              _alpha_z2[idx] + _chi_2[idx];
+        _beta_z2_star[idx] = -(_lhs[idx][1] + _lhs[idx][2]) * _rhs[idx][0] -
+                             (_rhs[idx][1] + _rhs[idx][2]) * _lhs[idx][0] +
+                             _alpha_z2[idx] + _chi_2[idx];
       });
     }
 
-    JointMessagePassing(ctx, beta_z1_start, 0, 1, 2, "beta_z1_start");
+    JointMessagePassing(ctx, beta_z1_star, 0, 1, 2, "beta_z1_star");
 
-    JointMessagePassing(ctx, beta_z2_start, 0, 2, 1, "beta_z2_start");
-    auto beta_z_start = ring_add(beta_z1_start, beta_z2_start);
+    JointMessagePassing(ctx, beta_z2_star, 0, 2, 1, "beta_z2_star");
+    auto beta_z_start = ring_add(beta_z1_star, beta_z2_star);
 
     NdArrayView<el_t> _beta_z_start(beta_z_start);
     NdArrayView<el_t> _beta_plus_gamma_z(beta_plus_gamma_z);
@@ -1396,8 +1396,8 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
   NdArrayRef chi_2(ty, {M, N});
   NdArrayRef Phi(ty, {M, N});
 
-  NdArrayRef beta_z1_start(ty, {M, N});
-  NdArrayRef beta_z2_start(ty, {M, N});
+  NdArrayRef beta_z1_star(ty, {M, N});
+  NdArrayRef beta_z2_star(ty, {M, N});
 
   NdArrayRef beta_plus_gamma_z(ty, {M, N});
 
@@ -1478,9 +1478,9 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
   // [beta*_z] = -(beta_x + gamma_x)[alpha_y] - (beta_y + gamma_y)[alpha_x]
   //             +[alpha_z] + [chi]
   if (rank == 0) {
-    beta_z1_start = ring_sum(
+    beta_z1_star = ring_sum(
         {ring_neg(ring_mmul(x2, y0)), ring_neg(ring_mmul(x0, y2)), z0, chi_1});
-    beta_z2_start = ring_sum(
+    beta_z2_star = ring_sum(
         {ring_neg(ring_mmul(x2, y1)), ring_neg(ring_mmul(x1, y2)), z1, chi_2});
   }
   if (rank == 1) {
@@ -1488,24 +1488,367 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
     auto tmp3 = ring_neg(ring_add(y1, y2));
     tmp2 = ring_mmul(tmp2, y0);
     tmp3 = ring_mmul(x0, tmp3);
-    beta_z1_start = ring_sum({tmp2, tmp3, z0, chi_1});
+    beta_z1_star = ring_sum({tmp2, tmp3, z0, chi_1});
   }
   if (rank == 2) {
     auto tmp2 = ring_neg(ring_add(x1, x2));
     auto tmp3 = ring_neg(ring_add(y1, y2));
     tmp2 = ring_mmul(tmp2, y0);
     tmp3 = ring_mmul(x0, tmp3);
-    beta_z2_start = ring_sum({tmp2, tmp3, z0, chi_2});
+    beta_z2_star = ring_sum({tmp2, tmp3, z0, chi_2});
   }
 
-  JointMessagePassing(ctx, beta_z1_start, 0, 1, 2, "beta_z1_start");
+  JointMessagePassing(ctx, beta_z1_star, 0, 1, 2, "beta_z1_star");
 
-  JointMessagePassing(ctx, beta_z2_start, 0, 2, 1, "beta_z2_start");
-  auto beta_z_start = ring_add(beta_z1_start, beta_z2_start);
+  JointMessagePassing(ctx, beta_z2_star, 0, 2, 1, "beta_z2_star");
+  auto beta_z_start = ring_add(beta_z1_star, beta_z2_star);
 
   if (rank == 1 || rank == 2) {
     // beta_z = beta*_z + beta_x * beta_y + Phi
     ring_assign(z1, ring_sum({beta_z_start, ring_mmul(x1, y1), Phi}));
+    ring_assign(beta_plus_gamma_z, ring_add(z1, z2));
+  }
+
+  JointMessagePassing(ctx, beta_plus_gamma_z, 1, 2, 0, "beta_plus_gamma_z");
+  if (rank == 0) {
+    ring_assign(z2, beta_plus_gamma_z);
+  }
+
+  return out;
+}
+
+////////////////////////////////////////////////////////////////////
+// dotProduct family
+////////////////////////////////////////////////////////////////////
+
+NdArrayRef ring_dotproduct(const NdArrayRef& x, const NdArrayRef& y,
+                           int64_t batch_size, int64_t vector_numel) {
+  SPU_ENFORCE(x.numel() == y.numel());
+  SPU_ENFORCE(x.numel() == batch_size * vector_numel);
+
+  const auto field = x.eltype().as<Ring2k>()->field();
+  NdArrayRef z(x.eltype(), {batch_size});
+
+  DISPATCH_ALL_FIELDS(field, [&]() {
+    NdArrayView<ring2k_t> _x(x);
+    NdArrayView<ring2k_t> _y(y);
+    NdArrayView<ring2k_t> _z(z);
+
+    pforeach(0, batch_size, [&](int64_t idx) {
+      _z[idx] = 0;
+      for (auto i = 0; i < vector_numel; i++) {
+        _z[idx] += _x[idx * vector_numel + i] * _y[idx * vector_numel + i];
+      }
+    });
+  });
+
+  return z;
+}
+
+NdArrayRef DotProductRSS_semi(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                              const NdArrayRef& rhs, int64_t batch_size,
+                              int64_t vector_numel, std::string_view tag) {
+  // semi-honest dor product based on RSS
+  const auto field = lhs.eltype().as<Ring2k>()->field();
+  auto* comm = ctx->getState<Communicator>();
+  auto* prg_state = ctx->getState<PrgState>();
+
+  auto [r0, r1] =
+      prg_state->genPrssPair(field, {batch_size}, PrgState::GenPrssCtrl::Both);
+
+  NdArrayRef out(makeType<AShrTy>(field), {batch_size});
+  auto o1 = getFirstShare(out);
+  auto o2 = getSecondShare(out);
+
+  auto x1 = getFirstShare(lhs);
+  auto x2 = getSecondShare(lhs);
+
+  auto y1 = getFirstShare(rhs);
+  auto y2 = getSecondShare(rhs);
+
+  // o2 = (x1 * y1) + (x1 * y2) + (x2 * y1) + (r0 - r1);
+  auto t1 = ring_dotproduct(x1, y1, batch_size, vector_numel);
+  auto t2 = ring_dotproduct(x1, y2, batch_size, vector_numel);
+  auto t3 = ring_dotproduct(x2, y1, batch_size, vector_numel);
+  auto t4 = ring_sub(r0, r1);
+  auto tmp1 = ring_sum({t1, t2, t3, t4});
+
+  auto tmp2 = comm->rotate(tmp1, tag);
+
+  ring_assign(o1, tmp1);
+  ring_assign(o2, tmp2);
+
+  return out;
+}
+
+NdArrayRef DotProductAP(KernelEvalContext*, const NdArrayRef& x,
+                        const NdArrayRef& y, int64_t batch_size,
+                        int64_t vector_numel) {
+  const auto field = x.eltype().as<Ring2k>()->field();
+
+  NdArrayRef z(makeType<AShrTy>(field), {batch_size});
+
+  auto x1 = getFirstShare(x);
+  auto x2 = getSecondShare(x);
+  auto x3 = getThirdShare(x);
+
+  auto z1 = getFirstShare(z);
+  auto z2 = getSecondShare(z);
+  auto z3 = getThirdShare(z);
+
+  ring_assign(z1, ring_dotproduct(x1, y, batch_size, vector_numel));
+  ring_assign(z2, ring_dotproduct(x2, y, batch_size, vector_numel));
+  ring_assign(z3, ring_dotproduct(x3, y, batch_size, vector_numel));
+
+  return z;
+}
+
+NdArrayRef DotProductPA(KernelEvalContext*, const NdArrayRef& x,
+                        const NdArrayRef& y, int64_t batch_size,
+                        int64_t vector_numel) {
+  const auto field = x.eltype().as<Ring2k>()->field();
+
+  NdArrayRef z(makeType<AShrTy>(field), {batch_size});
+
+  auto y1 = getFirstShare(y);
+  auto y2 = getSecondShare(y);
+  auto y3 = getThirdShare(y);
+
+  auto z1 = getFirstShare(z);
+  auto z2 = getSecondShare(z);
+  auto z3 = getThirdShare(z);
+
+  ring_assign(z1, ring_dotproduct(x, y1, batch_size, vector_numel));
+  ring_assign(z2, ring_dotproduct(x, y2, batch_size, vector_numel));
+  ring_assign(z3, ring_dotproduct(x, y3, batch_size, vector_numel));
+
+  return z;
+}
+
+NdArrayRef DotProductPre(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                         const NdArrayRef& rhs, int64_t batch_size,
+                         int64_t vector_numel) {
+  SPU_ENFORCE(lhs.shape() == rhs.shape());
+  const auto field = lhs.eltype().as<Ring2k>()->field();
+  auto* prg_state = ctx->getState<PrgState>();
+
+  auto addaa = AddAA();
+  auto negate = NegateA();
+
+  FieldType field_sigma_plus_k, field_sigma_mask;
+
+  if (field == FieldType::FM32) {
+    field_sigma_plus_k = FM64;
+    field_sigma_mask = FM32;
+  } else if (field == FieldType::FM64) {
+    field_sigma_plus_k = FM128;
+    field_sigma_mask = FM64;
+  } else {
+    SPU_THROW("error FieldType");
+  }
+
+  // generate a multipication triple via sacrificing
+  auto a = RandA_RSS(ctx, lhs.shape(), field_sigma_plus_k);
+  auto a_ = RandA_RSS(ctx, lhs.shape(), field_sigma_plus_k);
+  auto b = RandA_RSS(ctx, rhs.shape(), field_sigma_plus_k);
+
+  auto c = DotProductRSS_semi(ctx, a, b, batch_size, vector_numel,
+                              "dot product a · b");
+  auto c_ = DotProductRSS_semi(ctx, a_, b, batch_size, vector_numel,
+                               "dot product a · b");
+
+  auto r_ = prg_state->genPubl(field_sigma_mask, {1});
+  auto r = static_cast<uint128_t>(r_.at(0));
+
+  // v = r * a - a_
+  auto r_mul_a = NdArrayRef(makeType<AShrTy>(field_sigma_plus_k), lhs.shape());
+  auto r_mul_a1 = getFirstShare(r_mul_a);
+  auto r_mul_a2 = getSecondShare(r_mul_a);
+  auto a1 = getFirstShare(a);
+  auto a2 = getSecondShare(a);
+
+  ring_assign(r_mul_a1, ring_mul(a1, r));
+  ring_assign(r_mul_a2, ring_mul(a2, r));
+
+  auto negate_a_ = negate.proc(ctx, a_);
+  auto v = addaa.proc(ctx, r_mul_a, negate_a_);
+
+  v = RSS_A2P(ctx, v, "reconstruct v");
+
+  // w = v * b - r * c + c_
+  auto r_mul_c = NdArrayRef(makeType<AShrTy>(field_sigma_plus_k), {batch_size});
+  auto r_mul_c1 = getFirstShare(r_mul_c);
+  auto r_mul_c2 = getSecondShare(r_mul_c);
+  auto c1 = getFirstShare(c);
+  auto c2 = getSecondShare(c);
+
+  ring_assign(r_mul_c1, ring_mul(c1, r));
+  ring_assign(r_mul_c2, ring_mul(c2, r));
+  auto w = DotProductPA(ctx, v, b, batch_size, vector_numel);
+  w = addaa.proc(ctx, w, negate.proc(ctx, r_mul_c));
+  w = addaa.proc(ctx, w, c_);
+
+  w = RSS_A2P(ctx, w, "reconstruct w");
+
+  auto zeros = ring_zeros(field_sigma_plus_k, {batch_size});
+  SPU_ENFORCE(ring_all_equal(zeros, w), "malicious in DotProductPre");
+
+  a = RingChange(ctx, a, field_sigma_plus_k, field, true);
+  b = RingChange(ctx, b, field_sigma_plus_k, field, true);
+  c = RingChange(ctx, c, field_sigma_plus_k, field, true);
+
+  // use the generated triple (a, b, c) to multiply the input shares
+  // [z] = [c] + (x - a) * [b] + (y - b) * [a] + (x - a) * (y - b)
+  auto x_minus_a = addaa.proc(ctx, lhs, negate.proc(ctx, a));
+  auto y_minus_b = addaa.proc(ctx, rhs, negate.proc(ctx, b));
+
+  x_minus_a = RSS_A2P(ctx, x_minus_a, "reconstruct x-a");
+  y_minus_b = RSS_A2P(ctx, y_minus_b, "reconstruct y-b");
+
+  auto res = addaa.proc(
+      ctx, c, DotProductPA(ctx, x_minus_a, b, batch_size, vector_numel));
+  res = addaa.proc(ctx, res,
+                   DotProductAP(ctx, a, y_minus_b, batch_size, vector_numel));
+  res = RSS_AddAP(
+      ctx, res,
+      ring_dotproduct(x_minus_a, y_minus_b, batch_size, vector_numel));
+
+  return res;
+}
+
+NdArrayRef DotProductAA(KernelEvalContext* ctx, const NdArrayRef& x,
+                        const NdArrayRef& y, int64_t batch_size,
+                        int64_t vector_numel) {
+  auto* prg_state = ctx->getState<PrgState>();
+  const auto field = x.eltype().as<Ring2k>()->field();
+  auto* comm = ctx->getState<Communicator>();
+  auto rank = comm->getRank();
+  auto ty = makeType<RingTy>(field);
+
+  NdArrayRef out(makeType<AShrTy>(field), {batch_size});
+  NdArrayRef d(makeType<AShrTy>(field), x.shape());
+  NdArrayRef e(makeType<AShrTy>(field), y.shape());
+
+  NdArrayRef chi_1(ty, {batch_size});
+  NdArrayRef chi_2(ty, {batch_size});
+  NdArrayRef Phi(ty, {batch_size});
+
+  NdArrayRef beta_z1_star(ty, {batch_size});
+  NdArrayRef beta_z2_star(ty, {batch_size});
+
+  NdArrayRef beta_plus_gamma_z(ty, {batch_size});
+
+  // P0, Pj together sample random alpha_j
+  auto [r0, r1] =
+      prg_state->genPrssPair(field, {batch_size}, PrgState::GenPrssCtrl::Both);
+
+  auto d0 = getFirstShare(d);
+  auto d1 = getSecondShare(d);
+
+  auto e0 = getFirstShare(e);
+  auto e1 = getSecondShare(e);
+
+  auto x0 = getFirstShare(x);
+  auto x1 = getSecondShare(x);
+  auto x2 = getThirdShare(x);
+
+  auto y0 = getFirstShare(y);
+  auto y1 = getSecondShare(y);
+  auto y2 = getThirdShare(y);
+
+  auto z0 = getFirstShare(out);
+  auto z1 = getSecondShare(out);
+  auto z2 = getThirdShare(out);
+
+  if (rank == 0) {
+    ring_assign(d0, x1);
+    ring_assign(d1, x0);
+    ring_assign(e0, y1);
+    ring_assign(e1, y0);
+
+    ring_assign(z0, r1);
+    ring_assign(z1, r0);
+  }
+  if (rank == 1) {
+    ring_assign(d0, x0);
+    ring_assign(d1, x2);
+    ring_assign(e0, y0);
+    ring_assign(e1, y2);
+
+    ring_assign(z0, r0);
+    ring_assign(z2, r1);
+  }
+  if (rank == 2) {
+    ring_assign(d0, x2);
+    ring_assign(d1, x0);
+    ring_assign(e0, y2);
+    ring_assign(e1, y0);
+
+    ring_assign(z0, r1);
+    ring_assign(z2, r0);
+  }
+
+  // p0, p1 : chi_1 = f1
+  // p0, p2 : chi_2 = f0
+  // p1, p2 : Phi = f2 - gamma_x * gamma_y
+  auto f = DotProductPre(ctx, d, e, batch_size, vector_numel);
+
+  auto f0 = getFirstShare(f);
+  auto f1 = getSecondShare(f);
+  auto f2 = getThirdShare(f);
+
+  if (rank == 0) {
+    ring_assign(chi_1, f1);
+    ring_assign(chi_2, f0);
+  }
+  if (rank == 1) {
+    ring_assign(chi_1, f0);
+    auto tmp1 = ring_sub(f1, ring_dotproduct(x2, y2, batch_size, vector_numel));
+    ring_assign(Phi, tmp1);
+  }
+  if (rank == 2) {
+    ring_assign(chi_2, f1);
+    auto tmp1 = ring_sub(f0, ring_dotproduct(x2, y2, batch_size, vector_numel));
+    ring_assign(Phi, tmp1);
+  }
+
+  // [beta*_z] = -(beta_x + gamma_x)[alpha_y] - (beta_y + gamma_y)[alpha_x]
+  //             +[alpha_z] + [chi]
+  if (rank == 0) {
+    beta_z1_star =
+        ring_sum({ring_neg(ring_dotproduct(x2, y0, batch_size, vector_numel)),
+                  ring_neg(ring_dotproduct(x0, y2, batch_size, vector_numel)),
+                  z0, chi_1});
+    beta_z2_star =
+        ring_sum({ring_neg(ring_dotproduct(x2, y1, batch_size, vector_numel)),
+                  ring_neg(ring_dotproduct(x1, y2, batch_size, vector_numel)),
+                  z1, chi_2});
+  }
+  if (rank == 1) {
+    auto tmp2 = ring_neg(ring_add(x1, x2));
+    auto tmp3 = ring_neg(ring_add(y1, y2));
+    tmp2 = ring_dotproduct(tmp2, y0, batch_size, vector_numel);
+    tmp3 = ring_dotproduct(x0, tmp3, batch_size, vector_numel);
+    beta_z1_star = ring_sum({tmp2, tmp3, z0, chi_1});
+  }
+  if (rank == 2) {
+    auto tmp2 = ring_neg(ring_add(x1, x2));
+    auto tmp3 = ring_neg(ring_add(y1, y2));
+    tmp2 = ring_dotproduct(tmp2, y0, batch_size, vector_numel);
+    tmp3 = ring_dotproduct(x0, tmp3, batch_size, vector_numel);
+    beta_z2_star = ring_sum({tmp2, tmp3, z0, chi_2});
+  }
+
+  JointMessagePassing(ctx, beta_z1_star, 0, 1, 2, "beta_z1_star");
+
+  JointMessagePassing(ctx, beta_z2_star, 0, 2, 1, "beta_z2_star");
+  auto beta_z_start = ring_add(beta_z1_star, beta_z2_star);
+
+  if (rank == 1 || rank == 2) {
+    // beta_z = beta*_z + beta_x * beta_y + Phi
+    ring_assign(
+        z1, ring_sum({beta_z_start,
+                      ring_dotproduct(x1, y1, batch_size, vector_numel), Phi}));
     ring_assign(beta_plus_gamma_z, ring_add(z1, z2));
   }
 
@@ -1561,10 +1904,10 @@ std::pair<NdArrayRef, NdArrayRef> TruncA::Trgen(KernelEvalContext* ctx,
   NdArrayRef r2(ty_ring, shape);
   NdArrayRef rd(ashrty, shape);
 
-  NdArrayRef X(ashrty, {numel, k - bits + 1});
-  NdArrayRef Y(ashrty, {numel, k - bits + 1});
-  NdArrayRef P(ashrty, {numel, k});
-  NdArrayRef Q(ashrty, {numel, k});
+  NdArrayRef X(ashrty, {numel * (k - bits + 1)});
+  NdArrayRef Y(ashrty, {numel * (k - bits + 1)});
+  NdArrayRef P(ashrty, {numel * k});
+  NdArrayRef Q(ashrty, {numel * k});
   NdArrayRef tmp(ashrty, {numel, numel});
   NdArrayRef tmp2(ashrty, {numel, numel});
   NdArrayRef A(ashrty, shape);
@@ -1690,25 +2033,9 @@ std::pair<NdArrayRef, NdArrayRef> TruncA::Trgen(KernelEvalContext* ctx,
         _Q[idx * k + i][2] = _r2_bits_share[idx * k + i][2];
       }
     });
-    Y = Y.transpose();
-    Q = Q.transpose();
 
-    tmp = matmul.proc(ctx, X, Y);
-    tmp2 = matmul.proc(ctx, P, Q);
-    NdArrayView<shr_t> _tmp(tmp);
-    NdArrayView<shr_t> _tmp2(tmp2);
-    SPU_ENFORCE(tmp.numel() == numel * numel);
-    SPU_ENFORCE(tmp2.numel() == numel * numel);
-
-    pforeach(0, numel, [&](int64_t idx) {
-      _A[idx][0] = _tmp[idx * numel + idx][0];
-      _A[idx][1] = _tmp[idx * numel + idx][1];
-      _A[idx][2] = _tmp[idx * numel + idx][2];
-
-      _B[idx][0] = _tmp2[idx * numel + idx][0];
-      _B[idx][1] = _tmp2[idx * numel + idx][1];
-      _B[idx][2] = _tmp2[idx * numel + idx][2];
-    });
+    A = DotProductAA(ctx, X, Y, numel, k - bits + 1);
+    B = DotProductAA(ctx, P, Q, numel, k);
 
     NdArrayView<shr_t> _r(r);
     NdArrayView<shr_t> _rd(rd);
