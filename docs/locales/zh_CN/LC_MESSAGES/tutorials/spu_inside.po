@@ -28,13 +28,13 @@ msgid ""
 "SPU is a virtual device backed by an MPC engine, which provides an "
 "*arithmetic black box* abstraction to front-end users. Just like other "
 "*black boxes*, it's not easy to understand what happened inside it."
-msgstr "SPU是一种由多方安全计算（MPC）引擎支持的虚拟设备，它为前端用户提供了*算术黑箱*的概念。就像其他*黑箱*一样，理解其内部机制并不容易。"
+msgstr "SPU是一种由多方安全计算（MPC）引擎支持的虚拟设备，它为前端用户提供了*算术黑箱*的概念。就像其他黑箱一样，理解其内部机制并不容易。"
 
 #: ../../tutorials/spu_inside.ipynb:22
 msgid ""
 "For this reason, SPU provides some features to show what happened inside "
 "it, this document demonstrates these features."
-msgstr "所以，SPU提供了一些功能来展示其内部发生的情况，本文档将展示这些功能。"
+msgstr "所以， SPU 提供了一些功能来展示其内部发生的情况，本文档将展示这些功能。"
 
 #: ../../tutorials/spu_inside.ipynb:25
 msgid "Simulation"
@@ -48,7 +48,7 @@ msgid ""
 "simulate multi-parties in a single process. All parties acts exactly the "
 "same as in production environment, so we can use it as a playground to "
 "inspect the internals of SPU."
-msgstr "*多方计算*,顾名思义本质上是一个涉及多个参与者的分布式系统，所以部署、调试和监控难度显著增加。因此， SPU 提供了一个模拟模块，通过在单个进程中使用线程来模拟多个参与方。所有参与方的行为与生产环境中的表现完全一致，因此我们可以将其当成一个生产环境来检查SPU的内部运行情况。"
+msgstr "多方计算，顾名思义本质上是一个涉及多个参与者的分布式系统，所以部署、调试和监控难度显著增加。因此， SPU 提供了一个模拟模块，通过在单个进程中使用线程来模拟多个参与方。所有参与方的行为与生产环境中的表现完全一致，因此我们可以将其当成一个生产环境来检查SPU的内部运行情况。"
 
 #: ../../tutorials/spu_inside.ipynb:29
 msgid "To use the simulation module, we can simple do"
@@ -72,7 +72,7 @@ msgstr "首先，我们创建了一个基于 ABY3 协议和 FM64 有限域的 SP
 msgid ""
 "Then we decorates a jax function ``jax.add`` to make it a SPU simulated "
 "function."
-msgstr "然后，我们将一个JAX函数``jax.add``通过装饰器转换为一个可以在 SPU 模拟器上运行的函数。"
+msgstr "然后，我们将一个JAX函数 :code:`jax.add` 通过装饰器转换为一个可以在 SPU 模拟器上运行的函数。"
 
 #: ../../tutorials/spu_inside.ipynb:123
 msgid "Then we can use the simulated function just like normal python functions."
@@ -89,24 +89,24 @@ msgid ""
 "The above code is a pphlo dialect in `MLIR <https://mlir.llvm.org/>`__ "
 "format, which defines a ``main`` function that accepts two arguments and "
 "returns the sum as result."
-msgstr "上述代码是用`MLIR <https://mlir.llvm.org/>`__的 pphlo 编写的，它定义了一个``main``函数，该函数接受两个参数并返回它们的和作为结果。"
+msgstr "上述代码是用 `MLIR <https://mlir.llvm.org/>`_ 的 pphlo 编写的，它定义了一个 :code:`main` 函数，该函数接受两个参数并返回它们的和作为结果。"
 
 #: ../../tutorials/spu_inside.ipynb:190
 msgid ""
 "Besides single ``jax.numpy`` op, we can simulate any jax function on SPU,"
 " i.e."
-msgstr "除了单个``jax.numpy``操作外，我们还可以在SPU上模拟任何 JAX 函数，例如"
+msgstr "除了单个:code:`jax.numpy`操作外，我们还可以在SPU上模拟任何 JAX 函数，例如"
 
 #: ../../tutorials/spu_inside.ipynb:284
 msgid "The above code is ``spu function`` which is composed of spu builtin ops."
-msgstr "上述代码是``SPU函数``，由 SPU 内置操作组成。"
+msgstr "上述代码是 :code:`SPU函数` ，由 SPU 内置操作组成。"
 
 #: ../../tutorials/spu_inside.ipynb:286
 msgid ""
 "Note: since spu use `JIT <https://en.wikipedia.org/wiki/Just-in-"
 "time_compilation>`__ compilation, so we have to execute the function "
 "before printing the compiled bytecode."
-msgstr "注意：由于 SPU 使用即时编译`JIT <https://en.wikipedia.org/wiki/Just-in-time_compilation>`__，因此我们必须先执行该函数，才能打印编译后的字节码。"
+msgstr "注意：由于 SPU 使用即时编译 `JIT <https://en.wikipedia.org/wiki/Just-in-time_compilation>`_ ，因此我们必须先执行该函数，才能打印编译后的字节码。"
 
 #: ../../tutorials/spu_inside.ipynb:298
 msgid "Profling"
@@ -127,7 +127,7 @@ msgstr "为了使用性能分析，我们启用了一些功能标志。"
 msgid ""
 "``enable_pphlo_profile`` tells SPU runtime to print information about "
 "pphlo, now, let's run the function on this new runtime."
-msgstr "``enable_pphlo_profile``告诉 SPU 运行时打印有关 pphlo 的信息，现在，让我们在这个新的运行时上运行该函数。"
+msgstr " :code:`enable_pphlo_profile` 告诉 SPU 运行时打印有关 pphlo 的信息，现在，让我们在这个新的运行时上运行该函数。"
 
 #: ../../tutorials/spu_inside.ipynb:395
 msgid ""
@@ -140,7 +140,7 @@ msgid ""
 "Besides the ``enable_pphlo_profile`` feature flag, SPU has other flags "
 "like ``enable_hal_profile`` to dump runtime information in different "
 "levels of instructions."
-msgstr "除了``enable_pphlo_profile``功能标志外，SPU还有其他标志，例如``enable_hal_profile``用于在不同指令级别输出运行时信息。"
+msgstr "除了 :code:`enable_pphlo_profile` 功能标志外，SPU还有其他标志，例如 :code:`enable_hal_profile` 用于在不同指令级别输出运行时信息。"
 
 #: ../../tutorials/spu_inside.ipynb:400
 msgid "Tracing"
@@ -152,17 +152,17 @@ msgid ""
 "hard to understand what happened inside it. *Tracing* is a feature that "
 "used to print verbose ``call stack``, which helps to understand/inspect "
 "what exactly happened."
-msgstr "性能分析只能提供SPU指令的统计信息，但仍然很难理解其内部到底发生了什么。跟踪是一种功能，用于打印详细的调用栈信息，这有助于理解和检查到底发生了什么。"
+msgstr "性能分析只能提供 SPU 指令的统计信息，但仍然很难理解其内部到底发生了什么。跟踪是一种功能，用于打印详细的调用栈信息，这有助于理解和检查到底发生了什么。"
 
 #: ../../tutorials/spu_inside.ipynb:404
 msgid ""
 "To enable tracing features, just set ``enable_action_trace`` in the "
 "runtime config."
-msgstr "要启用跟踪功能，只需在运行时配置中设置``enable_action_trace``。"
+msgstr "要启用跟踪功能，只需在运行时配置中设置 :code:`enable_action_trace` 。"
 
 #: ../../tutorials/spu_inside.ipynb:427
 msgid "Now, let's run another function on this ``tracing enabled`` simulator."
-msgstr "现在，让我们在启用了跟踪功能（``tracing enabled``）的模拟器上运行另一个函数。"
+msgstr "现在，让我们在启用了跟踪功能（ :code:`tracing enabled` ）的模拟器上运行另一个函数。"
 
 #: ../../tutorials/spu_inside.ipynb:548
 msgid ""
@@ -172,7 +172,7 @@ msgstr "乍一看，跟踪日志可能会让人感到有些令人沮丧，因此
 
 #: ../../tutorials/spu_inside.ipynb:550
 msgid "At the very begining, is the entry point of ``multiply`` function."
-msgstr "最开始的部分是``multiply``函数的入口点。"
+msgstr "最开始的部分是 :code:`multiply` 函数的入口点。"
 
 #: ../../tutorials/spu_inside.ipynb:552
 msgid "Each line follows the format as below:"
@@ -182,77 +182,77 @@ msgstr "每一行都遵循以下格式："
 msgid ""
 "For example, the second line ``[timestamp] [TR] [B]   "
 "hal.mul(Value<2x2xSFXP,s=2,1>, Value<2x2xSFXP,s=2,1>)`` means:"
-msgstr "例如，第二行``[timestamp] [TR] [B] hal.mul(Value<2x2xSFXP,s=2,1>, Value<2x2xSFXP,s=2,1>)`` 表示："
+msgstr "例如，第二行 :code:`[timestamp] [TR] [B] hal.mul(Value<2x2xSFXP,s=2,1>, Value<2x2xSFXP,s=2,1>)` 表示："
 
 #: ../../tutorials/spu_inside.ipynb:560
 msgid "this is a tracing log indicated by ``[TR]``"
-msgstr "这是一个由``[TR]``标识的跟踪日志。"
+msgstr "这是一个由 :code:`[TR]` 标识的跟踪日志。"
 
 #: ../../tutorials/spu_inside.ipynb:561
 msgid "the function begins/ends ``[B/E]``"
-msgstr "函数开始/结束的标识为``[B/E]``。"
+msgstr "函数开始/结束的标识为 :code:`[B/E]` 。"
 
 #: ../../tutorials/spu_inside.ipynb:562
 msgid "the module is ``hal``"
-msgstr "模型是``hal``"
+msgstr "模型是 :code:`hal` "
 
 #: ../../tutorials/spu_inside.ipynb:563
 msgid "the operator is ``mul``"
-msgstr "操作符是``mul``"
+msgstr "操作符是 :code:`mul` "
 
 #: ../../tutorials/spu_inside.ipynb:564
 msgid "the two args are both ``Value<2x2xSFXP,s=2,1>``"
-msgstr "两个参数都是``Value<2x2xSFXP,s=2,1>``"
+msgstr "两个参数都是 :code:`Value<2x2xSFXP,s=2,1>` "
 
 #: ../../tutorials/spu_inside.ipynb:566
 msgid ""
 "Note, ``hlo`` is short for ``High Level Operations``, ``hal`` is short "
 "for ``Hardware Abstraction Layer``, ``mpc`` is short for ``Multi-Party "
 "Computation``."
-msgstr "注意，``hlo``是``High Level Operations``的缩写，``hal``是``Hardware Abstraction Layer``的缩写，``mpc``是``Multi-Party Computation``的缩写。"
+msgstr "注意， :code:`hlo` 是 :code:`High Level Operations` 的缩写， :code:`hal` 是 :code:`Hardware Abstraction Layer` 的缩写， :code:`mpc` 是 :code:`Multi-Party Computation` 的缩写。"
 
 #: ../../tutorials/spu_inside.ipynb:568
 msgid ""
 "The ``Value<2x2xSFXP,s=2,1>`` means it's a **S**\\ ecret **F**\\ i\\ "
 "**X**\\ ed **P**\\ ointed tensor with shape(**2x2**) and "
 "strides(**2,1**)."
-msgstr "``Value<2x2xSFXP,s=2,1>``表示这是个形状为（2x2）步长为（2,1）的密文定点张量。"
+msgstr " :code:`Value<2x2xSFXP,s=2,1>` 表示这是个形状为（2x2）步长为（2,1）的密文定点张量。"
 
 #: ../../tutorials/spu_inside.ipynb:570
 msgid ""
 "the runtime dispatches the function according parameters datatype (in "
 "this case *fxp*), then calls the corresponding fixed point handle "
 "function ``hal.f_mul``, the prefix ``f_`` means its for fixed point."
-msgstr "运行时根据参数的数据类型（在本例中为*fxp*）调度该函数，然后调用对应的定点处理函数``hal.f_mul``，前缀``f_``表示它是用于定点的。"
+msgstr "运行时根据参数的数据类型（在本例中为 fxp ）调度该函数，然后调用对应的定点处理函数 :code:`hal.f_mul` ，前缀 :code:`f_` 表示它是用于定点的。"
 
 #: ../../tutorials/spu_inside.ipynb:571
 msgid ""
 "the runtime dispatches ``hal.f_mul`` to the untyped version ``hal._mul`` "
 "which operates on ``rings``."
-msgstr "运行时将``hal.f_mul``调度到无类型版本的``hal._mul``，该函数在环（``rings``）上进行操作。"
+msgstr "运行时将 :code:`hal.f_mul` 调度到无类型版本的 :code:`hal._mul` ，该函数在环（ :code:`rings` ）上进行操作。"
 
 #: ../../tutorials/spu_inside.ipynb:572
 msgid ""
 "the runtime dispatches ``hal._mul`` according to the *visibility* type, "
 "since both parameters are **secret**, so ``hal._mul_ss`` is called, the "
 "postfix ``_ss`` indicates that it operates on two secrets."
-msgstr "运行时根据参数的 可见性（*visibility*）类型调度``hal._mul``，由于两个参数都是 密文（*secret*），因此调用了``hal._mul_ss``，后缀``_ss``表示它操作的是两个密文。"
+msgstr "运行时根据参数的可见性（visibility）类型调度 :code:`hal._mul` ，由于两个参数都是密文（secret），因此调用了 :code:`hal._mul_ss` ，后缀 :code:`_ss` 表示它操作的是两个密文。"
 
 #: ../../tutorials/spu_inside.ipynb:574
 msgid ""
 "Then the function ``hal._mul_ss`` is dispatched to the MPC layer, the "
 "signature becomes more complicated."
-msgstr "然后，``hal._mul_ss``函数被调度到 MPC（多方计算）层，其函数签名变得更加复杂。"
+msgstr "然后，:code:`hal._mul_ss` 函数被调度到 MPC（多方计算）层，其函数签名变得更加复杂。"
 
 #: ../../tutorials/spu_inside.ipynb:580
 msgid ""
 "The signature of this operation is the same as above, ``mpc.mul_ss`` "
 "indicates the module is ``mpc`` and the operation is ``mul_ss``."
-msgstr "这个操作的函数签名与上述内容相同，``mpc.mul_ss``表示模块是``mpc``，操作是``mul_ss``。"
+msgstr "这个操作的函数签名与上述内容相同， :code:`mpc.mul_ss` 表示模块是 :code:`mpc` ，操作是 :code:`mul_ss` 。"
 
 #: ../../tutorials/spu_inside.ipynb:582
 msgid "The type ``ArrayRef<4xaby3.AShr<FM64>>`` has two notable differences:"
-msgstr "类型``ArrayRef<4xaby3.AShr<FM64>>``有两个显著的区别："
+msgstr "类型 :code:`ArrayRef<4xaby3.AShr<FM64>>` 有两个显著的区别："
 
 #: ../../tutorials/spu_inside.ipynb:584
 msgid ""
@@ -264,14 +264,14 @@ msgstr "与hal操作不同， mpc 操作在一维数组上，而不是在张量�
 msgid ""
 "the type ``aby3.AShr<FM64>`` is protocol-dependent, in this case, it's an"
 " *ABY3* arithmetic share in FM64."
-msgstr "类型``aby3.AShr<FM64>``是依赖于协议的，在这种情况下，它是一个基于*ABY3*协议的 FM64 算术份额。"
+msgstr "类型 :code:`aby3.AShr<FM64>` 是依赖于协议的，在这种情况下，它是一个基于 ABY3 协议的 FM64 算术份额。"
 
 #: ../../tutorials/spu_inside.ipynb:587
 msgid ""
 "Finally, it's dispatched to ``mpc.mul_aa``, the postfix ``_aa`` indicates"
 " both parameters are arithmetic shares, then the ABY3 share addition "
 "protocol is performed."
-msgstr "最后，它被调度到``mpc.mul_aa``，后缀``_aa``表示两个参数都是算术份额，随后执行 ABY3 协议的份额乘法操作。"
+msgstr "最后，它被调度到 :code:`mpc.mul_aa` ，后缀 :code:`_aa` 表示两个参数都是算术份额，随后执行 ABY3 协议的份额乘法操作。"
 
 #: ../../tutorials/spu_inside.ipynb:589
 msgid ""
@@ -279,7 +279,7 @@ msgid ""
 " ``truncate`` the result to make the fixed point legal, in the following "
 "lines, ``hal._trunc`` is called and finally dispatched to ``mpc.trunc_a``"
 " protocol."
-msgstr "但是仅靠环乘法无法完成``f_mul``操作，我们必须对结果进行截断（``truncate``），以使定点数合法。在接下来的几行中，调用了``hal._trunc``，并最终调度到``mpc.trunc_a``协议。"
+msgstr "但是仅靠环乘法无法完成 :code:`f_mul` 操作，我们必须对结果进行截断（:code:`truncate`），以使定点数合法。在接下来的几行中，调用了 :code:`hal._trunc` ，并最终调度到 :code:`mpc.trunc_a` 协议。"
 
 #: ../../tutorials/spu_inside.ipynb:600
 msgid "The above example is pretty straight forward, now let's make it harder."
@@ -291,7 +291,7 @@ msgid ""
 "<https://en.wikipedia.org/wiki/Division_algorithm#Goldschmidt_division>`__"
 " approximation algorithm, the algorithm itself is not that simple, and "
 "when it's executed on MPC, things become more complicated."
-msgstr "定点数的倒数是通过`Goldschmidt`<https://en.wikipedia.org/wiki/Division_algorithm#Goldschmidt_division>`__ 近似算法来实现的。该算法并不简单，而在多方计算（MPC）环境中执行时，情况变得更加复杂。"
+msgstr "定点数的倒数是通过 `Goldschmidt <https://en.wikipedia.org/wiki/Division_algorithm#Goldschmidt_division>`_ 近似算法来实现的。该算法并不简单，而在多方计算（MPC）环境中执行时，情况变得更加复杂。"
 
 #: ../../tutorials/spu_inside.ipynb:604
 msgid ""
@@ -307,13 +307,13 @@ msgstr "哇哦，真的有好多操作！"
 msgid ""
 "Yes, that's why MPC is still relatively slow and why SPU wants to "
 "optimize it :P"
-msgstr "是的，这就是为什么多方计算（MPC）仍然相对较慢，也是为什么SPU想要对其进行优化的原因。:P"
+msgstr "是的，这就是为什么多方计算（MPC）仍然相对较慢，也是为什么SPU想要对其进行优化的原因。"
 
 #: ../../tutorials/spu_inside.ipynb:3519
 msgid ""
 "The ``reciprocal`` is still a relative simple operator, you can try more "
 "complicated op like ``convolution``."
-msgstr "``reciprocal``（倒数）仍然是一个相对简单的操作符，你可以尝试更复杂的操作符，比如``convolution``（卷积）"
+msgstr " :code:`reciprocal` （倒数）仍然是一个相对简单的操作符，你可以尝试更复杂的操作符，比如 :code:`convolution` （卷积）"
 
 #: ../../tutorials/spu_inside.ipynb:3531
 msgid "Misc"
@@ -323,14 +323,14 @@ msgstr "杂项"
 msgid ""
 "Simulation could be used to inspect other parts of SPU, i.e. the *fixed "
 "point arithmetic* accuracy."
-msgstr "模拟可以用于检查SPU的其他部分，例如定点算术的精度。"
+msgstr "模拟可以用于检查 SPU 的其他部分，例如定点算术的精度。"
 
 #: ../../tutorials/spu_inside.ipynb:3535
 msgid ""
 "As the above example indicates, non-linear functions like ``reciprocal`` "
 "and ``exp`` are approximated with some numeric methods, so the result is "
 "not as accurate as floating point arithmetic."
-msgstr "正如上述例子所表明的那样，像``reciprocal``（倒数）和``exp``（指数）这样的非线性函数是通过某些数值方法进行近似的，因此其结果不如浮点运算精确。"
+msgstr "正如上述例子所表明的那样，像 :code:`reciprocal` （倒数）和 :code:`exp` （指数）这样的非线性函数是通过某些数值方法进行近似的，因此其结果不如浮点运算精确。"
 
 #: ../../tutorials/spu_inside.ipynb:3537
 msgid "For example."
@@ -340,12 +340,12 @@ msgstr "例如"
 msgid ""
 "As we can see, the SPU version of ``exp`` (blue line) diverges with the "
 "standard version when input is larger."
-msgstr "正如我们所见， SPU 版本的``exp``函数（蓝色线条）在输入值较大时与标准版本的结果出现了偏差。"
+msgstr "正如我们所见， SPU 版本的 :code:`exp` 函数（蓝色线条）在输入值较大时与标准版本的结果出现了偏差。"
 
 #: ../../tutorials/spu_inside.ipynb:3664
 msgid ""
 "Finally, SPU, as a secure computation, behaves very differently from CPU,"
 " both in accuracy and cost model, when you are not sure about how it "
 "works, simulate on it!"
-msgstr "最后，作为一项安全计算技术，SPU与CPU在精度和成本模型方面表现出很大的不同。当你不确定它的工作原理时，就在它上面进行模拟吧！"
+msgstr "最后，作为一项安全计算技术， SPU 与 CPU 在精度和成本模型方面表现出很大的不同。当你不确定它的工作原理时，就在它上面进行模拟吧！"
 
