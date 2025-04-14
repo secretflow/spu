@@ -48,7 +48,7 @@ msgid ""
 "simulate multi-parties in a single process. All parties acts exactly the "
 "same as in production environment, so we can use it as a playground to "
 "inspect the internals of SPU."
-msgstr "*多方计算*,顾名思义本质上是一个涉及多个参与者的分布式系统，所以部署、调试和监控难度显著增加。因此，SPU提供了一个模拟模块，通过在单个进程中使用线程来模拟多个参与方。所有参与方的行为与生产环境中的表现完全一致，因此我们可以将其当成一个生产环境来检查SPU的内部运行情况。"
+msgstr "*多方计算*,顾名思义本质上是一个涉及多个参与者的分布式系统，所以部署、调试和监控难度显著增加。因此， SPU 提供了一个模拟模块，通过在单个进程中使用线程来模拟多个参与方。所有参与方的行为与生产环境中的表现完全一致，因此我们可以将其当成一个生产环境来检查SPU的内部运行情况。"
 
 #: ../../tutorials/spu_inside.ipynb:29
 msgid "To use the simulation module, we can simple do"
@@ -56,7 +56,7 @@ msgstr "要使用模拟模块，我们可以简单地进行如下操作"
 
 #: ../../tutorials/spu_inside.ipynb:55
 msgid "Now we can create SPU simulator and run program on it."
-msgstr "现在，我们可以创建SPU模拟器并在其上运行程序。"
+msgstr "现在，我们可以创建 SPU 模拟器并在其上运行程序。"
 
 #: ../../tutorials/spu_inside.ipynb:119
 msgid "In the above code."
@@ -66,47 +66,47 @@ msgstr "在上述代码中。"
 msgid ""
 "First, we create an SPU simulator backed by *ABY3* protocol with *FM64* "
 "field."
-msgstr "首先，我们创建了一个基于ABY3协议和FM64有限域的SPU模拟器。"
+msgstr "首先，我们创建了一个基于 ABY3 协议和 FM64 有限域的 SPU 模拟器。"
 
 #: ../../tutorials/spu_inside.ipynb:122
 msgid ""
 "Then we decorates a jax function ``jax.add`` to make it a SPU simulated "
 "function."
-msgstr "然后，我们将一个JAX函数``jax.add``通过装饰器转换为一个可以在SPU模拟器上运行的函数。"
+msgstr "然后，我们将一个JAX函数``jax.add``通过装饰器转换为一个可以在 SPU 模拟器上运行的函数。"
 
 #: ../../tutorials/spu_inside.ipynb:123
 msgid "Then we can use the simulated function just like normal python functions."
-msgstr "然后，我们可以像使用Python函数一样使用这个经过模拟的函数。"
+msgstr "然后，我们可以像使用 Python 函数一样使用这个经过模拟的函数。"
 
 #: ../../tutorials/spu_inside.ipynb:125
 msgid ""
 "As the result suggests, it behaves like a python function, we can also "
 "print the compiled pphlo program with"
-msgstr "正如结果显示的，它就像Python函数。我们还可以通过以下方式打印编译后的PPHLO程序"
+msgstr "正如结果显示的，它就像 Python 函数。我们还可以通过以下方式打印编译后的 pphlo 程序"
 
 #: ../../tutorials/spu_inside.ipynb:188
 msgid ""
 "The above code is a pphlo dialect in `MLIR <https://mlir.llvm.org/>`__ "
 "format, which defines a ``main`` function that accepts two arguments and "
 "returns the sum as result."
-msgstr "上述代码是用`MLIR <https://mlir.llvm.org/>`__的PPHLO编写的，它定义了一个``main``函数，该函数接受两个参数并返回它们的和作为结果。"
+msgstr "上述代码是用`MLIR <https://mlir.llvm.org/>`__的 pphlo 编写的，它定义了一个``main``函数，该函数接受两个参数并返回它们的和作为结果。"
 
 #: ../../tutorials/spu_inside.ipynb:190
 msgid ""
 "Besides single ``jax.numpy`` op, we can simulate any jax function on SPU,"
 " i.e."
-msgstr "除了单个``jax.numpy``操作外，我们还可以在SPU上模拟任何JAX函数，例如"
+msgstr "除了单个``jax.numpy``操作外，我们还可以在SPU上模拟任何 JAX 函数，例如"
 
 #: ../../tutorials/spu_inside.ipynb:284
 msgid "The above code is ``spu function`` which is composed of spu builtin ops."
-msgstr "上述代码是``SPU函数``，由SPU内置操作组成。"
+msgstr "上述代码是``SPU函数``，由 SPU 内置操作组成。"
 
 #: ../../tutorials/spu_inside.ipynb:286
 msgid ""
 "Note: since spu use `JIT <https://en.wikipedia.org/wiki/Just-in-"
 "time_compilation>`__ compilation, so we have to execute the function "
 "before printing the compiled bytecode."
-msgstr "注意：由于SPU使用即时编译`JIT <https://en.wikipedia.org/wiki/Just-in-time_compilation>`__，因此我们必须先执行该函数，才能打印编译后的字节码。"
+msgstr "注意：由于 SPU 使用即时编译`JIT <https://en.wikipedia.org/wiki/Just-in-time_compilation>`__，因此我们必须先执行该函数，才能打印编译后的字节码。"
 
 #: ../../tutorials/spu_inside.ipynb:298
 msgid "Profling"
@@ -117,7 +117,7 @@ msgid ""
 "Besides simple simulation, we can profile the simulated program, although"
 " the profiling result could NOT be used as a reference of SPU perf, it "
 "still gives some information of what happened."
-msgstr "除了简单的模拟之外，我们还可以对模拟的程序进行性能分析，尽管性能分析的结果不能被用作SPU性能的参考，但它仍然提供了一些关于发生了什么的信息。"
+msgstr "除了简单的模拟之外，我们还可以对模拟的程序进行性能分析，尽管性能分析的结果不能被用作 SPU 性能的参考，但它仍然提供了一些关于发生了什么的信息。"
 
 #: ../../tutorials/spu_inside.ipynb:302
 msgid "To use profiling, we have enabled some feature flags."
@@ -258,20 +258,20 @@ msgstr "类型``ArrayRef<4xaby3.AShr<FM64>>``有两个显著的区别："
 msgid ""
 "unlike hal ops, mpc ops operates on 1D-array instead of tensor, which "
 "makes it a more standard SIMD instruction."
-msgstr "与hal操作不同，mpc操作在一维数组上，而不是在张量上，这使得它更接近标准的SIMD（单指令多数据）指令。"
+msgstr "与hal操作不同， mpc 操作在一维数组上，而不是在张量上，这使得它更接近标准的 SIMD（单指令多数据）指令。"
 
 #: ../../tutorials/spu_inside.ipynb:585
 msgid ""
 "the type ``aby3.AShr<FM64>`` is protocol-dependent, in this case, it's an"
 " *ABY3* arithmetic share in FM64."
-msgstr "类型``aby3.AShr<FM64>``是依赖于协议的，在这种情况下，它是一个基于*ABY3*协议的FM64算术份额。"
+msgstr "类型``aby3.AShr<FM64>``是依赖于协议的，在这种情况下，它是一个基于*ABY3*协议的 FM64 算术份额。"
 
 #: ../../tutorials/spu_inside.ipynb:587
 msgid ""
 "Finally, it's dispatched to ``mpc.mul_aa``, the postfix ``_aa`` indicates"
 " both parameters are arithmetic shares, then the ABY3 share addition "
 "protocol is performed."
-msgstr "最后，它被调度到``mpc.mul_aa``，后缀``_aa``表示两个参数都是算术份额，随后执行ABY3协议的份额乘法操作。"
+msgstr "最后，它被调度到``mpc.mul_aa``，后缀``_aa``表示两个参数都是算术份额，随后执行 ABY3 协议的份额乘法操作。"
 
 #: ../../tutorials/spu_inside.ipynb:589
 msgid ""
@@ -340,7 +340,7 @@ msgstr "例如"
 msgid ""
 "As we can see, the SPU version of ``exp`` (blue line) diverges with the "
 "standard version when input is larger."
-msgstr "正如我们所见，SPU版本的``exp``函数（蓝色线条）在输入值较大时与标准版本的结果出现了偏差。"
+msgstr "正如我们所见， SPU 版本的``exp``函数（蓝色线条）在输入值较大时与标准版本的结果出现了偏差。"
 
 #: ../../tutorials/spu_inside.ipynb:3664
 msgid ""
