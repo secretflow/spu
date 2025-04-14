@@ -30,6 +30,9 @@ namespace spu::mpc {
 // 2. private, each party get different local random variable.
 // 3. correlated, for instance zero sharing.
 class PrgState : public State {
+  // number of parties
+  size_t world_size_ = 0;
+
   // public seed, known to all parties.
   uint128_t pub_seed_ = 0;
   uint64_t pub_counter_ = 0;
