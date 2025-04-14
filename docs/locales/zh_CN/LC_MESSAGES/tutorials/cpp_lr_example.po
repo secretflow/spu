@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: SPU \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-03-13 15:10+0800\n"
+"POT-Creation-Date: 2025-04-11 10:12+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -21,32 +21,48 @@ msgstr ""
 
 #: ../../tutorials/cpp_lr_example.rst:2
 msgid "C++ Example: Logistic Regression"
-msgstr ""
+msgstr "C++ API 使用示例：逻辑回归"
 
 #: ../../tutorials/cpp_lr_example.rst:4
 msgid ""
-"To use SPU C++ API, we have to first :ref:`getting_started/install:From "
-"Source`, this document shows how to write a privacy preserving logistic "
-"regression program with SPU C++ API."
-msgstr ""
+"To use SPU C++ API, we have to first :ref:`build from "
+"source<getting_started/install:Building From Source>`, this document "
+"shows how to write a privacy preserving logistic regression program with "
+"SPU C++ API."
+msgstr "使用 SPU C++ API 必须 `从源码编译安装 <../getting_started/install.html>`_。本文档描述如何使用 SPU C++ API 编写一个隐私保护逻辑回归程序。"
 
 #: ../../tutorials/cpp_lr_example.rst:8
 msgid "Logistic Regression"
-msgstr ""
+msgstr "逻辑回归"
 
-#: ../../tutorials/cpp_lr_example.rst:15
-msgid "Run it"
-msgstr ""
+#: ../../tutorials/cpp_lr_example.rst:10
+msgid "The following code is located in `examples/cpp/simple_lr.cc`."
+msgstr "下面的代码在 :code:`examples/cpp/simple_lr.cc` 中。"
 
 #: ../../tutorials/cpp_lr_example.rst:17
-msgid "Start two terminals."
-msgstr ""
+msgid "Run it"
+msgstr "运行代码"
 
 #: ../../tutorials/cpp_lr_example.rst:19
-msgid "In the first terminal."
-msgstr ""
+msgid "Start two terminals from the root of the project."
+msgstr "从项目根目录开启两个终端。"
 
-#: ../../tutorials/cpp_lr_example.rst:25
+#: ../../tutorials/cpp_lr_example.rst:21
+msgid "In the first terminal."
+msgstr "在第一个终端中运行"
+
+#: ../../tutorials/cpp_lr_example.rst:27
 msgid "In the second terminal."
-msgstr ""
+msgstr "在第二个终端中运行"
+
+#~ msgid ""
+#~ "To use SPU C++ API, we have "
+#~ "to first :ref:`getting_started/install:From Source`,"
+#~ " this document shows how to write "
+#~ "a privacy preserving logistic regression "
+#~ "program with SPU C++ API."
+#~ msgstr ""
+
+#~ msgid "Start two terminals."
+#~ msgstr ""
 
