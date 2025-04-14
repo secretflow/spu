@@ -21,7 +21,7 @@ msgstr ""
 
 #: ../../../INSTALLATION.md:1
 msgid "Installation Guidelines"
-msgstr ""
+msgstr "安装指引"
 
 #: ../../../INSTALLATION.md:3
 msgid ""
