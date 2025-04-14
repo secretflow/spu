@@ -21,7 +21,7 @@ msgstr ""
 
 #: ../../tutorials/cpp_lr_example.rst:2
 msgid "C++ Example: Logistic Regression"
-msgstr ""
+msgstr "C++ API 使用示例：逻辑回归"
 
 #: ../../tutorials/cpp_lr_example.rst:4
 msgid ""
