@@ -27,6 +27,7 @@ from sml.preprocessing.preprocessing import (
     MinMaxScaler,
     Normalizer,
     OneHotEncoder,
+    RobustScaler,
 )
 
 
@@ -162,6 +163,62 @@ class UnitTests(unittest.TestCase):
         np.testing.assert_allclose(sk_result_l1, spu_result_l1, rtol=0, atol=1e-4)
         np.testing.assert_allclose(sk_result_l2, spu_result_l2, rtol=0, atol=1e-4)
         np.testing.assert_allclose(sk_result_max, spu_result_max, rtol=0, atol=1e-4)
+
+    def test_robustscaler(self):
+        sim = spsim.Simulator.simple(3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM64)
+
+        X = jnp.array([[-2, 0.5], [-0.5, 1.5], [0, 10.0], [1, 15.0], [5, 20.0]])
+        Y = jnp.array([[3, 2]])
+
+        param_combinations = [(True, True), (True, False), (False, True)]
+
+        for with_centering, with_scaling in param_combinations:
+            print(
+                f"\nTesting with_centering={with_centering}, with_scaling={with_scaling}"
+            )
+
+            def robustscale(X, Y):
+                transformer = RobustScaler(
+                    with_centering=with_centering,
+                    with_scaling=with_scaling,
+                    quantile_range=(25.0, 75.0),
+                )
+                result1 = transformer.fit_transform(X)
+                result2 = transformer.transform(Y)
+                result1_restore = transformer.inverse_transform(result1)
+                result2_restore = transformer.inverse_transform(result2)
+                return result1, result2, result1_restore, result2_restore
+
+            # sklearn基准计算
+            sk_transformer = preprocessing.RobustScaler(
+                with_centering=with_centering,
+                with_scaling=with_scaling,
+                quantile_range=(25.0, 75.0),
+            )
+
+            sk_result_1 = sk_transformer.fit_transform(X)
+            sk_result_2 = sk_transformer.transform(Y)
+            sk_restore_1 = sk_transformer.inverse_transform(sk_result_1)
+            sk_restore_2 = sk_transformer.inverse_transform(sk_result_2)
+
+            # SPU模拟计算
+            spu_result_1, spu_result_2, spu_restore_1, spu_restore_2 = spsim.sim_jax(
+                sim, robustscale
+            )(X, Y)
+
+            # 正向变换断言
+            np.testing.assert_allclose(sk_result_1, spu_result_1, rtol=1e-4, atol=1e-4)
+            np.testing.assert_allclose(sk_result_2, spu_result_2, rtol=1e-4, atol=1e-4)
+
+            # 逆变换断言
+            np.testing.assert_allclose(X, spu_restore_1, rtol=1e-4, atol=1e-4)
+            np.testing.assert_allclose(Y, spu_restore_2, rtol=1e-4, atol=1e-4)
+            np.testing.assert_allclose(
+                sk_restore_1, spu_restore_1, rtol=1e-4, atol=1e-4
+            )
+            np.testing.assert_allclose(
+                sk_restore_2, spu_restore_2, rtol=1e-4, atol=1e-4
+            )
 
     def test_minmaxscaler(self):
         sim = spsim.Simulator.simple(3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM64)

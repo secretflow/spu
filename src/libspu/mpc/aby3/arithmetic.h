@@ -276,9 +276,51 @@ class TruncAPr : public TruncAKernel {
  public:
   static constexpr const char* kBindName() { return "trunc_a"; }
 
-  ce::CExpr latency() const override { return ce::Const(3); }
+  Kind kind() const override { return Kind::Dynamic; }
 
-  ce::CExpr comm() const override { return 4 * ce::K(); }
+  ce::CExpr latency() const override { return ce::Const(2); }
+
+  // the comm. is indeed asymmetric.
+  // let k be the field size, bw be the bitwidth of truncation.
+  // Of course, k, bw will be one of 32,64,128 now.
+  // 1. if sign is unknown:  send (4k,2k,2k)     with (2,2,2) rounds.
+  // 2. if sign is positive: send (k+bw,k+bw,bw) with (2,2,1) rounds.
+  // 3. if sign is negative: send (k+bw,k+bw,bw) with (2,2,1) rounds.
+  ce::CExpr comm() const override { return 2 * ce::K(); }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t bits,
+                  SignType sign) const override;
+
+  bool hasMsbError() const override { return false; }
+
+  TruncLsbRounding lsbRounding() const override {
+    return TruncLsbRounding::Probabilistic;
+  }
+};
+
+// Ref: Improved secure two-party computation from a geometric perspective
+// https://eprint.iacr.org/2025/200
+// Algorithm 4: One-bit error truncation with constraint
+// NOTE: this algorithm needs |x| < L / 4, where L = 2^l, and l is the
+// bit-length of the field. Fortunately, this condition is always satisfied
+// under current SPU encoding scheme, see /libspu/core/encoding.cc for more
+// details.
+class TruncAPr2 : public TruncAKernel {
+ public:
+  static constexpr const char* kBindName() { return "trunc_a"; }
+
+  static constexpr size_t kBitsLeftOut = 2;
+
+  // the communication is dependent on the truncation bits.
+  Kind kind() const override { return Kind::Dynamic; }
+
+  ce::CExpr latency() const override { return ce::Const(2); }
+
+  // the comm. is indeed asymmetric.
+  // let k be the field size, bw be the bitwidth of truncation.
+  // Of course, k, bw will be one of 32,64,128 now.
+  // each Party will send (k+bw,k+bw,bw) with (2,2,1) rounds.
+  ce::CExpr comm() const override { return 2 * ce::K(); }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t bits,
                   SignType sign) const override;
