@@ -1,0 +1,45 @@
+// Copyright 2024 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package spu.mpc.semi2k.beaver.ttp_server;
+
+option cc_generic_services = true;
+
+message SSLConfig {
+  // Certificate file in PEM format
+  string cert_file = 1;
+
+  // Private key file in PEM format
+  string key_file = 2;
+
+  // The trusted CA file to verify the peer's certificate
+  string ca_file = 3;
+
+  // Maximum depth of the certificate chain for verification
+  // If 0, turn off the verification
+  int32 verify_depth = 4;
+}
+
+message TTPServerConfig {
+  // Listening port
+  int32 server_port = 1;
+
+  // Asymmetric crypto schema, support ["SM2"]
+  string asym_crypto_schema = 2;
+
+  // Configurations related to SSL
+  SSLConfig ssl = 3;
+}

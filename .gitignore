@@ -25,6 +25,7 @@ _build
 
 # bazel
 /bazel-*
+src/bazel-*
 
 # cmake related
 abseil-cpp
@@ -54,3 +55,8 @@ idir/
 
 spu_wheel.name
 *.whl
+
+
+# doc translation files
+docs/**/*.mo
+docs/**/*.pot

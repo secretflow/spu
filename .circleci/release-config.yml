@@ -52,18 +52,20 @@ commands:
             conda create -n build python=<< parameters.python_ver >> -y
             conda activate build
 
-            sh ./build_wheel_entrypoint.sh
-            python3 -m pip install twine
-            ls dist/*.whl
+            cd src && bazelisk build //... -c opt --ui_event_filters=-info,-debug,-warning
+            cd - && bazelisk build //:spu_wheel -c opt --@rules_python//python/config_settings:python_version=<< parameters.python_ver >>
 
-            python3 -m twine upload -r pypi -u __token__ -p ${PYPI_TWINE_TOKEN} dist/*.whl
+            python3 -m pip install twine
+            ls bazel-bin/spu*.whl
+
+            python3 -m twine upload -r pypi -u __token__ -p ${PYPI_TWINE_TOKEN} bazel-bin/spu*.whl
 
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
 jobs:
   macOS_publish:
     macos:
-      xcode: 15.4.0
+      xcode: 16.0.0
     resource_class: macos.m1.large.gen1
     parameters:
       python_ver:
@@ -92,6 +94,22 @@ jobs:
     executor: <<parameters.executor>>
     steps:
       - checkout
+      - run:
+          name: Install dependencies
+          command: |
+            if [ -x "$(command -v npm)" ]; then
+                npm install -g @bazel/bazelisk
+            elif [ -x "$(command -v dpkg)" ]; then
+                if [ "`uname -m`" == "x86_64" ]; then
+                    wget https://github.com/bazelbuild/bazelisk/releases/download/v1.25.0/bazelisk-amd64.deb && dpkg -i bazelisk-amd64.deb
+                elif [ "`uname -m`" == "aarch64" ]; then
+                    wget https://github.com/bazelbuild/bazelisk/releases/download/v1.25.0/bazelisk-arm64.deb && dpkg -i bazelisk-arm64.deb
+                fi
+            elif [ -x "$(command -v apt)" ]; then
+                apt install -y npm && npm install -g @bazel/bazelisk
+            elif [ -x "$(command -v yum)" ]; then
+                yum install -y npm && npm install -g @bazel/bazelisk
+            fi
       - build_and_upload:
           python_ver: <<parameters.python_ver>>
 
@@ -103,7 +121,7 @@ workflows:
       - linux_publish:
           matrix:
             parameters:
-              python_ver: ["3.9", "3.10", "3.11"]
+              python_ver: ["3.10", "3.11"]
               executor: ["linux_x64_executor", "linux_aarch64_executor"]
           filters:
             tags:
@@ -111,7 +129,7 @@ workflows:
       - macOS_publish:
           matrix:
             parameters:
-              python_ver: ["3.9", "3.10", "3.11"]
+              python_ver: ["3.10", "3.11"]
           filters:
             tags:
               only: /.*(?<!dev\d{8})$/

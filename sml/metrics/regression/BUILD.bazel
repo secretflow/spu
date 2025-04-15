@@ -12,30 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("//bazel:spu.bzl", "sml_py_binary", "sml_py_library", "sml_py_test")
 
 package(default_visibility = ["//visibility:public"])
 
-py_library(
+sml_py_library(
     name = "regression",
     srcs = ["regression.py"],
 )
 
-py_test(
+sml_py_test(
     name = "regression_test",
     srcs = ["regression_test.py"],
     deps = [
         ":regression",
-        "//spu:init",
-        "//spu/utils:simulation",
     ],
 )
 
-py_binary(
+sml_py_binary(
     name = "regression_emul",
     srcs = ["regression_emul.py"],
     deps = [
         ":regression",
-        "//sml/utils:emulation",
     ],
 )

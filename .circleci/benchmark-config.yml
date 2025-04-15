@@ -44,11 +44,12 @@ jobs:
             mv spu .spu
             # TODO: run all stax_nn models with different optimizers
             docker run --rm --mount type=bind,source="$(pwd)",target=/home/admin/dev/ --network nn-benchmark secretflow/ubuntu-base-ci:latest \
-                "python3 -m pip install -U pip && \
+                "python3 -m pip install --upgrade pip && \
                    python3 -m pip install spu && \
                    cd /home/admin/dev/ && \
-                   python3 -m pip install -r requirements-dev.txt && \
-                   python3 -m pip install -r examples/python/ml/requirements.txt && \
+                   python3 -m pip install -r requirements.txt && \
+                   python3 -m pip install scikit-learn tensorflow keras tensorflow_datasets && \
+                   python3 -m pip install protobuf==5.27.3 && \
                    export PYTHONPATH="${PWD}:$PYTHONPATH" && \
                    bash .circleci/run-nn.sh" | tee benchmark_results.log
       - run:

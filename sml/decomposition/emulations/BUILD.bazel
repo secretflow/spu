@@ -12,36 +12,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_python//python:defs.bzl", "py_binary")
+load("//bazel:spu.bzl", "sml_py_binary")
 
 package(default_visibility = ["//visibility:public"])
 
-py_binary(
+sml_py_binary(
     name = "pca_emul",
     srcs = ["pca_emul.py"],
     deps = [
         "//sml/decomposition:pca",
-        "//sml/utils:emulation",
     ],
 )
 
-py_binary(
+sml_py_binary(
     name = "rsvd_pca_emul",
     srcs = ["rsvd_pca_emul.py"],
     data = [":conf"],
     deps = [
         "//sml/decomposition:pca",
-        "//sml/utils:emulation",
     ],
 )
 
-py_binary(
+sml_py_binary(
     name = "nmf_emul",
     srcs = ["nmf_emul.py"],
     data = [":conf"],
     deps = [
         "//sml/decomposition:nmf",
-        "//sml/utils:emulation",
     ],
 )
 

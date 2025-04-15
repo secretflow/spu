@@ -1,0 +1,74 @@
+# Copyright 2023 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("@yacl//bazel:yacl.bzl", "AES_COPT_FLAGS")
+load("//bazel:spu.bzl", "spu_cc_library")
+
+package(default_visibility = ["//visibility:public"])
+
+spu_cc_library(
+    name = "ferret",
+    hdrs = ["ferret.h"],
+    deps = [
+        "//libspu/mpc/cheetah/ot",
+        "//libspu/mpc/common:communicator",
+    ],
+)
+
+spu_cc_library(
+    name = "basic_ot_prot",
+    srcs = ["basic_ot_prot.cc"],
+    hdrs = ["basic_ot_prot.h"],
+    deps = [
+        ":ferret",
+    ],
+)
+
+spu_cc_library(
+    name = "kos_ote",
+    srcs = ["kos_ote.cc"],
+    hdrs = ["kos_ote.h"],
+    copts = AES_COPT_FLAGS + ["-Wno-ignored-attributes"],
+    deps = [
+        "//libspu/core:prelude",
+        "@emp-tool//:emp-tool",
+        "@yacl//yacl/crypto/hash:hash_interface",
+        "@yacl//yacl/crypto/hash:hash_utils",
+        "@yacl//yacl/crypto/tools:crhash",
+        "@yacl//yacl/crypto/tools:prg",
+        "@yacl//yacl/crypto/tools:ro",
+        "@yacl//yacl/crypto/tools:rp",
+        "@yacl//yacl/kernel/algorithms:base_ot",
+        "@yacl//yacl/link",
+        "@yacl//yacl/utils:matrix_utils",
+        "@yacl//yacl/utils:serialize",
+    ],
+)
+
+spu_cc_library(
+    name = "tiny_ot",
+    srcs = ["tiny_ot.cc"],
+    hdrs = ["tiny_ot.h"],
+    copts = AES_COPT_FLAGS + ["-Wno-ignored-attributes"],
+    deps = [
+        "//libspu/mpc/common:communicator",
+        "//libspu/mpc/spdz2k:commitment",
+        "//libspu/mpc/spdz2k/ot:kos_ote",
+        "//libspu/mpc/utils:ring_ops",
+        "@emp-tool//:emp-tool",
+        "@yacl//yacl/crypto/tools:prg",
+        "@yacl//yacl/kernel/type:ot_store",
+        "@yacl//yacl/link",
+    ],
+)

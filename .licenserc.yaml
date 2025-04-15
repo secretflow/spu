@@ -40,18 +40,21 @@ header: # <1>
     - '**/*.mlir'
     - '**/*.csv'
     - '**/*.tmpl'
-    - 'libspu/compiler/tests/interpret/template/**.template'
+    - 'src/libspu/compiler/tests/interpret/template/**.template'
     - 'LICENSE'
     - 'NOTICE'
-    - '.bazelversion'
+    - 'MODULE.bazel.lock'
+    - '.bazeliskrc'
     - '.clang-format'
     - '.clang-tidy'
     - '.gitattributes'
     - '.gitignore'
     - '.gitmodules'
     - 'pyproject.toml'
-    - 'setup.cfg'
-    - 'libspu/core/half.h' # MIT
+    - 'src/libspu/core/half.h' # MIT
+    - '.bazelignore'
+    - 'src/libspu/mpc/utils/waksman_net.h' # MIT
+    - 'src/libspu/mpc/utils/waksman_net.cc' # MIT
 
   comment: never # <9>
 

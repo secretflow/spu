@@ -1,0 +1,214 @@
+# Copyright 2021 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("@yacl//bazel:yacl.bzl", "OMP_CFLAGS", "OMP_DEPS", "OMP_LINKFLAGS")
+load("//bazel:spu.bzl", "spu_cc_binary", "spu_cc_library", "spu_cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+spu_cc_library(
+    name = "circuits",
+    hdrs = ["circuits.h"],
+    deps = [
+        "//libspu/core:bit_utils",
+        "//libspu/core:shape",
+        "//libspu/core:vectorize",
+    ],
+)
+
+spu_cc_test(
+    name = "circuits_test",
+    srcs = ["circuits_test.cc"],
+    deps = [
+        ":circuits",
+        "@yacl//yacl/base:int128",
+    ],
+)
+
+spu_cc_library(
+    name = "simulate",
+    hdrs = ["simulate.h"],
+    deps = [
+        "@yacl//yacl/link:test_util",
+    ],
+)
+
+spu_cc_library(
+    name = "permute",
+    srcs = ["permute.cc"],
+    hdrs = ["permute.h"],
+    deps = [
+        "//libspu/core:ndarray_ref",
+        "@yacl//yacl/crypto/rand",
+    ],
+)
+
+spu_cc_test(
+    name = "simulate_test",
+    srcs = ["simulate_test.cc"],
+    deps = [
+        ":simulate",
+        "//libspu/core:prelude",
+    ],
+)
+
+spu_cc_library(
+    name = "ring_ops",
+    srcs = ["ring_ops.cc"],
+    hdrs = ["ring_ops.h"],
+    copts = select({
+        "@platforms//cpu:x86_64": [
+            "-mavx",
+        ],
+        "//conditions:default": [],
+    }),
+    deps = [
+        ":linalg",
+        "//libspu/core:ndarray_ref",
+        "//libspu/core:type_util",
+        "@yacl//yacl/crypto/rand",
+        "@yacl//yacl/crypto/tools:prg",
+        "@yacl//yacl/utils:parallel",
+    ],
+)
+
+spu_cc_test(
+    name = "ring_ops_test",
+    srcs = ["ring_ops_test.cc"],
+    deps = [
+        ":ring_ops",
+    ],
+)
+
+spu_cc_library(
+    name = "gfmp_ops",
+    srcs = ["gfmp_ops.cc"],
+    hdrs = ["gfmp_ops.h"],
+    copts = select({
+        "@platforms//cpu:x86_64": [
+            "-mavx",
+        ],
+        "//conditions:default": [],
+    }),
+    deps = [
+        ":gfmp",
+        ":linalg",
+        ":ring_ops",
+        "//libspu/core:ndarray_ref",
+        "@yacl//yacl/crypto/rand",
+        "@yacl//yacl/crypto/tools:prg",
+        "@yacl//yacl/utils:parallel",
+    ],
+)
+
+spu_cc_library(
+    name = "gfmp",
+    hdrs = ["gfmp.h"],
+    copts = OMP_CFLAGS,
+    linkopts = OMP_LINKFLAGS,
+    deps = [
+        "//libspu/core:type_util",
+        "@yacl//yacl/base:int128",
+    ] + OMP_DEPS,
+)
+
+spu_cc_binary(
+    name = "ring_ops_bench",
+    srcs = ["ring_ops_bench.cc"],
+    deps = [
+        ":ring_ops",
+        "@google_benchmark//:benchmark",
+    ],
+)
+
+spu_cc_library(
+    name = "linalg",
+    srcs = ["linalg.cc"],
+    hdrs = ["linalg.h"],
+    copts = OMP_CFLAGS,
+    linkopts = OMP_LINKFLAGS,
+    deps = [
+        "//libspu/core:parallel_utils",
+        "@eigen",
+    ] + OMP_DEPS,
+)
+
+spu_cc_test(
+    name = "linalg_test",
+    srcs = ["linalg_test.cc"],
+    deps = [
+        ":linalg",
+    ],
+)
+
+spu_cc_library(
+    name = "tiling_util",
+    hdrs = ["tiling_util.h"],
+    deps = [
+        "//libspu/core:context",
+        "//libspu/core:parallel_utils",
+    ],
+)
+
+spu_cc_library(
+    name = "lowmc",
+    srcs = ["lowmc.cc"],
+    hdrs = ["lowmc.h"],
+    deps = [
+        ":lowmc_utils",
+        "//libspu/core:ndarray_ref",
+        "//libspu/mpc/utils:ring_ops",
+        "@yacl//yacl/crypto/tools:prg",
+    ],
+)
+
+spu_cc_library(
+    name = "lowmc_utils",
+    srcs = ["lowmc_utils.cc"],
+    hdrs = ["lowmc_utils.h"],
+    deps = [
+        "//libspu/core:ndarray_ref",
+        "//libspu/core:prelude",
+        "//libspu/mpc/utils:ring_ops",
+    ],
+)
+
+spu_cc_test(
+    name = "lowmc_test",
+    srcs = ["lowmc_test.cc"],
+    deps = [
+        ":lowmc",
+        "//libspu/mpc/utils:ring_ops",
+        "@yacl//yacl/utils:elapsed_timer",
+    ],
+)
+
+spu_cc_library(
+    name = "waksman_net",
+    srcs = ["waksman_net.cc"],
+    hdrs = ["waksman_net.h"],
+    deps = [
+        "//libspu/core:bit_utils",
+        "//libspu/core:shape",
+    ],
+)
+
+spu_cc_test(
+    name = "waksman_net_test",
+    srcs = ["waksman_net_test.cc"],
+    deps = [
+        ":permute",
+        ":waksman_net",
+    ],
+)

@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_python//python:defs.bzl", "py_library")
+load("//bazel:spu.bzl", "sml_py_library")
 
 package(default_visibility = ["//visibility:public"])
 
-py_library(
+sml_py_library(
     name = "preprocessing",
     srcs = ["preprocessing.py"],
     deps = [

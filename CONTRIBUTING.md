@@ -37,8 +37,6 @@ The compiler portion of the project follows [MLIR style](https://mlir.llvm.org/g
 
 ## Build
 
-### Prerequisite
-
 #### Docker
 
 ```sh
@@ -49,8 +47,8 @@ docker run -d -it --name spu-dev-$(whoami) \
          --cap-add=SYS_PTRACE --security-opt seccomp=unconfined \
          --cap-add=NET_ADMIN \
          --privileged=true \
-         --entrypoint="bash" \
-         secretflow/ubuntu-base-ci:latest
+         secretflow/ubuntu-base-ci:latest \
+         bash
 
 # attach to build container
 docker exec -it spu-dev-$(whoami) bash
@@ -62,17 +60,10 @@ docker exec -it spu-dev-$(whoami) bash
 Install gcc>=11.2, cmake>=3.26, ninja, nasm>=2.15, python>=3.9, bazelisk, xxd, lld
 ```
 
-About the commands used to install the above dependencies, you can follow [Ubuntu docker file](https://github.com/secretflow/devtools/blob/main/dockerfiles/ubuntu-base-ci.DockerFile).
-
-```sh
-python3 -m pip install -r requirements.txt
-python3 -m pip install -r requirements-dev.txt
-```
-
 #### macOS
 
 ```sh
-# macOS >= 12.0, Xcode >= 14.0
+# macOS >= 13.0, Xcode >= 15.0
 
 # Install Xcode
 https://apps.apple.com/us/app/xcode/id497799835?mt=12
@@ -84,39 +75,53 @@ sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 https://brew.sh/
 
 # Install dependencies
-# Be aware, brew may install a newer version of bazel, when that happens bazel will give an error message during build.
 # Please follow instructions in the error message to install the required version
 brew install bazelisk cmake ninja libomp wget
 
 # For Intel mac only
 brew install nasm
-
-# Install python dependencies
-pip install -r requirements.txt
-pip install -r requirements-dev.txt
 ```
 
 ### Build & UnitTest
 
 ``` sh
+####################################################
+# build and test spu python bindings and applicatons
+####################################################
 # build as debug
-bazel build //... -c dbg
+bazelisk build //... -c dbg
 
 # build as release
-bazel build //... -c opt
+bazelisk build //... -c opt
 
 # test
-bazel test //...
+bazelisk test //...
+
+
+############################################
+# build and test spu core c++ implementation
+############################################
+cd src
+
+# build as debug
+bazelisk build //... -c dbg
+
+# build as release
+bazelisk build //... -c opt
+
+# test
+bazelisk test //...
 
 # [optional] build & test with ASAN or UBSAN, for macOS users please use configs with macOS prefix
-bazel test //... --features=asan
-bazel test //... --features=ubsan
+bazelisk test //... --features=asan
+bazelisk test //... --features=ubsan
 ```
 
 ### Bazel build options
 
 - `--define gperf=on` enable gperf
 - `--define tracelog=on` enable link trace log.
+- `--@rules_python//python/config_settings:python_version=3.10` set the Python version as 3.10, the default version is 3.11
 
 ### Build docs
 
@@ -124,7 +129,13 @@ bazel test //... --features=ubsan
 # prerequisite
 pip install -U -r docs/requirements.txt
 
-cd docs && make html  # html docs will be in docs/_build/html
+cd docs
+
+# build English docs
+make clean && make html  # html docs will be in docs/_build/html
+
+# build Chinese docs
+make clean && make -e SPHINXOPTS="-D language='zh_CN'" html  # html docs will be in docs/_build/html
 ```
 
 ## Release cycle

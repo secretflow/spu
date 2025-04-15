@@ -22,13 +22,13 @@ try:
     import jax.extend.linear_util as jax_lu
 except ImportError:
     import jax.linear_util as jax_lu  # fallback
+
 import jax.numpy as jnp
 import numpy as np
 from jax._src import api_util as japi_util
 
 from .. import api as spu_api
 from .. import libspu  # type: ignore
-from .. import spu_pb2
 from . import frontend as spu_fe
 
 
@@ -49,29 +49,30 @@ class PropagatingThread(threading.Thread):
 
 
 class Simulator(object):
-    def __init__(self, wsize: int, rt_config: spu_pb2.RuntimeConfig):
+    def __init__(self, wsize: int, rt_config: libspu.RuntimeConfig):
         self.wsize = wsize
         self.rt_config = rt_config
         self.io = spu_api.Io(wsize, rt_config)
 
     @classmethod
-    def simple(cls, wsize: int, prot: spu_pb2.ProtocolKind, field: spu_pb2.FieldType):
+    def simple(cls, wsize: int, prot: libspu.ProtocolKind, field: libspu.FieldType):
         """helper method to create an SPU Simulator
 
         Args:
             wsize (int): the world size.
 
-            prot (spu_pb2.ProtocolKind): protocol.
+            prot (libspu.ProtocolKind): protocol.
 
-            field (spu_pb2.FieldType): field type.
+            field (libspu.FieldType): field type.
 
         Returns:
             A SPU Simulator
         """
-        config = spu_pb2.RuntimeConfig(protocol=prot, field=field)
-        if prot == spu_pb2.ProtocolKind.CHEETAH:
+        config = libspu.RuntimeConfig(protocol=prot, field=field)
+
+        if prot == libspu.ProtocolKind.CHEETAH:
             # config.cheetah_2pc_config.enable_mul_lsb_error = True
-            # config.cheetah_2pc_config.ot_kind = spu_pb2.CheetahOtKind.YACL_Softspoken
+            # config.cheetah_2pc_config.ot_kind = libspu.CheetahOtKind.YACL_Softspoken
             pass
         # config.enable_hal_profile = True
         # config.enable_pphlo_profile = True
@@ -80,10 +81,10 @@ class Simulator(object):
         # config.enable_type_checker = True
         return cls(wsize, config)
 
-    def __call__(self, executable, *flat_args):
+    def __call__(self, executable: libspu.ExecutableProto, *flat_args):
         flat_args = [np.array(jnp.array(x)) for x in flat_args]
         params = [
-            self.io.make_shares(x, spu_pb2.Visibility.VIS_SECRET) for x in flat_args
+            self.io.make_shares(x, libspu.Visibility.VIS_SECRET) for x in flat_args
         ]
 
         lctx_desc = libspu.link.Desc()
@@ -92,8 +93,7 @@ class Simulator(object):
 
         def wrapper(rank):
             lctx = libspu.link.create_mem(lctx_desc, rank)
-            rank_config = spu_pb2.RuntimeConfig()
-            rank_config.CopyFrom(self.rt_config)
+            rank_config = libspu.RuntimeConfig(self.rt_config)
             if rank != 0:
                 # rank_config.enable_pphlo_trace = False
                 rank_config.enable_action_trace = False
@@ -127,12 +127,12 @@ def sim_jax(
     sim: Simulator,
     fun: Callable,
     static_argnums=(),
-    copts=spu_pb2.CompilerOptions(),
+    copts=libspu.CompilerOptions(),
 ):
     """
     Decorates a jax numpy fn that simulated on SPU.
 
-        >>> sim = Simulator.simple(3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64)
+        >>> sim = Simulator.simple(3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM64)
         >>> spu_fn = sim_jax(sim, jnp.add)
 
     Then we can call spu_fn like normal jnp fn.
@@ -161,7 +161,7 @@ def sim_jax(
             args,
             kwargs,
             in_names,
-            [spu_pb2.Visibility.VIS_SECRET] * len(args_flat),
+            [libspu.Visibility.VIS_SECRET] * len(args_flat),
             outputNameGen,
             static_argnums=static_argnums,
             copts=copts,

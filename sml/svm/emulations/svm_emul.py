@@ -21,7 +21,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.svm import SVC
 
 import sml.utils.emulation as emulation
-import spu.spu_pb2 as spu_pb2  # type: ignore
+import spu.libspu as libspu  # type: ignore
 from sml.svm.svm import SVM
 
 

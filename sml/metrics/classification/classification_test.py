@@ -21,14 +21,15 @@ import jax.numpy as jnp
 import numpy as np
 from sklearn import metrics
 
-import spu.spu_pb2 as spu_pb2
+import spu.libspu as libspu
 import spu.utils.simulation as spsim
 
 # add ops dir to the path
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../'))
+sys.path.append(os.path.join(os.path.dirname(__file__), "../../"))
 
 from sklearn.metrics import average_precision_score as sk_average_precision_score
 from sklearn.metrics import roc_auc_score as sk_roc_auc_score
+from sklearn.metrics import brier_score_loss as sk_brier_score_loss
 
 from sml.metrics.classification.classification import (
     accuracy_score,
@@ -39,14 +40,13 @@ from sml.metrics.classification.classification import (
     precision_score,
     recall_score,
     roc_auc_score,
+    brier_score_loss,
 )
 
 
 class UnitTests(unittest.TestCase):
     def test_auc(self):
-        sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
-        )
+        sim = spsim.Simulator.simple(3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM64)
 
         def bin_count(y_true, y_pred, bin_size):
             thresholds = equal_obs(y_pred, bin_size)
@@ -89,11 +89,11 @@ class UnitTests(unittest.TestCase):
 
     def test_classification(self):
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM128
+            3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM128
         )
 
         def proc(
-            y_true, y_pred, average='binary', labels=None, pos_label=1, transform=1
+            y_true, y_pred, average="binary", labels=None, pos_label=1, transform=1
         ):
             f1 = f1_score(
                 y_true,
@@ -122,7 +122,7 @@ class UnitTests(unittest.TestCase):
             accuracy = accuracy_score(y_true, y_pred)
             return f1, precision, recall, accuracy
 
-        def sklearn_proc(y_true, y_pred, average='binary', labels=None, pos_label=1):
+        def sklearn_proc(y_true, y_pred, average="binary", labels=None, pos_label=1):
             f1 = metrics.f1_score(
                 y_true, y_pred, average=average, labels=labels, pos_label=pos_label
             )
@@ -143,7 +143,7 @@ class UnitTests(unittest.TestCase):
         y_true = jnp.array([0, 1, 1, 0, 1, 1])
         y_pred = jnp.array([0, 0, 1, 0, 1, 1])
         spu_result = spsim.sim_jax(sim, proc, static_argnums=(2, 5))(
-            y_true, y_pred, 'binary', None, 1, False
+            y_true, y_pred, "binary", None, 1, False
         )
         sk_result = sklearn_proc(y_true, y_pred)
         check(spu_result, sk_result)
@@ -159,7 +159,7 @@ class UnitTests(unittest.TestCase):
 
     def test_average_precision_score(self):
         sim = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.SEMI2K, spu_pb2.FieldType.FM64
+            2, libspu.ProtocolKind.SEMI2K, libspu.FieldType.FM64
         )
 
         def proc(y_true, y_score, **kwargs):
@@ -230,6 +230,43 @@ class UnitTests(unittest.TestCase):
                 y_true, y_score, classes, average
             )
             check(sk_res, spu_res)
+
+    def test_brier_score_loss(self):
+        sim = spsim.Simulator.simple(
+            2, libspu.ProtocolKind.SEMI2K, libspu.FieldType.FM64
+        )
+
+        def proc(y_true, y_proba, **kwargs):
+            spu_res = spsim.sim_jax(sim, brier_score_loss)(y_true, y_proba, **kwargs)
+            sk_res = sk_brier_score_loss(np.array(y_true), np.array(y_proba), **kwargs)
+            return spu_res, sk_res
+
+        def check(spu, sk):
+            np.testing.assert_allclose(spu, sk, rtol=1e-3, atol=1e-3)
+
+        # Test 1: Basic binary classification
+        y_true = jnp.array([0, 1, 1, 0, 1], dtype=jnp.int32)
+        y_proba = jnp.array([0.1, 0.8, 0.7, 0.4, 0.9], dtype=jnp.float32)
+        check(*proc(y_true, y_proba))
+
+        # Test 2: Use 0 as the positive label
+        y_true = jnp.array([0, 0, 1, 1], dtype=jnp.int32)
+        y_proba = jnp.array([0.9, 0.8, 0.2, 0.1], dtype=jnp.float32)
+        check(*proc(y_true, y_proba, pos_label=0))
+
+        # Test 3: Add sample weights
+        weights = jnp.array([1, 2, 1, 1], dtype=jnp.float32)
+        check(*proc(y_true, y_proba, sample_weight=weights, pos_label=0))
+
+        # Test 4: All labels are the same class (positive class = 1)
+        y_true = jnp.array([1, 1, 1, 1], dtype=jnp.int32)
+        y_proba = jnp.array([0.8, 0.7, 0.9, 0.6], dtype=jnp.float32)
+        check(*proc(y_true, y_proba))
+
+        # Test 5: Perfect predictions (proba = 0 or 1)
+        y_true = jnp.array([0, 1, 0, 1], dtype=jnp.int32)
+        y_proba = jnp.array([0.0, 1.0, 0.0, 1.0], dtype=jnp.float32)
+        check(*proc(y_true, y_proba))
 
 
 if __name__ == "__main__":

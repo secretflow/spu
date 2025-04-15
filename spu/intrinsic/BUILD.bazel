@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_python//python:defs.bzl", "py_library")
+load("//bazel:spu.bzl", "spu_py_library")
 
-py_library(
+spu_py_library(
     name = "all_intrinsics",
     srcs = [
         "__init__.py",
@@ -29,7 +29,7 @@ py_library(
     ],
 )
 
-py_library(
+spu_py_library(
     name = "example",
     srcs = [
         "example_impl.py",
@@ -39,7 +39,7 @@ py_library(
     ],
 )
 
-py_library(
+spu_py_library(
     name = "example_binary",
     srcs = [
         "example_binary_impl.py",

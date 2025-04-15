@@ -1,0 +1,10 @@
+{
+    "executionEnvironments": [
+        {"root": "."}
+    ],
+    "exclude":[
+        ".cache",
+        "external",
+        "**/bazel-*"
+    ]
+}

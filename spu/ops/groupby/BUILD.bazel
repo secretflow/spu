@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_python//python:defs.bzl", "py_library", "py_test")
+load("@spu_pip_dev//:requirements.bzl", "requirement")
+load("//bazel:spu.bzl", "spu_py_library", "spu_py_test")
 
 package(default_visibility = ["//visibility:public"])
 
-py_library(
+spu_py_library(
     name = "groupby",
     srcs = [
         "__init__.py",
@@ -31,7 +32,7 @@ py_library(
     ],
 )
 
-py_library(
+spu_py_library(
     name = "segmentation",
     srcs = [
         "segmentation.py",
@@ -39,7 +40,7 @@ py_library(
     deps = [":utils"],
 )
 
-py_library(
+spu_py_library(
     name = "aggregation",
     srcs = [
         "aggregation.py",
@@ -47,14 +48,14 @@ py_library(
     deps = [":utils"],
 )
 
-py_library(
+spu_py_library(
     name = "utils",
     srcs = [
         "utils.py",
     ],
 )
 
-py_library(
+spu_py_library(
     name = "groupby_via_shuffle",
     srcs = [
         "groupby_via_shuffle.py",
@@ -65,7 +66,7 @@ py_library(
     ],
 )
 
-py_library(
+spu_py_library(
     name = "shuffle",
     srcs = [
         "shuffle.py",
@@ -73,14 +74,14 @@ py_library(
     deps = [":utils"],
 )
 
-py_library(
+spu_py_library(
     name = "postprocess",
     srcs = [
         "postprocess.py",
     ],
 )
 
-py_test(
+spu_py_test(
     name = "groupby_test",
     srcs = ["groupby_test.py"],
     deps = [
@@ -90,5 +91,6 @@ py_test(
         ":segmentation",
         "//spu:init",
         "//spu/utils:simulation",
+        requirement("pandas"),
     ],
 )

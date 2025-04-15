@@ -12,31 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_python//python:defs.bzl", "py_library")
+load("//bazel:spu.bzl", "sml_py_library")
 
 package(default_visibility = ["//visibility:public"])
 
-py_library(
+sml_py_library(
     name = "emulation",
     srcs = [
         "emulation.py",
-        "//libspu:spu_py_proto",
+        # "@spulib//libspu:spu_py_proto",
     ],
     data = [
         "//examples/python/conf",  # FIXME
     ],
     deps = [
-        "//spu:init",
         "//spu/utils:distributed",
     ],
 )
 
-py_library(
+sml_py_library(
     name = "fxp_approx",
     srcs = ["fxp_approx.py"],
 )
 
-py_library(
+sml_py_library(
     name = "extmath",
     srcs = ["extmath.py"],
 )

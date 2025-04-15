@@ -196,3 +196,4 @@ List of XLA(mhlo-mlir) Ops that SPU supports:
 | `print`        | no                        |
 | `compute_reshape_shape` | no               |
 | `cstr_reshapable` | no                     |
+

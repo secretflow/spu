@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel:spu.bzl", "spu_cc_binary", "spu_cc_library", "spu_cc_test")
+load("@spulib//bazel:spu.bzl", "spu_cc_binary", "spu_cc_library", "spu_cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -21,14 +21,14 @@ spu_cc_library(
     srcs = ["utils.cc"],
     hdrs = ["utils.h"],
     deps = [
-        "//libspu/core:context",
-        "//libspu/kernel/hlo:basic_binary",
-        "//libspu/kernel/hlo:basic_ternary",
-        "//libspu/kernel/hlo:casting",
-        "//libspu/kernel/hlo:const",
-        "//libspu/kernel/hlo:geometrical",
-        "//libspu/kernel/hlo:reduce",
-        "//libspu/mpc/cheetah:state",
+        "@spulib//libspu/core:context",
+        "@spulib//libspu/kernel/hlo:basic_binary",
+        "@spulib//libspu/kernel/hlo:basic_ternary",
+        "@spulib//libspu/kernel/hlo:casting",
+        "@spulib//libspu/kernel/hlo:const",
+        "@spulib//libspu/kernel/hlo:geometrical",
+        "@spulib//libspu/kernel/hlo:reduce",
+        "@spulib//libspu/mpc/cheetah:state",
     ],
 )
 
@@ -36,7 +36,7 @@ spu_cc_library(
     name = "binning",
     srcs = ["binning.cc"],
     hdrs = ["binning.h"],
-    deps = ["//libspu/core:xt_helper"],
+    deps = ["@spulib//libspu/core:xt_helper"],
 )
 
 spu_cc_library(
@@ -45,8 +45,8 @@ spu_cc_library(
     hdrs = ["objectives.h"],
     deps = [
         ":utils",
-        "//libspu/kernel/hlo:basic_unary",
-        "//libspu/kernel/hlo:shift",
+        "@spulib//libspu/kernel/hlo:basic_unary",
+        "@spulib//libspu/kernel/hlo:shift",
     ],
 )
 
@@ -55,13 +55,13 @@ spu_cc_library(
     srcs = ["bin_matvec_prot.cc"],
     hdrs = ["bin_matvec_prot.h"],
     deps = [
-        "//libspu/core:context",
-        "//libspu/mpc/cheetah/arith:arith_comm",
-        "//libspu/mpc/cheetah/rlwe:cheetah_rlwe",
-        "//libspu/mpc/cheetah/rlwe:lwe",
-        "//libspu/mpc/cheetah/rlwe:packlwes",
-        "@com_github_eigenteam_eigen//:eigen3",
-        "@com_github_microsoft_seal//:seal",
+        "@eigen",
+        "@seal",
+        "@spulib//libspu/core:context",
+        "@spulib//libspu/mpc/cheetah/arith:arith_comm",
+        "@spulib//libspu/mpc/cheetah/rlwe:cheetah_rlwe",
+        "@spulib//libspu/mpc/cheetah/rlwe:lwe",
+        "@spulib//libspu/mpc/cheetah/rlwe:packlwes",
         "@yacl//yacl/utils:elapsed_timer",
     ],
 )
@@ -75,9 +75,9 @@ spu_cc_library(
         ":binning",
         ":objectives",
         ":utils",
-        "//libspu/core:context",
-        "//libspu/kernel/hlo:basic_binary",
-        "//libspu/kernel/hlo:geometrical",
+        "@spulib//libspu/core:context",
+        "@spulib//libspu/kernel/hlo:basic_binary",
+        "@spulib//libspu/kernel/hlo:geometrical",
     ],
 )
 
@@ -93,11 +93,11 @@ spu_cc_test(
     srcs = ["utils_test.cc"],
     deps = [
         ":utils",
-        "//libspu/core:xt_helper",
-        "//libspu/device:io",
-        "//libspu/kernel/hlo:casting",
-        "//libspu/mpc:factory",
-        "//libspu/mpc/utils:simulate",
+        "@spulib//libspu/core:xt_helper",
+        "@spulib//libspu/device:io",
+        "@spulib//libspu/kernel/hlo:casting",
+        "@spulib//libspu/mpc:factory",
+        "@spulib//libspu/mpc/utils:simulate",
     ],
 )
 
@@ -106,10 +106,10 @@ spu_cc_test(
     srcs = ["objectives_test.cc"],
     deps = [
         ":objectives",
-        "//libspu/core:xt_helper",
-        "//libspu/device:io",
-        "//libspu/mpc:factory",
-        "//libspu/mpc/utils:simulate",
+        "@spulib//libspu/core:xt_helper",
+        "@spulib//libspu/device:io",
+        "@spulib//libspu/mpc:factory",
+        "@spulib//libspu/mpc/utils:simulate",
     ],
 )
 
@@ -118,8 +118,8 @@ spu_cc_test(
     srcs = ["bin_matvec_prot_test.cc"],
     deps = [
         ":bin_matvec_prot",
-        "//libspu/mpc:factory",
-        "//libspu/mpc/utils:simulate",
+        "@spulib//libspu/mpc:factory",
+        "@spulib//libspu/mpc/utils:simulate",
     ],
 )
 
@@ -138,9 +138,9 @@ spu_cc_binary(
     deps = [
         ":tree_build_worker",
         ":tree_builder",
-        "//libspu/device:io",
-        "@com_google_absl//absl/strings",
+        "@abseil-cpp//absl/strings",
         "@llvm-project//llvm:Support",
+        "@spulib//libspu/device:io",
         "@yacl//yacl/link:factory",
     ],
 )

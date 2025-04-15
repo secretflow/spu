@@ -41,5 +41,11 @@
     "[python]": {
         "editor.defaultFormatter": "ms-python.black-formatter"
     },
-    "mlir.server_path": "bazel-bin/libspu/compiler/tools/spu-lsp"
+    "mlir.server_path": "bazel-bin/libspu/compiler/tools/spu-lsp",
+    "files.exclude": {
+        // "**/bazel-*/**": true,
+        "external":true,
+        ".cache":true,
+        "**/__pycache__":true
+    }
 }
