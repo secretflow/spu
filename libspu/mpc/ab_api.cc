@@ -454,10 +454,12 @@ Value add_bb(SPUContext* ctx, const Value& x, const Value& y) {
 // Output:
 //     si = xi ^ yi ^ cini
 //     couti = xi^( (xi^yi) & (xi ^ cini) )
-std::array<Value, 2> pfa_bb(SPUContext* ctx, const Value& x, const Value& y, const Value& cin) {
+std::array<Value, 2> pfa_bb(SPUContext* ctx, const Value& x, const Value& y,
+                            const Value& cin) {
   auto s = xor_bb(ctx, xor_bb(ctx, x, y), cin);
 
-  auto carry_out = xor_bb(ctx, x, and_bb(ctx, xor_bb(ctx, x, y), xor_bb(ctx, x, cin)));
+  auto carry_out =
+      xor_bb(ctx, x, and_bb(ctx, xor_bb(ctx, x, y), xor_bb(ctx, x, cin)));
 
   std::array<Value, 2> res = {s, carry_out};
 
@@ -468,21 +470,22 @@ Value carry_a2b(SPUContext* ctx, const Value& x, const Value& y, size_t k) {
   // init P & G
   auto P = xor_bb(ctx, x, y);
   auto G = and_bb(ctx, x, y);
-  
+
   // k bits
   // Use kogge stone layout.
   //    (incorrect) Theoretical: k + k/2 + k/4 + ... + 1 = 2k
   //    (correct) Theoretical: k + k/2 + k/4 + ... + 2 = 2k - 2
 
-  //    (incorrect) Actually: k + k/2 + k/4 + ... + 8 (8) + 8 (4) + 8 (2) + 8 (1) = 2k + 16
-  //    (correct) Actually: k + k/2 + k/4 + ... + 16 (8) + 16 (4) + 16 (2) = 2k + 32
+  //    (incorrect) Actually: k + k/2 + k/4 + ... + 8 (8) + 8 (4) + 8 (2) + 8
+  //    (1) = 2k + 16 (correct) Actually: k + k/2 + k/4 + ... + 16 (8) + 16 (4)
+  //    + 16 (2) = 2k + 32
   while (k > 1) {
     if (k % 2 != 0) {
       k += 1;
       P = lshift_b(ctx, P, {1});
       G = lshift_b(ctx, G, {1});
     }
-    auto p = std::async(bit_scatter,ctx, P, 0);
+    auto p = std::async(bit_scatter, ctx, P, 0);
     auto [G1, G0] = bit_scatter(ctx, G, 0);
     auto [P1, P0] = p.get();
     // Calculate next-level of P, G

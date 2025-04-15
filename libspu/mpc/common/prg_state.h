@@ -48,9 +48,11 @@ class PrgState : public State {
   uint64_t r1_counter_ = 0;  // cnt for next_seed
 
   //  For Rep4
-  //    Secret is split into 4 shares x_0, x_1, x_2, x_3, we let Party i (i in {0, 1, 2, 3}) holds x_i, x_i+1, x_i+2
+  //    Secret is split into 4 shares x_0, x_1, x_2, x_3, we let Party i (i in
+  //    {0, 1, 2, 3}) holds x_i, x_i+1, x_i+2
   //  Similarly
-  //    Preprocessed PRG keys are k_0, k_1, k_2, k_3, we let Party i (i in {0, 1, 2, 3}) k_i--self, k_i+1 --next, k_i+2--next next
+  //    Preprocessed PRG keys are k_0, k_1, k_2, k_3, we let Party i (i in {0,
+  //    1, 2, 3}) k_i--self, k_i+1 --next, k_i+2--next next
   //  Each ki is unknown to next party P_i+1
   uint128_t next_next_seed_ = 0;
   uint64_t r2_counter_ = 0;
@@ -77,7 +79,7 @@ class PrgState : public State {
   // This correlation could be used to construct zero shares.
   //
   // Note: ignore_first, ignore_second is for perf improvement.
-  enum class GenPrssCtrl { Both, First, Second,  /* For Rep4 */ Third, All };
+  enum class GenPrssCtrl { Both, First, Second, /* For Rep4 */ Third, All };
   std::pair<NdArrayRef, NdArrayRef> genPrssPair(FieldType field,
                                                 const Shape& shape,
                                                 GenPrssCtrl ctrl);
@@ -110,7 +112,6 @@ class PrgState : public State {
     }
   }
 
-
   // For Fantastic Four, each party has 3 PRGs
   //                     every three parties have a common PRG
   // Use fillPrssTuple to Non-interactively generate common randomness
@@ -135,8 +136,9 @@ class PrgState : public State {
         return;
       }
       case GenPrssCtrl::Third: {
-        r2_counter_ = yacl::crypto::FillPRand(
-            kAesType, next_next_seed_, 0, r2_counter_, absl::MakeSpan(r2, numel));
+        r2_counter_ =
+            yacl::crypto::FillPRand(kAesType, next_next_seed_, 0, r2_counter_,
+                                    absl::MakeSpan(r2, numel));
         return;
       }
       case GenPrssCtrl::All: {
@@ -144,13 +146,13 @@ class PrgState : public State {
             kAesType, self_seed_, 0, r0_counter_, absl::MakeSpan(r0, numel));
         r1_counter_ = yacl::crypto::FillPRand(
             kAesType, next_seed_, 0, r1_counter_, absl::MakeSpan(r1, numel));
-        r2_counter_ = yacl::crypto::FillPRand(
-            kAesType, next_next_seed_, 0, r2_counter_, absl::MakeSpan(r2, numel));
+        r2_counter_ =
+            yacl::crypto::FillPRand(kAesType, next_next_seed_, 0, r2_counter_,
+                                    absl::MakeSpan(r2, numel));
         return;
       }
     }
   }
-
 
   template <typename T>
   void fillPubl(absl::Span<T> r) {

@@ -114,7 +114,8 @@ Value bitdeintl_b(SPUContext* ctx, const Value& x, size_t stride);
 Value add_bb(SPUContext* ctx, const Value& x, const Value& y);
 
 // Parallel Full Adder
-std::array<Value, 2> pfa_bb(SPUContext* ctx, const Value& x, const Value& y, const Value& cin);
+std::array<Value, 2> pfa_bb(SPUContext* ctx, const Value& x, const Value& y,
+                            const Value& cin);
 
 // compute the k'th bit of x + y
 Value carry_a2b(SPUContext* ctx, const Value& x, const Value& y, size_t k);

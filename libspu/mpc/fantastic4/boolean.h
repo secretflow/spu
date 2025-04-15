@@ -217,4 +217,4 @@ class BitDeintlB : public BitSplitKernel {
                   size_t stride) const override;
 };
 
-}  // namespace spu::mpc::aby3
+}  // namespace spu::mpc::fantastic4

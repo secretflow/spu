@@ -33,7 +33,7 @@ RuntimeConfig makeConfig(FieldType field) {
 
 INSTANTIATE_TEST_SUITE_P(
     Fantastic4, ApiTest,
-    testing::Combine(testing::Values(makeFantastic4Protocol),              //
+    testing::Combine(testing::Values(makeFantastic4Protocol),        //
                      testing::Values(makeConfig(FieldType::FM32),    //
                                      makeConfig(FieldType::FM64),    //
                                      makeConfig(FieldType::FM128)),  //
@@ -45,15 +45,15 @@ INSTANTIATE_TEST_SUITE_P(
 
 INSTANTIATE_TEST_SUITE_P(
     Fantastic4, ArithmeticTest,
-    testing::Combine(testing::Values(makeFantastic4Protocol),              //
+    testing::Combine(testing::Values(makeFantastic4Protocol),        //
                      testing::Values(makeConfig(FieldType::FM32),    //
                                      makeConfig(FieldType::FM64),    //
                                      makeConfig(FieldType::FM128)),  //
 
-                    // /////////////////////////
-                    // npc = 4
-                    // ////////////////////////
-                     testing::Values(4)),                            //
+                     // /////////////////////////
+                     // npc = 4
+                     // ////////////////////////
+                     testing::Values(4)),  //
     [](const testing::TestParamInfo<ArithmeticTest::ParamType>& p) {
       return fmt::format("{}x{}", std::get<1>(p.param).field(),
                          std::get<2>(p.param));
@@ -61,7 +61,7 @@ INSTANTIATE_TEST_SUITE_P(
 
 INSTANTIATE_TEST_SUITE_P(
     Fantastic4, BooleanTest,
-    testing::Combine(testing::Values(makeFantastic4Protocol),              //
+    testing::Combine(testing::Values(makeFantastic4Protocol),        //
                      testing::Values(makeConfig(FieldType::FM32),    //
                                      makeConfig(FieldType::FM64),    //
                                      makeConfig(FieldType::FM128)),  //
@@ -73,7 +73,7 @@ INSTANTIATE_TEST_SUITE_P(
 
 INSTANTIATE_TEST_SUITE_P(
     Fantastic4, ConversionTest,
-    testing::Combine(testing::Values(makeFantastic4Protocol),              //
+    testing::Combine(testing::Values(makeFantastic4Protocol),        //
                      testing::Values(makeConfig(FieldType::FM32),    //
                                      makeConfig(FieldType::FM64),    //
                                      makeConfig(FieldType::FM128)),  //

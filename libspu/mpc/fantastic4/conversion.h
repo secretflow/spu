@@ -23,9 +23,7 @@ class A2B : public UnaryKernel {
  public:
   static constexpr const char* kBindName() { return "a2b"; }
 
-  ce::CExpr latency() const override {
-    return Log(ce::K()) + 1 + 1;
-  }
+  ce::CExpr latency() const override { return Log(ce::K()) + 1 + 1; }
 
   // TODO: this depends on the adder circuit.
   ce::CExpr comm() const override {
@@ -41,9 +39,7 @@ class B2A : public UnaryKernel {
  public:
   static constexpr const char* kBindName() { return "b2a"; }
 
-  ce::CExpr latency() const override {
-    return ce::Const(3) + Log(ce::K());
-  }
+  ce::CExpr latency() const override { return ce::Const(3) + Log(ce::K()); }
 
   // TODO: this depends on the adder circuit.
   ce::CExpr comm() const override {
@@ -59,9 +55,7 @@ class MsbA2B : public UnaryKernel {
  public:
   static constexpr const char* kBindName() { return "msb_a2b"; }
 
-  ce::CExpr latency() const override {
-    return Log(ce::K()) + 1 + 1;
-  }
+  ce::CExpr latency() const override { return Log(ce::K()) + 1 + 1; }
 
   ce::CExpr comm() const override {
     return ce::K() + 2 * ce::K() + ce::K() + 32;
@@ -78,7 +72,8 @@ class EqualAA : public BinaryKernel {
 
   Kind kind() const override { return Kind::Dynamic; }
 
-  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs, const NdArrayRef& rhs) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
+                  const NdArrayRef& rhs) const override;
 };
 
 class EqualAP : public BinaryKernel {
@@ -92,12 +87,12 @@ class EqualAP : public BinaryKernel {
 };
 
 class CommonTypeV : public Kernel {
-  public:
-   static constexpr const char* kBindName() { return "common_type_v"; }
+ public:
+  static constexpr const char* kBindName() { return "common_type_v"; }
 
-   Kind kind() const override { return Kind::Dynamic; }
+  Kind kind() const override { return Kind::Dynamic; }
 
-   void evaluate(KernelEvalContext* ctx) const override;
- };
+  void evaluate(KernelEvalContext* ctx) const override;
+};
 
-} // namespace spu::mpc::fantastic4
+}  // namespace spu::mpc::fantastic4

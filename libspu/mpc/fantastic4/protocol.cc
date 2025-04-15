@@ -13,24 +13,25 @@
 // limitations under the License.
 
 #include "libspu/mpc/fantastic4/protocol.h"
+
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pv2k.h"
 #include "libspu/mpc/fantastic4/arithmetic.h"
 #include "libspu/mpc/fantastic4/boolean.h"
 #include "libspu/mpc/fantastic4/conversion.h"
+#include "libspu/mpc/fantastic4/state.h"
 #include "libspu/mpc/fantastic4/type.h"
 #include "libspu/mpc/standard_shape/protocol.h"
-
-#include "libspu/mpc/fantastic4/state.h"
 
 namespace spu::mpc {
 
 //  For Rep4 / Fantastic Four
 //    Secret is split into 4 shares x_0, x_1, x_2, x_3
-//    Differently from the paper, we let Party i (i in {0, 1, 2, 3}) holds x_i, x_i+1, x_i+2 (mod 4)
-//    Similarly in prg_state.h, PRG keys are k_0, k_1, k_2, k_3, we let Party i holds k_i--self, k_i+1 --next, k_i+2--next next
-//    Each x_i, k_i is unknown to next party P_i+1
+//    Differently from the paper, we let Party i (i in {0, 1, 2, 3}) holds x_i,
+//    x_i+1, x_i+2 (mod 4) Similarly in prg_state.h, PRG keys are k_0, k_1, k_2,
+//    k_3, we let Party i holds k_i--self, k_i+1 --next, k_i+2--next next Each
+//    x_i, k_i is unknown to next party P_i+1
 
 //  If use optimized protocol, define OPTIMIZED_F4 in jmp.h
 
@@ -55,14 +56,19 @@ void regFantastic4Protocol(SPUContext* ctx,
   // Register standard shape ops
   regStandardShapeOps(ctx);
 
-
   // register arithmetic & binary kernels
   ctx->prot()
       ->regKernel<
-          fantastic4::P2A, fantastic4::V2A, fantastic4::A2P, fantastic4::A2V,fantastic4::AddAA, fantastic4::AddAP, fantastic4::NegateA,fantastic4::MulAP, fantastic4::MulAA, fantastic4::MatMulAP, fantastic4::MatMulAA, fantastic4::LShiftA, fantastic4::TruncAPr,
-          fantastic4::CommonTypeB, fantastic4::CastTypeB, fantastic4::B2P, fantastic4::P2B, fantastic4::XorBB, fantastic4::XorBP, fantastic4::AndBP, fantastic4::AndBB,
-          fantastic4::LShiftB, fantastic4::RShiftB, fantastic4::ARShiftB, fantastic4::BitrevB, fantastic4::A2B, fantastic4::B2A, fantastic4::MsbA2B, fantastic4::RandA, fantastic4::EqualAP, fantastic4::EqualAA
-          >();
+          fantastic4::P2A, fantastic4::V2A, fantastic4::A2P, fantastic4::A2V,
+          fantastic4::AddAA, fantastic4::AddAP, fantastic4::NegateA,
+          fantastic4::MulAP, fantastic4::MulAA, fantastic4::MatMulAP,
+          fantastic4::MatMulAA, fantastic4::LShiftA, fantastic4::TruncAPr,
+          fantastic4::CommonTypeB, fantastic4::CastTypeB, fantastic4::B2P,
+          fantastic4::P2B, fantastic4::XorBB, fantastic4::XorBP,
+          fantastic4::AndBP, fantastic4::AndBB, fantastic4::LShiftB,
+          fantastic4::RShiftB, fantastic4::ARShiftB, fantastic4::BitrevB,
+          fantastic4::A2B, fantastic4::B2A, fantastic4::MsbA2B,
+          fantastic4::RandA, fantastic4::EqualAP, fantastic4::EqualAA>();
 }
 
 std::unique_ptr<SPUContext> makeFantastic4Protocol(

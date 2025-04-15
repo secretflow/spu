@@ -24,7 +24,6 @@
 
 namespace spu::mpc::fantastic4 {
 
-
 class A2P : public UnaryKernel {
  public:
   static constexpr const char* kBindName() { return "a2p"; }
@@ -109,8 +108,6 @@ class V2A : public UnaryKernel {
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
 };
-
-
 
 class RandA : public RandKernel {
  public:
@@ -197,8 +194,6 @@ class MulAA : public BinaryKernel {
                   const NdArrayRef& rhs) const override;
 };
 
-
-
 // ////////////////////////////////////////////////////////////////////
 // // matmul family
 // ////////////////////////////////////////////////////////////////////
@@ -268,4 +263,4 @@ class TruncAPr : public TruncAKernel {
   }
 };
 
-}
+}  // namespace spu::mpc::fantastic4

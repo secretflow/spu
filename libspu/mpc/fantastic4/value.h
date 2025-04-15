@@ -27,7 +27,8 @@ NdArrayRef getSecondShare(const NdArrayRef& in);
 
 NdArrayRef getThirdShare(const NdArrayRef& in);
 
-NdArrayRef makeAShare(const NdArrayRef& s1, const NdArrayRef& s2, const NdArrayRef& s3, FieldType field);
+NdArrayRef makeAShare(const NdArrayRef& s1, const NdArrayRef& s2,
+                      const NdArrayRef& s3, FieldType field);
 
 PtType calcBShareBacktype(size_t nbits);
 
@@ -53,4 +54,4 @@ std::vector<T> getShareAs(const NdArrayRef& in, size_t share_idx) {
 
 #define PFOR_GRAIN_SIZE 8192
 
-}
+}  // namespace spu::mpc::fantastic4

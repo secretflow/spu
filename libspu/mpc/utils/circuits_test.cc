@@ -221,15 +221,14 @@ TEST(CarryOutTest, Vectorized) {
   }
 }
 
-
 std::vector<std::vector<uint8_t>> kU8FullAdder = {
-    {0, 0, 0, 0, 0}, // A=0, B=0, Cin=0 => S=0, Cout=0
-    {0, 0, 1, 1, 0}, // A=0, B=0, Cin=1 => S=1, Cout=0
-    {0, 1, 0, 1, 0}, // A=0, B=1, Cin=0 => S=1, Cout=0
-    {0, 1, 1, 0, 1}, // A=0, B=1, Cin=1 => S=0, Cout=1
-    {1, 0, 0, 1, 0}, // A=1, B=0, Cin=0 => S=1, Cout=0
-    {1, 0, 1, 0, 1}, // A=1, B=0, Cin=1 => S=0, Cout=1
-    {1, 1, 0, 0, 1}, // A=1, B=1, Cin=0 => S=0, Cout=1
+    {0, 0, 0, 0, 0},  // A=0, B=0, Cin=0 => S=0, Cout=0
+    {0, 0, 1, 1, 0},  // A=0, B=0, Cin=1 => S=1, Cout=0
+    {0, 1, 0, 1, 0},  // A=0, B=1, Cin=0 => S=1, Cout=0
+    {0, 1, 1, 0, 1},  // A=0, B=1, Cin=1 => S=0, Cout=1
+    {1, 0, 0, 1, 0},  // A=1, B=0, Cin=0 => S=1, Cout=0
+    {1, 0, 1, 0, 1},  // A=1, B=0, Cin=1 => S=0, Cout=1
+    {1, 1, 0, 0, 1},  // A=1, B=1, Cin=0 => S=0, Cout=1
     {1, 1, 1, 1, 1},  // A=1, B=1, Cin=1 => S=1, Cout=1
 };
 
@@ -241,10 +240,10 @@ TEST(FullAdderTest, Scalar) {
     const auto y = item[1];
     const auto cin = item[2];
     ASSERT_EQ(full_adder(cbb, x, y, cin)[0], item[3])
-      << std::hex << x << " " << y << " " << cin ;
+        << std::hex << x << " " << y << " " << cin;
 
     ASSERT_EQ(full_adder(cbb, x, y, cin)[1], item[4])
-      << std::hex << x << " " << y << " " << cin ;
+        << std::hex << x << " " << y << " " << cin;
   }
 }
 
@@ -261,8 +260,10 @@ TEST(FullAdderTest, Vectorized) {
 
   auto cbb = makeVectorCBB<VT>();
   auto res = full_adder(cbb, args[0], args[1], args[2]);
-  EXPECT_THAT(res[0], testing::ElementsAreArray(args[3].begin(), args[3].end()));
-  EXPECT_THAT(res[1], testing::ElementsAreArray(args[4].begin(), args[4].end()));
+  EXPECT_THAT(res[0],
+              testing::ElementsAreArray(args[3].begin(), args[3].end()));
+  EXPECT_THAT(res[1],
+              testing::ElementsAreArray(args[4].begin(), args[4].end()));
 }
 
 }  // namespace spu::mpc

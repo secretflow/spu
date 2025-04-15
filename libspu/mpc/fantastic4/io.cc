@@ -13,12 +13,14 @@
 // limitations under the License.
 
 #include "libspu/mpc/fantastic4/io.h"
+
 #include "yacl/crypto/rand/rand.h"
 #include "yacl/crypto/tools/prg.h"
+
 #include "libspu/core/context.h"
+#include "libspu/mpc/common/pv2k.h"
 #include "libspu/mpc/fantastic4/type.h"
 #include "libspu/mpc/fantastic4/value.h"
-#include "libspu/mpc/common/pv2k.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc::fantastic4 {
@@ -36,8 +38,9 @@ Type Fantastic4Io::getShareType(Visibility vis, int owner_rank) const {
   SPU_THROW("unsupported vis type {}", vis);
 }
 
-std::vector<NdArrayRef> Fantastic4Io::toShares(const NdArrayRef& raw, Visibility vis,
-                                         int owner_rank) const {
+std::vector<NdArrayRef> Fantastic4Io::toShares(const NdArrayRef& raw,
+                                               Visibility vis,
+                                               int owner_rank) const {
   SPU_ENFORCE(raw.eltype().isa<RingTy>(), "expected RingTy, got {}",
               raw.eltype());
   const auto field = raw.eltype().as<Ring2k>()->field();
@@ -72,9 +75,11 @@ std::vector<NdArrayRef> Fantastic4Io::toShares(const NdArrayRef& raw, Visibility
       std::vector<NdArrayRef> shares;
 
       // Secret is split into 4 shares x_0, x_1, x_2, x_3
-      // In our implementation, we let Party i (i in {0, 1, 2, 3}) holds x_i, x_i+1, x_i+2
+      // In our implementation, we let Party i (i in {0, 1, 2, 3}) holds x_i,
+      // x_i+1, x_i+2
       for (std::size_t i = 0; i < 4; i++) {
-        shares.push_back(makeAShare(splits[i], splits[(i + 1) % 4], splits[(i + 2) % 4], field));
+        shares.push_back(makeAShare(splits[i], splits[(i + 1) % 4],
+                                    splits[(i + 2) % 4], field));
       }
       return shares;
     }
@@ -88,7 +93,8 @@ size_t Fantastic4Io::getBitSecretShareSize(size_t numel) const {
   return numel * type.size();
 }
 
-std::vector<NdArrayRef> Fantastic4Io::makeBitSecret(const PtBufferView& in) const {
+std::vector<NdArrayRef> Fantastic4Io::makeBitSecret(
+    const PtBufferView& in) const {
   PtType in_pt_type = in.pt_type;
   SPU_ENFORCE(in_pt_type == PT_I1);
 
@@ -100,10 +106,9 @@ std::vector<NdArrayRef> Fantastic4Io::makeBitSecret(const PtBufferView& in) cons
   const auto out_type = makeType<BShrTy>(PT_U8, /* out_nbits */ 1);
   const size_t numel = in.shape.numel();
 
-  std::vector<NdArrayRef> shares = {NdArrayRef(out_type, in.shape),
-                                    NdArrayRef(out_type, in.shape),
-                                    NdArrayRef(out_type, in.shape),
-                                    NdArrayRef(out_type, in.shape)};
+  std::vector<NdArrayRef> shares = {
+      NdArrayRef(out_type, in.shape), NdArrayRef(out_type, in.shape),
+      NdArrayRef(out_type, in.shape), NdArrayRef(out_type, in.shape)};
 
   using bshr_el_t = uint8_t;
   using bshr_t = std::array<bshr_el_t, 3>;
@@ -122,7 +127,8 @@ std::vector<NdArrayRef> Fantastic4Io::makeBitSecret(const PtBufferView& in) cons
   NdArrayView<bshr_t> _s3(shares[3]);
 
   // Secret is split into 4 shares x_0, x_1, x_2, x_3
-  // In our implementation, we let Party i (i in {0, 1, 2, 3}) holds x_i, x_i+1, x_i+2
+  // In our implementation, we let Party i (i in {0, 1, 2, 3}) holds x_i, x_i+1,
+  // x_i+2
   for (size_t idx = 0; idx < numel; idx++) {
     const bshr_el_t r3 =
         static_cast<bshr_el_t>(in.get<bool>(idx)) ^ r0[idx] ^ r1[idx] ^ r2[idx];
@@ -150,7 +156,8 @@ std::vector<NdArrayRef> Fantastic4Io::makeBitSecret(const PtBufferView& in) cons
   return shares;
 }
 
-NdArrayRef Fantastic4Io::fromShares(const std::vector<NdArrayRef>& shares) const {
+NdArrayRef Fantastic4Io::fromShares(
+    const std::vector<NdArrayRef>& shares) const {
   const auto& eltype = shares.at(0).eltype();
   if (eltype.isa<Pub2kTy>()) {
     SPU_ENFORCE(field_ == eltype.as<Ring2k>()->field());
@@ -211,4 +218,4 @@ std::unique_ptr<Fantastic4Io> makeFantastic4Io(FieldType field, size_t npc) {
   return std::make_unique<Fantastic4Io>(field, npc);
 }
 
-}
+}  // namespace spu::mpc::fantastic4

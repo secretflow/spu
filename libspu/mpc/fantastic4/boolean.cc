@@ -13,16 +13,17 @@
 // limitations under the License.
 
 #include "libspu/mpc/fantastic4/boolean.h"
+
 #include <algorithm>
+
 #include "libspu/core/bit_utils.h"
 #include "libspu/core/parallel_utils.h"
-#include "libspu/mpc/fantastic4/type.h"
-#include "libspu/mpc/fantastic4/value.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pv2k.h"
-
 #include "libspu/mpc/fantastic4/jmp.h"
+#include "libspu/mpc/fantastic4/type.h"
+#include "libspu/mpc/fantastic4/value.h"
 
 namespace spu::mpc::fantastic4 {
 
@@ -81,7 +82,7 @@ NdArrayRef B2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
       NdArrayView<bshr_t> _in(in);
       std::vector<bshr_el_t> x1(in.numel());
       std::vector<bshr_el_t> x2(in.numel());
-      pforeach(0, in.numel(), [&](int64_t idx){
+      pforeach(0, in.numel(), [&](int64_t idx) {
         x1[idx] = _in[idx][1];
         x2[idx] = _in[idx][2];
       });
@@ -159,17 +160,21 @@ NdArrayRef XorBP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
           _out[idx][0] = l[0];
           _out[idx][1] = l[1];
           _out[idx][2] = l[2];
-          if (rank == 0) {_out[idx][0] ^= r;}
-          if (rank == 2) {_out[idx][2] ^= r;}
-          if (rank == 3) {_out[idx][1] ^= r;}
+          if (rank == 0) {
+            _out[idx][0] ^= r;
+          }
+          if (rank == 2) {
+            _out[idx][2] ^= r;
+          }
+          if (rank == 3) {
+            _out[idx][1] ^= r;
+          }
         });
         return out;
       });
     });
   });
 }
-
-
 
 NdArrayRef XorBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
                        const NdArrayRef& rhs) const {
@@ -264,9 +269,10 @@ NdArrayRef AndBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
   const size_t out_nbits = std::min(lhs_ty->nbits(), rhs_ty->nbits());
   const PtType out_btype = calcBShareBacktype(out_nbits);
   auto out_ty = makeType<BShrTy>(out_btype, out_nbits);
-  auto out_buf = std::make_shared<yacl::Buffer>(lhs.shape().numel() * out_ty.size());
+  auto out_buf =
+      std::make_shared<yacl::Buffer>(lhs.shape().numel() * out_ty.size());
   memset(out_buf->data(), 0, lhs.shape().numel() * out_ty.size());
-  NdArrayRef out(out_buf ,out_ty, lhs.shape());
+  NdArrayRef out(out_buf, out_ty, lhs.shape());
 
   return DISPATCH_UINT_PT_TYPES(rhs_ty->getBacktype(), [&]() {
     using rhs_el_t = ScalarT;
@@ -287,16 +293,21 @@ NdArrayRef AndBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
         std::array<std::vector<out_el_t>, 5> a;
 
         for (auto& vec : a) {
-            vec = std::vector<out_el_t>(lhs.numel());
+          vec = std::vector<out_el_t>(lhs.numel());
         }
 
         pforeach(0, lhs.numel(), [&](int64_t idx) {
           // xi&yi ^ xi&yj ^ xj&yi
-          a[rank][idx] = (_lhs[idx][0] & _rhs[idx][0]) ^ (_lhs[idx][1] & _rhs[idx][0] ) ^ (_lhs[idx][0] & _rhs[idx][1]);
+          a[rank][idx] = (_lhs[idx][0] & _rhs[idx][0]) ^
+                         (_lhs[idx][1] & _rhs[idx][0]) ^
+                         (_lhs[idx][0] & _rhs[idx][1]);
           // xj&yj ^ xj&yg ^ xg&yj
-          a[next_rank][idx] = (_lhs[idx][1]  & _rhs[idx][1] ) ^ (_lhs[idx][2] & _rhs[idx][1] ) ^ (_lhs[idx][1] & _rhs[idx][2]);
+          a[next_rank][idx] = (_lhs[idx][1] & _rhs[idx][1]) ^
+                              (_lhs[idx][2] & _rhs[idx][1]) ^
+                              (_lhs[idx][1] & _rhs[idx][2]);
           // xi&yg ^ xg&yi
-          a[4][idx] = (_lhs[idx][0] & _rhs[idx][2]) ^ (_lhs[idx][2] & _rhs[idx][0]);
+          a[4][idx] =
+              (_lhs[idx][0] & _rhs[idx][2]) ^ (_lhs[idx][2] & _rhs[idx][0]);
         });
 
         JointInputBoolSend<out_el_t>(ctx, a[1], out, 0, 1, 3, 2);
@@ -318,7 +329,6 @@ NdArrayRef AndBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
     });
   });
 }
-
 
 NdArrayRef LShiftB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
                          const Sizes& bits) const {
@@ -513,4 +523,4 @@ NdArrayRef BitDeintlB::proc(KernelEvalContext*, const NdArrayRef& in,
   return out;
 }
 
-} // namespace spu::mpc::fantastic4
+}  // namespace spu::mpc::fantastic4

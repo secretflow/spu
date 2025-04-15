@@ -273,20 +273,18 @@ T carry_out(const CircuitBasicBlock<T>& ctx, const T& x, const T& y,
   return G;
 }
 
-
 // Input: x y cin
 // Output: s = x^y^cin    cout=x^( (x^y) & (x ^ cin) )
 template <typename T>
-std::array<T, 2> full_adder(const CircuitBasicBlock<T>& ctx, const T& x, const T& y, const T& cin) {
-
+std::array<T, 2> full_adder(const CircuitBasicBlock<T>& ctx, const T& x,
+                            const T& y, const T& cin) {
   auto s = ctx._xor(x, ctx._xor(y, cin));
 
-  auto carry_out = ctx._xor(x, ctx._and( ctx._xor(x, y), ctx._xor(x, cin) ));
+  auto carry_out = ctx._xor(x, ctx._and(ctx._xor(x, y), ctx._xor(x, cin)));
 
   std::array<T, 2> res = {s, carry_out};
 
   return res;
 }
-
 
 }  // namespace spu::mpc
