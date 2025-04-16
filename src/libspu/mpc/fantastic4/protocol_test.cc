@@ -24,8 +24,8 @@ namespace {
 
 RuntimeConfig makeConfig(FieldType field) {
   RuntimeConfig conf;
-  conf.set_protocol(ProtocolKind::FANTASTIC4);
-  conf.set_field(field);
+  conf.protocol = ProtocolKind::FANTASTIC4;
+  conf.field = field;
   return conf;
 }
 
@@ -39,7 +39,7 @@ INSTANTIATE_TEST_SUITE_P(
                                      makeConfig(FieldType::FM128)),  //
                      testing::Values(4)),                            //
     [](const testing::TestParamInfo<ApiTest::ParamType>& p) {
-      return fmt::format("{}x{}", std::get<1>(p.param).field(),
+      return fmt::format("{}x{}", std::get<1>(p.param).field,
                          std::get<2>(p.param));
     });
 
@@ -55,7 +55,7 @@ INSTANTIATE_TEST_SUITE_P(
                      // ////////////////////////
                      testing::Values(4)),  //
     [](const testing::TestParamInfo<ArithmeticTest::ParamType>& p) {
-      return fmt::format("{}x{}", std::get<1>(p.param).field(),
+      return fmt::format("{}x{}", std::get<1>(p.param).field,
                          std::get<2>(p.param));
     });
 
@@ -67,7 +67,7 @@ INSTANTIATE_TEST_SUITE_P(
                                      makeConfig(FieldType::FM128)),  //
                      testing::Values(4)),                            //
     [](const testing::TestParamInfo<BooleanTest::ParamType>& p) {
-      return fmt::format("{}x{}", std::get<1>(p.param).field(),
+      return fmt::format("{}x{}", std::get<1>(p.param).field,
                          std::get<2>(p.param));
     });
 
@@ -79,7 +79,7 @@ INSTANTIATE_TEST_SUITE_P(
                                      makeConfig(FieldType::FM128)),  //
                      testing::Values(4)),                            //
     [](const testing::TestParamInfo<BooleanTest::ParamType>& p) {
-      return fmt::format("{}x{}", std::get<1>(p.param).field(),
+      return fmt::format("{}x{}", std::get<1>(p.param).field,
                          std::get<2>(p.param));
     });
 

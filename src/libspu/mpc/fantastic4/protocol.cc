@@ -39,7 +39,7 @@ void regFantastic4Protocol(SPUContext* ctx,
                            const std::shared_ptr<yacl::link::Context>& lctx) {
   fantastic4::registerTypes();
 
-  ctx->prot()->addState<Z2kState>(ctx->config().field());
+  ctx->prot()->addState<Z2kState>(ctx->config().field);
 
   // add communicator
   ctx->prot()->addState<Communicator>(lctx);

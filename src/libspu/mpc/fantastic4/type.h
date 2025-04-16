@@ -16,6 +16,8 @@
 
 #include "libspu/core/type.h"
 
+#include "magic_enum.hpp"
+
 namespace spu::mpc::fantastic4 {
 
 class AShrTy : public TypeImpl<AShrTy, RingTy, Secret, AShare> {
@@ -52,13 +54,14 @@ class BShrTy : public TypeImpl<BShrTy, TypeObject, Secret, BShare> {
     auto comma = detail.find_first_of(',');
     auto back_type_str = detail.substr(0, comma);
     auto nbits_str = detail.substr(comma + 1);
-    SPU_ENFORCE(PtType_Parse(std::string(back_type_str), &back_type_),
-                "parse failed from={}", detail);
+    auto back_type = magic_enum::enum_cast<PtType>(back_type_str);
+    SPU_ENFORCE(back_type.has_value(), "parse failed from={}", detail);
+    back_type_ = back_type.value();
     nbits_ = std::stoul(std::string(nbits_str));
   }
 
-  std::string toString() const override {
-    return fmt::format("{},{}", PtType_Name(back_type_), nbits_);
+  std::string toString() const {
+    return fmt::format("{},{}", magic_enum::enum_name(back_type_), nbits_);
   }
 
   // 3-out-of-4 shares

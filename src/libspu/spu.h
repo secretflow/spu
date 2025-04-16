@@ -121,6 +121,11 @@ enum ProtocolKind {
   // A semi-honest 3PC-protocol for Neural Network, P2 as the helper,
   // (https://eprint.iacr.org/2018/442)
   SECURENN = 5,
+
+  // A malicious 4PC-protocol for mixed-circuit computation.
+  // We provide some optimizations such as conversions and equality test.
+  // (https://eprint.iacr.org/2020/1330)
+  FANTASTIC4 = 6,
 };
 
 //////////////////////////////////////////////////////////////////////////

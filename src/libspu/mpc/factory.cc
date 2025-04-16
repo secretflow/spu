@@ -78,7 +78,7 @@ std::unique_ptr<IoInterface> Factory::CreateIO(const RuntimeConfig& conf,
       return securenn::makeSecurennIo(conf.field, npc);
     }
     case ProtocolKind::FANTASTIC4: {
-      return fantastic4::makeFantastic4Io(conf.field(), npc);
+      return fantastic4::makeFantastic4Io(conf.field, npc);
     }
     default: {
       SPU_THROW("Invalid protocol kind {}", conf.protocol);
