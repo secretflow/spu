@@ -32,9 +32,16 @@ local_path_override(
     path = "src",
 )
 
-bazel_dep(name = "psi", version = "0.6.0.dev250123")
+bazel_dep(name = "psi", version = "0.6.0.dev250416")
 bazel_dep(name = "yacl", version = "0.4.5b10-nightly-20250110")
 bazel_dep(name = "grpc", version = "1.66.0.bcr.4")
+
+# pin grpc@1.66.0.bcr.4
+single_version_override(
+    module_name = "grpc",
+    version = "1.66.0.bcr.4",
+)
+
 bazel_dep(name = "protobuf", version = "27.3")
 single_version_override(
     module_name = "protobuf",
