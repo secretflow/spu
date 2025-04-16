@@ -200,6 +200,11 @@ class Fantastic4MacState : public State {
                       backup, "mac" + std::to_string(sender) +
                                   std::to_string(backup) +
                                   std::to_string(my_rank_));
+                  // if eq = 0
+                  //   MAC mismatch
+                  //
+                  // else
+                  //   MAC match
                   bool eq = 1;
                   // For each byte
                   for (int64_t idx = 0; idx < mac_len_; idx++) {
@@ -207,13 +212,6 @@ class Fantastic4MacState : public State {
                         recv_mac_[sender * 4 + backup][idx]) {
                       eq = 0;
                     }
-                  }
-                  if (eq == 0) {
-                    printf("MAC mismatch for (%ld, %ld) to %ld\n", sender,
-                           backup, receiver);
-                  } else {
-                    printf("MAC match for (%ld, %ld) to %ld\n", sender, backup,
-                           receiver);
                   }
                 }
               }
