@@ -159,7 +159,7 @@ NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 }
 
 #else
-// Optimized A2B By Ranyang Liu, Nankai University
+// Optimized A2B
 // The semi-honest A2B of ABY3 fails in malicious settings since the corrupted
 // party could contribute x1 + x2 + err while the honest party Fantastic4 adopts
 // the malicious method of ABY3 that leverages local share conversion with FA
@@ -426,7 +426,7 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 }
 
 #else
-// Optimized B2A By Ranyang Liu, Nankai University
+// Optimized B2A
 // Fantastic4 gives the 4-party generation of edabits based on its A2B
 // Given edabitsthe B2A can be implemented using Binary Adders
 // We take the advantage of 4-party replicated secret sharing
@@ -1154,7 +1154,7 @@ NdArrayRef eqz(KernelEvalContext* ctx, const NdArrayRef& in) {
 }
 
 #else
-// Optimized EQZ By Ranyang Liu, Nankai University
+// Optimized EQZ
 // Fantastic4 gives the 4-party generation of edabits based on its A2B
 // Given edabits the EQZ can be implemented using Binary Adders
 // We take the advantage of 4-party replicated secret sharing

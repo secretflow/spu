@@ -208,6 +208,8 @@ class Fantastic4MacState : public State {
                       eq = 0;
                     }
                   }
+                  // if eq = 0
+                  //    MACs mismatch
                   if (eq == 0) {
                     SPU_THROW("MAC mismatch!");
                   }
