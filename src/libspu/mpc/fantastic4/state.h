@@ -172,25 +172,6 @@ class Fantastic4MacState : public State {
     }
   }
 
-  // print MAC in some time for debug and verify
-  void print_MAC() {
-    for (int64_t sender = 0; sender < 4; sender++) {
-      for (int64_t receiver = 0; receiver < 4; receiver++) {
-        size_t index = sender * 4 + receiver;
-        auto& target_send_mac = send_mac_[index];
-        auto& target_recv_mac = recv_mac_[index];
-        for (int64_t idx = 0; idx < mac_len_; idx++) {
-          printf("My rank = %ld, send_mac_[%ld][%ld][%ld] = %ld\n", my_rank_,
-                 sender, receiver, idx,
-                 static_cast<uint64_t>(target_send_mac[idx]));
-          printf("My rank = %ld, recv_mac_[%ld][%ld][%ld] = %ld\n", my_rank_,
-                 sender, receiver, idx,
-                 static_cast<uint64_t>(target_recv_mac[idx]));
-        }
-      }
-    }
-  }
-
   // An interactive exchange and check of corressponding MACs
   // It is expected to be invoked in the end of computation
   void exchange_check(KernelEvalContext* ctx) {

@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include "libspu/core/type.h"
-
 #include "magic_enum.hpp"
+
+#include "libspu/core/type.h"
 
 namespace spu::mpc::fantastic4 {
 
@@ -60,7 +60,7 @@ class BShrTy : public TypeImpl<BShrTy, TypeObject, Secret, BShare> {
     nbits_ = std::stoul(std::string(nbits_str));
   }
 
-  std::string toString() const {
+  std::string toString() const override {
     return fmt::format("{},{}", magic_enum::enum_name(back_type_), nbits_);
   }
 

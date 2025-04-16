@@ -128,7 +128,7 @@ enum ProtocolKind {
   SECURENN = 5;
 
   // A malicious 4PC-protocol for mixed-circuit computation. 
-  // We provide some optimizations such as truncation, conversions and equality test.
+  // We provide some optimizations such as conversions and equality test.
   // (https://eprint.iacr.org/2020/1330)
   FANTASTIC4 = 6;
 }
