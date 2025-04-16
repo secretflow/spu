@@ -1,5 +1,7 @@
 FROM secretflow/ubuntu-base-ci:latest
 
+RUN apt-get install -y sudo
+
 # Create a non-root user 'vscode' with sudo privileges
 # The user ID 1000 is common for the primary user in Linux distributions.
 # The GID 1000 corresponds to the user's primary group.
