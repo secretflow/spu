@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/mpc/fantastic4/value.h"
+#include "libspu/mpc/experimental/fantastic4/value.h"
 
 #include "libspu/core/prelude.h"
-#include "libspu/mpc/fantastic4/type.h"
+#include "libspu/mpc/experimental/fantastic4/type.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc::fantastic4 {

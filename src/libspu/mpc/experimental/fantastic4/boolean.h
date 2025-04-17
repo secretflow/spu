@@ -15,7 +15,7 @@
 #pragma once
 
 #include "libspu/core/ndarray_ref.h"
-#include "libspu/mpc/fantastic4/value.h"
+#include "libspu/mpc/experimental/fantastic4/value.h"
 #include "libspu/mpc/kernel.h"
 
 namespace spu::mpc::fantastic4 {

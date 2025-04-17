@@ -20,8 +20,8 @@
 #include "libspu/core/context.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
-#include "libspu/mpc/fantastic4/state.h"
-#include "libspu/mpc/fantastic4/value.h"
+#include "libspu/mpc/experimental/fantastic4/state.h"
+#include "libspu/mpc/experimental/fantastic4/value.h"
 #include "libspu/mpc/kernel.h"
 
 namespace spu::mpc::fantastic4 {

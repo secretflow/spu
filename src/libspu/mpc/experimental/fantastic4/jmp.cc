@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/mpc/fantastic4/jmp.h"
+#include "libspu/mpc/experimental/fantastic4/jmp.h"
 
 namespace spu::mpc::fantastic4 {
 // compute previous party's rank

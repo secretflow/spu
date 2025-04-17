@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/mpc/fantastic4/io.h"
+#include "libspu/mpc/experimental/fantastic4/io.h"
 
 #include "yacl/crypto/rand/rand.h"
 #include "yacl/crypto/tools/prg.h"
 
 #include "libspu/core/context.h"
 #include "libspu/mpc/common/pv2k.h"
-#include "libspu/mpc/fantastic4/type.h"
-#include "libspu/mpc/fantastic4/value.h"
+#include "libspu/mpc/experimental/fantastic4/type.h"
+#include "libspu/mpc/experimental/fantastic4/value.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc::fantastic4 {

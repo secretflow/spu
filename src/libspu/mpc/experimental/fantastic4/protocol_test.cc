@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/mpc/fantastic4/protocol.h"
+#include "libspu/mpc/experimental/fantastic4/protocol.h"
 
 #include "libspu/mpc/ab_api.h"
 #include "libspu/mpc/ab_api_test.h"

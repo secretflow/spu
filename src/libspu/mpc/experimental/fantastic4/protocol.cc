@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/mpc/fantastic4/protocol.h"
+#include "libspu/mpc/experimental/fantastic4/protocol.h"
 
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pv2k.h"
-#include "libspu/mpc/fantastic4/arithmetic.h"
-#include "libspu/mpc/fantastic4/boolean.h"
-#include "libspu/mpc/fantastic4/conversion.h"
-#include "libspu/mpc/fantastic4/state.h"
-#include "libspu/mpc/fantastic4/type.h"
+#include "libspu/mpc/experimental/fantastic4/arithmetic.h"
+#include "libspu/mpc/experimental/fantastic4/boolean.h"
+#include "libspu/mpc/experimental/fantastic4/conversion.h"
+#include "libspu/mpc/experimental/fantastic4/state.h"
+#include "libspu/mpc/experimental/fantastic4/type.h"
 #include "libspu/mpc/standard_shape/protocol.h"
 
 namespace spu::mpc {

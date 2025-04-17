@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/mpc/fantastic4/arithmetic.h"
+#include "libspu/mpc/experimental/fantastic4/arithmetic.h"
 
 #include <future>
 
@@ -20,9 +20,9 @@
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pv2k.h"
-#include "libspu/mpc/fantastic4/jmp.h"
-#include "libspu/mpc/fantastic4/type.h"
-#include "libspu/mpc/fantastic4/value.h"
+#include "libspu/mpc/experimental/fantastic4/jmp.h"
+#include "libspu/mpc/experimental/fantastic4/type.h"
+#include "libspu/mpc/experimental/fantastic4/value.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
 #ifdef OPTIMIZED_F4
