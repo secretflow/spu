@@ -19,34 +19,43 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.17.0\n"
 
+#: ../../index.rst:7
 msgid "SPU"
+msgstr "SPU"
+
+#: ../../index.rst:9
+msgid ""
+"SPU(Secure Processing Unit) consists of a frontend **compiler** and a "
+"backend **runtime**. The frontend compiler accepts an ML program as input"
+" and converts it into an **MPC-specific intermediate representation**. "
+"After a series of delicate code optimizations, programs will be executed "
+"by a performant backend runtime as MPC protocols. Based on SPU, we can "
+"run ML programs of different frameworks with minor modifications in a "
+"privacy-preserving manner."
 msgstr ""
+"安全处理单元 (SPU) 由前端**编译器**和后端**运行时**环境组成。"
+"前端编译器接受机器学习项目作为输入，并将其转换为 **MPC特定中间表示**。"
+"经过一系列精细的代码优化后，程序将作为 MPC 协议在高性能后端环境运行。"
+"使用 SPU，我们只需稍作修改就可以以保护隐私的方式运行不同框架的 ML 程序。"
 
-msgid "SPU (安全处理单元) 由前端 **编译器** 以及后端 **运行时** 环境组成。"
-msgstr "安全处理单元 (SPU) 由前端**编译器**和后端**运行时**环境组成。"
-
-msgid "前端编译器接受机器学习项目作为输入并将其转换为 **多方安全计算 (MPC) 的特定中间表征形式**。"
-msgstr "前端编译器接受机器学习项目作为输入，并将其转换为 **MPC特定中间表示**。"
-
-msgid "经过一系列精细的代码优化后，程序将作为 MPC 协议在高性能后端环境运行。"
+#: ../../index.rst:14
+msgid ""
+"SPU is a major part of `SecretFlow "
+"<https://www.secretflow.org.cn/docs/secretflow/en/>`_ project. SPU is "
+"designed to be easily integrated into other distributed system, it's "
+"**recommended to use** SecretFlow to write SPU program."
 msgstr ""
+"SPU 是 `SecretFlow <https://www.secretflow.org.cn/docs/secretflow/en/>`_ 项目的重要组成部分。"
+"SPU 被设计为易于集成到其他分布式系统中，**建议使用** SecretFlow 编写 SPU 程序。"
 
-msgid "使用 SPU，我们只需稍作修改就可以以保护隐私的方式运行不同框架的 ML 程序。"
+#: ../../index.rst:19
+msgid "Citing"
 msgstr ""
+"引用本文"
 
-msgid "SPU 是 `SecretFlow <https://www.secretflow.org.cn/docs/secretflow/en/>`_ 项目的重要组成部分。"
+#: ../../index.rst:21
+msgid ""
+"SPU was accepted by USENIX ATC'23. Please check the paper `here "
+"<https://www.usenix.org/conference/atc23/presentation/ma>`_."
 msgstr ""
-
-msgid "SPU 被设计为易于集成到其他分布式系统中，**建议使用** SecretFlow 编写 SPU 程序。"
-msgstr ""
-
-msgid "引用本文"
-msgstr ""
-
-msgid "SPU 被 USENIX ATC'23 接受。请在 `此处 <https://www.usenix.org/conference/atc23/presentation/ma>`_ 查看论文。"
-msgstr ""
-
-msgid "@inproceedings {288747,\n      author = {Junming Ma and Yancheng Zheng and Jun Feng and Derun Zhao and Haoqi Wu and Wenjing Fang and Jin Tan and Chaofan Yu and Benyu Zhang and Lei Wang},\n      title = {{SecretFlow-SPU}: A Performant and {User-Friendly} Framework for {Privacy-Preserving} Machine Learning},\n      booktitle = {2023 USENIX Annual Technical Conference (USENIX ATC 23)},\n      year = {2023},\n      isbn = {978-1-939133-35-9},\n      address = {Boston, MA},\n      pages = {17--33},\n      url = {https://www.usenix.org/conference/atc23/presentation/ma},\n      publisher = {USENIX Association},\n      month = jul,\n   }"
-msgstr ""
-
-
+"SPU 被 USENIX ATC'23 接受。请在 `此处 <https://www.usenix.org/conference/atc23/presentation/ma>`_ 查看论文。"
