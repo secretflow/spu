@@ -19,9 +19,10 @@ import jax.numpy as jnp
 import numpy as np
 from sklearn import metrics
 from sklearn.metrics import average_precision_score as sk_average_precision_score
+from sklearn.metrics import brier_score_loss as sk_brier_score_loss
 
 # add ops dir to the path
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../'))
+sys.path.append(os.path.join(os.path.dirname(__file__), "../../"))
 
 import sml.utils.emulation as emulation
 from sml.metrics.classification.classification import (
@@ -31,6 +32,7 @@ from sml.metrics.classification.classification import (
     precision_score,
     recall_score,
     roc_auc_score,
+    brier_score_loss,
 )
 
 
@@ -50,7 +52,7 @@ def emul_auc(mode: emulation.Mode.MULTIPROCESS):
 
 
 def emul_Classification(mode: emulation.Mode.MULTIPROCESS):
-    def proc(y_true, y_pred, average='binary', labels=None, pos_label=1, transform=1):
+    def proc(y_true, y_pred, average="binary", labels=None, pos_label=1, transform=1):
         f1 = f1_score(
             y_true,
             y_pred,
@@ -78,7 +80,7 @@ def emul_Classification(mode: emulation.Mode.MULTIPROCESS):
         accuracy = accuracy_score(y_true, y_pred)
         return f1, precision, recall, accuracy
 
-    def sklearn_proc(y_true, y_pred, average='binary', labels=None, pos_label=1):
+    def sklearn_proc(y_true, y_pred, average="binary", labels=None, pos_label=1):
         f1 = metrics.f1_score(
             y_true, y_pred, average=average, labels=labels, pos_label=pos_label
         )
@@ -99,7 +101,7 @@ def emul_Classification(mode: emulation.Mode.MULTIPROCESS):
     y_true = jnp.array([0, 1, 1, 0, 1, 1])
     y_pred = jnp.array([0, 0, 1, 0, 1, 1])
     spu_result = emulator.run(proc, static_argnums=(2, 5))(
-        *emulator.seal(y_true, y_pred), 'binary', None, 1, False
+        *emulator.seal(y_true, y_pred), "binary", None, 1, False
     )
     sk_result = sklearn_proc(y_true, y_pred)
     check(spu_result, sk_result)
@@ -185,6 +187,42 @@ def emul_average_precision_score(mode: emulation.Mode.MULTIPROCESS):
         check(sk_res, spu_res)
 
 
+def emul_brier_score_loss(mode: emulation.Mode.MULTIPROCESS):
+    def proc_binary(y_true, y_proba, **kwargs):
+        sk_res = sk_brier_score_loss(y_true, y_proba, **kwargs)
+        spu_res = emulator.run(brier_score_loss)(
+            *emulator.seal(y_true, y_proba), **kwargs
+        )
+        return sk_res, spu_res
+
+    def check(res1, res2):
+        np.testing.assert_allclose(res1, res2, rtol=1e-3, atol=1e-3)
+
+    # Test 1: basic binary case
+    y_true = jnp.array([0, 1, 1, 0, 1], dtype=jnp.int32)
+    y_proba = jnp.array([0.1, 0.8, 0.7, 0.4, 0.9], dtype=jnp.float32)
+    check(*proc_binary(y_true, y_proba))
+
+    # Test 2: pos_label = 0
+    y_true = jnp.array([0, 0, 1, 1], dtype=jnp.int32)
+    y_proba = jnp.array([0.9, 0.8, 0.2, 0.1], dtype=jnp.float32)
+    check(*proc_binary(y_true, y_proba, pos_label=0))
+
+    # Test 3: with sample_weight
+    weights = jnp.array([1, 2, 1, 1], dtype=jnp.float32)
+    check(*proc_binary(y_true, y_proba, sample_weight=weights, pos_label=0))
+
+    # Test 4: all positives
+    y_true = jnp.array([1, 1, 1, 1], dtype=jnp.int32)
+    y_proba = jnp.array([0.8, 0.7, 0.9, 0.6], dtype=jnp.float32)
+    check(*proc_binary(y_true, y_proba))
+
+    # Test 5: edge probas (0 or 1)
+    y_true = jnp.array([0, 1, 0, 1], dtype=jnp.int32)
+    y_proba = jnp.array([0.0, 1.0, 0.0, 1.0], dtype=jnp.float32)
+    check(*proc_binary(y_true, y_proba))
+
+
 if __name__ == "__main__":
     try:
         # bandwidth and latency only work for docker mode
@@ -198,5 +236,6 @@ if __name__ == "__main__":
         emul_auc(emulation.Mode.MULTIPROCESS)
         emul_Classification(emulation.Mode.MULTIPROCESS)
         emul_average_precision_score(emulation.Mode.MULTIPROCESS)
+        emul_brier_score_loss(emulation.Mode.MULTIPROCESS)
     finally:
         emulator.down()
