@@ -31,6 +31,9 @@ namespace spu::mpc {
 // 2. private, each party get different local random variable.
 // 3. correlated, for instance zero sharing.
 class PrgState : public State {
+  // number of parties
+  size_t world_size_ = 0;
+
   // public seed, known to all parties.
   uint128_t pub_seed_ = 0;
   uint64_t pub_counter_ = 0;
@@ -44,6 +47,16 @@ class PrgState : public State {
   uint128_t next_seed_ = 0;
   uint64_t r0_counter_ = 0;  // cnt for self_seed
   uint64_t r1_counter_ = 0;  // cnt for next_seed
+
+  //  For Rep4
+  //    Secret is split into 4 shares x_0, x_1, x_2, x_3, we let Party i (i in
+  //    {0, 1, 2, 3}) holds x_i, x_i+1, x_i+2
+  //  Similarly
+  //    Preprocessed PRG keys are k_0, k_1, k_2, k_3, we let Party i (i in {0,
+  //    1, 2, 3}) k_i--self, k_i+1 --next, k_i+2--next next
+  //  Each ki is unknown to next party P_i+1
+  uint128_t next_next_seed_ = 0;
+  uint64_t r2_counter_ = 0;
 
  public:
   static constexpr const char* kBindName() { return "PrgState"; }
@@ -72,7 +85,7 @@ class PrgState : public State {
   // This correlation could be used to construct zero shares.
   //
   // Note: ignore_first, ignore_second is for perf improvement.
-  enum class GenPrssCtrl { Both, First, Second };
+  enum class GenPrssCtrl { Both, First, Second, /* For Rep4 */ Third, All };
   std::pair<NdArrayRef, NdArrayRef> genPrssPair(FieldType field,
                                                 const Shape& shape,
                                                 GenPrssCtrl ctrl);
@@ -95,6 +108,53 @@ class PrgState : public State {
             kAesType, self_seed_, 0, r0_counter_, absl::MakeSpan(r0, numel));
         r1_counter_ = yacl::crypto::FillPRand(
             kAesType, next_seed_, 0, r1_counter_, absl::MakeSpan(r1, numel));
+        return;
+      }
+      case GenPrssCtrl::Third:
+      case GenPrssCtrl::All: {
+        SPU_THROW("PrssPair has only 2 elements!");
+        return;
+      }
+    }
+  }
+
+  // For Fantastic Four, each party has 3 PRGs
+  //                     every three parties have a common PRG
+  // Use fillPrssTuple to Non-interactively generate common randomness
+  template <typename T>
+  void fillPrssTuple(T* r0, T* r1, T* r2, size_t numel, GenPrssCtrl ctrl) {
+    switch (ctrl) {
+      case GenPrssCtrl::First: {
+        r0_counter_ = yacl::crypto::FillPRand(
+            kAesType, self_seed_, 0, r0_counter_, absl::MakeSpan(r0, numel));
+        return;
+      }
+      case GenPrssCtrl::Second: {
+        r1_counter_ = yacl::crypto::FillPRand(
+            kAesType, next_seed_, 0, r1_counter_, absl::MakeSpan(r1, numel));
+        return;
+      }
+      case GenPrssCtrl::Both: {
+        r0_counter_ = yacl::crypto::FillPRand(
+            kAesType, self_seed_, 0, r0_counter_, absl::MakeSpan(r0, numel));
+        r1_counter_ = yacl::crypto::FillPRand(
+            kAesType, next_seed_, 0, r1_counter_, absl::MakeSpan(r1, numel));
+        return;
+      }
+      case GenPrssCtrl::Third: {
+        r2_counter_ =
+            yacl::crypto::FillPRand(kAesType, next_next_seed_, 0, r2_counter_,
+                                    absl::MakeSpan(r2, numel));
+        return;
+      }
+      case GenPrssCtrl::All: {
+        r0_counter_ = yacl::crypto::FillPRand(
+            kAesType, self_seed_, 0, r0_counter_, absl::MakeSpan(r0, numel));
+        r1_counter_ = yacl::crypto::FillPRand(
+            kAesType, next_seed_, 0, r1_counter_, absl::MakeSpan(r1, numel));
+        r2_counter_ =
+            yacl::crypto::FillPRand(kAesType, next_next_seed_, 0, r2_counter_,
+                                    absl::MakeSpan(r2, numel));
         return;
       }
     }

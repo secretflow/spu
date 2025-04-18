@@ -24,15 +24,20 @@
 namespace spu::mpc {
 
 PrgState::PrgState() {
+  world_size_ = 0;
   pub_seed_ = 0;
 
   priv_seed_ = yacl::crypto::SecureRandSeed();
 
   self_seed_ = 0;
   next_seed_ = 0;
+
+  // For Rep4
+  next_next_seed_ = 0;
 }
 
 PrgState::PrgState(const std::shared_ptr<yacl::link::Context>& lctx) {
+  world_size_ = lctx->WorldSize();
   // synchronize public state.
   {
     uint128_t self_pk = yacl::crypto::SecureRandSeed();
@@ -54,13 +59,21 @@ PrgState::PrgState(const std::shared_ptr<yacl::link::Context>& lctx) {
   {
     self_seed_ = yacl::crypto::SecureRandSeed();
 
-    constexpr char kCommTag[] = "Random:PRSS";
+    // constexpr char kCommTag[] = "Random:PRSS";
 
     // send seed to prev party, receive seed from next party
     lctx->SendAsync(lctx->PrevRank(), yacl::SerializeUint128(self_seed_),
-                    kCommTag);
-    next_seed_ =
-        yacl::DeserializeUint128(lctx->Recv(lctx->NextRank(), kCommTag));
+                    "Random:PRSS next");
+    if (world_size_ == 4) {
+      lctx->SendAsync(lctx->PrevRank(2), yacl::SerializeUint128(self_seed_),
+                      "Random:PRSS next next");
+    }
+    next_seed_ = yacl::DeserializeUint128(
+        lctx->Recv(lctx->NextRank(), "Random:PRSS next"));
+    if (world_size_ == 4) {
+      next_next_seed_ = yacl::DeserializeUint128(
+          lctx->Recv(lctx->NextRank(2), "Random:PRSS next next"));
+    }
   }
 }
 
@@ -71,10 +84,13 @@ std::unique_ptr<State> PrgState::fork() {
   fillPubl(absl::MakeSpan(&new_prg->pub_seed_, 1));
 
   new_prg->priv_seed_ = yacl::crypto::SecureRandSeed();
-
-  fillPrssPair(&new_prg->self_seed_, &new_prg->next_seed_, 1,
-               PrgState::GenPrssCtrl::Both);
-
+  if (world_size_ <= 3) {
+    fillPrssPair(&new_prg->self_seed_, &new_prg->next_seed_, 1,
+                 PrgState::GenPrssCtrl::Both);
+  } else if (world_size_ == 4) {
+    fillPrssTuple(&new_prg->self_seed_, &new_prg->next_seed_,
+                  &new_prg->next_next_seed_, 1, PrgState::GenPrssCtrl::All);
+  }
   return new_prg;
 }
 
