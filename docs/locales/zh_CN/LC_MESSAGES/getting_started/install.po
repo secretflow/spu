@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: SPU \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-03-13 15:10+0800\n"
+"POT-Creation-Date: 2025-04-11 10:12+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -21,111 +21,159 @@ msgstr ""
 
 #: ../../../INSTALLATION.md:1
 msgid "Installation Guidelines"
-msgstr ""
+msgstr "安装指引"
 
 #: ../../../INSTALLATION.md:3
-msgid "Environment"
-msgstr ""
+msgid ""
+"There are three ways to install SPU: using official Docker image, "
+"installing from PyPI, and building from source."
+msgstr "有三种方法可以安装 SPU：一是使用官方 Docker 镜像，二是从 PyPI 安装，三是从源码编译。"
 
 #: ../../../INSTALLATION.md:5
+msgid "Environment"
+msgstr "安装环境"
+
+#: ../../../INSTALLATION.md:7
 msgid "Linux"
 msgstr ""
 
-#: ../../../INSTALLATION.md:7
-msgid "SPU has been tested with the following settings:"
-msgstr ""
-
 #: ../../../INSTALLATION.md:9
+msgid "SPU has been tested with the following settings:"
+msgstr "SPU 已在下列环境中测试过"
+
+#: ../../../INSTALLATION.md:11
 msgid "Ubuntu 22.04"
 msgstr ""
 
-#: ../../../INSTALLATION.md:10
-msgid "python3.10"
+#: ../../../INSTALLATION.md:12
+msgid "Python 3.10 and 3.11"
+msgstr "Python 3.10 和 3.11"
+
+#: ../../../INSTALLATION.md:14
+msgid "macOS"
 msgstr ""
 
-#: ../../../INSTALLATION.md:11
-msgid "8c16g"
-msgstr ""
-
-#: ../../../INSTALLATION.md:13
-msgid "MacOS"
-msgstr ""
-
-#: ../../../INSTALLATION.md:15
+#: ../../../INSTALLATION.md:16
 msgid ""
 "We have conducted some successful preliminary testings on macOS Monterey "
 "14.1 with Apple Silicon."
-msgstr ""
+msgstr "我们在 macOS Monterey 14.1 系统（Apple Silicon 芯片）上已做过初步测试。"
 
-#: ../../../INSTALLATION.md:18
+#: ../../../INSTALLATION.md:19
 msgid "Docker Image"
-msgstr ""
+msgstr "Docker 镜像"
 
-#: ../../../INSTALLATION.md:20
+#: ../../../INSTALLATION.md:21
 msgid ""
 "Please check [official Docker image](https://hub.docker.com/r/secretflow"
 "/ubuntu-base-ci)."
-msgstr ""
+msgstr "`官方 Docker 镜像 <https://hub.docker.com/r/secretflow/ubuntu-base-ci>`_"
 
-#: ../../../INSTALLATION.md:22
-msgid "Binaries"
-msgstr ""
+#: ../../../INSTALLATION.md:23
+msgid "Installing From PyPI"
+msgstr "从 PyPI 安装"
 
-#: ../../../INSTALLATION.md:24
-msgid "From PyPI"
-msgstr ""
-
-#: ../../../INSTALLATION.md:26
+#: ../../../INSTALLATION.md:25
 msgid ""
 "You could install SPU via the [official PyPI "
-"package](https://pypi.org/project/spu/)."
-msgstr ""
+"package](https://pypi.org/project/spu/). Note that SPU current only "
+"support Python 3.10 and 3.11."
+msgstr "你可以从 `官方 PyPI 包 <https://pypi.org/project/spu/>`_ 安装 SPU。注意目前 SPU 仅支持 Python 3.10 和 3.11。"
 
 #: ../../../INSTALLATION.md:32
-msgid "From Source"
-msgstr ""
+msgid "It is recommended to install in a virtual environment, e.g.,"
+msgstr "推荐使用 Python 虚拟环境安装，例如："
 
-#: ../../../INSTALLATION.md:34
+#: ../../../INSTALLATION.md:40
+msgid "Building From Source"
+msgstr "从源码编译安装"
+
+#: ../../../INSTALLATION.md:42
 msgid ""
 "Install dependencies listed "
 "[here](https://github.com/secretflow/spu/blob/main/CONTRIBUTING.md#prerequisite)."
-msgstr ""
+msgstr "安装 `此处 <https://github.com/secretflow/spu/blob/main/CONTRIBUTING.md#prerequisite>`_ 列出的依赖项。"
 
-#: ../../../INSTALLATION.md:35
+#: ../../../INSTALLATION.md:43
 msgid ""
 "For CentOS 7 or Ubuntu 22.04, use corresponding dockerfile below as a "
 "reference:"
-msgstr ""
+msgstr "CentOS 7 和 Ubuntu 22.04 可以使用对应的 dockerfile 作为参考"
 
-#: ../../../INSTALLATION.md:36
+#: ../../../INSTALLATION.md:44
 msgid ""
 "[Ubuntu 22.04 "
 "reference](https://github.com/secretflow/devtools/blob/main/dockerfiles"
 "/ubuntu-base-ci.DockerFile)"
-msgstr ""
+msgstr "`Ubuntu 22.04 参考 <https://github.com/secretflow/devtools/blob/main/dockerfiles/ubuntu-base-ci.DockerFile>`_"
 
-#: ../../../INSTALLATION.md:37
+#: ../../../INSTALLATION.md:45
 msgid ""
 "[CentOS 7 "
 "reference](https://github.com/secretflow/devtools/blob/main/dockerfiles"
 "/release-ci.DockerFile)"
-msgstr ""
+msgstr "`CentOS 7 参考 <https://github.com/secretflow/devtools/blob/main/dockerfiles/release-ci.DockerFile>`_"
 
-#: ../../../INSTALLATION.md:38
+#: ../../../INSTALLATION.md:46
 msgid "At the root of repo, run"
-msgstr ""
+msgstr "在项目根目录下，执行下面的命令："
 
-#: ../../../INSTALLATION.md:45
+#: ../../../INSTALLATION.md:53
+msgid "Note that:"
+msgstr "注意："
+
+#: ../../../INSTALLATION.md:54
+msgid ""
+"This will build with Python 3.11 by default. See [below](#build-with-"
+"specified-python-version) for specifing Python version when building."
+msgstr "上述命令默认使用 Python 3.11 进行项目编译。"
+"如需使用其他 Python 版本，请参考 `使用指定的 Python 版本编译 <#build-with-specified-python-version>`_。"
+
+#: ../../../INSTALLATION.md:55
+msgid ""
+"The Python version used for building (specified in `bazelisk`) must match"
+" the Python version used for `pip install` (can be checked using `pip "
+"-V`). It is recommended to install in a virtual environment."
+msgstr "编译时使用的 Python 版本（通过 :code:`bazelisk` 命令指定）必须与 :code:`pip install` 命令的 Python 版本（可通过 :code:`pip -V` 查看）相同。因此推荐在 Python 虚拟环境中安装。"
+
+#: ../../../INSTALLATION.md:57
 msgid ""
 "Once GCC/bazel/python/Xcode version or other environment settings have "
 "changed, please run the following command to ensure a clean build"
-msgstr ""
+msgstr "一旦 GCC/bazel/python/Xcode 或其他环境发生变化，请运行下面的命令来进行清理："
 
-#: ../../../INSTALLATION.md:51
+#: ../../../INSTALLATION.md:63
 msgid "Build with GPU support"
-msgstr ""
+msgstr "编译带 GPU 支持的版本"
 
-#: ../../../INSTALLATION.md:57
+#: ../../../INSTALLATION.md:65
+msgid "This requires CUDA Toolkit to be installed."
+msgstr "需要系统中已安装 CUDA Toolkit。"
+
+#: ../../../INSTALLATION.md:71
 msgid "Build with specified python version"
-msgstr ""
+msgstr "使用指定的 Python 版本编译"
+
+#~ msgid "python3.10"
+#~ msgstr ""
+
+#~ msgid "8c16g"
+#~ msgstr ""
+
+#~ msgid "MacOS"
+#~ msgstr ""
+
+#~ msgid "Binaries"
+#~ msgstr ""
+
+#~ msgid "From PyPI"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "You could install SPU via the "
+#~ "[official PyPI package](https://pypi.org/project/spu/)."
+#~ msgstr ""
+
+#~ msgid "From Source"
+#~ msgstr ""
 
