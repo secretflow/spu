@@ -26,13 +26,11 @@ from sklearn.datasets import load_digits, load_iris
 from sklearn.manifold import TSNE as SklearnTSNE
 from sklearn.preprocessing import StandardScaler
 
-# Use libspu enums and spsim directly
 import spu.libspu as libspu
 import spu.utils.simulation as spsim
 
-# Add base directory to path to import sml library
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../../'))
-from sml.decomposition.tsne import basic_tsne  # Replace with the actual module name
+from sml.decomposition.tsne import basic_tsne
 
 
 class TestTSNEComparison(unittest.TestCase):
@@ -72,16 +70,15 @@ class TestTSNEComparison(unittest.TestCase):
 
         print(Y_jax[:5, 0], Y_jax[:5, 1])
 
-        # Optional: Visualize the embeddings
+        # Visualize the embeddings
         fig, axes = plt.subplots(1, 2, figsize=(12, 5))
         axes[0].scatter(Y_sklearn[:, 0], Y_sklearn[:, 1], c=y)
         axes[0].set_title("Scikit-learn t-SNE")
         axes[1].scatter(Y_jax[:, 0], Y_jax[:, 1], c=y)
         axes[1].set_title("JAX t-SNE")
 
-        # Save the figure to a file (you can specify your desired path)
         plt.savefig("tsne_comparison.png")
-        plt.close()  # Close the figure after saving to avoid displaying it
+        plt.close()  
 
 
 if __name__ == "__main__":
