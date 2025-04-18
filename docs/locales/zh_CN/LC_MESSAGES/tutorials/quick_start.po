@@ -31,13 +31,13 @@ msgstr "使用 JAX 编写程序"
 msgid ""
 "SPU, as an `XLA <https://www.tensorflow.org/xla>`__ backend, does not provide a high-level programming API by itself, instead, we can use any API that supports the XLA backend to program. In this tutorial, we use `JAX <https://github.com/google/jax>`__ as the programming API and demonstrate how to run a JAX program on SPU."
 msgstr ""
-"作为 `XLA <https://www.tensorflow.org/xla>`__ 后端，SPU 本身不提供高层编程 API。相反，我们可以使用支持 XLA 后端的任何 API 来编程。在此教程中，我们以 `JAX <https://github.com/google/jax>`__ 作为编程接口，并演示如何在 SPU 上运行 JAX 程序。"
+"作为 `XLA <https://www.tensorflow.org/xla>`__ 后端， SPU 本身不提供高层编程 API 。相反，我们可以使用支持 XLA 后端的任何 API 来编程。在此教程中，我们以 `JAX <https://github.com/google/jax>`__ 作为编程接口，并演示如何在 SPU 上运行 JAX 程序。"
 
 #: ../../tutorials/quick_start.ipynb:16
 msgid ""
 "JAX is an AI framework from Google. Users can write the program in NumPy syntax, and let JAX translate it to GPU/TPU for acceleration, please read the following pages before you start:"
 msgstr ""
-"JAX 是 Google 开发的 AI 框架。用户可以用 NumPy 语法编写程序，JAX 会将其转换为 GPU/TPU 进行加速。开始之前，请先阅读以下文档："
+"JAX 是 Google 开发的 AI 框架。用户可以用 NumPy 语法编写程序，然后让 JAX 将其转换到 GPU/TPU 上进行加速。在开始之前，请先阅读以下文档："
 
 #: ../../tutorials/quick_start.ipynb:18
 msgid ""
@@ -49,7 +49,7 @@ msgstr ""
 msgid ""
 "`How to Think in JAX <https://jax.readthedocs.io/en/latest/notebooks/thinking_in_jax.html>`__"
 msgstr ""
-"`如何用 JAX 思考 <https://jax.readthedocs.io/en/latest/notebooks/thinking_in_jax.html>`__"
+"`建立对 JAX 的理解 <https://jax.readthedocs.io/en/latest/notebooks/thinking_in_jax.html>`__"
 
 #: ../../tutorials/quick_start.ipynb:20
 msgid ""
@@ -72,12 +72,12 @@ msgid "Program with SPU"
 msgstr "使用 SPU 编写程序"
 
 #: ../../tutorials/quick_start.ipynb:106
-msgid "Now, let’s convert the above code to an SPU program."
+msgid "Now, let's convert the above code to an SPU program."
 msgstr "现在，我们将把上述代码转换为 SPU 程序。"
 
 #: ../../tutorials/quick_start.ipynb:109
 msgid "A Quick introduction to device system"
-msgstr "设备系统的快速介绍"
+msgstr "设备系统速览"
 
 #: ../../tutorials/quick_start.ipynb:111
 msgid "MPC programs are “designed” to be used in distributed way. In this tutorial, we use SPU builtin distributed framework for demonstration."
@@ -85,7 +85,7 @@ msgstr "MPC 程序是“设计”为分布式方式使用的。在此教程中�
 
 #: ../../tutorials/quick_start.ipynb:113
 msgid "Warn: it’s for demonstration purpose only, you should use an industrial framework like SecretFlow in production."
-msgstr "警告：此功能仅用于演示目的，生产环境中应使用SecretFlow等工业框架。"
+msgstr "警告：此功能仅用于演示目的，生产环境中应使用 SecretFlow 等工业框架。"
 
 #: ../../tutorials/quick_start.ipynb:115
 msgid "To start the ppd cluster. In a separate terminal, run"
@@ -105,7 +105,7 @@ msgstr "集群有三个节点，每个节点都是一个监听指定端口的进
 
 #: ../../tutorials/quick_start.ipynb:231
 msgid "The 3 physical nodes construct 3 virtual devices."
-msgstr "这3个物理节点构建了3个虚拟设备。"
+msgstr "这 3 个物理节点构建了 3 个虚拟设备。"
 
 #: ../../tutorials/quick_start.ipynb:233
 msgid "``P1`` and ``P2`` are so called ``PYU Device``, which is just a simple Python device that can run a python program."
@@ -113,7 +113,7 @@ msgstr "``P1`` 和 ``P2`` 被称为 ``PYU Device``，它们只是可以运行 Py
 
 #: ../../tutorials/quick_start.ipynb:234
 msgid "``SPU`` is a virtual device hosted by all 3-nodes, which use MPC protocols to compute securely."
-msgstr "``SPU`` 是由所有3个节点托管的虚拟设备，它使用 MPC 协议进行安全计算。"
+msgstr "``SPU`` 是由所有 3 个节点托管的虚拟设备，它使用 MPC 协议进行安全计算。"
 
 #: ../../tutorials/quick_start.ipynb:236
 msgid "Virtually, it looks like below picture."
@@ -147,11 +147,11 @@ msgstr "``SPU`` 设备使用 ``ABY3`` 作为其后端协议，并在 ``Ring128``
 
 #: ../../tutorials/quick_start.ipynb:311
 msgid "Move JAX program to SPU"
-msgstr "将JAX程序迁移至SPU"
+msgstr "将 JAX 程序迁移至 SPU "
 
 #: ../../tutorials/quick_start.ipynb:313
 msgid "Now, let’s move the JAX program from CPU to SPU."
-msgstr "现在，我们将把JAX程序从CPU迁移到SPU。"
+msgstr "现在，我们将把 JAX 程序从 CPU 迁移到 SPU。"
 
 #: ../../tutorials/quick_start.ipynb:341
 msgid ""
@@ -177,7 +177,7 @@ msgstr "``make_rand`` 的结果也存储在 ``P1`` 上，对其他设备/节点�
 msgid ""
 "And finally, we can reveal the result via ``ppd.get``, which will fetch "
 "the plaintext from devices to this host(notebook)."
-msgstr "最后，我们可以通过 ``ppd.get`` 揭示结果，它会从设备获取明文到这个主机（notebook）。"
+msgstr "最后，我们可以通过 ``ppd.get`` 揭示结果，它会从设备获取明文到这个主机 （notebook）。"
 
 #: ../../tutorials/quick_start.ipynb:457
 msgid ""
@@ -230,7 +230,7 @@ msgid ""
 "(either feature or label). Now ``P1 and P2`` want to train the model "
 "without telling each other the privacy data, so they use SPU to run the "
 "``train`` function."
-msgstr "``P1`` 只加载特征(X)，``P2`` 只加载标签(Y)，为了方便，P1/P2 使用相同的数据集，但只加载部分数据（特征或标签）。现在 ``P1 和 P2`` 想要在不互相透露隐私数据的情况下训练模型，所以他们使用 SPU 来运行 ``train`` 函数。"
+msgstr "``P1`` 只加载特征 (X)，``P2`` 只加载标签 (Y)，为了方便，P1/P2 使用相同的数据集，但只加载部分数据（特征或标签）。现在 ``P1 和 P2`` 想要在不互相透露隐私数据的情况下训练模型，所以他们使用 SPU 来运行 ``train`` 函数。"
 
 #: ../../tutorials/quick_start.ipynb:671
 msgid ""
@@ -240,7 +240,7 @@ msgstr "运行上述程序需要一些时间，因为隐私保护程序比明文
 
 #: ../../tutorials/quick_start.ipynb:673
 msgid "The parameters W and bias B are also located at SPU (no one knows the result). Finally, let’s reveal the parameters to check correctness."
-msgstr "参数W和偏置B也存储在SPU中（无人知晓明文结果）。最后，我们揭示参数以验证正确性。"
+msgstr "参数 W 和偏置 B 也存储在 SPU 中（无人知晓明文结果）。最后，我们揭示参数以验证正确性。"
 
 #: ../../tutorials/quick_start.ipynb:721
 msgid ""
@@ -311,8 +311,8 @@ msgstr "由于输入来自 ``P1``，是私有的，所以函数签名变为："
 #: ../../tutorials/quick_start.ipynb:1101
 #: ../../tutorials/quick_start.ipynb:1107
 msgid "This means accepts ``1 secret i32`` data and outputs ``1 secret f32`` data, inside the compiled function, all internal instruction’s visibility type is also correctly deduced."
-msgstr "这意味着接受 ``1个秘密的 i32`` 数据并输出 ``1个秘密的 f32`` 数据，编译后的函数内部所有指令的可见性类型均被正确推断。"
+msgstr "这意味着接受 ``1 个秘密的 i32`` 数据并输出 ``1 个秘密的 f32`` 数据，编译后的函数内部所有指令的可见性类型均被正确推断。"
 
 #: ../../tutorials/quick_start.ipynb:1103
 msgid "With the JIT(just in time) type deduction, SPU protects the clients’ privacy."
-msgstr "通过即时（JIT）类型推断，SPU保护了客户端的隐私数据。"
+msgstr "通过即时（JIT）类型推断，SPU 保护了客户端的隐私数据。"
