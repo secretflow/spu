@@ -78,7 +78,7 @@ class TestTSNEComparison(unittest.TestCase):
         axes[1].set_title("JAX t-SNE")
 
         plt.savefig("tsne_comparison.png")
-        plt.close()  
+        plt.close()
 
 
 if __name__ == "__main__":
