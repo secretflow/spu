@@ -70,14 +70,6 @@ class TestTSNEComparison(unittest.TestCase):
         # Check shapes
         self.assertEqual(Y_sklearn.shape, Y_jax.shape)
 
-        # Compute pairwise distances
-        dist_sklearn = np.linalg.norm(Y_sklearn[:, None] - Y_sklearn[None, :], axis=2)
-        dist_jax = np.linalg.norm(Y_jax[:, None] - Y_jax[None, :], axis=2)
-
-        # Flatten the distance matrices
-        dist_sklearn_flat = dist_sklearn.flatten()
-        dist_jax_flat = dist_jax.flatten()
-
         print(Y_jax[:5, 0], Y_jax[:5, 1])
 
         # Optional: Visualize the embeddings
