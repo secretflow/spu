@@ -21,7 +21,7 @@ msgstr ""
 
 #: ../../index.rst:7
 msgid "SPU"
-msgstr ""
+msgstr "SPU"
 
 #: ../../index.rst:9
 msgid ""
@@ -33,6 +33,10 @@ msgid ""
 "run ML programs of different frameworks with minor modifications in a "
 "privacy-preserving manner."
 msgstr ""
+"安全处理单元 (SPU) 由前端**编译器**和后端**运行时**环境组成。"
+"前端编译器接受机器学习项目作为输入，并将其转换为 **MPC特定中间表示**。"
+"经过一系列精细的代码优化后，程序将作为 MPC 协议在高性能后端环境运行。"
+"使用 SPU，我们只需稍作修改就可以以保护隐私的方式运行不同框架的 ML 程序。"
 
 #: ../../index.rst:14
 msgid ""
@@ -41,14 +45,17 @@ msgid ""
 "designed to be easily integrated into other distributed system, it's "
 "**recommended to use** SecretFlow to write SPU program."
 msgstr ""
+"SPU 是 `SecretFlow <https://www.secretflow.org.cn/docs/secretflow/en/>`_ 项目的重要组成部分。"
+"SPU 被设计为易于集成到其他分布式系统中，**建议使用** SecretFlow 编写 SPU 程序。"
 
 #: ../../index.rst:19
 msgid "Citing"
 msgstr ""
+"引用本文"
 
 #: ../../index.rst:21
 msgid ""
 "SPU was accepted by USENIX ATC'23. Please check the paper `here "
 "<https://www.usenix.org/conference/atc23/presentation/ma>`_."
 msgstr ""
-
+"SPU 被 USENIX ATC'23 接受。请在 `此处 <https://www.usenix.org/conference/atc23/presentation/ma>`_ 查看论文。"
