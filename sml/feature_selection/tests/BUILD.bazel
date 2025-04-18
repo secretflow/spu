@@ -23,3 +23,11 @@ sml_py_test(
         "//sml/feature_selection:univariate_selection",
     ],
 )
+
+sml_py_test(
+    name = "anova_f_test",
+    srcs = ["anova_f_test.py"],
+    deps = [
+        "//sml/feature_selection:anova_f",
+    ],
+)
