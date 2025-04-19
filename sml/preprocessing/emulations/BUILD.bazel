@@ -23,3 +23,11 @@ sml_py_binary(
         "//sml/preprocessing",
     ],
 )
+
+sml_py_binary(
+    name = "quantile_transformer_emul",
+    srcs = ["quantile_transformer_emul.py"],
+    deps = [
+        "//sml/preprocessing:quantile_transformer",
+    ],
+)
