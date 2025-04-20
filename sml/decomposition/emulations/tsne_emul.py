@@ -38,7 +38,7 @@ def test_tsne(mode: emulation.Mode = emulation.Mode.MULTIPROCESS):
             """Loads the Iris dataset."""
             print("Loading Iris dataset...")
             x, y = load_iris(return_X_y=True)
-            x = x.astype(np.float64)  # Ensure compatibility with JAX
+            x = x.astype(np.float64)
             return x, y
 
         def proc(x):
@@ -52,23 +52,21 @@ def test_tsne(mode: emulation.Mode = emulation.Mode.MULTIPROCESS):
                 early_exaggeration=12.0,
                 early_exaggeration_iter=250,
                 momentum=0.8,
-                random_state=42,  # Fixed seed for reproducibility
-                verbose=10,  # Silent within SPU
+                random_state=42,
+                verbose=10,
             )
             return embedding
 
         try:
-            # Load data
+
             x, y = load_data()
             n_samples = x.shape[0]
             print(f"Data loaded: {n_samples} samples, {x.shape[1]} features.")
 
-            # Seal the data
             print("Sealing data...")
             x_spu = emulator.seal(x)
             print("Data sealed.")
 
-            # Run the SPU computation
             print("Running SPU computation...")
             start_time = time.time()
             embedding = emulator.run(proc)(x_spu)
@@ -76,7 +74,6 @@ def test_tsne(mode: emulation.Mode = emulation.Mode.MULTIPROCESS):
             spu_time = end_time - start_time
             print(f"SPU computation finished in {spu_time:.3f}s.")
 
-            # Verify output
             print("Verifying output...")
             expected_shape = (n_samples, 2)
             assert (
@@ -96,10 +93,9 @@ def test_tsne(mode: emulation.Mode = emulation.Mode.MULTIPROCESS):
             print(f"An error occurred during emulation: {e}")
             import traceback
 
-            traceback.print_exc()  # Print full traceback for debugging
+            traceback.print_exc()
 
     try:
-        # Initialize the emulator
         emulator = emulation.Emulator(
             emulation.CLUSTER_ABY3_3PC, mode, bandwidth=300, latency=20
         )

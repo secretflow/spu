@@ -35,19 +35,17 @@ from sml.decomposition.tsne import basic_tsne
 
 class TestTSNEComparison(unittest.TestCase):
     def test_tsne_similarity(self):
-        # Load dataset
+
         data = load_digits(n_class=6)
         # data = load_iris()
         X = data.data
         y = data.target
 
-        # Parameters
         n_components = 2
         perplexity = 30
         max_iter = 500
         random_state = 42
 
-        # Run scikit-learn t-SNE
         sklearn_tsne = SklearnTSNE(
             n_components=n_components,
             perplexity=perplexity,
@@ -56,7 +54,6 @@ class TestTSNEComparison(unittest.TestCase):
         )
         Y_sklearn = sklearn_tsne.fit_transform(X)
 
-        # Run JAX t-SNE
         Y_jax = basic_tsne(
             X,
             n_components=n_components,
@@ -65,7 +62,6 @@ class TestTSNEComparison(unittest.TestCase):
             random_state=random_state,
         )
 
-        # Check shapes
         self.assertEqual(Y_sklearn.shape, Y_jax.shape)
 
         print(Y_jax[:5, 0], Y_jax[:5, 1])

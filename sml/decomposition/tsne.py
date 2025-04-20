@@ -18,7 +18,6 @@ import jax
 import jax.numpy as jnp
 from jax import grad, jit, lax, vmap
 
-# Define machine epsilon for numerical stability
 MACHINE_EPSILON = jnp.finfo(jnp.float32).eps
 
 
@@ -49,7 +48,7 @@ def binary_search_perplexity(
 
     def compute_H_P(beta):
         P = jnp.exp(-Di * beta)
-        P = P.at[i].set(0.0)  # Exclude self-distance
+        P = P.at[i].set(0.0)
         sumP = jnp.maximum(jnp.sum(P), MACHINE_EPSILON)
         H = jnp.log(sumP) + beta * jnp.sum(Di * P) / sumP
         P = P / sumP
@@ -60,29 +59,24 @@ def binary_search_perplexity(
         H, P = compute_H_P(beta)
         Hdiff = H - log_perplexity
 
-        # Update beta without secret condition
         beta_new = (betamin + betamax) / 2.0
         beta_new = jnp.where(jnp.isinf(betamax), beta * 2.0, beta_new)
         beta_new = jnp.where(jnp.isinf(betamin), beta / 2.0, beta_new)
 
-        # Update bounds based on Hdiff, but not as a condition for iteration
         betamin_new = jnp.where(Hdiff > 0, beta, betamin)
         betamax_new = jnp.where(Hdiff < 0, beta, betamax)
 
         return beta_new, betamin_new, betamax_new, H, P
 
-    # Initial state
     beta = 1.0
     betamin = -jnp.inf
     betamax = jnp.inf
     prev_H, prev_P = compute_H_P(beta)
 
-    # Perform fixed number of iterations
     beta, betamin, betamax, H, P = lax.fori_loop(
         0, max_tries, body_fun, (beta, betamin, betamax, prev_H, prev_P)
     )
 
-    # Ensure P[i] = 0
     P = P.at[i].set(0.0)
     return P
 
@@ -95,15 +89,13 @@ def joint_probabilities_jax(distances, perplexity, verbose=0):
     if verbose > 0:
         print("Computing probabilities for all points...")
 
-    # Vectorized binary search perplexity
     vectorized_binary_search = vmap(
         lambda dist_row, idx: binary_search_perplexity(
             dist_row, idx, perplexity, tol=1e-5, max_tries=50, verbose=verbose
         ),
-        in_axes=(0, 0),  # Map over rows of distances and indices
+        in_axes=(0, 0),
     )
 
-    # Compute P-rows for all points in parallel
     indices = jnp.arange(n_samples)
     P = vectorized_binary_search(distances, indices)
 
