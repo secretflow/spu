@@ -53,9 +53,7 @@ class QuantileTransformer:
 
         self.n_quantiles = n_quantiles
         self.output_distribution = output_distribution
-        self.subsample = (
-            subsample  # Note: subsample is not currently used in the fit logic
-        )
+        self.subsample = subsample
         self.random_state = random_state
         self.quantiles_ = None
         self.references_ = None
@@ -86,7 +84,7 @@ class QuantileTransformer:
         n_samples, n_features = X.shape
         self._n_features = n_features
         self._input_shape = X.shape
-        # The actual number of quantiles used is limited by the number of samples
+
         self.n_quantiles_ = max(1, min(self.n_quantiles, n_samples))
 
         quantiles_ = jnp.zeros((self.n_quantiles_, n_features), dtype=jnp.float32)
@@ -106,21 +104,18 @@ class QuantileTransformer:
         for j in range(n_features):
             column_vec = X[:, j]
             sorted_column = jnp.sort(column_vec)
-            tol = 1e-4  # Tolerance for detecting constant columns
+            tol = 1e-4
             first_value = sorted_column[0]
             last_value = sorted_column[-1]
             is_constant = jnp.abs(first_value - last_value) < tol
 
-            # Compute reference values (empirical quantiles) for the current feature
             refs_j = jnp.where(
                 is_constant,
-                # If constant, all references are the same value
                 jnp.full((self.n_quantiles_,), first_value, dtype=jnp.float32),
-                # Otherwise, compute quantiles via interpolation on sorted data
                 vmap(lambda p: compute_quantile(p, sorted_column))(target_quantiles),
             )
             references_ = references_.at[:, j].set(refs_j)
-            # Quantiles are simply the target probabilities (0 to 1)
+
             quantiles_ = quantiles_.at[:, j].set(target_quantiles)
 
         self.references_ = references_
@@ -141,7 +136,7 @@ class QuantileTransformer:
         X = jnp.asarray(X)
         if X.shape[1] != self._n_features:
             raise ValueError(f"Expected {self._n_features} features, got {X.shape[1]}.")
-        # Apply transformation feature by feature using vmap
+
         return _vmap_transform_features(X, self.quantiles_, self.references_)
 
     def inverse_transform(self, X_transformed):
@@ -160,7 +155,7 @@ class QuantileTransformer:
             raise ValueError(
                 f"Expected {self._n_features} features, got {X_transformed.shape[1]}."
             )
-        # Apply inverse transformation feature by feature using vmap
+
         return _vmap_inverse_transform_features(
             X_transformed, self.quantiles_, self.references_
         )
@@ -178,42 +173,31 @@ class QuantileTransformer:
             )
 
 
-# Helper functions for vmap (modified to only support uniform output)
 def _transform_single_feature(x_col, q_col, r_col):
     """Transform a single feature (column) to a uniform distribution."""
-    # Check if the reference quantiles indicate a constant feature
+
     is_constant_col = jnp.abs(r_col[0] - r_col[-1]) < 1e-4
 
-    # Interpolate input values 'x_col' onto the quantile scale [0, 1]
-    # using the reference values 'r_col' (empirical quantiles) and
-    # the target quantiles 'q_col' (linspace 0 to 1).
     transformed_col = jnp.interp(x_col, r_col, q_col, left=0.0, right=1.0)
 
-    # Handle constant columns: output the midpoint 0.5 for uniform distribution.
     constant_value = 0.0  # Hardcoded for uniform
     return jnp.where(is_constant_col, constant_value, transformed_col)
 
 
 def _inverse_transform_single_feature(xt_col, q_col, r_col):
     """Inverse transform a single feature (column) from uniform scale."""
-    # Check if the reference quantiles indicate a constant feature
+
     is_constant_col = jnp.abs(r_col[0] - r_col[-1]) < 1e-4
 
     input_quantiles = xt_col  # Input is assumed to be on quantile scale [0, 1]
 
-    # Clip to ensure quantiles are strictly within [0, 1] for interpolation
     input_quantiles = jnp.clip(input_quantiles, 0.0, 1.0)
 
-    # Interpolate the quantiles 'input_quantiles' back to the original data scale
-    # using the target quantiles 'q_col' and the reference values 'r_col'.
     inversed_col = jnp.interp(input_quantiles, q_col, r_col)
 
-    # Handle constant columns: return the constant value
     return jnp.where(is_constant_col, r_col[0], inversed_col)
 
 
-# Vmap the single-feature functions to apply them column-wise efficiently
-# Updated in_axes to reflect removal of output_distribution argument
 _vmap_transform_features = vmap(
     _transform_single_feature, in_axes=(1, 1, 1), out_axes=1
 )

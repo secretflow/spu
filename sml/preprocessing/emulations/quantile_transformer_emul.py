@@ -166,7 +166,7 @@ def test_quantile_transformer(mode: emulation.Mode = emulation.Mode.MULTIPROCESS
         print(f"\n!!! An error occurred during emulation test: {e} !!!")
         import traceback
 
-        traceback.print_exc()  # Print detailed traceback for debugging
+        traceback.print_exc()
     finally:
         if emulator:
             print("\nShutting down emulator...")
