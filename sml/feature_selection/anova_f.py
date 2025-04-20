@@ -15,12 +15,9 @@
 import jax
 import jax.numpy as jnp
 
-_EPSILON = (
-    1e-8  # A small constant to prevent division by zero and numerical instability
-)
+_EPSILON = 1e-8
 
 
-# Log-Gamma function using jax for stability
 def _log_beta(a, b):
     """
     Computes the logarithm of the Beta function using the Log-Gamma approximation.
@@ -48,9 +45,7 @@ def _regularized_beta(x, a, b, max_iter=100):
     Returns:
         float or array: The value of the regularized incomplete Beta function I_x(a, b).
     """
-    x = jnp.clip(
-        x, _EPSILON, 1 - _EPSILON
-    )  # Clip x to avoid instability at extreme values
+    x = jnp.clip(x, _EPSILON, 1 - _EPSILON)
 
     def betacf(a, b, x):
         """
@@ -108,9 +103,7 @@ def _regularized_beta(x, a, b, max_iter=100):
             return (c, d, h)
 
         init_val = (c, d, h)
-        _, _, h = jax.lax.fori_loop(
-            1, max_iter, body, init_val
-        )  # Iterate over the continued fraction
+        _, _, h = jax.lax.fori_loop(1, max_iter, body, init_val)
         return h
 
     # Calculate the Beta function log value
@@ -135,14 +128,10 @@ def f_dist_sf(f, d1, d2, max_iter=100):
         float: The survival function (1 - CDF) of the F-distribution at the given F value.
     """
     f_safe = jnp.maximum(f, 0.0)  # Ensure F is non-negative
-    x = d2 / (
-        d2 + d1 * f_safe + _EPSILON
-    )  # Transformation to ensure numerical stability
+    x = d2 / (d2 + d1 * f_safe + _EPSILON)
     a = d2 / 2.0
     b = d1 / 2.0
-    return _regularized_beta(
-        x, a, b, max_iter=max_iter
-    )  # Use the regularized Beta function
+    return _regularized_beta(x, a, b, max_iter=max_iter)
 
 
 def f_classif_multi(X, y, n_classes, p_value_iter=100):
@@ -161,17 +150,17 @@ def f_classif_multi(X, y, n_classes, p_value_iter=100):
             - F-statistics for each feature.
             - p-values for each feature.
     """
-    N, n_features = X.shape  # Get the number of samples and features
-    k = n_classes  # Number of classes
-    dtype = X.dtype  # Data type for consistent output
+    N, n_features = X.shape
+    k = n_classes
+    dtype = X.dtype
 
     if k <= 1:
         return jnp.zeros(n_features, dtype=dtype), jnp.ones(n_features, dtype=dtype)
 
     # Create one-hot encoded labels for each class
     y_oh = (y[:, None] == jnp.arange(k)).astype(dtype)
-    n_g = jnp.sum(y_oh, axis=0)  # Count of samples in each class
-    n_g_safe = n_g + _EPSILON  # To avoid division by zero
+    n_g = jnp.sum(y_oh, axis=0)
+    n_g_safe = n_g + _EPSILON
 
     # Compute the sum of feature values per class and class means
     sum_g = jnp.einsum('nk,nd->kd', y_oh, X)
@@ -181,11 +170,11 @@ def f_classif_multi(X, y, n_classes, p_value_iter=100):
     # Between-class sum of squares (SSB) and total sum of squares (SST)
     SSB = jnp.sum(n_g[:, None] * (mean_g - overall_mean[None, :]) ** 2, axis=0)
     SST = jnp.sum((X - overall_mean[None, :]) ** 2, axis=0)
-    SSB = jnp.maximum(SSB, 0.0)  # Ensure non-negative SSB
-    SSW = jnp.maximum(SST - SSB, 0.0)  # Ensure non-negative SSW
+    SSB = jnp.maximum(SSB, 0.0)
+    SSW = jnp.maximum(SST - SSB, 0.0)
 
     if N <= k:
-        is_ssb_zero = SSB <= _EPSILON  # Check for zero between-class variation
+        is_ssb_zero = SSB <= _EPSILON
         return jnp.where(is_ssb_zero, 0.0, jnp.inf), jnp.where(is_ssb_zero, 1.0, 0.0)
 
     # Degrees of freedom for between-class (dfB) and within-class (dfW)

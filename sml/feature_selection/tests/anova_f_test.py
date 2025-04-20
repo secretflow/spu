@@ -18,16 +18,12 @@ import time
 import unittest
 
 import numpy as np
-
-# Use sklearn for dataset loading and reference calculation
 from sklearn.feature_selection import f_classif as f_classif_sklearn
 
-# Use libspu enums and spsim directly as in the chi2_test example
 import spu.libspu as libspu
 import spu.utils.simulation as spsim
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../../'))
-# Import the JAX-based logic function
 from sml.feature_selection.anova_f import f_classif_multi
 
 
@@ -58,10 +54,8 @@ class AnovaFTest(unittest.TestCase):
         y = y.astype(np.int64)
         num_classes = len(np.unique(y))
 
-        # Sklearn reference
         sklearn_f_stats, sklearn_p_values = f_classif_sklearn(x, y)
 
-        # Run all features at once via sim_jax
         spu_exec = spsim.sim_jax(sim, proc_multi, static_argnums=(2,))
         f_spu_res, p_spu_res = spu_exec(x, y, num_classes)
 
