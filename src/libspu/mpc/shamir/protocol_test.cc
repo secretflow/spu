@@ -18,7 +18,7 @@
 #include "libspu/mpc/ab_api_test.h"
 #include "libspu/mpc/api.h"
 #include "libspu/mpc/api_test.h"
-#include "libspu/mpc/prot_shamir_test.h"
+#include "libspu/mpc/shamir/prot_shamir_test.h"
 
 namespace spu::mpc::test {
 namespace {

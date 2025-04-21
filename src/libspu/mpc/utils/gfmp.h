@@ -202,39 +202,6 @@ inline T exp_mod(T operand, T exponent) {
   return intermediate;
 }
 
-template <typename T, std::enable_if_t<std::is_unsigned_v<T>, bool> = true>
-inline std::vector<T> lagrange_interpolation(const std::vector<T>& x,
-                                             const std::vector<T>& y) {
-  SPU_ENFORCE_EQ(x.size(), y.size());
-  SPU_ENFORCE(!x.empty());
-
-  std::vector<T> coeff(x.size(), 0);
-  // Todo: optimize me
-  for (size_t i = 0; i < x.size(); i++) {
-    std::vector<T> tmp_coeff(x.size(), 0);
-    tmp_coeff[0] = y[i];
-    T prod = 1;
-    for (size_t j = 0; j < x.size(); j++) {
-      if (j != i) {
-        prod = mul_mod(prod, add_mod(x[i], add_inv(x[j])));
-        T precedent = 0;
-        for (auto res_iter = tmp_coeff.begin(); res_iter < tmp_coeff.end();
-             res_iter++) {
-          T new_res = add_mod(mul_mod(*res_iter, add_inv(x[j])), precedent);
-          precedent = *res_iter;
-          *res_iter = new_res;
-        }
-      }
-    }
-    std::transform(coeff.begin(), coeff.end(), tmp_coeff.begin(), coeff.begin(),
-                   [prod](T old, T add) {
-                     return add_mod(old, mul_mod(add, mul_inv(prod)));
-                   });
-  }
-
-  return coeff;
-}
-
 template <typename T>
 class Gfmp {
  private:

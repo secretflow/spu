@@ -533,15 +533,21 @@ class LShiftP : public ShiftKernel {
 
   NdArrayRef proc(KernelEvalContext*, const NdArrayRef& in,
                   const Sizes& bits) const override {
-    auto out = ring_lshift(in, bits).as(in.eltype());
     const auto* ty = in.eltype().as<GfmpTy>();
     const auto field = ty->field();
-    DISPATCH_ALL_FIELDS(field, [&]() {
-      ring2k_t prime = ScalarTypeToPrime<ring2k_t>::prime;
+    bool is_splat = bits.size() == 1;
+    auto max_bits = *std::max_element(bits.begin(), bits.end());
+    SPU_ENFORCE_GT(GetMersennePrimeExp(field), static_cast<size_t>(max_bits));
+    NdArrayRef out(in.eltype(), in.shape());
+    return DISPATCH_ALL_FIELDS(field, [&]() {
+      NdArrayView<ring2k_t> _in(in);
       NdArrayView<ring2k_t> _out(out);
-      pforeach(0, in.numel(), [&](int64_t idx) { _out[idx] &= prime; });
+      pforeach(0, in.numel(), [&](int64_t idx) {
+        auto shift_bits = is_splat ? bits[0] : bits[idx];
+        _out[idx] = mul_mod(_in[idx], (static_cast<ring2k_t>(1) << shift_bits));
+      });
+      return out;
     });
-    return out;
   }
 };
 
@@ -556,15 +562,23 @@ class LShiftV : public ShiftKernel {
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
                   const Sizes& bits) const override {
     if (isOwner(ctx, in.eltype())) {
-      auto out = ring_lshift(in, bits).as(in.eltype());
       const auto* ty = in.eltype().as<GfmpTy>();
       const auto field = ty->field();
-      DISPATCH_ALL_FIELDS(field, [&]() {
-        ring2k_t prime = ScalarTypeToPrime<ring2k_t>::prime;
+      bool is_splat = bits.size() == 1;
+      auto max_bits = *std::max_element(bits.begin(), bits.end());
+      SPU_ENFORCE_GT(GetMersennePrimeExp(field), static_cast<size_t>(max_bits));
+
+      NdArrayRef out(in.eltype(), in.shape());
+      return DISPATCH_ALL_FIELDS(field, [&]() {
+        NdArrayView<ring2k_t> _in(in);
         NdArrayView<ring2k_t> _out(out);
-        pforeach(0, in.numel(), [&](int64_t idx) { _out[idx] &= prime; });
+        pforeach(0, in.numel(), [&](int64_t idx) {
+          auto shift_bits = is_splat ? bits[0] : bits[idx];
+          _out[idx] =
+              mul_mod(_in[idx], static_cast<ring2k_t>(1) << shift_bits);
+        });
+        return out;
       });
-      return out;
     } else {
       return in;
     }

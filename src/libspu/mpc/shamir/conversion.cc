@@ -132,6 +132,18 @@ gen_prefix_mult_share(SPUContext* ctx, const int64_t numel,
   // let k denote num_prefix
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
   auto ty = makeType<PubGfmpTy>(field);
+  
+  #ifdef ONLINE_ONLY
+  std::vector<NdArrayRef> fake_rand_r;
+  std::vector<NdArrayRef> fake_rand_s;
+  for (int64_t i = 0; i < num_prefix; ++i) {
+    fake_rand_r.push_back(ring_ones(field, {numel}).as(makeType<AShrTy>(field)));
+    fake_rand_s.push_back(ring_ones(field, {numel}).as(makeType<AShrTy>(field)));
+  }
+  std::pair<std::vector<NdArrayRef>, std::vector<NdArrayRef>> fake_out;
+  fake_out.first = std::move(fake_rand_r);
+  fake_out.second = std::move(fake_rand_s);
+  #endif
 
   auto mul_lambda = [ctx](const NdArrayRef& a, const NdArrayRef& b) {
     return wrap_mul(ctx, a, b);
@@ -200,6 +212,12 @@ NdArrayRef gen_zero_shares(KernelEvalContext* ctx, int64_t numel,
   auto* comm = ctx->getState<Communicator>();
   auto* prg_state = ctx->getState<PrgState>();
   auto ty = makeType<PubGfmpTy>(field);
+
+  #ifdef ONLINE_ONLY
+  NdArrayRef fake_out = ring_zeros(field, {numel});
+  return fake_out.as(makeType<AShrTy>(field));
+  #endif
+
   auto coeffs = prg_state->genPublWithMersennePrime(field, {threshold * numel}).as(ty);
   NdArrayRef zeros = ring_zeros(field, {numel}).as(makeType<GfmpTy>(field));
   auto shares =
@@ -211,6 +229,12 @@ NdArrayRef gen_zero_shares(KernelEvalContext* ctx, int64_t numel,
 // [Offline Phase]
 NdArrayRef rand_bits(SPUContext* ctx, int64_t numel) {
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
+  
+  #ifdef ONLINE_ONLY
+  NdArrayRef fake_out = ring_zeros(field, {numel});
+  return fake_out.as(makeType<AShrTy>(field));
+  #endif
+
   NdArrayRef out(makeType<AShrTy>(field), {numel});
   std::vector<int64_t> cur_failed_indices;
   std::vector<int64_t> pre_failed_indices;
@@ -552,6 +576,23 @@ std::pair<std::vector<NdArrayRef>, NdArrayRef> solved_bits(SPUContext* ctx,
   std::mutex idx_mtx;
   int64_t numel = shape.numel();
   int64_t un_produced = numel;
+  
+  #ifdef ONLINE_ONLY
+  return DISPATCH_ALL_FIELDS(field, [&]() {
+    size_t exp = ScalarTypeToPrime<ring2k_t>::exp;
+    std::vector<NdArrayRef> out_bits(exp);
+    for (int64_t i = 0; i < static_cast<int64_t>(exp); ++i) {
+      out_bits[i] =
+          ring_zeros(field, shape).as(makeType<AShrTy>(field));
+    }
+    NdArrayRef out = ring_zeros(field, shape).as(makeType<AShrTy>(field));
+    std::pair<std::vector<NdArrayRef>, NdArrayRef> ret;
+    ret.first = std::move(out_bits);
+    ret.second = std::move(out);
+    return ret;
+  });
+  #endif
+
 
 if (field != FM32) {
   return DISPATCH_ALL_FIELDS(field, [&]() {

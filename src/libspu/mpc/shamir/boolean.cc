@@ -141,6 +141,11 @@ NdArrayRef AndBP::proc(KernelEvalContext*, const NdArrayRef& lhs,
   const auto* rhs_ty = rhs.eltype().as<PubGfmpTy>();
   auto b_field = lhs_ty->field();
   const size_t out_nbits = std::min(lhs_ty->nbits(), getNumBits(rhs));
+
+  if (0 == lhs_ty->nbits()) {
+    return lhs;
+  }
+
   auto out_ty = makeType<BShrTy>(b_field, out_nbits);
   NdArrayRef out(out_ty, lhs.shape());
   DISPATCH_ALL_FIELDS(b_field, [&]() {
@@ -261,6 +266,15 @@ NdArrayRef XorBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
   auto b_field = lhs_ty->field();
   const size_t l_nbits = lhs_ty->nbits();
   const size_t r_nbits = rhs_ty->nbits();
+
+  if (0 == l_nbits) {
+    return rhs;
+  }
+
+  if (0 == r_nbits) {
+    return lhs;
+  }
+
   const size_t out_nbits = std::max(l_nbits, r_nbits);
   const size_t common_nbits = std::min(l_nbits, r_nbits);
   auto out_ty = makeType<BShrTy>(b_field, out_nbits);
@@ -330,6 +344,16 @@ NdArrayRef LShiftB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
     auto in_i = getBitShare(in, idx);
     auto out_i = getBitShare(out, idx + shift);
     ring_assign(out_i, in_i);
+  }
+
+  auto real_nbits = in_ty->nbits() + *std::max_element(bits.begin(), bits.end());
+  auto offset = real_nbits - GetMersennePrimeExp(field);
+  if (real_nbits > GetMersennePrimeExp(field)) {
+    for (int64_t idx = 0; idx < static_cast<int64_t>(offset); ++idx) {
+      auto in_i = getBitShare(in, in_ty->nbits() - 1 - idx);
+      auto out_i = getBitShare(out, offset - 1 - idx);
+      ring_assign(out_i, in_i);
+    }
   }
   return out;
 }

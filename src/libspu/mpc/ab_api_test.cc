@@ -478,6 +478,11 @@ TEST_P(ArithmeticTest, LShiftA) {
     auto a0 = p2a(obj.get(), p0);
 
     for (auto bits : kShiftBits) {
+      if (conf.protocol() == ProtocolKind::SHAMIR &&
+          bits >= GetMersennePrimeExp(conf.field())) {
+        continue;
+      }
+      
       if (bits >= p0.elsize() * 8) {
         // Shift more than elsize is a UB
         continue;
@@ -542,7 +547,6 @@ TEST_P(ArithmeticTest, TruncA) {
                            conf.field, kShape, npc, cost));
   });
 }
-
 
 TEST_P(ArithmeticTest, P2A) {
   const auto factory = std::get<0>(GetParam());

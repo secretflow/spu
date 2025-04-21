@@ -32,8 +32,8 @@ using GfmpMatrix =
 
 class ShamirPrecomputedState : public State {
  private:
-  size_t world_size;
-  size_t threshold;
+  size_t world_size_;
+  size_t threshold_;
   // FieldType field{FT_INVALID};
   GfmpMatrix<uint32_t> Vandermonde_n_by_n_minus_t_32;
   GfmpMatrix<uint64_t> Vandermonde_n_by_n_minus_t_64;
@@ -71,7 +71,7 @@ class ShamirPrecomputedState : public State {
   template<typename T,
   std::enable_if_t<yacl::crypto::IsSupportedMersennePrimeContainerType<T>::value, bool> = true>
   std::vector<T>get_recontruction(size_t n_shares) {
-    if (n_shares == threshold + 1) {
+    if (n_shares == threshold_ + 1) {
       if constexpr (std::is_same_v<T, uint32_t>) {
         return reconstruct_t_32;
       } else if constexpr (std::is_same_v<T, uint64_t>) {
@@ -82,7 +82,7 @@ class ShamirPrecomputedState : public State {
         SPU_THROW("Type T is not supported");
       }
     }
-    else if (n_shares == (threshold << 1) + 1) {
+    else if (n_shares == (threshold_ << 1) + 1) {
       if constexpr (std::is_same_v<T, uint32_t>) {
         return reconstruct_2t_32;
       } else if constexpr (std::is_same_v<T, uint64_t>) {
