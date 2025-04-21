@@ -20,6 +20,10 @@
 #define ENABLE_MASK_DURING_SHAMIR_P2A
 #endif
 
+// #ifndef NONLINE
+#define ONLINE_ONLY
+#endif
+
 namespace spu::mpc::shamir {
 
 class RandA : public RandKernel {

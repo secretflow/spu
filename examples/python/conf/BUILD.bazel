@@ -23,5 +23,6 @@ filegroup(
         "3pc_colocated.json",
         "ds_breast_cancer_basic.json",
         "ds_mock_regression_basic.json",
+        "3pc_shamir.json",
     ],
 )

@@ -48,6 +48,12 @@ NdArrayRef gen_zero_shares(KernelEvalContext* ctx, int64_t numel,
   auto* prg_state = ctx->getState<PrgState>();
   auto* comm = ctx->getState<Communicator>();
   auto ty = makeType<PubGfmpTy>(field);
+
+  #ifdef ONLINE_ONLY
+  NdArrayRef fake_out = ring_zeros(field, {numel});
+  return fake_out.as(makeType<AShrTy>(field));
+  #endif
+
   auto coeffs = prg_state->genPublWithMersennePrime(field, {threshold * numel}).as(ty);
   NdArrayRef zeros = ring_zeros(field, {numel}).as(makeType<GfmpTy>(field));
   auto shares =
@@ -67,6 +73,14 @@ std::pair<NdArrayRef, NdArrayRef> gen_double_shares(KernelEvalContext* ctx,
   auto* prg_state = ctx->getState<PrgState>();
   auto* van_state = ctx->getState<ShamirPrecomputedState>();
   auto rank = comm->getRank();
+  
+  #ifdef ONLINE_ONLY
+  std::pair<NdArrayRef, NdArrayRef> fake_out {
+    ring_ones(field, {numel}).as(makeType<AShrTy>(field)),
+    ring_ones(field, {numel}).as(makeType<AShrTy>(field))
+  };
+  return fake_out;
+  #endif
 
   // run one-time DN protocol we can generate (world_size-th) pairs of
   // double shares, so we need dn_times to generate multiplication double
@@ -139,6 +153,11 @@ NdArrayRef RandA::proc(KernelEvalContext* ctx, const Shape& shape) const {
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
   auto* van_state = ctx->getState<ShamirPrecomputedState>();
   NdArrayRef out = ring_zeros(field, shape);
+
+  #ifdef ONLINE_ONLY
+  return ring_ones(field, shape).as(makeType<AShrTy>(field));
+  #endif
+
   int64_t world_size = comm->getWorldSize();
   int64_t th = ctx->sctx()->config().sss_threshold();
   int64_t numel = shape.numel();
@@ -417,11 +436,15 @@ NdArrayRef MulAAP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
   return wrap_a2p(ctx->sctx(), out);
 }
 
-NdArrayRef LShiftA::proc(KernelEvalContext*, const NdArrayRef& in,
+NdArrayRef LShiftA::proc(KernelEvalContext* ctx, const NdArrayRef& in,
                           const Sizes& bits) const {
   const auto field = in.eltype().as<Ring2k>()->field();
   bool is_splat = bits.size() == 1;
-
+  auto max_bits = *std::max_element(bits.begin(), bits.end());
+  SPU_ENFORCE_GT(GetMersennePrimeExp(field), static_cast<size_t>(max_bits));
+  
+  // auto p_in = wrap_a2p(ctx->sctx(), in);
+  // ring_print(p_in, "in_s");
   NdArrayRef out(in.eltype(), in.shape());
   return DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> _in(in);
@@ -429,8 +452,13 @@ NdArrayRef LShiftA::proc(KernelEvalContext*, const NdArrayRef& in,
 
     pforeach(0, in.numel(), [&](int64_t idx) {
       auto shift_bits = is_splat ? bits[0] : bits[idx];
-      _out[idx] = _in[idx] << shift_bits;
+      // std::cout<<"s_shift_bits: "<<static_cast<ring2k_t>((1 << shift_bits))<<std::endl;
+      _out[idx] = mul_mod(_in[idx], (static_cast<ring2k_t>(1) << shift_bits));
     });
+    
+    // auto p_out = wrap_a2p(ctx->sctx(), out);
+    // ring_print(p_out, "out_s");
+
     return out;
   });
 }

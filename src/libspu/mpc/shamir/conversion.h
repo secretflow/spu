@@ -16,6 +16,10 @@
 
 #include "libspu/mpc/kernel.h"
 
+#ifndef NONLINE
+#define ONLINE_ONLY
+#endif
+
 namespace spu::mpc::shamir {
 
 class A2B : public UnaryKernel {
