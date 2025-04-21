@@ -14,7 +14,7 @@
 
 #include "libspu/mpc/shamir/io.h"
 
-#include "libspu/mpc/io_shamir_test.h"
+#include "libspu/mpc/shamir/io_shamir_test.h"
 
 namespace spu::mpc::shamir {
 

@@ -39,8 +39,7 @@ from examples.python.ml.stax_nn import models
 
 parser = argparse.ArgumentParser(description='distributed driver.')
 parser.add_argument("--model", default='network_a', type=str)
-parser.add_argument("-c", "--config", default="/Users/freya/Code/mpc/spu-new/examples/python/conf/3pc_shamir.json", type=str)
-# parser.add_argument("-c", "--config", default="/Users/freya/Code/mpc/spu-new/examples/python/conf/3pc.json", type=str)
+parser.add_argument("-c", "--config", default="examples/python/conf/3pc.json", type=str)
 parser.add_argument("-e", "--epoch", default=1, type=int)
 parser.add_argument("-b", "--batch_size", default=1, type=int)
 parser.add_argument("-o", "--optimizer", default="SGD", type=str)
@@ -105,7 +104,7 @@ def train(
 
     print('Start training...')
     for i in range(1, epochs + 1):
-        for batch_idx in range(2):
+        for batch_idx in range(math.ceil(len(train_x) / batch_size)):
             batch_images = train_x[
                 batch_idx * batch_size : (batch_idx + 1) * batch_size
             ]

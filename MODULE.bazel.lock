@@ -1,5 +1,5 @@
 {
-  "lockFileVersion": 13,
+  "lockFileVersion": 11,
   "registryFileHashes": {
     "https://baidu.github.io/babylon/registry/modules/openssl/3.3.2/MODULE.bazel": "36cf348554a03d4c3bd45f2e7258273c700efec29058b40cd33196b51bd8fd20",
     "https://bcr.bazel.build/bazel_registry.json": "8a28e4aff06ee60aed2a8c281907fb8bcbf3b753c91fb5a5c57da3215d5b3497",

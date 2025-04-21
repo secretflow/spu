@@ -21,9 +21,9 @@
 #include "libspu/mpc/shamir/arithmetic.h"
 #include "libspu/mpc/shamir/boolean.h"
 #include "libspu/mpc/shamir/conversion.h"
+#include "libspu/mpc/shamir/state.h"
 #include "libspu/mpc/shamir/type.h"
 #include "libspu/mpc/standard_shape/protocol.h"
-#include "libspu/mpc/shamir/state.h"
 
 namespace spu::mpc {
 
@@ -40,7 +40,12 @@ void regShamirProtocol(SPUContext* ctx,
   // add Z2k state.
   ctx->prot()->addState<Z2kState>(ctx->config().field());
 
-  ctx->prot()->addState<shamir::ShamirPrecomputedState>(lctx->WorldSize(), ctx->config().sss_threshold());
+  // add pre-computation state
+  auto world_size = lctx->WorldSize();
+  auto th = ctx->config().sss_threshold();
+  SPU_ENFORCE(world_size >= th * 2 + 1 && th >= 1,
+              "invalid party numbers {} or threshold {}", world_size, th);
+  ctx->prot()->addState<shamir::ShamirPrecomputedState>(world_size, th);
 
   // register public kernels.
   regPVGfmpKernels(ctx->prot());
@@ -57,7 +62,7 @@ void regShamirProtocol(SPUContext* ctx,
                   shamir::MulAP, shamir::MulAA, shamir::MulAAP,
                   shamir::MulAAA,                      //
                   shamir::MatMulAP, shamir::MatMulAA,  //
-                  shamir::LShiftB, shamir::RShiftB, shamir::ARShiftB,
+                  shamir::LShiftB, shamir::LShiftA, shamir::RShiftB, shamir::ARShiftB,
                   shamir::CommonTypeB, shamir::CastTypeB,         //
                   shamir::CommonTypeV, shamir::A2B, shamir::B2A,  //
                   shamir::AndBP, shamir::XorBP,                   //
