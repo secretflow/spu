@@ -20,7 +20,7 @@
 #define ENABLE_MASK_DURING_SHAMIR_P2A
 #endif
 
-// #ifndef NONLINE
+#ifndef NONLINE
 #define ONLINE_ONLY
 #endif
 
