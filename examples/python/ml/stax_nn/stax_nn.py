@@ -39,9 +39,9 @@ from examples.python.ml.stax_nn import models
 
 parser = argparse.ArgumentParser(description='distributed driver.')
 parser.add_argument("--model", default='network_a', type=str)
-parser.add_argument("-c", "--config", default="examples/python/conf/3pc.json", type=str)
-parser.add_argument("-e", "--epoch", default=1, type=int)
-parser.add_argument("-b", "--batch_size", default=1, type=int)
+parser.add_argument("-c", "--config", default="examples/python/conf/3pc_shamir.json", type=str)
+parser.add_argument("-e", "--epoch", default=5, type=int)
+parser.add_argument("-b", "--batch_size", default=128, type=int)
 parser.add_argument("-o", "--optimizer", default="SGD", type=str)
 parser.add_argument('--run_cpu', default=False, action='store_true')
 args = parser.parse_args()

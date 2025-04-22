@@ -236,7 +236,7 @@ class SSLR:
 
 
 parser = argparse.ArgumentParser(description='distributed driver.')
-parser.add_argument("-c", "--config", default="examples/python/conf/3pc.json")
+parser.add_argument("-c", "--config", default="examples/python/conf/3pc_shamir.json")
 parser.add_argument(
     "-d",
     "--dataset_config",
