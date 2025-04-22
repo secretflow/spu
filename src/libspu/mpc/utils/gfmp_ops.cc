@@ -294,30 +294,31 @@ void gfmp_exp_mod_(NdArrayRef& x, const NdArrayRef& y) {
 NdArrayRef gfmp_mmul_mod(const NdArrayRef& x, const NdArrayRef& y) {
   SPU_ENFORCE_GFMP(x);
   SPU_ENFORCE_GFMP(y);
+  SPU_ENFORCE_EQ(x.shape()[1], y.shape()[0]);
   const auto field = x.eltype().as<GfmpTy>()->field();
 
-  // Optimize me: remove copy
+  //FIXME Optimize me with Eigen
+
   return DISPATCH_ALL_FIELDS(field, [&]() {
-    GfmpMatrix<ring2k_t> x_(x.shape()[0], x.shape()[1]);
-    GfmpMatrix<ring2k_t> y_(y.shape()[0], y.shape()[1]);
-    for (auto i = 0; i < x_.rows(); ++i) {
-      for (auto j = 0; j < x_.cols(); ++j) {
-        x_(i, j) = Gfmp(x.at<ring2k_t>({i, j}));
-      }
-    }
-    for (auto i = 0; i < y_.rows(); ++i) {
-      for (auto j = 0; j < y_.cols(); ++j) {
-        y_(i, j) = Gfmp(y.at<ring2k_t>({i, j}));
-      }
-    }
-    auto z_ = x_ * y_;
+
+    NdArrayView<ring2k_t> _x(x);
+    NdArrayView<ring2k_t> _y(y);
     NdArrayRef out(x.eltype(), {x.shape()[0], y.shape()[1]});
     NdArrayView<ring2k_t> _out(out);
-    for (auto i = 0; i < z_.rows(); ++i) {
-      for (auto j = 0; j < z_.cols(); ++j) {
-        _out[i * z_.cols() + j] = z_(i, j).data();
+    auto M = x.shape()[0];
+    auto N = y.shape()[1];
+    auto K = x.shape()[1];
+
+    pforeach(0, M, [&](int64_t i) {
+      for(int64_t j = 0; j < N; ++j) {
+        ring2k_t sum = 0;
+        for (int64_t k = 0; k < K; ++k) {
+          sum = add_mod(sum, mul_mod(_x[i * K + k], _y[k * N + j]));
+        }
+        _out[i * N + j] = sum;
       }
-    }
+    });
+
     return out;
   });
 }
