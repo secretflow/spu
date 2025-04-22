@@ -1,12 +1,10 @@
 {
     "executionEnvironments": [
-        {
-            "root": ".",
-        }
+        {"root": "."}
     ],
-    "include": [
-        "spu/**",
-        "sml/**",
-        "examples/**"
+    "exclude":[
+        ".cache",
+        "external",
+        "**/bazel-*"
     ]
 }
