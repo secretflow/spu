@@ -31,11 +31,3 @@ sml_py_test(
         "//sml/decomposition:nmf",
     ],
 )
-
-sml_py_test(
-    name = "jacobi_svd_test",
-    srcs = ["jacobi_svd_test.py"],
-    deps = [
-        "//sml/decomposition:jacobi_svd",
-    ],
-)

@@ -22,3 +22,11 @@ sml_py_test(
         "//sml/utils:extmath",
     ],
 )
+
+sml_py_test(
+    name = "jacobi_svd_test",
+    srcs = ["jacobi_svd_test.py"],
+    deps = [
+        "//sml/utils:jacobi_svd",
+    ],
+)

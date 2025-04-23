@@ -2,7 +2,7 @@ import jax.numpy as jnp
 from jax import jit, lax
 
 
-def jacobi_rotation(A, p, q):
+def _jacobi_rotation(A, p, q):
     """
     Compute the Jacobi rotation parameters (c, s) to zero out the off-diagonal element A[p, q].
 
@@ -23,7 +23,7 @@ def jacobi_rotation(A, p, q):
     return c, s
 
 
-def apply_jacobi_rotation(A, V, c, s, p, q):
+def _apply_jacobi_rotation(A, V, c, s, p, q):
     """
     Apply the Jacobi rotation to update matrix A and accumulate the singular vectors in V.
 
@@ -54,17 +54,13 @@ def apply_jacobi_rotation(A, V, c, s, p, q):
     return A, V
 
 
-def jacobi_svd(A, tol=5e-6, tol_diag=5e-6, max_iter=100, compute_uv=True):
+def jacobi_svd(A, max_iter=100, compute_uv=True):
     """
     Perform the Jacobi algorithm to compute the Singular Value Decomposition (SVD) of a symmetric matrix A.
-
     The algorithm iterates by selecting the largest off-diagonal element and applying a Jacobi rotation to zero it out.
-    The process continues until the largest off-diagonal element is smaller than the specified tolerance or the maximum number of iterations is reached.
 
     Arguments:
         A -- input symmetric matrix (n x n)
-        tol -- off-diagonal convergence tolerance (default 5e-6)
-        tol_diag -- diagonal change tolerance (default 5e-6)
         max_iter -- maximum number of iterations (default 100)
         compute_uv -- whether to compute singular vectors U and V (default is True)
 
@@ -100,19 +96,15 @@ def jacobi_svd(A, tol=5e-6, tol_diag=5e-6, max_iter=100, compute_uv=True):
 
     # Initialize state variables:
     # i: iteration counter, A: current matrix, V: singular vector matrix,
-    # max_off_diag: current largest off-diagonal value, prev_diag: previous diagonal values,
-    # diff: change in diagonal values.
-    prev_diag = jnp.diag(A)
-    init_state = (0, A, V, jnp.inf, prev_diag, jnp.inf)
+    init_state = (0, A, V)
 
     def cond_fun(state):
         """
         Continue iterating while:
-          - The number of iterations is less than max_iter, and
-          - Either the maximum off-diagonal element is above tol or the change in diagonal is above tol_diag.
+          - The number of iterations is less than max_iter
         """
-        i, A, V, max_off_diag, prev_diag, diff = state
-        return (i < max_iter) & ((max_off_diag >= tol) | (diff >= tol_diag))
+        i, A, V = state
+        return (i < max_iter)
 
     def body_fun(state):
         """
@@ -120,37 +112,25 @@ def jacobi_svd(A, tol=5e-6, tol_diag=5e-6, max_iter=100, compute_uv=True):
           - Identify the largest off-diagonal element.
           - Compute the Jacobi rotation to zero it.
           - Update the matrix A and the singular vector matrix V.
-          - Compute the new diagonal and its difference from the previous iteration.
         """
-        i, A, V, _, prev_diag, _ = state
+        i, A, V = state
         # Zero out the diagonal elements to focus on off-diagonal values.
         A_no_diag = A - jnp.diag(jnp.diag(A))
         # Find the indices (p, q) of the largest off-diagonal element.
         p, q = jnp.unravel_index(jnp.argmax(jnp.abs(A_no_diag)), A.shape)
-        # Get the value of the largest off-diagonal element.
-        current_off_diag = jnp.abs(A[p, q])
         # Compute the rotation parameters.
-        c, s = jacobi_rotation(A, p, q)
+        c, s = _jacobi_rotation(A, p, q)
         # Apply the rotation to update A and V.
-        A_new, V_new = apply_jacobi_rotation(A, V, c, s, p, q)
-        # Extract the new diagonal and calculate the difference from the previous diagonal.
-        curr_diag = jnp.diag(A_new)
-        diff_new = jnp.linalg.norm(curr_diag - prev_diag)
+        A_new, V_new = _apply_jacobi_rotation(A, V, c, s, p, q)
         # Return the updated state.
-        return (i + 1, A_new, V_new, current_off_diag, curr_diag, diff_new)
+        return (i + 1, A_new, V_new)
 
     # Run the iterative process using JAX's while_loop.
     final_state = lax.while_loop(cond_fun, body_fun, init_state)
-    _, A_final, V_final, _, _, _ = final_state
+    _, A_final, V_final = final_state
 
     # Compute the singular values from the diagonal of A_final.
     S = jnp.abs(jnp.diag(A_final))
-    # Sort singular values in descending order.
-    sorted_indices = jnp.argsort(S)[::-1]
-    S = S[sorted_indices]
-
-    # Rearrange the singular vectors based on the sorted indices.
-    V_final = V_final[:, sorted_indices]
     U_final = V_final  # For symmetric matrices, U equals V.
 
     # Return the results based on the compute_uv flag.
@@ -158,7 +138,3 @@ def jacobi_svd(A, tol=5e-6, tol_diag=5e-6, max_iter=100, compute_uv=True):
         return U_final, S, V_final.T
     else:
         return S
-
-
-# The function is now JIT compiled with compute_uv as a static argument.
-jacobi_svd = jit(jacobi_svd, static_argnames=("compute_uv",))

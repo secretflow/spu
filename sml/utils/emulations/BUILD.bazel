@@ -25,6 +25,14 @@ sml_py_binary(
     ],
 )
 
+sml_py_binary(
+    name = "jacobi_svd_emul",
+    srcs = ["jacobi_svd_emul.py"],
+    deps = [
+        "//sml/utils:jacobi_svd",
+    ],
+)
+
 filegroup(
     name = "conf",
     srcs = [

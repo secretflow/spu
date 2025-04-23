@@ -39,3 +39,8 @@ sml_py_library(
     name = "extmath",
     srcs = ["extmath.py"],
 )
+
+sml_py_library(
+    name = "jacobi_svd",
+    srcs = ["jacobi_svd.py"],
+)

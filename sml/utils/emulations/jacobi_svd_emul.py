@@ -9,16 +9,15 @@ from sklearn.decomposition import TruncatedSVD as SklearnSVD
 sys.path.append(os.path.join(os.path.dirname(__file__), "../../../"))
 
 import sml.utils.emulation as emulation
-from sml.decomposition.jacobi_svd import jacobi_svd
+from sml.utils.jacobi_svd import jacobi_svd
 
 
 def emul_jacobi_svd(mode=emulation.Mode.MULTIPROCESS):
     print("Start Jacobi SVD emulation.")
 
-    def proc_transform(A):
-        U, singular_values, V_T = jacobi_svd(A)
-        return U, singular_values, V_T
-
+    def proc_transform(A, max_iter=100, compute_uv=True):
+            U, singular_values, V_T = jacobi_svd(A, max_iter=max_iter, compute_uv=compute_uv)
+            return U, singular_values, V_T
     try:
         # bandwidth and latency only work for docker mode
         emulator = emulation.Emulator(
@@ -39,9 +38,14 @@ def emul_jacobi_svd(mode=emulation.Mode.MULTIPROCESS):
         Sigma = model.singular_values_
         Matrix = model.components_
         
+        # Sort Jacobi results[1] (singular values) in descending order
+        sorted_indices = np.argsort(results[1])[::-1]  # Get indices for descending order
+        sorted_singular_values = results[1][sorted_indices]
+        sorted_V_T = results[2][sorted_indices, :]  # Adjust V_T to match the sorted singular values
+        
         # Compare the results
-        np.testing.assert_allclose(Sigma, results[1], rtol=0.01, atol=0.01)
-        np.testing.assert_allclose(np.abs(Matrix), np.abs(results[2]), rtol=0.01, atol=0.01)
+        np.testing.assert_allclose(Sigma, sorted_singular_values, rtol=0.01, atol=0.01)
+        np.testing.assert_allclose(np.abs(Matrix), np.abs(sorted_V_T), rtol=0.01, atol=0.01)
         
     finally:
         emulator.down()
