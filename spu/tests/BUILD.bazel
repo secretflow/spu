@@ -312,14 +312,8 @@ spu_py_test(
     deps = [
         "//spu:init",
         "//spu/utils:frontend",
-    ] + select({
-        "@bazel_tools//src/conditions:linux_x86_64": [
-            requirement("tensorflow-cpu"),
-        ],
-        "//conditions:default": [
-            requirement("tensorflow"),
-        ],
-    }),
+        requirement("tensorflow"),
+    ],
 )
 
 spu_py_test(
@@ -335,14 +329,8 @@ spu_py_test(
         "//spu:init",
         "//spu/utils:distributed",
         requirement("grpcio"),
-    ] + select({
-        "@bazel_tools//src/conditions:linux_x86_64": [
-            requirement("tensorflow-cpu"),
-        ],
-        "//conditions:default": [
-            requirement("tensorflow"),
-        ],
-    }),
+        requirement("tensorflow"),
+    ],
 )
 
 spu_py_test(

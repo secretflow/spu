@@ -18,6 +18,7 @@
 
 #include "libspu/core/type_util.h"
 #include "libspu/core/vectorize.h"
+#include "libspu/mpc/api.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pv2k.h"
@@ -367,6 +368,75 @@ NdArrayRef MulA1B::proc(KernelEvalContext* ctx, const NdArrayRef& x,
   return b.as(x.eltype());
 }
 
+namespace {
+NdArrayRef UnflattenBuffer(yacl::Buffer&& buf, FieldType field,
+                           const Shape& shape) {
+  return NdArrayRef(std::make_shared<yacl::Buffer>(std::move(buf)),
+                    makeType<RingTy>(field), shape);
+}
+}  // namespace
+
+// Input: P0 has x, P1 has y;
+// Output: P0 has z0, P1 has z1, where z0 + z1 = x * y
+// Steps:
+//   1. Beaver generate & send (a0,c0), (a1,c1), where a0 * a1 = c0 + c1
+//   2. P0 send (x+a0), P1 send (y+a1) to each other
+//   3. P0 compute z0 =  x(y+a1)  + c0
+//      P1 compute z1 = -a1(x+a0) + c1
+NdArrayRef MulVVS::proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                        const NdArrayRef& y) const {
+  const auto x_rank = x.eltype().as<Priv2kTy>()->owner();
+  const auto y_rank = y.eltype().as<Priv2kTy>()->owner();
+  SPU_ENFORCE_NE(x_rank, y_rank);
+
+  const auto field = x.eltype().as<Ring2k>()->field();
+  auto* comm = ctx->getState<Communicator>();
+  auto* beaver = ctx->getState<Semi2kState>()->beaver();
+  const auto numel = x.shape().numel();
+  const int64_t rank = comm->getRank();
+
+  NdArrayRef in;
+  if (rank == x_rank) {
+    in = x;
+  } else if (rank == y_rank) {
+    in = y;
+  } else {
+    SPU_THROW("Invalid rank: {}", rank);
+  }
+
+  NdArrayRef a;
+  NdArrayRef c;
+
+  // We need private bit mul (x * y) in the smaller ring (over `bits` bits)
+  // we have a0 * a1 = c0 + c1
+  auto [a_buf, c_buf] = beaver->MulPriv(field, numel, ElementType::kRing);
+  SPU_ENFORCE(static_cast<size_t>(a_buf.size()) == numel * SizeOf(field));
+  SPU_ENFORCE(static_cast<size_t>(c_buf.size()) == numel * SizeOf(field));
+
+  a = UnflattenBuffer(std::move(a_buf), field, x.shape());
+  c = UnflattenBuffer(std::move(c_buf), field, x.shape());
+
+  auto a_x = ring_add(a, in);
+  comm->sendAsync(comm->nextRank(), a_x, "a0+x_or_a1+y");
+  auto tmp =
+      comm->recv(comm->prevRank(), makeType<AShrTy>(field), "a0+x_or_a1+y")
+          .reshape(in.shape());
+  comm->addCommStatsManually(1, SizeOf(field) * 8 * numel);
+
+  if (rank == 0) {
+    ring_mul_(tmp, in);
+    ring_add_(tmp, c);
+  } else if (rank == 1) {
+    ring_neg_(a);
+    ring_mul_(tmp, a);
+    ring_add_(tmp, c);
+  } else {
+    SPU_THROW("Invalid rank: {}", rank);
+  }
+
+  return tmp;
+}
+
 ////////////////////////////////////////////////////////////////////
 // matmul family
 ////////////////////////////////////////////////////////////////////
@@ -495,6 +565,141 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in,
       }
 
       _out[idx] = y;
+    });
+  });
+
+  return out;
+}
+
+namespace {
+
+static NdArrayRef wrap_mulvvs(SPUContext* ctx, const NdArrayRef& x,
+                              const NdArrayRef& y) {
+  SPU_ENFORCE(x.shape() == y.shape());
+  SPU_ENFORCE(x.eltype().isa<Priv2kTy>());
+  SPU_ENFORCE(y.eltype().isa<Priv2kTy>());
+  SPU_ENFORCE(x.eltype().as<Priv2kTy>()->owner() !=
+              y.eltype().as<Priv2kTy>()->owner());
+  return UnwrapValue(mul_vv(ctx, WrapValue(x), WrapValue(y)));
+}
+
+// TODO: define more smaller fields.
+FieldType getTruncField(size_t bits) {
+  if (bits <= 32) {
+    return FM32;
+  } else if (bits <= 64) {
+    return FM64;
+  } else if (bits <= 128) {
+    return FM128;
+  } else {
+    SPU_THROW("Unsupported truncation bits: {}", bits);
+  }
+}
+
+// Ref: Improved secure two-party computation from a geometric perspective
+// Algorithm 2: Compute MW(x, L) with |x| < L / 4
+NdArrayRef computeMW(KernelEvalContext* ctx, const NdArrayRef& in,
+                     size_t bits) {
+  const auto numel = in.numel();
+  const auto field = in.eltype().as<Ring2k>()->field();
+  const size_t k = SizeOf(field) * 8;
+  const auto trunc_field = getTruncField(bits);
+  auto* comm = ctx->getState<Communicator>();
+
+  NdArrayRef mw;
+
+  DISPATCH_ALL_FIELDS(field, [&]() {
+    using ele_t = ring2k_t;
+    const ele_t L_4 = ele_t(1) << (k - TruncAPr2::kBitsLeftOut);
+    const ele_t L_2 = L_4 << 1;
+
+    DISPATCH_ALL_FIELDS(trunc_field, [&]() {
+      using mw_t = ring2k_t;
+
+      const auto trunc_ty = makeType<RingTy>(trunc_field);
+      NdArrayRef in_star(trunc_ty, in.shape());
+
+      NdArrayView<ele_t> _in(in);
+      NdArrayView<mw_t> _in_star(in_star);
+      if (comm->getRank() == 0) {
+        pforeach(0, numel, [&](int64_t idx) {  //
+          _in_star[idx] = static_cast<mw_t>((_in[idx] - L_4) >= L_2);
+        });
+      } else if (comm->getRank() == 1) {
+        pforeach(0, numel, [&](int64_t idx) {  //
+          _in_star[idx] = static_cast<mw_t>(_in[idx] >= L_2);
+        });
+      } else {
+        SPU_THROW("Invalid rank: {}", comm->getRank());
+      }
+
+      NdArrayRef x;
+      NdArrayRef y;
+      const auto pri0_ty = makeType<Priv2kTy>(trunc_field, 0);
+      const auto pri1_ty = makeType<Priv2kTy>(trunc_field, 1);
+      if (comm->getRank() == 0) {
+        x = in_star.as(pri0_ty);
+        y = makeConstantArrayRef(pri1_ty, in_star.shape());
+      } else {
+        x = makeConstantArrayRef(pri0_ty, in_star.shape());
+        y = in_star.as(pri1_ty);
+      }
+
+      mw = wrap_mulvvs(ctx->sctx(), x, y);
+
+      NdArrayView<mw_t> _mw(mw);
+      if (comm->getRank() == 0) {
+        pforeach(0, numel, [&](int64_t idx) {  //
+          _mw[idx] +=
+              (static_cast<mw_t>(1) - static_cast<mw_t>(_in[idx] < L_4));
+        });
+      }
+    });
+  });
+
+  return mw.as(makeType<AShrTy>(trunc_field));
+}
+}  // namespace
+
+// Ref: Improved secure two-party computation from a geometric perspective
+// Algorithm 4: One-bit error truncation with constraint
+NdArrayRef TruncAPr2::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                           size_t bits, SignType sign) const {
+  (void)sign;
+
+  const auto numel = in.numel();
+  const auto field = in.eltype().as<Ring2k>()->field();
+  const size_t k = SizeOf(field) * 8;
+  const auto trunc_field = getTruncField(bits);
+  auto* comm = ctx->getState<Communicator>();
+  const auto rank = comm->getRank();
+  SPU_ENFORCE(rank == 0 || rank == 1, "Invalid rank: {}", rank);
+
+  // MW(x0, x1, L) = Wrap(x0, x1, L) + MSB(x)
+  auto mw = computeMW(ctx, in, bits);
+
+  NdArrayRef out(in.eltype(), in.shape());
+
+  DISPATCH_ALL_FIELDS(field, [&]() {
+    using ele_t = ring2k_t;
+
+    DISPATCH_ALL_FIELDS(trunc_field, [&]() {
+      using mw_t = ring2k_t;
+      // (x >> k) = (x0 >> k) + (x1 >> k) - MW(x) * (2^{l-k}) + 1, with
+      // one-bit error at most.
+      // Note: we choose to add 1 rather ignore it, because we want to make
+      // trunc(0, fxp_bits) = 0, else the result will be -2**{-fxp_bits},
+      // which may cause some confusion.
+      NdArrayView<mw_t> _mw(mw);
+      NdArrayView<ele_t> _in(in);
+      NdArrayView<ele_t> _out(out);
+
+      pforeach(0, numel, [&](int64_t idx) {
+        _out[idx] = (_in[idx] >> bits) -
+                    static_cast<ele_t>(_mw[idx]) *
+                        (static_cast<ele_t>(1) << (k - bits)) +
+                    rank;
+      });
     });
   });
 

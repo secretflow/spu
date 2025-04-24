@@ -178,6 +178,19 @@ class MulA1B : public BinaryKernel {
                   const NdArrayRef& y) const override;
 };
 
+// Note: quick pass only for 2PC
+class MulVVS : public BinaryKernel {
+ public:
+  static constexpr const char* kBindName() { return "mul_vvs"; }
+
+  ce::CExpr latency() const override { return ce::Const(1); }
+
+  ce::CExpr comm() const override { return ce::K(); }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                  const NdArrayRef& y) const override;
+};
+
 ////////////////////////////////////////////////////////////////////
 // matmul family
 ////////////////////////////////////////////////////////////////////
@@ -260,6 +273,39 @@ class TruncAPr : public TruncAKernel {
   ce::CExpr latency() const override { return ce::Const(1); }
 
   ce::CExpr comm() const override { return ce::K() * (ce::N() - 1); }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t bits,
+                  SignType sign) const override;
+
+  bool hasMsbError() const override { return false; }
+
+  TruncLsbRounding lsbRounding() const override {
+    return TruncLsbRounding::Probabilistic;
+  }
+};
+
+// Ref: Improved secure two-party computation from a geometric perspective
+// https://eprint.iacr.org/2025/200
+// Algorithm 4: One-bit error truncation with constraint
+// NOTE: this algorithm is only for 2PC, and it needs |x| < L / 4, where L =
+// 2^l, and l is the bit-length of the field. Fortunately, this condition is
+// always satisfied under current SPU encoding scheme, see
+// /libspu/core/encoding.cc for more details.
+class TruncAPr2 : public TruncAKernel {
+ public:
+  static constexpr const char* kBindName() { return "trunc_a"; }
+
+  static constexpr size_t kBitsLeftOut = 2;
+
+  // the communication is dependent on the truncation bits.
+  Kind kind() const override { return Kind::Dynamic; }
+
+  ce::CExpr latency() const override { return ce::Const(1); }
+
+  ce::CExpr comm() const override {
+    const auto n = ce::Variable("n", "bits to truncation");
+    return n;
+  }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t bits,
                   SignType sign) const override;
