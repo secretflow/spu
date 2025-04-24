@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from typing import List
 
 import jax
 import jax.numpy as jnp
@@ -293,6 +294,136 @@ class Normalizer:
             Transformed array.
         """
         return normalize(X, norm=self.norm)
+
+
+class RobustScaler:
+    """Scale features using statistics robust to outliers.
+
+    This scaler removes the median and scales the data according to the quantile range.
+    Standardization is performed using median and interquartile range (IQR).
+
+    Parameters
+    ----------
+    with_centering : bool, default=True
+        If True, center the data by subtracting the median.
+
+    with_scaling : bool, default=True
+        If True, scale the data using interquartile range (IQR).
+
+    quantile_range : tuple (q_min, q_max), default=(25.0, 75.0)
+        Quantile range used to calculate scale_. Both values must be in [0, 100].
+
+    clip : bool, default=False.
+        Set to True to clip transformed values within quantile boundaries.
+    """
+
+    def __init__(
+        self,
+        with_centering=True,
+        with_scaling=True,
+        quantile_range=(25.0, 75.0),
+        clip=False,
+    ):
+        self.with_centering = with_centering
+        self.with_scaling = with_scaling
+        self.quantile_range = quantile_range
+        self.clip = clip if with_scaling else False
+
+        self._validate_quantiles()
+
+    def _reset(self):
+        """Reset internal state of the scaler."""
+        for attr in ["center_", "scale_", "quantiles_"]:
+            if hasattr(self, attr):
+                delattr(self, attr)
+
+    def _validate_quantiles(self):
+        """Verify quantile range validity."""
+        q_min, q_max = self.quantile_range
+        if not 0 <= q_min <= q_max <= 100:
+            raise ValueError(f"Invalid quantile range: ({q_min}, {q_max})")
+        if q_max == q_min:
+            raise ValueError("Quantile range width is zero")
+
+    def fit(self, X):
+        """Compute median and IQR for subsequent scaling.
+
+        Parameters
+        ----------
+        X : {array-like} of shape (n_samples, n_features)
+            Training data used for parameter estimation.
+        """
+        self._reset()
+        q_min, q_max = self.quantile_range
+
+        if not self.with_scaling and self.with_centering:
+            self.center_ = jnp.median(X, axis=0)
+            return self
+
+        if self.with_scaling:
+            quantiles_to_compute = [q_min, q_max]
+            if self.with_centering and 50.0 not in [q_min, q_max]:
+                quantiles_to_compute.append(50.0)
+
+            computed = jnp.percentile(X, jnp.array(quantiles_to_compute), axis=0)
+
+            self.quantiles_ = computed[:2]
+            self.scale_ = self.quantiles_[1] - self.quantiles_[0]
+            self.scale_ = jnp.where(self.scale_ == 0, 1.0, self.scale_)
+
+            if self.with_centering:
+                if 50.0 in [q_min, q_max]:
+                    self.center_ = (
+                        self.quantiles_[0] if q_min == 50.0 else self.quantiles_[1]
+                    )
+                else:
+                    self.center_ = computed[2]
+
+        return self
+
+    def transform(self, X):
+        """Apply centering and scaling transformations.
+
+        Parameters
+        ----------
+        X : {array-like} of shape (n_samples, n_features)
+            Data to be transformed.
+
+        Returns
+        -------
+        ndarray of shape (n_samples, n_features)
+            Transformed array with outlier-robust scaling.
+        """
+        if self.with_centering:
+            X = X - self.center_
+        if self.with_scaling:
+            X = X / self.scale_
+        if self.clip:
+            X = jnp.clip(X, self.quantiles_[0], self.quantiles_[1])
+        return X
+
+    def fit_transform(self, X):
+        """Combine fit and transform operations in single call."""
+        return self.fit(X).transform(X)
+
+    def inverse_transform(self, X):
+        """Revert scaling transformations while preserving original data distribution.
+
+        Parameters
+        ----------
+        X : {array-like} of shape (n_samples, n_features)
+            Transformed data to be restored.
+
+        Returns
+        -------
+        ndarray of shape (n_samples, n_features)
+            Original data scale reconstruction.
+        """
+        if self.with_scaling:
+            X = X * self.scale_
+        if self.with_centering:
+            X = X + self.center_
+        return X
 
 
 class MinMaxScaler:
@@ -1222,3 +1353,113 @@ class KBinsDiscretizer:
             return bin_centers[(x).astype(jnp.int32)]
 
         return jax.vmap(bin_func, in_axes=(1, 1), out_axes=1)(bin_edges, X)
+
+
+class OneHotEncoder:
+    """
+    JAX-based One-Hot Encoder designed for privacy-preserving computation frameworks like SPU.
+
+    This implementation performs one-hot encoding of categorical data, where each feature
+    is expanded into a binary vector representation. It is optimized for use in secure
+    multi-party computation (SPC) environments, ensuring compatibility with privacy-preserving
+    computation frameworks like SPU.
+
+    The encoder requires the user to explicitly specify the categories for each feature during
+    initialization. It does not automatically infer categories from the data, making it suitable
+    for scenarios where data privacy is a concern.
+    """
+
+    def __init__(
+        self,
+        categories: List[List],
+    ):
+        """
+        Initialize one-hot encoder with privacy-preserving configurations
+        Parameters
+        ----------
+
+        Args:
+            categories: Category specification mode:
+                       - Manual list of categories per feature
+        """
+        self.categories = [jnp.array(cats) for cats in categories]
+        self.n_features_in_ = None
+        self.feature_lengths_ = None
+
+    def fit(self, X):
+        """
+        Initialize the encoder with the input data.
+
+        This method prepares the encoder for one-hot encoding by recording the number of features
+        and the number of categories for each feature. It based on that the categories for each feature
+        are already provided during initialization (via `self.categories`).
+
+        Args:
+            X: Input matrix of shape (n_samples, n_features)
+
+        Returns:
+            self: Fitted encoder instance
+        """
+        self.n_features_in_ = X.shape[1]
+        self.feature_lengths_ = [len(cats) for cats in self.categories]
+        return self
+
+    def transform(self, X):
+        """
+        Transform categorical data to one-hot encoded format.
+
+        This function converts the input categorical data into a one-hot encoded matrix.
+        Each feature in the input matrix is expanded into a binary vector representation
+
+        Args:
+            X: Input matrix matching fit() dimensions
+
+        Returns:
+            jnp.ndarray: Encoded matrix of shape (n_samples, n_encoded_features)
+        """
+        encoded_features = []
+
+        for i in range(self.n_features_in_):
+            cats = self.categories[i]
+            one_hot = (X[:, i][:, None] == cats).astype(jnp.float64)
+            encoded_features.append(one_hot)
+
+        return jnp.concatenate(encoded_features, axis=1)
+
+    def fit_transform(self, x):
+        """Combined fit/transform operation"""
+        return self.fit(x).transform(x)
+
+    def inverse_transform(self, x):
+        """
+        Reconstruct original categorical data from one-hot encoded data.
+
+        This function converts a one-hot encoded matrix back to its original categorical
+        representation. Each feature in the one-hot encoded matrix is mapped to its
+        corresponding category value.
+
+        Args:
+            x: Encoded matrix from transform()
+
+        Returns:
+            jnp.ndarray: Reconstructed categorical data
+        """
+        current_col = 0
+        feature_parts = []
+        for i in range(self.n_features_in_):
+            length = self.feature_lengths_[i]
+            feature_parts.append(x[:, current_col : current_col + length])
+            current_col += length
+
+        inv_features = []
+        for i in range(self.n_features_in_):
+            part = feature_parts[i]
+            cats = self.categories[i]
+            indices = jnp.argmax(part, axis=1)
+            feature_values = cats[indices]
+            row_sums = jnp.sum(part, axis=1)
+            feature_values = jnp.where(row_sums == 0, 0, feature_values)
+            feature_values_array = feature_values[:, None]
+            inv_features.append(feature_values_array)
+
+        return jnp.concatenate(inv_features, axis=1)

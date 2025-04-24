@@ -661,7 +661,6 @@ void BindSPU(py::module& m) {
       .export_values();
 
   rt_cls.def(py::init<>())
-      .def(py::init())
       .def(py::init<ProtocolKind, FieldType, int64_t>(), py::arg("protocol"),
            py::arg("field"), py::arg("fxp_fraction_bits") = 0)
       .def(py::init<const RuntimeConfig&>())
@@ -671,6 +670,7 @@ void BindSPU(py::module& m) {
            [](const RuntimeConfig& self) {
              return py::bytes(self.SerializeAsString());
            })
+      .def("__str__", &RuntimeConfig::DumpToString)
       .def_readwrite("protocol", &RuntimeConfig::protocol)
       .def_readwrite("field", &RuntimeConfig::field)
       .def_readwrite("fxp_fraction_bits", &RuntimeConfig::fxp_fraction_bits)
