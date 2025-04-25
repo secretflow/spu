@@ -56,10 +56,10 @@ void regSwiftProtocol(SPUContext* ctx,
                   swift::BitIntlB, swift::BitDeintlB, swift::A2B, swift::MsbA2B,
                   swift::B2A>();
 
-  // Our malicious multiplication protocol require a larger ring-size of 2^{k + \sigma} for x \in 2^k, 
-  // where \sigma is the security parameter
-  // for k = 32 (FM32), we set \sigma = 32, use FM64(uint64_t) in the larger ring;
-  // for k = 64 (FM64), we set \sigma = 64, use FM128(uint128_t) in the larger ring;
+  // Our malicious multiplication protocol require a larger ring-size of
+  // 2^{k +\sigma} for x \in 2^k, where \sigma is the security parameter.
+  // for k = 32 (FM32): \sigma = 32, use FM64(uint64_t) in the larger ring;
+  // for k = 64 (FM64): \sigma = 64, use FM128(uint128_t) in the larger ring;
   // for k = 128 (FM128), there is not available data type( > uint128_t) to use,
   // so current version doesn't support FM128.
   if (ctx->getField() == FieldType::FM128) {
