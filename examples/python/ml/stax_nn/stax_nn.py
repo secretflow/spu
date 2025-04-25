@@ -34,7 +34,7 @@ from jax.example_libraries import stax
 from keras.datasets import cifar10
 from sklearn.metrics import accuracy_score
 
-import models
+from examples.python.ml.stax_nn import models
 import spu.utils.distributed as ppd
 
 parser = argparse.ArgumentParser(description='distributed driver.')
