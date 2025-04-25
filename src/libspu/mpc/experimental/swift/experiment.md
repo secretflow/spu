@@ -76,6 +76,12 @@ def secureml():
     return nn_init, nn_apply
 ```
 
+and run:
+
+`bazel run -c opt //examples/python/utils:nodectl -- up`
+
+`bazel run -c opt //examples/python/ml/stax_nn:stax_nn`
+
 **accuracy:**
 
 We test the accuracy of CPU and SPU with epoch=1 and epoch=2, the accuracy of SPU is lower than CPU, we speculate that this is because SWIFT use the truncation from ABY3(https://dl.acm.org/doi/10.1145/3243734.3243760). The truncation method in ABY3 generate the share of $(r,rd=r/2^d)$, and calculate $x/2^d$ by $(x-r)/2^d+[rd]$, for a secret value $x \in [0, 2^{l_x}) \cup (2^l -2^{l_x},2^l)$，this method may cause a large error with the probability of $2^{-(l-l_x-1)}$. You can read Bicoptor2.0 (http://arxiv.org/abs/2309.04909) for detail.
