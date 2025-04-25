@@ -485,9 +485,9 @@ Value carry_a2b(SPUContext* ctx, const Value& x, const Value& y, size_t k) {
       P = lshift_b(ctx, P, {1});
       G = lshift_b(ctx, G, {1});
     }
-    auto p = std::async(bit_scatter, ctx, P, 0);
+    auto [P1, P0] = bit_scatter(ctx, P, 0);
     auto [G1, G0] = bit_scatter(ctx, G, 0);
-    auto [P1, P0] = p.get();
+
     // Calculate next-level of P, G
     //   P = P1 & P0
     //   G = G1 | (P1 & G0)
