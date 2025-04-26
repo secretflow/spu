@@ -214,15 +214,15 @@ class MatMulAA : public MatmulKernel {
 };
 
 class LShiftA : public ShiftKernel {
-  public:
-   static constexpr const char* kBindName() { return "lshift_a"; }
+ public:
+  static constexpr const char* kBindName() { return "lshift_a"; }
 
-   ce::CExpr latency() const override { return ce::Const(0); }
-   
-   ce::CExpr comm() const override {return ce::Const(0); }
+  ce::CExpr latency() const override { return ce::Const(0); }
 
-   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
-                    const Sizes& bits) const override;
+  ce::CExpr comm() const override { return ce::Const(0); }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                  const Sizes& bits) const override;
 };
 
 }  // namespace spu::mpc::shamir

@@ -132,18 +132,20 @@ gen_prefix_mult_share(SPUContext* ctx, const int64_t numel,
   // let k denote num_prefix
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
   auto ty = makeType<PubGfmpTy>(field);
-  
-  #ifdef ONLINE_ONLY
+
+#ifdef ONLINE_ONLY
   std::vector<NdArrayRef> fake_rand_r;
   std::vector<NdArrayRef> fake_rand_s;
   for (int64_t i = 0; i < num_prefix; ++i) {
-    fake_rand_r.push_back(ring_ones(field, {numel}).as(makeType<AShrTy>(field)));
-    fake_rand_s.push_back(ring_ones(field, {numel}).as(makeType<AShrTy>(field)));
+    fake_rand_r.push_back(
+        ring_ones(field, {numel}).as(makeType<AShrTy>(field)));
+    fake_rand_s.push_back(
+        ring_ones(field, {numel}).as(makeType<AShrTy>(field)));
   }
   std::pair<std::vector<NdArrayRef>, std::vector<NdArrayRef>> fake_out;
   fake_out.first = std::move(fake_rand_r);
   fake_out.second = std::move(fake_rand_s);
-  #endif
+#endif
 
   auto mul_lambda = [ctx](const NdArrayRef& a, const NdArrayRef& b) {
     return wrap_mul(ctx, a, b);
@@ -213,12 +215,13 @@ NdArrayRef gen_zero_shares(KernelEvalContext* ctx, int64_t numel,
   auto* prg_state = ctx->getState<PrgState>();
   auto ty = makeType<PubGfmpTy>(field);
 
-  #ifdef ONLINE_ONLY
+#ifdef ONLINE_ONLY
   NdArrayRef fake_out = ring_zeros(field, {numel});
   return fake_out.as(makeType<AShrTy>(field));
-  #endif
+#endif
 
-  auto coeffs = prg_state->genPublWithMersennePrime(field, {threshold * numel}).as(ty);
+  auto coeffs =
+      prg_state->genPublWithMersennePrime(field, {threshold * numel}).as(ty);
   NdArrayRef zeros = ring_zeros(field, {numel}).as(makeType<GfmpTy>(field));
   auto shares =
       gfmp_rand_shamir_shares(zeros, coeffs, comm->getWorldSize(), threshold);
@@ -229,11 +232,11 @@ NdArrayRef gen_zero_shares(KernelEvalContext* ctx, int64_t numel,
 // [Offline Phase]
 NdArrayRef rand_bits(SPUContext* ctx, int64_t numel) {
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
-  
-  #ifdef ONLINE_ONLY
+
+#ifdef ONLINE_ONLY
   NdArrayRef fake_out = ring_zeros(field, {numel});
   return fake_out.as(makeType<AShrTy>(field));
-  #endif
+#endif
 
   NdArrayRef out(makeType<AShrTy>(field), {numel});
   std::vector<int64_t> cur_failed_indices;
@@ -255,14 +258,14 @@ NdArrayRef rand_bits(SPUContext* ctx, int64_t numel) {
       NdArrayView<ring2k_t> _rand_sqrt(rand_sqrt);
       NdArrayView<ring2k_t> _tmp_rand_sqrt(tmp_rand_sqrt);
       pforeach(0, un_produced, [&](int64_t idx) {
-        if(_tmp_rand_a_square_p[idx] != 0) {
+        if (_tmp_rand_a_square_p[idx] != 0) {
           _tmp_rand_sqrt[idx] = sqrt_mod(_tmp_rand_a_square_p[idx]);
         } else {
           std::unique_lock lock(idx_mtx);
           cur_failed_indices.push_back(idx);
         }
       });
-      if(pre_failed_indices.empty()) {
+      if (pre_failed_indices.empty()) {
         ring_assign(rand_a, tmp_rand_a);
         ring_assign(rand_sqrt, tmp_rand_sqrt);
       } else {
@@ -324,7 +327,7 @@ std::vector<NdArrayRef> prefix_mul(SPUContext* ctx,
 // Ref:
 // https://www.usenix.org/system/files/sec24summer-prepub-278-liu-fengrun.pdf
 //  Protocol 4.1: Prefix Or
-// FIXME There is a security issue in this protocol. 
+// FIXME There is a security issue in this protocol.
 std::vector<NdArrayRef> prefix_or(SPUContext* ctx,
                                   const std::vector<NdArrayRef>& inputs) {
   SPU_ENFORCE(!inputs.empty());
@@ -576,14 +579,13 @@ std::pair<std::vector<NdArrayRef>, NdArrayRef> solved_bits(SPUContext* ctx,
   std::mutex idx_mtx;
   int64_t numel = shape.numel();
   int64_t un_produced = numel;
-  
-  #ifdef ONLINE_ONLY
+
+#ifdef ONLINE_ONLY
   return DISPATCH_ALL_FIELDS(field, [&]() {
     size_t exp = ScalarTypeToPrime<ring2k_t>::exp;
     std::vector<NdArrayRef> out_bits(exp);
     for (int64_t i = 0; i < static_cast<int64_t>(exp); ++i) {
-      out_bits[i] =
-          ring_zeros(field, shape).as(makeType<AShrTy>(field));
+      out_bits[i] = ring_zeros(field, shape).as(makeType<AShrTy>(field));
     }
     NdArrayRef out = ring_zeros(field, shape).as(makeType<AShrTy>(field));
     std::pair<std::vector<NdArrayRef>, NdArrayRef> ret;
@@ -591,93 +593,92 @@ std::pair<std::vector<NdArrayRef>, NdArrayRef> solved_bits(SPUContext* ctx,
     ret.second = std::move(out);
     return ret;
   });
-  #endif
+#endif
 
-
-if (field != FM32) {
-  return DISPATCH_ALL_FIELDS(field, [&]() {
-    size_t exp = ScalarTypeToPrime<ring2k_t>::exp;
-    std::vector<NdArrayRef> out_bits(exp);
-    NdArrayRef out = wrap_make_zeros(ctx, shape).as(makeType<AShrTy>(field));
-    auto randbits = rand_bits(ctx, numel * exp);
-    for (int64_t i = 0; i < static_cast<int64_t>(exp); ++i) {
-      out_bits[i] =
-          randbits.slice({i * numel}, {(i + 1) * numel}, {}).reshape(shape);
-    }
-
-    NdArrayView<ring2k_t> _out(out);
-    pforeach(0, numel, [&](int64_t idx) {
-      for (size_t i = 0; i < exp; ++i) {
-        NdArrayView<ring2k_t> _out_i(out_bits[i]);
-        _out[idx] = add_mod(
-            _out[idx], mul_mod(static_cast<ring2k_t>(1) << i, _out_i[idx]));
-      }
-    });
-
-    std::pair<std::vector<NdArrayRef>, NdArrayRef> ret;
-    ret.first = std::move(out_bits);
-    ret.second = std::move(out);
-    return ret;
-  });
-} else {
-  return DISPATCH_ALL_FIELDS(field, [&]() {
-    size_t exp = ScalarTypeToPrime<ring2k_t>::exp;
-    std::vector<NdArrayRef> out_bits(exp);
-    NdArrayRef out = wrap_make_zeros(ctx, shape).as(makeType<AShrTy>(field));
-
-    auto k1 = hack_make_p(ctx, 1, shape);
-    std::vector<NdArrayRef> tmp_p_bits(exp, k1);
-    while (un_produced > 0) {
-      std::vector<NdArrayRef> tmp_out(exp);
+  if (field != FM32) {
+    return DISPATCH_ALL_FIELDS(field, [&]() {
+      size_t exp = ScalarTypeToPrime<ring2k_t>::exp;
+      std::vector<NdArrayRef> out_bits(exp);
+      NdArrayRef out = wrap_make_zeros(ctx, shape).as(makeType<AShrTy>(field));
       auto randbits = rand_bits(ctx, numel * exp);
       for (int64_t i = 0; i < static_cast<int64_t>(exp); ++i) {
-        tmp_out[i] =
+        out_bits[i] =
             randbits.slice({i * numel}, {(i + 1) * numel}, {}).reshape(shape);
       }
-      auto cmp = bit_lt(ctx, tmp_out, tmp_p_bits);
-      auto cmp_p = wrap_a2p(ctx, cmp);
-      NdArrayView<ring2k_t> _cmp_p(cmp);
-      pforeach(0, un_produced, [&](int64_t idx) {
-        if (_cmp_p[idx] == 0) {
-          std::unique_lock lock(idx_mtx);
-          cur_failed_indices.push_back(idx);
+
+      NdArrayView<ring2k_t> _out(out);
+      pforeach(0, numel, [&](int64_t idx) {
+        for (size_t i = 0; i < exp; ++i) {
+          NdArrayView<ring2k_t> _out_i(out_bits[i]);
+          _out[idx] = add_mod(
+              _out[idx], mul_mod(static_cast<ring2k_t>(1) << i, _out_i[idx]));
         }
       });
-      NdArrayView<ring2k_t> _out(out);
-      if (pre_failed_indices.empty()) {
-        for (size_t i = 0; i < exp; ++i) {
-          out_bits[i] = tmp_out[i];
+
+      std::pair<std::vector<NdArrayRef>, NdArrayRef> ret;
+      ret.first = std::move(out_bits);
+      ret.second = std::move(out);
+      return ret;
+    });
+  } else {
+    return DISPATCH_ALL_FIELDS(field, [&]() {
+      size_t exp = ScalarTypeToPrime<ring2k_t>::exp;
+      std::vector<NdArrayRef> out_bits(exp);
+      NdArrayRef out = wrap_make_zeros(ctx, shape).as(makeType<AShrTy>(field));
+
+      auto k1 = hack_make_p(ctx, 1, shape);
+      std::vector<NdArrayRef> tmp_p_bits(exp, k1);
+      while (un_produced > 0) {
+        std::vector<NdArrayRef> tmp_out(exp);
+        auto randbits = rand_bits(ctx, numel * exp);
+        for (int64_t i = 0; i < static_cast<int64_t>(exp); ++i) {
+          tmp_out[i] =
+              randbits.slice({i * numel}, {(i + 1) * numel}, {}).reshape(shape);
         }
+        auto cmp = bit_lt(ctx, tmp_out, tmp_p_bits);
+        auto cmp_p = wrap_a2p(ctx, cmp);
+        NdArrayView<ring2k_t> _cmp_p(cmp);
         pforeach(0, un_produced, [&](int64_t idx) {
-          for (size_t i = 0; i < exp; ++i) {
-            NdArrayView<ring2k_t> _tmp_out_i(tmp_out[i]);
-            _out[idx] = add_mod(
-                _out[idx],
-                mul_mod(static_cast<ring2k_t>(1) << i, _tmp_out_i[idx]));
+          if (_cmp_p[idx] == 0) {
+            std::unique_lock lock(idx_mtx);
+            cur_failed_indices.push_back(idx);
           }
         });
-      } else {
-        pforeach(0, un_produced, [&](int64_t idx) {
-          _out[pre_failed_indices[idx]] = 0;
+        NdArrayView<ring2k_t> _out(out);
+        if (pre_failed_indices.empty()) {
           for (size_t i = 0; i < exp; ++i) {
-            NdArrayView<ring2k_t> _tmp_out_i(tmp_out[i]);
-            _out[pre_failed_indices[idx]] = add_mod(
-                _out[pre_failed_indices[idx]],
-                mul_mod(static_cast<ring2k_t>(1) << i, _tmp_out_i[idx]));
-            ;
+            out_bits[i] = tmp_out[i];
           }
-        });
+          pforeach(0, un_produced, [&](int64_t idx) {
+            for (size_t i = 0; i < exp; ++i) {
+              NdArrayView<ring2k_t> _tmp_out_i(tmp_out[i]);
+              _out[idx] = add_mod(
+                  _out[idx],
+                  mul_mod(static_cast<ring2k_t>(1) << i, _tmp_out_i[idx]));
+            }
+          });
+        } else {
+          pforeach(0, un_produced, [&](int64_t idx) {
+            _out[pre_failed_indices[idx]] = 0;
+            for (size_t i = 0; i < exp; ++i) {
+              NdArrayView<ring2k_t> _tmp_out_i(tmp_out[i]);
+              _out[pre_failed_indices[idx]] = add_mod(
+                  _out[pre_failed_indices[idx]],
+                  mul_mod(static_cast<ring2k_t>(1) << i, _tmp_out_i[idx]));
+              ;
+            }
+          });
+        }
+        un_produced = cur_failed_indices.size();
+        pre_failed_indices = cur_failed_indices;
+        cur_failed_indices.clear();
       }
-      un_produced = cur_failed_indices.size();
-      pre_failed_indices = cur_failed_indices;
-      cur_failed_indices.clear();
-    }
-    std::pair<std::vector<NdArrayRef>, NdArrayRef> ret;
-    ret.first = std::move(out_bits);
-    ret.second = std::move(out);
-    return ret;
-  });
-}
+      std::pair<std::vector<NdArrayRef>, NdArrayRef> ret;
+      ret.first = std::move(out_bits);
+      ret.second = std::move(out);
+      return ret;
+    });
+  }
 }
 
 std::vector<NdArrayRef> bit_decompose(SPUContext* ctx, const NdArrayRef& in) {
@@ -783,7 +784,8 @@ NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& x) const {
 
 // Ref:
 // https://www.usenix.org/system/files/sec24summer-prepub-278-liu-fengrun.pdf
-// Protocol 3.1: Truncation with 1-bit gap, i.e. x must be in the range of $[-2^{k-2}, 2^{k-2})$, where $k$ is the bits of the prime.
+// Protocol 3.1: Truncation with 1-bit gap, i.e. x must be in the range of
+// $[-2^{k-2}, 2^{k-2})$, where $k$ is the bits of the prime.
 NdArrayRef TruncA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
                         size_t bits, SignType sign) const {
   (void)sign;  // TODO: optimize me.
@@ -906,7 +908,7 @@ NdArrayRef MulAATrunc::proc(KernelEvalContext* ctx, const NdArrayRef& x,
   });
 }
 
-// Ref: 
+// Ref:
 // https://dl.acm.org/doi/10.5555/3698900.3699009
 // Protocol 5.1: DReLU
 NdArrayRef MsbA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
@@ -925,7 +927,7 @@ NdArrayRef MsbA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   return msb;
 }
 
-// Ref: 
+// Ref:
 // https://dl.acm.org/doi/10.5555/3698900.3699009
 // Protocol 5.3: ReLU
 NdArrayRef ReLU::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {

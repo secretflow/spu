@@ -346,7 +346,8 @@ NdArrayRef LShiftB::proc(KernelEvalContext* ctx, const NdArrayRef& in,
     ring_assign(out_i, in_i);
   }
 
-  auto real_nbits = in_ty->nbits() + *std::max_element(bits.begin(), bits.end());
+  auto real_nbits =
+      in_ty->nbits() + *std::max_element(bits.begin(), bits.end());
   auto offset = real_nbits - GetMersennePrimeExp(field);
   if (real_nbits > GetMersennePrimeExp(field)) {
     for (int64_t idx = 0; idx < static_cast<int64_t>(offset); ++idx) {

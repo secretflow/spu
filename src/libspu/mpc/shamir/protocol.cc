@@ -62,10 +62,10 @@ void regShamirProtocol(SPUContext* ctx,
                   shamir::MulAP, shamir::MulAA, shamir::MulAAP,
                   shamir::MulAAA,                      //
                   shamir::MatMulAP, shamir::MatMulAA,  //
-                  shamir::LShiftB, shamir::LShiftA, shamir::RShiftB, shamir::ARShiftB,
-                  shamir::CommonTypeB, shamir::CastTypeB,         //
-                  shamir::CommonTypeV, shamir::A2B, shamir::B2A,  //
-                  shamir::AndBP, shamir::XorBP,                   //
+                  shamir::LShiftB, shamir::LShiftA, shamir::RShiftB,
+                  shamir::ARShiftB, shamir::CommonTypeB, shamir::CastTypeB,  //
+                  shamir::CommonTypeV, shamir::A2B, shamir::B2A,             //
+                  shamir::AndBP, shamir::XorBP,                              //
                   shamir::P2B, shamir::B2P, shamir::B2V, shamir::XorBB,
                   shamir::AndBB, shamir::BitrevB, shamir::TruncA,
                   shamir::MulAATrunc, shamir::MsbA, shamir::ReLU,  //

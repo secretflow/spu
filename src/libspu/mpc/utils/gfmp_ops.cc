@@ -297,10 +297,9 @@ NdArrayRef gfmp_mmul_mod(const NdArrayRef& x, const NdArrayRef& y) {
   SPU_ENFORCE_EQ(x.shape()[1], y.shape()[0]);
   const auto field = x.eltype().as<GfmpTy>()->field();
 
-  //FIXME Optimize me with Eigen
+  // FIXME Optimize me with Eigen
 
   return DISPATCH_ALL_FIELDS(field, [&]() {
-
     NdArrayView<ring2k_t> _x(x);
     NdArrayView<ring2k_t> _y(y);
     NdArrayRef out(x.eltype(), {x.shape()[0], y.shape()[1]});
@@ -310,7 +309,7 @@ NdArrayRef gfmp_mmul_mod(const NdArrayRef& x, const NdArrayRef& y) {
     auto K = x.shape()[1];
 
     pforeach(0, M, [&](int64_t i) {
-      for(int64_t j = 0; j < N; ++j) {
+      for (int64_t j = 0; j < N; ++j) {
         ring2k_t sum = 0;
         for (int64_t k = 0; k < K; ++k) {
           sum = add_mod(sum, mul_mod(_x[i * K + k], _y[k * N + j]));
@@ -393,7 +392,6 @@ std::vector<NdArrayRef> gfmp_rand_shamir_shares(const NdArrayRef& x,
   return shares;
 }
 
-
 NdArrayRef gfmp_reconstruct_shamir_shares(absl::Span<const NdArrayRef> shares,
                                           size_t world_size, size_t threshold) {
   SPU_ENFORCE(std::all_of(shares.begin(), shares.end(),
@@ -412,10 +410,10 @@ NdArrayRef gfmp_reconstruct_shamir_shares(absl::Span<const NdArrayRef> shares,
   const auto field = ty->field();
   const auto numel = shares[0].numel();
   NdArrayRef out(makeType<GfmpTy>(field), shares[0].shape());
-  
+
   DISPATCH_ALL_FIELDS(field, [&]() {
     auto rec = GenReconstructVector<ring2k_t>(shares.size());
-    
+
     NdArrayView<ring2k_t> _out(out);
     pforeach(0, numel, [&](int64_t idx) {
       ring2k_t secret = 0;
