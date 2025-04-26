@@ -89,8 +89,7 @@ std::vector<spu::Value> IoClient::makeShares(const PtBufferView &bv,
   NdArrayRef encoded;
   if (config_.protocol() == ProtocolKind::SHAMIR) {
     encoded = encodeToGfmp(bv, config_.field(), fxp_bits, &dtype);
-  }
-  else {
+  } else {
     encoded = encodeToRing(bv, config_.field(), fxp_bits, &dtype);
   }
 

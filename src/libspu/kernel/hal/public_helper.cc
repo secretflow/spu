@@ -54,30 +54,6 @@ NdArrayRef dump_public(SPUContext* ctx, const Value& v) {
     decodeFromRing(encoded, v.dtype(), ctx->getFxpBits(), &pv);
     return dst;
   }
-
-  if (ctx->config().protocol() == ProtocolKind::SHAMIR) {
-    SPU_ENFORCE(v.storage_type().isa<mpc::PubGfmpTy>(), "got {}",
-                v.storage_type());
-    const auto field = v.storage_type().as<GfmpTy>()->field();
-    auto encoded = v.data().as(makeType<GfmpTy>(field));
-    const PtType pt_type = getDecodeType(v.dtype());
-    NdArrayRef dst(makePtType(pt_type), v.shape());
-    PtBufferView pv(static_cast<void*>(dst.data()), pt_type, dst.shape(),
-                    dst.strides());
-    decodeFromGfmp(encoded, v.dtype(), ctx->getFxpBits(), &pv);
-    return dst;
-  } else {
-    SPU_ENFORCE(v.storage_type().isa<mpc::Pub2kTy>(), "got {}",
-                v.storage_type());
-    const auto field = v.storage_type().as<Ring2k>()->field();
-    auto encoded = v.data().as(makeType<RingTy>(field));
-    const PtType pt_type = getDecodeType(v.dtype());
-    NdArrayRef dst(makePtType(pt_type), v.shape());
-    PtBufferView pv(static_cast<void*>(dst.data()), pt_type, dst.shape(),
-                    dst.strides());
-    decodeFromRing(encoded, v.dtype(), ctx->getFxpBits(), &pv);
-    return dst;
-  }
 }
 
 bool getBooleanValue(SPUContext* ctx, const spu::Value& value) {

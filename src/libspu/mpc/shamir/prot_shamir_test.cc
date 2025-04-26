@@ -210,4 +210,4 @@ TEST_P(ShamirProtTest, ReLU) {
     EXPECT_VALUE_EQ(s2p(sctx.get(), relu_s), relu_p);
   });
 }
-}
+}  // namespace spu::mpc::test

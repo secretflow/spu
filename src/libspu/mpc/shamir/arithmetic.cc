@@ -23,11 +23,11 @@
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pv2k.h"
 #include "libspu/mpc/common/pv_gfmp.h"
+#include "libspu/mpc/shamir/state.h"
 #include "libspu/mpc/shamir/type.h"
 #include "libspu/mpc/utils/gfmp.h"
 #include "libspu/mpc/utils/gfmp_ops.h"
 #include "libspu/mpc/utils/ring_ops.h"
-#include "libspu/mpc/shamir/state.h"
 
 namespace spu::mpc::shamir {
 
@@ -49,12 +49,13 @@ NdArrayRef gen_zero_shares(KernelEvalContext* ctx, int64_t numel,
   auto* comm = ctx->getState<Communicator>();
   auto ty = makeType<PubGfmpTy>(field);
 
-  #ifdef ONLINE_ONLY
+#ifdef ONLINE_ONLY
   NdArrayRef fake_out = ring_zeros(field, {numel});
   return fake_out.as(makeType<AShrTy>(field));
-  #endif
+#endif
 
-  auto coeffs = prg_state->genPublWithMersennePrime(field, {threshold * numel}).as(ty);
+  auto coeffs =
+      prg_state->genPublWithMersennePrime(field, {threshold * numel}).as(ty);
   NdArrayRef zeros = ring_zeros(field, {numel}).as(makeType<GfmpTy>(field));
   auto shares =
       gfmp_rand_shamir_shares(zeros, coeffs, comm->getWorldSize(), threshold);
@@ -73,14 +74,13 @@ std::pair<NdArrayRef, NdArrayRef> gen_double_shares(KernelEvalContext* ctx,
   auto* prg_state = ctx->getState<PrgState>();
   auto* van_state = ctx->getState<ShamirPrecomputedState>();
   auto rank = comm->getRank();
-  
-  #ifdef ONLINE_ONLY
-  std::pair<NdArrayRef, NdArrayRef> fake_out {
-    ring_ones(field, {numel}).as(makeType<AShrTy>(field)),
-    ring_ones(field, {numel}).as(makeType<AShrTy>(field))
-  };
+
+#ifdef ONLINE_ONLY
+  std::pair<NdArrayRef, NdArrayRef> fake_out{
+      ring_ones(field, {numel}).as(makeType<AShrTy>(field)),
+      ring_ones(field, {numel}).as(makeType<AShrTy>(field))};
   return fake_out;
-  #endif
+#endif
 
   // run one-time DN protocol we can generate (world_size-th) pairs of
   // double shares, so we need dn_times to generate multiplication double
@@ -154,9 +154,9 @@ NdArrayRef RandA::proc(KernelEvalContext* ctx, const Shape& shape) const {
   auto* van_state = ctx->getState<ShamirPrecomputedState>();
   NdArrayRef out = ring_zeros(field, shape);
 
-  #ifdef ONLINE_ONLY
+#ifdef ONLINE_ONLY
   return ring_ones(field, shape).as(makeType<AShrTy>(field));
-  #endif
+#endif
 
   int64_t world_size = comm->getWorldSize();
   int64_t th = ctx->sctx()->config().sss_threshold();
@@ -186,7 +186,7 @@ NdArrayRef RandA::proc(KernelEvalContext* ctx, const Shape& shape) const {
   return DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayRef r_t(ty, {dn_times * (world_size - th)});
     NdArrayView<ring2k_t> _r_t(r_t);
-    auto van = van_state->get_vandermonde<ring2k_t>(); 
+    auto van = van_state->get_vandermonde<ring2k_t>();
     // TODO optimize me: all random shares can be done by a mmut between van^T *
     // r_shrs van^T is a n-t by n r_shrs is a n by dn_times matrix
     pforeach(0, dn_times, [&](int64_t idx) {
@@ -215,7 +215,8 @@ NdArrayRef P2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   auto* comm = ctx->getState<Communicator>();
   int64_t th = ctx->sctx()->config().sss_threshold();
   auto ty = makeType<PubGfmpTy>(field);
-  auto coeffs = prg_state->genPublWithMersennePrime(field, {th * in.numel()}).as(ty);
+  auto coeffs =
+      prg_state->genPublWithMersennePrime(field, {th * in.numel()}).as(ty);
   auto shares = gfmp_rand_shamir_shares(in, coeffs, comm->getWorldSize(), th);
   return shares[comm->getRank()].as(makeType<AShrTy>(field));
 #endif
@@ -234,8 +235,9 @@ NdArrayRef A2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   DISPATCH_ALL_FIELDS(field, [&]() {
     auto rec = shamir_state->get_recontruction<ring2k_t>(arrays.size());
     if (comm->getRank() == 0) {
-      out = gfmp_reconstruct_shamir_shares<ring2k_t>(arrays, comm->getWorldSize(),
-                                           ctx->sctx()->config().sss_threshold(), rec);
+      out = gfmp_reconstruct_shamir_shares<ring2k_t>(
+          arrays, comm->getWorldSize(), ctx->sctx()->config().sss_threshold(),
+          rec);
     }
     out = comm->broadcast(out, 0, in.eltype(), in.shape(), "distribute");
   });
@@ -253,8 +255,9 @@ NdArrayRef A2V::proc(KernelEvalContext* ctx, const NdArrayRef& in,
     SPU_ENFORCE(arrays.size() == comm->getWorldSize());
     return DISPATCH_ALL_FIELDS(field, [&]() {
       auto rec = shamir_state->get_recontruction<ring2k_t>(arrays.size());
-      auto out = gfmp_reconstruct_shamir_shares<ring2k_t>(arrays, comm->getWorldSize(),
-                                           ctx->sctx()->config().sss_threshold(), rec);
+      auto out = gfmp_reconstruct_shamir_shares<ring2k_t>(
+          arrays, comm->getWorldSize(), ctx->sctx()->config().sss_threshold(),
+          rec);
       return out.as(out_ty);
     });
   } else {
@@ -437,12 +440,12 @@ NdArrayRef MulAAP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
 }
 
 NdArrayRef LShiftA::proc(KernelEvalContext* ctx, const NdArrayRef& in,
-                          const Sizes& bits) const {
+                         const Sizes& bits) const {
   const auto field = in.eltype().as<Ring2k>()->field();
   bool is_splat = bits.size() == 1;
   auto max_bits = *std::max_element(bits.begin(), bits.end());
   SPU_ENFORCE_GT(GetMersennePrimeExp(field), static_cast<size_t>(max_bits));
-  
+
   // auto p_in = wrap_a2p(ctx->sctx(), in);
   // ring_print(p_in, "in_s");
   NdArrayRef out(in.eltype(), in.shape());
@@ -452,10 +455,11 @@ NdArrayRef LShiftA::proc(KernelEvalContext* ctx, const NdArrayRef& in,
 
     pforeach(0, in.numel(), [&](int64_t idx) {
       auto shift_bits = is_splat ? bits[0] : bits[idx];
-      // std::cout<<"s_shift_bits: "<<static_cast<ring2k_t>((1 << shift_bits))<<std::endl;
+      // std::cout<<"s_shift_bits: "<<static_cast<ring2k_t>((1 <<
+      // shift_bits))<<std::endl;
       _out[idx] = mul_mod(_in[idx], (static_cast<ring2k_t>(1) << shift_bits));
     });
-    
+
     // auto p_out = wrap_a2p(ctx->sctx(), out);
     // ring_print(p_out, "out_s");
 

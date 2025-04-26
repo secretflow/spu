@@ -482,7 +482,7 @@ TEST_P(ArithmeticTest, LShiftA) {
           bits >= GetMersennePrimeExp(conf.field())) {
         continue;
       }
-      
+
       if (bits >= p0.elsize() * 8) {
         // Shift more than elsize is a UB
         continue;
