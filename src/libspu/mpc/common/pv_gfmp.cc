@@ -574,8 +574,7 @@ class LShiftV : public ShiftKernel {
         NdArrayView<ring2k_t> _out(out);
         pforeach(0, in.numel(), [&](int64_t idx) {
           auto shift_bits = is_splat ? bits[0] : bits[idx];
-          _out[idx] =
-              mul_mod(_in[idx], static_cast<ring2k_t>(1) << shift_bits);
+          _out[idx] = mul_mod(_in[idx], static_cast<ring2k_t>(1) << shift_bits);
         });
         return out;
       });

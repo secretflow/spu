@@ -14,11 +14,13 @@
 
 #pragma once
 
+#include "yacl/crypto/tools/prg.h"
+
 #include "libspu/core/context.h"
 #include "libspu/core/object.h"
 #include "libspu/mpc/utils/gfmp.h"
+
 #include "libspu/spu.pb.h"
-#include "yacl/crypto/tools/prg.h"
 
 #define EIGEN_HAS_OPENMP
 
@@ -49,14 +51,16 @@ class ShamirPrecomputedState : public State {
   static constexpr const char* kBindName() { return "ShamirPrecompute"; }
 
   explicit ShamirPrecomputedState(size_t _world_size, size_t _threshold);
-  
+
   ~ShamirPrecomputedState() override = default;
 
   std::unique_ptr<State> fork() override;
 
-  template<typename T,
-            std::enable_if_t<yacl::crypto::IsSupportedMersennePrimeContainerType<T>::value, bool> = true>
-  GfmpMatrix<T>get_vandermonde(){ 
+  template <typename T,
+            std::enable_if_t<
+                yacl::crypto::IsSupportedMersennePrimeContainerType<T>::value,
+                bool> = true>
+  GfmpMatrix<T> get_vandermonde() {
     if constexpr (std::is_same_v<T, uint32_t>) {
       return Vandermonde_n_by_n_minus_t_32;
     } else if constexpr (std::is_same_v<T, uint64_t>) {
@@ -68,9 +72,11 @@ class ShamirPrecomputedState : public State {
     }
   }
 
-  template<typename T,
-  std::enable_if_t<yacl::crypto::IsSupportedMersennePrimeContainerType<T>::value, bool> = true>
-  std::vector<T>get_recontruction(size_t n_shares) {
+  template <typename T,
+            std::enable_if_t<
+                yacl::crypto::IsSupportedMersennePrimeContainerType<T>::value,
+                bool> = true>
+  std::vector<T> get_recontruction(size_t n_shares) {
     if (n_shares == threshold_ + 1) {
       if constexpr (std::is_same_v<T, uint32_t>) {
         return reconstruct_t_32;
@@ -81,8 +87,7 @@ class ShamirPrecomputedState : public State {
       } else {
         SPU_THROW("Type T is not supported");
       }
-    }
-    else if (n_shares == (threshold_ << 1) + 1) {
+    } else if (n_shares == (threshold_ << 1) + 1) {
       if constexpr (std::is_same_v<T, uint32_t>) {
         return reconstruct_2t_32;
       } else if constexpr (std::is_same_v<T, uint64_t>) {
@@ -92,11 +97,10 @@ class ShamirPrecomputedState : public State {
       } else {
         SPU_THROW("Type T is not supported");
       }
-    }
-    else {
+    } else {
       SPU_THROW("Degree is not supported");
     }
   }
 };
 
-}
+}  // namespace spu::mpc::shamir
