@@ -48,7 +48,7 @@ TEST_P(ExecutorTest, BoolSplatConstant) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
-  r.getConfig().set_enable_type_checker(false);
+  r.getConfig().enable_type_checker = false;
 
   r.run(R"(
 func.func @main() -> (tensor<i32>) {
@@ -80,7 +80,7 @@ TEST_P(ExecutorTest, BoolConstant) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
-  r.getConfig().set_enable_type_checker(false);
+  r.getConfig().enable_type_checker = false;
 
   r.run(R"(
 func.func @main() -> (tensor<2xi32>) {
@@ -99,7 +99,7 @@ TEST_P(ExecutorTest, ComplexConstant) {
   Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
            std::get<2>(GetParam()));
 
-  r.getConfig().set_enable_type_checker(false);
+  r.getConfig().enable_type_checker = false;
 
   r.run(R"(
 func.func @main() -> (tensor<2xcomplex<f32>>) {

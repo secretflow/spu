@@ -11,9 +11,9 @@
 
     ```python
     # for simulator
-    config = spu_pb2.RuntimeConfig(
-            protocol=spu_pb2.ProtocolKind.ABY3,
-            field=spu_pb2.FieldType.FM128,  # change filed size here
+    config = libspu.RuntimeConfig(
+            protocol=libspu.ProtocolKind.ABY3,
+            field=libspu.FieldType.FM128,  # change filed size here
             fxp_fraction_bits=30,  # change fxp here
         )
     sim = spsim.Simulator(3, config)

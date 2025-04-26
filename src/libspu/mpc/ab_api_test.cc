@@ -110,7 +110,7 @@ bool verifyCost(Kernel* kernel, std::string_view name, FieldType field,
           /* THEN */                                                           \
           EXPECT_VALUE_EQ(re, rp);                                             \
           EXPECT_TRUE(verifyCost(obj->prot()->getKernel(#OP "_aa"), #OP "_aa", \
-                                 conf.field(), kShape, npc, cost));            \
+                                 conf.field, kShape, npc, cost));              \
         });                                                                    \
   }
 
@@ -140,7 +140,7 @@ bool verifyCost(Kernel* kernel, std::string_view name, FieldType field,
           /* THEN */                                                           \
           EXPECT_VALUE_EQ(re, rp);                                             \
           EXPECT_TRUE(verifyCost(obj->prot()->getKernel(#OP "_ap"), #OP "_ap", \
-                                 conf.field(), kShape, npc, cost));            \
+                                 conf.field, kShape, npc, cost));              \
         });                                                                    \
   }
 
@@ -178,7 +178,7 @@ TEST_P(ArithmeticTest, SquareA) {
     /* THEN */
     EXPECT_VALUE_EQ(r_aa, r_pp);
     EXPECT_TRUE(verifyCost(obj->prot()->getKernel("square_a"), "square_a",
-                           conf.field(), kShape, npc, cost));
+                           conf.field, kShape, npc, cost));
   });
 }
 
@@ -194,13 +194,13 @@ TEST_P(ArithmeticTest, MulA1B) {
       return;
     }
 
-    const int64_t K = spu::SizeOf(conf.field()) * 8;
+    const int64_t K = spu::SizeOf(conf.field) * 8;
 
     /* GIVEN */
-    auto p0 = rand_p(obj.get(), conf.protocol() == ProtocolKind::CHEETAH
+    auto p0 = rand_p(obj.get(), conf.protocol == ProtocolKind::CHEETAH
                                     ? Shape({200, 26})
                                     : kShape);
-    auto p1 = rand_p(obj.get(), conf.protocol() == ProtocolKind::CHEETAH
+    auto p1 = rand_p(obj.get(), conf.protocol == ProtocolKind::CHEETAH
                                     ? Shape({200, 26})
                                     : kShape);
     auto a0 = p2a(obj.get(), p0);
@@ -222,7 +222,7 @@ TEST_P(ArithmeticTest, MulA1B) {
     /* THEN */
     EXPECT_VALUE_EQ(r_aa, r_pp);
     EXPECT_TRUE(verifyCost(obj->prot()->getKernel("mul_a1b"), "mul_a1b",
-                           conf.field(), kShape, npc, cost));
+                           conf.field, kShape, npc, cost));
   });
 }
 
@@ -238,7 +238,7 @@ TEST_P(ArithmeticTest, MulAV) {
       return;
     }
 
-    const int64_t K = spu::SizeOf(conf.field()) * 8;
+    const int64_t K = spu::SizeOf(conf.field) * 8;
 
     /* GIVEN */
     auto p0 = rand_p(obj.get(), kShape);
@@ -258,7 +258,7 @@ TEST_P(ArithmeticTest, MulAV) {
     /* THEN */
     EXPECT_VALUE_EQ(r_aa, r_pp);
     EXPECT_TRUE(verifyCost(obj->prot()->getKernel("mul_av"), "mul_av",
-                           conf.field(), kShape, npc, cost));
+                           conf.field, kShape, npc, cost));
   });
 }
 
@@ -275,7 +275,7 @@ TEST_P(ArithmeticTest, MulA1BV) {
       return;
     }
 
-    const int64_t K = spu::SizeOf(conf.field()) * 8;
+    const int64_t K = spu::SizeOf(conf.field) * 8;
 
     /* GIVEN */
     auto p0 = rand_p(obj.get(), kShape);
@@ -299,7 +299,7 @@ TEST_P(ArithmeticTest, MulA1BV) {
     /* THEN */
     EXPECT_VALUE_EQ(r_aa, r_pp);
     EXPECT_TRUE(verifyCost(obj->prot()->getKernel("mul_a1bv"), "mul_a1bv",
-                           conf.field(), kShape, npc, cost));
+                           conf.field, kShape, npc, cost));
   });
 }
 
@@ -334,7 +334,7 @@ TEST_P(ArithmeticTest, MatMulAP) {
 
     /* THEN */
     EXPECT_VALUE_EQ(r_aa, r_pp);
-    ce::Params params = {{"K", SizeOf(conf.field()) * 8},
+    ce::Params params = {{"K", SizeOf(conf.field) * 8},
                          {"N", npc},
                          {"m", M},
                          {"n", N},
@@ -375,7 +375,7 @@ TEST_P(ArithmeticTest, MatMulAA) {
 
     /* THEN */
     EXPECT_VALUE_EQ(r_aa, r_pp);
-    ce::Params params = {{"K", SizeOf(conf.field()) * 8},
+    ce::Params params = {{"K", SizeOf(conf.field) * 8},
                          {"N", npc},
                          {"m", M},
                          {"n", N},
@@ -426,7 +426,7 @@ TEST_P(ArithmeticTest, MatMulAV) {
     /* THEN */
     EXPECT_VALUE_EQ(r0_aa, r_pp);
     EXPECT_VALUE_EQ(r1_aa, r_pp);
-    ce::Params params = {{"K", SizeOf(conf.field()) * 8},
+    ce::Params params = {{"K", SizeOf(conf.field) * 8},
                          {"N", npc},
                          {"m", M},
                          {"n", N},
@@ -459,7 +459,7 @@ TEST_P(ArithmeticTest, NegateA) {
     /* THEN */
     EXPECT_VALUE_EQ(r_p, r_pp);
     EXPECT_TRUE(verifyCost(obj->prot()->getKernel("negate_a"), "negate_a",
-                           conf.field(), kShape, npc, cost));
+                           conf.field, kShape, npc, cost));
   });
 }
 
@@ -497,7 +497,7 @@ TEST_P(ArithmeticTest, LShiftA) {
       /* THEN */
       EXPECT_VALUE_EQ(r_b, r_p);
       EXPECT_TRUE(verifyCost(obj->prot()->getKernel("lshift_a"), "lshift_a",
-                             conf.field(), kShape, npc, cost));
+                             conf.field, kShape, npc, cost));
     }
   });
 }
@@ -524,7 +524,7 @@ TEST_P(ArithmeticTest, TruncA) {
     } else {
       // has msb error, only use lowest 10 bits.
       p0 = arshift_p(obj.get(), p0,
-                     {static_cast<int64_t>(SizeOf(conf.field()) * 8 - 10)});
+                     {static_cast<int64_t>(SizeOf(conf.field) * 8 - 10)});
     }
     auto v0 = p2v(obj.get(), p0, 0);
 
@@ -544,7 +544,7 @@ TEST_P(ArithmeticTest, TruncA) {
     /* THEN */
     EXPECT_VALUE_ALMOST_EQ(r_a, r_p, npc);
     EXPECT_TRUE(verifyCost(obj->prot()->getKernel("trunc_a"), "trunc_a",
-                           conf.field(), kShape, npc, cost));
+                           conf.field, kShape, npc, cost));
   });
 }
 
@@ -567,7 +567,7 @@ TEST_P(ArithmeticTest, P2A) {
 
     /* THEN */
     EXPECT_VALUE_EQ(p0, p1);
-    EXPECT_TRUE(verifyCost(obj->prot()->getKernel("p2a"), "p2a", conf.field(),
+    EXPECT_TRUE(verifyCost(obj->prot()->getKernel("p2a"), "p2a", conf.field,
                            kShape, npc, cost));
   });
 }
@@ -591,7 +591,7 @@ TEST_P(ArithmeticTest, A2P) {
 
     /* THEN */
     EXPECT_VALUE_EQ(p0, p1);
-    EXPECT_TRUE(verifyCost(obj->prot()->getKernel("a2p"), "a2p", conf.field(),
+    EXPECT_TRUE(verifyCost(obj->prot()->getKernel("a2p"), "a2p", conf.field,
                            kShape, npc, cost));
   });
 }
@@ -663,7 +663,7 @@ TEST_P(ArithmeticTest, A2P) {
           /* THEN */                                                           \
           EXPECT_VALUE_EQ(re, rp);                                             \
           EXPECT_TRUE(verifyCost(obj->prot()->getKernel(#OP "_bp"), #OP "_bp", \
-                                 conf.field(), kShape, npc, cost));            \
+                                 conf.field, kShape, npc, cost));              \
         });                                                                    \
   }
 
@@ -707,7 +707,7 @@ TEST_BOOLEAN_BINARY_OP(xor)
             /* THEN */                                                         \
             EXPECT_VALUE_EQ(r_b, r_p);                                         \
             EXPECT_TRUE(verifyCost(obj->prot()->getKernel(#OP "_b"), #OP "_b", \
-                                   conf.field(), kShape, npc, cost));          \
+                                   conf.field, kShape, npc, cost));            \
           }                                                                    \
         });                                                                    \
   }
@@ -735,7 +735,7 @@ TEST_P(BooleanTest, P2B) {
 
     /* THEN */
     EXPECT_VALUE_EQ(p0, p1);
-    EXPECT_TRUE(verifyCost(obj->prot()->getKernel("p2b"), "p2b", conf.field(),
+    EXPECT_TRUE(verifyCost(obj->prot()->getKernel("p2b"), "p2b", conf.field,
                            kShape, npc, cost));
   });
 }
@@ -759,7 +759,7 @@ TEST_P(BooleanTest, B2P) {
 
     /* THEN */
     EXPECT_VALUE_EQ(p0, p1);
-    EXPECT_TRUE(verifyCost(obj->prot()->getKernel("b2p"), "b2p", conf.field(),
+    EXPECT_TRUE(verifyCost(obj->prot()->getKernel("b2p"), "b2p", conf.field,
                            kShape, npc, cost));
   });
 }
@@ -778,8 +778,8 @@ TEST_P(BooleanTest, BitrevB) {
     /* WHEN */
     auto b0 = p2b(obj.get(), p0);
 
-    for (size_t i = 0; i < SizeOf(conf.field()); i++) {
-      for (size_t j = i; j < SizeOf(conf.field()); j++) {
+    for (size_t i = 0; i < SizeOf(conf.field); i++) {
+      for (size_t j = i; j < SizeOf(conf.field); j++) {
         auto prev = obj->prot()->getState<Communicator>()->getStats();
         auto b1 = bitrev_b(obj.get(), b0, i, j);
         auto cost = obj->prot()->getState<Communicator>()->getStats() - prev;
@@ -789,7 +789,7 @@ TEST_P(BooleanTest, BitrevB) {
         EXPECT_VALUE_EQ(p1, pp1);
 
         EXPECT_TRUE(verifyCost(obj->prot()->getKernel("bitrev_b"), "bitrev_b",
-                               conf.field(), kShape, npc, cost));
+                               conf.field, kShape, npc, cost));
       }
     }
   });
@@ -813,7 +813,7 @@ TEST_P(ConversionTest, A2B) {
     auto cost = obj->prot()->getState<Communicator>()->getStats() - prev;
 
     /* THEN */
-    EXPECT_TRUE(verifyCost(obj->prot()->getKernel("a2b"), "a2b", conf.field(),
+    EXPECT_TRUE(verifyCost(obj->prot()->getKernel("a2b"), "a2b", conf.field,
                            kShape, npc, cost));
     EXPECT_VALUE_EQ(p0, b2p(obj.get(), b1));
   });
@@ -838,7 +838,7 @@ TEST_P(ConversionTest, B2A) {
     auto cost = obj->prot()->getState<Communicator>()->getStats() - prev;
 
     /* THEN */
-    EXPECT_TRUE(verifyCost(obj->prot()->getKernel("b2a"), "b2a", conf.field(),
+    EXPECT_TRUE(verifyCost(obj->prot()->getKernel("b2a"), "b2a", conf.field,
                            kShape, npc, cost));
     EXPECT_VALUE_EQ(p0, a2p(obj.get(), a1));
   });
@@ -860,7 +860,7 @@ TEST_P(ConversionTest, MSB) {
     auto p0 = rand_p(obj.get(), kShape);
 
     // SECURENN has an msb input range here
-    if (conf.protocol() == ProtocolKind::SECURENN) {
+    if (conf.protocol == ProtocolKind::SECURENN) {
       p0 = arshift_p(obj.get(), p0, {1});
     }
 
@@ -873,10 +873,10 @@ TEST_P(ConversionTest, MSB) {
 
     /* THEN */
     EXPECT_TRUE(verifyCost(obj->prot()->getKernel("msb_a2b"), "msb_a2b",
-                           conf.field(), kShape, npc, cost));
+                           conf.field, kShape, npc, cost));
     EXPECT_VALUE_EQ(
         rshift_p(obj.get(), p0,
-                 {static_cast<int64_t>(SizeOf(conf.field()) * 8 - 1)}),
+                 {static_cast<int64_t>(SizeOf(conf.field) * 8 - 1)}),
         b2p(obj.get(), b1));
   });
 }
@@ -894,13 +894,13 @@ TEST_P(ConversionTest, EqualAA) {
     }
     /* GIVEN */
     // NOTE(lwj) for Cheetah, set a lager case to test the tield dispatch
-    auto r0 = rand_p(obj.get(), conf.protocol() == ProtocolKind::CHEETAH
+    auto r0 = rand_p(obj.get(), conf.protocol == ProtocolKind::CHEETAH
                                     ? Shape({10, 20, 30})
                                     : kShape);
-    auto r1 = rand_p(obj.get(), conf.protocol() == ProtocolKind::CHEETAH
+    auto r1 = rand_p(obj.get(), conf.protocol == ProtocolKind::CHEETAH
                                     ? Shape({10, 20, 30})
                                     : kShape);
-    auto r2 = rand_p(obj.get(), conf.protocol() == ProtocolKind::CHEETAH
+    auto r2 = rand_p(obj.get(), conf.protocol == ProtocolKind::CHEETAH
                                     ? Shape({10, 20, 30})
                                     : kShape);
     std::memcpy(r2.data().data(), r0.data().data(), 16);
@@ -918,7 +918,7 @@ TEST_P(ConversionTest, EqualAA) {
       /* THEN */
       EXPECT_VALUE_EQ(out_value, t_value);
       EXPECT_TRUE(verifyCost(obj->prot()->getKernel("equal_aa"), "equal_aa",
-                             conf.field(), kShape, npc, cost));
+                             conf.field, kShape, npc, cost));
     }
   });
 }
@@ -953,7 +953,7 @@ TEST_P(ConversionTest, EqualAP) {
       /* THEN */
       EXPECT_VALUE_EQ(out_value, t_value);
       EXPECT_TRUE(verifyCost(obj->prot()->getKernel("equal_ap"), "equal_ap",
-                             conf.field(), kShape, npc, cost));
+                             conf.field, kShape, npc, cost));
     }
   });
 }

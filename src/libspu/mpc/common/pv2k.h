@@ -51,18 +51,8 @@ class Priv2kTy : public TypeImpl<Priv2kTy, TypeObject, Ring2k, Private> {
     return SizeOf(GetStorageType(field_));
   }
 
-  std::string toString() const override {
-    return fmt::format("{},{}", FieldType_Name(field()), owner_);
-  }
-
-  void fromString(std::string_view str) override {
-    auto comma = str.find_first_of(',');
-    auto field_str = str.substr(0, comma);
-    auto owner_str = str.substr(comma + 1);
-    SPU_ENFORCE(FieldType_Parse(std::string(field_str), &field_),
-                "parse failed from={}", str);
-    owner_ = std::stoll(std::string(owner_str));
-  }
+  std::string toString() const override;
+  void fromString(std::string_view str) override;
 
   bool equals(TypeObject const* other) const override {
     auto const* derived_other = dynamic_cast<Priv2kTy const*>(other);

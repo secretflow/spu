@@ -23,8 +23,7 @@
 
 #include "libspu/core/half.h"
 #include "libspu/core/prelude.h"
-
-#include "libspu/spu.pb.h"
+#include "libspu/spu.h"
 
 namespace spu {
 

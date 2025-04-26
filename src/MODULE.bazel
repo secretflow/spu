@@ -21,21 +21,11 @@
 
 module(
     name = "spulib",
-    version = "0.9.4.dev20250123",
+    version = "0.9.4.dev20250416",
     compatibility_level = 1,
 )
 
-bazel_dep(name = "grpc", version = "1.66.0.bcr.3")
-single_version_override(
-    module_name = "grpc",
-    patch_strip = 1,
-    patches = [
-        "//bazel/patches:grpc-1.66.patch",
-        "//bazel/patches:grpc-module-file.patch",
-    ],
-    version = "1.66.0.bcr.3",
-)
-
+bazel_dep(name = "grpc", version = "1.66.0.bcr.4")
 bazel_dep(name = "protobuf", version = "27.3")
 single_version_override(
     module_name = "protobuf",
@@ -58,6 +48,7 @@ bazel_dep(name = "spdlog", version = "1.14.1")
 bazel_dep(name = "fmt", version = "11.0.2")
 bazel_dep(name = "abseil-cpp", version = "20240722.0")
 bazel_dep(name = "rules_python", version = "0.29.0")
+bazel_dep(name = "magic_enum", version = "0.9.6")
 
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
 python.toolchain(
@@ -91,7 +82,7 @@ use_repo(llvm, "llvm-project")
 
 bazel_dep(name = "stablehlo", version = "20240808.0-24d1807")
 bazel_dep(name = "xla", version = "20240814.0-64bdcc5")
-bazel_dep(name = "yacl", version = "20241212.0-871832a")
+bazel_dep(name = "yacl", version = "0.4.5b10-nightly-20250110")
 
 spu_dependencies = use_extension("//bazel:defs.bzl", "non_module_dependencies")
 use_repo(spu_dependencies, "xtensor")

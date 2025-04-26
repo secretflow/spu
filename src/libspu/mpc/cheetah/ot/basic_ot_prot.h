@@ -17,8 +17,7 @@
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/mpc/cheetah/ot/ferret_ot_interface.h"
 #include "libspu/mpc/common/communicator.h"
-
-#include "libspu/spu.pb.h"
+#include "libspu/spu.h"
 
 namespace spu::mpc::cheetah {
 

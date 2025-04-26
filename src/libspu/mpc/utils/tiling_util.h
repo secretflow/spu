@@ -30,9 +30,9 @@ namespace spu::mpc {
 template <typename Fn, typename... Args>
 Value tiled(Fn&& fn, SPUContext* ctx, const Value& x, Args&&... args) {
   const int64_t kBlockSize = kMinTaskSize;
-  if (!ctx->config().experimental_enable_intra_op_par()  //
-      || !ctx->prot()->hasLowCostFork()                  //
-      || x.numel() <= kBlockSize                         //
+  if (!ctx->config().experimental_enable_intra_op_par  //
+      || !ctx->prot()->hasLowCostFork()                //
+      || x.numel() <= kBlockSize                       //
   ) {
     return fn(ctx, x, std::forward<Args>(args)...);
   }
@@ -145,9 +145,9 @@ Value tiled(Fn&& fn, SPUContext* ctx, const Value& x, const Value& y,
   SPU_ENFORCE(x.shape() == y.shape());
 
   const int64_t kBlockSize = kMinTaskSize;
-  if (!ctx->config().experimental_enable_intra_op_par()  //
-      || !ctx->prot()->hasLowCostFork()                  //
-      || x.numel() <= kBlockSize                         //
+  if (!ctx->config().experimental_enable_intra_op_par  //
+      || !ctx->prot()->hasLowCostFork()                //
+      || x.numel() <= kBlockSize                       //
   ) {
     return fn(ctx, x, y, std::forward<Args>(args)...);
   }

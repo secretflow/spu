@@ -25,6 +25,7 @@ spu_cc_library(
         "//libspu/mpc/common:communicator",
         "//libspu/mpc/common:prg_state",
         "//libspu/mpc/utils:ring_ops",
+        "@magic_enum",
     ],
 )
 

@@ -17,3 +17,4 @@ pydata-sphinx-theme
 tabulate
 xlwt
 xlsxwriter
+sphinx-intl

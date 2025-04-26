@@ -33,7 +33,7 @@ void regAby3Protocol(SPUContext* ctx,
                      const std::shared_ptr<yacl::link::Context>& lctx) {
   aby3::registerTypes();
 
-  ctx->prot()->addState<Z2kState>(ctx->config().field());
+  ctx->prot()->addState<Z2kState>(ctx->config().field);
 
   // add communicator
   ctx->prot()->addState<Communicator>(lctx);
@@ -69,7 +69,8 @@ void regAby3Protocol(SPUContext* ctx,
           aby3::BitIntlB, aby3::BitDeintlB,  // bit(de)interleave
           aby3::RandA, aby3::RandB,          // rand
 #ifdef ENABLE_PRECISE_ABY3_TRUNCPR
-          aby3::TruncAPr,  // Trunc
+          // aby3::TruncAPr,  // Trunc
+          aby3::TruncAPr2,  // Trunc
 #else
           aby3::TruncA,
 #endif

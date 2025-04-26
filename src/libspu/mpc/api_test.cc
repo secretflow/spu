@@ -261,7 +261,7 @@ TEST_P(ApiTest, MsbS) {
     auto p0 = rand_p(sctx.get(), kShape);
 
     // SECURENN has an msb input range requirement here
-    if (conf.protocol() == ProtocolKind::SECURENN) {
+    if (conf.protocol == ProtocolKind::SECURENN) {
       p0 = arshift_p(sctx.get(), p0, {1});
     }
 
@@ -397,7 +397,7 @@ TEST_P(ApiTest, TruncS) {
     auto sctx = factory(conf, lctx);
 
     // NOTE(lwj): test Cheetah's TiledDispatch using larger shape
-    auto p0 = rand_p(sctx.get(), conf.protocol() == ProtocolKind::CHEETAH
+    auto p0 = rand_p(sctx.get(), conf.protocol == ProtocolKind::CHEETAH
                                      ? Shape({300, 20})
                                      : kShape);
 

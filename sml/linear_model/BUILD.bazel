@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel:spu.bzl", "spu_py_library")
+load("//bazel:spu.bzl", "sml_py_library")
 
 package(default_visibility = ["//visibility:public"])
 
-spu_py_library(
+sml_py_library(
     name = "sgd_classifier",
     srcs = ["sgd_classifier.py"],
     deps = [
@@ -24,7 +24,7 @@ spu_py_library(
     ],
 )
 
-spu_py_library(
+sml_py_library(
     name = "logistic",
     srcs = ["logistic.py"],
     deps = [
@@ -32,7 +32,7 @@ spu_py_library(
     ],
 )
 
-spu_py_library(
+sml_py_library(
     name = "ridge",
     srcs = ["ridge.py"],
     deps = [
@@ -40,12 +40,12 @@ spu_py_library(
     ],
 )
 
-spu_py_library(
+sml_py_library(
     name = "pla",
     srcs = ["pla.py"],
 )
 
-spu_py_library(
+sml_py_library(
     name = "glm",
     srcs = ["glm.py"],
     deps = [
@@ -55,7 +55,7 @@ spu_py_library(
     ],
 )
 
-spu_py_library(
+sml_py_library(
     name = "quantile",
     srcs = ["quantile.py"],
     deps = [

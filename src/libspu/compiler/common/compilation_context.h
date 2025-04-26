@@ -20,7 +20,7 @@
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/Pass/PassManager.h"
 
-#include "libspu/spu.pb.h"
+#include "libspu/spu.h"
 
 namespace mlir {
 class PassManager;
@@ -41,10 +41,10 @@ public:
 
   const CompilerOptions &getCompilerOptions() const { return options_; }
 
-  bool hasPrettyPrintEnabled() const { return options_.enable_pretty_print(); }
+  bool hasPrettyPrintEnabled() const { return options_.enable_pretty_print; }
 
   XLAPrettyPrintKind getXlaPrettyPrintKind() const {
-    return options_.xla_pp_kind();
+    return options_.xla_pp_kind;
   }
 
   std::filesystem::path getPrettyPrintDir() const;

@@ -17,7 +17,7 @@ import unittest
 import jax.numpy as jnp
 from sklearn.linear_model import QuantileRegressor as SklearnQuantileRegressor
 
-import spu.spu_pb2 as spu_pb2  # type: ignore
+import spu.libspu as libspu
 import spu.utils.simulation as spsim
 from sml.linear_model.quantile import QuantileRegressor as SmlQuantileRegressor
 
@@ -58,9 +58,7 @@ class UnitTests(unittest.TestCase):
             return X, y
 
         # bandwidth and latency only work for docker mode
-        sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
-        )
+        sim = spsim.Simulator.simple(3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM64)
 
         X, y = generate_data()
 

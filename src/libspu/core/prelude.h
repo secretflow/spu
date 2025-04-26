@@ -58,7 +58,7 @@
 // Format
 #include "fmt/ostream.h"
 
-#include "libspu/spu.pb.h"
+#include "libspu/spu.h"
 
 namespace fmt {
 
@@ -78,21 +78,21 @@ template <>
 struct formatter<spu::ProtocolKind> : ostream_formatter {};
 
 template <>
-struct formatter<spu::RuntimeConfig_BeaverType> : ostream_formatter {};
+struct formatter<spu::RuntimeConfig::BeaverType> : ostream_formatter {};
 
 template <>
-struct formatter<spu::RuntimeConfig_ExpMode> : ostream_formatter {};
+struct formatter<spu::RuntimeConfig::ExpMode> : ostream_formatter {};
 
 template <>
-struct formatter<spu::RuntimeConfig_LogMode> : ostream_formatter {};
+struct formatter<spu::RuntimeConfig::LogMode> : ostream_formatter {};
 
 template <>
-struct formatter<spu::RuntimeConfig_SigmoidMode> : ostream_formatter {};
+struct formatter<spu::RuntimeConfig::SigmoidMode> : ostream_formatter {};
 
 template <>
 struct formatter<spu::SourceIRType> : ostream_formatter {};
 
 template <>
-struct formatter<spu::RuntimeConfig_SortMethod> : ostream_formatter {};
+struct formatter<spu::RuntimeConfig::SortMethod> : ostream_formatter {};
 
 }  // namespace fmt

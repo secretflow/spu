@@ -20,7 +20,7 @@ import jax.numpy as jnp
 import numpy as np
 from sklearn.neighbors import KNeighborsClassifier
 
-import spu.spu_pb2 as spu_pb2
+import spu.libspu as libspu
 import spu.utils.simulation as spsim
 
 # Add the sml directory to the path
@@ -31,9 +31,7 @@ from sml.neighbors.knn import KNNClassifer
 
 class UnitTests(unittest.TestCase):
     def test_knn(self):
-        sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
-        )
+        sim = spsim.Simulator.simple(3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM64)
 
         # Test fit_predict
         def proc_predict(

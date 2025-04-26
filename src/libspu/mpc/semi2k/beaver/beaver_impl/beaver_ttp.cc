@@ -306,11 +306,13 @@ class ProgressiveReader : public brpc::ProgressiveReader {
 
 template <class AdjustRequest>
 std::vector<NdArrayRef> RpcCall(brpc::Channel& channel,
-                                const AdjustRequest& req, FieldType ret_field) {
+                                const AdjustRequest& req, FieldType ret_field,
+                                const std::string& host) {
   beaver::ttp_server::BeaverService::Stub stub(&channel);
   beaver::ttp_server::AdjustResponse rsp;
   brpc::Controller cntl;
   cntl.response_will_be_read_progressively();
+  cntl.http_request().SetHeader("Host", host);
 
   if constexpr (std::is_same_v<AdjustRequest,
                                beaver::ttp_server::AdjustMulRequest>) {
@@ -465,7 +467,7 @@ BeaverTtp::Triple BeaverTtp::Mul(FieldType field, int64_t size,
   if (lctx_->Rank() == options_.adjust_rank) {
     auto req = BuildAdjustRequest<beaver::ttp_server::AdjustMulRequest>(
         descs, descs_seed);
-    auto adjusts = RpcCall(channel_, req, field);
+    auto adjusts = RpcCall(channel_, req, field, options_.server_host);
     SPU_ENFORCE_EQ(adjusts.size(), 1U);
     if (eltype == ElementType::kGfmp) {
       auto T = c.eltype();
@@ -494,7 +496,7 @@ BeaverTtp::Pair BeaverTtp::MulPriv(FieldType field, int64_t size,
   if (lctx_->Rank() == options_.adjust_rank) {
     auto req = BuildAdjustRequest<beaver::ttp_server::AdjustMulPrivRequest>(
         descs, descs_seed);
-    auto adjusts = RpcCall(channel_, req, field);
+    auto adjusts = RpcCall(channel_, req, field, options_.server_host);
     SPU_ENFORCE_EQ(adjusts.size(), 1U);
     if (eltype == ElementType::kGfmp) {
       auto T = c.eltype();
@@ -543,7 +545,7 @@ BeaverTtp::Pair BeaverTtp::Square(FieldType field, int64_t size,
   if (lctx_->Rank() == options_.adjust_rank) {
     auto req = BuildAdjustRequest<beaver::ttp_server::AdjustSquareRequest>(
         descs, descs_seed);
-    auto adjusts = RpcCall(channel_, req, field);
+    auto adjusts = RpcCall(channel_, req, field, options_.server_host);
     SPU_ENFORCE_EQ(adjusts.size(), 1U);
     ring_add_(b, adjusts[0].reshape(shape));
   }
@@ -607,7 +609,7 @@ BeaverTtp::Triple BeaverTtp::Dot(FieldType field, int64_t m, int64_t n,
     for (bool t : transpose_inputs) {
       req.add_transpose_inputs(t);
     }
-    auto adjusts = RpcCall(channel_, req, field);
+    auto adjusts = RpcCall(channel_, req, field, options_.server_host);
     SPU_ENFORCE_EQ(adjusts.size(), 1U);
     ring_add_(c, adjusts[0].reshape(c.shape()));
   }
@@ -635,7 +637,7 @@ BeaverTtp::Triple BeaverTtp::And(int64_t size) {
   if (lctx_->Rank() == options_.adjust_rank) {
     auto req = BuildAdjustRequest<beaver::ttp_server::AdjustAndRequest>(
         descs, descs_seed);
-    auto adjusts = RpcCall(channel_, req, field);
+    auto adjusts = RpcCall(channel_, req, field, options_.server_host);
     SPU_ENFORCE_EQ(adjusts.size(), 1U);
     ring_xor_(c, adjusts[0].reshape(c.shape()));
   }
@@ -663,7 +665,7 @@ BeaverTtp::Pair BeaverTtp::Trunc(FieldType field, int64_t size, size_t bits) {
     auto req = BuildAdjustRequest<beaver::ttp_server::AdjustTruncRequest>(
         descs, descs_seed);
     req.set_bits(bits);
-    auto adjusts = RpcCall(channel_, req, field);
+    auto adjusts = RpcCall(channel_, req, field, options_.server_host);
     SPU_ENFORCE_EQ(adjusts.size(), 1U);
     ring_add_(b, adjusts[0].reshape(b.shape()));
   }
@@ -688,7 +690,7 @@ BeaverTtp::Triple BeaverTtp::TruncPr(FieldType field, int64_t size,
     auto req = BuildAdjustRequest<beaver::ttp_server::AdjustTruncPrRequest>(
         descs, descs_seed);
     req.set_bits(bits);
-    auto adjusts = RpcCall(channel_, req, field);
+    auto adjusts = RpcCall(channel_, req, field, options_.server_host);
     SPU_ENFORCE_EQ(adjusts.size(), 2U);
     ring_add_(rc, adjusts[0].reshape(rc.shape()));
     ring_add_(rb, adjusts[1].reshape(rb.shape()));
@@ -712,7 +714,7 @@ BeaverTtp::Array BeaverTtp::RandBit(FieldType field, int64_t size) {
   if (lctx_->Rank() == options_.adjust_rank) {
     auto req = BuildAdjustRequest<beaver::ttp_server::AdjustRandBitRequest>(
         descs, descs_seed);
-    auto adjusts = RpcCall(channel_, req, field);
+    auto adjusts = RpcCall(channel_, req, field, options_.server_host);
     SPU_ENFORCE_EQ(adjusts.size(), 1U);
     ring_add_(a, adjusts[0].reshape(a.shape()));
   }
@@ -738,7 +740,7 @@ BeaverTtp::PremTriple BeaverTtp::PermPair(FieldType field, int64_t size,
     perm_meta->set_size(size);
     auto& perm_seed = encrypted_seeds_[perm_rank];
     perm_meta->set_encrypted_seeds(perm_seed.data(), perm_seed.size());
-    auto adjusts = RpcCall(channel_, req, field);
+    auto adjusts = RpcCall(channel_, req, field, options_.server_host);
     SPU_ENFORCE_EQ(adjusts.size(), 1U);
     ring_add_(b, adjusts[0].reshape(b.shape()));
   }
@@ -777,7 +779,7 @@ BeaverTtp::Pair BeaverTtp::Eqz(FieldType field, int64_t size) {
   if (lctx_->Rank() == options_.adjust_rank) {
     auto req = BuildAdjustRequest<beaver::ttp_server::AdjustEqzRequest>(
         descs, descs_seed);
-    auto adjusts = RpcCall(channel_, req, field);
+    auto adjusts = RpcCall(channel_, req, field, options_.server_host);
     SPU_ENFORCE_EQ(adjusts.size(), 1U);
     ring_xor_(b, adjusts[0].reshape(shape));
   }

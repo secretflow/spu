@@ -43,14 +43,14 @@ namespace {
 
 RuntimeConfig makeConfig(FieldType field) {
   RuntimeConfig conf;
-  conf.set_protocol(ProtocolKind::SEMI2K);
-  conf.set_field(field);
+  conf.protocol = ProtocolKind::SEMI2K;
+  conf.field = field;
   if (field == FieldType::FM64) {
-    conf.set_fxp_fraction_bits(17);
+    conf.fxp_fraction_bits = 17;
   } else if (field == FieldType::FM128) {
-    conf.set_fxp_fraction_bits(40);
+    conf.fxp_fraction_bits = 40;
   }
-  conf.set_experimental_enable_exp_prime(true);
+  conf.experimental_enable_exp_prime = true;
   return conf;
 }
 
@@ -74,15 +74,13 @@ void InitBeaverServer() {
 std::unique_ptr<SPUContext> makeTTPSemi2kProtocol(
     const RuntimeConfig& rt, const std::shared_ptr<yacl::link::Context>& lctx) {
   InitBeaverServer();
-  RuntimeConfig ttp_rt = rt;
 
-  ttp_rt.set_beaver_type(RuntimeConfig_BeaverType_TrustedThirdParty);
-  auto* ttp = ttp_rt.mutable_ttp_beaver_config();
-  ttp->set_adjust_rank(lctx->WorldSize() - 1);
-  ttp->set_server_host(server_host);
-  ttp->set_asym_crypto_schema("SM2");
-  ttp->set_server_public_key(key_pair.first.data<char>(),
-                             key_pair.first.size());
+  std::string server_public_key(key_pair.first.data<char>(),
+                                key_pair.first.size());
+  RuntimeConfig ttp_rt = rt;
+  ttp_rt.beaver_type = RuntimeConfig::TrustedThirdParty;
+  ttp_rt.ttp_beaver_config = std::make_shared<TTPBeaverConfig>(
+      server_host, lctx->WorldSize() - 1, "SM2", server_public_key, "");
 
   return makeSemi2kProtocol(ttp_rt, lctx);
 }
@@ -100,7 +98,7 @@ INSTANTIATE_TEST_SUITE_P(
                      testing::Values(2, 3, 5)),                      //
     [](const testing::TestParamInfo<ApiTest::ParamType>& p) {
       return fmt::format("{}x{}x{}", std::get<0>(p.param).name(),
-                         std::get<1>(p.param).field(), std::get<2>(p.param));
+                         std::get<1>(p.param).field, std::get<2>(p.param));
     });
 
 INSTANTIATE_TEST_SUITE_P(
@@ -114,7 +112,7 @@ INSTANTIATE_TEST_SUITE_P(
                      testing::Values(2, 3, 5)),                      //
     [](const testing::TestParamInfo<ArithmeticTest::ParamType>& p) {
       return fmt::format("{}x{}x{}", std::get<0>(p.param).name(),
-                         std::get<1>(p.param).field(), std::get<2>(p.param));
+                         std::get<1>(p.param).field, std::get<2>(p.param));
       ;
     });
 
@@ -129,7 +127,7 @@ INSTANTIATE_TEST_SUITE_P(
                      testing::Values(2, 3, 5)),                      //
     [](const testing::TestParamInfo<BooleanTest::ParamType>& p) {
       return fmt::format("{}x{}x{}", std::get<0>(p.param).name(),
-                         std::get<1>(p.param).field(), std::get<2>(p.param));
+                         std::get<1>(p.param).field, std::get<2>(p.param));
       ;
     });
 
@@ -144,7 +142,7 @@ INSTANTIATE_TEST_SUITE_P(
                      testing::Values(2, 3, 5)),                      //
     [](const testing::TestParamInfo<BooleanTest::ParamType>& p) {
       return fmt::format("{}x{}x{}", std::get<0>(p.param).name(),
-                         std::get<1>(p.param).field(), std::get<2>(p.param));
+                         std::get<1>(p.param).field, std::get<2>(p.param));
       ;
     });
 
@@ -161,7 +159,7 @@ INSTANTIATE_TEST_SUITE_P(
                      testing::Values(2, 3, 5)),                      //
     [](const testing::TestParamInfo<BeaverCacheTest::ParamType>& p) {
       return fmt::format("{}x{}x{}", std::get<0>(p.param).name(),
-                         std::get<1>(p.param).field(), std::get<2>(p.param));
+                         std::get<1>(p.param).field, std::get<2>(p.param));
       ;
     });
 
@@ -431,7 +429,7 @@ TEST_P(BeaverCacheTest, priv_mul_test) {
   NdArrayRef ring2k_shr[2];
 
   int64_t numel = 1;
-  FieldType field = conf.field();
+  FieldType field = conf.field;
 
   std::vector<double> real_vec(numel);
   for (int64_t i = 0; i < numel; ++i) {
@@ -481,7 +479,7 @@ TEST_P(BeaverCacheTest, priv_mul_test) {
 
 TEST_P(BeaverCacheTest, exp_mod_test) {
   const RuntimeConfig& conf = std::get<1>(GetParam());
-  FieldType field = conf.field();
+  FieldType field = conf.field;
 
   DISPATCH_ALL_FIELDS(field, [&]() {
     // exponents < 32
@@ -506,15 +504,15 @@ TEST_P(BeaverCacheTest, ExpA) {
   // only supports FM128 for now
   // note not using ctx->hasKernel("exp_a") because we are testing kernel
   // registration as well.
-  if (npc != 2 || conf.field() != FieldType::FM128) {
+  if (npc != 2 || conf.field != FieldType::FM128) {
     return;
   }
-  auto fxp = conf.fxp_fraction_bits();
+  auto fxp = conf.fxp_fraction_bits;
 
   NdArrayRef ring2k_shr[2];
 
   int64_t numel = 100;
-  FieldType field = conf.field();
+  FieldType field = conf.field;
 
   // how to define and achieve high pricision for e^20
   std::uniform_real_distribution<double> dist(-18.0, 15.0);
@@ -598,7 +596,7 @@ INSTANTIATE_TEST_SUITE_P(
         testing::Values(2)),                            // npc
     [](const testing::TestParamInfo<LowMCTest::ParamType>& p) {
       return fmt::format("{}x{}x{}x{}", std::get<0>(p.param).name(),
-                         std::get<1>(p.param).field(), std::get<2>(p.param),
+                         std::get<1>(p.param).field, std::get<2>(p.param),
                          std::get<3>(p.param));
       ;
     });
@@ -679,6 +677,83 @@ TEST_P(LowMCTest, EncryptCorrect) {
 
       EXPECT_EQ(got_val, exp_val);
     }
+  });
+}
+
+namespace {
+#define EXPECT_VALUE_ALMOST_EQ(X, Y)                        \
+  {                                                         \
+    EXPECT_EQ((X).shape(), (Y).shape());                    \
+    EXPECT_TRUE(ring_all_equal((X).data(), (Y).data(), 1)); \
+  }
+}  // namespace
+
+// test for 2pc quick truncation
+TEST_P(ApiTest, TruncP_2PC) {
+  const auto factory = std::get<0>(GetParam());
+  const RuntimeConfig& conf = std::get<1>(GetParam());
+  const size_t npc = std::get<2>(GetParam());
+
+  if (npc != 2) {
+    return;
+  }
+
+  utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+    auto sctx = factory(conf, lctx);
+
+    auto p0 = rand_p(sctx.get(), Shape({300, 20}));
+    // only valid when |x| < L / 4
+    p0 = arshift_p(sctx.get(), p0, {static_cast<int64_t>(2)});
+    auto s0 = p2s(sctx.get(), p0);
+
+    // test case 1: truncate small bits
+    size_t b0 = lctx->GetStats()->sent_bytes;
+    size_t r0 = lctx->GetStats()->sent_actions;
+    const size_t small_bits = 2;
+    auto r_s = trunc_s(sctx.get(), s0, small_bits, SignType::Unknown);
+    size_t b1 = lctx->GetStats()->sent_bytes;
+    size_t r1 = lctx->GetStats()->sent_actions;
+
+    r_s = s2p(sctx.get(), r_s);
+    auto r_p = arshift_p(sctx.get(), p0, {small_bits});
+
+    size_t comm_small = b1 - b0;
+    SPDLOG_INFO(
+        "TruncP_2PC: small_bits = {}, sent {} MiB ({} B per), "
+        "actions {}.",
+        small_bits, comm_small * 1. / 1024. / 1024.,
+        comm_small * 1. / p0.numel(), r1 - r0);
+
+    /* THEN */
+    EXPECT_VALUE_ALMOST_EQ(r_s, r_p);
+
+    // test case 2: truncate large bits
+    b0 = lctx->GetStats()->sent_bytes;
+    r0 = lctx->GetStats()->sent_actions;
+    const size_t large_bits = (SizeOf(conf.field) * 8) / 2 + 2;
+    r_s = trunc_s(sctx.get(), s0, large_bits, SignType::Unknown);
+    b1 = lctx->GetStats()->sent_bytes;
+    r1 = lctx->GetStats()->sent_actions;
+
+    r_s = s2p(sctx.get(), r_s);
+    r_p = arshift_p(sctx.get(), p0, {static_cast<int64_t>(large_bits)});
+
+    size_t comm_large = b1 - b0;
+    SPDLOG_INFO(
+        "TruncP_2PC: large_bits = {}, sent {} MiB ({} B per), "
+        "actions {}.",
+        large_bits, comm_large * 1. / 1024. / 1024.,
+        comm_large * 1. / p0.numel(), r1 - r0);
+
+    EXPECT_VALUE_ALMOST_EQ(r_s, r_p);
+
+    // the comm. should be different
+    // TODO: the minimal field in SPU is FM32, so bits<=32 will get the same
+    // comm., open this test after more small fields are supported.
+    if (conf.field == FieldType::FM32) {
+      return;
+    }
+    EXPECT_GT(comm_large, comm_small);
   });
 }
 

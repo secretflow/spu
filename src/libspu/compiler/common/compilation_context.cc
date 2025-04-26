@@ -32,9 +32,9 @@ namespace spu::compiler {
 
 CompilationContext::CompilationContext(CompilerOptions options)
     : options_(std::move(options)) {
-  if (options_.enable_pretty_print()) {
+  if (options_.enable_pretty_print) {
     pp_config_ = std::make_unique<mlir::pphlo::IRPrinterConfig>(
-        options_.pretty_print_dump_dir());
+        options_.pretty_print_dump_dir);
   }
 
   // Set an error handler

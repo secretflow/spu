@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <cstddef>
+#include <functional>
 #include <utility>
 
 #include "pybind11/iostream.h"
@@ -28,7 +29,6 @@
 #include "yacl/link/factory.h"
 
 #include "libspu/compiler/compile.h"
-#include "libspu/core/config.h"
 #include "libspu/core/context.h"
 #include "libspu/core/logging.h"
 #include "libspu/core/value.h"
@@ -37,6 +37,7 @@
 #include "libspu/device/pphlo/pphlo_executor.h"
 #include "libspu/device/symbol_table.h"
 #include "libspu/mpc/factory.h"
+#include "libspu/spu.h"
 #include "libspu/version.h"
 
 #ifdef CHECK_AVX
@@ -310,11 +311,11 @@ struct PyBindShare {
 
 static spu::Value ValueFromPyBindShare(const PyBindShare& py_share) {
   spu::ValueProto value;
-  spu::ValueMetaProto meta;
+  pb::ValueMetaProto meta;
   SPU_ENFORCE(meta.ParseFromString(py_share.meta));
   value.meta.Swap(&meta);
   for (const auto& s : py_share.share_chunks) {
-    spu::ValueChunkProto chunk;
+    pb::ValueChunkProto chunk;
     SPU_ENFORCE(chunk.ParseFromString(s));
     value.chunks.emplace_back(std::move(chunk));
   }
@@ -345,25 +346,19 @@ class RuntimeWrapper {
 
  public:
   explicit RuntimeWrapper(const std::shared_ptr<yacl::link::Context>& lctx,
-                          const std::string& config_pb) {
-    spu::RuntimeConfig config;
-    SPU_ENFORCE(config.ParseFromString(config_pb));
-
+                          const RuntimeConfig& config) {
     // first, fill protobuf default value with implementation defined value.
-    populateRuntimeConfig(config);
+    // populateRuntimeConfig(config);
 
     sctx_ = std::make_unique<spu::SPUContext>(config, lctx);
     mpc::Factory::RegisterProtocol(sctx_.get(), lctx);
-    max_chunk_size_ = config.share_max_chunk_size();
+    max_chunk_size_ = config.share_max_chunk_size;
     if (max_chunk_size_ == 0) {
       max_chunk_size_ = 128UL * 1024 * 1024;
     }
   }
 
-  void Run(const py::bytes& exec_pb) {
-    spu::ExecutableProto exec;
-    SPU_ENFORCE(exec.ParseFromString(exec_pb));
-
+  void Run(const spu::ExecutableProto& exec) {
     spu::device::pphlo::PPHloExecutor executor;
     spu::device::execute(&executor, sctx_.get(), exec, &env_);
   }
@@ -380,8 +375,8 @@ class RuntimeWrapper {
     return env_.getVar(name).chunksCount(max_chunk_size_);
   }
 
-  py::bytes GetVarMeta(const std::string& name) const {
-    return env_.getVar(name).toMetaProto().SerializeAsString();
+  pb::ValueMetaProto GetVarMeta(const std::string& name) const {
+    return env_.getVar(name).toMetaProto();
   }
 
   void DelVar(const std::string& name) { env_.delVar(name); }
@@ -460,12 +455,12 @@ class IoWrapper {
   size_t max_chunk_size_;
 
  public:
-  IoWrapper(size_t world_size, const std::string& config_pb) {
-    spu::RuntimeConfig config;
-    SPU_ENFORCE(config.ParseFromString(config_pb));
+  IoWrapper(size_t world_size, const spu::RuntimeConfig& config) {
+    // spu::RuntimeConfig config;
+    // SPU_ENFORCE(config.ParseFromString(config_pb));
 
     ptr_ = std::make_unique<spu::device::IoClient>(world_size, config);
-    max_chunk_size_ = config.share_max_chunk_size();
+    max_chunk_size_ = config.share_max_chunk_size;
     if (max_chunk_size_ == 0) {
       max_chunk_size_ = 128UL * 1024 * 1024;
     }
@@ -548,6 +543,367 @@ class IoWrapper {
   }
 };
 
+void BindSPU(py::module& m) {
+  m.doc() = R"pbdoc(
+        SPU Library
+            )pbdoc";
+
+  // bind enum
+  py::enum_<DataType>(m, "DataType")
+      .value("DT_INVALID", DataType::DT_INVALID)
+      .value("DT_I1", DataType::DT_I1)
+      .value("DT_I8", DataType::DT_I8)
+      .value("DT_U8", DataType::DT_U8)
+      .value("DT_I16", DataType::DT_I16)
+      .value("DT_U16", DataType::DT_U16)
+      .value("DT_I32", DataType::DT_I32)
+      .value("DT_U32", DataType::DT_U32)
+      .value("DT_I64", DataType::DT_I64)
+      .value("DT_U64", DataType::DT_U64)
+      .value("DT_F16", DataType::DT_F16)
+      .value("DT_F32", DataType::DT_F32)
+      .value("DT_F64", DataType::DT_F64)
+      .export_values();
+
+  py::enum_<Visibility>(m, "Visibility")
+      .value("VIS_INVALID", Visibility::VIS_INVALID)
+      .value("VIS_PUBLIC", Visibility::VIS_PUBLIC)
+      .value("VIS_SECRET", Visibility::VIS_SECRET)
+      .value("VIS_PRIVATE", Visibility::VIS_PRIVATE)
+      .export_values();
+
+  py::enum_<FieldType>(m, "FieldType")
+      .value("FT_INVALID", FieldType::FT_INVALID)
+      .value("FM32", FieldType::FM32)
+      .value("FM64", FieldType::FM64)
+      .value("FM128", FieldType::FM128)
+      .export_values();
+
+  py::enum_<ProtocolKind>(m, "ProtocolKind")
+      .value("PROT_INVALID", ProtocolKind::PROT_INVALID)
+      .value("REF2K", ProtocolKind::REF2K)
+      .value("SEMI2K", ProtocolKind::SEMI2K)
+      .value("ABY3", ProtocolKind::ABY3)
+      .value("CHEETAH", ProtocolKind::CHEETAH)
+      .value("SECURENN", ProtocolKind::SECURENN)
+      .export_values();
+
+  // bind RuntimeConfig
+  py::class_<ClientSSLConfig>(m, "ClientSSLConfig")
+      .def(py::init<>())
+      .def(py::init<std::string, std::string, std::string, int32_t>(),
+           py::arg("certificate") = "", py::arg("private_key") = "",
+           py::arg("ca_file_path") = "", py::arg("verify_depth") = 0)
+      .def_readwrite("certificate", &ClientSSLConfig::certificate)
+      .def_readwrite("private_key", &ClientSSLConfig::private_key)
+      .def_readwrite("ca_file_path", &ClientSSLConfig::ca_file_path)
+      .def_readwrite("verify_depth", &ClientSSLConfig::verify_depth);
+
+  py::class_<TTPBeaverConfig>(m, "TTPBeaverConfig")
+      .def(py::init<>())
+      .def(py::init<std::string, int32_t, std::string, std::string, std::string,
+                    std::shared_ptr<ClientSSLConfig>>(),
+           py::arg("server_host") = "", py::arg("adjust_rank") = 0,
+           py::arg("asym_crypto_schema") = "",
+           py::arg("server_public_key") = "",
+           py::arg("transport_protocol") = "", py::arg("ssl_config") = nullptr)
+      .def_readwrite("server_host", &TTPBeaverConfig::server_host)
+      .def_readwrite("adjust_rank", &TTPBeaverConfig::adjust_rank)
+      .def_readwrite("asym_crypto_schema", &TTPBeaverConfig::asym_crypto_schema)
+      .def_readwrite("server_public_key", &TTPBeaverConfig::server_public_key)
+      .def_readwrite("transport_protocol", &TTPBeaverConfig::transport_protocol)
+      .def_readwrite("ssl_config", &TTPBeaverConfig::ssl_config);
+
+  py::class_<CheetahConfig>(m, "CheetahConfig")
+      .def(py::init<>())
+      .def(py::init<bool, bool, CheetahOtKind>(),
+           py::arg("disable_matmul_pack") = false,
+           py::arg("enable_mul_lsb_error") = false, py::arg("ot_kind") = 0)
+      .def_readwrite("disable_matmul_pack", &CheetahConfig::disable_matmul_pack)
+      .def_readwrite("enable_mul_lsb_error",
+                     &CheetahConfig::enable_mul_lsb_error)
+      .def_readwrite("ot_kind", &CheetahConfig::ot_kind);
+
+  py::class_<RuntimeConfig> rt_cls(m, "RuntimeConfig");
+
+  py::enum_<RuntimeConfig::SortMethod>(rt_cls, "SortMethod")
+      .value("SORT_DEFAULT", RuntimeConfig::SORT_DEFAULT)
+      .value("SORT_RADIX", RuntimeConfig::SORT_RADIX)
+      .value("SORT_QUICK", RuntimeConfig::SORT_QUICK)
+      .value("SORT_NETWORK", RuntimeConfig::SORT_NETWORK)
+      .export_values();
+
+  py::enum_<RuntimeConfig::ExpMode>(rt_cls, "ExpMode")
+      .value("EXP_DEFAULT", RuntimeConfig::EXP_DEFAULT)
+      .value("EXP_PADE", RuntimeConfig::EXP_PADE)
+      .value("EXP_TAYLOR", RuntimeConfig::EXP_TAYLOR)
+      .value("EXP_PRIME", RuntimeConfig::EXP_PRIME)
+      .export_values();
+
+  py::enum_<RuntimeConfig::LogMode>(rt_cls, "LogMode")
+      .value("LOG_DEFAULT", RuntimeConfig::LOG_DEFAULT)
+      .value("LOG_PADE", RuntimeConfig::LOG_PADE)
+      .value("LOG_NEWTON", RuntimeConfig::LOG_NEWTON)
+      .value("LOG_MINMAX", RuntimeConfig::LOG_MINMAX)
+      .export_values();
+
+  py::enum_<RuntimeConfig::SigmoidMode>(rt_cls, "SigmoidMode")
+      .value("SIGMOID_DEFAULT", RuntimeConfig::SIGMOID_DEFAULT)
+      .value("SIGMOID_MM1", RuntimeConfig::SIGMOID_MM1)
+      .value("SIGMOID_SEG3", RuntimeConfig::SIGMOID_SEG3)
+      .value("SIGMOID_REAL", RuntimeConfig::SIGMOID_REAL)
+      .export_values();
+
+  py::enum_<RuntimeConfig::BeaverType>(rt_cls, "BeaverType")
+      .value("TrustedFirstParty", RuntimeConfig::TrustedFirstParty)
+      .value("TrustedThirdParty", RuntimeConfig::TrustedThirdParty)
+      .value("MultiParty", RuntimeConfig::MultiParty)
+      .export_values();
+
+  rt_cls.def(py::init<>())
+      .def(py::init<ProtocolKind, FieldType, int64_t>(), py::arg("protocol"),
+           py::arg("field"), py::arg("fxp_fraction_bits") = 0)
+      .def(py::init<const RuntimeConfig&>())
+      .def("ParseFromJsonString", &RuntimeConfig::ParseFromJsonString)
+      .def("ParseFromString", &RuntimeConfig::ParseFromString)
+      .def("SerializeToString",
+           [](const RuntimeConfig& self) {
+             return py::bytes(self.SerializeAsString());
+           })
+      .def("__str__", &RuntimeConfig::DumpToString)
+      .def_readwrite("protocol", &RuntimeConfig::protocol)
+      .def_readwrite("field", &RuntimeConfig::field)
+      .def_readwrite("fxp_fraction_bits", &RuntimeConfig::fxp_fraction_bits)
+      .def_readwrite("max_concurrency", &RuntimeConfig::max_concurrency)
+      .def_readwrite("enable_action_trace", &RuntimeConfig::enable_action_trace)
+      .def_readwrite("enable_type_checker", &RuntimeConfig::enable_type_checker)
+      .def_readwrite("enable_pphlo_trace", &RuntimeConfig::enable_pphlo_trace)
+      .def_readwrite("enable_runtime_snapshot",
+                     &RuntimeConfig::enable_runtime_snapshot)
+      .def_readwrite("snapshot_dump_dir", &RuntimeConfig::snapshot_dump_dir)
+      .def_readwrite("enable_pphlo_profile",
+                     &RuntimeConfig::enable_pphlo_profile)
+      .def_readwrite("enable_hal_profile", &RuntimeConfig::enable_hal_profile)
+      .def_readwrite("public_random_seed", &RuntimeConfig::public_random_seed)
+      .def_readwrite("share_max_chunk_size",
+                     &RuntimeConfig::share_max_chunk_size)
+      .def_readwrite("sort_method", &RuntimeConfig::sort_method)
+      .def_readwrite("quick_sort_threshold",
+                     &RuntimeConfig::quick_sort_threshold)
+      .def_readwrite("fxp_div_goldschmidt_iters",
+                     &RuntimeConfig::fxp_div_goldschmidt_iters)
+      .def_readwrite("fxp_exp_mode", &RuntimeConfig::fxp_exp_mode)
+      .def_readwrite("fxp_exp_iters", &RuntimeConfig::fxp_exp_iters)
+      .def_readwrite("fxp_log_mode", &RuntimeConfig::fxp_log_mode)
+      .def_readwrite("fxp_log_iters", &RuntimeConfig::fxp_log_iters)
+      .def_readwrite("fxp_log_orders", &RuntimeConfig::fxp_log_orders)
+      .def_readwrite("sigmoid_mode", &RuntimeConfig::sigmoid_mode)
+      .def_readwrite("enable_lower_accuracy_rsqrt",
+                     &RuntimeConfig::enable_lower_accuracy_rsqrt)
+      .def_readwrite("sine_cosine_iters", &RuntimeConfig::sine_cosine_iters)
+      .def_readwrite("beaver_type", &RuntimeConfig::beaver_type)
+      .def_readwrite("ttp_beaver_config", &RuntimeConfig::ttp_beaver_config)
+      .def_readwrite("cheetah_2pc_config", &RuntimeConfig::cheetah_2pc_config)
+      .def_readwrite("trunc_allow_msb_error",
+                     &RuntimeConfig::trunc_allow_msb_error)
+      .def_readwrite("experimental_disable_mmul_split",
+                     &RuntimeConfig::experimental_disable_mmul_split)
+      .def_readwrite("experimental_enable_inter_op_par",
+                     &RuntimeConfig::experimental_enable_inter_op_par)
+      .def_readwrite("experimental_enable_intra_op_par",
+                     &RuntimeConfig::experimental_enable_intra_op_par)
+      .def_readwrite("experimental_disable_vectorization",
+                     &RuntimeConfig::experimental_disable_vectorization)
+      .def_readwrite("experimental_inter_op_concurrency",
+                     &RuntimeConfig::experimental_inter_op_concurrency)
+      .def_readwrite("experimental_enable_colocated_optimization",
+                     &RuntimeConfig::experimental_enable_colocated_optimization)
+      .def_readwrite("experimental_enable_exp_prime",
+                     &RuntimeConfig::experimental_enable_exp_prime)
+      .def_readwrite("experimental_exp_prime_offset",
+                     &RuntimeConfig::experimental_exp_prime_offset)
+      .def_readwrite("experimental_exp_prime_disable_lower_bound",
+                     &RuntimeConfig::experimental_exp_prime_disable_lower_bound)
+      .def_readwrite("experimental_exp_prime_enable_upper_bound",
+                     &RuntimeConfig::experimental_exp_prime_enable_upper_bound);
+
+  // Compiler
+  py::enum_<SourceIRType>(m, "SourceIRType")
+      .value("XLA", SourceIRType::XLA)
+      .value("STABLEHLO", SourceIRType::STABLEHLO)
+      .export_values();
+
+  py::class_<CompilationSource>(m, "CompilationSource")
+      .def(py::init<>())
+      .def(py::init<SourceIRType, std::string, std::vector<Visibility>>(),
+           py::arg("ir_type") = SourceIRType::XLA, py::arg("ir_txt") = "",
+           py::arg("input_visibility") = std::vector<Visibility>{})
+      .def("__hash__",
+           [](const CompilationSource& self) {
+             return std::hash<CompilationSource>{}(self);
+           })
+      .def("__eq__",
+           [](const CompilationSource& self, const CompilationSource& other) {
+             return self == other;
+           })
+      .def_readwrite("ir_type", &CompilationSource::ir_type)
+      .def_property(
+          "ir_txt",
+          [](const CompilationSource& self) { return py::bytes(self.ir_txt); },
+          [](CompilationSource& self, const py::bytes& bytes) {
+            self.ir_txt = std::string(bytes);
+          })
+      .def_readwrite("input_visibility", &CompilationSource::input_visibility);
+
+  py::enum_<XLAPrettyPrintKind>(m, "XLAPrettyPrintKind")
+      .value("TEXT", XLAPrettyPrintKind::TEXT)
+      .value("DOT", XLAPrettyPrintKind::DOT)
+      .value("HTML", XLAPrettyPrintKind::HTML)
+      .export_values();
+
+  py::class_<CompilerOptions>(m, "CompilerOptions")
+      .def(py::init<>())
+      .def(py::init<bool, std::string, XLAPrettyPrintKind, bool, bool, bool,
+                    bool, bool, bool, bool, bool, bool>(),
+           py::arg("enable_pretty_print") = false,
+           py::arg("pretty_print_dump_dir") = "",
+           py::arg("xla_pp_kind") = XLAPrettyPrintKind::TEXT,
+           py::arg("disable_sqrt_plus_epsilon_rewrite") = false,
+           py::arg("disable_div_sqrt_rewrite") = false,
+           py::arg("disable_reduce_truncation_optimization") = false,
+           py::arg("disable_maxpooling_optimization") = false,
+           py::arg("disallow_mix_types_opts") = false,
+           py::arg("disable_select_optimization") = false,
+           py::arg("enable_optimize_denominator_with_broadcast") = false,
+           py::arg("disable_deallocation_insertion") = false,
+           py::arg("disable_partial_sort_optimization") = false)
+      .def("__hash__",
+           [](const CompilerOptions& self) {
+             return std::hash<spu::CompilerOptions>{}(self);
+           })
+      .def("__eq__", [](const CompilerOptions& self,
+                        const CompilerOptions& other) { return self == other; })
+      .def_readwrite("enable_pretty_print",
+                     &CompilerOptions::enable_pretty_print)
+      .def_readwrite("pretty_print_dump_dir",
+                     &CompilerOptions::pretty_print_dump_dir)
+      .def_readwrite("xla_pp_kind", &CompilerOptions::xla_pp_kind)
+      .def_readwrite("disable_sqrt_plus_epsilon_rewrite",
+                     &CompilerOptions::disable_sqrt_plus_epsilon_rewrite)
+      .def_readwrite("disable_div_sqrt_rewrite",
+                     &CompilerOptions::disable_div_sqrt_rewrite)
+      .def_readwrite("disable_reduce_truncation_optimization",
+                     &CompilerOptions::disable_reduce_truncation_optimization)
+      .def_readwrite("disable_maxpooling_optimization",
+                     &CompilerOptions::disable_maxpooling_optimization)
+      .def_readwrite("disallow_mix_types_opts",
+                     &CompilerOptions::disallow_mix_types_opts)
+      .def_readwrite("disable_select_optimization",
+                     &CompilerOptions::disable_select_optimization)
+      .def_readwrite(
+          "enable_optimize_denominator_with_broadcast",
+          &CompilerOptions::enable_optimize_denominator_with_broadcast)
+      .def_readwrite("disable_deallocation_insertion",
+                     &CompilerOptions::disable_deallocation_insertion)
+      .def_readwrite("disable_partial_sort_optimization",
+                     &CompilerOptions::disable_partial_sort_optimization);
+
+  py::class_<ExecutableProto>(m, "ExecutableProto")
+      .def(py::init<>())
+      .def(py::init<std::string, std::vector<std::string>,
+                    std::vector<std::string>, std::string>(),
+           py::arg("name") = "",
+           py::arg("input_names") = std::vector<std::string>{},
+           py::arg("output_names") = std::vector<std::string>{},
+           py::arg("code") = "")
+      .def("ParseFromString", &ExecutableProto::ParseFromString)
+      .def("SerializeToString",
+           [](const ExecutableProto& self) {
+             return py::bytes(self.SerializeAsString());
+           })
+      .def_readwrite("name", &ExecutableProto::name)
+      .def_readwrite("input_names", &ExecutableProto::input_names)
+      .def_readwrite("output_names", &ExecutableProto::output_names)
+      .def_property(
+          "code",
+          [](const ExecutableProto& self) { return py::bytes(self.code); },
+          [](ExecutableProto& self, const py::bytes& bytes) {
+            self.code = std::string(bytes);
+          });
+
+  py::class_<pb::ShapeProto>(m, "ShapeProto")
+      .def(py::init<>())
+      .def_property_readonly("dims", [](const pb::ShapeProto& self) {
+        return std::vector<int64_t>(self.dims().begin(), self.dims().end());
+      });
+
+  py::class_<pb::ValueMetaProto>(m, "ValueMetaProto")
+      .def(py::init<>())
+      .def("ParseFromString", &pb::ValueMetaProto::ParseFromString)
+      .def_property_readonly("data_type",
+                             [](const pb::ValueMetaProto& self) {
+                               return DataType(self.data_type());
+                             })
+      .def_property_readonly("is_complex", &pb::ValueMetaProto::is_complex)
+      .def_property_readonly("visibility",
+                             [](const pb::ValueMetaProto& self) {
+                               return Visibility(self.visibility());
+                             })
+      .def_property_readonly("shape", &pb::ValueMetaProto::shape)
+      .def_property_readonly("storage_type", &pb::ValueMetaProto::storage_type);
+
+  py::class_<PyBindShare>(m, "Share", "Share in python runtime")
+      .def(py::init<>())
+      .def_readwrite("share_chunks", &PyBindShare::share_chunks, "share chunks")
+      .def_readwrite("meta", &PyBindShare::meta, "meta of share")
+      .def(py::pickle(
+          [](const PyBindShare& s) {  // dump
+            return py::make_tuple(s.meta, s.share_chunks);
+          },
+          [](const py::tuple& t) {  // load
+            return PyBindShare{t[0].cast<py::bytes>(),
+                               t[1].cast<std::vector<py::bytes>>()};
+          }));
+
+  // bind spu virtual machine.
+  py::class_<RuntimeWrapper>(m, "RuntimeWrapper", "SPU virtual device")
+      .def(py::init<std::shared_ptr<yacl::link::Context>,
+                    const spu::RuntimeConfig&>(),
+           NO_GIL)
+      .def("Run", &RuntimeWrapper::Run, NO_GIL)
+      .def("SetVar",
+           &RuntimeWrapper::
+               SetVar)  // https://github.com/pybind/pybind11/issues/1782
+                        // SetVar & GetVar are using
+                        // py::byte, so they must acquire gil...
+      .def("GetVar", &RuntimeWrapper::GetVar)
+      .def("GetVarChunksCount", &RuntimeWrapper::GetVarChunksCount)
+      .def("GetVarMeta", &RuntimeWrapper::GetVarMeta)
+      .def("DelVar", &RuntimeWrapper::DelVar);
+
+  // bind spu io suite.
+  py::class_<IoWrapper>(m, "IoWrapper", "SPU VM IO")
+      .def(py::init<size_t, const spu::RuntimeConfig&>())
+      .def("MakeShares", &IoWrapper::MakeShares, "Create secret shares",
+           py::arg("arr"), py::arg("visibility"), py::arg("owner_rank") = -1)
+      .def("GetShareChunkCount", &IoWrapper::GetShareChunkCount, py::arg("arr"),
+           py::arg("visibility"), py::arg("owner_rank") = -1)
+      .def("Reconstruct", &IoWrapper::Reconstruct);
+
+  // bind compiler.
+  m.def(
+      "compile",
+      [](const spu::CompilationSource& source,
+         const spu::CompilerOptions& copts) {
+        py::scoped_ostream_redirect stream(
+            std::cout,                                 // std::ostream&
+            py::module_::import("sys").attr("stdout")  // Python output
+        );
+        return py::bytes(spu::compiler::compile(source, copts));
+      },
+      "spu compile.", py::arg("source"), py::arg("copts"));
+}
+
 void BindLogging(py::module& m) {
   m.doc() = R"pbdoc(
               SPU Logging Library
@@ -624,62 +980,7 @@ PYBIND11_MODULE(libspu, m) {
         }
       });
 
-  py::class_<PyBindShare>(m, "Share", "Share in python runtime")
-      .def(py::init<>())
-      .def_readwrite("share_chunks", &PyBindShare::share_chunks, "share chunks")
-      .def_readwrite("meta", &PyBindShare::meta, "meta of share")
-      .def(py::pickle(
-          [](const PyBindShare& s) {  // dump
-            return py::make_tuple(s.meta, s.share_chunks);
-          },
-          [](const py::tuple& t) {  // load
-            return PyBindShare{t[0].cast<py::bytes>(),
-                               t[1].cast<std::vector<py::bytes>>()};
-          }));
-
-  // bind spu virtual machine.
-  py::class_<RuntimeWrapper>(m, "RuntimeWrapper", "SPU virtual device")
-      .def(py::init<std::shared_ptr<yacl::link::Context>, std::string>(),
-           NO_GIL)
-      .def("Run", &RuntimeWrapper::Run, NO_GIL)
-      .def("SetVar",
-           &RuntimeWrapper::
-               SetVar)  // https://github.com/pybind/pybind11/issues/1782
-                        // SetVar & GetVar are using
-                        // py::byte, so they must acquire gil...
-      .def("GetVar", &RuntimeWrapper::GetVar)
-      .def("GetVarChunksCount", &RuntimeWrapper::GetVarChunksCount)
-      .def("GetVarMeta", &RuntimeWrapper::GetVarMeta)
-      .def("DelVar", &RuntimeWrapper::DelVar);
-
-  // bind spu io suite.
-  py::class_<IoWrapper>(m, "IoWrapper", "SPU VM IO")
-      .def(py::init<size_t, std::string>())
-      .def("MakeShares", &IoWrapper::MakeShares, "Create secret shares",
-           py::arg("arr"), py::arg("visibility"), py::arg("owner_rank") = -1)
-      .def("GetShareChunkCount", &IoWrapper::GetShareChunkCount, py::arg("arr"),
-           py::arg("visibility"), py::arg("owner_rank") = -1)
-      .def("Reconstruct", &IoWrapper::Reconstruct);
-
-  // bind compiler.
-  m.def(
-      "compile",
-      [](const py::bytes& serialized_src, const std::string& serialized_copts) {
-        py::scoped_ostream_redirect stream(
-            std::cout,                                 // std::ostream&
-            py::module_::import("sys").attr("stdout")  // Python output
-        );
-
-        spu::CompilerOptions copts;
-        SPU_ENFORCE(copts.ParseFromString(serialized_copts),
-                    "Parse compiler options failed");
-
-        spu::CompilationSource src;
-        SPU_ENFORCE(src.ParseFromString(serialized_src), "Parse source failed");
-
-        return py::bytes(spu::compiler::compile(src, copts));
-      },
-      "spu compile.", py::arg("source"), py::arg("copts"));
+  BindSPU(m);
 
   // bind spu libs.
   py::module link_m = m.def_submodule("link");

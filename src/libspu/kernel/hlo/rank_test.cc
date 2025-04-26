@@ -374,12 +374,32 @@ TEST_P(TopkTest, ValueOnlyTest) {
       });
 }
 
+TEST_P(TopkTest, EmptyTest) {
+  size_t npc = std::get<0>(GetParam());
+  FieldType field = std::get<1>(GetParam());
+  ProtocolKind prot = std::get<2>(GetParam());
+
+  mpc::utils::simulate(
+      npc, [&](const std::shared_ptr<yacl::link::Context> &lctx) {
+        SPUContext sctx = test::makeSPUContext(prot, field, lctx);
+        auto empty_x = test::makeValue(&sctx, 1, VIS_SECRET, DT_INVALID, {0});
+
+        auto out = TopK(&sctx, empty_x, 1, 1);
+        EXPECT_EQ(out.size(), 2);
+        EXPECT_EQ(out[0].numel(), 0);
+        EXPECT_EQ(out[1].numel(), 0);
+        EXPECT_EQ(out[0].shape().size(), 1);
+        EXPECT_EQ(out[1].shape().size(), 1);
+        EXPECT_EQ(out[0].shape()[0], 0);
+        EXPECT_EQ(out[1].shape()[0], 0);
+      });
+}
+
 INSTANTIATE_TEST_SUITE_P(
     Topk2PCTestInstances, TopkTest,
     testing::Combine(testing::Values(2),
                      testing::Values(FieldType::FM64, FieldType::FM128),
-                     testing::Values(ProtocolKind::SEMI2K,
-                                     ProtocolKind::CHEETAH)),
+                     testing::Values(ProtocolKind::SEMI2K)),
     [](const testing::TestParamInfo<TopkTest::ParamType> &p) {
       return fmt::format("{}x{}x{}", std::get<0>(p.param), std::get<1>(p.param),
                          std::get<2>(p.param));

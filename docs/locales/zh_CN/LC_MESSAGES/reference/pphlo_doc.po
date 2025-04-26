@@ -1,0 +1,1690 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2021 Ant Group Co., Ltd.
+# This file is distributed under the same license as the SPU package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2025.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: SPU \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-03-13 15:10+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: ../../reference/pphlo_doc.rst:2
+msgid "PPHLO API reference"
+msgstr "PPHLO API 参考"
+
+#: ../../reference/pphlo_doc.rst:4
+msgid ""
+"PPHLO is short for (Privacy-Preserving High-Level Operations), it's the "
+"assembly language of SPU."
+msgstr "PPHLO 是（隐私保护高级操作）的缩写，它是 SPU 的汇编语言。"
+
+#: ../../reference/pphlo_doc.rst:6
+msgid ""
+"PPHLO is built on `MLIR <https://mlir.llvm.org/>`_ infrastructure, the "
+"concrete ops definition could be found :spu_code_host:`here "
+"<spu/blob/main/libspu/dialect/pphlo/IR/ops.td>`."
+msgstr "PPHLO 构建于 `MLIR <https://mlir.llvm.org/>`_ 基础设施之上，具体的操作定义可以在 :spu_code_host:`这里 <spu/blob/main/libspu/dialect/pphlo/IR/ops.td>` 找到。"
+
+#: ../../reference/pphlo_doc.rst:9
+msgid "Op List"
+msgstr "算子列表"
+
+#: ../../reference/pphlo_op_doc.md:2
+msgid "`pphlo.pad` (spu::pphlo::PadOp)"
+msgstr "`pphlo.pad` (spu::pphlo::PadOp)"
+
+#: ../../reference/pphlo_op_doc.md:4
+msgid "_Pad operator_"
+msgstr "_填充算子_"
+
+#: ../../reference/pphlo_op_doc.md:7 ../../reference/pphlo_op_doc.md:60
+#: ../../reference/pphlo_op_doc.md:93 ../../reference/pphlo_op_doc.md:128
+#: ../../reference/pphlo_op_doc.md:163 ../../reference/pphlo_op_doc.md:205
+#: ../../reference/pphlo_op_doc.md:240 ../../reference/pphlo_op_doc.md:274
+#: ../../reference/pphlo_op_doc.md:337 ../../reference/pphlo_op_doc.md:370
+#: ../../reference/pphlo_op_doc.md:406 ../../reference/pphlo_op_doc.md:442
+#: ../../reference/pphlo_op_doc.md:509 ../../reference/pphlo_op_doc.md:542
+#: ../../reference/pphlo_op_doc.md:587 ../../reference/pphlo_op_doc.md:620
+#: ../../reference/pphlo_op_doc.md:659 ../../reference/pphlo_op_doc.md:694
+#: ../../reference/pphlo_op_doc.md:736 ../../reference/pphlo_op_doc.md:772
+#: ../../reference/pphlo_op_doc.md:817 ../../reference/pphlo_op_doc.md:871
+#: ../../reference/pphlo_op_doc.md:906 ../../reference/pphlo_op_doc.md:939
+#: ../../reference/pphlo_op_doc.md:972 ../../reference/pphlo_op_doc.md:1002
+#: ../../reference/pphlo_op_doc.md:1020 ../../reference/pphlo_op_doc.md:1055
+#: ../../reference/pphlo_op_doc.md:1112 ../../reference/pphlo_op_doc.md:1146
+#: ../../reference/pphlo_op_doc.md:1180 ../../reference/pphlo_op_doc.md:1215
+#: ../../reference/pphlo_op_doc.md:1250 ../../reference/pphlo_op_doc.md:1283
+#: ../../reference/pphlo_op_doc.md:1316 ../../reference/pphlo_op_doc.md:1349
+#: ../../reference/pphlo_op_doc.md:1384 ../../reference/pphlo_op_doc.md:1428
+#: ../../reference/pphlo_op_doc.md:1463 ../../reference/pphlo_op_doc.md:1498
+#: ../../reference/pphlo_op_doc.md:1531 ../../reference/pphlo_op_doc.md:1566
+#: ../../reference/pphlo_op_doc.md:1599 ../../reference/pphlo_op_doc.md:1634
+#: ../../reference/pphlo_op_doc.md:1674 ../../reference/pphlo_op_doc.md:1709
+#: ../../reference/pphlo_op_doc.md:1743 ../../reference/pphlo_op_doc.md:1836
+#: ../../reference/pphlo_op_doc.md:1871 ../../reference/pphlo_op_doc.md:1904
+#: ../../reference/pphlo_op_doc.md:1929 ../../reference/pphlo_op_doc.md:1995
+msgid "Syntax:"
+msgstr "语法:"
+
+#: ../../reference/pphlo_op_doc.md:17
+msgid ""
+"Expands `operand` by padding around the tensor as well as between the "
+"elements of the tensor with the given `padding_value`."
+msgstr ""
+"通过在张量周围以及张量元素之间使用给定的 `padding_value` 进行填充来扩展 `operand`。"
+
+#: ../../reference/pphlo_op_doc.md:19
+msgid ""
+"`edge_padding_low` and `edge_padding_high` specify the amount of padding "
+"added at the low-end (next to index 0) and the high-end (next to the "
+"highest index) of each dimension respectively. The amount of padding can "
+"be negative, where the absolute value of negative padding indicates the "
+"number of elements to remove from the specified dimension."
+msgstr ""
+"`edge_padding_low` 和 `edge_padding_high` 分别指定在每个维度的低端（靠近索引 0）和高端（靠近最高索引）添加的填充量。"
+"填充量可以为负数，负填充的绝对值表示要从指定维度移除的元素数量。"
+
+#: ../../reference/pphlo_op_doc.md:22
+msgid ""
+"`interior_padding` specifies the amount of padding added between any two "
+"elements in each dimension which may not be negative. Interior padding "
+"occurs before edge padding such that negative edge padding will remove "
+"elements from the interior-padded operand."
+msgstr ""
+"`interior_padding` 指定在每个维度的任意两个元素之间添加的填充量，该值不能为负。"
+"内部填充发生在边缘填充之前，因此负的边缘填充将从经过内部填充的操作数中移除元素。"
+
+#: ../../reference/pphlo_op_doc.md:25
+msgid "Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#pad"
+msgstr "参考 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#pad"
+
+#: ../../reference/pphlo_op_doc.md:27 ../../reference/pphlo_op_doc.md:285
+#: ../../reference/pphlo_op_doc.md:452 ../../reference/pphlo_op_doc.md:1881
+msgid "Traits: `AlwaysSpeculatableImplTrait`, `SameOperandsAndResultElementType`"
+msgstr "特征：`AlwaysSpeculatableImplTrait`、`SameOperandsAndResultElementType`"
+
+#: ../../reference/pphlo_op_doc.md:29 ../../reference/pphlo_op_doc.md:72
+#: ../../reference/pphlo_op_doc.md:106 ../../reference/pphlo_op_doc.md:141
+#: ../../reference/pphlo_op_doc.md:218 ../../reference/pphlo_op_doc.md:349
+#: ../../reference/pphlo_op_doc.md:599 ../../reference/pphlo_op_doc.md:672
+#: ../../reference/pphlo_op_doc.md:750 ../../reference/pphlo_op_doc.md:884
+#: ../../reference/pphlo_op_doc.md:918 ../../reference/pphlo_op_doc.md:951
+#: ../../reference/pphlo_op_doc.md:984 ../../reference/pphlo_op_doc.md:1033
+#: ../../reference/pphlo_op_doc.md:1068 ../../reference/pphlo_op_doc.md:1193
+#: ../../reference/pphlo_op_doc.md:1228 ../../reference/pphlo_op_doc.md:1262
+#: ../../reference/pphlo_op_doc.md:1295 ../../reference/pphlo_op_doc.md:1328
+#: ../../reference/pphlo_op_doc.md:1362 ../../reference/pphlo_op_doc.md:1441
+#: ../../reference/pphlo_op_doc.md:1476 ../../reference/pphlo_op_doc.md:1510
+#: ../../reference/pphlo_op_doc.md:1544 ../../reference/pphlo_op_doc.md:1578
+#: ../../reference/pphlo_op_doc.md:1612 ../../reference/pphlo_op_doc.md:1687
+#: ../../reference/pphlo_op_doc.md:1753 ../../reference/pphlo_op_doc.md:1849
+msgid ""
+"Interfaces: `ConditionallySpeculatable`, `InferShapedTypeOpInterface`, "
+"`InferTypeOpInterface`, `NoMemoryEffect (MemoryEffectOpInterface)`"
+msgstr "接口：`ConditionallySpeculatable`、`InferShapedTypeOpInterface`、`InferTypeOpInterface`、`NoMemoryEffect (MemoryEffectOpInterface)`"
+
+#: ../../reference/pphlo_op_doc.md:31 ../../reference/pphlo_op_doc.md:74
+#: ../../reference/pphlo_op_doc.md:108 ../../reference/pphlo_op_doc.md:143
+#: ../../reference/pphlo_op_doc.md:175 ../../reference/pphlo_op_doc.md:220
+#: ../../reference/pphlo_op_doc.md:255 ../../reference/pphlo_op_doc.md:289
+#: ../../reference/pphlo_op_doc.md:351 ../../reference/pphlo_op_doc.md:385
+#: ../../reference/pphlo_op_doc.md:422 ../../reference/pphlo_op_doc.md:456
+#: ../../reference/pphlo_op_doc.md:489 ../../reference/pphlo_op_doc.md:523
+#: ../../reference/pphlo_op_doc.md:559 ../../reference/pphlo_op_doc.md:601
+#: ../../reference/pphlo_op_doc.md:674 ../../reference/pphlo_op_doc.md:709
+#: ../../reference/pphlo_op_doc.md:752 ../../reference/pphlo_op_doc.md:790
+#: ../../reference/pphlo_op_doc.md:832 ../../reference/pphlo_op_doc.md:858
+#: ../../reference/pphlo_op_doc.md:886 ../../reference/pphlo_op_doc.md:920
+#: ../../reference/pphlo_op_doc.md:953 ../../reference/pphlo_op_doc.md:986
+#: ../../reference/pphlo_op_doc.md:1035 ../../reference/pphlo_op_doc.md:1070
+#: ../../reference/pphlo_op_doc.md:1127 ../../reference/pphlo_op_doc.md:1160
+#: ../../reference/pphlo_op_doc.md:1195 ../../reference/pphlo_op_doc.md:1230
+#: ../../reference/pphlo_op_doc.md:1264 ../../reference/pphlo_op_doc.md:1297
+#: ../../reference/pphlo_op_doc.md:1330 ../../reference/pphlo_op_doc.md:1364
+#: ../../reference/pphlo_op_doc.md:1400 ../../reference/pphlo_op_doc.md:1443
+#: ../../reference/pphlo_op_doc.md:1478 ../../reference/pphlo_op_doc.md:1512
+#: ../../reference/pphlo_op_doc.md:1546 ../../reference/pphlo_op_doc.md:1580
+#: ../../reference/pphlo_op_doc.md:1614 ../../reference/pphlo_op_doc.md:1648
+#: ../../reference/pphlo_op_doc.md:1689 ../../reference/pphlo_op_doc.md:1724
+#: ../../reference/pphlo_op_doc.md:1755 ../../reference/pphlo_op_doc.md:1851
+#: ../../reference/pphlo_op_doc.md:1885 ../../reference/pphlo_op_doc.md:1916
+#: ../../reference/pphlo_op_doc.md:1943
+#, python-brace-format
+msgid "Effects: `MemoryEffects::Effect{}`"
+msgstr "效果：`MemoryEffects::Effect{}`"
+
+#: ../../reference/pphlo_op_doc.md:33 ../../reference/pphlo_op_doc.md:177
+#: ../../reference/pphlo_op_doc.md:291 ../../reference/pphlo_op_doc.md:458
+#: ../../reference/pphlo_op_doc.md:491 ../../reference/pphlo_op_doc.md:561
+#: ../../reference/pphlo_op_doc.md:634 ../../reference/pphlo_op_doc.md:711
+#: ../../reference/pphlo_op_doc.md:792 ../../reference/pphlo_op_doc.md:1162
+#: ../../reference/pphlo_op_doc.md:1402 ../../reference/pphlo_op_doc.md:1650
+#: ../../reference/pphlo_op_doc.md:1779 ../../reference/pphlo_op_doc.md:1809
+#: ../../reference/pphlo_op_doc.md:1945
+msgid "Attributes:"
+msgstr "属性："
+
+#: ../../reference/pphlo_op_doc.md:42 ../../reference/pphlo_op_doc.md:76
+#: ../../reference/pphlo_op_doc.md:110 ../../reference/pphlo_op_doc.md:145
+#: ../../reference/pphlo_op_doc.md:187 ../../reference/pphlo_op_doc.md:222
+#: ../../reference/pphlo_op_doc.md:257 ../../reference/pphlo_op_doc.md:298
+#: ../../reference/pphlo_op_doc.md:320 ../../reference/pphlo_op_doc.md:353
+#: ../../reference/pphlo_op_doc.md:387 ../../reference/pphlo_op_doc.md:424
+#: ../../reference/pphlo_op_doc.md:465 ../../reference/pphlo_op_doc.md:525
+#: ../../reference/pphlo_op_doc.md:569 ../../reference/pphlo_op_doc.md:603
+#: ../../reference/pphlo_op_doc.md:642 ../../reference/pphlo_op_doc.md:676
+#: ../../reference/pphlo_op_doc.md:718 ../../reference/pphlo_op_doc.md:754
+#: ../../reference/pphlo_op_doc.md:799 ../../reference/pphlo_op_doc.md:834
+#: ../../reference/pphlo_op_doc.md:888 ../../reference/pphlo_op_doc.md:922
+#: ../../reference/pphlo_op_doc.md:955 ../../reference/pphlo_op_doc.md:988
+#: ../../reference/pphlo_op_doc.md:1009 ../../reference/pphlo_op_doc.md:1037
+#: ../../reference/pphlo_op_doc.md:1072 ../../reference/pphlo_op_doc.md:1095
+#: ../../reference/pphlo_op_doc.md:1129 ../../reference/pphlo_op_doc.md:1197
+#: ../../reference/pphlo_op_doc.md:1232 ../../reference/pphlo_op_doc.md:1266
+#: ../../reference/pphlo_op_doc.md:1299 ../../reference/pphlo_op_doc.md:1332
+#: ../../reference/pphlo_op_doc.md:1366 ../../reference/pphlo_op_doc.md:1410
+#: ../../reference/pphlo_op_doc.md:1445 ../../reference/pphlo_op_doc.md:1480
+#: ../../reference/pphlo_op_doc.md:1514 ../../reference/pphlo_op_doc.md:1548
+#: ../../reference/pphlo_op_doc.md:1582 ../../reference/pphlo_op_doc.md:1616
+#: ../../reference/pphlo_op_doc.md:1657 ../../reference/pphlo_op_doc.md:1691
+#: ../../reference/pphlo_op_doc.md:1726 ../../reference/pphlo_op_doc.md:1757
+#: ../../reference/pphlo_op_doc.md:1786 ../../reference/pphlo_op_doc.md:1818
+#: ../../reference/pphlo_op_doc.md:1853 ../../reference/pphlo_op_doc.md:1887
+#: ../../reference/pphlo_op_doc.md:1918 ../../reference/pphlo_op_doc.md:1952
+#: ../../reference/pphlo_op_doc.md:1977
+msgid "Operands:"
+msgstr "操作数："
+
+#: ../../reference/pphlo_op_doc.md
+msgid "Operand"
+msgstr "操作数"
+
+#: ../../reference/pphlo_op_doc.md
+msgid "Description"
+msgstr "描述"
+
+#: ../../reference/pphlo_op_doc.md
+msgid "`operand`"
+msgstr "`operand`"
+
+#: ../../reference/pphlo_op_doc.md
+msgid "statically shaped tensor of any type values"
+msgstr "任何类型的静态形状张量值"
+
+#: ../../reference/pphlo_op_doc.md
+msgid "`padding_value`"
+msgstr "`padding_value`"
+
+#: ../../reference/pphlo_op_doc.md:49 ../../reference/pphlo_op_doc.md:82
+#: ../../reference/pphlo_op_doc.md:117 ../../reference/pphlo_op_doc.md:152
+#: ../../reference/pphlo_op_doc.md:193 ../../reference/pphlo_op_doc.md:229
+#: ../../reference/pphlo_op_doc.md:263 ../../reference/pphlo_op_doc.md:304
+#: ../../reference/pphlo_op_doc.md:326 ../../reference/pphlo_op_doc.md:359
+#: ../../reference/pphlo_op_doc.md:395 ../../reference/pphlo_op_doc.md:431
+#: ../../reference/pphlo_op_doc.md:471 ../../reference/pphlo_op_doc.md:498
+#: ../../reference/pphlo_op_doc.md:531 ../../reference/pphlo_op_doc.md:576
+#: ../../reference/pphlo_op_doc.md:609 ../../reference/pphlo_op_doc.md:648
+#: ../../reference/pphlo_op_doc.md:683 ../../reference/pphlo_op_doc.md:725
+#: ../../reference/pphlo_op_doc.md:761 ../../reference/pphlo_op_doc.md:806
+#: ../../reference/pphlo_op_doc.md:842 ../../reference/pphlo_op_doc.md:860
+#: ../../reference/pphlo_op_doc.md:895 ../../reference/pphlo_op_doc.md:928
+#: ../../reference/pphlo_op_doc.md:961 ../../reference/pphlo_op_doc.md:994
+#: ../../reference/pphlo_op_doc.md:1044 ../../reference/pphlo_op_doc.md:1079
+#: ../../reference/pphlo_op_doc.md:1101 ../../reference/pphlo_op_doc.md:1135
+#: ../../reference/pphlo_op_doc.md:1169 ../../reference/pphlo_op_doc.md:1204
+#: ../../reference/pphlo_op_doc.md:1239 ../../reference/pphlo_op_doc.md:1272
+#: ../../reference/pphlo_op_doc.md:1305 ../../reference/pphlo_op_doc.md:1338
+#: ../../reference/pphlo_op_doc.md:1373 ../../reference/pphlo_op_doc.md:1417
+#: ../../reference/pphlo_op_doc.md:1452 ../../reference/pphlo_op_doc.md:1487
+#: ../../reference/pphlo_op_doc.md:1520 ../../reference/pphlo_op_doc.md:1555
+#: ../../reference/pphlo_op_doc.md:1588 ../../reference/pphlo_op_doc.md:1623
+#: ../../reference/pphlo_op_doc.md:1663 ../../reference/pphlo_op_doc.md:1698
+#: ../../reference/pphlo_op_doc.md:1732 ../../reference/pphlo_op_doc.md:1763
+#: ../../reference/pphlo_op_doc.md:1793 ../../reference/pphlo_op_doc.md:1825
+#: ../../reference/pphlo_op_doc.md:1860 ../../reference/pphlo_op_doc.md:1893
+#: ../../reference/pphlo_op_doc.md:1958 ../../reference/pphlo_op_doc.md:1984
+msgid "Results:"
+msgstr "结果："
+
+#: ../../reference/pphlo_op_doc.md
+msgid "Result"
+msgstr "结果"
+
+#: ../../reference/pphlo_op_doc.md
+msgid "&laquo;unnamed&raquo;"
+msgstr "«未命名»"
+
+#: ../../reference/pphlo_op_doc.md:55
+msgid "`pphlo.abs` (spu::pphlo::AbsOp)"
+msgstr "`pphlo.abs` (spu::pphlo::AbsOp)"
+
+#: ../../reference/pphlo_op_doc.md:57
+msgid "_Absolute value operator_"
+msgstr "_绝对值算子_"
+
+#: ../../reference/pphlo_op_doc.md:66
+msgid ""
+"Performs element-wise abs operation on operand tensor and produces a "
+"result tensor."
+msgstr "对操作数张量执行逐元素绝对值运算，并生成结果张量。"
+
+#: ../../reference/pphlo_op_doc.md:68
+msgid "Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#abs"
+msgstr "参考 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#abs"
+
+#: ../../reference/pphlo_op_doc.md:70 ../../reference/pphlo_op_doc.md:347
+#: ../../reference/pphlo_op_doc.md:597 ../../reference/pphlo_op_doc.md:916
+#: ../../reference/pphlo_op_doc.md:949 ../../reference/pphlo_op_doc.md:982
+#: ../../reference/pphlo_op_doc.md:1260 ../../reference/pphlo_op_doc.md:1293
+#: ../../reference/pphlo_op_doc.md:1326 ../../reference/pphlo_op_doc.md:1508
+#: ../../reference/pphlo_op_doc.md:1576 ../../reference/pphlo_op_doc.md:1644
+#: ../../reference/pphlo_op_doc.md:1751
+msgid ""
+"Traits: `AlwaysSpeculatableImplTrait`, `Elementwise`, "
+"`SameOperandsAndResultShape`, `SameOperandsAndResultType`"
+msgstr "特征：`AlwaysSpeculatableImplTrait`、`Elementwise`、`SameOperandsAndResultShape`、`SameOperandsAndResultType`"
+
+#: ../../reference/pphlo_op_doc.md
+msgid ""
+"statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret"
+" of 1-bit signless integer values or 8/16/32/64-bit signless integer or "
+"Secret of 8-bit signless integer or 16-bit signless integer or 32-bit "
+"signless integer or 64-bit signless integer values or 8/16/32/64-bit "
+"unsigned integer or Secret of 8/16/32/64-bit unsigned integer values or "
+"16-bit float or 32-bit float or 64-bit float or Secret of 16-bit float or"
+" 32-bit float or 64-bit float values or complex type with 32-bit float or"
+" 64-bit float elements or Secret of complex type with 32-bit float or "
+"64-bit float elements values values"
+msgstr ""
+"静态形状张量，其值为谓词（又称布尔值或 1 位整数）或 1 位符号无关整数的密态值，"
+"或 8/16/32/64 位符号无关整数或 8 位、16 位、32 位、64 位符号无关整数的密态值，"
+"或 8/16/32/64 位无符号整数或 8/16/32/64 位无符号整数的密态值，"
+"或 16 位、32 位、64 位浮点数或 16 位、32 位、64 位浮点数的密态值，"
+"或具有 32 位或 64 位浮点数元素的复数类型或具有 32 位或 64 位浮点数元素的复数类型的密态值"
+
+#: ../../reference/pphlo_op_doc.md
+msgid "`result`"
+msgstr "`result`"
+
+#: ../../reference/pphlo_op_doc.md:88
+msgid "`pphlo.add` (spu::pphlo::AddOp)"
+msgstr "`pphlo.add` (spu::pphlo::AddOp)"
+
+#: ../../reference/pphlo_op_doc.md:90
+msgid "_Addition operator_"
+msgstr "_加法算子_"
+
+#: ../../reference/pphlo_op_doc.md:100
+msgid ""
+"Performs element-wise addition of two tensors `lhs` and `rhs` and "
+"produces a `result` tensor."
+msgstr "对两个张量 `lhs` 和 `rhs` 执行逐元素加法，并生成结果张量 `result`。"
+
+#: ../../reference/pphlo_op_doc.md:102
+msgid "Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#add"
+msgstr "参考 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#add"
+
+#: ../../reference/pphlo_op_doc.md:104 ../../reference/pphlo_op_doc.md:139
+#: ../../reference/pphlo_op_doc.md:1360 ../../reference/pphlo_op_doc.md:1439
+#: ../../reference/pphlo_op_doc.md:1474 ../../reference/pphlo_op_doc.md:1610
+msgid ""
+"Traits: `AlwaysSpeculatableImplTrait`, `Commutative`, `Elementwise`, "
+"`SameOperandsAndResultShape`"
+msgstr "特征：`AlwaysSpeculatableImplTrait`、`Commutative`、`Elementwise`、`SameOperandsAndResultShape`"
+
+#: ../../reference/pphlo_op_doc.md
+msgid "`lhs`"
+msgstr "`lhs`"
+
+#: ../../reference/pphlo_op_doc.md
+msgid "`rhs`"
+msgstr "`rhs`"
+
+#: ../../reference/pphlo_op_doc.md:123
+msgid "`pphlo.and` (spu::pphlo::AndOp)"
+msgstr "`pphlo.and` (spu::pphlo::AndOp)"
+
+#: ../../reference/pphlo_op_doc.md:125
+msgid "_And operator_"
+msgstr "_按位与算子_"
+
+#: ../../reference/pphlo_op_doc.md:135
+msgid ""
+"Performs element-wise AND of two tensors `lhs` and `rhs` and produces a "
+"`result` tensor."
+msgstr "对两个张量 `lhs` 和 `rhs` 执行逐元素按位与运算，并生成结果张量 `result`。"
+
+#: ../../reference/pphlo_op_doc.md:137
+msgid "Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#and"
+msgstr "参考 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#and"
+
+#: ../../reference/pphlo_op_doc.md
+msgid ""
+"statically shaped tensor of 8/16/32/64-bit signless integer or Secret of "
+"8-bit signless integer or 16-bit signless integer or 32-bit signless "
+"integer or 64-bit signless integer values or 8/16/32/64-bit unsigned "
+"integer or Secret of 8/16/32/64-bit unsigned integer values or pred (AKA "
+"boolean or 1-bit integer) or Secret of 1-bit signless integer values "
+"values"
+msgstr ""
+"静态形状张量，其值为 8/16/32/64 位符号无关整数或 8 位、16 位、32 位、64 位符号无关整数的密态值，"
+"或 8/16/32/64 位无符号整数或 8/16/32/64 位无符号整数的密态值，"
+"或谓词（又称布尔值或 1 位整数）或 1 位符号无关整数的密态值"
+
+#: ../../reference/pphlo_op_doc.md:158
+msgid "`pphlo.argmax` (spu::pphlo::ArgMaxOp)"
+msgstr "`pphlo.argmax` (spu::pphlo::ArgMaxOp)"
+
+#: ../../reference/pphlo_op_doc.md:160
+msgid "_ArgMax operator_"
+msgstr "_最大值索引算子_"
+
+#: ../../reference/pphlo_op_doc.md:169
+msgid "Returns the max value and index in a window."
+msgstr "返回窗口中的最大值和索引。"
+
+#: ../../reference/pphlo_op_doc.md:171 ../../reference/pphlo_op_doc.md:555
+#: ../../reference/pphlo_op_doc.md:705 ../../reference/pphlo_op_doc.md:748
+#: ../../reference/pphlo_op_doc.md:786 ../../reference/pphlo_op_doc.md:828
+#: ../../reference/pphlo_op_doc.md:854 ../../reference/pphlo_op_doc.md:1156
+#: ../../reference/pphlo_op_doc.md:1396
+msgid "Traits: `AlwaysSpeculatableImplTrait`"
+msgstr "特征：`AlwaysSpeculatableImplTrait`"
+
+#: ../../reference/pphlo_op_doc.md:173 ../../reference/pphlo_op_doc.md:253
+#: ../../reference/pphlo_op_doc.md:287 ../../reference/pphlo_op_doc.md:383
+#: ../../reference/pphlo_op_doc.md:420 ../../reference/pphlo_op_doc.md:487
+#: ../../reference/pphlo_op_doc.md:521 ../../reference/pphlo_op_doc.md:557
+#: ../../reference/pphlo_op_doc.md:707 ../../reference/pphlo_op_doc.md:856
+#: ../../reference/pphlo_op_doc.md:1125 ../../reference/pphlo_op_doc.md:1158
+#: ../../reference/pphlo_op_doc.md:1398 ../../reference/pphlo_op_doc.md:1722
+#: ../../reference/pphlo_op_doc.md:1883 ../../reference/pphlo_op_doc.md:1914
+msgid ""
+"Interfaces: `ConditionallySpeculatable`, `NoMemoryEffect "
+"(MemoryEffectOpInterface)`"
+msgstr "接口：`ConditionallySpeculatable`、`NoMemoryEffect (MemoryEffectOpInterface)`"
+
+#: ../../reference/pphlo_op_doc.md
+msgid "`input`"
+msgstr "`input`"
+
+#: ../../reference/pphlo_op_doc.md
+msgid ""
+"statically shaped tensor of pred (AKA boolean or 1-bit integer) or Secret"
+" of 1-bit signless integer values values"
+msgstr "静态形状张量，其值为谓词（又称布尔值或 1 位整数）或 1 位符号无关整数的密态值"
+
+#: ../../reference/pphlo_op_doc.md:200
+msgid "`pphlo.atan2` (spu::pphlo::Atan2Op)"
+msgstr "`pphlo.atan2` (spu::pphlo::Atan2Op)"
+
+#: ../../reference/pphlo_op_doc.md:202
+msgid "_Atan2 operator_"
+msgstr "_Atan2 算子_"
+
+#: ../../reference/pphlo_op_doc.md:212
+msgid ""
+"Performs element-wise atan2 operation on `lhs` tensor and `rhs` tensor "
+"and produces a `result` tensor."
+msgstr "对 `lhs` 张量和 `rhs` 张量执行逐元素 atan2 运算，并生成结果张量 `result`。"
+
+#: ../../reference/pphlo_op_doc.md:214
+msgid "Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#atan2"
+msgstr "参考 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#atan2"
+
+#: ../../reference/pphlo_op_doc.md:216 ../../reference/pphlo_op_doc.md:251
+#: ../../reference/pphlo_op_doc.md:519 ../../reference/pphlo_op_doc.md:670
+#: ../../reference/pphlo_op_doc.md:882 ../../reference/pphlo_op_doc.md:1031
+#: ../../reference/pphlo_op_doc.md:1066 ../../reference/pphlo_op_doc.md:1123
+#: ../../reference/pphlo_op_doc.md:1191 ../../reference/pphlo_op_doc.md:1226
+#: ../../reference/pphlo_op_doc.md:1542 ../../reference/pphlo_op_doc.md:1685
+#: ../../reference/pphlo_op_doc.md:1720 ../../reference/pphlo_op_doc.md:1847
+msgid ""
+"Traits: `AlwaysSpeculatableImplTrait`, `Elementwise`, "
+"`SameOperandsAndResultShape`"
+msgstr "特征：`AlwaysSpeculatableImplTrait`、`Elementwise`、`SameOperandsAndResultShape`"
+
+#: ../../reference/pphlo_op_doc.md
+msgid ""
+"statically shaped tensor of 16-bit float or 32-bit float or 64-bit float "
+"or Secret of 16-bit float or 32-bit float or 64-bit float values values"
+msgstr "静态形状张量，其值为 16 位、32 位或 64 位浮点数或 16 位、32 位或 64 位浮点数的密态值"
+
+#: ../../reference/pphlo_op_doc.md:235
+msgid "`pphlo.bitcast_convert` (spu::pphlo::BitcastConvertOp)"
+msgstr "`pphlo.bitcast_convert` (spu::pphlo::BitcastConvertOp)"
+
+#: ../../reference/pphlo_op_doc.md:237
+msgid "_BitcastConvert operator_"
+msgstr "_位转换算子_"
+
+#: ../../reference/pphlo_op_doc.md:246
+msgid ""
+"Performs a bitcast operation on operand tensor and produces a result "
+"tensor where the bits of the entire `operand` tensor are reinterpreted "
+"using the type of the `result` tensor."
+msgstr "对操作数张量执行位转换操作，并生成一个结果张量，其中整个 `operand` 张量的位将使用 `result` 张量的类型重新解释。"
+
+#: ../../reference/pphlo_op_doc.md:249
+msgid ""
+"Ref "
+"https://github.com/openxla/stablehlo/blob/main/docs/spec.md#bitcast_convert"
+msgstr "参考 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#bitcast_convert"
+
+#: ../../reference/pphlo_op_doc.md:269
+msgid "`pphlo.broadcast` (spu::pphlo::BroadcastOp)"
+msgstr "`pphlo.broadcast` (spu::pphlo::BroadcastOp)"
+
+#: ../../reference/pphlo_op_doc.md:271
+msgid "_Broadcast operator_"
+msgstr "_广播算子_"
+
+#: ../../reference/pphlo_op_doc.md:281
+msgid ""
+"Expands the dimensions and/or rank of an input tensor by duplicating the "
+"data in the `operand` tensor and produces a `result` tensor."
+msgstr "通过复制 `operand` 张量中的数据来扩展输入张量的维度和/或秩，并生成结果张量 `result`。"
+
+#: ../../reference/pphlo_op_doc.md:283
+msgid ""
+"Ref "
+"https://github.com/openxla/stablehlo/blob/main/docs/spec.md#broadcast_in_dim"
+msgstr "参考 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#broadcast_in_dim"
+
+#: ../../reference/pphlo_op_doc.md:310
+msgid "`pphlo.case` (spu::pphlo::CaseOp)"
+msgstr "`pphlo.case` (spu::pphlo::CaseOp)"
+
+#: ../../reference/pphlo_op_doc.md:312
+msgid "_Switch-Case operator_"
+msgstr "_Switch-Case 算子_"
+
+#: ../../reference/pphlo_op_doc.md:314
+msgid ""
+"Produces the output from executing exactly one function from `branches` "
+"depending on the value of `index`."
+msgstr "根据 `index` 的值，从 `branches` 中精确执行一个函数并产生输出。"
+
+#: ../../reference/pphlo_op_doc.md:316
+msgid "Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#case"
+msgstr "参考 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#case"
+
+#: ../../reference/pphlo_op_doc.md:318 ../../reference/pphlo_op_doc.md:1093
+msgid ""
+"Traits: `RecursiveMemoryEffects`, "
+"`SingleBlockImplicitTerminator<ReturnOp>`, `SingleBlock`"
+msgstr "特征：`RecursiveMemoryEffects`、`SingleBlockImplicitTerminator<ReturnOp>`、`SingleBlock`"
+
+#: ../../reference/pphlo_op_doc.md
+msgid "`index`"
+msgstr "`index`"
+
+#: ../../reference/pphlo_op_doc.md
+msgid ""
+"statically shaped tensor of 8/16/32/64-bit signless integer or Secret of "
+"8-bit signless integer or 16-bit signless integer or 32-bit signless "
+"integer or 64-bit signless integer values or 8/16/32/64-bit unsigned "
+"integer or Secret of 8/16/32/64-bit unsigned integer values values"
+msgstr ""
+"静态形状张量，其值为 8/16/32/64 位符号无关整数或 8 位、16 位、32 位、64 位符号无关整数的密态值，"
+"或 8/16/32/64 位无符号整数或 8/16/32/64 位无符号整数的密态值"
+
+#: ../../reference/pphlo_op_doc.md
+msgid ""
+"variadic of statically shaped tensor of pred (AKA boolean or 1-bit "
+"integer) or Secret of 1-bit signless integer values or 8/16/32/64-bit "
+"signless integer or Secret of 8-bit signless integer or 16-bit signless "
+"integer or 32-bit signless integer or 64-bit signless integer values or "
+"8/16/32/64-bit unsigned integer or Secret of 8/16/32/64-bit unsigned "
+"integer values or 16-bit float or 32-bit float or 64-bit float or Secret "
+"of 16-bit float or 32-bit float or 64-bit float values or complex type "
+"with 32-bit float or 64-bit float elements or Secret of complex type with"
+" 32-bit float or 64-bit float elements values values"
+msgstr ""
+"可变参数，每个参数是静态形状张量，其值为谓词（又称布尔值或 1 位整数）或 1 位符号无关整数的密态值，"
+"或 8/16/32/64 位符号无关整数或 8 位、16 位、32 位、64 位符号无关整数的密态值，"
+"或 8/16/32/64 位无符号整数或 8/16/32/64 位无符号整数的密态值，"
+"或 16 位、32 位、64 位浮点数或 16 位、32 位、64 位浮点数的密态值，"
+"或具有 32 位或 64 位浮点数元素的复数类型或具有 32 位或 64 位浮点数元素的复数类型的密态值"
+
+#: ../../reference/pphlo_op_doc.md:332
+msgid "`pphlo.ceil` (spu::pphlo::CeilOp)"
+msgstr "`pphlo.ceil` (spu::pphlo::CeilOp)"
+
+#: ../../reference/pphlo_op_doc.md:334
+msgid "_Ceil operator_"
+msgstr "_向上取整算子_"
+
+#: ../../reference/pphlo_op_doc.md:343
+msgid "Performs element-wise ceil of operand tensor and produces a result tensor."
+msgstr "对操作数张量执行逐元素向上取整运算，并生成结果张量。"
+
+#: ../../reference/pphlo_op_doc.md:345
+msgid "Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#ceil"
+msgstr "参考 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#ceil"
+
+#: ../../reference/pphlo_op_doc.md:365
+msgid "`pphlo.clamp` (spu::pphlo::ClampOp)"
+msgstr "`pphlo.clamp` (spu::pphlo::ClampOp)"
+
+#: ../../reference/pphlo_op_doc.md:367
+msgid "_Clamp operator_"
+msgstr "_截断算子_"
+
+#: ../../reference/pphlo_op_doc.md:377
+msgid ""
+"Clamps every element of the `operand` tensor between a `minimum` and "
+"`maximum` value and produces a `result` tensor."
+msgstr "将 `operand` 张量的每个元素截断在 `minimum` 和 `maximum` 值之间，并生成结果张量 `result`。"
+
+#: ../../reference/pphlo_op_doc.md:379
+msgid "Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#clamp"
+msgstr "参考 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#clamp"
+
+#: ../../reference/pphlo_op_doc.md:381
+msgid "Traits: `AlwaysSpeculatableImplTrait`, `SameOperandsAndResultShape`"
+msgstr "特征：`AlwaysSpeculatableImplTrait`、`SameOperandsAndResultShape`"
+
+#: ../../reference/pphlo_op_doc.md
+msgid "`min`"
+msgstr "`min`"
+
+#: ../../reference/pphlo_op_doc.md
+msgid "`max`"
+msgstr "`max`"
+
+#: ../../reference/pphlo_op_doc.md:401
+msgid "`pphlo.complex` (spu::pphlo::ComplexOp)"
+msgstr "`pphlo.complex` (spu::pphlo::ComplexOp)"
+
+#: ../../reference/pphlo_op_doc.md:403
+msgid "_Complex operator_"
+msgstr "_复数算子_"
+
+#: ../../reference/pphlo_op_doc.md:413
+msgid ""
+"Performs element-wise conversion to a complex value from a pair of real "
+"and imaginary values, `lhs` and `rhs`, and produces a `result` tensor."
+msgstr "从一对实部值 `lhs` 和虚部值 `rhs` 逐元素转换为复数值，并生成结果张量 `result`。"
+
+#: ../../reference/pphlo_op_doc.md:416
+msgid "Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#complex"
+msgstr "参考 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#complex"
+
+#: ../../reference/pphlo_op_doc.md:418
+msgid ""
+"Traits: `AlwaysSpeculatableImplTrait`, `Elementwise`, "
+"`SameOperandsAndResultShape`, `SameOperandsElementType`"
+msgstr "特征：`AlwaysSpeculatableImplTrait`、`Elementwise`、`SameOperandsAndResultShape`、`SameOperandsElementType`"
+
+#: ../../reference/pphlo_op_doc.md
+msgid ""
+"statically shaped tensor of complex type with 32-bit float or 64-bit "
+"float elements or Secret of complex type with 32-bit float or 64-bit "
+"float elements values values"
+msgstr "静态形状张量，其值为具有 32 位或 64 位浮点数元素的复数类型，或具有 32 位或 64 位浮点数元素的复数类型的密态值"
+
+#: ../../reference/pphlo_op_doc.md:437
+msgid "`pphlo.concatenate` (spu::pphlo::ConcatenateOp)"
+msgstr "`pphlo.concatenate` (spu::pphlo::ConcatenateOp)"
+
+#: ../../reference/pphlo_op_doc.md:439
+msgid "_Concatenate op_"
+msgstr "_连接算子_"
+
+#: ../../reference/pphlo_op_doc.md:448
+msgid ""
+"Concatenates `inputs` along `dimension` dimension in the same order as "
+"the given arguments and produces a `result` tensor."
+msgstr "按照给定参数的顺序沿 `dimension` 维度连接 `inputs`，并生成结果张量 `result`。"
+
+#: ../../reference/pphlo_op_doc.md:450
+msgid ""
+"Ref "
+"https://github.com/openxla/stablehlo/blob/main/docs/spec.md#concatenate"
+msgstr "参考 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#concatenate"
+
+#: ../../reference/pphlo_op_doc.md:454 ../../reference/pphlo_op_doc.md:788
+#: ../../reference/pphlo_op_doc.md:830 ../../reference/pphlo_op_doc.md:1646
+#: ../../reference/pphlo_op_doc.md:1941
+msgid ""
+"Interfaces: `ConditionallySpeculatable`, `InferTypeOpInterface`, "
+"`NoMemoryEffect (MemoryEffectOpInterface)`"
+msgstr "接口：`ConditionallySpeculatable`、`InferTypeOpInterface`、`NoMemoryEffect (MemoryEffectOpInterface)`"
+
+#: ../../reference/pphlo_op_doc.md
+msgid "`inputs`"
+msgstr "`inputs`"
+
+#: ../../reference/pphlo_op_doc.md
+msgid "variadic of statically shaped tensor of any type values"
+msgstr "可变参数，每个参数是任何类型的静态形状张量值"
+
+#: ../../reference/pphlo_op_doc.md:477
+msgid "`pphlo.constant` (spu::pphlo::ConstantOp)"
+msgstr "`pphlo.constant` (spu::pphlo::ConstantOp)"
+
+#: ../../reference/pphlo_op_doc.md:479
+msgid "_Constant operator_"
+msgstr "_常量算子_"
+
+#: ../../reference/pphlo_op_doc.md:481
+msgid "Produces an `output` tensor from a constant `value`."
+msgstr "从常量 `value` 生成输出张量 `output`。"
+
+#: ../../reference/pphlo_op_doc.md:483
+msgid "Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#constant"
+msgstr "参考 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#constant"
+
+#: ../../reference/pphlo_op_doc.md:485
+msgid "Traits: `AlwaysSpeculatableImplTrait`, `ConstantLike`"
+msgstr "特征：`AlwaysSpeculatableImplTrait`、`ConstantLike`"
+
+#: ../../reference/pphlo_op_doc.md
+msgid "`output`"
+msgstr "`output`"
+
+#: ../../reference/pphlo_op_doc.md:504
+msgid "`pphlo.convert` (spu::pphlo::ConvertOp)"
+msgstr "`pphlo.convert` (spu::pphlo::ConvertOp)"
+
+#: ../../reference/pphlo_op_doc.md:506
+msgid "_Convert operator_"
+msgstr "_类型转换算子_"
+
+#: ../../reference/pphlo_op_doc.md:515
+msgid ""
+"Performs an element-wise conversion from one element type to another on "
+"`operand` tensor and produces a `result` tensor."
+msgstr "对 `operand` 张量执行从一种元素类型到另一种元素类型的逐元素转换，并生成结果张量 `result`。"
+
+#: ../../reference/pphlo_op_doc.md:517
+msgid "Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#convert"
+msgstr "参考 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#convert"
+
+#: ../../reference/pphlo_op_doc.md:537
+msgid "`pphlo.convolution` (spu::pphlo::ConvolutionOp)"
+msgstr "`pphlo.convolution` (spu::pphlo::ConvolutionOp)"
+
+#: ../../reference/pphlo_op_doc.md:539
+msgid "_Convolution operator_"
+msgstr "_卷积算子_"
+
+#: ../../reference/pphlo_op_doc.md:551
+msgid ""
+"Computes dot products between windows of `lhs` and slices of `rhs` and "
+"produces `result`."
+msgstr "计算 `lhs` 的窗口与 `rhs` 的切片之间的点积，并生成 `result`。"
+
+#: ../../reference/pphlo_op_doc.md:553
+msgid ""
+"Ref "
+"https://github.com/openxla/stablehlo/blob/main/docs/spec.md#convolution"
+msgstr "参考 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#convolution"
+
+#: ../../reference/pphlo_op_doc.md:582
+msgid "`pphlo.cosine` (spu::pphlo::CosineOp)"
+msgstr "`pphlo.cosine` (spu::pphlo::CosineOp)"
+
+#: ../../reference/pphlo_op_doc.md:584
+msgid "_Cosine operator_"
+msgstr "_余弦算子_"
+
+#: ../../reference/pphlo_op_doc.md:593
+msgid ""
+"Performs element-wise cosine operation on `operand` tensor and produces a"
+" `result` tensor."
+msgstr "对 `operand` 张量执行逐元素余弦运算，并生成 `result` 张量。"
+
+#: ../../reference/pphlo_op_doc.md:595
+msgid "Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#cosine"
+msgstr "参考 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#cosine"
+
+#: ../../reference/pphlo_op_doc.md:615
+msgid "`pphlo.custom_call` (spu::pphlo::CustomCallOp)"
+msgstr "`pphlo.custom_call` (spu::pphlo::CustomCallOp)"
+
+#: ../../reference/pphlo_op_doc.md:617
+msgid "_CustomCall operator_"
+msgstr "_自定义调用算子_"
+
+#: ../../reference/pphlo_op_doc.md:627
+msgid ""
+"Encapsulates an implementation-defined operation `call_target_name` that "
+"takes `inputs` and `called_computations` and produces `results`."
+msgstr "封装一个由实现定义的操作 `call_target_name`，该操作接受 `inputs` 和 `called_computations` 并生成 `results`。"
+
+#: ../../reference/pphlo_op_doc.md:630
+msgid ""
+"Ref "
+"https://github.com/openxla/stablehlo/blob/main/docs/spec.md#custom_call"
+msgstr "参考 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#custom_call"
+
+#: ../../reference/pphlo_op_doc.md:632
+msgid "Interfaces: `MemoryEffectOpInterface`"
+msgstr "接口：`MemoryEffectOpInterface`"
+
+#: ../../reference/pphlo_op_doc.md:654
+msgid "`pphlo.divide` (spu::pphlo::DivOp)"
+msgstr "`pphlo.divide` (spu::pphlo::DivOp)"
+
+#: ../../reference/pphlo_op_doc.md:656
+msgid "_Division operator_"
+msgstr "_除法算子_"
+
+#: ../../reference/pphlo_op_doc.md:666
+msgid ""
+"Performs element-wise division of dividend `lhs` and divisor `rhs` "
+"tensors and produces a `result` tensor."
+msgstr "对被除数 `lhs` 和除数 `rhs` 张量执行逐元素除法，并生成结果张量 `result`。"
+
+#: ../../reference/pphlo_op_doc.md:668
+msgid "Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#divide"
+msgstr "参考 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#divide"
+
+#: ../../reference/pphlo_op_doc.md:689
+msgid "`pphlo.dot_general` (spu::pphlo::DotGeneralOp)"
+msgstr "`pphlo.dot_general` (spu::pphlo::DotGeneralOp)"
+
+#: ../../reference/pphlo_op_doc.md:691
+msgid "_General Dot operator_"
+msgstr "_通用点积算子_"
+
+#: ../../reference/pphlo_op_doc.md:701
+msgid ""
+"Computes dot products between slices of `lhs` and slices of `rhs` and "
+"produces a `result` tensor."
+msgstr "计算 `lhs` 的切片与 `rhs` 的切片之间的点积，并生成结果张量 `result`。"
+
+#: ../../reference/pphlo_op_doc.md:703
+msgid ""
+"Ref "
+"https://github.com/openxla/stablehlo/blob/main/docs/spec.md#dot_general"
+msgstr "参考 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#dot_general"
+
+#: ../../reference/pphlo_op_doc.md:731
+msgid "`pphlo.dot` (spu::pphlo::DotOp)"
+msgstr "`pphlo.dot` (spu::pphlo::DotOp)"
+
+#: ../../reference/pphlo_op_doc.md:733
+msgid "_Dot operator_"
+msgstr "_点积算子_"
+
+#: ../../reference/pphlo_op_doc.md:743
+msgid ""
+"Performs dot products between vectors, vector/matrix and matrix/matrix "
+"multiplication."
+msgstr "执行向量间、向量/矩阵间和矩阵/矩阵间的点积乘法。"
+
+#: ../../reference/pphlo_op_doc.md:746
+msgid "Ref https://www.tensorflow.org/xla/operation_semantics#dot."
+msgstr "参考 https://www.tensorflow.org/xla/operation_semantics#dot。"
+
+#: ../../reference/pphlo_op_doc.md:767
+msgid "`pphlo.dynamic_slice` (spu::pphlo::DynamicSliceOp)"
+msgstr "`pphlo.dynamic_slice` (spu::pphlo::DynamicSliceOp)"
+
+#: ../../reference/pphlo_op_doc.md:769
+msgid "_Dynamic Slice operator_"
+msgstr "_动态切片算子_"
+
+#: ../../reference/pphlo_op_doc.md:779
+msgid ""
+"Extracts a slice from the `operand` using dynamically-computed starting "
+"indices and produces a `result` tensor."
+msgstr "使用动态计算的起始索引从 `operand` 中提取切片，并生成结果张量 `result`。"
+
+#: ../../reference/pphlo_op_doc.md:781
+msgid ""
+"`start_indices` contain the starting indices of the slice for each "
+"dimension subject to potential adjustment, and `slice_sizes` contain the "
+"sizes of the slice for each dimension."
+msgstr "`start_indices` 包含每个维度切片的起始索引（可能需要调整），`slice_sizes` 包含每个维度切片的大小。"
+
+#: ../../reference/pphlo_op_doc.md:784
+msgid ""
+"Ref "
+"https://github.com/openxla/stablehlo/blob/main/docs/spec.md#dynamic_slice"
+msgstr "参考 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#dynamic_slice"
+
+#: ../../reference/pphlo_op_doc.md
+msgid "`start_indices`"
+msgstr "`start_indices`"
+
+#: ../../reference/pphlo_op_doc.md
+msgid ""
+"variadic of 0D tensor of 8/16/32/64-bit signless integer or Secret of "
+"8-bit signless integer or 16-bit signless integer or 32-bit signless "
+"integer or 64-bit signless integer values or 8/16/32/64-bit unsigned "
+"integer or Secret of 8/16/32/64-bit unsigned integer values values"
+msgstr ""
+"可变参数，每个参数是 0D 张量，其值为 8/16/32/64 位符号无关整数或 8 位、16 位、32 位、64 位符号无关整数的密态值，"
+"或 8/16/32/64 位无符号整数或 8/16/32/64 位无符号整数的密态值"
+
+#: ../../reference/pphlo_op_doc.md:812
+msgid "`pphlo.dynamic_update_slice` (spu::pphlo::DynamicUpdateSliceOp)"
+msgstr "`pphlo.dynamic_update_slice` (spu::pphlo::DynamicUpdateSliceOp)"
+
+#: ../../reference/pphlo_op_doc.md:814
+msgid "_Dynamic Update Slice operator_"
+msgstr "_动态更新切片算子_"
+
+#: ../../reference/pphlo_op_doc.md:823
+msgid ""
+"Produces a `resul`t tensor which is equal to the `operand` tensor except "
+"that the slice starting at `start_indices` is updated with the values in "
+"`update`."
+msgstr "生成一个 `result` 张量，该张量与 `operand` 张量相等，但在 `start_indices` 处开始的切片使用 `update` 中的值进行更新。"
+
+#: ../../reference/pphlo_op_doc.md:826
+msgid ""
+"Ref "
+"https://github.com/openxla/stablehlo/blob/main/docs/spec.md#dynamic_update_slice"
+msgstr "参考 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#dynamic_update_slice"
+
+#: ../../reference/pphlo_op_doc.md
+msgid "`update`"
+msgstr "`update`"
+
+#: ../../reference/pphlo_op_doc.md:848
+msgid "`pphlo.epsilon` (spu::pphlo::EpsilonOp)"
+msgstr "`pphlo.epsilon` (spu::pphlo::EpsilonOp)"
+
+#: ../../reference/pphlo_op_doc.md:850
+msgid "_Epsilon operator_"
+msgstr "_极小值算子_"
+
+#: ../../reference/pphlo_op_doc.md:852
+msgid "Produces a tensor that representations runtime epsilon."
+msgstr "生成一个表示运行时极小值（epsilon）的张量。"
+
+#: ../../reference/pphlo_op_doc.md:866
+msgid "`pphlo.equal` (spu::pphlo::EqualOp)"
+msgstr "`pphlo.equal` (spu::pphlo::EqualOp)"
+
+#: ../../reference/pphlo_op_doc.md:868
+msgid "_Equal comparison operator_"
+msgstr "_等于比较算子_"
+
+#: ../../reference/pphlo_op_doc.md:878
+msgid ""
+"Performs element-wise equal comparison of `lhs` and `rhs` tensors and "
+"produces a `result` tensor."
+msgstr "对 `lhs` 和 `rhs` 张量执行逐元素等于比较，并生成结果张量 `result`。"
+
+#: ../../reference/pphlo_op_doc.md:880 ../../reference/pphlo_op_doc.md:1029
+#: ../../reference/pphlo_op_doc.md:1064 ../../reference/pphlo_op_doc.md:1189
+#: ../../reference/pphlo_op_doc.md:1224 ../../reference/pphlo_op_doc.md:1540
+msgid "Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#compare"
+msgstr "参考 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#compare"
+
+#: ../../reference/pphlo_op_doc.md:901
+msgid "`pphlo.exponential` (spu::pphlo::ExpOp)"
+msgstr "`pphlo.exponential` (spu::pphlo::ExpOp)"
+
+#: ../../reference/pphlo_op_doc.md:903
+msgid "_Exponential operator_"
+msgstr "_指数算子_"
+
+#: ../../reference/pphlo_op_doc.md:912
+msgid ""
+"Performs element-wise exponential operation on `operand` tensor and "
+"produces a `result` tensor."
+msgstr "对 `operand` 张量执行逐元素指数运算，并生成结果张量 `result`。"
+
+#: ../../reference/pphlo_op_doc.md:914
+msgid ""
+"Ref "
+"https://github.com/openxla/stablehlo/blob/main/docs/spec.md#exponential"
+msgstr "参考 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#exponential"
+
+#: ../../reference/pphlo_op_doc.md:934
+msgid "`pphlo.exponential_minus_one` (spu::pphlo::Expm1Op)"
+msgstr "`pphlo.exponential_minus_one` (spu::pphlo::Expm1Op)"
+
+#: ../../reference/pphlo_op_doc.md:936
+msgid "_Exponential minus one operator_"
+msgstr "_指数减一算子_"
+
+#: ../../reference/pphlo_op_doc.md:945
+msgid ""
+"Performs element-wise exponential minus one operation on `operand` tensor"
+" and produces a `result` tensor."
+msgstr "对 `operand` 张量执行逐元素指数减一运算，并生成结果张量 `result`。"
+
+#: ../../reference/pphlo_op_doc.md:947
+msgid ""
+"Ref "
+"https://github.com/openxla/stablehlo/blob/main/docs/spec.md#exponential_minus_one"
+msgstr "参考 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#exponential_minus_one"
+
+#: ../../reference/pphlo_op_doc.md:967
+msgid "`pphlo.floor` (spu::pphlo::FloorOp)"
+msgstr "`pphlo.floor` (spu::pphlo::FloorOp)"
+
+#: ../../reference/pphlo_op_doc.md:969
+msgid "_Floor operator_"
+msgstr "_向下取整算子_"
+
+#: ../../reference/pphlo_op_doc.md:978
+msgid ""
+"Performs element-wise floor of operand tensor and produces a result "
+"tensor."
+msgstr "对操作数张量执行逐元素向下取整运算，并生成结果张量。"
+
+#: ../../reference/pphlo_op_doc.md:980
+msgid "Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#floor"
+msgstr "参考 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#floor"
+
+#: ../../reference/pphlo_op_doc.md:1000
+msgid "`pphlo.free` (spu::pphlo::FreeOp)"
+msgstr "`pphlo.free` (spu::pphlo::FreeOp)" # Assuming FreeOp might be related to memory, no further description provided.
+
+#: ../../reference/pphlo_op_doc.md:1015
+msgid "`pphlo.greater_equal` (spu::pphlo::GreaterEqualOp)"
+msgstr "`pphlo.greater_equal` (spu::pphlo::GreaterEqualOp)"
+
+#: ../../reference/pphlo_op_doc.md:1017
+msgid "_Greater_equal comparison operator_"
+msgstr "_大于等于比较算子_"
+
+#: ../../reference/pphlo_op_doc.md:1027
+msgid ""
+"Performs element-wise greater equal comparison of `lhs` and `rhs` tensors"
+" and produces a `result` tensor."
+msgstr "对 `lhs` 和 `rhs` 张量执行逐元素大于等于比较，并生成结果张量 `result`。"
+
+#: ../../reference/pphlo_op_doc.md:1050
+msgid "`pphlo.greater` (spu::pphlo::GreaterOp)"
+msgstr "`pphlo.greater` (spu::pphlo::GreaterOp)"
+
+#: ../../reference/pphlo_op_doc.md:1052
+msgid "_Greater comparison operator_"
+msgstr "_大于比较算子_"
+
+#: ../../reference/pphlo_op_doc.md:1062
+msgid ""
+"Performs element-wise greater comparison of `lhs` and `rhs` tensors and "
+"produces a `result` tensor."
+msgstr "对 `lhs` 和 `rhs` 张量执行逐元素大于比较，并生成结果张量 `result`。"
+
+#: ../../reference/pphlo_op_doc.md:1085
+msgid "`pphlo.if` (spu::pphlo::IfOp)"
+msgstr "`pphlo.if` (spu::pphlo::IfOp)"
+
+#: ../../reference/pphlo_op_doc.md:1087
+msgid "_If operator_"
+msgstr "_条件判断算子_"
+
+#: ../../reference/pphlo_op_doc.md:1089
+msgid ""
+"Produces the output from executing exactly one function from "
+"`true_branch` or `false_branch` depending on the value of `pred`."
+msgstr "根据 `pred` 的值，从 `true_branch` 或 `false_branch` 中精确执行一个函数并产生输出。"
+
+#: ../../reference/pphlo_op_doc.md:1091
+msgid "Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#if"
+msgstr "参考 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#if"
+
+#: ../../reference/pphlo_op_doc.md
+msgid "`condition`"
+msgstr "`condition`"
+
+#: ../../reference/pphlo_op_doc.md:1107
+msgid "`pphlo.imag` (spu::pphlo::ImagOp)"
+msgstr "`pphlo.imag` (spu::pphlo::ImagOp)"
+
+#: ../../reference/pphlo_op_doc.md:1109
+msgid "_Imag operator_"
+msgstr "_虚部算子_"
+
+#: ../../reference/pphlo_op_doc.md:1118
+msgid ""
+"Extracts the imaginary part, element-wise, from the `operand` and "
+"produces a `result` tensor."
+msgstr "从 `operand` 中逐元素提取虚部，并生成结果张量 `result`。"
+
+#: ../../reference/pphlo_op_doc.md:1121
+msgid "Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#imag"
+msgstr "参考 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#imag"
+
+#: ../../reference/pphlo_op_doc.md
+msgid ""
+"statically shaped tensor of complex type with 32-bit float or 64-bit "
+"float elements or Secret of complex type with 32-bit float or 64-bit "
+"float elements values or 16-bit float or 32-bit float or 64-bit float or "
+"Secret of 16-bit float or 32-bit float or 64-bit float values values"
+msgstr ""
+"静态形状张量，其值为具有 32 位或 64 位浮点数元素的复数类型或具有 32 位或 64 位浮点数元素的复数类型的密态值，"
+"或 16 位、32 位、64 位浮点数或 16 位、32 位、64 位浮点数的密态值"
+
+#: ../../reference/pphlo_op_doc.md:1141
+msgid "`pphlo.iota` (spu::pphlo::IotaOp)"
+msgstr "`pphlo.iota` (spu::pphlo::IotaOp)"
+
+#: ../../reference/pphlo_op_doc.md:1143
+msgid "_Iota operator_"
+msgstr "_序列生成算子_"
+
+#: ../../reference/pphlo_op_doc.md:1152
+msgid ""
+"Fills an `output` tensor with values in increasing order starting from "
+"zero along the `iota_dimension` dimension."
+msgstr "沿 `iota_dimension` 维度，用从零开始递增的值填充输出张量 `output`。"
+
+#: ../../reference/pphlo_op_doc.md:1154
+msgid "Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#iota"
+msgstr "参考 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#iota"
+
+#: ../../reference/pphlo_op_doc.md:1175
+msgid "`pphlo.less_equal` (spu::pphlo::LessEqualOp)"
+msgstr "`pphlo.less_equal` (spu::pphlo::LessEqualOp)"
+
+#: ../../reference/pphlo_op_doc.md:1177
+msgid "_Less_equal comparison operator_"
+msgstr "_小于等于比较算子_"
+
+#: ../../reference/pphlo_op_doc.md:1187
+msgid ""
+"Performs element-wise less equal comparison of `lhs` and `rhs` tensors "
+"and produces a `result` tensor."
+msgstr "对 `lhs` 和 `rhs` 张量执行逐元素小于等于比较，并生成结果张量 `result`。"
+
+#: ../../reference/pphlo_op_doc.md:1210
+msgid "`pphlo.less` (spu::pphlo::LessOp)"
+msgstr "`pphlo.less` (spu::pphlo::LessOp)"
+
+#: ../../reference/pphlo_op_doc.md:1212
+msgid "_Less comparison operator_"
+msgstr "_小于比较算子_"
+
+#: ../../reference/pphlo_op_doc.md:1222
+msgid ""
+"Performs element-wise less comparison of `lhs` and `rhs` tensors and "
+"produces a `result` tensor."
+msgstr "对 `lhs` 和 `rhs` 张量执行逐元素小于比较，并生成结果张量 `result`。"
+
+#: ../../reference/pphlo_op_doc.md:1245
+msgid "`pphlo.log_plus_one` (spu::pphlo::Log1pOp)"
+msgstr "`pphlo.log_plus_one` (spu::pphlo::Log1pOp)"
+
+#: ../../reference/pphlo_op_doc.md:1247
+msgid "_Log1p operator_"
+msgstr "_对数加一算子_"
+
+#: ../../reference/pphlo_op_doc.md:1256
+msgid ""
+"Performs element-wise logarithm plus one operation on `operand` tensor "
+"and produces a `result` tensor."
+msgstr "对 `operand` 张量执行逐元素对数加一运算，并生成结果张量 `result`。"
+
+#: ../../reference/pphlo_op_doc.md:1258
+msgid ""
+"Ref "
+"https://github.com/openxla/stablehlo/blob/main/docs/spec.md#log_plus_one"
+msgstr "参考 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#log_plus_one"
+
+#: ../../reference/pphlo_op_doc.md:1278
+msgid "`pphlo.log` (spu::pphlo::LogOp)"
+msgstr "`pphlo.log` (spu::pphlo::LogOp)"
+
+#: ../../reference/pphlo_op_doc.md:1280
+msgid "_Log operator_"
+msgstr "_对数算子_"
+
+#: ../../reference/pphlo_op_doc.md:1289
+msgid ""
+"Performs element-wise logarithm operation on `operand` tensor and "
+"produces a `result` tensor."
+msgstr "对 `operand` 张量执行逐元素对数运算，并生成结果张量 `result`。"
+
+#: ../../reference/pphlo_op_doc.md:1291
+msgid "Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#log"
+msgstr "参考 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#log"
+
+#: ../../reference/pphlo_op_doc.md:1311
+msgid "`pphlo.logistic` (spu::pphlo::LogisticOp)"
+msgstr "`pphlo.logistic` (spu::pphlo::LogisticOp)"
+
+#: ../../reference/pphlo_op_doc.md:1313 ../../reference/pphlo_op_doc.md:1740
+msgid "_Reciprocal operator_"
+msgstr "_倒数算子_"
+
+#: ../../reference/pphlo_op_doc.md:1322
+msgid ""
+"Performs element-wise logistic operation on `operand` tensor and produces"
+" a `result` tensor."
+msgstr "对 `operand` 张量执行逐元素 Logistic 运算，并生成 `result` 张量。"
+
+#: ../../reference/pphlo_op_doc.md:1324
+msgid "Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#logistic"
+msgstr "参考 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#logistic"
+
+#: ../../reference/pphlo_op_doc.md:1344
+msgid "`pphlo.maximum` (spu::pphlo::MaxOp)"
+msgstr "`pphlo.maximum` (spu::pphlo::MaxOp)"
+
+#: ../../reference/pphlo_op_doc.md:1346
+msgid "_Maximum operator_"
+msgstr "_最大值算子_"
+
+#: ../../reference/pphlo_op_doc.md:1356
+msgid ""
+"Performs element-wise max operation on tensors `lhs` and `rhs` and "
+"produces a `result` tensor."
+msgstr "对张量 `lhs` 和 `rhs` 执行逐元素最大值运算，并生成结果张量 `result`。"
+
+#: ../../reference/pphlo_op_doc.md:1358
+msgid "Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#maximum"
+msgstr "参考 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#maximum"
+
+#: ../../reference/pphlo_op_doc.md:1379
+msgid "`pphlo.maxpool_scatter` (spu::pphlo::MaxPoolScatterOp)"
+msgstr "`pphlo.maxpool_scatter` (spu::pphlo::MaxPoolScatterOp)"
+
+#: ../../reference/pphlo_op_doc.md:1381
+msgid "_MaxPool Scatter operator_"
+msgstr "_最大池化分散算子_"
+
+#: ../../reference/pphlo_op_doc.md:1390
+msgid ""
+"Generates a result which is the value of the input array `operand`, with "
+"several slices (at indices specified by `scatter_indices`) updated with "
+"the values in `updates` using `update_computation`."
+msgstr "生成一个结果，该结果是输入数组 `operand` 的值，其中几个切片（在 `scatter_indices` 指定的索引处）使用 `update_computation` 以 `updates` 中的值进行更新。"
+
+#: ../../reference/pphlo_op_doc.md:1394
+msgid "`scatter_indices` need to be a onehot encoded value."
+msgstr "`scatter_indices` 需要是独热编码 (onehot) 值。"
+
+#: ../../reference/pphlo_op_doc.md
+msgid "`scatter_indices`"
+msgstr "`scatter_indices`"
+
+#: ../../reference/pphlo_op_doc.md:1423
+msgid "`pphlo.minimum` (spu::pphlo::MinOp)"
+msgstr "`pphlo.minimum` (spu::pphlo::MinOp)"
+
+#: ../../reference/pphlo_op_doc.md:1425
+msgid "_Minimum operator_"
+msgstr "_最小值算子_"
+
+#: ../../reference/pphlo_op_doc.md:1435
+msgid ""
+"Performs element-wise min operation on tensors `lhs` and `rhs` and "
+"produces a `result` tensor."
+msgstr "对张量 `lhs` 和 `rhs` 执行逐元素最小值运算，并生成结果张量 `result`。"
+
+#: ../../reference/pphlo_op_doc.md:1437
+msgid "Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#minimum"
+msgstr "参考 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#minimum"
+
+#: ../../reference/pphlo_op_doc.md:1458
+msgid "`pphlo.multiply` (spu::pphlo::MulOp)"
+msgstr "`pphlo.multiply` (spu::pphlo::MulOp)"
+
+#: ../../reference/pphlo_op_doc.md:1460
+msgid "_Multiplication operator_"
+msgstr "_乘法算子_"
+
+#: ../../reference/pphlo_op_doc.md:1470
+msgid ""
+"Performs element-wise product of two tensors `lhs` and `rhs` and produces"
+" a `result` tensor."
+msgstr "对两个张量 `lhs` 和 `rhs` 执行逐元素乘积，并生成结果张量 `result`。"
+
+#: ../../reference/pphlo_op_doc.md:1472
+msgid "Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#multiply"
+msgstr "参考 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#multiply"
+
+#: ../../reference/pphlo_op_doc.md:1493
+msgid "`pphlo.negate` (spu::pphlo::NegOp)"
+msgstr "`pphlo.negate` (spu::pphlo::NegOp)"
+
+#: ../../reference/pphlo_op_doc.md:1495
+msgid "_Negation operator_"
+msgstr "_取反算子_"
+
+#: ../../reference/pphlo_op_doc.md:1504
+msgid ""
+"Performs element-wise negation of `operand` tensor and produces a "
+"`result` tensor."
+msgstr "对 `operand` 张量执行逐元素取反，并生成结果张量 `result`。"
+
+#: ../../reference/pphlo_op_doc.md:1506
+msgid "Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#negate"
+msgstr "参考 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#negate"
+
+#: ../../reference/pphlo_op_doc.md:1526
+msgid "`pphlo.not_equal` (spu::pphlo::NotEqualOp)"
+msgstr "`pphlo.not_equal` (spu::pphlo::NotEqualOp)"
+
+#: ../../reference/pphlo_op_doc.md:1528
+msgid "_Not-equal comparison operator_"
+msgstr "_不等于比较算子_"
+
+#: ../../reference/pphlo_op_doc.md:1538
+msgid ""
+"Performs element-wise not equal comparison of `lhs` and `rhs` tensors and"
+" produces a `result` tensor."
+msgstr "对 `lhs` 和 `rhs` 张量执行逐元素不等于比较，并生成结果张量 `result`。"
+
+#: ../../reference/pphlo_op_doc.md:1561
+msgid "`pphlo.not` (spu::pphlo::NotOp)"
+msgstr "`pphlo.not` (spu::pphlo::NotOp)"
+
+#: ../../reference/pphlo_op_doc.md:1563
+msgid "_Not operator_"
+msgstr "_按位非算子_"
+
+#: ../../reference/pphlo_op_doc.md:1572
+msgid ""
+"Performs element-wise NOT of tensor `operand` and produces a `result` "
+"tensor."
+msgstr "对张量 `operand` 执行逐元素按位非运算，并生成结果张量 `result`。"
+
+#: ../../reference/pphlo_op_doc.md:1574
+msgid "Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#not"
+msgstr "参考 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#not"
+
+#: ../../reference/pphlo_op_doc.md:1594
+msgid "`pphlo.or` (spu::pphlo::OrOp)"
+msgstr "`pphlo.or` (spu::pphlo::OrOp)"
+
+#: ../../reference/pphlo_op_doc.md:1596
+msgid "_Or operator_"
+msgstr "_按位或算子_"
+
+#: ../../reference/pphlo_op_doc.md:1606
+msgid ""
+"Performs element-wise OR of two tensors `lhs` and `rhs` and produces a "
+"`result` tensor."
+msgstr "对两个张量 `lhs` 和 `rhs` 执行逐元素按位或运算，并生成结果张量 `result`。"
+
+#: ../../reference/pphlo_op_doc.md:1608
+msgid "Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#or"
+msgstr "参考 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#or"
+
+#: ../../reference/pphlo_op_doc.md:1629
+msgid "`pphlo.popcnt` (spu::pphlo::PopcntOp)"
+msgstr "`pphlo.popcnt` (spu::pphlo::PopcntOp)"
+
+#: ../../reference/pphlo_op_doc.md:1631
+msgid "_Popcnt operator, ties away from zero_"
+msgstr "_位计数算子（平局时远离零）_"
+
+#: ../../reference/pphlo_op_doc.md:1640
+msgid ""
+"Performs element-wise count of the number of bits set in the `operand` "
+"tensor and produces a `result` tensor."
+msgstr "对 `operand` 张量中置位的位数进行逐元素计数，并生成结果张量 `result`。"
+
+#: ../../reference/pphlo_op_doc.md:1642
+msgid "Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#popcnt"
+msgstr "参考 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#popcnt"
+
+#: ../../reference/pphlo_op_doc.md:1669
+msgid "`pphlo.power` (spu::pphlo::PowOp)"
+msgstr "`pphlo.power` (spu::pphlo::PowOp)"
+
+#: ../../reference/pphlo_op_doc.md:1671
+msgid "_Power operator_"
+msgstr "_幂运算算子_"
+
+#: ../../reference/pphlo_op_doc.md:1681
+msgid ""
+"Performs element-wise exponentiation of `lhs` tensor by `rhs` tensor and "
+"produces a `result` tensor."
+msgstr "对 `lhs` 张量按 `rhs` 张量进行逐元素幂运算，并生成结果张量 `result`。"
+
+#: ../../reference/pphlo_op_doc.md:1683
+msgid "Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#power"
+msgstr "参考 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#power"
+
+#: ../../reference/pphlo_op_doc.md:1704
+msgid "`pphlo.real` (spu::pphlo::RealOp)"
+msgstr "`pphlo.real` (spu::pphlo::RealOp)"
+
+#: ../../reference/pphlo_op_doc.md:1706
+msgid "_Real operator_"
+msgstr "_实部算子_"
+
+#: ../../reference/pphlo_op_doc.md:1715
+msgid ""
+"Extracts the real part, element-wise, from the `operand` and produces a "
+"`result` tensor."
+msgstr "从 `operand` 中逐元素提取实部，并生成结果张量 `result`。"
+
+#: ../../reference/pphlo_op_doc.md:1718
+msgid "Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#real"
+msgstr "参考 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#real"
+
+#: ../../reference/pphlo_op_doc.md:1738
+msgid "`pphlo.reciprocal` (spu::pphlo::ReciprocalOp)"
+msgstr "`pphlo.reciprocal` (spu::pphlo::ReciprocalOp)"
+
+#: ../../reference/pphlo_op_doc.md:1749
+msgid ""
+"Performs element-wise reciprocal of `operand` tensor and produces a "
+"`result` tensor."
+msgstr "对 `operand` 张量执行逐元素求倒数运算，并生成结果张量 `result`。"
+
+#: ../../reference/pphlo_op_doc.md:1769
+msgid "`pphlo.reduce` (spu::pphlo::ReduceOp)"
+msgstr "`pphlo.reduce` (spu::pphlo::ReduceOp)"
+
+#: ../../reference/pphlo_op_doc.md:1771
+msgid "_Reduce operator_"
+msgstr "_归约算子_"
+
+#: ../../reference/pphlo_op_doc.md:1773
+msgid ""
+"Applies a reduction function `body` to `inputs` and `init_values` along "
+"the `dimensions` and produces `results` tensors."
+msgstr "将归约函数 `body` 应用于 `inputs` 和 `init_values`，沿着 `dimensions` 进行归约，并生成 `results` 张量。"
+
+#: ../../reference/pphlo_op_doc.md:1775
+msgid "Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#reduce"
+msgstr "参考 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#reduce"
+
+#: ../../reference/pphlo_op_doc.md:1777 ../../reference/pphlo_op_doc.md:1807
+msgid ""
+"Traits: `RecursiveMemoryEffects`, `SameVariadicOperandSize`, "
+"`SingleBlockImplicitTerminator<ReturnOp>`, `SingleBlock`"
+msgstr "特征：`RecursiveMemoryEffects`、`SameVariadicOperandSize`、`SingleBlockImplicitTerminator<ReturnOp>`、`SingleBlock`"
+
+#: ../../reference/pphlo_op_doc.md
+msgid "`init_values`"
+msgstr "`init_values`"
+
+#: ../../reference/pphlo_op_doc.md:1799
+msgid "`pphlo.reduce_window` (spu::pphlo::ReduceWindowOp)"
+msgstr "`pphlo.reduce_window` (spu::pphlo::ReduceWindowOp)"
+
+#: ../../reference/pphlo_op_doc.md:1801
+msgid "_ReduceWindow operator_"
+msgstr "_窗口归约算子_"
+
+#: ../../reference/pphlo_op_doc.md:1803
+msgid ""
+"Applies a reduction function `body` to windows of `inputs` and "
+"`init_values` and produces `results`."
+msgstr "将归约函数 `body` 应用于 `inputs` 的窗口和 `init_values`，并生成 `results`。"
+
+#: ../../reference/pphlo_op_doc.md:1805
+msgid ""
+"Ref "
+"https://github.com/openxla/stablehlo/blob/main/docs/spec.md#reduce_window"
+msgstr "参考 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#reduce_window"
+
+#: ../../reference/pphlo_op_doc.md:1831
+msgid "`pphlo.remainder` (spu::pphlo::RemOp)"
+msgstr "`pphlo.remainder` (spu::pphlo::RemOp)"
+
+#: ../../reference/pphlo_op_doc.md:1833
+msgid "_Remainder operator_"
+msgstr "_求余算子_"
+
+#: ../../reference/pphlo_op_doc.md:1843
+msgid ""
+"Performs element-wise remainder of dividend `lhs` and divisor `rhs` "
+"tensors and produces a `result` tensor."
+msgstr "对被除数 `lhs` 和除数 `rhs` 张量执行逐元素求余运算，并生成结果张量 `result`。"
+
+#: ../../reference/pphlo_op_doc.md:1845
+msgid "Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#remainder"
+msgstr "参考 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#remainder"
+
+#: ../../reference/pphlo_op_doc.md:1866
+msgid "`pphlo.reshape` (spu::pphlo::ReshapeOp)"
+msgstr "`pphlo.reshape` (spu::pphlo::ReshapeOp)"
+
+#: ../../reference/pphlo_op_doc.md:1868
+msgid "_Reshape operator_"
+msgstr "_重塑形状算子_"
+
+#: ../../reference/pphlo_op_doc.md:1877
+msgid "Performs reshape of `operand` tensor to a `result` tensor."
+msgstr "将 `operand` 张量重塑为 `result` 张量。"
+
+#: ../../reference/pphlo_op_doc.md:1879
+msgid "Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#reshape"
+msgstr "参考 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#reshape"
+
+#: ../../reference/pphlo_op_doc.md:1899
+msgid "`pphlo.return` (spu::pphlo::ReturnOp)"
+msgstr "`pphlo.return` (spu::pphlo::ReturnOp)"
+
+#: ../../reference/pphlo_op_doc.md:1901
+msgid "_Return operator_"
+msgstr "_返回算子_"
+
+#: ../../reference/pphlo_op_doc.md:1910
+msgid "Terminates a region and returns `results`."
+msgstr "终止一个区域并返回 `results`。"
+
+#: ../../reference/pphlo_op_doc.md:1912
+msgid "Traits: `AlwaysSpeculatableImplTrait`, `Terminator`"
+msgstr "特征：`AlwaysSpeculatableImplTrait`、`Terminator`"
+
+#: ../../reference/pphlo_op_doc.md
+msgid "`results`"
+msgstr "`results`"
+
+#: ../../reference/pphlo_op_doc.md:1924
+msgid "`pphlo.reverse` (spu::pphlo::ReverseOp)"
+msgstr "`pphlo.reverse` (spu::pphlo::ReverseOp)"
+
+#: ../../reference/pphlo_op_doc.md:1926
+msgid "_Reverse operator_"
+msgstr "_反转算子_"
+
+#: ../../reference/pphlo_op_doc.md:1935
+msgid ""
+"Reverses the order of elements in the `operand` along the specified "
+"`dimensions` and produces a `result` tensor."
+msgstr "沿指定的 `dimensions` 反转 `operand` 中元素的顺序，并生成结果张量 `result`。"
+
+#: ../../reference/pphlo_op_doc.md:1937
+msgid "Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#reverse"
+msgstr "参考 https://github.com/openxla/stablehlo/blob/main/docs/spec.md#reverse"
+
+#: ../../reference/pphlo_op_doc.md:1939
+msgid "Traits: `AlwaysSpeculatableImplTrait`, `SameOperandsAndResultType`"
+msgstr "特征：`AlwaysSpeculatableImplTrait`、`SameOperandsAndResultType`"
+
+#: ../../reference/pphlo_op_doc.md:1964
+msgid "`pphlo.rng` (spu::pphlo::RngOp)"
+msgstr "`pphlo.rng` (spu::pphlo::RngOp)"
+
+#: ../../reference/pphlo_op_doc.md:1966
+msgid "_RNG with uniform distribution._"
+msgstr "_均匀分布随机数生成器_"
+
+#: ../../reference/pphlo_op_doc.md:1968
+msgid ""
+"Constructs an output of a given shape with random numbers generated "
+"following the uniform distribution over the interval `[a,b)`. The "
+"parameters and output element type have to be an integral type or a fixed"
+" point type, and the types have to be consistent."
+msgstr ""
+"构造一个给定形状的输出，其中的随机数遵循区间 `[a,b)` 上的均匀分布。"
+"参数和输出元素类型必须是整数类型或定点类型，并且类型必须一致。"
+
+#: ../../reference/pphlo_op_doc.md:1973
+msgid "Ref https://www.tensorflow.org/xla/operation_semantics#rnguniform."
+msgstr "参考 https://www.tensorflow.org/xla/operation_semantics#rnguniform。"
+
+#: ../../reference/pphlo_op_doc.md:1975
+msgid "Traits: `SameOperandsAndResultElementType`"
+msgstr "特征：`SameOperandsAndResultElementType`"
+
+#: ../../reference/pphlo_op_doc.md
+msgid "`a`"
+msgstr "`a`"
+
+#: ../../reference/pphlo_op_doc.md
+msgid "`b`"
+msgstr "`b`"
+
+#: ../../reference/pphlo_op_doc.md:1990
+msgid "`pphlo.round_nearest_even` (spu::pphlo::RoundNearestEvenOp)"
+msgstr "`pphlo.round_nearest_even` (spu::pphlo::RoundNearestEvenOp)"
+
+#: ../../reference/pphlo_op_doc.md:1992
+msgid "_RoundNearestEven operation_"
+msgstr "_四舍五入到最近偶数运算_"
+
+#: ../../reference/pphlo_op_doc.md:2001
+msgid ""
+"Performs element-wise rounding towards the nearest integer, breaking ties"
+" towards the even integer, on the `operand` tensor and produces a "
+"`result` tensor."
+msgstr "对 `operand` 张量执行逐元素舍入到最近整数的操作（若平局则舍入到偶数），并生成结果张量 `result`。"
+
+#: ../../reference/pphlo_op_doc.md:2005
+msgid ""
+"Ref: "
+"https://github.com/openxla/stablehlo/blob/main/docs/spec.md#round_nearest_even"
+msgstr "参考：https://github.com/openxla/stablehlo/blob/main/docs/spec.md#round_nearest_even"
+
+#: ../../reference/pphlo_op_doc.md:2035
+msgid ""
+"operation ::= `pphlo.round_nearest_afz` $operand attr-dict `:` "
+"custom<SameOperandsAndResultType>(type($operand), type($result))"
+msgstr ""
+"operation ::= `pphlo.round_nearest_afz` $operand attr-dict `:` "
+"custom<SameOperandsAndResultType>(type($operand), type($result))"
+
+#: ../../reference/pphlo_op_doc.md:2069
+msgid ""
+"operation ::= `pphlo.rsqrt` $operand attr-dict `:` "
+"custom<SameOperandsAndResultType>(type($operand), type($result))"
+msgstr ""
+"operation ::= `pphlo.rsqrt` $operand attr-dict `:` "
+"custom<SameOperandsAndResultType>(type($operand), type($result))"
+
+#: ../../reference/pphlo_op_doc.md:2135
+msgid ""
+"operation ::= `pphlo.select` operands attr-dict `:` functional-"
+"type(operands, results)"
+msgstr ""
+"operation ::= `pphlo.select` operands attr-dict `:` functional-"
+"type(operands, results)"
+
+#: ../../reference/pphlo_op_doc.md:2170
+msgid ""
+"operation ::= `pphlo.shift_left` $lhs `,` $rhs attr-dict               "
+"`:` custom<SameOperandsAndResultType>(type($lhs), type($rhs), "
+"type($result))"
+msgstr ""
+"operation ::= `pphlo.shift_left` $lhs `,` $rhs attr-dict               "
+"`:` custom<SameOperandsAndResultType>(type($lhs), type($rhs), "
+"type($result))"
+
+#: ../../reference/pphlo_op_doc.md:2205
+msgid ""
+"operation ::= `pphlo.shift_right_arithmetic` $lhs `,` $rhs attr-dict"
+"               `:` custom<SameOperandsAndResultType>(type($lhs), "
+"type($rhs), type($result))"
+msgstr ""
+"operation ::= `pphlo.shift_right_arithmetic` $lhs `,` $rhs attr-dict"
+"               `:` custom<SameOperandsAndResultType>(type($lhs), "
+"type($rhs), type($result))"
+
+#: ../../reference/pphlo_op_doc.md:2240
+msgid ""
+"operation ::= `pphlo.shift_right_logical` $lhs `,` $rhs attr-dict"
+"               `:` custom<SameOperandsAndResultType>(type($lhs), "
+"type($rhs), type($result))"
+msgstr ""
+"operation ::= `pphlo.shift_right_logical` $lhs `,` $rhs attr-dict"
+"               `:` custom<SameOperandsAndResultType>(type($lhs), "
+"type($rhs), type($result))"
+
+#: ../../reference/pphlo_op_doc.md:2275
+msgid ""
+"operation ::= `pphlo.sign` $operand attr-dict `:` "
+"custom<SameOperandsAndResultType>(type($operand), type($result))"
+msgstr ""
+"operation ::= `pphlo.sign` $operand attr-dict `:` "
+"custom<SameOperandsAndResultType>(type($operand), type($result))"
+
+#: ../../reference/pphlo_op_doc.md:2317
+msgid ""
+"operation ::= `pphlo.simple_sort` operands $sort_direction `,` `dim` `=` "
+"$dimension `,` `num_keys` `=` $num_keys               attr-dict `:` "
+"functional-type(operands, results)"
+msgstr ""
+"operation ::= `pphlo.simple_sort` operands $sort_direction `,` `dim` `=` "
+"$dimension `,` `num_keys` `=` $num_keys               attr-dict `:` "
+"functional-type(operands, results)"
+
+#: ../../reference/pphlo_op_doc.md:2355
+msgid ""
+"operation ::= `pphlo.sine` $operand attr-dict `:` "
+"custom<SameOperandsAndResultType>(type($operand), type($result))"
+msgstr ""
+"operation ::= `pphlo.sine` $operand attr-dict `:` "
+"custom<SameOperandsAndResultType>(type($operand), type($result))"
+
+#: ../../reference/pphlo_op_doc.md:2385
+msgid ""
+"operation ::= `pphlo.slice` $operand custom<SliceRanges>($start_indices, "
+"$limit_indices, $strides)               attr-dict `:` functional-"
+"type(operands, results)"
+msgstr ""
+"operation ::= `pphlo.slice` $operand custom<SliceRanges>($start_indices, "
+"$limit_indices, $strides)               attr-dict `:` functional-"
+"type(operands, results)"
+
+#: ../../reference/pphlo_op_doc.md:2461
+msgid ""
+"operation ::= `pphlo.sqrt` $operand attr-dict `:` "
+"custom<SameOperandsAndResultType>(type($operand), type($result))"
+msgstr ""
+"operation ::= `pphlo.sqrt` $operand attr-dict `:` "
+"custom<SameOperandsAndResultType>(type($operand), type($result))"
+
+#: ../../reference/pphlo_op_doc.md:2494
+msgid ""
+"operation ::= `pphlo.subtract` $lhs `,` $rhs attr-dict               `:` "
+"custom<SameOperandsAndResultType>(type($lhs), type($rhs), type($result))"
+msgstr ""
+"operation ::= `pphlo.subtract` $lhs `,` $rhs attr-dict               `:` "
+"custom<SameOperandsAndResultType>(type($lhs), type($rhs), type($result))"
+
+#: ../../reference/pphlo_op_doc.md:2529
+msgid ""
+"operation ::= `pphlo.tanh` $operand attr-dict `:` "
+"custom<SameOperandsAndResultType>(type($operand), type($result))"
+msgstr ""
+"operation ::= `pphlo.tanh` $operand attr-dict `:` "
+"custom<SameOperandsAndResultType>(type($operand), type($result))"
+
+#: ../../reference/pphlo_op_doc.md:2562
+msgid ""
+"operation ::= `pphlo.transpose` $operand `,` `dims` `=` $permutation"
+"               attr-dict `:` functional-type(operands, results)"
+msgstr ""
+"operation ::= `pphlo.transpose` $operand `,` `dims` `=` $permutation"
+"               attr-dict `:` functional-type(operands, results)"
+
+#: ../../reference/pphlo_op_doc.md:2625
+msgid ""
+"operation ::= `pphlo.xor` $lhs `,` $rhs attr-dict               `:` "
+"custom<SameOperandsAndResultType>(type($lhs), type($rhs), type($result))"
+msgstr ""
+"operation ::= `pphlo.xor` $lhs `,` $rhs attr-dict               `:` "
+"custom<SameOperandsAndResultType>(type($lhs), type($rhs), type($result))"

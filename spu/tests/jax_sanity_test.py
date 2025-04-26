@@ -23,7 +23,7 @@ from absl.testing import absltest, parameterized
 from sklearn import metrics
 from sklearn.datasets import load_breast_cancer
 
-import spu.spu_pb2 as spu_pb2
+import spu.libspu as libspu
 import spu.utils.simulation as ppsim
 
 
@@ -103,18 +103,18 @@ class LogitRegression:
 @parameterized.product(
     wsize=(2, 3),
     prot=(
-        spu_pb2.ProtocolKind.SEMI2K,
-        spu_pb2.ProtocolKind.ABY3,
-        spu_pb2.ProtocolKind.CHEETAH,
+        libspu.ProtocolKind.SEMI2K,
+        libspu.ProtocolKind.ABY3,
+        libspu.ProtocolKind.CHEETAH,
     ),
-    field=(spu_pb2.FieldType.FM64, spu_pb2.FieldType.FM128),
+    field=(libspu.FieldType.FM64, libspu.FieldType.FM128),
 )
 class UnitTests(parameterized.TestCase):
     def test_sslr(self, wsize, prot, field):
-        if prot == spu_pb2.ProtocolKind.ABY3 and wsize != 3:
+        if prot == libspu.ProtocolKind.ABY3 and wsize != 3:
             return
-        if prot == spu_pb2.ProtocolKind.CHEETAH and (
-            wsize != 2 or field != spu_pb2.FieldType.FM64
+        if prot == libspu.ProtocolKind.CHEETAH and (
+            wsize != 2 or field != libspu.FieldType.FM64
         ):
             return
 

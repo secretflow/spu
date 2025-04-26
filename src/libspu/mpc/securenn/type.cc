@@ -16,6 +16,8 @@
 
 #include <mutex>
 
+#include "magic_enum.hpp"
+
 #include "libspu/mpc/common/pv2k.h"
 
 namespace spu::mpc::securenn {
@@ -27,6 +29,20 @@ void registerTypes() {
   std::call_once(flag, []() {
     TypeContext::getTypeContext()->addTypes<AShrTy, BShrTy>();
   });
+}
+
+void BShrTy::fromString(std::string_view detail) {
+  auto comma = detail.find_first_of(',');
+  auto field_str = detail.substr(0, comma);
+  auto nbits_str = detail.substr(comma + 1);
+  auto field = magic_enum::enum_cast<FieldType>(field_str);
+  SPU_ENFORCE(field.has_value(), "parse failed from={}", detail);
+  field_ = field.value();
+  nbits_ = std::stoul(std::string(nbits_str));
+};
+
+std::string BShrTy::toString() const {
+  return fmt::format("{},{}", magic_enum::enum_name(field()), nbits_);
 }
 
 }  // namespace spu::mpc::securenn

@@ -12,15 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_python//python:defs.bzl", "py_binary")
+load("//bazel:spu.bzl", "sml_py_binary")
 
 package(default_visibility = ["//visibility:public"])
 
-py_binary(
+sml_py_binary(
     name = "gnb_emul",
     srcs = ["gnb_emul.py"],
     deps = [
         "//sml/naive_bayes:gnb",
-        "//sml/utils:emulation",
     ],
 )

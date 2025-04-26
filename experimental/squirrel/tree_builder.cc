@@ -589,7 +589,7 @@ double XGBTreeBuilder::DEBUG_OpenObjects(
   Gsum = hal::reveal(ctx, Gsum);
   Hsum = hal::reveal(ctx, Hsum);
   weights = hal::reveal(ctx, weights);
-  const double fxp = std::pow(2., ctx->config().fxp_fraction_bits());
+  const double fxp = std::pow(2., ctx->config().fxp_fraction_bits);
   double object = 0.0;
   for (int64_t i = 0; i < weights.numel(); ++i) {
     double G = Gsum.data().at<int64_t>(i) / fxp;
@@ -606,7 +606,7 @@ double XGBTreeBuilder::DEBUG_OpenLoss(spu::SPUContext* ctx,
   using namespace spu::kernel;
   auto _pred = hal::reveal(ctx, pred);
   auto _label = hal::reveal(ctx, label);
-  double fxp = std::pow(2., ctx->config().fxp_fraction_bits());
+  double fxp = std::pow(2., ctx->config().fxp_fraction_bits);
   double loss = 0.;
   for (int64_t i = 0; i < _pred.numel(); ++i) {
     double y = _label.data().at<int64_t>(i) / fxp;

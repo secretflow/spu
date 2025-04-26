@@ -90,6 +90,7 @@ spu_cc_library(
         ":arithmetic",
         ":boolean",
         ":conversion",
+        ":permute",
         ":state",
         "//libspu/mpc/common:prg_state",
         "//libspu/mpc/common:pv2k",
@@ -143,5 +144,22 @@ spu_cc_library(
     deps = [
         "//libspu/core:type",
         "//libspu/mpc/common:pv2k",
+    ],
+)
+
+spu_cc_library(
+    name = "permute",
+    srcs = ["permute.cc"],
+    hdrs = ["permute.h"],
+    deps = [
+        ":type",
+        "//libspu/mpc:ab_api",
+        "//libspu/mpc:kernel",
+        "//libspu/mpc/common:communicator",
+        "//libspu/mpc/common:prg_state",
+        "//libspu/mpc/common:pv2k",
+        "//libspu/mpc/utils:permute",
+        "//libspu/mpc/utils:ring_ops",
+        "//libspu/mpc/utils:waksman_net",
     ],
 )

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@spu_pip_dev//:requirements.bzl", "requirement")
 load("//bazel:spu.bzl", "spu_py_binary", "spu_py_library", "spu_py_test")
 
 package(default_visibility = ["//visibility:public"])
@@ -23,7 +24,7 @@ spu_py_library(
         "//spu:api",
         "//spu:init",
         "//spu/utils:simulation",
-        "@spu_pip_dev//absl_py:pkg",
+        requirement("absl-py"),
     ],
 )
 
@@ -200,7 +201,7 @@ spu_py_test(
     srcs = ["jax_sanity_test.py"],
     deps = [
         ":jnp_testbase",
-        "@spu_pip_dev//scikit_learn:pkg",
+        requirement("scikit-learn"),
     ],
 )
 
@@ -221,7 +222,7 @@ spu_py_test(
         "//spu:api",
         "//spu:init",
         "//spu/utils:simulation",
-        "@spu_pip_dev//absl_py:pkg",
+        requirement("absl-py"),
     ],
 )
 
@@ -301,7 +302,7 @@ spu_py_test(
         ":utils",
         "//spu:init",
         "//spu:psi",
-        "@spu_pip_dev//pandas:pkg",
+        requirement("pandas"),
     ],
 )
 
@@ -311,14 +312,8 @@ spu_py_test(
     deps = [
         "//spu:init",
         "//spu/utils:frontend",
-    ] + select({
-        "@bazel_tools//src/conditions:linux_x86_64": [
-            "@spu_pip_dev//tensorflow_cpu:pkg",
-        ],
-        "//conditions:default": [
-            "@spu_pip_dev//tensorflow:pkg",
-        ],
-    }),
+        requirement("tensorflow"),
+    ],
 )
 
 spu_py_test(
@@ -333,15 +328,9 @@ spu_py_test(
         ":utils",
         "//spu:init",
         "//spu/utils:distributed",
-        "@spu_pip_dev//grpcio:pkg",
-    ] + select({
-        "@bazel_tools//src/conditions:linux_x86_64": [
-            "@spu_pip_dev//tensorflow_cpu:pkg",
-        ],
-        "//conditions:default": [
-            "@spu_pip_dev//tensorflow:pkg",
-        ],
-    }),
+        requirement("grpcio"),
+        requirement("tensorflow"),
+    ],
 )
 
 spu_py_test(
@@ -349,6 +338,6 @@ spu_py_test(
     srcs = ["jax_compile_test.py"],
     deps = [
         ":jnp_testbase",
-        "@spu_pip_dev//flax:pkg",
+        requirement("flax"),
     ],
 )

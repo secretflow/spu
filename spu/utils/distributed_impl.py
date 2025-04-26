@@ -44,10 +44,10 @@ import multiprocess
 import numpy as np
 from termcolor import colored
 
-
 from .. import api as spu_api
 from .. import libspu  # type: ignore
-from .. import spu_pb2
+
+# from .. import spu_pb2
 from . import distributed_pb2  # type: ignore
 from . import distributed_pb2_grpc  # type: ignore
 
@@ -373,17 +373,17 @@ def shape_spu_to_np(spu_shape):
 
 def dtype_spu_to_np(spu_dtype):
     MAP = {
-        spu_pb2.DataType.DT_F32: np.float32,
-        spu_pb2.DataType.DT_F64: np.float64,
-        spu_pb2.DataType.DT_I1: np.bool_,
-        spu_pb2.DataType.DT_I8: np.int8,
-        spu_pb2.DataType.DT_U8: np.uint8,
-        spu_pb2.DataType.DT_I16: np.int16,
-        spu_pb2.DataType.DT_U16: np.uint16,
-        spu_pb2.DataType.DT_I32: np.int32,
-        spu_pb2.DataType.DT_U32: np.uint32,
-        spu_pb2.DataType.DT_I64: np.int64,
-        spu_pb2.DataType.DT_U64: np.uint64,
+        libspu.DataType.DT_F32: np.float32,
+        libspu.DataType.DT_F64: np.float64,
+        libspu.DataType.DT_I1: np.bool_,
+        libspu.DataType.DT_I8: np.int8,
+        libspu.DataType.DT_U8: np.uint8,
+        libspu.DataType.DT_I16: np.int16,
+        libspu.DataType.DT_U16: np.uint16,
+        libspu.DataType.DT_I32: np.int32,
+        libspu.DataType.DT_U32: np.uint32,
+        libspu.DataType.DT_I64: np.int64,
+        libspu.DataType.DT_U64: np.uint64,
     }
     return MAP.get(spu_dtype)
 
@@ -550,7 +550,7 @@ def builtin_spu_init(
     for rank, addr in enumerate(addrs):
         desc.add_party(f"r{rank}", addr)
     link = libspu.link.create_brpc(desc, my_rank)
-    spu_config = spu_pb2.RuntimeConfig()
+    spu_config = libspu.RuntimeConfig()
     spu_config.ParseFromString(spu_config_str)
     if my_rank != 0:
         spu_config.enable_action_trace = False
@@ -574,7 +574,7 @@ def builtin_spu_run(
     rt = server._locals[f"{device_name}-rt"]
     io = server._locals[f"{device_name}-io"]
 
-    spu_exec = spu_pb2.ExecutableProto()
+    spu_exec = libspu.ExecutableProto()
     spu_exec.ParseFromString(exec_str)
 
     # do infeed.
@@ -582,7 +582,7 @@ def builtin_spu_run(
         if isinstance(arg, ValueWrapper):
             rt.set_var(spu_exec.input_names[idx], arg.spu_share)
         else:
-            fst, *_ = io.make_shares(arg, spu_pb2.Visibility.VIS_PUBLIC)
+            fst, *_ = io.make_shares(arg, libspu.Visibility.VIS_PUBLIC)
             rt.set_var(spu_exec.input_names[idx], fst)
 
     # run
@@ -611,7 +611,7 @@ def builtin_spu_run(
     return rets
 
 
-from spu import spu_pb2
+# from spu import spu_pb2
 
 
 class SPUObjectMetadata:
@@ -619,7 +619,7 @@ class SPUObjectMetadata:
         self,
         shape: Sequence[int],
         dtype: np.dtype,
-        vtype: spu_pb2.Visibility,
+        vtype: libspu.Visibility,
     ) -> None:
         self.dtype = dtype
         self.shape = shape
@@ -636,7 +636,7 @@ class SPU(Device):
             refs: Sequence[ObjectRef],
             shape: Sequence[int],
             dtype: np.dtype,
-            vtype: spu_pb2.Visibility,
+            vtype: libspu.Visibility,
         ):
             super().__init__(device)
             assert all(isObjectRef(ref) for ref in refs)
@@ -728,7 +728,7 @@ class SPU(Device):
             except ImportError:
                 import jax.linear_util as lu  # fallback
             from jax._src import api_util as japi_util
-            from jax.tree_util import tree_map, tree_flatten
+            from jax.tree_util import tree_flatten, tree_map
 
             mock_args, mock_kwargs = tree_map(mock_parameters, (args, kwargs))
 
@@ -742,7 +742,7 @@ class SPU(Device):
                 (
                     arg.vtype
                     if isinstance(arg, SPU.Object)
-                    else spu_pb2.Visibility.VIS_PUBLIC
+                    else libspu.Visibility.VIS_PUBLIC
                 )
                 for arg in args_flat
             ]
@@ -775,7 +775,7 @@ class SPU(Device):
         device: SPU
 
         def __init__(
-            self, device: Device, pyfunc: Callable, copts: spu_pb2.CompilerOptions
+            self, device: Device, pyfunc: Callable, copts: libspu.CompilerOptions
         ):
             super().__init__(device, pyfunc)
             self.copts = copts
@@ -845,7 +845,7 @@ class SPU(Device):
                 (
                     arg.vtype
                     if isinstance(arg, SPU.Object)
-                    else spu_pb2.Visibility.VIS_PUBLIC
+                    else libspu.Visibility.VIS_PUBLIC
                 )
                 for arg in args_flat
             ]
@@ -873,7 +873,7 @@ class SPU(Device):
         device: SPU
 
         def __init__(
-            self, device: Device, pyfunc: Callable, copts: spu_pb2.CompilerOptions
+            self, device: Device, pyfunc: Callable, copts: libspu.CompilerOptions
         ):
             super().__init__(device, pyfunc)
             self.state_dict = None
@@ -957,7 +957,7 @@ class SPU(Device):
                 fn, torch.nn.Module
             ), "currently only torch.nn.Module is supported"
 
-            from jax.tree_util import tree_map, tree_flatten
+            from jax.tree_util import tree_flatten, tree_map
 
             mock_args, mock_kwargs = tree_map(mock_parameters, (args, kwargs))
 
@@ -992,11 +992,12 @@ class SPU(Device):
         self.internal_addrs = internal_addrs
         assert len(internal_addrs) == len(node_clients)
 
-        from google.protobuf import json_format
-
-        self.runtime_config = json_format.Parse(
-            json.dumps(runtime_config), spu_pb2.RuntimeConfig()
-        )
+        # from google.protobuf import json_format
+        # self.runtime_config = json_format.Parse(
+        #     json.dumps(runtime_config), libspu.RuntimeConfig()
+        # )
+        self.runtime_config = libspu.RuntimeConfig()
+        self.runtime_config.ParseFromJsonString(json.dumps(runtime_config))
 
         with concurrent.futures.ThreadPoolExecutor() as executor:
             futures = [
@@ -1025,7 +1026,7 @@ class SPU(Device):
         self,
         fn: Callable,
         static_argnums=(),
-        copts=spu_pb2.CompilerOptions(),
+        copts=libspu.CompilerOptions(),
     ) -> Callable:
         if _FRAMEWORK == Framework.EXP_TF:
             return SPU.TensorFlowFunction(self, fn, copts)
@@ -1282,7 +1283,7 @@ def PYU2PYU(to: PYU, obj: PYU.Object):
 def SPU2PYU(to: PYU, obj: SPU.Object):
     # tell PYU the object refs, and run reconstruct on it.
     def reconstruct(wsize: int, spu_config_str: str, shares: List[ValueWrapper]):
-        spu_config = spu_pb2.RuntimeConfig()
+        spu_config = libspu.RuntimeConfig()
         spu_config.ParseFromString(spu_config_str)
         spu_io = spu_api.Io(wsize, spu_config)
 
@@ -1295,12 +1296,12 @@ def SPU2PYU(to: PYU, obj: SPU.Object):
     )
 
 
-def PYU2SPU(to: SPU, obj: PYU.Object, vtype=spu_pb2.Visibility.VIS_SECRET):
+def PYU2SPU(to: SPU, obj: PYU.Object, vtype=libspu.Visibility.VIS_SECRET):
     # make shares on PYU, and tell SPU the object refs.
     def make_shares(
         wsize: int, spu_config_str: str, x: np.ndarray, owner_rank: int = -1
     ):
-        spu_config = spu_pb2.RuntimeConfig()
+        spu_config = libspu.RuntimeConfig()
         spu_config.ParseFromString(spu_config_str)
         spu_io = spu_api.Io(wsize, spu_config)
 

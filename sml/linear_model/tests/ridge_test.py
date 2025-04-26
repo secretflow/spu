@@ -17,7 +17,7 @@ import jax.numpy as jnp
 from sklearn.linear_model import Ridge as skRidge
 
 import examples.python.utils.dataset_utils as dsutil
-import spu.spu_pb2 as spu_pb2  # type: ignore
+import spu.libspu as libspu
 import spu.utils.simulation as spsim
 from sml.linear_model.ridge import Ridge
 
@@ -27,9 +27,7 @@ class UnitTests(unittest.TestCase):
         solver_list = ['cholesky', 'svd']
         print(f"solver_list={solver_list}")
 
-        sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
-        )
+        sim = spsim.Simulator.simple(3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM64)
 
         def proc(x1, x2, y, solver):
             model = Ridge(alpha=1.0, max_iter=100, solver=solver)

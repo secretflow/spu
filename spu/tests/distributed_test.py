@@ -22,7 +22,7 @@ import numpy.testing as npt
 import tensorflow as tf
 
 import spu.utils.distributed as ppd
-from spu import spu_pb2
+from spu import libspu
 from spu.tests.utils import get_free_port
 from spu.utils.polyfill import Process
 
@@ -153,15 +153,15 @@ class UnitTests(unittest.TestCase):
     def test_basic_spu_jax(self):
         a = ppd.device("SPU")(no_in_one_out)()
         self.assertTrue(isinstance(a, ppd.SPU.Object))
-        self.assertEqual(a.vtype, spu_pb2.VIS_PUBLIC)
+        self.assertEqual(a.vtype, libspu.Visibility.VIS_PUBLIC)
         npt.assert_equal(ppd.get(a), np.array([1, 2]))
 
         # no in, two out
         a, b = ppd.device("SPU")(no_in_two_out)()
         self.assertTrue(isinstance(a, ppd.SPU.Object))
         self.assertTrue(isinstance(b, ppd.SPU.Object))
-        self.assertEqual(a.vtype, spu_pb2.VIS_PUBLIC)
-        self.assertEqual(b.vtype, spu_pb2.VIS_PUBLIC)
+        self.assertEqual(a.vtype, libspu.Visibility.VIS_PUBLIC)
+        self.assertEqual(b.vtype, libspu.Visibility.VIS_PUBLIC)
         npt.assert_equal(ppd.get(a), np.array([1, 2]))
         npt.assert_equal(ppd.get(b), np.array([3.0, 4.0]))
 
@@ -170,8 +170,8 @@ class UnitTests(unittest.TestCase):
         self.assertEqual(len(l), 2)
         self.assertTrue(isinstance(l[0], ppd.SPU.Object))
         self.assertTrue(isinstance(l[1], ppd.SPU.Object))
-        self.assertEqual(l[0].vtype, spu_pb2.VIS_PUBLIC)
-        self.assertEqual(l[1].vtype, spu_pb2.VIS_PUBLIC)
+        self.assertEqual(l[0].vtype, libspu.Visibility.VIS_PUBLIC)
+        self.assertEqual(l[1].vtype, libspu.Visibility.VIS_PUBLIC)
         npt.assert_equal(ppd.get(l[0]), np.array([1, 2]))
         npt.assert_equal(ppd.get(l[1]), np.array([3.0, 4.0]))
 
@@ -179,21 +179,21 @@ class UnitTests(unittest.TestCase):
         d = ppd.device("SPU")(no_in_dict_out)()
         self.assertTrue(isinstance(d["first"], ppd.SPU.Object))
         self.assertTrue(isinstance(d["second"], ppd.SPU.Object))
-        self.assertEqual(d["first"].vtype, spu_pb2.VIS_PUBLIC)
-        self.assertEqual(d["second"].vtype, spu_pb2.VIS_PUBLIC)
+        self.assertEqual(d["first"].vtype, libspu.Visibility.VIS_PUBLIC)
+        self.assertEqual(d["second"].vtype, libspu.Visibility.VIS_PUBLIC)
         npt.assert_equal(ppd.get(d["first"]), np.array([1, 2]))
         npt.assert_equal(ppd.get(d["second"]), np.array([3.0, 4.0]))
 
         # immediate input from driver
         e = ppd.device("SPU")(jnp.add)(np.array([1, 2]), np.array([3, 4]))
         self.assertTrue(isinstance(e, ppd.SPU.Object))
-        self.assertEqual(e.vtype, spu_pb2.VIS_PUBLIC)
+        self.assertEqual(e.vtype, libspu.Visibility.VIS_PUBLIC)
         npt.assert_equal(ppd.get(e), np.array([4, 6]))
 
         # reuse inputs from SPU
         c = ppd.device("SPU")(jnp.add)(a, b)
         self.assertTrue(isinstance(c, ppd.SPU.Object))
-        self.assertEqual(c.vtype, spu_pb2.VIS_PUBLIC)
+        self.assertEqual(c.vtype, libspu.Visibility.VIS_PUBLIC)
         self.assertTrue(c.device is ppd.current().devices["SPU"])
         npt.assert_equal(ppd.get(c), np.array([4.0, 6.0]))
 
@@ -201,7 +201,7 @@ class UnitTests(unittest.TestCase):
         x = ppd.device("P1")(no_in_one_out)()
         c = ppd.device("SPU")(jnp.add)(a, x)
         self.assertTrue(isinstance(c, ppd.SPU.Object))
-        self.assertEqual(c.vtype, spu_pb2.VIS_SECRET)
+        self.assertEqual(c.vtype, libspu.Visibility.VIS_SECRET)
         self.assertTrue(c.device is ppd.current().devices["SPU"])
         npt.assert_equal(ppd.get(c), np.array([2, 4]))
 
@@ -222,15 +222,15 @@ class UnitTests(unittest.TestCase):
         ppd.set_framework(ppd.Framework.EXP_TF)
         a = ppd.device("SPU")(no_in_one_out)()
         self.assertTrue(isinstance(a, ppd.SPU.Object))
-        self.assertEqual(a.vtype, spu_pb2.VIS_PUBLIC)
+        self.assertEqual(a.vtype, libspu.Visibility.VIS_PUBLIC)
         npt.assert_equal(ppd.get(a), np.array([1, 2]))
 
         # no in, two out
         a, b = ppd.device("SPU")(no_in_two_out)()
         self.assertTrue(isinstance(a, ppd.SPU.Object))
         self.assertTrue(isinstance(b, ppd.SPU.Object))
-        self.assertEqual(a.vtype, spu_pb2.VIS_PUBLIC)
-        self.assertEqual(b.vtype, spu_pb2.VIS_PUBLIC)
+        self.assertEqual(a.vtype, libspu.Visibility.VIS_PUBLIC)
+        self.assertEqual(b.vtype, libspu.Visibility.VIS_PUBLIC)
         npt.assert_equal(ppd.get(a), np.array([1, 2]))
         npt.assert_equal(ppd.get(b), np.array([3.0, 4.0]))
 
@@ -239,8 +239,8 @@ class UnitTests(unittest.TestCase):
         self.assertEqual(len(l), 2)
         self.assertTrue(isinstance(l[0], ppd.SPU.Object))
         self.assertTrue(isinstance(l[1], ppd.SPU.Object))
-        self.assertEqual(l[0].vtype, spu_pb2.VIS_PUBLIC)
-        self.assertEqual(l[1].vtype, spu_pb2.VIS_PUBLIC)
+        self.assertEqual(l[0].vtype, libspu.Visibility.VIS_PUBLIC)
+        self.assertEqual(l[1].vtype, libspu.Visibility.VIS_PUBLIC)
         npt.assert_equal(ppd.get(l[0]), np.array([1, 2]))
         npt.assert_equal(ppd.get(l[1]), np.array([3.0, 4.0]))
 
@@ -248,21 +248,21 @@ class UnitTests(unittest.TestCase):
         d = ppd.device("SPU")(no_in_dict_out)()
         self.assertTrue(isinstance(d["first"], ppd.SPU.Object))
         self.assertTrue(isinstance(d["second"], ppd.SPU.Object))
-        self.assertEqual(d["first"].vtype, spu_pb2.VIS_PUBLIC)
-        self.assertEqual(d["second"].vtype, spu_pb2.VIS_PUBLIC)
+        self.assertEqual(d["first"].vtype, libspu.Visibility.VIS_PUBLIC)
+        self.assertEqual(d["second"].vtype, libspu.Visibility.VIS_PUBLIC)
         npt.assert_equal(ppd.get(d["first"]), np.array([1, 2]))
         npt.assert_equal(ppd.get(d["second"]), np.array([3.0, 4.0]))
 
         # immediate input from driver
         e = ppd.device("SPU")(tf_fun)(np.array([1, 2]), np.array([3, 4]))
         self.assertTrue(isinstance(e, ppd.SPU.Object))
-        self.assertEqual(e.vtype, spu_pb2.VIS_PUBLIC)
+        self.assertEqual(e.vtype, libspu.Visibility.VIS_PUBLIC)
         npt.assert_equal(ppd.get(e), np.array([4, 6]))
 
         # reuse inputs from SPU
         c = ppd.device("SPU")(tf_fun)(a, a)
         self.assertTrue(isinstance(c, ppd.SPU.Object))
-        self.assertEqual(c.vtype, spu_pb2.VIS_PUBLIC)
+        self.assertEqual(c.vtype, libspu.Visibility.VIS_PUBLIC)
         self.assertTrue(c.device is ppd.current().devices["SPU"])
         npt.assert_equal(ppd.get(c), np.array([2, 4]))
 
@@ -270,7 +270,7 @@ class UnitTests(unittest.TestCase):
         x = ppd.device("P1")(no_in_one_out)()
         c = ppd.device("SPU")(tf_fun)(a, x)
         self.assertTrue(isinstance(c, ppd.SPU.Object))
-        self.assertEqual(c.vtype, spu_pb2.VIS_SECRET)
+        self.assertEqual(c.vtype, libspu.Visibility.VIS_SECRET)
         self.assertTrue(c.device is ppd.current().devices["SPU"])
         npt.assert_equal(ppd.get(c), np.array([2, 4]))
 

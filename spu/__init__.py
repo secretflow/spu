@@ -16,13 +16,13 @@
 from . import experimental, psi
 from .api import Io, Runtime, check_cpu_feature, compile
 from .intrinsic import *
-from .spu_pb2 import (  # type: ignore
+from .libspu import (  # type: ignore;
+    CompilationSource,
     CompilerOptions,
     DataType,
     ExecutableProto,
     FieldType,
     ProtocolKind,
-    PtType,
     RuntimeConfig,
     ShapeProto,
     Visibility,
@@ -32,16 +32,16 @@ from .version import __version__  # type: ignor
 
 __all__ = [
     "__version__",
-    # spu_pb2
+    # libspu
+    "CompilationSource",
+    "CompilerOptions",
     "DataType",
     "Visibility",
-    "PtType",
     "ProtocolKind",
     "FieldType",
     "ShapeProto",
     "RuntimeConfig",
     "ExecutableProto",
-    "CompilerOptions",
     # spu_api
     "Io",
     "Runtime",

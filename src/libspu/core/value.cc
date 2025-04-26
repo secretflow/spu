@@ -85,7 +85,7 @@ ValueProto Value::toProto(size_t max_chunk_size) const {
       size_t chunk_size = std::min(max_chunk_size, size - i * max_chunk_size);
 
       size_t offset = i * max_chunk_size;
-      ValueChunkProto chunk;
+      pb::ValueChunkProto chunk;
       chunk.set_total_bytes(size);
       chunk.set_chunk_offset(offset);
       if (chunk_size > 0) {
@@ -113,18 +113,19 @@ ValueProto Value::toProto(size_t max_chunk_size) const {
   if (imag_) {
     array_to_chunks(*imag_);
   }
+
   ret.meta.CopyFrom(toMetaProto());
 
   return ret;
 }
 
-ValueMetaProto Value::toMetaProto() const {
+pb::ValueMetaProto Value::toMetaProto() const {
   SPU_ENFORCE(dtype_ != DT_INVALID && vtype() != VIS_INVALID);
 
-  ValueMetaProto proto;
-  proto.set_data_type(dtype_);
+  pb::ValueMetaProto proto;
+  proto.set_data_type(::spu::pb::DataType(dtype_));
   proto.set_is_complex(isComplex());
-  proto.set_visibility(vtype());
+  proto.set_visibility(::spu::pb::Visibility(vtype()));
   for (const auto& d : shape()) {
     proto.mutable_shape()->add_dims(d);
   }
@@ -136,7 +137,7 @@ Value Value::fromProto(const ValueProto& value) {
   const auto& meta = value.meta;
   if (meta.is_complex()) {
     // real
-    ValueMetaProto partial = value.meta;
+    pb::ValueMetaProto partial = value.meta;
     partial.set_is_complex(false);
     ValueProto partial_proto;
     partial_proto.meta = partial;
@@ -154,12 +155,14 @@ Value Value::fromProto(const ValueProto& value) {
 
   const auto eltype = Type::fromString(meta.storage_type());
 
-  SPU_ENFORCE(meta.data_type() != DT_INVALID, "invalid data type={}",
-              meta.data_type());
+  auto data_type = DataType(meta.data_type());
+  SPU_ENFORCE(data_type != DataType::DT_INVALID, "invalid data type={}",
+              data_type);
 
   // vtype is deduced from storage_type.
-  SPU_ENFORCE(meta.visibility() == getVisibilityFromType(eltype),
-              "visibility {} does not match storage_type {}", meta.visibility(),
+  auto visibility = Visibility(meta.visibility());
+  SPU_ENFORCE(visibility == getVisibilityFromType(eltype),
+              "visibility {} does not match storage_type {}", visibility,
               eltype);
 
   Shape shape(meta.shape().dims().begin(), meta.shape().dims().end());
@@ -167,7 +170,7 @@ Value Value::fromProto(const ValueProto& value) {
   const auto& chunks = value.chunks;
   const size_t total_bytes = chunks.empty() ? 0 : chunks[0].total_bytes();
 
-  std::map<size_t, const ValueChunkProto*> ordered_chunks;
+  std::map<size_t, const pb::ValueChunkProto*> ordered_chunks;
   for (const auto& s : chunks) {
     SPU_ENFORCE(ordered_chunks.insert({s.chunk_offset(), &s}).second,
                 "Repeated chunk_offset {} found", s.chunk_offset());
@@ -187,7 +190,7 @@ Value Value::fromProto(const ValueProto& value) {
 
   SPU_ENFORCE(total_bytes == chunk_end_pos);
 
-  return Value(data, meta.data_type());
+  return Value(data, spu::DataType(meta.data_type()));
 }
 
 Value Value::clone() const {

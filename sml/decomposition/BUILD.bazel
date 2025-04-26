@@ -12,17 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel:spu.bzl", "spu_py_library")
+load("//bazel:spu.bzl", "sml_py_library")
 
 package(default_visibility = ["//visibility:public"])
 
-spu_py_library(
+sml_py_library(
     name = "pca",
     srcs = ["pca.py"],
     deps = ["//sml/utils:extmath"],
 )
 
-spu_py_library(
+sml_py_library(
     name = "nmf",
     srcs = ["nmf.py"],
 )

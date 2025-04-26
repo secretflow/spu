@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Tuple
+from typing import Tuple, Optional
 
 import jax
 import jax.numpy as jnp
@@ -21,6 +21,58 @@ from sml.preprocessing.preprocessing import label_binarize
 from spu.ops.groupby import groupby, groupby_sum
 
 from .auc import binary_clf_curve, binary_roc_auc
+
+
+def brier_score_loss(
+    y_true: jnp.ndarray,
+    y_proba: jnp.ndarray,
+    sample_weight: Optional[jnp.ndarray] = None,
+    pos_label: Optional[int] = None,
+) -> float:
+    """
+    Compute the Brier score loss.
+
+    The Brier score measures the mean squared difference between
+    predicted probability and the actual binary outcome.
+
+    Parameters
+    ----------
+    y_true : jnp.ndarray of shape (n_samples,)
+        True binary labels.
+
+    y_proba : jnp.ndarray of shape (n_samples,)
+        Estimated probabilities for the positive class.
+
+    sample_weight : Optional[jnp.ndarray] of shape (n_samples,), default=None
+        Sample weights. If None, all samples are weighted equally.
+
+    pos_label : Optional[int], default=None
+        Label of the positive class. If None, will be inferred as the max of y_true.
+
+    Returns
+    -------
+    score : float
+        Brier score loss.
+    """
+    y_true = jnp.asarray(y_true).flatten()
+    y_proba = jnp.asarray(y_proba).flatten()
+
+    if pos_label is None:
+        pos_label = jnp.max(y_true)
+
+    # Convert y_true to binary (1 for pos_label, 0 otherwise)
+    y_true_bin = jnp.where(y_true == pos_label, 1.0, 0.0)
+
+    # Compute squared error
+    errors = (y_proba - y_true_bin) ** 2
+
+    if sample_weight is not None:
+        sample_weight = jnp.asarray(sample_weight).flatten()
+        weighted_sum = jnp.sum(errors * sample_weight)
+        total_weight = jnp.sum(sample_weight)
+        return weighted_sum / total_weight
+    else:
+        return jnp.mean(errors)
 
 
 def roc_auc_score(y_true, y_pred):
@@ -82,7 +134,7 @@ def equal_obs(x: jnp.ndarray, n_bin: int) -> jnp.ndarray:
         x=jnp.linspace(0, n_len, n_bin + 1),
         xp=jnp.arange(n_len),
         fp=jnp.sort(x),
-        right='extrapolate',
+        right="extrapolate",
     )
 
 
@@ -140,7 +192,7 @@ def transform_binary(y_true, y_pred, label):
 
 
 def f1_score(
-    y_true, y_pred, average='binary', labels=None, pos_label=1, transform=True
+    y_true, y_pred, average="binary", labels=None, pos_label=1, transform=True
 ):
     f1_result = fun_score(
         _f1_score, y_true, y_pred, average, labels, pos_label, transform
@@ -149,7 +201,7 @@ def f1_score(
 
 
 def precision_score(
-    y_true, y_pred, average='binary', labels=None, pos_label=1, transform=True
+    y_true, y_pred, average="binary", labels=None, pos_label=1, transform=True
 ):
     f1_result = fun_score(
         _precision_score, y_true, y_pred, average, labels, pos_label, transform
@@ -158,7 +210,7 @@ def precision_score(
 
 
 def recall_score(
-    y_true, y_pred, average='binary', labels=None, pos_label=1, transform=True
+    y_true, y_pred, average="binary", labels=None, pos_label=1, transform=True
 ):
     f1_result = fun_score(
         _recall_score, y_true, y_pred, average, labels, pos_label, transform
@@ -167,7 +219,7 @@ def recall_score(
 
 
 def fun_score(
-    fun, y_true, y_pred, average='binary', labels=None, pos_label=1, transform=True
+    fun, y_true, y_pred, average="binary", labels=None, pos_label=1, transform=True
 ):
     """
     Compute precision, recall, f1.
@@ -215,7 +267,7 @@ def fun_score(
         for i in labels:
             y_true_binary, y_pred_binary = transform_binary(y_true, y_pred, i)
             fun_result.append(fun(y_true_binary, y_pred_binary))
-    elif average == 'binary':
+    elif average == "binary":
         if transform:
             y_true_binary, y_pred_binary = transform_binary(y_true, y_pred, pos_label)
         else:
@@ -330,8 +382,8 @@ def average_precision_score(
     """
 
     assert average in (
-        'macro',
-        'micro',
+        "macro",
+        "micro",
         None,
     ), 'average must be either "macro", "micro" or None'
 

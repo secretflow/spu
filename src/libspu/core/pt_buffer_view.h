@@ -21,8 +21,7 @@
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/core/prelude.h"
 #include "libspu/core/shape.h"
-
-#include "libspu/spu.pb.h"  // PtType
+#include "libspu/spu.h"  // PtType
 
 namespace spu {
 namespace detail {

@@ -17,7 +17,7 @@ import unittest
 
 import numpy as np
 
-import spu.spu_pb2 as spu_pb2
+import spu.libspu as libspu
 import spu.utils.simulation as ppsim
 from spu.tests.jnp_testbase import JnpTests
 
@@ -25,7 +25,7 @@ from spu.tests.jnp_testbase import JnpTests
 class JnpTestAby3FM128(JnpTests.JnpTestBase):
     def setUp(self):
         self._sim = ppsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM128
+            3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM128
         )
         self._rng = np.random.RandomState()
 
