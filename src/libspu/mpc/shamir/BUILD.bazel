@@ -29,8 +29,8 @@ spu_cc_library(
     srcs = ["state.cc"],
     hdrs = ["state.h"],
     deps = [
-        "//libspu/mpc/utils:gfmp_ops",
         "//libspu/core:context",
+        "//libspu/mpc/utils:gfmp_ops",
     ],
 )
 
@@ -42,8 +42,8 @@ spu_cc_library(
         ":arithmetic",
         ":boolean",
         ":conversion",
-        "//libspu/mpc/standard_shape:protocol",
         ":state",
+        "//libspu/mpc/standard_shape:protocol",
     ],
 )
 
@@ -53,10 +53,10 @@ spu_cc_library(
     srcs = ["prot_shamir_test.cc"],
     hdrs = ["prot_shamir_test.h"],
     deps = [
+        "//libspu/core:context",
         "//libspu/mpc:ab_api",
         "//libspu/mpc:api",
         "//libspu/mpc:api_test_params",
-        "//libspu/core:context",
         "//libspu/mpc:kernel",
         "//libspu/mpc/common:communicator",
         "//libspu/mpc/utils:simulate",
@@ -70,10 +70,10 @@ spu_cc_test(
     timeout = "eternal",
     srcs = ["protocol_test.cc"],
     deps = [
+        ":prot_shamir_test",
         ":protocol",
         "//libspu/mpc:ab_api_test",
         "//libspu/mpc:api_test",
-        ":prot_shamir_test",
     ],
 )
 
@@ -82,8 +82,8 @@ spu_cc_library(
     srcs = ["arithmetic.cc"],
     hdrs = ["arithmetic.h"],
     deps = [
-        ":type",
         ":state",
+        ":type",
         "//libspu/core:vectorize",
         "//libspu/mpc:ab_api",
         "//libspu/mpc:kernel",
@@ -149,11 +149,10 @@ spu_cc_test(
     name = "io_test",
     srcs = ["io_test.cc"],
     deps = [
-        ":io",
         "io_shamir_test",
+        ":io",
     ],
 )
-
 
 spu_cc_library(
     name = "io_shamir_test",

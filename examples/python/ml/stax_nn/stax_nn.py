@@ -91,7 +91,6 @@ def train(
             y = predict_fun(params, imgs)
             return ce_loss(y, labels), y
 
-        print('update model', i)
         grad_fn = jax.value_and_grad(loss_func, has_aux=True)
         (loss, y), grads = grad_fn(get_params(state))
         return opt_update(i, grads, state)

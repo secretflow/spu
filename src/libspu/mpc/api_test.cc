@@ -425,7 +425,7 @@ TEST_P(ApiTest, MatMulSS) {
   const size_t npc = std::get<2>(GetParam());
 
   const int64_t M = 70;
-  const int64_t K = 40;
+  const int64_t K = 400;
   const int64_t N = 60;
   const int64_t N2 = 90;
   const Shape shape_A = {M, K};
