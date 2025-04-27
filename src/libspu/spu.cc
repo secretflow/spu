@@ -121,6 +121,7 @@ void convertFromPB(const pb::RuntimeConfig& src, RuntimeConfig& dst) {
       src.experimental_exp_prime_disable_lower_bound();
   dst.experimental_exp_prime_enable_upper_bound =
       src.experimental_exp_prime_enable_upper_bound();
+  dst.sss_threshold = src.sss_threshold();
 
   if (src.has_ttp_beaver_config()) {
     auto ttp_conf = src.ttp_beaver_config();
@@ -218,6 +219,7 @@ void convertToPB(const RuntimeConfig& src, pb::RuntimeConfig& dst) {
       src.experimental_exp_prime_disable_lower_bound);
   dst.set_experimental_exp_prime_enable_upper_bound(
       src.experimental_exp_prime_enable_upper_bound);
+  dst.set_sss_threshold(src.sss_threshold);
 }
 
 RuntimeConfig::RuntimeConfig(const spu::pb::RuntimeConfig& pb_conf) {
