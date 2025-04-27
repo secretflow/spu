@@ -12,21 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/mpc/shamir/type.h"
+#include "libspu/mpc/experimental/shamir/io.h"
 
-#include <mutex>
-
-#include "libspu/mpc/common/pv_gfmp.h"
+#include "libspu/mpc/experimental/shamir/io_shamir_test.h"
 
 namespace spu::mpc::shamir {
 
-void registerTypes() {
-  regPVGfmpTypes();
-
-  static std::once_flag flag;
-  std::call_once(flag, []() {
-    TypeContext::getTypeContext()->addTypes<AShrTy, BShrTy>();
-  });
-}
+INSTANTIATE_TEST_SUITE_P(
+    ShamirIoTest, ShamirIoTest,
+    testing::Combine(testing::Values(makeShamirIo),  //
+                     testing::Values(4),             //
+                     testing::Values(FieldType::FM32, FieldType::FM64,
+                                     FieldType::FM128)),
+    [](const testing::TestParamInfo<ShamirIoTest::ParamType>& p) {
+      return fmt::format("{}x{}", std::get<1>(p.param), std::get<2>(p.param));
+    });
 
 }  // namespace spu::mpc::shamir

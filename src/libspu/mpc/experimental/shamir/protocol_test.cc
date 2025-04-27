@@ -12,22 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/mpc/shamir/protocol.h"
+#include "libspu/mpc/experimental/shamir/protocol.h"
 
 #include "libspu/mpc/ab_api.h"
 #include "libspu/mpc/ab_api_test.h"
 #include "libspu/mpc/api.h"
 #include "libspu/mpc/api_test.h"
-#include "libspu/mpc/shamir/prot_shamir_test.h"
+#include "libspu/mpc/experimental/shamir/prot_shamir_test.h"
 
 namespace spu::mpc::test {
 namespace {
 
 RuntimeConfig makeConfig(FieldType field) {
   RuntimeConfig conf;
-  conf.set_protocol(ProtocolKind::SHAMIR);
-  conf.set_field(field);
-  conf.set_sss_threshold(1);
+  conf.protocol = ProtocolKind::SHAMIR;
+  conf.field = field;
+  conf.sss_threshold = 1;
   return conf;
 }
 
@@ -41,7 +41,7 @@ INSTANTIATE_TEST_SUITE_P(
                                      makeConfig(FieldType::FM128)),  //
                      testing::Values(3)),                            //
     [](const testing::TestParamInfo<BooleanTest::ParamType>& p) {
-      return fmt::format("{}x{}", std::get<1>(p.param).field(),
+      return fmt::format("{}x{}", std::get<1>(p.param).field,
                          std::get<2>(p.param));
     });
 
@@ -53,7 +53,7 @@ INSTANTIATE_TEST_SUITE_P(
                                      makeConfig(FieldType::FM128)),  //
                      testing::Values(3)),                            //
     [](const testing::TestParamInfo<ApiTest::ParamType>& p) {
-      return fmt::format("{}x{}", std::get<1>(p.param).field(),
+      return fmt::format("{}x{}", std::get<1>(p.param).field,
                          std::get<2>(p.param));
     });
 
@@ -65,7 +65,7 @@ INSTANTIATE_TEST_SUITE_P(
                                      makeConfig(FieldType::FM128)),  //
                      testing::Values(3)),                            //
     [](const testing::TestParamInfo<ArithmeticTest::ParamType>& p) {
-      return fmt::format("{}x{}", std::get<1>(p.param).field(),
+      return fmt::format("{}x{}", std::get<1>(p.param).field,
                          std::get<2>(p.param));
     });
 
@@ -77,7 +77,7 @@ INSTANTIATE_TEST_SUITE_P(
                                      makeConfig(FieldType::FM128)),  //
                      testing::Values(3)),                            //
     [](const testing::TestParamInfo<BooleanTest::ParamType>& p) {
-      return fmt::format("{}x{}", std::get<1>(p.param).field(),
+      return fmt::format("{}x{}", std::get<1>(p.param).field,
                          std::get<2>(p.param));
     });
 
@@ -89,7 +89,7 @@ INSTANTIATE_TEST_SUITE_P(
                                      makeConfig(FieldType::FM128)),  //
                      testing::Values(3)),                            //
     [](const testing::TestParamInfo<BooleanTest::ParamType>& p) {
-      return fmt::format("{}x{}", std::get<1>(p.param).field(),
+      return fmt::format("{}x{}", std::get<1>(p.param).field,
                          std::get<2>(p.param));
     });
 

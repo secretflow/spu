@@ -87,10 +87,10 @@ std::vector<spu::Value> IoClient::makeShares(const PtBufferView &bv,
   // encode to ring.
   DataType dtype;
   NdArrayRef encoded;
-  if (config_.protocol() == ProtocolKind::SHAMIR) {
-    encoded = encodeToGfmp(bv, config_.field(), fxp_bits, &dtype);
+  if (config_.protocol == ProtocolKind::SHAMIR) {
+    encoded = encodeToGfmp(bv, config_.field, fxp_bits, &dtype);
   } else {
-    encoded = encodeToRing(bv, config_.field(), fxp_bits, &dtype);
+    encoded = encodeToRing(bv, config_.field, fxp_bits, &dtype);
   }
 
   // make shares.
@@ -177,7 +177,7 @@ void IoClient::combineShares(absl::Span<Value const> values,
   // decode from ring.
   const DataType dtype = values.front().dtype();
 
-  if (config_.protocol() == ProtocolKind::SHAMIR) {
+  if (config_.protocol == ProtocolKind::SHAMIR) {
     decodeFromGfmp(encoded, dtype, fxp_bits, out);
   } else {
     decodeFromRing(encoded, dtype, fxp_bits, out);

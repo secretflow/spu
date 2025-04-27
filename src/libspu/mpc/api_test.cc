@@ -288,12 +288,12 @@ TEST_P(ApiTest, MsbS) {
           auto x_s = p2s(sctx.get(), x_p);                                    \
                                                                               \
           for (auto bits : kShiftBits) {                                      \
-            if (conf.protocol() == ProtocolKind::SHAMIR) {                    \
-              if (bits >= GetMersennePrimeExp(conf.field())) {                \
+            if (conf.protocol == ProtocolKind::SHAMIR) {                      \
+              if (bits >= GetMersennePrimeExp(conf.field)) {                  \
                 continue;                                                     \
               }                                                               \
             } else {                                                          \
-              if (bits >= SizeOf(conf.field()) * 8) {                         \
+              if (bits >= SizeOf(conf.field) * 8) {                           \
                 continue;                                                     \
               }                                                               \
             }                                                                 \
@@ -324,12 +324,12 @@ TEST_P(ApiTest, MsbS) {
             auto x_v = p2v(sctx.get(), x_p, rank);                            \
                                                                               \
             for (auto bits : kShiftBits) {                                    \
-              if (conf.protocol() == ProtocolKind::SHAMIR) {                  \
-                if (bits >= GetMersennePrimeExp(conf.field())) {              \
+              if (conf.protocol == ProtocolKind::SHAMIR) {                    \
+                if (bits >= GetMersennePrimeExp(conf.field)) {                \
                   continue;                                                   \
                 }                                                             \
               } else {                                                        \
-                if (bits >= SizeOf(conf.field()) * 8) {                       \
+                if (bits >= SizeOf(conf.field) * 8) {                         \
                   continue;                                                   \
                 }                                                             \
               }                                                               \
@@ -361,12 +361,12 @@ TEST_P(ApiTest, MsbS) {
           auto p0 = rand_p(sctx.get(), kShape);                               \
                                                                               \
           for (auto bits : kShiftBits) { /* WHEN */                           \
-            if (conf.protocol() == ProtocolKind::SHAMIR) {                    \
-              if (bits >= GetMersennePrimeExp(conf.field())) {                \
+            if (conf.protocol == ProtocolKind::SHAMIR) {                      \
+              if (bits >= GetMersennePrimeExp(conf.field)) {                  \
                 continue;                                                     \
               }                                                               \
             } else {                                                          \
-              if (bits >= SizeOf(conf.field()) * 8) {                         \
+              if (bits >= SizeOf(conf.field) * 8) {                           \
                 continue;                                                     \
               }                                                               \
             }                                                                 \
@@ -402,11 +402,11 @@ TEST_P(ApiTest, TruncS) {
                                      : kShape);
 
     // TODO: here we assume has msb error, only use lowest 10 bits.
-    if (conf.protocol() == ProtocolKind::SHAMIR) {
+    if (conf.protocol == ProtocolKind::SHAMIR) {
       p0 = arshift_p(sctx.get(), p0, {2});
     } else {
       p0 = arshift_p(sctx.get(), p0,
-                     {static_cast<int64_t>(SizeOf(conf.field()) * 8 - 10)});
+                     {static_cast<int64_t>(SizeOf(conf.field) * 8 - 10)});
     }
 
     const size_t bits = 2;

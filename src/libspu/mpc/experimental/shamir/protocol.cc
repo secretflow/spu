@@ -12,17 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/mpc/shamir/protocol.h"
+#include "libspu/mpc/experimental/shamir/protocol.h"
 
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pv2k.h"
 #include "libspu/mpc/common/pv_gfmp.h"
-#include "libspu/mpc/shamir/arithmetic.h"
-#include "libspu/mpc/shamir/boolean.h"
-#include "libspu/mpc/shamir/conversion.h"
-#include "libspu/mpc/shamir/state.h"
-#include "libspu/mpc/shamir/type.h"
+#include "libspu/mpc/experimental/shamir/arithmetic.h"
+#include "libspu/mpc/experimental/shamir/boolean.h"
+#include "libspu/mpc/experimental/shamir/conversion.h"
+#include "libspu/mpc/experimental/shamir/state.h"
+#include "libspu/mpc/experimental/shamir/type.h"
 #include "libspu/mpc/standard_shape/protocol.h"
 
 namespace spu::mpc {
@@ -38,11 +38,11 @@ void regShamirProtocol(SPUContext* ctx,
   ctx->prot()->addState<PrgState>(lctx);
 
   // add Z2k state.
-  ctx->prot()->addState<Z2kState>(ctx->config().field());
+  ctx->prot()->addState<Z2kState>(ctx->config().field);
 
   // add pre-computation state
   auto world_size = lctx->WorldSize();
-  auto th = ctx->config().sss_threshold();
+  auto th = ctx->config().sss_threshold;
   SPU_ENFORCE(world_size >= th * 2 + 1 && th >= 1,
               "invalid party numbers {} or threshold {}", world_size, th);
   ctx->prot()->addState<shamir::ShamirPrecomputedState>(world_size, th);

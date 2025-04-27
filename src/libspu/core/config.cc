@@ -115,7 +115,7 @@ void populateRuntimeConfig(RuntimeConfig& cfg) {
   }
 
   // shamir threshold
-  if (cfg.protocol() == ProtocolKind::SHAMIR && cfg.sss_threshold() == 0) {
+  if (cfg.protocol == ProtocolKind::SHAMIR && cfg.sss_threshold == 0) {
     SPU_THROW("shamir secret sharing threshold must be set");
   }
 

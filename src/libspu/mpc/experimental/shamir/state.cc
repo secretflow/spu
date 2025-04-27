@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/mpc/shamir/state.h"
+#include "libspu/mpc/experimental/shamir/state.h"
 
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/core/prelude.h"

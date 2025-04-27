@@ -126,6 +126,10 @@ enum ProtocolKind {
   // This is an experimental protocol! Don't use it.
   // (https://eprint.iacr.org/2020/592)
   SWIFT = 6,
+
+  // A scalable MPC protocol for Neural Network,
+  // (https://www.usenix.org/system/files/usenixsecurity24-liu-fengrun.pdf)
+  SHAMIR = 7,
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -385,6 +389,9 @@ struct RuntimeConfig {
   // For protocol like SecureML, the most significant bit may have error with
   // low probability, which lead to huge calculation error.
   bool trunc_allow_msb_error = false;
+
+  // Threshold for shamir secret sharing.
+  uint64_t sss_threshold;
 
   /// System related configurations start.
 

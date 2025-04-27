@@ -26,7 +26,7 @@ namespace spu::kernel::hal {
 NdArrayRef dump_public(SPUContext* ctx, const Value& v) {
   SPU_TRACE_HAL_DISP(ctx, v);
 
-  if (ctx->config().protocol() == ProtocolKind::SHAMIR) {
+  if (ctx->config().protocol == ProtocolKind::SHAMIR) {
     SPU_ENFORCE(v.storage_type().isa<mpc::PubGfmpTy>(), "got {}",
                 v.storage_type());
 

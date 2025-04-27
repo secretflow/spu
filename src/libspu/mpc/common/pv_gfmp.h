@@ -47,18 +47,8 @@ class PrivGfmpTy : public TypeImpl<PrivGfmpTy, GfmpTy, Private> {
 
   static std::string_view getStaticId() { return "PrivGfmp"; }
 
-  std::string toString() const override {
-    return fmt::format("{},{}", FieldType_Name(field()), owner_);
-  }
-
-  void fromString(std::string_view str) override {
-    auto comma = str.find_first_of(',');
-    auto field_str = str.substr(0, comma);
-    auto owner_str = str.substr(comma + 1);
-    SPU_ENFORCE(FieldType_Parse(std::string(field_str), &field_),
-                "parse failed from={}", str);
-    owner_ = std::stoll(std::string(owner_str));
-  }
+  std::string toString() const override;
+  void fromString(std::string_view str) override;
 
   bool equals(TypeObject const* other) const override {
     auto const* derived_other = dynamic_cast<PrivGfmpTy const*>(other);

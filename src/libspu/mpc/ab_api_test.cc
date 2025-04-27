@@ -478,8 +478,8 @@ TEST_P(ArithmeticTest, LShiftA) {
     auto a0 = p2a(obj.get(), p0);
 
     for (auto bits : kShiftBits) {
-      if (conf.protocol() == ProtocolKind::SHAMIR &&
-          bits >= GetMersennePrimeExp(conf.field())) {
+      if (conf.protocol == ProtocolKind::SHAMIR &&
+          bits >= GetMersennePrimeExp(conf.field)) {
         continue;
       }
 
@@ -596,45 +596,43 @@ TEST_P(ArithmeticTest, A2P) {
   });
 }
 
-#define TEST_BOOLEAN_BINARY_OP_BB(OP)                                         \
-  TEST_P(BooleanTest, OP##BB) {                                               \
-    const auto factory = std::get<0>(GetParam());                             \
-    const RuntimeConfig& conf = std::get<1>(GetParam());                      \
-    const size_t npc = std::get<2>(GetParam());                               \
-                                                                              \
-    utils::simulate(                                                          \
-        npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {          \
-          auto obj = factory(conf, lctx);                                     \
-                                                                              \
-          /* GIVEN */                                                         \
-          auto p0 = rand_p(obj.get(), kShape);                                \
-          auto p1 = rand_p(obj.get(), kShape);                                \
-                                                                              \
-          /* WHEN */                                                          \
-          auto b0 = p2b(obj.get(), p0);                                       \
-          auto b1 = p2b(obj.get(), p1);                                       \
-          auto prev = obj->prot()->getState<Communicator>()->getStats();      \
-          auto tmp = OP##_bb(obj.get(), b0, b1);                              \
-          auto cost =                                                         \
-              obj->prot()->getState<Communicator>()->getStats() - prev;       \
-          auto re = b2p(obj.get(), tmp);                                      \
-          auto rp = OP##_pp(obj.get(), p0, p1);                               \
-                                                                              \
-          /* THEN */                                                          \
-          EXPECT_VALUE_EQ(re, rp);                                            \
-          if (conf.protocol() == ProtocolKind::SHAMIR) {                      \
-            const size_t nBits = GetMersennePrimeExp(conf.field());           \
-            ce::Params params = {{"K", SizeOf(conf.field()) * 8},             \
-                                 {"N", npc},                                  \
-                                 {"nBits", nBits}};                           \
-            EXPECT_TRUE(verifyCost(obj->prot()->getKernel(#OP "_bb"),         \
-                                   #OP "_bb", params, cost, kShape.numel())); \
-          } else {                                                            \
-            EXPECT_TRUE(verifyCost(obj->prot()->getKernel(#OP "_bb"),         \
-                                   #OP "_bb", conf.field(), kShape, npc,      \
-                                   cost));                                    \
-          }                                                                   \
-        });                                                                   \
+#define TEST_BOOLEAN_BINARY_OP_BB(OP)                                          \
+  TEST_P(BooleanTest, OP##BB) {                                                \
+    const auto factory = std::get<0>(GetParam());                              \
+    const RuntimeConfig& conf = std::get<1>(GetParam());                       \
+    const size_t npc = std::get<2>(GetParam());                                \
+                                                                               \
+    utils::simulate(                                                           \
+        npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {           \
+          auto obj = factory(conf, lctx);                                      \
+                                                                               \
+          /* GIVEN */                                                          \
+          auto p0 = rand_p(obj.get(), kShape);                                 \
+          auto p1 = rand_p(obj.get(), kShape);                                 \
+                                                                               \
+          /* WHEN */                                                           \
+          auto b0 = p2b(obj.get(), p0);                                        \
+          auto b1 = p2b(obj.get(), p1);                                        \
+          auto prev = obj->prot()->getState<Communicator>()->getStats();       \
+          auto tmp = OP##_bb(obj.get(), b0, b1);                               \
+          auto cost =                                                          \
+              obj->prot()->getState<Communicator>()->getStats() - prev;        \
+          auto re = b2p(obj.get(), tmp);                                       \
+          auto rp = OP##_pp(obj.get(), p0, p1);                                \
+                                                                               \
+          /* THEN */                                                           \
+          EXPECT_VALUE_EQ(re, rp);                                             \
+          if (conf.protocol == ProtocolKind::SHAMIR) {                         \
+            const size_t nBits = GetMersennePrimeExp(conf.field);              \
+            ce::Params params = {                                              \
+                {"K", SizeOf(conf.field) * 8}, {"N", npc}, {"nBits", nBits}};  \
+            EXPECT_TRUE(verifyCost(obj->prot()->getKernel(#OP "_bb"),          \
+                                   #OP "_bb", params, cost, kShape.numel()));  \
+          } else {                                                             \
+            EXPECT_TRUE(verifyCost(obj->prot()->getKernel(#OP "_bb"),          \
+                                   #OP "_bb", conf.field, kShape, npc, cost)); \
+          }                                                                    \
+        });                                                                    \
   }
 
 #define TEST_BOOLEAN_BINARY_OP_BP(OP)                                          \
@@ -689,8 +687,8 @@ TEST_BOOLEAN_BINARY_OP(xor)
           auto b0 = p2b(obj.get(), p0);                                        \
                                                                                \
           for (auto bits : kShiftBits) {                                       \
-            if (conf.protocol() == ProtocolKind::SHAMIR &&                     \
-                bits >= GetMersennePrimeExp(conf.field())) {                   \
+            if (conf.protocol == ProtocolKind::SHAMIR &&                       \
+                bits >= GetMersennePrimeExp(conf.field)) {                     \
               continue;                                                        \
             }                                                                  \
             if (bits >= p0.elsize() * 8) {                                     \

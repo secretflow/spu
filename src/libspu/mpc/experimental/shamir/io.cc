@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/mpc/shamir/io.h"
+#include "libspu/mpc/experimental/shamir/io.h"
 
 #include "libspu/core/context.h"
 #include "libspu/mpc/common/pv_gfmp.h"
-#include "libspu/mpc/shamir/type.h"
+#include "libspu/mpc/experimental/shamir/type.h"
 #include "libspu/mpc/utils/gfmp_ops.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
