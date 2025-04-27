@@ -43,7 +43,7 @@ def emul_jacobi_svd(mode=emulation.Mode.MULTIPROCESS):
         emulator.up()
 
         # Create a random dataset
-        A = random.normal(random.PRNGKey(0), (15, 15))
+        A = random.normal(random.PRNGKey(0), (10, 10))
         A = (A + A.T) / 2
         A_np = np.array(A)
         A_spu = emulator.seal(A)
