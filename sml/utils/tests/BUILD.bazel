@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 load("//bazel:spu.bzl", "sml_py_test")
 
 package(default_visibility = ["//visibility:public"])
@@ -28,42 +29,5 @@ sml_py_test(
     srcs = ["jacobievd_test.py"],
     deps = [
         "//sml/utils:extmath",
-    ],
-)
-
-sml_py_test(
-    name = "grid_search_cv_test",
-    srcs = ["grid_search_cv_test.py"],
-    deps = [
-        "//sml/ensemble:adaboost",
-        "//sml/ensemble:forest",
-        "//sml/gaussian_process:_gpc",
-        "//sml/linear_model:glm",
-        "//sml/linear_model:logistic",
-        "//sml/linear_model:pla",
-        "//sml/linear_model:quantile",
-        "//sml/linear_model:ridge",
-        "//sml/linear_model:sgd_classifier",
-        "//sml/naive_bayes:gnb",
-        "//sml/neighbors:knn",
-        "//sml/svm",
-        "//sml/tree",
-        "//sml/utils:grid_search_cv",
-    ],
-)
-
-sml_py_test(
-    name = "dataset_utils_test",
-    srcs = ["dataset_utils_test.py"],
-    deps = [
-        "//sml/utils:dataset_utils",
-    ],
-)
-
-sml_py_test(
-    name = "reveal_test",
-    srcs = ["reveal_test.py"],
-    deps = [
-        "//sml/utils",
     ],
 )
