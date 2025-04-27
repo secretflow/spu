@@ -125,7 +125,7 @@ enum ProtocolKind {
   // A malicious 4PC-protocol for mixed-circuit computation.
   // We provide some optimizations such as conversions and equality test.
   // (https://eprint.iacr.org/2020/1330)
-  FANTASTIC4 = 6,
+  // FANTASTIC4 = 6,
 };
 
 //////////////////////////////////////////////////////////////////////////
