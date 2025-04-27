@@ -391,7 +391,7 @@ struct RuntimeConfig {
   bool trunc_allow_msb_error = false;
 
   // Threshold for shamir secret sharing.
-  uint64_t sss_threshold;
+  uint64_t sss_threshold = 0;
 
   /// System related configurations start.
 
