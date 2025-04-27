@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/mpc/shamir/prot_shamir_test.h"
+#include "libspu/mpc/experimental/shamir/prot_shamir_test.h"
 
 #include "libspu/core/prelude.h"
 #include "libspu/mpc/ab_api.h"
@@ -180,7 +180,7 @@ TEST_P(ShamirProtTest, MulAATrunc) {
     /* THEN */
     EXPECT_VALUE_ALMOST_EQ(r_a, r_p, npc);
     EXPECT_TRUE(verifyCost(obj->prot()->getKernel("mul_aa_trunc"),
-                           "mul_aa_trunc", conf.field(), kShape, npc, cost));
+                           "mul_aa_trunc", conf.field, kShape, npc, cost));
   });
 }
 
@@ -195,7 +195,7 @@ TEST_P(ShamirProtTest, ReLU) {
     auto p0 = rand_p(sctx.get(), kShape);
 
     // SECURENN has an msb input range requirement here
-    if (conf.protocol() == ProtocolKind::SECURENN) {
+    if (conf.protocol == ProtocolKind::SECURENN) {
       p0 = arshift_p(sctx.get(), p0, {1});
     }
 

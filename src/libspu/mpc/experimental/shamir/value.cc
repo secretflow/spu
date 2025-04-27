@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/mpc/shamir/value.h"
+#include "libspu/mpc/experimental/shamir/value.h"
 
 #include "libspu/core/prelude.h"
-#include "libspu/mpc/shamir/type.h"
+#include "libspu/mpc/experimental/shamir/type.h"
 
 namespace spu::mpc::shamir {
 

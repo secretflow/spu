@@ -129,7 +129,7 @@ enum ProtocolKind {
 
   // A semi-honest multi-party protocol in the honest-majority setting.
   // (https://www.usenix.org/conference/usenixsecurity24/presentation/liu-fengrun)
-  SHAMIR = 6;
+  SHAMIR = 7;
 }
 
 message ValueMetaProto {
