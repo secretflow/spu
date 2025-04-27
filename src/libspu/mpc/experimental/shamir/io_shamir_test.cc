@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/mpc/shamir/io_shamir_test.h"
+#include "libspu/mpc/experimental/shamir/io_shamir_test.h"
 
 #include "gtest/gtest.h"
 

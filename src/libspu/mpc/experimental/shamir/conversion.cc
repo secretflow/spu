@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/mpc/shamir/conversion.h"
+#include "libspu/mpc/experimental/shamir/conversion.h"
 
 #include <future>
 
@@ -24,8 +24,8 @@
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pv2k.h"
 #include "libspu/mpc/common/pv_gfmp.h"
-#include "libspu/mpc/shamir/type.h"
-#include "libspu/mpc/shamir/value.h"
+#include "libspu/mpc/experimental/shamir/type.h"
+#include "libspu/mpc/experimental/shamir/value.h"
 #include "libspu/mpc/utils/gfmp.h"
 #include "libspu/mpc/utils/gfmp_ops.h"
 #include "libspu/mpc/utils/ring_ops.h"
@@ -855,7 +855,7 @@ NdArrayRef MulAATrunc::proc(KernelEvalContext* ctx, const NdArrayRef& x,
   NdArrayRef r;
   std::tie(r_bits, r) = solved_bits(sctx, x.shape());
   auto zero_shares =
-      gen_zero_shares(ctx, tmp_2t.numel(), sctx->config().sss_threshold() << 1)
+      gen_zero_shares(ctx, tmp_2t.numel(), sctx->config().sss_threshold << 1)
           .reshape(tmp_2t.shape());
 
   auto r_msb = r_bits.back();

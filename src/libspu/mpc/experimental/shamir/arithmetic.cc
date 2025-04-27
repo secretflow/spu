@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "libspu/mpc/shamir/arithmetic.h"
+#include "libspu/mpc/experimental/shamir/arithmetic.h"
 
 #include <functional>
 
@@ -23,8 +23,8 @@
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pv2k.h"
 #include "libspu/mpc/common/pv_gfmp.h"
-#include "libspu/mpc/shamir/state.h"
-#include "libspu/mpc/shamir/type.h"
+#include "libspu/mpc/experimental/shamir/state.h"
+#include "libspu/mpc/experimental/shamir/type.h"
 #include "libspu/mpc/utils/gfmp.h"
 #include "libspu/mpc/utils/gfmp_ops.h"
 #include "libspu/mpc/utils/ring_ops.h"
@@ -68,7 +68,7 @@ NdArrayRef gen_zero_shares(KernelEvalContext* ctx, int64_t numel,
 std::pair<NdArrayRef, NdArrayRef> gen_double_shares(KernelEvalContext* ctx,
                                                     int64_t numel) {
   auto* comm = ctx->getState<Communicator>();
-  int64_t th = ctx->sctx()->config().sss_threshold();
+  int64_t th = ctx->sctx()->config().sss_threshold;
   int64_t world_size = comm->getWorldSize();
   const auto field = ctx->getState<Z2kState>()->getDefaultField();
   auto* prg_state = ctx->getState<PrgState>();
@@ -159,7 +159,7 @@ NdArrayRef RandA::proc(KernelEvalContext* ctx, const Shape& shape) const {
 #endif
 
   int64_t world_size = comm->getWorldSize();
-  int64_t th = ctx->sctx()->config().sss_threshold();
+  int64_t th = ctx->sctx()->config().sss_threshold;
   int64_t numel = shape.numel();
 
   // run one-time DN protocol we can generate (world_size-th) random shares
@@ -213,7 +213,7 @@ NdArrayRef P2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 #ifdef ENABLE_MASK_DURING_SHAMIR_P2A
   auto* prg_state = ctx->getState<PrgState>();
   auto* comm = ctx->getState<Communicator>();
-  int64_t th = ctx->sctx()->config().sss_threshold();
+  int64_t th = ctx->sctx()->config().sss_threshold;
   auto ty = makeType<PubGfmpTy>(field);
   auto coeffs =
       prg_state->genPublWithMersennePrime(field, {th * in.numel()}).as(ty);
@@ -236,7 +236,7 @@ NdArrayRef A2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
     auto rec = shamir_state->get_recontruction<ring2k_t>(arrays.size());
     if (comm->getRank() == 0) {
       out = gfmp_reconstruct_shamir_shares<ring2k_t>(
-          arrays, comm->getWorldSize(), ctx->sctx()->config().sss_threshold(),
+          arrays, comm->getWorldSize(), ctx->sctx()->config().sss_threshold,
           rec);
     }
     out = comm->broadcast(out, 0, in.eltype(), in.shape(), "distribute");
@@ -256,7 +256,7 @@ NdArrayRef A2V::proc(KernelEvalContext* ctx, const NdArrayRef& in,
     return DISPATCH_ALL_FIELDS(field, [&]() {
       auto rec = shamir_state->get_recontruction<ring2k_t>(arrays.size());
       auto out = gfmp_reconstruct_shamir_shares<ring2k_t>(
-          arrays, comm->getWorldSize(), ctx->sctx()->config().sss_threshold(),
+          arrays, comm->getWorldSize(), ctx->sctx()->config().sss_threshold,
           rec);
       return out.as(out_ty);
     });
@@ -271,7 +271,7 @@ NdArrayRef V2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const auto field = in_ty->field();
   auto* comm = ctx->getState<Communicator>();
   auto out_ty = makeType<AShrTy>(field);
-  auto th = ctx->sctx()->config().sss_threshold();
+  auto th = ctx->sctx()->config().sss_threshold;
   NdArrayRef out;
   if (comm->getRank() == owner_rank) {
     auto shares = gfmp_rand_shamir_shares(in, comm->getWorldSize(), th);
@@ -422,8 +422,8 @@ NdArrayRef MulAAP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
   auto tmp_2t = gfmp_mul_mod(lhs, rhs).as(lhs.eltype());
 
   // generate zero sharings of degree-2t
-  auto zero_shares = gen_zero_shares(
-      ctx, lhs.numel(), ctx->sctx()->config().sss_threshold() << 1);
+  auto zero_shares = gen_zero_shares(ctx, lhs.numel(),
+                                     ctx->sctx()->config().sss_threshold << 1);
 
   // add zero sharings
   NdArrayRef out(lhs.eltype(), lhs.shape());

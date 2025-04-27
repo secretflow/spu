@@ -37,7 +37,7 @@ Value make_pub2k(SPUContext* ctx, const PtBufferView& bv) {
 
   DataType dtype;
 
-  if (ctx->config().protocol() == ProtocolKind::SHAMIR) {
+  if (ctx->config().protocol == ProtocolKind::SHAMIR) {
     NdArrayRef encoded = encodeToGfmp(bv, field, fxp_bits, &dtype);
     return Value(encoded.as(makeType<mpc::PubGfmpTy>(field)), dtype);
   } else {

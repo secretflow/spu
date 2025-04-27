@@ -21,13 +21,13 @@
 #include "libspu/mpc/aby3/protocol.h"
 #include "libspu/mpc/cheetah/io.h"
 #include "libspu/mpc/cheetah/protocol.h"
+#include "libspu/mpc/experimental/shamir/io.h"
+#include "libspu/mpc/experimental/shamir/protocol.h"
 #include "libspu/mpc/ref2k/ref2k.h"
 #include "libspu/mpc/securenn/io.h"
 #include "libspu/mpc/securenn/protocol.h"
 #include "libspu/mpc/semi2k/io.h"
 #include "libspu/mpc/semi2k/protocol.h"
-#include "libspu/mpc/shamir/io.h"
-#include "libspu/mpc/shamir/protocol.h"
 
 namespace spu::mpc {
 
@@ -78,7 +78,7 @@ std::unique_ptr<IoInterface> Factory::CreateIO(const RuntimeConfig& conf,
       return securenn::makeSecurennIo(conf.field, npc);
     }
     case ProtocolKind::SHAMIR: {
-      return shamir::makeShamirIo(conf.field(), npc, conf.sss_threshold());
+      return shamir::makeShamirIo(conf.field, npc, conf.sss_threshold);
     }
     default: {
       SPU_THROW("Invalid protocol kind {}", conf.protocol);
