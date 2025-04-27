@@ -26,10 +26,11 @@ sml_py_binary(
 )
 
 sml_py_binary(
-    name = "jacobi_svd_emul",
-    srcs = ["jacobi_svd_emul.py"],
+    name = "jacobievd_emul",
+    srcs = ["jacobievd_emul.py"],
+    data = [":conf"],
     deps = [
-        "//sml/utils:jacobi_svd",
+        "//sml/utils:extmath",
     ],
 )
 
