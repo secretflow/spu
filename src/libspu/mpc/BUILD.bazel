@@ -49,10 +49,10 @@ spu_cc_library(
         "//libspu/mpc/aby3",
         "//libspu/mpc/cheetah",
         "//libspu/mpc/experimental/swift",
+        "//libspu/mpc/experimental/shamir",
         "//libspu/mpc/ref2k",
         "//libspu/mpc/securenn",
         "//libspu/mpc/semi2k",
-        "//libspu/mpc/experimental/shamir",
     ],
 )
 
