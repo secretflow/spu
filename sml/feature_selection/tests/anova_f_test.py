@@ -24,11 +24,11 @@ import spu.libspu as libspu
 import spu.utils.simulation as spsim
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../../'))
-from sml.feature_selection.anova_f import f_classif_multi
+from sml.feature_selection.anova_f import f_classif
 
 
 class AnovaFTest(unittest.TestCase):
-    def test_anova_f_multi(self):
+    def test_anova_f(self):
         """Tests ANOVA F-statistic and p-value calculation using multi-feature API."""
         start = time.time()
 
@@ -36,8 +36,20 @@ class AnovaFTest(unittest.TestCase):
             3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM128
         )
 
+        # Fixed-point precision parameters
+        fxp_fraction_bits = 26
+        epsilon = 2 ** (-fxp_fraction_bits)
+        fpmin = 2 ** (-fxp_fraction_bits)
+
         def proc_multi(x_all_features, y_labels, k):
-            f_stat, p_val = f_classif_multi(x_all_features, y_labels, k)
+            f_stat, p_val = f_classif(
+                x_all_features,
+                y_labels,
+                k,
+                p_value_iter=100,
+                epsilon=epsilon,
+                fpmin=fpmin,
+            )
             return f_stat, p_val
 
         np.random.seed(0)

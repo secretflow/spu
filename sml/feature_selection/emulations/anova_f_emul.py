@@ -22,11 +22,11 @@ from sklearn.feature_selection import f_classif as f_classif_sklearn
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../../'))
 import sml.utils.emulation as emulation
-from sml.feature_selection.anova_f import f_classif_multi
+from sml.feature_selection.anova_f import f_classif
 
 
 def test_anova_f(mode: emulation.Mode = emulation.Mode.MULTIPROCESS):
-    def emul_ANOVA_F_multi():
+    def emul_ANOVA_F():
         """
         Emulation function for ANOVA F-test with multi-class data.
 
@@ -37,21 +37,30 @@ def test_anova_f(mode: emulation.Mode = emulation.Mode.MULTIPROCESS):
 
         def load_data():
             """Loads the Iris dataset."""
+
             print("Loading Iris dataset...")
             x, y = load_iris(return_X_y=True)
-
             x = x.astype(np.float64)
             y = y.astype(np.int64)
             return x, y
 
-        def proc(x_feature, y_labels, k):
+        def proc(x_all_features, y_labels, k):
             """The function to be executed in SPU, wrapping the JAX logic for multi-class."""
 
-            f_stat, p_val = f_classif_multi(x_feature, y_labels, k)
+            fxp_fraction_bits = 26
+            epsilon = 2 ** (-fxp_fraction_bits)
+            fpmin = 2 ** (-fxp_fraction_bits)
+            f_stat, p_val = f_classif(
+                x_all_features,
+                y_labels,
+                k,
+                p_value_iter=100,
+                epsilon=epsilon,
+                fpmin=fpmin,
+            )
             return f_stat, p_val
 
         try:
-            # Load data
             x, y = load_data()
             num_classes = len(np.unique(y))
             num_features = x.shape[1]
@@ -67,77 +76,58 @@ def test_anova_f(mode: emulation.Mode = emulation.Mode.MULTIPROCESS):
             print(f"Running time in SKlearn: {end_time - start_time:.3f}s")
             print("========================================")
 
-            total_spu_time = 0
+            print("Sealing data...")
+            X_spu, y_spu = emulator.seal(x, y)
+            print("Data sealed.")
+
+            print("Running SPU computation...")
+            start_time = time.time()
+            f_spu, p_spu = emulator.run(proc, static_argnums=(2,))(
+                X_spu, y_spu, num_classes
+            )
+            end_time = time.time()
+            total_spu_time = end_time - start_time
+            print(f"SPU computation finished in {total_spu_time:.3f}s.")
+
+            rtol = 1e-1
+            atol = 1e-1
+
             for idx in range(num_features):
-                print(f"\n--- Emulating Feature {idx} ---")
-                x_feature_plain = x[:, idx : idx + 1]  # Shape (N, 1)
-                y_plain = y  # Shape (N,)
-
-                print("Sealing data...")
-                X_feat_spu, y_spu = emulator.seal(x_feature_plain, y_plain)
-                print("Data sealed.")
-
-                print("Running SPU computation...")
-                start_time = time.time()
-                f_spu, p_spu = emulator.run(proc, static_argnums=(2,))(
-                    X_feat_spu, y_spu, num_classes
-                )
-                end_time = time.time()
-                feature_spu_time = end_time - start_time
-                total_spu_time += feature_spu_time
-                print(
-                    f"SPU computation for feature {idx} finished in {feature_spu_time:.3f}s."
-                )
-
                 f_ref_val = sklearn_f_stats[idx]
                 p_ref_val = sklearn_p_values[idx]
-                print(
-                    f"SPU Result: F={f_spu[0]}, p={p_spu[0]}"
-                )  # Results are shape (1,)
-                print(f"SKL Result: F={f_ref_val}, p={p_ref_val}")
+                f_res = f_spu[idx]
+                p_res = p_spu[idx]
 
-                rtol = 1e-1
-                atol = 1e-1
+                print(f"\n--- Feature {idx} ---")
+                print(f"SPU Result: F={f_res:.6f}, p={p_res:.6e}")
+                print(f"SKL Result: F={f_ref_val:.6f}, p={p_ref_val:.6e}")
 
-                # Check F-statistic
-                if np.isnan(f_ref_val):
-                    assert np.isnan(
-                        f_spu[0]
-                    ), f"F-stat FAIL (Ref: NaN, SPU: {f_spu[0]})"
-                elif np.isinf(f_ref_val):
-                    assert (
-                        np.isinf(f_spu[0]) or f_spu[0] > 1e10
-                    ), f"F-stat FAIL (Ref: Inf, SPU: {f_spu[0]})"
+                if np.isinf(f_ref_val):
+                    assert f_res > 1e10, f"F-stat mismatch (Ref: Inf, SPU: {f_res})"
                 else:
                     assert np.allclose(
-                        f_spu[0], f_ref_val, rtol=rtol, atol=atol
-                    ), f"F-stat FAIL (Ref: {f_ref_val}, SPU: {f_spu[0]})"
+                        f_res, f_ref_val, rtol=rtol, atol=atol
+                    ), f"F-stat mismatch (Ref: {f_ref_val}, SPU: {f_res})"
 
-                # Check P-value (with tolerance and check for very small values)
-                if np.isnan(p_ref_val):
-                    assert np.isnan(
-                        p_spu[0]
-                    ), f"P-value FAIL (Ref: NaN, SPU: {p_spu[0]})"
-                elif np.isinf(f_ref_val):
-                    assert (
-                        np.isinf(p_spu[0]) or p_spu[0] > 1e10
-                    ), f"P-value FAIL (Ref: Inf, SPU: {p_spu[0]})"
+                if np.isinf(f_ref_val):
+                    assert p_res < atol, f"P-value mismatch (Ref: 0.0, SPU: {p_res})"
                 else:
-                    if not np.allclose(p_spu[0], p_ref_val, rtol=rtol, atol=atol):
-                        if p_ref_val < atol and p_spu[0] < atol:
-                            print(
-                                f"Note: P-value comparison failed strict tolerance but both values < {atol}. Accepting."
-                            )
+                    try:
+                        assert np.allclose(
+                            p_res, p_ref_val, rtol=rtol, atol=atol
+                        ), f"P-value mismatch (Ref: {p_ref_val}, SPU: {p_res})"
+                    except AssertionError:
+                        if p_ref_val < atol and p_res < atol:
+                            print(f"Note: P-values both < {atol:.6e}, accepting.")
                         else:
-                            assert (
-                                False
-                            ), f"P-value FAIL (Ref: {p_ref_val}, SPU: {p_spu[0]})"  # Fail assertion
+                            raise
 
                 print(f"Feature {idx} comparison PASSED.")
 
             print("========================================")
             print(f"Total SPU running time: {total_spu_time:.3f}s")
             print("========================================")
+            print("All comparisons passed.")
 
         except Exception as e:
             print(f"An error occurred during emulation: {e}")
@@ -150,7 +140,7 @@ def test_anova_f(mode: emulation.Mode = emulation.Mode.MULTIPROCESS):
             emulation.CLUSTER_ABY3_3PC, mode, bandwidth=300, latency=20
         )
         emulator.up()
-        emul_ANOVA_F_multi()
+        emul_ANOVA_F()
     finally:
         emulator.down()
 
