@@ -36,8 +36,6 @@ def test_anova_f(mode: emulation.Mode = emulation.Mode.MULTIPROCESS):
         print("Start ANOVA F-test multi-class emulation...")
 
         def load_data():
-            """Loads the Iris dataset."""
-
             print("Loading Iris dataset...")
             x, y = load_iris(return_X_y=True)
             x = x.astype(np.float64)
@@ -45,8 +43,6 @@ def test_anova_f(mode: emulation.Mode = emulation.Mode.MULTIPROCESS):
             return x, y
 
         def proc(x_all_features, y_labels, k):
-            """The function to be executed in SPU, wrapping the JAX logic for multi-class."""
-
             fxp_fraction_bits = 26
             epsilon = 2 ** (-fxp_fraction_bits)
             fpmin = 2 ** (-fxp_fraction_bits)

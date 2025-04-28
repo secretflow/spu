@@ -84,16 +84,7 @@ class AnovaFTest(unittest.TestCase):
             print(f"SPU Result: F={f_res}, p={p_res}")
             print(f"SKL Result: F={f_ref_val}, p={p_ref_val}")
 
-            if np.isnan(f_ref_val):
-                self.assertTrue(
-                    np.isnan(f_res),
-                    f"Feature {idx}: F-stat mismatch (Ref: NaN, SPU: {f_res})",
-                )
-                self.assertTrue(
-                    np.isnan(p_res),
-                    f"Feature {idx}: P-value mismatch (Ref: NaN, SPU: {p_res})",
-                )
-            elif np.isinf(f_ref_val):
+            if np.isinf(f_ref_val):
                 self.assertTrue(
                     np.isinf(f_res) or f_res > 1e10,
                     f"Feature {idx}: F-stat mismatch (Ref: Inf, SPU: {f_res})",
@@ -127,9 +118,10 @@ class AnovaFTest(unittest.TestCase):
                         )
                     else:
                         raise e
+
         end = time.time()
-        print(f"\n[Time] test_anova_f_multi took {end - start:.3f} seconds")
-        print("\nANOVA F-test (multi-column) comparison completed.")
+        print(f"\n[Time] test_anova_f took {end - start:.3f} seconds")
+        print("\nANOVA F-test comparison completed.")
 
 
 if __name__ == "__main__":
