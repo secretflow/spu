@@ -25,6 +25,15 @@ sml_py_binary(
     ],
 )
 
+sml_py_binary(
+    name = "jacobievd_emul",
+    srcs = ["jacobievd_emul.py"],
+    data = [":conf"],
+    deps = [
+        "//sml/utils:extmath",
+    ],
+)
+
 filegroup(
     name = "conf",
     srcs = [
