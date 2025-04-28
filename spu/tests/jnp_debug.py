@@ -40,3 +40,4 @@ if __name__ == "__main__":
 
     print(f"spu out = {z}")
     print(f"cpu out = {fn(x, y)}")
+    

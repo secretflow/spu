@@ -132,6 +132,7 @@ enum ProtocolKind {
   // (https://eprint.iacr.org/2020/592)
   SWIFT = 6;
 
+  // WARNING: This protocol is experimental only.
   // A semi-honest multi-party protocol in the honest-majority setting.
   // (https://www.usenix.org/conference/usenixsecurity24/presentation/liu-fengrun)
   SHAMIR = 7;

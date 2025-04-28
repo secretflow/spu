@@ -127,6 +127,7 @@ enum ProtocolKind {
   // (https://eprint.iacr.org/2020/592)
   SWIFT = 6,
 
+  // WARNING: This protocol is experimental only.
   // A scalable MPC protocol for Neural Network,
   // (https://www.usenix.org/system/files/usenixsecurity24-liu-fengrun.pdf)
   SHAMIR = 7,

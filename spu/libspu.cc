@@ -583,8 +583,6 @@ void BindSPU(py::module& m) {
       .value("ABY3", ProtocolKind::ABY3)
       .value("CHEETAH", ProtocolKind::CHEETAH)
       .value("SECURENN", ProtocolKind::SECURENN)
-      // .value("SWIFT", ProtocolKind::SWIFT)
-      // .value("SHAMIR", ProtocolKind::SHAMIR)
       .export_values();
 
   // bind RuntimeConfig
@@ -709,9 +707,8 @@ void BindSPU(py::module& m) {
       .def_readwrite("cheetah_2pc_config", &RuntimeConfig::cheetah_2pc_config)
       .def_readwrite("trunc_allow_msb_error",
                      &RuntimeConfig::trunc_allow_msb_error)
-      // sss_threshold is specialized for Shamir-based protocol
-      // .def_readwrite("sss_threshold",
-                      // &RuntimeConfig::sss_threshold)
+      .def_readwrite("sss_threshold",
+                      &RuntimeConfig::sss_threshold)
       .def_readwrite("experimental_disable_mmul_split",
                      &RuntimeConfig::experimental_disable_mmul_split)
       .def_readwrite("experimental_enable_inter_op_par",
