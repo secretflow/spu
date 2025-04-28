@@ -1,4 +1,4 @@
-# Copyright 2023 Ant Group Co., Ltd.
+# Copyright 2025 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,30 +17,31 @@ load("//bazel:spu.bzl", "sml_py_library")
 package(default_visibility = ["//visibility:public"])
 
 sml_py_library(
-    name = "emulation",
-    srcs = [
-        "emulation.py",
-        # "@spulib//libspu:spu_py_proto",
-    ],
-    data = [
-        "//examples/python/conf",  # FIXME
-    ],
-    deps = [
-        "//spu/utils:distributed",
-    ],
+    name = "jacobi",
+    srcs = ["jacobi.py"],
 )
 
 sml_py_library(
-    name = "fxp_approx",
-    srcs = ["fxp_approx.py"],
+    name = "dijkstra",
+    srcs = ["dijkstra.py"],
 )
 
 sml_py_library(
-    name = "extmath",
-    srcs = ["extmath.py"],
+    name = "isomap",
+    srcs = ["isomap.py"],
 )
 
 sml_py_library(
-    name = "jacobi_svd",
-    srcs = ["jacobi_svd.py"],
+    name = "kneighbors",
+    srcs = ["kneighbors.py"],
+)
+
+sml_py_library(
+    name = "floyd",
+    srcs = ["floyd.py"],
+)
+
+sml_py_library(
+    name = "se",
+    srcs = ["se.py"],
 )

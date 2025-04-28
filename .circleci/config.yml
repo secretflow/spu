@@ -17,7 +17,7 @@ version: 2.1
 setup: true
 
 orbs:
-  path-filtering: circleci/path-filtering@1.1.0
+  path-filtering: circleci/path-filtering@1.2.0
   continuation: circleci/continuation@1.0.0
 
 parameters:
@@ -70,6 +70,7 @@ workflows:
       - path-filtering/filter:
           base-revision: main
           config-path: .circleci/continue-config.yml
+          tag: "3.9"
           mapping: |
             spu/.* build-and-run true
             src/.* build-and-run true
