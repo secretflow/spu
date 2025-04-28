@@ -67,7 +67,8 @@ The following numbers reflect the performance of a **single model update**:
 
 ## WAN Simulation
 
-To simulate a WAN environment with **10ms RTT latency** and **100Mbps bandwidth** using the `tc` command, configure the local network interface (lo) as follows:
+To simulate a WAN environment with **10ms RTT latency** and **100Mbps bandwidth** using the `tc` command,
+configure the local network interface (lo) as follows:
 
 Since both incoming and outgoing traffic experience latency, set the one-way delay to **5ms**.
 
