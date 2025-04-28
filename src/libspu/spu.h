@@ -123,8 +123,9 @@ enum ProtocolKind {
   SECURENN = 5,
 
   // The malicious 3PC-protocol version of swift
+  // This is an experimental protocol! Don't use it.
   // (https://eprint.iacr.org/2020/592)
-  // SWIFT = 6,
+  SWIFT = 6,
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -427,7 +428,7 @@ struct RuntimeConfig {
                 int64_t fxp_fraction_bits = 0)
       : protocol(protocol),
         field(field),
-        fxp_fraction_bits(fxp_fraction_bits) {};
+        fxp_fraction_bits(fxp_fraction_bits){};
   RuntimeConfig(const RuntimeConfig& other) = default;
   explicit RuntimeConfig(const pb::RuntimeConfig& pb_conf);
 
