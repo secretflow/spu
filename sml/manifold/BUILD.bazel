@@ -1,4 +1,4 @@
-# Copyright 2024 Ant Group Co., Ltd.
+# Copyright 2025 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,4 +12,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-SPU_VERSION = "0.9.4.dev20250416"
+load("//bazel:spu.bzl", "sml_py_library")
+
+package(default_visibility = ["//visibility:public"])
+
+sml_py_library(
+    name = "jacobi",
+    srcs = ["jacobi.py"],
+)
+
+sml_py_library(
+    name = "dijkstra",
+    srcs = ["dijkstra.py"],
+)
+
+sml_py_library(
+    name = "isomap",
+    srcs = ["isomap.py"],
+)
+
+sml_py_library(
+    name = "kneighbors",
+    srcs = ["kneighbors.py"],
+)
+
+sml_py_library(
+    name = "floyd",
+    srcs = ["floyd.py"],
+)
+
+sml_py_library(
+    name = "se",
+    srcs = ["se.py"],
+)

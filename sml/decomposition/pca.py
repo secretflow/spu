@@ -25,6 +25,7 @@ from sml.utils import extmath
 
 class Method(Enum):
     PCA_power = 'power_iteration'
+    PCA_jacobi = 'serial_jacobi_iteration'
     PCA_rsvd = 'rsvd'
 
 
@@ -35,6 +36,7 @@ class PCA:
         n_components: int,
         n_oversamples: int = 10,
         max_power_iter: int = 300,
+        max_jacobi_iter: int = 5,
         projection_iter: int = 4,
         random_matrix=None,
         scale=None,
@@ -54,6 +56,8 @@ class PCA:
             used to find the range of A is n_components + n_oversamples
         max_power_iter : int, default=300
             Maximum number of iterations for Power Iteration, larger numbers mean higher accuracy and more time consuming.
+        max_jacobi_iter : int, default=5/10
+            Maximum number of iterations for Jacobi Method, larger numbers mean higher accuracy and more time consuming.
         projection_iter : int, default=4
             Used when the 'rsvd' method is used. Number of projection iterations.
             It is set to 4, unless `n_components` is small (< .1 * min(X.shape)) in which case `n_iter` is set to 7.
@@ -79,6 +83,7 @@ class PCA:
         self._n_components = n_components
         self._n_oversamples = n_oversamples  # used in rsvd
         self._max_power_iter = max_power_iter
+        self._max_jacobi_iter = max_jacobi_iter
         self._mean = None
         self._components = None
         self._variances = None
@@ -95,6 +100,11 @@ class PCA:
         After finding the largest eigenvalue and eigenvector, we deflate the matrix by subtracting the outer product of the
         eigenvector and itself, scaled by the eigenvalue. This leaves a matrix with the same eigenvectors, but the largest
         eigenvalue is replaced by zero.
+
+        In the 'serial_jacobi_iteration' method, we use the Serial Jacobi Iteration algorithm to compute the eigenvalues and eigenvectors.
+        The Serial Jacobi Iteration algorithm works by iteratively performing Givens Rotation to transform the off-diagonal elements of matrix to zeros,
+        until the matrix becomes almost diagonal.
+        Then the elements in the diagonal are approximations of the (real) eigenvalues of matrix.
 
         In the 'rsvd' method, we use the Randomized SVD to compute the eigenvalues and eigenvectors.
         Step 0: For matrix A of size n_sample * n_feature, identify a target rank(n_component).
@@ -157,6 +167,21 @@ class PCA:
 
             self._components = jnp.column_stack(components)
             self._variances = jnp.array(variances)
+
+        elif self._method == Method.PCA_jacobi:
+
+            cov_matrix = jnp.cov(X_centered, rowvar=False)
+
+            result = extmath.serial_jacobi_evd(
+                cov_matrix, max_jacobi_iter=self._max_jacobi_iter
+            )
+
+            sorted_indices = jnp.argsort(result[0])[::-1]
+            top_k_indices = sorted_indices[: self._n_components]
+            components = result[1].T[top_k_indices]
+
+            self._components = components.T
+            self._variances = result[0][top_k_indices]
 
         elif self._method == Method.PCA_rsvd:
             result = extmath.randomized_svd(
