@@ -49,7 +49,7 @@ class ProtocolKind(enum.IntEnum):
     ABY3 = 3
     CHEETAH = 4
     SECURENN = 5
-    SHAMIR = 7
+    # SHAMIR = 7
 
 class ClientSSLConfig:
     def __init__(
