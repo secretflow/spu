@@ -124,7 +124,7 @@ enum ProtocolKind {
 
   // The malicious 3PC-protocol version of swift
   // (https://eprint.iacr.org/2020/592)
-  SWIFT = 6,
+  // SWIFT = 6,
 };
 
 //////////////////////////////////////////////////////////////////////////

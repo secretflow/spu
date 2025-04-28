@@ -586,7 +586,7 @@ void BindSPU(py::module& m) {
       .value("ABY3", ProtocolKind::ABY3)
       .value("CHEETAH", ProtocolKind::CHEETAH)
       .value("SECURENN", ProtocolKind::SECURENN)
-      .value("SWIFT", ProtocolKind::SWIFT)
+      // .value("SWIFT", ProtocolKind::SWIFT)
       .export_values();
 
   // bind RuntimeConfig

@@ -266,9 +266,9 @@ std::string RuntimeConfig::DumpToString() const {
     case ProtocolKind::SECURENN:
       ss += "SECURENN";
       break;
-    case ProtocolKind::SWIFT:
-      ss += "SWIFT";
-      break;
+    // case ProtocolKind::SWIFT:
+    //   ss += "SWIFT";
+    //   break;
   }
   ss += "\n";
 
