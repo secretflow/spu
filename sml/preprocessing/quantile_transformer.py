@@ -198,7 +198,6 @@ class QuantileTransformer:
                 f"was fitted with {self._n_features_in} features."
             )
 
-
         return _vmap_inverse_transform_features(
             X_transformed, self.quantiles_, self.references_
         )
