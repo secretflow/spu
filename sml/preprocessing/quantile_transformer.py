@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import warnings
+
 import jax
 import jax.numpy as jnp
 import jax.random as random
@@ -23,47 +25,73 @@ class QuantileTransformer:
         self,
         n_quantiles=1000,
         output_distribution='uniform',
-        subsample=100000,
+        subsample=100_000,
         random_state=None,
     ):
-        """Initialize the transformer for uniform output distribution. NaN values are not handled.
+        """Initialize the transformer.
+
+        Transforms features using quantiles information. This implementation focuses
+        on mapping to a uniform distribution.
 
         Args:
-            n_quantiles (int): The number of quantiles to compute. Defaults to 1000.
-            output_distribution (str): Type of output distribution, currently only 'uniform' is supported.
-            subsample (int): Maximum number of samples used for computation.
-                             (Note: currently not used in the implementation). Defaults to 100,000.
-            random_state (int, optional): Random seed for reproducibility. Defaults to None.
+            n_quantiles (int): The number of quantiles to be computed. It corresponds
+                               to the number of landmarks used to discretize the
+                               cumulative distribution function. Defaults to 1000.
+            output_distribution (str): Marginal distribution for the transformed data.
+                                       Currently only 'uniform' is implemented and enforced.
+                                       Defaults to 'uniform'.
+            subsample (int): Maximum number of samples used to estimate the quantiles
+                             for computational efficiency. Note: subsampling may lead to
+                             a less precise transformation. Defaults to 100,000.
+            random_state (int, optional): Determines random number generation for subsampling.
+                                         Pass an int for reproducible results across multiple
+                                         function calls. Defaults to None.
 
         Raises:
             ValueError: If parameters are invalid.
 
         Note:
-            This transformer assumes the input data contains no NaN values.
-            The user **must** handle any NaNs (e.g., through imputation or removal)
-            *before* passing the data to this transformer's methods (`fit`, `transform`).
-            If the input data contains NaNs, the transformer may produce incorrect
-            results or errors without warning.
-            The output distribution is always 'uniform'.
+            - This transformer assumes the input data contains no NaN values.
+              The user **must** handle any NaNs (e.g., through imputation or removal)
+              *before* passing the data to this transformer's methods (`fit`, `transform`).
+              If the input data contains NaNs, the behavior is undefined and may lead
+              to errors or incorrect results (`jnp.percentile` might error or return NaN).
+            - The `output_distribution` parameter is currently ignored, and the output
+              is always uniform.
         """
         if not isinstance(n_quantiles, int) or n_quantiles <= 0:
-            raise ValueError("n_quantiles must be a positive integer.")
+            raise ValueError(
+                f"n_quantiles must be a positive integer, got {n_quantiles}."
+            )
+        if output_distribution != 'uniform':
+            warnings.warn(
+                f"output_distribution='{output_distribution}' is not supported. "
+                f"Using 'uniform' instead.",
+                UserWarning,
+            )
+            self.output_distribution = 'uniform'
+        else:
+            self.output_distribution = output_distribution
         if not isinstance(subsample, int) or subsample <= 0:
-            raise ValueError("subsample must be a positive integer.")
+            raise ValueError(f"subsample must be a positive integer, got {subsample}.")
+        if random_state is not None and not isinstance(random_state, int):
+            raise ValueError(
+                f"random_state must be an integer or None, got {random_state}."
+            )
 
         self.n_quantiles = n_quantiles
-        self.output_distribution = output_distribution
         self.subsample = subsample
         self.random_state = random_state
+        self._key = random.PRNGKey(random_state if random_state is not None else 0)
+
         self.quantiles_ = None
         self.references_ = None
         self.n_quantiles_ = None
-        self._n_features = None
+        self._n_features_in = None
         self._input_shape = None
-        self._key = random.PRNGKey(random_state if random_state is not None else 0)
 
     def fit(self, X):
-        """Fit the transformer, assuming the input data X has no NaNs.
+        """Compute the quantiles used for transforming.
 
         Args:
             X (array-like): Input data, shape (n_samples, n_features).
@@ -73,57 +101,110 @@ class QuantileTransformer:
             self: The fitted transformer.
 
         Raises:
-            ValueError: If X is not a 2D array or contains NaN values.
+            ValueError: If X is not a 2D array.
         """
-        # Convert to a jax array
         X = jnp.asarray(X)
-
         if X.ndim != 2:
-            raise ValueError("Input array X must be 2D.")
+            raise ValueError(f"Input array X must be 2D, got {X.ndim} dimensions.")
 
         n_samples, n_features = X.shape
-        self._n_features = n_features
+        self._n_features_in = n_features
         self._input_shape = X.shape
 
-        self.n_quantiles_ = max(1, min(self.n_quantiles, n_samples))
+        actual_n_samples = n_samples
+        if self.subsample < n_samples:
+            actual_n_samples = self.subsample
 
-        quantiles_ = jnp.zeros((self.n_quantiles_, n_features), dtype=jnp.float32)
-        references_ = jnp.zeros((self.n_quantiles_, n_features), dtype=jnp.float32)
-        target_quantiles = jnp.linspace(0, 1, self.n_quantiles_, dtype=jnp.float32)
+            self._key, subkey = random.split(self._key)
 
-        def compute_quantile(p, sorted_col):
-            """Computes quantile using linear interpolation."""
-            index = p * (n_samples - 1)
-            floor_idx = jnp.clip(jnp.floor(index).astype(int), 0, n_samples - 1)
-            ceil_idx = jnp.clip(jnp.ceil(index).astype(int), 0, n_samples - 1)
-            floor_val = sorted_col[floor_idx]
-            ceil_val = sorted_col[ceil_idx]
-            weight = index - floor_idx
-            return floor_val + weight * (ceil_val - floor_val)
-
-        for j in range(n_features):
-            column_vec = X[:, j]
-            sorted_column = jnp.sort(column_vec)
-            tol = 1e-4
-            first_value = sorted_column[0]
-            last_value = sorted_column[-1]
-            is_constant = jnp.abs(first_value - last_value) < tol
-
-            refs_j = jnp.where(
-                is_constant,
-                jnp.full((self.n_quantiles_,), first_value, dtype=jnp.float32),
-                vmap(lambda p: compute_quantile(p, sorted_column))(target_quantiles),
+            indices = random.choice(
+                subkey, n_samples, shape=(self.subsample,), replace=False
             )
-            references_ = references_.at[:, j].set(refs_j)
+            X_subset = X[indices]
+            if self.random_state is None:
+                warnings.warn(
+                    "Subsampling is enabled, but random_state is not set. "
+                    "Subsampling results may differ between runs."
+                )
+        else:
+            X_subset = X
 
-            quantiles_ = quantiles_.at[:, j].set(target_quantiles)
+        self.n_quantiles_ = max(1, min(self.n_quantiles, actual_n_samples))
 
-        self.references_ = references_
-        self.quantiles_ = quantiles_
+        target_quantiles_prob = jnp.linspace(0, 1, self.n_quantiles_, dtype=jnp.float32)
+        self.quantiles_ = target_quantiles_prob
+
+        references_perc = target_quantiles_prob * 100
+
+        empirical_quantiles = jnp.percentile(
+            X_subset, q=references_perc, axis=0, method='linear'
+        )
+
+        self.references_ = empirical_quantiles
+
         return self
 
     def transform(self, X):
-        """Transform the data to a uniform distribution. Input X must not contain NaNs.
+        """Transform the data to a uniform distribution using computed quantiles.
+
+        Args:
+            X (array-like): Input data, shape (n_samples, n_features).
+                           Must not contain NaN values.
+
+        Returns:
+            Transformed data (uniform distribution), shape (n_samples, n_features).
+
+        Raises:
+            RuntimeError: If the transformer has not been fitted.
+            ValueError: If the number of features in X does not match the fitted data.
+        """
+        self._check_is_fitted()
+        X = jnp.asarray(X)
+
+        if X.ndim != 2:
+            raise ValueError(f"Input array X must be 2D, got {X.ndim} dimensions.")
+        if X.shape[1] != self._n_features_in:
+            raise ValueError(
+                f"Input has {X.shape[1]} features, but QuantileTransformer "
+                f"was fitted with {self._n_features_in} features."
+            )
+
+        return _vmap_transform_features(X, self.quantiles_, self.references_)
+
+    def inverse_transform(self, X_transformed):
+        """Inverse transform the data from the uniform scale back to the original scale.
+
+        Args:
+            X_transformed (array-like): Transformed data (uniform scale, values assumed ~[0, 1]),
+                                         shape (n_samples, n_features).
+
+        Returns:
+            Data in the original scale, shape (n_samples, n_features).
+
+        Raises:
+            RuntimeError: If the transformer has not been fitted.
+            ValueError: If the number of features in X_transformed does not match the fitted data.
+        """
+        self._check_is_fitted()
+        X_transformed = jnp.asarray(X_transformed)
+
+        if X_transformed.ndim != 2:
+            raise ValueError(
+                f"Input array X_transformed must be 2D, got {X_transformed.ndim} dimensions."
+            )
+        if X_transformed.shape[1] != self._n_features_in:
+            raise ValueError(
+                f"Input has {X_transformed.shape[1]} features, but QuantileTransformer "
+                f"was fitted with {self._n_features_in} features."
+            )
+
+
+        return _vmap_inverse_transform_features(
+            X_transformed, self.quantiles_, self.references_
+        )
+
+    def fit_transform(self, X):
+        """Fit the transformer and then transform the data.
 
         Args:
             X (array-like): Input data, shape (n_samples, n_features).
@@ -132,75 +213,82 @@ class QuantileTransformer:
         Returns:
             Transformed data (uniform distribution), shape (n_samples, n_features).
         """
-        self._check_is_fitted()
-        X = jnp.asarray(X)
-        if X.shape[1] != self._n_features:
-            raise ValueError(f"Expected {self._n_features} features, got {X.shape[1]}.")
-
-        return _vmap_transform_features(X, self.quantiles_, self.references_)
-
-    def inverse_transform(self, X_transformed):
-        """Inverse transform the data from the uniform scale.
-
-        Args:
-            X_transformed (array-like): Transformed data (uniform scale),
-                                         shape (n_samples, n_features).
-
-        Returns:
-            Data in the original scale, shape (n_samples, n_features).
-        """
-        self._check_is_fitted()
-        X_transformed = jnp.asarray(X_transformed)
-        if X_transformed.shape[1] != self._n_features:
-            raise ValueError(
-                f"Expected {self._n_features} features, got {X_transformed.shape[1]}."
-            )
-
-        return _vmap_inverse_transform_features(
-            X_transformed, self.quantiles_, self.references_
-        )
-
-    def fit_transform(self, X):
-        """Fit the transformer and then transform the data to a uniform distribution.
-        Input X must not contain NaNs."""
         return self.fit(X).transform(X)
 
     def _check_is_fitted(self):
         """Check if the transformer has been fitted."""
         if self.quantiles_ is None or self.references_ is None:
             raise RuntimeError(
-                "Transformer is not fitted. Call the 'fit' method first."
+                "This QuantileTransformer instance is not fitted yet. "
+                "Call 'fit' with appropriate arguments before using this estimator."
             )
 
 
-def _transform_single_feature(x_col, q_col, r_col):
-    """Transform a single feature (column) to a uniform distribution."""
+def _transform_single_feature(x_col, target_quantiles_prob, empirical_quantiles_vals):
+    """Transform a single feature (column) to a uniform distribution [0, 1].
 
-    is_constant_col = jnp.abs(r_col[0] - r_col[-1]) < 1e-4
+    Args:
+        x_col: Input data column (n_samples,).
+        target_quantiles_prob: Target quantiles (probabilities, linspace 0 to 1) (n_quantiles_,).
+        empirical_quantiles_vals: Data values corresponding to target_quantiles_prob (n_quantiles_,).
 
-    transformed_col = jnp.interp(x_col, r_col, q_col, left=0.0, right=1.0)
+    Returns:
+        Transformed data column mapped to [0, 1].
+    """
 
-    constant_value = 0.0  # Hardcoded for uniform
-    return jnp.where(is_constant_col, constant_value, transformed_col)
+    tol = 1e-7
+    is_constant_col = (
+        jnp.abs(empirical_quantiles_vals[0] - empirical_quantiles_vals[-1]) < tol
+    )
+
+    transformed_col = jnp.interp(
+        x_col,
+        empirical_quantiles_vals,  # xp: Data values at known quantiles
+        target_quantiles_prob,  # fp: The known quantiles (0 to 1)
+        left=0.0,  # Map values below min reference to 0
+        right=1.0,  # Map values above max reference to 1
+    )
+
+    constant_output_value = 0
+
+    return jnp.where(is_constant_col, constant_output_value, transformed_col)
 
 
-def _inverse_transform_single_feature(xt_col, q_col, r_col):
-    """Inverse transform a single feature (column) from uniform scale."""
+def _inverse_transform_single_feature(
+    xt_col, target_quantiles_prob, empirical_quantiles_vals
+):
+    """Inverse transform a single feature (column) from uniform scale [0, 1] to original scale.
 
-    is_constant_col = jnp.abs(r_col[0] - r_col[-1]) < 1e-4
+    Args:
+        xt_col: Transformed data column (uniform scale, ~[0, 1]) (n_samples,).
+        target_quantiles_prob: Target quantiles (probabilities, linspace 0 to 1) (n_quantiles_,).
+        empirical_quantiles_vals: Data values corresponding to target_quantiles_prob (n_quantiles_,).
 
-    input_quantiles = xt_col  # Input is assumed to be on quantile scale [0, 1]
+    Returns:
+        Data column mapped back to the original scale.
+    """
 
-    input_quantiles = jnp.clip(input_quantiles, 0.0, 1.0)
+    tol = 1e-7
+    is_constant_col = (
+        jnp.abs(empirical_quantiles_vals[0] - empirical_quantiles_vals[-1]) < tol
+    )
 
-    inversed_col = jnp.interp(input_quantiles, q_col, r_col)
+    input_quantiles = jnp.clip(xt_col, 0.0, 1.0)
 
-    return jnp.where(is_constant_col, r_col[0], inversed_col)
+    inversed_col = jnp.interp(
+        input_quantiles,  # x: Values to interpolate (quantiles 0-1)
+        target_quantiles_prob,  # xp: Reference points (quantiles 0-1)
+        empirical_quantiles_vals,  # fp: Corresponding values (original data scale)
+    )
+
+    constant_original_value = empirical_quantiles_vals[0]
+    return jnp.where(is_constant_col, constant_original_value, inversed_col)
 
 
 _vmap_transform_features = vmap(
-    _transform_single_feature, in_axes=(1, 1, 1), out_axes=1
+    _transform_single_feature, in_axes=(1, None, 1), out_axes=1
 )
+
 _vmap_inverse_transform_features = vmap(
-    _inverse_transform_single_feature, in_axes=(1, 1, 1), out_axes=1
+    _inverse_transform_single_feature, in_axes=(1, None, 1), out_axes=1
 )

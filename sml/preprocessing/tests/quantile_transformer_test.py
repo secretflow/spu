@@ -73,10 +73,10 @@ class UnitTests(unittest.TestCase):
         self.assertTrue(jnp.all(X_transformed_spu >= -1e-4))
         self.assertTrue(jnp.all(X_transformed_spu <= 1.0 + 1e-4))
         np.testing.assert_allclose(
-            X_transformed_spu, X_transformed_sklearn, rtol=1e-1, atol=1e-1
+            X_transformed_spu, X_transformed_sklearn, rtol=1e-3, atol=1e-3
         )
         np.testing.assert_allclose(
-            X_inversed_spu, X_inversed_sklearn, rtol=1e-1, atol=1e-1
+            X_inversed_spu, X_inversed_sklearn, rtol=1e-3, atol=1e-3
         )
         np.testing.assert_allclose(X_inversed_spu, X_plain, rtol=0.1, atol=0.5)
         print("Uniform output test passed.")
@@ -90,7 +90,7 @@ class UnitTests(unittest.TestCase):
 
         def proc(X):
             transformer = QuantileTransformer(
-                n_quantiles=50, random_state=44, output_distribution='normal'
+                n_quantiles=50, random_state=44, output_distribution='uniform'
             )
             X_transformed = transformer.fit_transform(X)
             X_inversed = transformer.inverse_transform(X_transformed)

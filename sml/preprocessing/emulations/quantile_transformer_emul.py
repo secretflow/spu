@@ -27,12 +27,6 @@ from sml.preprocessing.quantile_transformer import QuantileTransformer
 
 
 def test_quantile_transformer(mode: emulation.Mode = emulation.Mode.MULTIPROCESS):
-    """
-    Main test function for QuantileTransformer emulation.
-
-    Sets up the emulator once and runs different test variations.
-    (Modified to only run the 'uniform' distribution test).
-    """
 
     N_QUANTILES = 100
     RANDOM_STATE = 42
@@ -40,7 +34,6 @@ def test_quantile_transformer(mode: emulation.Mode = emulation.Mode.MULTIPROCESS
     N_FEATURES = 2
 
     def proc_quantile_transform(X, n_quantiles, distribution):
-        """The core logic to be executed securely within the SPU."""
 
         model = QuantileTransformer(
             n_quantiles=n_quantiles,
@@ -62,7 +55,7 @@ def test_quantile_transformer(mode: emulation.Mode = emulation.Mode.MULTIPROCESS
         n_samples,
         random_state,
     ):
-        """Compares SPU results with Sklearn reference and checks properties."""
+
         print(f"\nStarting comparisons for '{output_dist}' distribution...")
 
         assert (
@@ -87,8 +80,8 @@ def test_quantile_transformer(mode: emulation.Mode = emulation.Mode.MULTIPROCESS
         np.testing.assert_allclose(
             X_transformed_sklearn,
             np.array(X_transformed_spu),
-            rtol=0.1,
-            atol=0.05,
+            rtol=1e-2,
+            atol=1e-2,
             err_msg=f"Transformed data mismatch between SPU ({output_dist}) and Sklearn",
         )
         print(f"Sklearn transform comparison ({output_dist}) PASSED.")
@@ -105,7 +98,7 @@ def test_quantile_transformer(mode: emulation.Mode = emulation.Mode.MULTIPROCESS
         np.testing.assert_allclose(
             np.array(X_plaintext),
             np.array(X_inversed_spu),
-            rtol=0.05,
+            rtol=1e-2,
             atol=1e-2,
             err_msg=f"Inverse transformed data mismatch ({output_dist})",
         )
