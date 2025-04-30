@@ -17,64 +17,233 @@ import sys
 import time
 import unittest
 
-import jax
-import jax.numpy as jnp
+import jax.random as random
 import matplotlib.pyplot as plt
 import numpy as np
-from jax import random
+from scipy.spatial import procrustes
 from sklearn.datasets import load_digits, load_iris
 from sklearn.manifold import TSNE as SklearnTSNE
+from sklearn.manifold import trustworthiness
 from sklearn.preprocessing import StandardScaler
 
-import spu.libspu as libspu
-import spu.utils.simulation as spsim
-
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../../'))
-from sml.decomposition.tsne import basic_tsne
+
+from sml.decomposition.tsne import Tsne
 
 
 class TestTSNEComparison(unittest.TestCase):
-    def test_tsne_similarity(self):
+    def test_tsne_similarity_init_pca(self):
+        print("\nStarting t-SNE comparison test...")
 
         data = load_digits(n_class=6)
         # data = load_iris()
         X = data.data
         y = data.target
+        n_samples = X.shape[0]
+        print(f"Loaded dataset with {n_samples} samples.")
 
         n_components = 2
         perplexity = 30
         max_iter = 500
         random_state = 42
+        n_neighbors_trustworthiness = 15
 
+        print(
+            f"Parameters: n_components={n_components}, perplexity={perplexity}, max_iter={max_iter}, random_state={random_state}"
+        )
+
+        print("Running scikit-learn t-SNE...")
+        start_time_sklearn = time.time()
         sklearn_tsne = SklearnTSNE(
             n_components=n_components,
             perplexity=perplexity,
             n_iter=max_iter,
             random_state=random_state,
+            init='pca',
         )
-        Y_sklearn = sklearn_tsne.fit_transform(X)
 
-        Y_jax = basic_tsne(
-            X,
+        Y_sklearn = sklearn_tsne.fit_transform(X.astype(np.float64))
+        end_time_sklearn = time.time()
+
+        kl_sklearn = sklearn_tsne.kl_divergence_
+        print(
+            f"Scikit-learn t-SNE finished in {end_time_sklearn - start_time_sklearn:.2f} seconds."
+        )
+        print(f"Scikit-learn final KL divergence: {kl_sklearn:.4f}")
+
+        # --- Run SPU t-SNE ---
+        print("Running SPU t-SNE...")
+        start_time_spu = time.time()
+
+        Y_spu, kl_spu = Tsne(
+            X.astype(np.float32),
             n_components=n_components,
             perplexity=perplexity,
             max_iter=max_iter,
-            random_state=random_state,
         )
 
-        self.assertEqual(Y_sklearn.shape, Y_jax.shape)
+        Y_spu = np.array(Y_spu)
+        kl_spu = float(kl_spu)
+        end_time_spu = time.time()
+        print(f"SPU t-SNE finished in {end_time_spu - start_time_spu:.2f} seconds.")
+        print(f"SPU final KL divergence: {kl_spu:.4f}")
 
-        print(Y_jax[:5, 0], Y_jax[:5, 1])
+        self.assertEqual(Y_sklearn.shape, Y_spu.shape)
+        print(f"\nOutput shapes are consistent: {Y_sklearn.shape}")
 
-        # Visualize the embeddings
-        fig, axes = plt.subplots(1, 2, figsize=(12, 5))
-        axes[0].scatter(Y_sklearn[:, 0], Y_sklearn[:, 1], c=y)
-        axes[0].set_title("Scikit-learn t-SNE")
-        axes[1].scatter(Y_jax[:, 0], Y_jax[:, 1], c=y)
-        axes[1].set_title("JAX t-SNE")
+        # --- Trustworthiness Analysis ---
+        print(
+            f"\nPerforming Trustworthiness Analysis (n_neighbors={n_neighbors_trustworthiness})..."
+        )
+        trust_sklearn = 0.0
+        trust_spu = 0.0
+        try:
+            trust_sklearn = trustworthiness(
+                X, Y_sklearn, n_neighbors=n_neighbors_trustworthiness
+            )
+            print(f"Trustworthiness (Scikit-learn): {trust_sklearn:.4f}")
+        except ValueError as e:
+            print(f"Could not calculate trustworthiness for Scikit-learn: {e}")
 
-        plt.savefig("tsne_comparison.png")
-        plt.close()
+        try:
+            trust_spu = trustworthiness(
+                X, Y_spu, n_neighbors=n_neighbors_trustworthiness
+            )
+            print(f"Trustworthiness (SPU): {trust_spu:.4f}")
+        except ValueError as e:
+            print(f"Could not calculate trustworthiness for SPU: {e}")
+
+        # --- Procrustes Analysis ---
+        print("\nPerforming Procrustes Analysis...")
+
+        try:
+            mtx1, mtx2, disparity_val = procrustes(
+                Y_sklearn.astype(np.float64), Y_spu.astype(np.float64)
+            )
+            print(f"Procrustes Disparity: {disparity_val:.4f}")
+        except ValueError as e:
+            print(f"Could not perform Procrustes analysis: {e}")
+            print(f"Sklearn shape: {Y_sklearn.shape}, dtype: {Y_sklearn.dtype}")
+            print(f"SPU shape: {Y_spu.shape}, dtype: {Y_spu.dtype}")
+
+        print("\n--- Comparison Summary ---")
+        print(f"Metric              | Scikit-learn | SPU")
+        print(f"--------------------|--------------|------")
+        print(f"KL Divergence       | {kl_sklearn:^12.4f} | {kl_spu:^4.4f}")
+        print(f"Trustworthiness     | {trust_sklearn:^12.4f} | {trust_spu:^4.4f}")
+        print(
+            f"Execution Time (s)  | {end_time_sklearn - start_time_sklearn:^12.2f} | {end_time_spu - start_time_spu:^4.2f}"
+        )
+        print("\nTest finished.")
+
+    def test_tsne_similarity_init_random(self):
+        print("\nStarting t-SNE comparison test...")
+
+        # data = load_digits(n_class=6)
+        data = load_iris()
+        X = data.data
+        y = data.target
+        n_samples = X.shape[0]
+        print(f"Loaded dataset with {n_samples} samples.")
+
+        n_components = 2
+        perplexity = 30
+        max_iter = 500
+        random_state = 42
+        n_neighbors_trustworthiness = 15
+
+        print(
+            f"Parameters: n_components={n_components}, perplexity={perplexity}, max_iter={max_iter}, random_state={random_state}"
+        )
+
+        print("Running scikit-learn t-SNE...")
+        start_time_sklearn = time.time()
+        sklearn_tsne = SklearnTSNE(
+            n_components=n_components,
+            perplexity=perplexity,
+            n_iter=max_iter,
+            random_state=random_state,
+            init='random',
+        )
+
+        Y_sklearn = sklearn_tsne.fit_transform(X.astype(np.float64))
+        end_time_sklearn = time.time()
+
+        kl_sklearn = sklearn_tsne.kl_divergence_
+        print(
+            f"Scikit-learn t-SNE finished in {end_time_sklearn - start_time_sklearn:.2f} seconds."
+        )
+        print(f"Scikit-learn final KL divergence: {kl_sklearn:.4f}")
+
+        # --- Run SPU t-SNE ---
+        print("Running SPU t-SNE...")
+        start_time_spu = time.time()
+
+        key = random.PRNGKey(random_state)
+        Y_init = 1e-4 * random.normal(key, (n_samples, n_components))
+
+        Y_spu, kl_spu = Tsne(
+            X.astype(np.float32),
+            Y_init=Y_init,
+            n_components=n_components,
+            perplexity=perplexity,
+            max_iter=max_iter,
+            init='random',
+        )
+
+        Y_spu = np.array(Y_spu)
+        kl_spu = float(kl_spu)
+        end_time_spu = time.time()
+        print(f"SPU t-SNE finished in {end_time_spu - start_time_spu:.2f} seconds.")
+        print(f"SPU final KL divergence: {kl_spu:.4f}")
+
+        self.assertEqual(Y_sklearn.shape, Y_spu.shape)
+        print(f"\nOutput shapes are consistent: {Y_sklearn.shape}")
+
+        # --- Trustworthiness Analysis ---
+        print(
+            f"\nPerforming Trustworthiness Analysis (n_neighbors={n_neighbors_trustworthiness})..."
+        )
+        trust_sklearn = 0.0
+        trust_spu = 0.0
+        try:
+            trust_sklearn = trustworthiness(
+                X, Y_sklearn, n_neighbors=n_neighbors_trustworthiness
+            )
+            print(f"Trustworthiness (Scikit-learn): {trust_sklearn:.4f}")
+        except ValueError as e:
+            print(f"Could not calculate trustworthiness for Scikit-learn: {e}")
+
+        try:
+            trust_spu = trustworthiness(
+                X, Y_spu, n_neighbors=n_neighbors_trustworthiness
+            )
+            print(f"Trustworthiness (SPU): {trust_spu:.4f}")
+        except ValueError as e:
+            print(f"Could not calculate trustworthiness for SPU: {e}")
+
+        # --- Procrustes Analysis ---
+        print("\nPerforming Procrustes Analysis...")
+
+        try:
+            mtx1, mtx2, disparity_val = procrustes(
+                Y_sklearn.astype(np.float64), Y_spu.astype(np.float64)
+            )
+            print(f"Procrustes Disparity: {disparity_val:.4f}")
+        except ValueError as e:
+            print(f"Could not perform Procrustes analysis: {e}")
+            print(f"Sklearn shape: {Y_sklearn.shape}, dtype: {Y_sklearn.dtype}")
+            print(f"SPU shape: {Y_spu.shape}, dtype: {Y_spu.dtype}")
+
+        print("\n--- Comparison Summary ---")
+        print(f"Metric              | Scikit-learn | SPU")
+        print(f"--------------------|--------------|------")
+        print(f"KL Divergence       | {kl_sklearn:^12.4f} | {kl_spu:^4.4f}")
+        print(f"Trustworthiness     | {trust_sklearn:^12.4f} | {trust_spu:^4.4f}")
+        print(
+            f"Execution Time (s)  | {end_time_sklearn - start_time_sklearn:^12.2f} | {end_time_spu - start_time_spu:^4.2f}"
+        )
+        print("\nTest finished.")
 
 
 if __name__ == "__main__":

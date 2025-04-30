@@ -21,7 +21,7 @@ from sklearn.datasets import load_iris
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../../'))
 import sml.utils.emulation as emulation
-from sml.decomposition.tsne import basic_tsne
+from sml.decomposition.tsne import Tsne
 
 
 def test_tsne(mode: emulation.Mode = emulation.Mode.MULTIPROCESS):
@@ -39,20 +39,20 @@ def test_tsne(mode: emulation.Mode = emulation.Mode.MULTIPROCESS):
             print("Loading Iris dataset...")
             x, y = load_iris(return_X_y=True)
             x = x.astype(np.float64)
+            x = x.astype(np.float64)
             return x, y
 
         def proc(x):
             """The function to be executed in SPU, wrapping the JAX-based t-SNE."""
-            embedding = basic_tsne(
+            embedding = Tsne(
                 x,
                 n_components=2,
                 perplexity=30.0,
-                learning_rate=200.0,
+                learning_rate="auto",
                 max_iter=1000,
                 early_exaggeration=12.0,
                 early_exaggeration_iter=250,
                 momentum=0.8,
-                random_state=42,
                 verbose=10,
             )
             return embedding
@@ -69,7 +69,7 @@ def test_tsne(mode: emulation.Mode = emulation.Mode.MULTIPROCESS):
 
             print("Running SPU computation...")
             start_time = time.time()
-            embedding = emulator.run(proc)(x_spu)
+            embedding, kl = emulator.run(proc)(x_spu)
             end_time = time.time()
             spu_time = end_time - start_time
             print(f"SPU computation finished in {spu_time:.3f}s.")
@@ -93,6 +93,7 @@ def test_tsne(mode: emulation.Mode = emulation.Mode.MULTIPROCESS):
             print(f"An error occurred during emulation: {e}")
             import traceback
 
+            traceback.print_exc()
             traceback.print_exc()
 
     try:
