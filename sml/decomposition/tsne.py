@@ -43,9 +43,7 @@ def Hbeta(D, beta=1.0):
 
 
 @jit
-def binary_search_perplexity(
-    distances_row, i, perplexity, tol=1e-5, max_tries=50
-):
+def binary_search_perplexity(distances_row, i, perplexity, tol=1e-5, max_tries=50):
     """Compute P-row for a point using a fixed number of iterations for binary search."""
     Di = distances_row
     log_perplexity = jnp.log(perplexity)
