@@ -1266,9 +1266,10 @@ numpy==1.26.4 \
     #   tensorstore
     #   torchvision
     #   transformers
-nvidia-cublas-cu12==12.1.3.1 \
-    --hash=sha256:2b964d60e8cf11b5e1073d179d85fa340c120e99b3067558f3cf98dd69d02906 \
-    --hash=sha256:ee53ccca76a6fc08fb9701aa95b6ceb242cdaab118c3bb152af4e579af792728
+nvidia-cublas-cu12==12.9.0.13 \
+    --hash=sha256:1a2ca56324acaccb0c9ca8fb40647f04a8c4defd076c6230182805324204765c \
+    --hash=sha256:752ba5830d4cad93ba49dfe9a5c724cfd864c23073bc5139f56b4d8b44cb82ee \
+    --hash=sha256:a525014e22b8adb79d04b70f69fd53d09c7b851002b3d332cd601da3a37276fd
     # via
     #   nvidia-cudnn-cu12
     #   nvidia-cusolver-cu12
