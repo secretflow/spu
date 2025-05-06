@@ -23,3 +23,11 @@ sml_py_binary(
         "//sml/feature_selection:univariate_selection",
     ],
 )
+
+sml_py_binary(
+    name = "anova_f_emul",
+    srcs = ["anova_f_emul.py"],
+    deps = [
+        "//sml/feature_selection:anova_f",
+    ],
+)

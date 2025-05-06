@@ -20,3 +20,8 @@ sml_py_library(
     name = "univariate_selection",
     srcs = ["univariate_selection.py"],
 )
+
+sml_py_library(
+    name = "anova_f",
+    srcs = ["anova_f.py"],
+)
