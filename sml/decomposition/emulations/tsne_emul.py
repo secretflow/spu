@@ -19,6 +19,7 @@ import time
 import jax.random as random
 import numpy as np
 from sklearn.datasets import load_iris
+from sklearn.manifold import trustworthiness
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../../'))
 import sml.utils.emulation as emulation
@@ -76,6 +77,11 @@ def test_tsne(mode: emulation.Mode = emulation.Mode.MULTIPROCESS):
                 np.isfinite(embedding)
             ), "Embedding contains non-finite values (NaN or Inf)"
             print(f"Embedding shape: {embedding.shape}, all values finite.")
+
+            # Calculate and print trustworthiness
+            print("Calculating trustworthiness...")
+            trust_spu = trustworthiness(x, embedding, n_neighbors=15)
+            print(f"Trustworthiness of SPU embedding: {trust_spu:.4f}")
 
             print("========================================")
             print(f"Total SPU running time: {spu_time:.3f}s")
