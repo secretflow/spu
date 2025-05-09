@@ -23,3 +23,8 @@ sml_py_library(
         "//sml/cluster:kmeans",
     ],
 )
+
+sml_py_library(
+    name = "quantile_transformer",
+    srcs = ["quantile_transformer.py"],
+)
