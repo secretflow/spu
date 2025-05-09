@@ -16,22 +16,17 @@ import os
 import sys
 import time
 
+import jax.random as random
 import numpy as np
 from sklearn.datasets import load_iris
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../../'))
 import sml.utils.emulation as emulation
-from sml.decomposition.tsne import Tsne
+from sml.decomposition.tsne import TSNE
 
 
 def test_tsne(mode: emulation.Mode = emulation.Mode.MULTIPROCESS):
     def emul_tsne():
-        """
-        Emulation function for t-SNE dimensionality reduction.
-
-        This function loads the Iris dataset, runs the JAX-based t-SNE within the SPU emulation,
-        and verifies the output embedding's shape and numerical validity.
-        """
         print("Start t-SNE emulation...")
 
         def load_data():
@@ -43,22 +38,20 @@ def test_tsne(mode: emulation.Mode = emulation.Mode.MULTIPROCESS):
             return x, y
 
         def proc(x):
-            """The function to be executed in SPU, wrapping the JAX-based t-SNE."""
-            embedding = Tsne(
-                x,
+            key = random.PRNGKey(42)
+
+            Y_init_jax = 1e-4 * random.normal(key, (n_samples, 2)).astype(np.float32)
+            model = TSNE(
                 n_components=2,
-                perplexity=30.0,
-                learning_rate="auto",
-                max_iter=1000,
-                early_exaggeration=12.0,
-                early_exaggeration_iter=250,
-                momentum=0.8,
-                verbose=10,
+                perplexity=30,
+                max_iter=300,
+                init='random',
             )
-            return embedding
+            Y_spu_out = model.fit_transform(x, Y_init=Y_init_jax)
+            kl_spu_out = model.kl_divergence_
+            return Y_spu_out, kl_spu_out
 
         try:
-
             x, y = load_data()
             n_samples = x.shape[0]
             print(f"Data loaded: {n_samples} samples, {x.shape[1]} features.")

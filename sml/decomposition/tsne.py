@@ -12,215 +12,252 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import time
 
-import jax
 import jax.numpy as jnp
-from jax import grad, jit, lax, vmap
-from jax.numpy.linalg import svd
+from jax import lax
 
 from .pca import PCA
 
-MACHINE_EPSILON = jnp.finfo(jnp.float32).eps
 
+class TSNE:
+    def __init__(
+        self,
+        n_components=2,
+        perplexity=30.0,
+        learning_rate="auto",
+        max_iter=300,
+        early_exaggeration=12.0,
+        early_exaggeration_iter=250,
+        momentum=0.8,
+        init='pca',
+        pca_method='power_iteration',
+        pca_max_power_iter=150,
+        pca_max_jacobi_iter=5,
+        pca_projection_iter=4,
+        pca_random_matrix=None,
+        pca_scale=None,
+        pca_n_oversamples=10,
+    ):
+        self.n_components = n_components
+        self.perplexity = perplexity
+        self.learning_rate = learning_rate
+        self.max_iter = max_iter
+        self.early_exaggeration = early_exaggeration
+        self.early_exaggeration_iter = early_exaggeration_iter
+        self.momentum = momentum
+        self.init = init
+        self.pca_method = pca_method
+        self.pca_max_power_iter = pca_max_power_iter
+        self.pca_max_jacobi_iter = pca_max_jacobi_iter
+        self.pca_projection_iter = pca_projection_iter
+        self.pca_random_matrix = pca_random_matrix
+        self.pca_scale = pca_scale
+        self.pca_n_oversamples = pca_n_oversamples
 
-def pairwise_squared_distances(X):
-    """Computes pairwise squared Euclidean distances."""
-    sum_X = jnp.sum(X**2, axis=1)
-    D2 = -2 * jnp.dot(X, X.T) + sum_X[:, None] + sum_X[None, :]
+        self.embedding_ = None
+        self.kl_divergence_ = None
+        self.n_samples_in_ = None
+        self.n_features_in_ = None
 
-    D2 = D2.at[jnp.diag_indices_from(D2)].set(0.0)
-    return jnp.maximum(D2, 0.0)
+    def _squared_dist_mat(self, data):
+        """Compute squared Euclidean distance matrix."""
+        return jnp.sum((data[:, None, :] - data[None, :, :]) ** 2, axis=-1)
 
-
-def Hbeta(D, beta=1.0):
-    """Compute the perplexity and P-row for a specific precision value."""
-    P = jnp.exp(-D * beta)
-    sumP = jnp.maximum(jnp.sum(P), MACHINE_EPSILON)
-    H = jnp.log(sumP) + beta * jnp.sum(D * P) / sumP
-    P = P / sumP
-    return H, P
-
-
-@jit
-def binary_search_perplexity(distances_row, i, perplexity, tol=1e-5, max_tries=50):
-    """Compute P-row for a point using a fixed number of iterations for binary search."""
-    Di = distances_row
-    log_perplexity = jnp.log(perplexity)
-
-    def compute_H_P(beta):
-
-        P_row = jnp.exp(-Di * beta)
-
-        P_row = P_row.at[i].set(0.0)
-        sumP = jnp.maximum(jnp.sum(P_row), MACHINE_EPSILON)
-        H = jnp.log(sumP) + beta * jnp.sum(Di * P_row) / sumP
-        P_row = P_row / sumP
-        return H, P_row
-
-    def body_fun(tries, state):
-        beta, betamin, betamax, prev_H, prev_P = state
-        H, P = compute_H_P(beta)
-        Hdiff = H - log_perplexity
-
-        betamin_new = jnp.where(Hdiff > 0, beta, betamin)
-        betamax_new = jnp.where(Hdiff < 0, beta, betamax)
-
-        beta_new = jnp.where(
-            jnp.isinf(betamax_new), beta * 2.0, (betamin_new + betamax_new) / 2.0
+    def _pairwise_affinities(self, data, sigmas, dist_mat):
+        """Compute pairwise affinities based on Gaussian kernel."""
+        P_unnormalized = jnp.exp(-dist_mat / (2 * (sigmas**2) + 1e-12))
+        P_unnormalized = P_unnormalized.at[jnp.diag_indices_from(P_unnormalized)].set(
+            0.0
         )
-        beta_new = jnp.where(jnp.isinf(betamin_new), beta / 2.0, beta_new)
-
-        return beta_new, betamin_new, betamax_new, H, P
-
-    beta = 1.0
-    betamin = -jnp.inf
-    betamax = jnp.inf
-
-    prev_H, prev_P = compute_H_P(beta)
-
-    beta, betamin, betamax, H, P = lax.fori_loop(
-        0, max_tries, body_fun, (beta, betamin, betamax, prev_H, prev_P)
-    )
-
-    P = P.at[i].set(0.0)
-    return P
-
-
-def joint_probabilities_jax(distances, perplexity, verbose=0):
-    """Compute symmetric joint probabilities P_ij from distances using vmap."""
-    n_samples = distances.shape[0]
-
-    if verbose > 0:
-        print("Computing probabilities for all points...")
-
-    vectorized_binary_search = vmap(
-        lambda dist_row, idx: binary_search_perplexity(
-            dist_row, idx, perplexity, tol=1e-5, max_tries=50
-        ),
-        in_axes=(0, 0),
-        in_axes=(0, 0),
-    )
-
-    indices = jnp.arange(n_samples)
-    P = vectorized_binary_search(distances, indices)
-
-    if verbose > 0:
-        print("Symmetrizing probabilities...")
-    P = (P + P.T) / (2 * jnp.sum(P))
-    P = jnp.maximum(P, MACHINE_EPSILON)
-    return P
-
-
-def kl_divergence_jax(Y_flat, P, degrees_of_freedom, n_samples, n_components):
-    """Compute KL divergence between P and Q (computed from Y)."""
-    Y = Y_flat.reshape(n_samples, n_components)
-    dist_sq_low = pairwise_squared_distances(Y)
-    inv_dist = 1.0 / (1.0 + dist_sq_low / degrees_of_freedom)
-    inv_dist = inv_dist.at[jnp.diag_indices_from(inv_dist)].set(0.0)
-    sum_inv_dist = jnp.maximum(jnp.sum(inv_dist), MACHINE_EPSILON)
-    Q = inv_dist / sum_inv_dist
-    Q = jnp.maximum(Q, MACHINE_EPSILON)
-
-    P_safe = jnp.maximum(P, MACHINE_EPSILON)
-    kl_div = jnp.sum(P * (jnp.log(P_safe) - jnp.log(Q)))
-    return kl_div
-
-
-def Tsne(
-    X,
-    Y_init=None,
-    n_components=2,
-    perplexity=30.0,
-    learning_rate="auto",
-    max_iter=1000,
-    early_exaggeration=12.0,
-    early_exaggeration_iter=250,
-    momentum=0.8,
-    verbose=10,
-    init='pca',
-):
-    """
-    Main function of t-SNE with gradient descent optimization.
-
-    Returns
-    -------
-    Y : ndarray of shape (n_samples, n_components)
-        Low-dimensional embedding.
-    final_kl_divergence : float
-        The KL divergence of the final embedding.
-    """
-    X = jnp.asarray(X, dtype=jnp.float32)
-    n_samples, n_features = X.shape
-
-    if perplexity >= n_samples:
-        raise ValueError("Perplexity must be less than n_samples")
-
-    if learning_rate == "auto":
-        learning_rate = max(n_samples / early_exaggeration / 4, 50)
-        if verbose > 0:
-            print(f"Setting auto learning rate: {learning_rate}")
-    elif isinstance(learning_rate, (int, float)):
-        learning_rate = learning_rate
-        if verbose > 0:
-            print(f"Setting learning rate: {learning_rate}")
-    else:
-        raise ValueError("learning_rate must be float or 'auto'")
-
-    if init == "pca":
-        pca = PCA(
-            method='power_iteration', n_components=n_components, max_power_iter=200
+        P_normalized = P_unnormalized / (
+            jnp.sum(P_unnormalized, axis=1, keepdims=True) + 1e-12
         )
-        pca.fit(X)
-        Y = pca.transform(X)
-        Y = Y / jnp.std(Y[:, 0]) * 1e-4
-    elif init == "random":
-        if Y_init is None:
-            raise ValueError("For init='random', Y_init must be provided.")
-        if Y_init.shape != (n_samples, n_components):
-            raise ValueError(f"Y_init must have shape ({n_samples}, {n_components}).")
-        Y = Y_init
-    else:
-        raise ValueError("init must be 'pca' or 'random'")
+        return P_normalized
 
-    Y_flat = Y.ravel()
+    def _get_perplexities(self, P):
+        """Compute perplexity for each row of the affinity matrix."""
+        entropy = -jnp.sum(P * jnp.log2(P + 1e-12), axis=1)
+        return 2**entropy
 
-    distances_sq = pairwise_squared_distances(X)
-    P = joint_probabilities_jax(distances_sq, perplexity, verbose=verbose)
+    def _all_sym_affinities(self, data, perp, max_attempts=50):
+        """
+        Compute symmetric affinity matrix P.
+        """
+        dist_mat = self._squared_dist_mat(data)
+        n_samples = data.shape[0]
 
-    degrees_of_freedom = max(n_components - 1.0, 1.0)
-    update = jnp.zeros_like(Y_flat)
-    initial_momentum = 0.5
+        sigma_maxs = jnp.full(n_samples, 1e12)
+        sigma_mins = jnp.full(n_samples, 1e-12)
+        sigmas = (sigma_mins + sigma_maxs) / 2
 
-    kl_divergence_with_grad = jit(
-        jax.value_and_grad(kl_divergence_jax), static_argnums=(2, 3, 4)
-    )
+        def body_fun(carry, _):
+            current_sigmas, current_sigma_mins, current_sigma_maxs = carry
+            P_body = self._pairwise_affinities(data, current_sigmas[:, None], dist_mat)
+            current_perps = self._get_perplexities(P_body)
 
-    if verbose > 0:
-        print("Starting optimization...")
+            is_too_high = (current_perps > perp).astype(jnp.float32)
+            is_too_low = (current_perps < perp).astype(jnp.float32)
 
-    for it in range(max_iter):
-        is_early_exaggeration = it < early_exaggeration_iter
-        current_momentum = momentum if not is_early_exaggeration else initial_momentum
-        current_P = P * early_exaggeration if is_early_exaggeration else P
+            new_sigma_maxs = (
+                is_too_high * current_sigmas + (1.0 - is_too_high) * current_sigma_maxs
+            )
+            new_sigma_mins = (
+                is_too_low * current_sigmas + (1.0 - is_too_low) * current_sigma_mins
+            )
+            updated_sigmas = (new_sigma_mins + new_sigma_maxs) / 2.0
+            return (updated_sigmas, new_sigma_mins, new_sigma_maxs), current_perps
 
-        kl_div_iter, grad = kl_divergence_with_grad(
-            Y_flat, current_P, degrees_of_freedom, n_samples, n_components
+        (final_sigmas, _, _), _ = lax.scan(
+            body_fun, (sigmas, sigma_mins, sigma_maxs), None, length=max_attempts
         )
 
-        update = current_momentum * update - learning_rate * grad
-        Y_flat = Y_flat + update
+        P = self._pairwise_affinities(data, final_sigmas[:, None], dist_mat)
+        P = (P + P.T) / (2 * n_samples)
+        return P
 
-        Y = Y_flat.reshape(n_samples, n_components)
-        Y = Y - jnp.mean(Y, axis=0)
-        Y_flat = Y.ravel()
+    def _low_dim_affinities(self, Y_embedding):
+        """Compute the low-dimensional affinity matrix Q."""
+        Y_dist_mat = self._squared_dist_mat(Y_embedding)
+        numers = (1 + Y_dist_mat) ** (-1)
+        denom = jnp.sum(numers) - jnp.sum(jnp.diag(numers)) + 1e-12
+        Q = numers / denom
+        Q = Q.at[jnp.diag_indices_from(Q)].set(0.0)
+        return Q, Y_dist_mat
 
-        if is_early_exaggeration and it == early_exaggeration_iter - 1:
-            print(f"Finished early exaggeration phase at iter {it + 1}")
+    def _compute_grad(self, P, Q, Y, Y_dist_mat):
+        """Compute the gradient of the KL divergence."""
+        Ydiff = Y[:, None, :] - Y[None, :, :]
+        pq_factor = (P - Q)[:, :, None]
+        dist_factor = ((1 + Y_dist_mat) ** (-1))[:, :, None]
+        return jnp.sum(4 * pq_factor * Ydiff * dist_factor, axis=1)
 
-    final_embedding = Y
-    final_kl_divergence = kl_divergence_jax(
-        final_embedding.ravel(), P, degrees_of_freedom, n_samples, n_components
-    )
+    def fit(self, X, Y_init=None):
+        """
+        Fit X into an embedded space.
 
-    return final_embedding, final_kl_divergence
+        Parameters
+        ----------
+        X : array, shape (n_samples, n_features)
+            High-dimensional data.
+        Y_init : array, shape (n_samples, n_components), optional
+            Initial low-dimensional embedding. Used if init='random'.
+
+        Returns
+        -------
+        self : object
+            Fitted estimator.
+        """
+        X = jnp.asarray(X, dtype=jnp.float32)
+        self.n_samples_in_, self.n_features_in_ = X.shape
+
+        if self.perplexity >= self.n_samples_in_:
+            raise ValueError("Perplexity must be less than n_samples")
+
+        learning_rate = self.learning_rate
+        if learning_rate == "auto":
+            learning_rate = max(self.n_samples_in_ / self.early_exaggeration / 4, 50)
+        elif not isinstance(learning_rate, (int, float)):
+            raise ValueError("learning_rate must be float or 'auto'")
+
+        current_momentum = self.momentum
+
+        if self.init == "pca":
+            pca = PCA(
+                method=self.pca_method,
+                n_components=self.n_components,
+                max_power_iter=self.pca_max_power_iter,
+                max_jacobi_iter=self.pca_max_jacobi_iter,
+                projection_iter=self.pca_projection_iter,
+                random_matrix=self.pca_random_matrix,
+                scale=self.pca_scale,
+                n_oversamples=self.pca_n_oversamples,
+            )
+            pca.fit(X)
+            Y = pca.transform(X)
+            Y = Y / jnp.std(Y[:, 0]) * 1e-4
+        elif self.init == "random":
+            if Y_init is None:
+                raise ValueError("For init='random', Y_init must be provided.")
+            if Y_init.shape != (self.n_samples_in_, self.n_components):
+                raise ValueError(
+                    f"Y_init must have shape ({self.n_samples_in_}, {self.n_components})."
+                )
+            Y = Y_init
+        else:
+            raise ValueError("init must be 'pca' or 'random'")
+
+        Y_old = Y.copy()
+        P = self._all_sym_affinities(X, self.perplexity) * self.early_exaggeration
+        P = jnp.clip(P, 1e-12, None)
+
+        for t in range(self.max_iter):
+            Q, Y_dist_mat = self._low_dim_affinities(Y)
+            Q = jnp.clip(Q, 1e-12, None)
+            grad = self._compute_grad(P, Q, Y, Y_dist_mat)
+
+            current_momentum = (
+                0.5 if t < self.early_exaggeration_iter else self.momentum
+            )
+
+            Y_update = learning_rate * grad
+            Y_residuals = current_momentum * (Y - Y_old)
+
+            Y = Y - Y_update + Y_residuals
+            Y_old = Y.copy()
+
+            if t == self.early_exaggeration_iter - 1:
+                P = P / self.early_exaggeration
+
+            if t == self.max_iter - 1:
+                Q_final, _ = self._low_dim_affinities(Y)
+                Q_final = jnp.clip(Q_final, 1e-12, None)
+
+                P_for_kl = P.at[jnp.diag_indices_from(P)].set(0.0)
+                P_for_kl = jnp.clip(P_for_kl, 0, None)
+
+                log_P_part = P_for_kl * jnp.log(P_for_kl + 1e-12)
+                log_Q_part = P_for_kl * jnp.log(Q_final + 1e-12)
+                self.kl_divergence_ = jnp.sum(log_P_part - log_Q_part)
+
+        self.embedding_ = Y
+        return self
+
+    def transform(self, X=None):
+        """
+        Return the embedding of the data.
+        Note: t-SNE does not support transforming new unseen data.
+        This method returns the embedding of the data used in .fit().
+
+        Parameters
+        ----------
+        X : Ignored.
+
+        Returns
+        -------
+        embedding_ : array, shape (n_samples, n_components)
+            Low-dimensional embedding.
+        """
+        if self.embedding_ is None:
+            raise RuntimeError(
+                "This TSNE instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator."
+            )
+        return self.embedding_
+
+    def fit_transform(self, X, Y_init=None):
+        """
+        Fit X into an embedded space and return that transformed output.
+
+        Parameters
+        ----------
+        X : array, shape (n_samples, n_features)
+            High-dimensional data.
+        Y_init : array, shape (n_samples, n_components), optional
+            Initial low-dimensional embedding. Used if init='random'.
+
+        Returns
+        -------
+        embedding_ : array, shape (n_samples, n_components)
+            Low-dimensional embedding.
+        """
+        self.fit(X, Y_init=Y_init)
+        return self.embedding_

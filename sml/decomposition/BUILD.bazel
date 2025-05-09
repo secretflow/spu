@@ -30,4 +30,5 @@ sml_py_library(
 sml_py_library(
     name = "tsne",
     srcs = ["tsne.py"],
+    deps = ["//sml/decomposition/pca],
 )
