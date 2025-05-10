@@ -160,8 +160,9 @@ def test_tsne(mode: emulation.Mode = emulation.Mode.MULTIPROCESS):
             traceback.print_exc()
 
     try:
+        conf_path = "sml/decomposition/emulations/3pc.json"
         emulator = emulation.Emulator(
-            emulation.CLUSTER_ABY3_3PC, mode, bandwidth=300, latency=20
+            conf_path, mode, bandwidth=300, latency=20
         )
         emulator.up()
         emul_tsne_random()

@@ -222,15 +222,11 @@ class TSNE:
         self.embedding_ = Y
         return self
 
-    def transform(self, X=None):
+    def transform(self):
         """
         Return the embedding of the data.
         Note: t-SNE does not support transforming new unseen data.
         This method returns the embedding of the data used in .fit().
-
-        Parameters
-        ----------
-        X : Ignored.
 
         Returns
         -------
