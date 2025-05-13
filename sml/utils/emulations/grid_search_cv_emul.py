@@ -157,19 +157,19 @@ def emul_comprehensive_gridsearch(mode):
             emulation.CLUSTER_ABY3_3PC, mode, bandwidth=300, latency=20
         )
         emulator.up()
-        estimator = LogisticRegression(epochs=3, batch_size=16, class_labels=[0, 1])
-        param_grid = {'learning_rate': [0.01, 0.1, 0.05], 'C': [1.0, 2.0, 5.0]}
-        _run_gridsearch_test(
-            emulator,
-            "LogisticRegression",
-            estimator,
-            param_grid,
-            X_clf_bin,
-            y_clf_bin_reshaped,
-            'accuracy',
-            'classification',
-            cv_splits_clf_bin,
-        )
+        # estimator = LogisticRegression(epochs=3, batch_size=16, class_labels=[0, 1])
+        # param_grid = {'learning_rate': [0.01, 0.1, 0.05], 'C': [1.0, 2.0, 5.0]}
+        # _run_gridsearch_test(
+        #     emulator,
+        #     "LogisticRegression",
+        #     estimator,
+        #     param_grid,
+        #     X_clf_bin,
+        #     y_clf_bin_reshaped,
+        #     'accuracy',
+        #     'classification',
+        #     cv_splits_clf_bin,
+        # )
         estimator = KNNClassifer(n_classes=n_classes_binary)
         param_grid = {'n_neighbors': [2, 3, 4, 5]}
         _run_gridsearch_test(

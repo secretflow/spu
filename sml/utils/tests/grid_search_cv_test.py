@@ -13,16 +13,11 @@
 # limitations under the License.
 
 import copy
-import itertools
 import os
 import sys
-import time
 import unittest
-import warnings
-from collections import defaultdict
 
 import jax.numpy as jnp
-import jax.random as random
 import numpy as np
 from sklearn.datasets import make_classification, make_regression
 from sklearn.model_selection import KFold, StratifiedKFold
@@ -180,7 +175,9 @@ class ComprehensiveGridSearchTests(unittest.TestCase):
             print(f"SPU Prediction: {spu_pred}")
             print(f"SPU Score: {spu_score}")
 
-    @unittest.skip("")
+    @unittest.skip(
+        "For logistic, this algorithm neither supports the set_params method nor allows internal parameters to be updated through assignment."
+    )
     def test_gridsearch_logistic(self):
         estimator = LogisticRegression(epochs=3, batch_size=16, class_labels=[0, 1])
         param_grid = {'learning_rate': [0.01, 0.1, 0.05], 'C': [1.0, 2.0, 5.0]}
@@ -226,8 +223,8 @@ class ComprehensiveGridSearchTests(unittest.TestCase):
         )
 
     def test_gridsearch_perceptron(self):
-        estimator = Perceptron(max_iter=10, eta0=0.1)
-        param_grid = {'alpha': [0.0001, 0.001]}
+        estimator = Perceptron(max_iter=10)
+        param_grid = {'alpha': [0.0001, 0.001], 'eta0': [0.01, 0.1, 1.0]}
         self._run_test(
             "Perceptron with cv as iterable",
             estimator,
@@ -301,7 +298,7 @@ class ComprehensiveGridSearchTests(unittest.TestCase):
             criterion='gini',
             splitter='best',
         )
-        param_grid = {'max_depth': [2, 3]}
+        param_grid = {'max_depth': [2, 3, 4]}
         self._run_test(
             "DecisionTreeClassifier with cv as iterable",
             estimator,

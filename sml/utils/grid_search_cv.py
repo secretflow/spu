@@ -28,7 +28,7 @@ from sml.metrics.classification.classification import (
     precision_score,
     recall_score,
 )
-from sml.metrics.regression.regression import mean_squared_error
+from sml.metrics.regression.regression import mean_squared_error, r2_score
 
 # --- Helper Functions ---
 
@@ -52,37 +52,10 @@ def generate_param_combinations(param_grid):
         params = dict(zip(param_names, value_combination))
         yield params
 
-
-# --- Scoring Functions ---
-
-
-def jax_r2_score(y_true, y_pred):
-    """
-    Calculates the R^2 (coefficient of determination) regression score using JAX.
-
-    Args:
-        y_true (jnp.ndarray): True target values.
-        y_pred (jnp.ndarray): Predicted target values.
-
-    Returns:
-        float: R^2 score.
-    """
-    y_true, y_pred = jnp.asarray(y_true).ravel(), jnp.asarray(y_pred).ravel()
-    ss_res = jnp.sum(jnp.square(y_true - y_pred))
-    ss_tot = jnp.sum(jnp.square(y_true - jnp.mean(y_true)))
-
-    special_case = ss_tot == 0
-    r2_special = jnp.where(ss_res == 0, 1.0, 0.0)
-
-    r2_normal = 1 - (ss_res / ss_tot)
-
-    return jnp.where(special_case, r2_special, r2_normal)
-
-
 # --- Cross-Validation Functions ---
 
 
-def jax_kfold_split(n_samples, n_splits, shuffle=False, random_state=None):
+def jax_kfold_split(n_samples, n_splits):
     """
     Generates K-Fold train/test indices with even fold sizes using JAX.
 
@@ -152,7 +125,7 @@ class GridSearchCV:
         'recall': recall_score,
         'f1': f1_score,
         'neg_mean_squared_error': lambda yt, yp: -mean_squared_error(yt, yp),
-        'r2': jax_r2_score,
+        'r2': r2_score,
     }
 
     def __init__(
