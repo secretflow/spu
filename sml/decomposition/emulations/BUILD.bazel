@@ -45,6 +45,7 @@ sml_py_binary(
 sml_py_binary(
     name = "tsne_emul",
     srcs = ["tsne_emul.py"],
+    data = [":conf"],
     deps = [
         "//sml/decomposition:tsne",
     ],

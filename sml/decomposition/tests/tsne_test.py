@@ -18,10 +18,9 @@ import time
 import unittest
 
 import jax.random as random
-import matplotlib.pyplot as plt
 import numpy as np
 from scipy.spatial import procrustes
-from sklearn.datasets import load_digits, load_iris
+from sklearn.datasets import load_digits, load_iris, make_blobs
 from sklearn.manifold import TSNE as SklearnTSNE
 from sklearn.manifold import trustworthiness
 
@@ -35,7 +34,7 @@ from sml.decomposition.tsne import TSNE
 
 class TestTSNEComparison(unittest.TestCase):
     def test_tsne_similarity_init_pca(self):
-        print("\nStarting t-SNE comparison test...")
+        print("\nStarting t-SNE comparison test (PCA initialization)...")
 
         def proc_transform(X_in, n_components_in, perplexity_in, max_iter_in):
 
@@ -44,21 +43,22 @@ class TestTSNEComparison(unittest.TestCase):
                 perplexity=perplexity_in,
                 max_iter=max_iter_in,
                 init='pca',
+                max_attempts=20,
+                sigma_maxs=1e6,
+                sigma_mins=1e-6,
             )
             Y_spu_out = model.fit_transform(X_in)
             kl_spu_out = model.kl_divergence_
             return Y_spu_out, kl_spu_out
 
-        # data = load_digits(n_class=6)
-        data = load_iris()
-        X = data.data
-        y = data.target
+        X, y = make_blobs(n_samples=50, n_features=4, centers=3, random_state=42)
         n_samples = X.shape[0]
         print(f"Loaded dataset with {n_samples} samples.")
 
         n_components = 2
-        perplexity = 30
+        perplexity = 10
         max_iter = 300
+        spu_max_iter = 260
         random_state = 42
         n_neighbors_trustworthiness = 15
 
@@ -71,7 +71,7 @@ class TestTSNEComparison(unittest.TestCase):
         sklearn_tsne = SklearnTSNE(
             n_components=n_components,
             perplexity=perplexity,
-            n_iter=max_iter,
+            max_iter=max_iter,
             random_state=random_state,
             init='pca',
         )
@@ -89,13 +89,18 @@ class TestTSNEComparison(unittest.TestCase):
         print("Running SPU t-SNE...")
         start_time_spu = time.time()
 
-        sim = spsim.Simulator.simple(
-            3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM128
+        config = libspu.RuntimeConfig(
+            protocol=libspu.ProtocolKind.ABY3,
+            field=libspu.FieldType.FM64,
+            fxp_fraction_bits=18,
         )
+        config.fxp_exp_mode = libspu.RuntimeConfig.ExpMode.EXP_PADE
+
+        sim = spsim.Simulator(3, config)
 
         X_spu_input = X.astype(np.float32)
         Y_spu, kl_spu = spsim.sim_jax(sim, proc_transform, static_argnums=(1, 2, 3))(
-            X_spu_input, n_components, perplexity, max_iter
+            X_spu_input, n_components, perplexity, spu_max_iter
         )
 
         Y_spu = np.array(Y_spu)
@@ -151,18 +156,10 @@ class TestTSNEComparison(unittest.TestCase):
         print(
             f"Execution Time (s)  | {end_time_sklearn - start_time_sklearn:^12.2f} | {end_time_spu - start_time_spu:^4.2f}"
         )
-        fig, axes = plt.subplots(1, 2, figsize=(12, 5))
-        axes[0].scatter(Y_sklearn[:, 0], Y_sklearn[:, 1], c=y)
-        axes[0].set_title("Scikit-learn t-SNE")
-        axes[1].scatter(Y_spu[:, 0], Y_spu[:, 1], c=y)
-        axes[1].set_title("SPU t-SNE")
-
-        plt.savefig("tsne_comparison-pca.png")
-        plt.close()
         print("\nTest finished.")
 
     def test_tsne_similarity_init_random(self):
-        print("\nStarting t-SNE comparison test...")
+        print("\nStarting t-SNE comparison test (random initialization)...")
 
         def proc_transform_random(
             X_in, Y_init_in, n_components_in, perplexity_in, max_iter_in
@@ -173,21 +170,22 @@ class TestTSNEComparison(unittest.TestCase):
                 perplexity=perplexity_in,
                 max_iter=max_iter_in,
                 init='random',
+                max_attempts=20,
+                sigma_maxs=1e6,
+                sigma_mins=1e-6,
             )
             Y_spu_out = model.fit_transform(X_in, Y_init=Y_init_in)
             kl_spu_out = model.kl_divergence_
             return Y_spu_out, kl_spu_out
 
-        # data = load_digits(n_class=6)
-        data = load_iris()
-        X = data.data
-        y = data.target
+        X, y = make_blobs(n_samples=50, n_features=4, centers=3, random_state=42)
         n_samples = X.shape[0]
         print(f"Loaded dataset with {n_samples} samples.")
 
         n_components = 2
-        perplexity = 30
+        perplexity = 10
         max_iter = 300
+        spu_max_iter = 250
         random_state = 42
         n_neighbors_trustworthiness = 15
 
@@ -200,7 +198,7 @@ class TestTSNEComparison(unittest.TestCase):
         sklearn_tsne = SklearnTSNE(
             n_components=n_components,
             perplexity=perplexity,
-            n_iter=max_iter,
+            max_iter=max_iter,
             random_state=random_state,
             init='random',
         )
@@ -226,13 +224,18 @@ class TestTSNEComparison(unittest.TestCase):
             np.float32
         )
 
-        sim = spsim.Simulator.simple(
-            3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM128
+        config = libspu.RuntimeConfig(
+            protocol=libspu.ProtocolKind.ABY3,
+            field=libspu.FieldType.FM64,
+            fxp_fraction_bits=18,
         )
+        config.fxp_exp_mode = libspu.RuntimeConfig.ExpMode.EXP_PADE
+
+        sim = spsim.Simulator(3, config)
 
         Y_spu, kl_spu = spsim.sim_jax(
             sim, proc_transform_random, static_argnums=(2, 3, 4)
-        )(X_spu_input, Y_init_jax, n_components, perplexity, max_iter)
+        )(X_spu_input, Y_init_jax, n_components, perplexity, spu_max_iter)
 
         Y_spu = np.array(Y_spu)
         kl_spu = float(kl_spu)
@@ -286,17 +289,6 @@ class TestTSNEComparison(unittest.TestCase):
         print(
             f"Execution Time (s)  | {end_time_sklearn - start_time_sklearn:^12.2f} | {end_time_spu - start_time_spu:^4.2f}"
         )
-
-        fig, axes = plt.subplots(1, 2, figsize=(12, 5))
-        axes[0].scatter(Y_sklearn[:, 0], Y_sklearn[:, 1], c=y)
-        axes[0].set_title("Scikit-learn t-SNE")
-        axes[1].scatter(Y_spu[:, 0], Y_spu[:, 1], c=y)
-        axes[1].set_title("SPU t-SNE")
-
-        # Save the figure to a file (you can specify your desired path)
-        plt.savefig("tsne_comparison—random.png")
-        plt.close()
-
         print("\nTest finished.")
 
 

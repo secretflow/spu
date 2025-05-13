@@ -18,7 +18,7 @@ import time
 
 import jax.random as random
 import numpy as np
-from sklearn.datasets import load_iris, load_digits
+from sklearn.datasets import make_blobs
 from sklearn.manifold import trustworthiness
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../../'))
@@ -27,14 +27,16 @@ from sml.decomposition.tsne import TSNE
 
 
 def test_tsne(mode: emulation.Mode = emulation.Mode.MULTIPROCESS):
+    conf_path = "sml/decomposition/emulations/3pc.json"
+    emulator = emulation.Emulator(conf_path, mode, bandwidth=300, latency=20)
+
     def emul_tsne_random():
         print("Start t-SNE emulation...")
 
         def load_data():
             """Loads the dataset."""
             print("Loading dataset...")
-            x, y = load_iris(return_X_y=True)
-            # x, y = load_digits(n_class=6, return_X_y=True)
+            x, y = make_blobs(n_samples=50, n_features=4, centers=3, random_state=42)
             x = x.astype(np.float64)
             x = x.astype(np.float64)
             return x, y
@@ -45,7 +47,7 @@ def test_tsne(mode: emulation.Mode = emulation.Mode.MULTIPROCESS):
             Y_init_jax = 1e-4 * random.normal(key, (n_samples, 2)).astype(np.float32)
             model = TSNE(
                 n_components=2,
-                perplexity=30,
+                perplexity=10,
                 max_iter=300,
                 init='random',
             )
@@ -101,7 +103,7 @@ def test_tsne(mode: emulation.Mode = emulation.Mode.MULTIPROCESS):
         def load_data():
             """Loads the dataset."""
             print("Loading dataset...")
-            x, y = load_iris(return_X_y=True)
+            x, y = make_blobs(n_samples=50, n_features=4, centers=3, random_state=42)
             x = x.astype(np.float64)
             x = x.astype(np.float64)
             return x, y
@@ -109,7 +111,7 @@ def test_tsne(mode: emulation.Mode = emulation.Mode.MULTIPROCESS):
         def proc(x):
             model = TSNE(
                 n_components=2,
-                perplexity=30,
+                perplexity=10,
                 max_iter=300,
                 init='pca',
             )
@@ -160,8 +162,6 @@ def test_tsne(mode: emulation.Mode = emulation.Mode.MULTIPROCESS):
             traceback.print_exc()
 
     try:
-        conf_path = "sml/decomposition/emulations/3pc.json"
-        emulator = emulation.Emulator(conf_path, mode, bandwidth=300, latency=20)
         emulator.up()
         emul_tsne_random()
         emul_tsne_pca()

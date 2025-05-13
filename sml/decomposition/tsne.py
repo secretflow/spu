@@ -27,7 +27,7 @@ class TSNE:
         learning_rate="auto",
         max_iter=300,
         early_exaggeration=12.0,
-        early_exaggeration_iter=250,
+        early_exaggeration_iter=200,
         momentum=0.8,
         init='pca',
         pca_method='power_iteration',
@@ -37,6 +37,9 @@ class TSNE:
         pca_random_matrix=None,
         pca_scale=None,
         pca_n_oversamples=10,
+        max_attempts=50,
+        sigma_maxs=1e12,
+        sigma_mins=1e-12,
     ):
         self.n_components = n_components
         self.perplexity = perplexity
@@ -53,6 +56,9 @@ class TSNE:
         self.pca_random_matrix = pca_random_matrix
         self.pca_scale = pca_scale
         self.pca_n_oversamples = pca_n_oversamples
+        self.max_attempts = max_attempts
+        self.sigma_maxs = sigma_maxs
+        self.sigma_mins = sigma_mins
 
         self.embedding_ = None
         self.kl_divergence_ = None
@@ -79,15 +85,15 @@ class TSNE:
         entropy = -jnp.sum(P * jnp.log2(P + 1e-12), axis=1)
         return 2**entropy
 
-    def _all_sym_affinities(self, data, perp, max_attempts=50):
+    def _all_sym_affinities(self, data, perp):
         """
         Compute symmetric affinity matrix P.
         """
         dist_mat = self._squared_dist_mat(data)
         n_samples = data.shape[0]
 
-        sigma_maxs = jnp.full(n_samples, 1e12)
-        sigma_mins = jnp.full(n_samples, 1e-12)
+        sigma_maxs = jnp.full(n_samples, self.sigma_maxs)
+        sigma_mins = jnp.full(n_samples, self.sigma_mins)
         sigmas = (sigma_mins + sigma_maxs) / 2
 
         def body_fun(carry, _):
@@ -108,7 +114,7 @@ class TSNE:
             return (updated_sigmas, new_sigma_mins, new_sigma_maxs), current_perps
 
         (final_sigmas, _, _), _ = lax.scan(
-            body_fun, (sigmas, sigma_mins, sigma_maxs), None, length=max_attempts
+            body_fun, (sigmas, sigma_mins, sigma_maxs), None, length=self.max_attempts
         )
 
         P = self._pairwise_affinities(data, final_sigmas[:, None], dist_mat)
