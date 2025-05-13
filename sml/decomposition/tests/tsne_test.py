@@ -36,12 +36,19 @@ class TestTSNEComparison(unittest.TestCase):
     def test_tsne_similarity_init_pca(self):
         print("\nStarting t-SNE comparison test (PCA initialization)...")
 
-        def proc_transform(X_in, n_components_in, perplexity_in, max_iter_in):
+        def proc_transform(
+            X_in,
+            n_components_in,
+            perplexity_in,
+            max_iter_in,
+            spu_early_exaggeration_iter,
+        ):
 
             model = TSNE(
                 n_components=n_components_in,
                 perplexity=perplexity_in,
                 max_iter=max_iter_in,
+                early_exaggeration_iter=spu_early_exaggeration_iter,
                 init='pca',
                 max_attempts=20,
                 sigma_maxs=1e6,
@@ -58,7 +65,8 @@ class TestTSNEComparison(unittest.TestCase):
         n_components = 2
         perplexity = 10
         max_iter = 300
-        spu_max_iter = 260
+        spu_max_iter = 150
+        spu_early_exaggeration_iter = 100
         random_state = 42
         n_neighbors_trustworthiness = 15
 
@@ -99,8 +107,12 @@ class TestTSNEComparison(unittest.TestCase):
         sim = spsim.Simulator(3, config)
 
         X_spu_input = X.astype(np.float32)
-        Y_spu, kl_spu = spsim.sim_jax(sim, proc_transform, static_argnums=(1, 2, 3))(
-            X_spu_input, n_components, perplexity, spu_max_iter
+        Y_spu, kl_spu = spsim.sim_jax(sim, proc_transform, static_argnums=(1, 2, 3, 4))(
+            X_spu_input,
+            n_components,
+            perplexity,
+            spu_max_iter,
+            spu_early_exaggeration_iter,
         )
 
         Y_spu = np.array(Y_spu)
@@ -162,13 +174,19 @@ class TestTSNEComparison(unittest.TestCase):
         print("\nStarting t-SNE comparison test (random initialization)...")
 
         def proc_transform_random(
-            X_in, Y_init_in, n_components_in, perplexity_in, max_iter_in
+            X_in,
+            Y_init_in,
+            n_components_in,
+            perplexity_in,
+            max_iter_in,
+            spu_early_exaggeration_iter,
         ):
 
             model = TSNE(
                 n_components=n_components_in,
                 perplexity=perplexity_in,
                 max_iter=max_iter_in,
+                early_exaggeration_iter=spu_early_exaggeration_iter,
                 init='random',
                 max_attempts=20,
                 sigma_maxs=1e6,
@@ -185,7 +203,8 @@ class TestTSNEComparison(unittest.TestCase):
         n_components = 2
         perplexity = 10
         max_iter = 300
-        spu_max_iter = 250
+        spu_max_iter = 150
+        spu_early_exaggeration_iter = 100
         random_state = 42
         n_neighbors_trustworthiness = 15
 
@@ -234,8 +253,15 @@ class TestTSNEComparison(unittest.TestCase):
         sim = spsim.Simulator(3, config)
 
         Y_spu, kl_spu = spsim.sim_jax(
-            sim, proc_transform_random, static_argnums=(2, 3, 4)
-        )(X_spu_input, Y_init_jax, n_components, perplexity, spu_max_iter)
+            sim, proc_transform_random, static_argnums=(2, 3, 4, 5)
+        )(
+            X_spu_input,
+            Y_init_jax,
+            n_components,
+            perplexity,
+            spu_max_iter,
+            spu_early_exaggeration_iter,
+        )
 
         Y_spu = np.array(Y_spu)
         kl_spu = float(kl_spu)
