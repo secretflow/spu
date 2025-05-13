@@ -16,7 +16,6 @@ import warnings
 
 import jax
 import jax.numpy as jnp
-import jax.random as random
 from jax import vmap
 
 
@@ -26,7 +25,6 @@ class QuantileTransformer:
         n_quantiles=1000,
         output_distribution='uniform',
         subsample=100_000,
-        random_state=None,
     ):
         """Initialize the transformer.
 
@@ -42,10 +40,8 @@ class QuantileTransformer:
                                        Defaults to 'uniform'.
             subsample (int): Maximum number of samples used to estimate the quantiles
                              for computational efficiency. Note: subsampling may lead to
-                             a less precise transformation. Defaults to 100,000.
-            random_state (int, optional): Determines random number generation for subsampling.
-                                         Pass an int for reproducible results across multiple
-                                         function calls. Defaults to None.
+                             a less precise transformation. If an int is provided, the first
+                             `subsample` samples will be used. Defaults to 100,000.
 
         Raises:
             ValueError: If parameters are invalid.
@@ -74,15 +70,9 @@ class QuantileTransformer:
             self.output_distribution = output_distribution
         if not isinstance(subsample, int) or subsample <= 0:
             raise ValueError(f"subsample must be a positive integer, got {subsample}.")
-        if random_state is not None and not isinstance(random_state, int):
-            raise ValueError(
-                f"random_state must be an integer or None, got {random_state}."
-            )
 
         self.n_quantiles = n_quantiles
         self.subsample = subsample
-        self.random_state = random_state
-        self._key = random.PRNGKey(random_state if random_state is not None else 0)
 
         self.quantiles_ = None
         self.references_ = None
@@ -114,18 +104,7 @@ class QuantileTransformer:
         actual_n_samples = n_samples
         if self.subsample < n_samples:
             actual_n_samples = self.subsample
-
-            self._key, subkey = random.split(self._key)
-
-            indices = random.choice(
-                subkey, n_samples, shape=(self.subsample,), replace=False
-            )
-            X_subset = X[indices]
-            if self.random_state is None:
-                warnings.warn(
-                    "Subsampling is enabled, but random_state is not set. "
-                    "Subsampling results may differ between runs."
-                )
+            X_subset = X[: self.subsample, :]
         else:
             X_subset = X
 
@@ -235,11 +214,6 @@ def _transform_single_feature(x_col, target_quantiles_prob, empirical_quantiles_
         Transformed data column mapped to [0, 1].
     """
 
-    tol = 1e-7
-    is_constant_col = (
-        jnp.abs(empirical_quantiles_vals[0] - empirical_quantiles_vals[-1]) < tol
-    )
-
     transformed_col = jnp.interp(
         x_col,
         empirical_quantiles_vals,  # xp: Data values at known quantiles
@@ -248,9 +222,7 @@ def _transform_single_feature(x_col, target_quantiles_prob, empirical_quantiles_
         right=1.0,  # Map values above max reference to 1
     )
 
-    constant_output_value = 0
-
-    return jnp.where(is_constant_col, constant_output_value, transformed_col)
+    return transformed_col
 
 
 def _inverse_transform_single_feature(
@@ -267,11 +239,6 @@ def _inverse_transform_single_feature(
         Data column mapped back to the original scale.
     """
 
-    tol = 1e-7
-    is_constant_col = (
-        jnp.abs(empirical_quantiles_vals[0] - empirical_quantiles_vals[-1]) < tol
-    )
-
     input_quantiles = jnp.clip(xt_col, 0.0, 1.0)
 
     inversed_col = jnp.interp(
@@ -280,8 +247,7 @@ def _inverse_transform_single_feature(
         empirical_quantiles_vals,  # fp: Corresponding values (original data scale)
     )
 
-    constant_original_value = empirical_quantiles_vals[0]
-    return jnp.where(is_constant_col, constant_original_value, inversed_col)
+    return inversed_col
 
 
 _vmap_transform_features = vmap(

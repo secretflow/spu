@@ -48,7 +48,7 @@ class UnitTests(unittest.TestCase):
 
         def proc(X):
             transformer = QuantileTransformer(
-                n_quantiles=50, output_distribution='uniform', random_state=42
+                n_quantiles=50, output_distribution='uniform'
             )
             transformer.fit(X)
             X_transformed = transformer.transform(X)
@@ -63,11 +63,6 @@ class UnitTests(unittest.TestCase):
         X_inversed_sklearn = sklearn_transformer.inverse_transform(
             X_transformed_sklearn
         )
-
-        print("SPU Transformed (first 5 rows):\n", X_transformed_spu[:5])
-        print("Sklearn Transformed (first 5 rows):\n", X_transformed_sklearn[:5])
-        print("SPU Inversed (first 5 rows):\n", X_inversed_spu[:5])
-        print("Sklearn Inversed (first 5 rows):\n", X_inversed_sklearn[:5])
 
         self.assertEqual(X_transformed_spu.shape, X_plain.shape)
         self.assertTrue(jnp.all(X_transformed_spu >= -1e-4))
@@ -90,7 +85,7 @@ class UnitTests(unittest.TestCase):
 
         def proc(X):
             transformer = QuantileTransformer(
-                n_quantiles=50, random_state=44, output_distribution='uniform'
+                n_quantiles=50, output_distribution='uniform'
             )
             X_transformed = transformer.fit_transform(X)
             X_inversed = transformer.inverse_transform(X_transformed)
@@ -105,13 +100,14 @@ class UnitTests(unittest.TestCase):
             X_transformed_sklearn
         )
 
-        print("Input X_plain[:, 1] (first 5):", X_plain[:5, 1])
-        print("SPU Transformed[:, 1] (first 5):", X_transformed_spu[:5, 1])
-        print("Sklearn Transformed[:, 1] (first 5):", X_transformed_sklearn[:5, 1])
-        print("SPU Inversed[:, 1] (first 5):", X_inversed_spu[:5, 1])
-        print("Sklearn Inversed[:, 1] (first 5):", X_inversed_sklearn[:5, 1])
         self.assertTrue(jnp.allclose(X_transformed_spu[:, 1], 0.0, atol=1e-3))
         self.assertTrue(jnp.allclose(X_inversed_spu[:, 1], 5.0, atol=1e-4))
+        self.assertTrue(
+            jnp.allclose(X_transformed_spu, X_transformed_sklearn, atol=1e-3, rtol=1e-3)
+        )
+        self.assertTrue(
+            jnp.allclose(X_inversed_spu, X_inversed_sklearn, atol=1e-3, rtol=1e-3)
+        )
         print("Constant column test passed.")
 
 

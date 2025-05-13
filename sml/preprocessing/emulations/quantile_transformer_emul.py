@@ -38,7 +38,6 @@ def test_quantile_transformer(mode: emulation.Mode = emulation.Mode.MULTIPROCESS
         model = QuantileTransformer(
             n_quantiles=n_quantiles,
             output_distribution=distribution,
-            random_state=RANDOM_STATE,
         )
 
         model.fit(X)
