@@ -48,10 +48,10 @@ spu_cc_library(
         "//libspu:spu",
         "//libspu/mpc/aby3",
         "//libspu/mpc/cheetah",
+        "//libspu/mpc/experimental/fantastic4",
         "//libspu/mpc/ref2k",
         "//libspu/mpc/securenn",
         "//libspu/mpc/semi2k",
-        "//libspu/mpc/experimental/fantastic4",
     ],
 )
 
