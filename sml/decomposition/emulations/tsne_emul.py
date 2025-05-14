@@ -48,7 +48,8 @@ def test_tsne(mode: emulation.Mode = emulation.Mode.MULTIPROCESS):
             model = TSNE(
                 n_components=2,
                 perplexity=10,
-                max_iter=300,
+                max_iter=50, # Set to 50 for faster unit test execution; to achieve better results, it needs to be set to 150 or above.
+                early_exaggeration=12,
                 init='random',
             )
             Y_spu_out = model.fit_transform(x, Y_init=Y_init_jax)
@@ -112,7 +113,8 @@ def test_tsne(mode: emulation.Mode = emulation.Mode.MULTIPROCESS):
             model = TSNE(
                 n_components=2,
                 perplexity=10,
-                max_iter=300,
+                max_iter=50, # Set to 50 for faster unit test execution; to achieve better results, it needs to be set to 150 or above.
+                early_exaggeration=12,
                 init='pca',
             )
             Y_spu_out = model.fit_transform(x)

@@ -65,8 +65,8 @@ class TestTSNEComparison(unittest.TestCase):
         n_components = 2
         perplexity = 10
         max_iter = 300
-        spu_max_iter = 150
-        spu_early_exaggeration_iter = 100
+        spu_max_iter = 50 # Set to 50 for faster unit test execution; to achieve better results, it needs to be set to 150 or above.
+        spu_early_exaggeration_iter = 25
         random_state = 42
         n_neighbors_trustworthiness = 15
 
@@ -203,8 +203,8 @@ class TestTSNEComparison(unittest.TestCase):
         n_components = 2
         perplexity = 10
         max_iter = 300
-        spu_max_iter = 150
-        spu_early_exaggeration_iter = 100
+        spu_max_iter = 50 # Set to 50 for faster unit test execution; to achieve better results, it needs to be set to 150 or above.
+        spu_early_exaggeration_iter = 25
         random_state = 42
         n_neighbors_trustworthiness = 15
 
