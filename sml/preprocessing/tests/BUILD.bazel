@@ -23,3 +23,11 @@ sml_py_test(
         "//sml/preprocessing",
     ],
 )
+
+sml_py_test(
+    name = "quantile_transformer_test",
+    srcs = ["quantile_transformer_test.py"],
+    deps = [
+        "//sml/preprocessing:quantile_transformer",
+    ],
+)
