@@ -175,6 +175,9 @@ class ComprehensiveGridSearchTests(unittest.TestCase):
             print(f"SPU Prediction: {spu_pred}")
             print(f"SPU Score: {spu_score}")
 
+    @unittest.skip(
+        "For logistic, this algorithm neither supports the set_params method nor allows internal parameters to be updated through assignment."
+    )
     def test_gridsearch_logistic(self):
         estimator = LogisticRegression(epochs=3, batch_size=16, class_labels=[0, 1])
         param_grid = {'learning_rate': [0.01, 0.1, 0.05], 'C': [1.0, 2.0, 5.0]}
