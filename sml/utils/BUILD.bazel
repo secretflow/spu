@@ -36,6 +36,15 @@ sml_py_library(
 )
 
 sml_py_library(
+    name = "grid_search_cv",
+    srcs = ["grid_search_cv.py"],
+    deps = [
+        "//sml/metrics/classification",
+        "//sml/metrics/regression",
+    ],
+)
+
+sml_py_library(
     name = "extmath",
     srcs = ["extmath.py"],
 )
