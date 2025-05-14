@@ -290,7 +290,9 @@ class ComprehensiveGridSearchTests(unittest.TestCase):
             cv_type='int',
         )
 
-    @unittest.skip("FIXME: Test it when we support revealing the best model from SPU during the program.")
+    @unittest.skip(
+        "FIXME: Test it when we support revealing the best model from SPU during the program."
+    )
     def test_gridsearch_decisiontree(self):
         estimator = DecisionTreeClassifier(
             max_depth=3,
@@ -310,7 +312,9 @@ class ComprehensiveGridSearchTests(unittest.TestCase):
             refit=True,
         )
 
-    @unittest.skip("FIXME: Test it when we support revealing the best model from SPU during the program.")
+    @unittest.skip(
+        "FIXME: Test it when we support revealing the best model from SPU during the program."
+    )
     def test_gridsearch_randomforest(self):
         estimator = RandomForestClassifier(
             n_estimators=3,
@@ -334,7 +338,9 @@ class ComprehensiveGridSearchTests(unittest.TestCase):
             refit=True,
         )
 
-    @unittest.skip("FIXME: Test it when we support revealing the best model from SPU during the program.")
+    @unittest.skip(
+        "FIXME: Test it when we support revealing the best model from SPU during the program."
+    )
     def test_gridsearch_adaboost(self):
         base_estimator = DecisionTreeClassifier(
             max_depth=1,
