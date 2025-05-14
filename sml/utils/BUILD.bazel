@@ -39,8 +39,8 @@ sml_py_library(
     name = "grid_search_cv",
     srcs = ["grid_search_cv.py"],
     deps = [
-        "//sml/spu/metrics/classification",
-        "//sml/spu/metrics/regression",
+        "//sml/metrics/classification",
+        "//sml/metrics/regression",
     ],
 )
 
