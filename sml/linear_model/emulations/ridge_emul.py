@@ -14,30 +14,21 @@
 import jax.numpy as jnp
 from sklearn.linear_model import Ridge as skRidge
 
-import examples.python.utils.dataset_utils as dsutil
 import sml.utils.emulation as emulation
 from sml.linear_model.ridge import Ridge
+from sml.utils.dataset_utils import load_open_source_datasets
 
 
 def emul_Ridge(mode: emulation.Mode.MULTIPROCESS):
-    def proc(x1, x2, y, solver):
+    def proc(x, y, solver):
         model = Ridge(alpha=1.0, max_iter=100, solver=solver)
-        x = jnp.concatenate((x1, x2), axis=1)
         y = y.reshape((y.shape[0], 1))
         result = model.fit(x, y).predict(x)
         return result
 
     def load_data():
-        dataset_config = {
-            "use_mock_data": False,
-            "problem_type": "regression",
-            "builtin_dataset_name": "diabetes",
-            "left_slice_feature_ratio": 0.5,
-        }
-
-        x1, x2, y = dsutil.load_dataset_by_config(dataset_config)
-
-        return x1, x2, y
+        x, y = load_open_source_datasets(name="diabetes", need_split_train_test=False)
+        return x, y
 
     try:
         solver_list = ['cholesky', 'svd']
@@ -49,24 +40,21 @@ def emul_Ridge(mode: emulation.Mode.MULTIPROCESS):
         emulator.up()
 
         # load mock data
-        x1, x2, y = load_data()
+        x, y = load_data()
 
         for i in range(len(solver_list)):
             solver = solver_list[i]
             # mark these data to be protected in SPU
-            X1, X2, Y = emulator.seal(x1, x2, y)
+            seal_x, seal_y = emulator.seal(x, y)
 
             # run
-            result = emulator.run(proc, static_argnums=(3,))(X1, X2, Y, solver)
+            result = emulator.run(proc, static_argnums=(2,))(seal_x, seal_y, solver)
             print(f"[emul_{solver}_result]--------------------------------------------")
             print(result[:10])
 
             # sklearn test
-            x = jnp.concatenate((x1, x2), axis=1)
             sklearn_result = (
-                skRidge(alpha=1, solver=solver_list[i], fit_intercept=True)
-                .fit(x, y)
-                .predict(x)
+                skRidge(alpha=1, solver=solver, fit_intercept=True).fit(x, y).predict(x)
             )
             print(f"[sklearn_{solver}_result]-----------------------------------------")
             print(sklearn_result[:10])

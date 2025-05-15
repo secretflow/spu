@@ -54,7 +54,7 @@ def emul_SVM(mode: emulation.Mode.MULTIPROCESS):
     try:
         # bandwidth and latency only work for docker mode
         emulator = emulation.Emulator(
-            "examples/python/conf/3pc.json", mode, bandwidth=300, latency=20
+            emulation.CLUSTER_ABY3_3PC, mode, bandwidth=300, latency=20
         )
         emulator.up()
 

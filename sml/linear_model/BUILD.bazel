@@ -28,6 +28,7 @@ sml_py_library(
     name = "logistic",
     srcs = ["logistic.py"],
     deps = [
+        "//sml/utils",
         "//sml/utils:fxp_approx",
     ],
 )

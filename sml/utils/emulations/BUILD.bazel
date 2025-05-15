@@ -62,3 +62,11 @@ filegroup(
         "3pc_128.json",
     ],
 )
+
+sml_py_binary(
+    name = "reveal_emul",
+    srcs = ["reveal_emul.py"],
+    deps = [
+        "//sml/utils",
+    ],
+)
