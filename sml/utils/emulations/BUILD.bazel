@@ -25,6 +25,37 @@ sml_py_binary(
     ],
 )
 
+sml_py_binary(
+    name = "jacobievd_emul",
+    srcs = ["jacobievd_emul.py"],
+    data = [":conf"],
+    deps = [
+        "//sml/utils:extmath",
+    ],
+)
+
+sml_py_binary(
+    name = "grid_search_cv_emul",
+    srcs = ["grid_search_cv_emul.py"],
+    deps = [
+        "//sml/ensemble:adaboost",
+        "//sml/ensemble:forest",
+        "//sml/gaussian_process:_gpc",
+        "//sml/linear_model:glm",
+        "//sml/linear_model:logistic",
+        "//sml/linear_model:pla",
+        "//sml/linear_model:quantile",
+        "//sml/linear_model:ridge",
+        "//sml/linear_model:sgd_classifier",
+        "//sml/naive_bayes:gnb",
+        "//sml/neighbors:knn",
+        "//sml/preprocessing",
+        "//sml/svm",
+        "//sml/tree",
+        "//sml/utils:grid_search_cv",
+    ],
+)
+
 filegroup(
     name = "conf",
     srcs = [
