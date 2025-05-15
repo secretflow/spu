@@ -18,7 +18,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-from ..utils.fxp_approx import SigType, sigmoid
+from sml.utils.fxp_approx import SigType, sigmoid
 from sml.utils.utils import sml_reveal
 
 

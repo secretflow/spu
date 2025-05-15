@@ -17,7 +17,7 @@ from enum import Enum
 import jax.numpy as jnp
 import numpy as np
 
-from ..utils.fxp_approx import sigmoid_sr
+from sml.utils.fxp_approx import sigmoid_sr
 
 
 class RegType(Enum):
