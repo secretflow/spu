@@ -23,7 +23,7 @@ sml_py_library(
         # "@spulib//libspu:spu_py_proto",
     ],
     data = [
-        "//examples/python/conf",  # FIXME
+        "//sml/utils/conf",
     ],
     deps = [
         "//spu/utils:distributed",

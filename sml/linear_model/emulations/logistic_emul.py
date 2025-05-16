@@ -72,7 +72,7 @@ def proc(
     model = model.fit(x, y)
     prob = model.predict_proba(x)
     pred = model.predict(x)
-    return prob, pred, model._running_epochs
+    return prob, pred, model.actual_epochs
 
 
 # Test Binary classification

@@ -157,7 +157,7 @@ class LogisticRegression:
         # threshold = 0 means no early stopping
         self._need_early_stopping = self.early_stopping_threshold > 0
         # totally running epochs
-        self._running_epochs = 0
+        self.actual_epochs = 0
 
         self.weights = jnp.zeros(())
 
@@ -293,7 +293,7 @@ class LogisticRegression:
             )
 
             _coefs[i] = weights
-            self._running_epochs = epoch
+            self.actual_epochs = epoch
 
         self.weights = jnp.array(_coefs)
         return self
