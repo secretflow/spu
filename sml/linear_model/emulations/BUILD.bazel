@@ -20,8 +20,8 @@ sml_py_binary(
     name = "sgd_classifier_emul",
     srcs = ["sgd_classifier_emul.py"],
     deps = [
-        "//examples/python/utils:dataset_utils",  # FIXME: remove examples dependency
         "//sml/linear_model:sgd_classifier",
+        "//sml/utils:dataset_utils",
     ],
 )
 
@@ -37,8 +37,8 @@ sml_py_binary(
     name = "ridge_emul",
     srcs = ["ridge_emul.py"],
     deps = [
-        "//examples/python/utils:dataset_utils",  # FIXME: remove examples dependency
         "//sml/linear_model:ridge",
+        "//sml/utils:dataset_utils",
     ],
 )
 

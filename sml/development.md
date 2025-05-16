@@ -23,7 +23,7 @@ If you want to submit an issue, please do your best to follow these guidelines w
 [This](../docs/tutorials/develop_your_first_mpc_application.ipynb) is a good first tutorial for new developers,
 [pitfall](../docs/development/fxp.ipynb) will be a cheatsheet when you come across numerical problem.
 
-The preferred way to contribute to SML is to fork the main repository, then submit a “pull request” (PR).
+The preferred way to contribute to SML is to fork the main repository, then submit a "pull request" (PR).
 
 1. Create a GitHub account if you do not have one.
 2. Fork the [project repository](https://github.com/secretflow/spu),
@@ -33,7 +33,7 @@ your can refer to [this](https://docs.github.com/en/get-started/quickstart/fork-
 using [Git](https://docs.github.com/en/get-started/quickstart/set-up-git) to do the version control.
 5. Following [Before Pull Request](<./development.md#Before Pull Request>) to place or test your codes,
 [these](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork)
- to create a pull request from your fork.
+to create a pull request from your fork.
 6. Committers do code review and then merge.
 
 ## Before Pull Request
@@ -58,3 +58,71 @@ the latest changes of the main SPU repository.
    so you might need add some [python rules](https://bazel.build/reference/be/python) in `BUILD.bazel`.
    - **Format all your files**: using [buildifier](https://github.com/bazelbuild/buildtools/tree/master/buildifier) to format bazel file,
     [black](https://github.com/psf/black) to format python file, [isort](https://github.com/PyCQA/isort) to sort the python imports.
+
+## Advanced Topics
+
+### Reveal some data during your programs
+
+First and foremost, it is important to emphasize that revealing data in plaintext is a risky operation.
+You must be fully aware of the potential data leakage risks associated with this action.
+If you still need to reveal some data from the SPU, you can use the `sml_reveal` function defined in `sml/utils/utils.py`,
+which allows you to reveal one or more arrays as plaintext.
+
+#### How to use the revealed values
+
+Note that the data revealed in your program will still be in the form of arrays, and you must ensure that your program remains fully jitable.
+Therefore, you **cannot** use standard Python control flow statements (such as if-else or while loops); instead, you should use JAX's control flow constructs.
+
+**CASE 1**: Conditional judgment on revealed data
+
+```python
+
+def reveal_func_single(x):
+   # We assume the input `x` is an 1-d array
+    y = jnp.log(x)
+    # reveal single value
+    xx = sml_reveal(x)
+
+    # x is 1-d array, so we fetch the first element
+    pred = xx[0] > 0
+
+    def true_branch(xx):
+        return jnp.log(xx), True
+
+    def false_branch(xx):
+        return jnp.log(-xx), False
+
+    # use jax.lax.cond to replace if-else
+    yy, preds = jax.lax.cond(pred, true_branch, false_branch, xx)
+
+    return y, yy, preds
+```
+
+**CASE 2**: Use revealed data to determine while loop exit
+
+```python
+def reveal_while_loop(x):
+    y = sml_reveal(jnp.max(x))
+
+    def cond_fun(carry):
+        _, y = carry
+        # jnp.max return 0-dim array, so we can fetch y directly
+        return y > 3
+
+    def body_fun(carry):
+        x, _ = carry
+        new_x = x - 1
+        new_y = sml_reveal(jnp.max(new_x))
+        return new_x, new_y
+
+    x, _ = jax.lax.while_loop(cond_fun, body_fun, (x, y))
+
+    return x
+
+```
+
+For concrete usage of the two examples above, please refer to `sml/utils/tests/reveal_test.py`.
+
+Finally, in `sml/linear_model/logistic.py`, we have also implemented a simple early stopping mechanism based on parameter changes (as a practical
+application of `while_loop`). This allows for more efficient logistic model training by revealing only a few bits,
+which can be considered to have very limited information leakage.

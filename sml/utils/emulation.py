@@ -28,10 +28,11 @@ from typing import Callable
 import yaml
 
 import spu.utils.distributed as ppd
+from sml.utils.utils import get_logger
 from spu import libspu
 from spu.utils.polyfill import Process
 
-CLUSTER_ABY3_3PC = "examples/python/conf/3pc.json"
+CLUSTER_ABY3_3PC = "sml/utils/conf/3pc.json"
 SML_HOME = pathlib.Path(__file__).resolve().parent.parent
 SAMPLE_CIDR = "172.16.238.0/24"
 # FIXME: use a released image
@@ -62,19 +63,15 @@ SAMPLE_NETWORK_BANDWIDTH_CMD = (
 SAMPLE_NETWORK_LATENCY_CMD = (
     "tc qdisc add dev eth0 parent 1:1 handle 10: netem delay @0msec limit @1"
 )
+
+# FIXME: remove examples deps
 SAMPLE_NODE_LAUNCH_CMD = (
     "python3 /home/admin/dev/examples/python/utils/nodectl.py "
     "-c /home/admin/dev/sml/@0/emulation.json start --node_id @1 "
     "&> /home/admin/dev/sml/@0/@1.log"
 )
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-syslog = logging.StreamHandler()
-formatter = logging.Formatter('[%(asctime)s] %(message)s')
-syslog.setFormatter(formatter)
-logger.addHandler(syslog)
-logger.propagate = False
+logger = get_logger(__name__)
 
 
 class Mode(Enum):

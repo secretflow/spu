@@ -25,5 +25,6 @@
 // should be consistent with python level
 #define    MAKE_CACHED_VAR  "spu.make_cached_var"
 #define    DROP_CACHED_VAR  "spu.drop_cached_var"
+#define    REVEAL           "spu.reveal"
 
 // clang-format on
