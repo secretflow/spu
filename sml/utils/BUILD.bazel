@@ -54,3 +54,16 @@ sml_py_library(
     srcs = ["jacobi_svd.py"],
 )
 
+sml_py_library(
+    name = "dataset_utils",
+    srcs = ["dataset_utils.py"],
+    deps = [":utils"],
+)
+
+sml_py_library(
+    name = "utils",
+    srcs = ["utils.py"],
+    deps = [
+        "//spu/experimental:experimentals",
+    ],
+)
