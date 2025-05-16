@@ -16,10 +16,10 @@ import unittest
 import jax.numpy as jnp
 from sklearn.linear_model import Ridge as skRidge
 
-import examples.python.utils.dataset_utils as dsutil
 import spu.libspu as libspu
 import spu.utils.simulation as spsim
 from sml.linear_model.ridge import Ridge
+from sml.utils.dataset_utils import load_open_source_datasets
 
 
 class UnitTests(unittest.TestCase):
@@ -29,26 +29,17 @@ class UnitTests(unittest.TestCase):
 
         sim = spsim.Simulator.simple(3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM64)
 
-        def proc(x1, x2, y, solver):
+        def proc(x, y, solver):
             model = Ridge(alpha=1.0, max_iter=100, solver=solver)
-            x = jnp.concatenate((x1, x2), axis=1)
             y = y.reshape((y.shape[0], 1))
             result = model.fit(x, y).predict(x)
             return result
 
-        dataset_config = {
-            "use_mock_data": False,
-            "problem_type": "regression",
-            "builtin_dataset_name": "diabetes",
-            "left_slice_feature_ratio": 0.5,
-        }
+        x, y = load_open_source_datasets(name="diabetes", need_split_train_test=False)
 
-        x1, x2, y = dsutil.load_dataset_by_config(dataset_config)
-
-        x = jnp.concatenate((x1, x2), axis=1)
         for i in range(len(solver_list)):
             solver = solver_list[i]
-            result = spsim.sim_jax(sim, proc, static_argnums=(3,))(x1, x2, y, solver)
+            result = spsim.sim_jax(sim, proc, static_argnums=(2,))(x, y, solver)
 
             print(f"[spsim_{solver}_result]-------------------------------------------")
             print(result[:10])

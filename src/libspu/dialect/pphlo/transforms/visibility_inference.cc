@@ -278,6 +278,14 @@ void VisibilityInference::inferIntrinsic(Operation &op) {
     return;
   }
 
+  if (c_op.getCallTargetName() == "spu.reveal") {
+    SPU_ENFORCE(op.getNumResults() == 1,
+                "reveal op should have only one output");
+    // TODO: maybe add private visibility in the future
+    value_vis_.setValueVisibility(c_op->getResult(0), Visibility::PUBLIC);
+    return;
+  }
+
   // Default rule
   if (op.getNumResults() == 1) {
     SmallVector<Visibility, 2> operand_vis;

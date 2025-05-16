@@ -19,12 +19,9 @@ package(default_visibility = ["//visibility:public"])
 sml_py_test(
     name = "sgd_classifier_test",
     srcs = ["sgd_classifier_test.py"],
-    data = [
-        "//examples/python/conf",  # FIXME: remove examples dependency
-    ],
     deps = [
-        "//examples/python/utils:dataset_utils",  # FIXME: remove examples dependency
         "//sml/linear_model:sgd_classifier",
+        "//sml/utils:dataset_utils",
     ],
 )
 
@@ -40,8 +37,8 @@ sml_py_test(
     name = "ridge_test",
     srcs = ["ridge_test.py"],
     deps = [
-        "//examples/python/utils:dataset_utils",  # FIXME: remove examples dependency
         "//sml/linear_model:ridge",
+        "//sml/utils:dataset_utils",
     ],
 )
 

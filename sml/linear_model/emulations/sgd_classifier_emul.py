@@ -12,17 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
-
-import jax.numpy as jnp
-
-import examples.python.utils.dataset_utils as dsutil
 import sml.utils.emulation as emulation
 from sml.linear_model.sgd_classifier import SGDClassifier
+from sml.utils.dataset_utils import load_mock_datasets
 
 
 def emul_SGDClassifier(mode: emulation.Mode.MULTIPROCESS):
-    def proc(x1, x2, y):
+
+    def proc(x, y):
         model = SGDClassifier(
             epochs=1,
             learning_rate=0.1,
@@ -32,18 +29,9 @@ def emul_SGDClassifier(mode: emulation.Mode.MULTIPROCESS):
             l2_norm=0.0,
         )
 
-        x = jnp.concatenate((x1, x2), axis=1)
         y = y.reshape((y.shape[0], 1))
 
         return model.fit(x, y).predict_proba(x)
-
-    def load_data():
-        with open("examples/python/conf/ds_mock_regression_basic.json", "r") as f:
-            dataset_config = json.load(f)
-
-        x1, x2, y = dsutil.load_dataset_by_config(dataset_config)
-
-        return x1, x2, y
 
     try:
         # bandwidth and latency only work for docker mode
@@ -53,13 +41,18 @@ def emul_SGDClassifier(mode: emulation.Mode.MULTIPROCESS):
         emulator.up()
 
         # load mock data
-        x1, x2, y = load_data()
+        x, y = load_mock_datasets(
+            n_samples=50000,
+            n_features=100,
+            task_type="bi_classification",
+            need_split_train_test=False,
+        )
 
         # mark these data to be protected in SPU
-        x1, x2, y = emulator.seal(x1, x2, y)
+        x, y = emulator.seal(x, y)
 
         # run
-        result = emulator.run(proc)(x1, x2, y)
+        result = emulator.run(proc)(x, y)
         print(result)
     finally:
         emulator.down()

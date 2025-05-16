@@ -51,3 +51,19 @@ sml_py_test(
         "//sml/utils:grid_search_cv",
     ],
 )
+
+sml_py_test(
+    name = "dataset_utils_test",
+    srcs = ["dataset_utils_test.py"],
+    deps = [
+        "//sml/utils:dataset_utils",
+    ],
+)
+
+sml_py_test(
+    name = "reveal_test",
+    srcs = ["reveal_test.py"],
+    deps = [
+        "//sml/utils",
+    ],
+)
