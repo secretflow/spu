@@ -196,12 +196,11 @@ class LogisticRegression:
             err = pred - y_slice
             grad = jnp.matmul(jnp.transpose(x_slice), err)
 
-            if self.penalty != Penalty.NONE:
-                w_with_zero_bias = jnp.resize(w, (num_feat, 1))
-                w_with_zero_bias = jnp.concatenate(
-                    (w_with_zero_bias, jnp.zeros((1, 1))),
-                    axis=0,
-                )
+            w_with_zero_bias = jnp.resize(w, (num_feat, 1))
+            w_with_zero_bias = jnp.concatenate(
+                (w_with_zero_bias, jnp.zeros((1, 1))),
+                axis=0,
+            )
             if self.penalty == Penalty.L2:
                 reg = w_with_zero_bias * 1.0 / self.C
             elif self.penalty == Penalty.L1:
