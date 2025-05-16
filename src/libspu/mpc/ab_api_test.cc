@@ -81,7 +81,6 @@ bool verifyCost(Kernel* kernel, std::string_view name, FieldType field,
   ce::Params params = {{"K", SizeOf(field) * 8}, {"N", npc}};
   return verifyCost(kernel, name, params, cost, shape.numel() /*repeated*/);
 }
-
 }  // namespace
 
 #define TEST_ARITHMETIC_BINARY_OP_AA(OP)                                       \
@@ -471,12 +470,19 @@ TEST_P(ArithmeticTest, LShiftA) {
 
   utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
     auto obj = factory(conf, lctx);
-
+    if (!obj->prot()->hasKernel("lshift_a")) {
+      return;
+    }
     /* GIVEN */
     auto p0 = rand_p(obj.get(), kShape);
     auto a0 = p2a(obj.get(), p0);
 
     for (auto bits : kShiftBits) {
+      if (conf.protocol == ProtocolKind::SHAMIR &&
+          bits >= GetMersennePrimeExp(conf.field)) {
+        continue;
+      }
+
       if (bits >= p0.elsize() * 8) {
         // Shift more than elsize is a UB
         continue;
@@ -520,10 +526,12 @@ TEST_P(ArithmeticTest, TruncA) {
       p0 = arshift_p(obj.get(), p0,
                      {static_cast<int64_t>(SizeOf(conf.field) * 8 - 10)});
     }
+    auto v0 = p2v(obj.get(), p0, 0);
 
     /* GIVEN */
     const size_t bits = 2;
-    auto a0 = p2a(obj.get(), p0);
+    auto a0 = v2a(obj.get(), v0);
+    // auto a0 = p2a(obj.get(), p0);
 
     /* WHEN */
     auto prev = obj->prot()->getState<Communicator>()->getStats();
@@ -614,8 +622,16 @@ TEST_P(ArithmeticTest, A2P) {
                                                                                \
           /* THEN */                                                           \
           EXPECT_VALUE_EQ(re, rp);                                             \
-          EXPECT_TRUE(verifyCost(obj->prot()->getKernel(#OP "_bb"), #OP "_bb", \
-                                 conf.field, kShape, npc, cost));              \
+          if (conf.protocol == ProtocolKind::SHAMIR) {                         \
+            const size_t nBits = GetMersennePrimeExp(conf.field);              \
+            ce::Params params = {                                              \
+                {"K", SizeOf(conf.field) * 8}, {"N", npc}, {"nBits", nBits}};  \
+            EXPECT_TRUE(verifyCost(obj->prot()->getKernel(#OP "_bb"),          \
+                                   #OP "_bb", params, cost, kShape.numel()));  \
+          } else {                                                             \
+            EXPECT_TRUE(verifyCost(obj->prot()->getKernel(#OP "_bb"),          \
+                                   #OP "_bb", conf.field, kShape, npc, cost)); \
+          }                                                                    \
         });                                                                    \
   }
 
@@ -671,6 +687,10 @@ TEST_BOOLEAN_BINARY_OP(xor)
           auto b0 = p2b(obj.get(), p0);                                        \
                                                                                \
           for (auto bits : kShiftBits) {                                       \
+            if (conf.protocol == ProtocolKind::SHAMIR &&                       \
+                bits >= GetMersennePrimeExp(conf.field)) {                     \
+              continue;                                                        \
+            }                                                                  \
             if (bits >= p0.elsize() * 8) {                                     \
               continue;                                                        \
             }                                                                  \
