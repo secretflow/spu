@@ -25,6 +25,7 @@ spu_py_library(
     deps = [
         ":drop_cached_var",
         ":make_cached_var",
+        ":reveal",
     ],
 )
 
@@ -42,6 +43,16 @@ spu_py_library(
     name = "drop_cached_var",
     srcs = [
         "drop_cached_var_impl.py",
+    ],
+    visibility = [
+        "//visibility:private",
+    ],
+)
+
+spu_py_library(
+    name = "reveal",
+    srcs = [
+        "reveal_impl.py",
     ],
     visibility = [
         "//visibility:private",

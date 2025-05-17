@@ -26,3 +26,9 @@ sml_py_library(
     name = "nmf",
     srcs = ["nmf.py"],
 )
+
+sml_py_library(
+    name = "tsne",
+    srcs = ["tsne.py"],
+    deps = ["//sml/decomposition:pca"],
+)

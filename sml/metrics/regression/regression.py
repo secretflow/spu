@@ -113,3 +113,26 @@ def mean_poisson_deviance(y_true, y_pred, sample_weight=None):
 
 def mean_gamma_deviance(y_true, y_pred, sample_weight=None):
     return _mean_tweedie_deviance(y_true, y_pred, sample_weight=sample_weight, power=2)
+
+
+def r2_score(y_true, y_pred):
+    """
+    Calculates the R^2 (coefficient of determination) regression score using JAX.
+
+    Args:
+        y_true (jnp.ndarray): True target values.
+        y_pred (jnp.ndarray): Predicted target values.
+
+    Returns:
+        float: R^2 score.
+    """
+    y_true, y_pred = jnp.asarray(y_true).ravel(), jnp.asarray(y_pred).ravel()
+    ss_res = jnp.sum(jnp.square(y_true - y_pred))
+    ss_tot = jnp.sum(jnp.square(y_true - jnp.mean(y_true)))
+
+    special_case = ss_tot == 0
+    r2_special = jnp.where(ss_res == 0, 1.0, 0.0)
+
+    r2_normal = 1 - (ss_res / ss_tot)
+
+    return jnp.where(special_case, r2_special, r2_normal)

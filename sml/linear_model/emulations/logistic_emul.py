@@ -44,12 +44,20 @@ def load_data(multi_class="binary"):
     return X, y, X_spu, y_spu
 
 
-def proc(x, y, penalty, multi_class="binary"):
+def proc(
+    x,
+    y,
+    penalty,
+    multi_class="binary",
+    early_stopping_threshold=0.0,
+    epochs=1,
+    batch_size=8,
+):
     class_labels = [0, 1] if multi_class == "binary" else [0, 1, 2]
     model = LogisticRegression(
-        epochs=1,
+        epochs=epochs,
         learning_rate=0.1,
-        batch_size=8,
+        batch_size=batch_size,
         solver="sgd",
         penalty=penalty,
         sig_type="sr",
@@ -58,12 +66,13 @@ def proc(x, y, penalty, multi_class="binary"):
         class_weight=None,
         multi_class=multi_class,
         class_labels=class_labels,
+        early_stopping_threshold=early_stopping_threshold,
     )
 
     model = model.fit(x, y)
     prob = model.predict_proba(x)
     pred = model.predict(x)
-    return prob, pred
+    return prob, pred, model.actual_epochs
 
 
 # Test Binary classification
@@ -93,6 +102,23 @@ def emul_LogisticRegression_multi_classificatio(emulator):
     )
 
 
+def emul_LogisticRegression_with_early_stopping(emulator):
+    X, y, X_spu, y_spu = load_data(multi_class="binary")
+    # Run
+    result = emulator.run(proc, static_argnums=(2, 3, 4, 5, 6))(
+        X_spu,
+        y_spu,
+        "l2",
+        "binary",
+        0.1,
+        100,
+        8,
+    )
+
+    assert roc_auc_score(y.values, result[0]) > 0.95
+    assert result[2] < 100
+
+
 if __name__ == "__main__":
     try:
         # bandwidth and latency only work for docker mode
@@ -105,5 +131,6 @@ if __name__ == "__main__":
         emulator.up()
         emul_LogisticRegression(emulator)
         emul_LogisticRegression_multi_classificatio(emulator)
+        emul_LogisticRegression_with_early_stopping(emulator)
     finally:
         emulator.down()

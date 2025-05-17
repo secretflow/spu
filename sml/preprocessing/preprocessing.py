@@ -949,7 +949,7 @@ class KBinsDiscretizer:
                     bin_edges = jax.vmap(bin_func, in_axes=1, out_axes=1)(X)
 
             if self.strategy == "kmeans":
-                from ..cluster.kmeans import KMEANS
+                from sml.cluster.kmeans import KMEANS
 
                 def bin_func(x, KMEANS):
                     x = x[:, None]
@@ -1171,7 +1171,7 @@ class KBinsDiscretizer:
                                 axis=1,
                             )
             if self.strategy == "kmeans":
-                from ..cluster.kmeans import KMEANS
+                from sml.cluster.kmeans import KMEANS
 
                 for index_n_bin in range(diverse_n_bins.shape[0]):
                     x = X[:, index_n_bin]

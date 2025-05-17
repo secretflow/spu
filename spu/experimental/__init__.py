@@ -14,8 +14,10 @@
 
 from .drop_cached_var_impl import drop_cached_var
 from .make_cached_var_impl import make_cached_var
+from .reveal_impl import reveal
 
 __all__ = [
     "make_cached_var",
     "drop_cached_var",
+    "reveal",
 ]
