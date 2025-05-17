@@ -121,6 +121,11 @@ enum ProtocolKind {
   // A semi-honest 3PC-protocol for Neural Network, P2 as the helper,
   // (https://eprint.iacr.org/2018/442)
   SECURENN = 5,
+
+  // The malicious 3PC-protocol version of swift
+  // This is an experimental protocol! Don't use it.
+  // (https://eprint.iacr.org/2020/592)
+  SWIFT = 6,
 };
 
 //////////////////////////////////////////////////////////////////////////
