@@ -6,18 +6,19 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: SPU \n"
+"Project-Id-Version: SPU\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2025-03-13 15:10+0800\n"
-"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language: zh_CN\n"
+"PO-Revision-Date: 2025-05-22 21:04+0800\n"
+"Last-Translator: \n"
 "Language-Team: zh_CN <LL@li.org>\n"
-"Plural-Forms: nplurals=1; plural=0;\n"
+"Language: zh_CN\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
 "Generated-By: Babel 2.17.0\n"
+"X-Generator: Poedit 3.6\n"
 
 #: ../../development/pipeline.rst:2
 msgid "SPU Pipeline"
@@ -25,10 +26,12 @@ msgstr "SPU 管道"
 
 #: ../../development/pipeline.rst:4
 msgid ""
-"Recall that SPU could be treated as a :ref:`virtual device "
-"<development/basic_concepts:Machine model>`. When working with a (virtual"
-" or physical) device, we need several steps."
-msgstr "前面提到，SPU 可以被视为虚拟设备。使用（虚拟或物理）设备时，我们需要几个步骤。"
+"Recall that SPU could be treated as a :ref:`virtual device <development/"
+"basic_concepts:Machine model>`. When working with a (virtual or physical) "
+"device, we need several steps."
+msgstr ""
+"前面提到，SPU 可以被视为虚拟设备。使用（虚拟或物理）设备时，我们需要几个步"
+"骤。"
 
 #: ../../development/pipeline.rst:6
 msgid "infeed code to it"
@@ -82,9 +85,10 @@ msgstr "AI frontend 跟踪 DAG，并以 XLA IR 形式发出。"
 
 #: ../../development/pipeline.rst:30
 msgid ""
-"SPU compiler takes XLA IR, and compiles it to SPU IR, the format that SPU"
-" runtime understands."
-msgstr "SPU 编译器接收 XLA IR，并将其编译为 SPU IR，即 SPU 运行时可以理解的格式。"
+"SPU compiler takes XLA IR, and compiles it to SPU IR, the format that SPU "
+"runtime understands."
+msgstr ""
+"SPU 编译器接收 XLA IR，并将其编译为 SPU IR，即 SPU 运行时可以理解的格式。"
 
 #: ../../development/pipeline.rst:32
 msgid "For more details, please see :doc:`compiler` for details."
@@ -105,7 +109,8 @@ msgid ""
 msgstr "数据提供者使用 SPU io 模块来加密输入数据。"
 
 #: ../../development/pipeline.rst:41
-msgid "For SPU MPC backend, *encrypt* means to split plaintext data into shares."
+msgid ""
+"For SPU MPC backend, *encrypt* means to split plaintext data into shares."
 msgstr "对于 SPU MPC 后端，加密意味着将明文数据分成几部分。"
 
 #: ../../development/pipeline.rst:42
@@ -114,14 +119,14 @@ msgstr "对于浮点数据，可能还需要编码为定点。"
 
 #: ../../development/pipeline.rst:44
 msgid ""
-"The encrypted data is sent to :ref:`SPU runtime <reference/py_api:Runtime"
-" Setup>`."
+"The encrypted data is sent to :ref:`SPU runtime <reference/py_api:Runtime "
+"Setup>`."
 msgstr "加密数据被发送到 SPU 运行时。"
 
 #: ../../development/pipeline.rst:45
 msgid ""
-"The output data is fetched by *result owner*, and decrypted by the "
-":ref:`SPU io <reference/py_api:Runtime IO>` module."
+"The output data is fetched by *result owner*, and decrypted by the :ref:`SPU "
+"io <reference/py_api:Runtime IO>` module."
 msgstr "输出数据由SPU io 模块解密后提供给数据获取者。"
 
 #: ../../development/pipeline.rst:49
@@ -130,28 +135,35 @@ msgstr "即时编译"
 
 #: ../../development/pipeline.rst:51
 msgid ""
-"JIT is short for `Just-in-time compilation <https://en.wikipedia.org/wiki"
-"/Just-in-time_compilation>`_, with this approach, the compiler can get "
-"more information, such as input shapes, than in `AOT mode "
-"<https://en.wikipedia.org/wiki/Ahead-of-time_compilation>`_. JIT may "
-"introduce more evaluation overhead, but it's really trivial in secure "
-"computation setting."
+"JIT is short for `Just-in-time compilation <https://en.wikipedia.org/wiki/"
+"Just-in-time_compilation>`_, with this approach, the compiler can get more "
+"information, such as input shapes, than in `AOT mode <https://"
+"en.wikipedia.org/wiki/Ahead-of-time_compilation>`_. JIT may introduce more "
+"evaluation overhead, but it's really trivial in secure computation setting."
 msgstr ""
+"JIT 是即时编译 (Just-in-time compilation) 的缩写，通过这种方式，编译器可以比 "
+"AOT 模式获取更多信息，例如输入形状。JIT 可能会引入更多的评估开销，但在安全计"
+"算场景中这是微不足道的。"
 
 #: ../../development/pipeline.rst:53
 msgid ""
 "In SPU, JIT has more benefits since the backend engine may be orders of "
 "magnitude faster if it knows the *visibility* of data. For example, when "
 "multiplying two secrets, the backend MPC engine may involve expensive "
-"*beaver triple* progress, but when one of the inputs (of multiply) is "
-"public known to all parties, the operation will be much faster. So we "
-"should *mark* as much data as possible to be *public* (if it doesn't need"
-" to be protected), and tell the compiler these information."
+"*beaver triple* progress, but when one of the inputs (of multiply) is public "
+"known to all parties, the operation will be much faster. So we should *mark* "
+"as much data as possible to be *public* (if it doesn't need to be "
+"protected), and tell the compiler these information."
 msgstr ""
+"在 SPU 中，JIT 具有更多优势，因为如果后端引擎知道数据是可见的，那么它的速度可"
+"能会快几个数量级。例如，在将两方秘密数据相乘时，后端 MPC 运算可能涉及昂贵的三"
+"重运算，但当其中一方数据是所有各方都知道的公共数据时，运算会快得多。因此，我"
+"们应该将尽可能多的数据标记为公开（如果数据不需要保护），并告诉编译器这些信"
+"息。"
 
 #: ../../development/pipeline.rst:55
 msgid ""
 "So, SPU compilation normally happens after all data infeed is done, and "
 "`just in time` before the real evaluation."
-msgstr "因此，SPU 编译通常在所有数据输入完成后进行，并且在实际评估之前进行即时编译。"
-
+msgstr ""
+"因此，SPU 编译通常在所有数据输入完成后进行，并且在实际评估之前进行即时编译。"
