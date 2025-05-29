@@ -26,6 +26,7 @@ sml_py_library(
         "//sml/utils/conf",
     ],
     deps = [
+        "//sml/utils",
         "//spu/utils:distributed",
     ],
 )

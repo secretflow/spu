@@ -22,16 +22,19 @@ from sml.cluster.kmeans import KMEANS
 
 
 def emul_KMEANS(mode: emulation.Mode.MULTIPROCESS):
+    n_samples = 1000
+    n_features = 100
+    model = KMEANS(n_clusters=2, n_samples=n_samples, init="random", max_iter=10)
+
     def proc(x1, x2):
         x = jnp.concatenate((x1, x2), axis=1)
-        model = KMEANS(n_clusters=2, n_samples=x.shape[0], init="random", max_iter=10)
 
-        return model.fit(x).predict(x)
+        return model.fit(x).predict(x), model._centers
 
     def load_data():
-        n_samples = 1000
-        n_features = 100
-        X, _ = make_blobs(n_samples=n_samples, n_features=n_features, centers=2)
+        X, _ = make_blobs(
+            n_samples=n_samples, n_features=n_features, centers=2, random_state=107
+        )
         split_index = n_features // 2
         return X[:, :split_index], X[:, split_index:]
 
@@ -42,13 +45,36 @@ def emul_KMEANS(mode: emulation.Mode.MULTIPROCESS):
     # mark these data to be protected in SPU
     x1, x2 = emulator.seal(x1, x2)
     result = emulator.run(proc)(x1, x2)
-    print("result\n", result)
+    spu_result = result[0]
+    spu_centers = result[1]
 
     # Compare with sklearn
     from sklearn.cluster import KMeans
 
     model = KMeans(n_clusters=2)
-    print("sklearn:\n", model.fit(X).predict(X))
+    sklearn_result = model.fit(X).predict(X)
+    sklearn_centers = model.cluster_centers_
+
+    # the prediction result should be nearly the same
+    # but the order of the centers may not be the same
+    ratio1 = np.sum(spu_result == sklearn_result) / len(spu_result)
+    ratio2 = np.sum((1 - spu_result) == sklearn_result) / len(spu_result)
+    print("ratio1: ", ratio1)
+    print("ratio2: ", ratio2)
+    assert ratio1 > 0.95 or ratio2 > 0.95, "The prediction result is not the same"
+
+    # test the centers
+    spu_center_0 = spu_centers[0]
+    spu_center_1 = spu_centers[1]
+    sklearn_center_0 = sklearn_centers[0]
+    sklearn_center_1 = sklearn_centers[1]
+    # centers should be close ignoring the order
+    assert np.allclose(
+        spu_center_0, sklearn_center_0, rtol=1e-2, atol=1e-2
+    ) or np.allclose(spu_center_0, sklearn_center_1, rtol=1e-2, atol=1e-2)
+    assert np.allclose(
+        spu_center_1, sklearn_center_1, rtol=1e-2, atol=1e-2
+    ) or np.allclose(spu_center_1, sklearn_center_0, rtol=1e-2, atol=1e-2)
 
 
 def emul_kmeans_kmeans_plus_plus(mode: emulation.Mode.MULTIPROCESS):
