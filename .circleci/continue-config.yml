@@ -74,13 +74,13 @@ commands:
             # build module spulib
             pushd src
             bazelisk query <<parameters.targets>>; if [ $? -eq 0 ]; then
-              bazelisk build <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning; status1=${PIPESTATUS[0]}
+              bazelisk build --jobs 8 <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning; status1=${PIPESTATUS[0]}
             fi
             popd
 
             # build module spu
             bazelisk query <<parameters.targets>>; if [ $? -eq 0 ]; then
-              bazelisk build <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning; status2=${PIPESTATUS[0]}
+              bazelisk build --jobs 8 <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning; status2=${PIPESTATUS[0]}
             fi
 
             status=$((${status0} + ${status1} + ${status2}))
@@ -160,7 +160,7 @@ jobs:
   linux_ml_ut:
     executor:
       name: linux_executor
-      resource_class: 2xlarge+
+      resource_class: xlarge
     steps:
       - checkout
       - run:
@@ -213,10 +213,10 @@ workflows:
           name: linux_ut-<<matrix.resource_class>>
           matrix:
             parameters:
-              resource_class: ["2xlarge+", "arm.2xlarge"]
+              resource_class: ["xlarge", "arm.xlarge"]
       - linux_ml_ut:
           requires:
-            - linux_ut-2xlarge+
+            - linux_ut-xlarge
           filters:
             branches:
               only:
