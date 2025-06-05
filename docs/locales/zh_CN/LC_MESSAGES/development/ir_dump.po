@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: SPU \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-03-13 15:10+0800\n"
+"POT-Creation-Date: 2025-06-04 19:54+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -49,10 +49,10 @@ msgstr ""
 
 #: ../../development/ir_dump.rst:14
 msgid ""
-"Please refer to :ref:`/development/compiler.rst` for description of the "
-"role of XLA in SPU."
+"Please refer to :doc:`/development/compiler` for description of the role "
+"of XLA in SPU."
 msgstr ""
-"有关 XLA 在 SPU 中作用的描述，请参考 :ref:`/development/compiler.rst`。"
+"有关 XLA 在 SPU 中作用的描述，请参考 :doc:`/development/compiler`。"
 
 #: ../../development/ir_dump.rst:18
 msgid "TL;DR"
