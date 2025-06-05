@@ -6,31 +6,34 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: SPU \n"
+"Project-Id-Version: SPU\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2025-03-13 15:10+0800\n"
-"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language: zh_CN\n"
+"PO-Revision-Date: 2025-05-22 20:27+0800\n"
+"Last-Translator: \n"
 "Language-Team: zh_CN <LL@li.org>\n"
-"Plural-Forms: nplurals=1; plural=0;\n"
+"Language: zh_CN\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
 "Generated-By: Babel 2.17.0\n"
+"X-Generator: Poedit 3.6\n"
 
 #: ../../reference/cpp_api.rst:2
 msgid "C++ API Reference"
-msgstr ""
+msgstr "C++ API 参考文档"
 
 #: ../../reference/cpp_api.rst:4
 msgid "This part is not ready. Please check later."
-msgstr ""
+msgstr "该部分尚未准备好，请稍后再检查。"
 
 #: ../../reference/cpp_api.rst:7
 msgid ""
-"For low-level access, you can also use SPU's *C++ API*, but C++ API is "
-"**not guaranteed to be stable**. For more stable API, consider using "
-":ref:`frontend API <development/basic_concepts:API level>`."
+"For low-level access, you can also use SPU's *C++ API*, but C++ API is **not "
+"guaranteed to be stable**. For more stable API, consider "
+"using :ref:`frontend API <development/basic_concepts:API level>`."
 msgstr ""
-
+"你可以通过 SPU 的 *C++ API* 进行更底层的开发，但 C++ API **不保证稳定**。如要"
+"相对稳定的 API，请考虑使用 :ref:`frontend API <development/"
+"basic_concepts:API level>`。"
