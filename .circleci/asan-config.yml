@@ -29,7 +29,7 @@ jobs:
     # See: https://circleci.com/docs/2.0/configuration-reference/#docker-machine-macos-windows-executor
     docker:
       - image: secretflow/ubuntu-base-ci:latest
-    resource_class: 2xlarge+
+    resource_class: xlarge
     shell: /bin/bash --login -eo pipefail
     # Add steps to the job
     # See: https://circleci.com/docs/2.0/configuration-reference/#steps

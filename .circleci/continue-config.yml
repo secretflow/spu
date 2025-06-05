@@ -160,7 +160,7 @@ jobs:
   linux_ml_ut:
     executor:
       name: linux_executor
-      resource_class: 2xlarge+
+      resource_class: xlarge
     steps:
       - checkout
       - run:
@@ -213,10 +213,10 @@ workflows:
           name: linux_ut-<<matrix.resource_class>>
           matrix:
             parameters:
-              resource_class: ["2xlarge+", "arm.2xlarge"]
+              resource_class: ["xlarge", "arm.xlarge"]
       - linux_ml_ut:
           requires:
-            - linux_ut-2xlarge+
+            - linux_ut-xlarge
           filters:
             branches:
               only:
