@@ -24,7 +24,7 @@ Usage
 How can I check logs of SPU?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-You have to enable these flags in :ref:`/reference/runtime_config.md` when you start SPU cluster:
+You have to enable these flags in :doc:`/reference/runtime_config` when you start SPU cluster:
 
 - enable_action_trace
 - enable_pphlo_trace
@@ -32,7 +32,7 @@ You have to enable these flags in :ref:`/reference/runtime_config.md` when you s
 How could I use Cheetah protocol?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-You only need to select Cheetah protocol in :ref:`/reference/runtime_config.md`. Please search for *protocol* field in RuntimeConfig.
+You only need to select Cheetah protocol in :doc:`/reference/runtime_config`. Please search for *protocol* field in RuntimeConfig.
 And please keep in mind that Cheetah protocol is a 2PC protocol.
 
 
@@ -61,5 +61,5 @@ Could I convert any Jax code to XLA and run by SPU?
 
 Well, first you must make sure your Jax code is **jitable**. You have to apply some tricks to achieve this actually.
 Then even your code is jitable, sometime we will still disappoint you since we haven't implemented all XLA ops. Please
-check :ref:`/reference/xla_status.md`. We are working hard to finish them, you have my word!
+check :doc:`/reference/xla_status`. We are working hard to finish them, you have my word!
 
