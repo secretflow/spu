@@ -121,6 +121,11 @@ enum ProtocolKind {
   // A semi-honest 3PC-protocol for Neural Network, P2 as the helper,
   // (https://eprint.iacr.org/2018/442)
   SECURENN = 5,
+
+  // WARNING: This protocol is experimental only.
+  // A scalable MPC protocol for Neural Network,
+  // (https://www.usenix.org/system/files/usenixsecurity24-liu-fengrun.pdf)
+  SHAMIR = 6,
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -380,6 +385,9 @@ struct RuntimeConfig {
   // For protocol like SecureML, the most significant bit may have error with
   // low probability, which lead to huge calculation error.
   bool trunc_allow_msb_error = false;
+
+  // Threshold for shamir secret sharing.
+  uint64_t sss_threshold = 0;
 
   /// System related configurations start.
 

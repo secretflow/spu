@@ -61,6 +61,10 @@ class PrgState : public State {
 
   NdArrayRef genPubl(FieldType field, const Shape& shape);
 
+  NdArrayRef genPrivWithMersennePrime(FieldType field, const Shape& shape);
+
+  NdArrayRef genPublWithMersennePrime(FieldType field, const Shape& shape);
+
   Index genPrivPerm(size_t numel);
 
   // Generate a random permutation pair (p0, p1).

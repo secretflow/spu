@@ -143,6 +143,7 @@ spu_cc_library(
         "//libspu/core:pt_buffer_view",
         "//libspu/core:value",
         "//libspu/mpc/common:pv2k",  # TODO: this is a bad reference
+        "//libspu/mpc/common:pv_gfmp",
     ],
 )
 
@@ -165,6 +166,7 @@ spu_cc_library(
         "//libspu/core:value",
         "//libspu/core:xt_helper",
         "//libspu/mpc/common:pv2k",  # TODO: this is a bad reference
+        "//libspu/mpc/common:pv_gfmp",
     ],
 )
 
