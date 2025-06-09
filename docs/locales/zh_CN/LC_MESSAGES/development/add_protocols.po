@@ -21,17 +21,18 @@ msgstr ""
 
 #: ../../development/add_protocols.rst:2
 msgid "Adding New MPC Protocols"
-msgstr ""
+msgstr "添加新的 MPC 协议"
 
 #: ../../development/add_protocols.rst:5
 msgid ""
 "SecretFlow SPU currently is under active development and the APIs "
 "provided to protocol developers may be unstable at this moment."
 msgstr ""
+"隐语 SecretFlow SPU（密文运算单元）目前正在积极开发中，为协议开发者提供的 API 可能在此时不稳定。"
 
 #: ../../development/add_protocols.rst:8
 msgid "Introduction"
-msgstr ""
+msgstr "介绍"
 
 #: ../../development/add_protocols.rst:9
 msgid ""
@@ -53,20 +54,29 @@ msgid ""
 "present, SPU has integrated several protocols such as ABY3 and Cheetah, "
 "which can be regarded as a guide for protocol implementation."
 msgstr ""
+"本文档主要面向想要在 SPU（密文运算单元）中添加自定义 MPC 协议的开发者。在阅读本文档之前，建议开发者对 SPU 系统架构有基本了解"
+"（即 :ref:`/development/compiler.rst`、:ref:`/development/type_system.rst` 和 :ref:`/development/runtime.rst`）"
+"以及 SPU 代码仓库的 `布局 <https://github.com/secretflow/spu/blob/main/REPO_LAYOUT.md>`_。"
+"简而言之，SPU 将用 JAX 编写的高级应用程序（如机器学习模型训练）转换为名为 PPHLO 的 MPC 专用中间表示，"
+"然后将 PPHLO 操作分派给底层 MPC 协议。理论上，协议开发者只需要实现一组基本的 MPC 操作 API，"
+"就能充分利用 SPU 基础设施来运行机器学习或数据分析程序。对于大多数 MPC 协议开发，"
+"只需要在 libspu/mpc 文件夹中添加一些源代码文件。目前，SPU 已经集成了 ABY3 和 Cheetah 等多个协议，"
+"可以作为协议实现的指南。"
 
 #: ../../development/add_protocols.rst:22
 msgid "A walk-through guide"
-msgstr ""
+msgstr "逐步指导"
 
 #: ../../development/add_protocols.rst:23
 msgid ""
 "We further illustrate the procedures of adding protocols step by step in "
 "a **top-down** manner."
 msgstr ""
+"下面将以 **自顶向下** 的方式逐步说明添加协议的流程。"
 
 #: ../../development/add_protocols.rst:26
 msgid "Add a new protocol kind"
-msgstr ""
+msgstr "添加新的协议类型"
 
 #: ../../development/add_protocols.rst:27
 msgid ""
@@ -77,14 +87,17 @@ msgid ""
 "developers must add their protocol kinds in this protobuf file to enable "
 "SPU to be aware of the new protocols."
 msgstr ""
+"当用户启动 SPU 后端运行时，他们会通过运行时配置指定运行的 MPC 协议类型。SPU 支持的协议类型是在 "
+"`spu.proto <https://github.com/secretflow/spu/blob/main/libspu/spu.proto>`_ 中定义的枚举。"
+"因此，开发者必须在这个 protobuf 文件中添加他们的协议类型，以便 SPU 能够识别新协议。"
 
 #: ../../development/add_protocols.rst:33
 msgid "ProtocolKind enumerations"
-msgstr ""
+msgstr "ProtocolKind 枚举"
 
 #: ../../development/add_protocols.rst:49
 msgid "Register protocol"
-msgstr ""
+msgstr "注册协议"
 
 #: ../../development/add_protocols.rst:50
 msgid ""
@@ -98,14 +111,19 @@ msgid ""
 "according to the runtime config. Therefore, protocol developers need to "
 "add their functions in **RegisterProtocol** to implement protocols."
 msgstr ""
+"在 SPU 中，每个 MPC 协议执行环境都抽象为一个 `Object "
+"<https://github.com/secretflow/spu/blob/main/libspu/core/object.h>`_ 类的 C++ 实例。"
+"SPU 在创建 **SPUContext** 时构造一个 MPC 对象。然后，SPU 根据运行时配置通过名为 `RegisterProtocol "
+"<https://github.com/secretflow/spu/blob/main/libspu/mpc/factory.cc>`_ 的工厂函数注册具体的协议实现。"
+"因此，协议开发者需要在 **RegisterProtocol** 中添加他们的函数来实现协议。"
 
 #: ../../development/add_protocols.rst:55
 msgid "RegisterProtocol function"
-msgstr ""
+msgstr "RegisterProtocol function"
 
 #: ../../development/add_protocols.rst:77
 msgid "Implement protocol IO interface"
-msgstr ""
+msgstr "实现协议 IO 接口"
 
 #: ../../development/add_protocols.rst:78
 msgid ""
@@ -119,10 +137,15 @@ msgid ""
 "<https://github.com/secretflow/spu/blob/main/libspu/mpc/aby3/io.cc>`_ as "
 "a reference."
 msgstr ""
+"工厂类调用的另一个函数是 **CreateIO** 函数。由于不同协议使用不同的秘密分享模式，"
+"这意味着 SPU 必须使用不同的方式来从明文数据输入/输出秘密数据。因此，开发者必须实现在 "
+"`io_interface.h <https://github.com/secretflow/spu/blob/main/libspu/mpc/io_interface.h>`_ "
+"中定义的这些协议特定 API。开发者可以查看 `ABY3 实现 "
+"<https://github.com/secretflow/spu/blob/main/libspu/mpc/aby3/io.cc>`_ 作为参考。"
 
 #: ../../development/add_protocols.rst:84
 msgid "Understand protocol object"
-msgstr ""
+msgstr "理解协议对象"
 
 #: ../../development/add_protocols.rst:85
 msgid ""
@@ -135,20 +158,25 @@ msgid ""
 "can be regarded as a member function and a member variable of an Object, "
 "respectively."
 msgstr ""
+"SPU 协议 `Object <https://github.com/secretflow/spu/blob/main/libspu/core/object.h>`_ "
+"是添加新协议的关键概念。下面详细介绍其设计。**Object** 类通过动态绑定"
+"实现开发 MPC 协议的通用性和灵活性。每个 Object 实例包含一系列内核和状态。"
+"内核和状态分别对应 Object 的成员函数和成员变量。"
 
 #: ../../development/add_protocols.rst:91
 msgid "SPU protocol Object class"
-msgstr ""
+msgstr "SPU protocol Object class"
 
 #: ../../development/add_protocols.rst:127
 msgid "Construct protocol object"
-msgstr ""
+msgstr "构造协议对象"
 
 #: ../../development/add_protocols.rst:128
 msgid ""
 "We take the ABY3 implementation as a specific example to further explain "
 "the description above."
 msgstr ""
+"以 ABY3 实现为具体例子来进一步解释上述描述。"
 
 #: ../../development/add_protocols.rst:130
 msgid ""
@@ -164,14 +192,20 @@ msgid ""
 "kernels and states. This function will be called by the factory class "
 "described in previous step."
 msgstr ""
+"首先，可以看到在 SPU 仓库布局中的 `libspu/mpc "
+"<https://github.com/secretflow/spu/tree/main/libspu/mpc>`_ 目录下有一个独立的 aby3 目录。"
+"aby3 目录包含 ABY3 协议实现所需的 C++ 源文件和头文件。这些文件结构较为复杂。"
+"了解其代码组织的关键是打开 `protocol "
+"<https://github.com/secretflow/spu/blob/main/libspu/mpc/aby3/protocol.cc>`_ 文件，"
+"该文件定义了用于注册内核和状态的 **regAby3Protocol** 函数。这个函数将被前面步骤中描述的工厂类调用。"
 
 #: ../../development/add_protocols.rst:137
 msgid "ABY3 protocol registration"
-msgstr ""
+msgstr "ABY3 protocol registration"
 
 #: ../../development/add_protocols.rst:164
 msgid "Inside the **regAby3Protocol** function, it does three things."
-msgstr ""
+msgstr "**regAby3Protocol** 函数执行三个主要操作。"
 
 #: ../../development/add_protocols.rst:166
 msgid ""
@@ -181,6 +215,9 @@ msgid ""
 "header file, \\ representing an arithmetic secret share and a boolean "
 "secret share, respectively."
 msgstr ""
+"首先注册协议类型。这些类型在 `type.h "
+"<https://github.com/secretflow/spu/blob/main/libspu/mpc/aby3/type.h>`_ 头文件中定义，"
+"分别表示算术秘密份额和布尔秘密份额。"
 
 #: ../../development/add_protocols.rst:169
 msgid ""
@@ -189,6 +226,8 @@ msgid ""
 "which are used to store the ring information, communication facilities, "
 "and \\ pseudorandom number generator for protocol implementation."
 msgstr ""
+"其次注册协议状态（变量），具体包括 Z2kState、Communicator 和 PrgState 三个状态，"
+"用于存储环信息、通信设施和协议实现的伪随机数生成器。"
 
 #: ../../development/add_protocols.rst:173
 msgid ""
@@ -202,10 +241,16 @@ msgid ""
 "<https://github.com/secretflow/spu/blob/main/libspu/mpc/aby3/boolean.cc>`_"
 " and other files under the aby3 directory."
 msgstr ""
+"最后注册协议内核（函数）。该操作注册了两种类型的内核。第一种类型是在 "
+"`pv2k.cc <https://github.com/secretflow/spu/blob/main/libspu/mpc/common/pv2k.cc>`_ "
+"文件中实现的通用内核。第二种类型在 `arithmetic.cc "
+"<https://github.com/secretflow/spu/blob/main/libspu/mpc/aby3/arithmetic.cc>`_、"
+"`boolean.cc <https://github.com/secretflow/spu/blob/main/libspu/mpc/aby3/boolean.cc>`_ "
+"和 aby3 目录下的其他文件中实现。"
 
 #: ../../development/add_protocols.rst:179
 msgid "Implement protocol kernels"
-msgstr ""
+msgstr "实现协议内核"
 
 #: ../../development/add_protocols.rst:180
 msgid ""
@@ -219,10 +264,16 @@ msgid ""
 "stack infrastructure to run high-level applications, e.g., training "
 "complex neural network models."
 msgstr ""
+"本节进一步解释 ABY3 开发者为什么注册这两种类型的内核。在 SPU 中，"
+"MPC 和 HAL 层之间的接口在 `api.h "
+"<https://github.com/secretflow/spu/blob/main/libspu/mpc/api.h>`_ 文件中定义，"
+"包含一组处理公开或秘密操作数的操作（在本文档的其余部分称为**基本 API**）。"
+"只要协议开发者实现基本 API，他们就可以使用 SPU 全栈基础设施来运行高级应用程序，"
+"例如训练复杂的神经网络模型。"
 
 #: ../../development/add_protocols.rst:186
 msgid "Some SPU MPC basic APIs"
-msgstr ""
+msgstr "Some SPU MPC basic APIs"
 
 #: ../../development/add_protocols.rst:198
 msgid ""
@@ -232,14 +283,17 @@ msgid ""
 "directory. As a result, the ABY3 developer can directly register these "
 "kernels through the **regPV2kKernels** function."
 msgstr ""
+"在基本 API 中，一些在环上工作的协议在处理公开操作数的某些操作上共享相同的逻辑，"
+"因此 SPU 开发者预先将这些 API 实现为内核并将其放置在 common 目录中。"
+"因此，ABY3 开发者可以通过 **regPV2kKernels** 函数直接注册这些内核。"
 
 #: ../../development/add_protocols.rst:202
 msgid "Pre-implemented *and_pp* kernel"
-msgstr ""
+msgstr "Pre-implemented *and_pp* kernel"
 
 #: ../../development/add_protocols.rst:224
 msgid "Register *and_pp* kernel in regPV2kKernels function"
-msgstr ""
+msgstr "Register *and_pp* kernel in regPV2kKernels function"
 
 #: ../../development/add_protocols.rst:235
 msgid ""
@@ -251,14 +305,18 @@ msgid ""
 " source file. When kernels are implemented and registered, a new protocol"
 " is finally added."
 msgstr ""
+"此外，ABY3 协议特定操作需要由开发者实现为内核来注册。例如，ABY3 的两个算术秘密份额的乘法"
+"实现为位于 `arithmetic.cc "
+"<https://github.com/secretflow/spu/blob/main/libspu/mpc/aby3/arithmetic.cc>`_ "
+"源文件中的 **MulAA** 内核。完成内核实现和注册后，新协议即完成添加。"
 
 #: ../../development/add_protocols.rst:240
 msgid "ABY3 *mul_aa* kernel for arithmetic share multiplication"
-msgstr ""
+msgstr "ABY3 *mul_aa* kernel for arithmetic share multiplication"
 
 #: ../../development/add_protocols.rst:258
 msgid "Testing"
-msgstr ""
+msgstr "测试"
 
 #: ../../development/add_protocols.rst:259
 msgid ""
@@ -271,6 +329,10 @@ msgid ""
 "high-level examples to verify whether the low-level protocol development "
 "is correct."
 msgstr ""
+"添加协议后，需要测试协议是否按预期工作。在 SPU 中有两种方式测试协议功能。"
+"第一种方式是运行 Python 示例。SPU 为用户提供了一系列应用程序 `示例 "
+"<https://github.com/secretflow/spu/tree/main/examples/python>`_。"
+"如果协议完全实现了 SPU 的基本 API，开发者可以运行这些高级示例来验证底层协议开发是否正确。"
 
 #: ../../development/add_protocols.rst:265
 msgid ""
@@ -290,4 +352,14 @@ msgid ""
 " file in the aby3 directory to learn how to write their own protocol test"
 " files."
 msgstr ""
+"第二种方式是编写和运行单元测试。一些协议不覆盖所有基本 API 且无法运行示例，"
+"或者仅需测试特定 MPC 操作（如加法和乘法）的功能。在这些情况下，单元测试更为适用。"
+"SPU 开发者在 `api_test.cc "
+"<https://github.com/secretflow/spu/blob/main/libspu/mpc/api_test.cc>`_ 和 "
+"`ab_api_test.cc "
+"<https://github.com/secretflow/spu/blob/main/libspu/mpc/ab_api_test.cc>`_ "
+"中构建了通用测试框架。新协议的开发者需要实例化这些框架来测试其协议功能。"
+"开发者可以参考 aby3 目录中的 `protocol_test.cc "
+"<https://github.com/secretflow/spu/blob/main/libspu/mpc/aby3/protocol_test.cc>`_ "
+"文件学习如何编写协议测试文件。"
 
