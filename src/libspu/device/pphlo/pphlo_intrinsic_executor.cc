@@ -67,6 +67,22 @@ std::vector<Value> intrinsic_dispatcher(SPUContext* ctx,
 
     return {inputs[0]};
   }
+
+  if (name == REVEAL) {
+    SPU_ENFORCE(inputs.size() == 1);
+
+    auto v = inputs[0];
+    if (v.isSecret()) {
+      SPDLOG_WARN("rank: {}, Some secret values are revealed.",
+                  ctx->lctx()->Rank());
+      v = kernel::hlo::Reveal(ctx, v);
+    }
+
+    SPU_ENFORCE(v.isPublic());
+
+    return {v};
+  }
+
   // DO-NOT-EDIT: Add_DISPATCH_CODE
 
   // Default: Identity function

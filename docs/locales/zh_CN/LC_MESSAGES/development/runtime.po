@@ -6,18 +6,19 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: SPU \n"
+"Project-Id-Version: SPU\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2025-03-13 15:10+0800\n"
-"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language: zh_CN\n"
+"PO-Revision-Date: 2025-05-22 21:09+0800\n"
+"Last-Translator: \n"
 "Language-Team: zh_CN <LL@li.org>\n"
-"Plural-Forms: nplurals=1; plural=0;\n"
+"Language: zh_CN\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
 "Generated-By: Babel 2.17.0\n"
+"X-Generator: Poedit 3.6\n"
 
 #: ../../development/runtime.rst:2
 msgid "SPU Runtime"
@@ -33,8 +34,8 @@ msgstr "以下是 SPU 虚拟机的整体概况。"
 
 #: ../../development/runtime.rst:11
 msgid ""
-"The top 3 blocks above *SPU VM* are applications, we could ignore them "
-"for now."
+"The top 3 blocks above *SPU VM* are applications, we could ignore them for "
+"now."
 msgstr "SPU 虚拟机上方的三个模块是应用程序，我们暂时可以忽略它们。"
 
 #: ../../development/runtime.rst:12
@@ -53,20 +54,20 @@ msgstr "在 SPU 内部，有多个层次，从下到上分别是："
 
 #: ../../development/runtime.rst:17
 msgid ""
-"**System layer** provides the basic computation and communication ability"
-" for the upper layers."
+"**System layer** provides the basic computation and communication ability "
+"for the upper layers."
 msgstr "**系统层** 为上层提供基本的计算和通信能力。"
 
 #: ../../development/runtime.rst:18
 msgid ""
-"**Crypto layer** is the key for secure computation, it's composed by 3 "
-"sub layers."
+"**Crypto layer** is the key for secure computation, it's composed by 3 sub "
+"layers."
 msgstr "**加密层** 是安全计算的关键，它由三个子层组成。"
 
 #: ../../development/runtime.rst:20
 msgid ""
-"**Basic** or classic layer, provides classic cryptography, OT, HE also "
-"lives in this layer."
+"**Basic** or classic layer, provides classic cryptography, OT, HE also lives "
+"in this layer."
 msgstr "**基础层** 或经典层，提供经典的加密技术、OT 和 HE 也在这一层。"
 
 #: ../../development/runtime.rst:21
@@ -77,34 +78,38 @@ msgstr "**关联层** 或离线协议层，提供类似于比弗三元组和随�
 
 #: ../../development/runtime.rst:22
 msgid ""
-"**Protocol** or the online protocol layer, applies random correlation and"
-" runs the secure evaluation."
+"**Protocol** or the online protocol layer, applies random correlation and "
+"runs the secure evaluation."
 msgstr "**协议层** 或在线协议层，应用随机关联并运行安全计算。"
 
 #: ../../development/runtime.rst:24
 msgid ""
-"**ALU layer** converts MPC protocols into a programmable machine, which "
-"has two sub layers."
+"**ALU layer** converts MPC protocols into a programmable machine, which has "
+"two sub layers."
 msgstr "**ALU层** 将 MPC 协议转换为可编程机器，它有两个子层。"
 
 #: ../../development/runtime.rst:26
 msgid ""
-"**Ring 2^k** layer, just like normal CPU, hides cryptography layer's "
-"details and provides standard ring2k arithmetic."
-msgstr "**Ring 2^k层**，就像普通 CPU 一样，隐藏了加密层的细节，并提供标准的 ring2k 算术运算能力。"
+"**Ring 2^k** layer, just like normal CPU, hides cryptography layer's details "
+"and provides standard ring2k arithmetic."
+msgstr ""
+"**Ring 2^k层**，就像普通 CPU 一样，隐藏了加密层的细节，并提供标准的 ring2k 算"
+"术运算能力。"
 
 #: ../../development/runtime.rst:27
 msgid ""
-"**Fixed point** layer uses fixed point encoding to represent a fractional"
-" number and provides basic arithmetic operations over them."
+"**Fixed point** layer uses fixed point encoding to represent a fractional "
+"number and provides basic arithmetic operations over them."
 msgstr "**定点层** 使用定点编码来表示小数，并提供基本的算术运算。"
 
 #: ../../development/runtime.rst:29
 msgid ""
 "**OPS layer** is designed to be extensible, in this layer we can define "
-"multiple modules based on *ALU layer* and finally exposed to VM clients "
-"via bindings or SPU IR."
-msgstr "**OPS 层** 被设计为可扩展的，在这一层我们可以基于 *ALU 层* 定义多个模块，最终通过绑定或 SPU IR 暴露给 VM 客户端。"
+"multiple modules based on *ALU layer* and finally exposed to VM clients via "
+"bindings or SPU IR."
+msgstr ""
+"**OPS 层** 被设计为可扩展的，在这一层我们可以基于 *ALU 层* 定义多个模块，最终"
+"通过绑定或 SPU IR 暴露给 VM 客户端。"
 
 #: ../../development/runtime.rst:32
 msgid "Homogeneous and Heterogeneous"
@@ -112,69 +117,85 @@ msgstr "同构和异构"
 
 #: ../../development/runtime.rst:34
 msgid ""
-"Recall that SPU VM is composed of multiple physical engines, the "
-"definitions of *homogeneous* and *heterogeneous* come from an *engines*' "
-"perspective."
-msgstr "回想一下，SPU 虚拟机由多个物理引擎组成，*同构* 和 *异构* 的定义来自 *引擎* 的角度。"
+"Recall that SPU VM is composed of multiple physical engines, the definitions "
+"of *homogeneous* and *heterogeneous* come from an *engines*' perspective."
+msgstr ""
+"回想一下，SPU 虚拟机由多个物理引擎组成，*同构* 和 *异构* 的定义来自 *引擎* 的"
+"角度。"
 
 #: ../../development/runtime.rst:36
 msgid ""
-"**Homogeneous**: a layer is *homogeneous* means that all engines run "
-"exactly the same code in this layer. The user of this layer doesn't have "
-"to distinguish between engines, they cannot and should not send/recv "
-"messages between engines, in other words, they can treat all engines the "
-"same, and program them as one machine."
-msgstr "**同构**：一个层次是*同构*的，意味着所有引擎在这一层运行完全相同的代码。该层次的用户不需要区分引擎，他们不能也不应该在引擎之间发送/接收消息，换句话说，他们可以将所有引擎视为一个机器来编程。"
+"**Homogeneous**: a layer is *homogeneous* means that all engines run exactly "
+"the same code in this layer. The user of this layer doesn't have to "
+"distinguish between engines, they cannot and should not send/recv messages "
+"between engines, in other words, they can treat all engines the same, and "
+"program them as one machine."
+msgstr ""
+"**同构**：一个层次是 *同构* 的，意味着所有引擎在这一层运行完全相同的代码。该"
+"层次的用户不需要区分引擎，他们不能也不应该在引擎之间发送/接收消息，换句话说，"
+"他们可以将所有引擎视为一个机器来编程。"
 
 #: ../../development/runtime.rst:37
 msgid ""
 "**Heterogeneous**: in contrast, a layer is *heterogeneous* means that "
 "engines in this layer behave differently (following some protocols). The "
-"author of this layer should take care of the behavior of each engine to "
-"make things correct."
-msgstr "**异构**：相反，一个层次是*异构*的，意味着这一层的引擎行为不同（遵循某些协议）。该层次的作者应注意每个引擎的行为以确保正确性。"
+"author of this layer should take care of the behavior of each engine to make "
+"things correct."
+msgstr ""
+"**异构**：相反，一个层次是 *异构* 的，意味着这一层的引擎行为不同（遵循某些协"
+"议）。该层次的作者应注意每个引擎的行为以确保正确性。"
 
 #: ../../development/runtime.rst:39
 msgid ""
-"We want SPU VM to be *homogeneous*, so we can treat it as a normal "
-"virtual device when applying secure evaluation. For example, in the "
-"following computation graph, given `x`, `y`, we want to compute `f(x, "
-"y)`, the big circle represents a computing node which can evaluate f."
-msgstr "我们希望 SPU 虚拟机是*同构*的，这样在应用安全计算时可以将其视为一个普通的虚拟设备。例如，在下面的计算图中，给定 `x` 和 `y`，我们希望计算 `f(x, y)`，大圆圈代表一个可以评估 f 的计算节点。"
+"We want SPU VM to be *homogeneous*, so we can treat it as a normal virtual "
+"device when applying secure evaluation. For example, in the following "
+"computation graph, given `x`, `y`, we want to compute `f(x, y)`, the big "
+"circle represents a computing node which can evaluate f."
+msgstr ""
+"我们希望 SPU 虚拟机是 *同构* 的，这样在应用安全计算时可以将其视为一个普通的虚"
+"拟设备。例如，在下面的计算图中，给定 `x` 和 `y`，我们希望计算 `f(x, y)`，大圆"
+"圈代表一个可以评估 f 的计算节点。"
 
 #: ../../development/runtime.rst:43
 msgid ""
-"In secure computation mode, we have a group of servers working together "
-"to provide the functionality of `f`, as shown blow."
-msgstr "在安全计算模式下，我们有一组服务器协同工作来提供 `f` 的功能，如下所示。"
+"In secure computation mode, we have a group of servers working together to "
+"provide the functionality of `f`, as shown blow."
+msgstr ""
+"在安全计算模式下，我们有一组服务器协同工作来提供 `f` 的功能，如下所示。"
 
 #: ../../development/runtime.rst:47
 msgid ""
 "The secure protocol (MPC protocol) itself is **heterogeneous**, three "
-"servers inside the big circle may behave differently, in this pic, the "
-"lower part is blue, which means three servers act and interact "
-"differently."
-msgstr "安全协议（MPC 协议）本身是**异构**的，大圆圈内的三台服务器可能表现不同（遵循某些协议）。在这张图中，下半部分是蓝色的，表示三台服务器的行为和交互不同。"
+"servers inside the big circle may behave differently, in this pic, the lower "
+"part is blue, which means three servers act and interact differently."
+msgstr ""
+"安全协议（MPC 协议）本身是 **异构** 的，大圆圈内的三台服务器可能表现不同（遵"
+"循某些协议）。在这张图中，下半部分是蓝色的，表示三台服务器的行为和交互不同。"
 
 #: ../../development/runtime.rst:49
 msgid ""
-"But they together provide a **homogeneous** interface to the upper layer,"
-" in this pic, the upper half is orange, three servers behave exactly the "
-"same, so in the whole computation DAG, the big circle could be treated as"
-" one (virtual) node."
-msgstr "但它们共同为上层提供了一个**同构**接口，在这张图中，上半部分是橙色的，三台服务器的行为完全相同，因此在整个计算 DAG 中，大圆圈可以被视为一个（虚拟）节点。"
+"But they together provide a **homogeneous** interface to the upper layer, in "
+"this pic, the upper half is orange, three servers behave exactly the same, "
+"so in the whole computation DAG, the big circle could be treated as one "
+"(virtual) node."
+msgstr ""
+"但它们共同为上层提供了一个 **同构** 接口，在这张图中，上半部分是橙色的，三台"
+"服务器的行为完全相同，因此在整个计算 DAG 中，大圆圈可以被视为一个（虚拟）节"
+"点。"
 
 #: ../../development/runtime.rst:51
 msgid ""
-"Another reason to use **homogeneous** IR is to hide the number of "
-"parties, so the application can switch to an m-PC protocol from an n-PC "
-"protocol without code change."
-msgstr "使用**同构**IR的另一个原因是隐藏参与方的数量，这样应用程序可以在不更改代码的情况下从n-PC协议切换到m-PC协议。"
+"Another reason to use **homogeneous** IR is to hide the number of parties, "
+"so the application can switch to an m-PC protocol from an n-PC protocol "
+"without code change."
+msgstr ""
+"使用 **同构** IR的另一个原因是隐藏参与方的数量，这样应用程序可以在不更改代码"
+"的情况下从n-PC协议切换到m-PC协议。"
 
 #: ../../development/runtime.rst:53
 msgid ""
-"One of *SPU*'s goal is to hide the heterogeneous part and expose "
-"homogeneous API."
+"One of *SPU*'s goal is to hide the heterogeneous part and expose homogeneous "
+"API."
 msgstr "SPU 的目标之一是隐藏异构部分并暴露同构 API。"
 
 #: ../../development/runtime.rst:56
@@ -184,16 +205,20 @@ msgstr "虚拟机布局"
 #: ../../development/runtime.rst:58
 msgid ""
 "SPU, as a virtual device, is hosted by multiple physical devices. The "
-"relationship between physical devices and SPU is very flexible. Now let's"
-" use some examples to illustrate the possible layouts."
-msgstr "SPU 作为一个虚拟设备，由多个物理设备托管。物理设备与 SPU 之间的关系非常灵活。现在让我们用一些例子来说明可能的布局。"
+"relationship between physical devices and SPU is very flexible. Now let's "
+"use some examples to illustrate the possible layouts."
+msgstr ""
+"SPU 作为一个虚拟设备，由多个物理设备托管。物理设备与 SPU 之间的关系非常灵活。"
+"现在让我们用一些例子来说明可能的布局。"
 
 #: ../../development/runtime.rst:61
 msgid ""
 "Programmers coding toward the virtual layout, the underline physical is "
 "**transparent** from the programmer's perspective. It's free to use "
 "different physical layouts, without changing a single line of code."
-msgstr "程序员面向虚拟布局进行编码，从程序员的角度来看，底层物理布局是**透明**的。可以自由使用不同的物理布局，而无需更改一行代码。"
+msgstr ""
+"程序员面向虚拟布局进行编码，从程序员的角度来看，底层物理布局是 **透明** 的。"
+"可以自由使用不同的物理布局，而无需更改一行代码。"
 
 #: ../../development/runtime.rst:64
 msgid "Outsourcing"
@@ -201,14 +226,16 @@ msgstr "数据托管模式"
 
 #: ../../development/runtime.rst:66
 msgid ""
-"In this mode, data providers send data shares to a group of non-colluding"
-" computation providers who cooperate to evaluate secure computations."
-msgstr "在这种模式下，数据提供者将数据份额发送给一组不串通的计算提供者，这些提供者协同工作以进行安全计算。"
+"In this mode, data providers send data shares to a group of non-colluding "
+"computation providers who cooperate to evaluate secure computations."
+msgstr ""
+"在这种模式下，数据提供者将数据份额发送给一组不串通的计算提供者，这些提供者协"
+"同工作以进行安全计算。"
 
 #: ../../development/runtime.rst:70
 msgid ""
-"The figure to left depicts the physical layout, there are 6 physical "
-"nodes, mutually connected but untrusted to each other."
+"The figure to left depicts the physical layout, there are 6 physical nodes, "
+"mutually connected but untrusted to each other."
 msgstr "左图描绘了物理布局，有 6 个物理节点，彼此相互连接但不互相信任。"
 
 #: ../../development/runtime.rst:72
@@ -217,8 +244,8 @@ msgstr "圆圈代表数据提供者。"
 
 #: ../../development/runtime.rst:73
 msgid ""
-"The triangle stands for computing provider, three triangle nodes agree on"
-" some MPC protocol."
+"The triangle stands for computing provider, three triangle nodes agree on "
+"some MPC protocol."
 msgstr "三角形代表计算提供者，三个三角形节点表示同意某些 MPC 协议。"
 
 #: ../../development/runtime.rst:75
@@ -239,10 +266,11 @@ msgstr "联合计算模式"
 
 #: ../../development/runtime.rst:83
 msgid ""
-"In this mode, data providers also participate in the computation "
-"progress, that is, data providers are **colocated** with computing "
-"providers."
-msgstr "在这种模式下，数据提供者也参与计算过程，即数据提供者与计算提供者**联合**计算。"
+"In this mode, data providers also participate in the computation progress, "
+"that is, data providers are **colocated** with computing providers."
+msgstr ""
+"在这种模式下，数据提供者也参与计算过程，即数据提供者与计算提供者 **联合** 计"
+"算。"
 
 #: ../../development/runtime.rst:87
 msgid ""
@@ -259,9 +287,11 @@ msgstr "右侧，**SPU 是一个由物理节点构建的纯虚拟节点**。"
 #: ../../development/runtime.rst:91
 msgid ""
 "The number of computing nodes could be larger than that of data nodes in "
-"this mode, for example, a computing node without data source could act as"
-" a *random correlation generator*, for example:"
-msgstr "在这种模式下，计算节点的数量可能多于数据节点，例如，没有数据源的计算节点可以作为*随机关联生成器*，例如："
+"this mode, for example, a computing node without data source could act as a "
+"*random correlation generator*, for example:"
+msgstr ""
+"在这种模式下，计算节点的数量可能多于数据节点，例如，没有数据源的计算节点可以"
+"作为 *随机关联生成器* ，例如："
 
 #: ../../development/runtime.rst:97
 msgid "There are two notable optimizations in this mode."
@@ -271,16 +301,19 @@ msgstr "在这种模式下有两个显著的优化。"
 msgid ""
 "The **private semantic**, a computing node may have private data "
 "manipulations to accelerate MPC computation, for example, in *HESS "
-"protocol*, we can do :code:`HShare x Private` without online "
-"communication."
-msgstr "**私有语义**，计算节点可以进行私有数据操作以加速 MPC 计算，例如，在 *HESS 协议* 中，我们可以进行 :code:`HShare x Private` 而无需在线通信。"
+"protocol*, we can do :code:`HShare x Private` without online communication."
+msgstr ""
+"**私有语义**，计算节点可以进行私有数据操作以加速 MPC 计算，例如，在 *HESS 协"
+"议* 中，我们可以进行 :code:`HShare x Private` 而无需在线通信。"
 
 #: ../../development/runtime.rst:100
 msgid ""
 "The **zero share data infeed**, when a data provider tries to share data "
-"cross nodes, it can use :code:`ZeroShare + Private` trick to avoid online"
-" communication."
-msgstr "**零份额数据输入**，当数据提供者尝试跨节点共享数据时，可以使用 :code:`ZeroShare + Private` 技巧来避免在线通信。"
+"cross nodes, it can use :code:`ZeroShare + Private` trick to avoid online "
+"communication."
+msgstr ""
+"**零份额数据输入**，当数据提供者尝试跨节点共享数据时，可以使"
+"用 :code:`ZeroShare + Private` 技巧来避免在线通信。"
 
 #: ../../development/runtime.rst:103
 msgid "Hybrid"
@@ -288,13 +321,12 @@ msgstr "混合部署模式"
 
 #: ../../development/runtime.rst:105
 msgid ""
-"This is the most general form, some data providers participate in the "
-"secure computation while others do not."
+"This is the most general form, some data providers participate in the secure "
+"computation while others do not."
 msgstr "这是最常见的模式，一些数据提供者参与安全计算，而另一些则不参与。"
 
 #: ../../development/runtime.rst:110
 msgid ""
-"the **private semantic** and **zero share data infeed** also apply to "
-"data providers that participate in the computation."
-msgstr "**私有语义**和**零份额数据输入**也适用于参与计算的数据提供者。"
-
+"the **private semantic** and **zero share data infeed** also apply to data "
+"providers that participate in the computation."
+msgstr "**私有语义** 和 **零份额数据输入** 也适用于参与计算的数据提供者。"

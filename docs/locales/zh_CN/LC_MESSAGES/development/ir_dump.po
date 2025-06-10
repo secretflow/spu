@@ -21,7 +21,7 @@ msgstr ""
 
 #: ../../development/ir_dump.rst:2
 msgid "Dump IR to DAG"
-msgstr ""
+msgstr "将 IR 转储为 DAG"
 
 #: ../../development/ir_dump.rst:5
 msgid ""
@@ -29,10 +29,12 @@ msgid ""
 ":spu_code_host:`spu.proto <spu/blob/main/libspu/spu.proto>` for latest "
 "configurations."
 msgstr ""
+"将 IR 转储为 DAG 的配置可能不稳定。请参考 "
+":spu_code_host:`spu.proto <spu/blob/main/libspu/spu.proto>` 获取最新配置。"
 
 #: ../../development/ir_dump.rst:8
 msgid "Introduction"
-msgstr ""
+msgstr "介绍"
 
 #: ../../development/ir_dump.rst:9
 msgid ""
@@ -42,16 +44,19 @@ msgid ""
 "of visualized DAG, the execution logic and required operators will be "
 "more explicit."
 msgstr ""
+"本文档提供了如何将 IR（中间表示，由 `XLA "
+"<https://www.tensorflow.org/xla/architecture>`_ 生成）转储为 DAG 的演示。借助可视化的 DAG，执行逻辑和所需的操作符将更加明确。"
 
 #: ../../development/ir_dump.rst:14
 msgid ""
 "Please refer to :ref:`/development/compiler.rst` for description of the "
 "role of XLA in SPU."
 msgstr ""
+"有关 XLA 在 SPU 中作用的描述，请参考 :ref:`/development/compiler.rst`。"
 
 #: ../../development/ir_dump.rst:18
 msgid "TL;DR"
-msgstr ""
+msgstr "简要说明"
 
 #: ../../development/ir_dump.rst:19
 msgid ""
@@ -61,6 +66,8 @@ msgid ""
 " required code modifications to enable dumping the IR of executed code to"
 " a custom path."
 msgstr ""
+"如果你只是想尝试获取执行代码的 DAG，这里提供了一个 :spu_code_host:`演示 "
+"<spu/blob/main/examples/python/ir_dump/ir_dump.py>`，展示了启用将执行代码的 IR 转储到自定义路径所需的代码修改。"
 
 #: ../../development/ir_dump.rst:21
 msgid ""
@@ -68,10 +75,11 @@ msgid ""
 " html), we recommend to read the following detailed step-by-step "
 "elaborations."
 msgstr ""
+"对于有特定需求的用户（例如，转储为 txt、dot、html），建议阅读以下详细的逐步说明。"
 
 #: ../../development/ir_dump.rst:25
 msgid "Configuration"
-msgstr ""
+msgstr "配置"
 
 #: ../../development/ir_dump.rst:26
 msgid ""
@@ -80,36 +88,41 @@ msgid ""
 "modify the compiler options, which is shown in the following code "
 "snippet."
 msgstr ""
+"请首先查看 SPU 的 :spu_code_host:`spu.proto "
+"<spu/blob/main/libspu/spu.proto>`。要转储 IR，需要修改编译器选项，如下面的代码片段所示。"
 
 #: ../../development/ir_dump.rst:28
 msgid "Compiler Options"
-msgstr ""
+msgstr "编译器选项"
 
 #: ../../development/ir_dump.rst:59
 msgid "The part of the above code related to dumping IR to DAG is as follows."
-msgstr ""
+msgstr "上述代码中与将 IR 转储为 DAG 相关的部分如下。"
 
 #: ../../development/ir_dump.rst:61
 msgid "Configurations related to dump IR"
-msgstr ""
+msgstr "与转储 IR 相关的配置"
 
 #: ../../development/ir_dump.rst:69
 msgid ""
 "In general, we require to focus on three variables to control the dump "
 "behavior."
 msgstr ""
+"一般来说，需要关注三个变量来控制转储行为。"
 
 #: ../../development/ir_dump.rst:71
 msgid ""
 "**enable_pretty_print** is a *bool* value, which denotes whether to dump "
 "the IR or not."
 msgstr ""
+"**enable_pretty_print** 是一个 *bool* 值，表示是否转储 IR。"
 
 #: ../../development/ir_dump.rst:72
 msgid ""
 "**pretty_print_dump_dir** is a *string* value, which denotes the dump "
 "path (should be a directory)."
 msgstr ""
+"**pretty_print_dump_dir** 是一个 *string* 值，表示转储路径（应该是一个目录）。"
 
 #: ../../development/ir_dump.rst:73
 msgid ""
@@ -118,62 +131,67 @@ msgid ""
 " formats: TEXT, DOT and HTML. If you want to obtain the DAG, you should "
 "use DOT or HTML."
 msgstr ""
+"**xla_pp_kind** 是一个 *int* 值，取值范围为 [0, 1, 2]，每个值代表一种转储格式。目前支持三种格式：TEXT、DOT 和 HTML。如果想要获取 DAG，应该使用 DOT 或 HTML。"
 
 #: ../../development/ir_dump.rst:76
 msgid ""
 "For **DOT** files, you should use `GraphViz <https://graphviz.org/>`_ to "
 "convert them to PDF or PNG to visualize the DAG."
 msgstr ""
+"对于 **DOT** 文件，应该使用 `GraphViz <https://graphviz.org/>`_ 将它们转换为 PDF 或 PNG 来可视化 DAG。"
 
 #: ../../development/ir_dump.rst:78
 msgid ""
 "While for **HTML** files, you can directly open the them in your Web "
 "Browser, which shall render the DAG."
 msgstr ""
+"而对于 **HTML** 文件，可以直接在 Web 浏览器中打开它们，浏览器将渲染 DAG。"
 
 #: ../../development/ir_dump.rst:80
 msgid "XLA Pretty Print Kind"
-msgstr ""
+msgstr "XLA 美化打印类型"
 
 #: ../../development/ir_dump.rst:91
 msgid "Pass custom compiler options"
-msgstr ""
+msgstr "传递自定义编译器选项"
 
 #: ../../development/ir_dump.rst:92
 msgid ""
 "We hereby describe how to manually pass the custom compiler options to "
 "dump the IR of executed code."
 msgstr ""
+"下面描述如何手动传递自定义编译器选项来转储执行代码的 IR。"
 
 #: ../../development/ir_dump.rst:94
 msgid ""
 "First of all, we declare an CompilerOptions object. Note that the "
 "**pretty_print_dump_dir** is better to be an absolute path."
 msgstr ""
+"首先，声明一个 CompilerOptions 对象。注意 **pretty_print_dump_dir** 最好是绝对路径。"
 
 #: ../../development/ir_dump.rst:96
 msgid "Declare CompilerOptions object"
-msgstr ""
+msgstr "声明 CompilerOptions 对象"
 
 #: ../../development/ir_dump.rst:105
 msgid "Then we pass the CompilerOptions to the executed SPU code."
-msgstr ""
+msgstr "然后将 CompilerOptions 传递给执行的 SPU 代码。"
 
 #: ../../development/ir_dump.rst:108
 msgid "The code shall be modified from"
-msgstr ""
+msgstr "代码应该从"
 
 #: ../../development/ir_dump.rst:110
 msgid "SPU execution without customized compiler options"
-msgstr ""
+msgstr "没有自定义编译器选项的 SPU 执行"
 
 #: ../../development/ir_dump.rst:115
 msgid "to"
-msgstr ""
+msgstr "修改为"
 
 #: ../../development/ir_dump.rst:117
 msgid "SPU execution with customized compiler options"
-msgstr ""
+msgstr "带有自定义编译器选项的 SPU 执行"
 
 #: ../../development/ir_dump.rst:123
 msgid ""
@@ -181,26 +199,30 @@ msgid ""
 ":spu_code_host:`demo <spu/blob/main/examples/python/ir_dump/ir_dump.py>` "
 "for the context."
 msgstr ""
+"这里，`func` 是一个 Python 函数。请参考 "
+":spu_code_host:`演示 <spu/blob/main/examples/python/ir_dump/ir_dump.py>` 了解上下文。"
 
 #: ../../development/ir_dump.rst:125
 msgid ""
 "In the end, you can just run the target code and the output (e.g., DOT) "
 "can be found in **your custom path**."
 msgstr ""
+"最后，只需运行目标代码，输出（例如 DOT）就可以在 **你的自定义路径** 中找到。"
 
 #: ../../development/ir_dump.rst:128
 msgid "Example"
-msgstr ""
+msgstr "示例"
 
 #: ../../development/ir_dump.rst:129
 msgid ""
 "We here provide the code snippet for dumping IR to HTML files. The DAG "
 "for the executed function is illustrated in the end."
 msgstr ""
+"这里提供将 IR 转储为 HTML 文件的代码片段。执行函数的 DAG 将在最后展示。"
 
 #: ../../development/ir_dump.rst:131
 msgid "Code snippet for dumping the IR of func"
-msgstr ""
+msgstr "转储 func 的 IR 的代码片段"
 
 #: ../../development/ir_dump.rst:165
 msgid ""
@@ -208,12 +230,12 @@ msgid ""
 "multiple compile passes and generates multiple IRs, with each "
 "corresponding to one DAG."
 msgstr ""
+"你可能会在输出目录中找到多个文件，因为 XLA 有多个编译过程并生成多个 IR，每个 IR 对应一个 DAG。"
 
 #: ../../development/ir_dump.rst:168
 msgid "The **HTML** output is rendered as follows."
-msgstr ""
+msgstr "**HTML** 输出渲染如下。"
 
 #: ../../development/ir_dump.rst:173
 msgid "DAG for executed demo function"
-msgstr ""
-
+msgstr "执行演示函数的 DAG"

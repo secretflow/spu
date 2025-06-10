@@ -1,4 +1,4 @@
-# Copyright 2024 Ant Group Co., Ltd.
+# Copyright 2025 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,4 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-SPU_VERSION = "0.9.4.dev20250522"
+package(default_visibility = ["//visibility:public"])
+
+# copy from examples/python/conf
+filegroup(
+    name = "conf",
+    srcs = [
+        "2pc.json",
+        "2pc_semi2k.json",
+        "3pc.json",
+        "3pc_colocated.json",
+    ],
+)

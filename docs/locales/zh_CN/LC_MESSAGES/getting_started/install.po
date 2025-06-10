@@ -153,27 +153,3 @@ msgstr "需要系统中已安装 CUDA Toolkit。"
 #: ../../../INSTALLATION.md:71
 msgid "Build with specified python version"
 msgstr "使用指定的 Python 版本编译"
-
-#~ msgid "python3.10"
-#~ msgstr ""
-
-#~ msgid "8c16g"
-#~ msgstr ""
-
-#~ msgid "MacOS"
-#~ msgstr ""
-
-#~ msgid "Binaries"
-#~ msgstr ""
-
-#~ msgid "From PyPI"
-#~ msgstr ""
-
-#~ msgid ""
-#~ "You could install SPU via the "
-#~ "[official PyPI package](https://pypi.org/project/spu/)."
-#~ msgstr ""
-
-#~ msgid "From Source"
-#~ msgstr ""
-
