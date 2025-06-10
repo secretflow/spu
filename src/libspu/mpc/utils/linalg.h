@@ -86,7 +86,7 @@ void matmul(int64_t M, int64_t N, int64_t K, const T* A, int64_t LDA,
   // auto expected_num_threads = std::max((M * K + kMinTaskSize) / kMinTaskSize,
   //                                     (N * K + kMinTaskSize) / kMinTaskSize);
 
-#ifdef __APPLE__
+#ifdef __MACOS_NO_PARA__
   // There is a bug in Eigen+libomp under macos: there is a small probability of
   // core or stuck. Try to roll back eigen/libomp to the old version in recent
   // years, the problem still exists. For the time being, you can only bypass
