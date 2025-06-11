@@ -28,7 +28,7 @@ msgid ""
 "SecretFlow SPU currently is under active development and the APIs "
 "provided to protocol developers may be unstable at this moment."
 msgstr ""
-"隐语 SecretFlow SPU（密文运算单元）目前正在积极开发中，为协议开发者提供的 API 可能在此时不稳定。"
+"SecretFlow SPU 目前正在积极开发中，为协议开发者提供的 API 可能在此时不稳定。"
 
 #: ../../development/add_protocols.rst:8
 msgid "Introduction"
@@ -54,7 +54,7 @@ msgid ""
 "present, SPU has integrated several protocols such as ABY3 and Cheetah, "
 "which can be regarded as a guide for protocol implementation."
 msgstr ""
-"本文档主要面向想要在 SPU（密文运算单元）中添加自定义 MPC 协议的开发者。在阅读本文档之前，建议开发者对 SPU 系统架构有基本了解"
+"本文档主要面向想要在 SPU 中添加自定义 MPC 协议的开发者。在阅读本文档之前，建议开发者对 SPU 系统架构有基本了解"
 "（即 :ref:`/development/compiler.rst`、:ref:`/development/type_system.rst` 和 :ref:`/development/runtime.rst`）"
 "以及 SPU 代码仓库的 `布局 <https://github.com/secretflow/spu/blob/main/REPO_LAYOUT.md>`_。"
 "简而言之，SPU 将用 JAX 编写的高级应用程序（如机器学习模型训练）转换为名为 PPHLO 的 MPC 专用中间表示，"
@@ -65,7 +65,7 @@ msgstr ""
 
 #: ../../development/add_protocols.rst:22
 msgid "A walk-through guide"
-msgstr "逐步指导"
+msgstr "实操指南"
 
 #: ../../development/add_protocols.rst:23
 msgid ""
@@ -119,7 +119,7 @@ msgstr ""
 
 #: ../../development/add_protocols.rst:55
 msgid "RegisterProtocol function"
-msgstr "RegisterProtocol function"
+msgstr "RegisterProtocol 函数"
 
 #: ../../development/add_protocols.rst:77
 msgid "Implement protocol IO interface"
@@ -165,7 +165,7 @@ msgstr ""
 
 #: ../../development/add_protocols.rst:91
 msgid "SPU protocol Object class"
-msgstr "SPU protocol Object class"
+msgstr "SPU 协议 Object 类"
 
 #: ../../development/add_protocols.rst:127
 msgid "Construct protocol object"
@@ -201,7 +201,7 @@ msgstr ""
 
 #: ../../development/add_protocols.rst:137
 msgid "ABY3 protocol registration"
-msgstr "ABY3 protocol registration"
+msgstr "ABY3 协议注册"
 
 #: ../../development/add_protocols.rst:164
 msgid "Inside the **regAby3Protocol** function, it does three things."
@@ -273,7 +273,7 @@ msgstr ""
 
 #: ../../development/add_protocols.rst:186
 msgid "Some SPU MPC basic APIs"
-msgstr "Some SPU MPC basic APIs"
+msgstr "SPU MPC 基本 API"
 
 #: ../../development/add_protocols.rst:198
 msgid ""
@@ -289,11 +289,11 @@ msgstr ""
 
 #: ../../development/add_protocols.rst:202
 msgid "Pre-implemented *and_pp* kernel"
-msgstr "Pre-implemented *and_pp* kernel"
+msgstr "预实现的 *and_pp* 内核"
 
 #: ../../development/add_protocols.rst:224
 msgid "Register *and_pp* kernel in regPV2kKernels function"
-msgstr "Register *and_pp* kernel in regPV2kKernels function"
+msgstr "在 regPV2kKernels 函数中注册 *and_pp* 内核"
 
 #: ../../development/add_protocols.rst:235
 msgid ""
@@ -312,7 +312,7 @@ msgstr ""
 
 #: ../../development/add_protocols.rst:240
 msgid "ABY3 *mul_aa* kernel for arithmetic share multiplication"
-msgstr "ABY3 *mul_aa* kernel for arithmetic share multiplication"
+msgstr "用于算术份额乘法的 ABY3 *mul_aa* 内核"
 
 #: ../../development/add_protocols.rst:258
 msgid "Testing"
