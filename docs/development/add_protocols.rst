@@ -8,7 +8,7 @@ Introduction
 ------------
 This document is mainly for developers who want to add custom MPC protocols in SPU.
 Before reading this document, we recommend that developers have a basic understanding
-of the SPU system architecture (i.e., :ref:`/development/compiler.rst`, :ref:`/development/type_system.rst` and :ref:`/development/runtime.rst`)
+of the SPU system architecture (i.e., :doc:`/development/compiler`, :doc:`/development/type_system` and :doc:`/development/runtime`)
 and the `layout <https://github.com/secretflow/spu/blob/main/REPO_LAYOUT.md>`_ of the SPU code repository.
 In short, SPU translates the high-level applications (such as machine learning model training) written in JAX
 to an MPC-specific intermediate representation named PPHLO and then dispatches PPHLO operations to the low-level MPC protocols.
