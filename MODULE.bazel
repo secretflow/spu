@@ -126,6 +126,5 @@ use_repo(pip, "spu_pip_dev")
 
 bazel_dep(name = "rules_proto_grpc_python", version = "5.0.0")
 
-
 # test
 bazel_dep(name = "googletest", version = "1.15.2", dev_dependency = True)

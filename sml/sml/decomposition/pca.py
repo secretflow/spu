@@ -20,6 +20,7 @@ import jax.numpy as jnp
 
 from ..utils import extmath
 
+
 class Method(Enum):
     PCA_power = 'power_iteration'
     PCA_jacobi = 'serial_jacobi_iteration'
