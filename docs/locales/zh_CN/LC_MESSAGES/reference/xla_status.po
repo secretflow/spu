@@ -614,4 +614,3 @@ msgstr ""
 #: ../../reference/xla_status.md
 msgid "`cstr_reshapable`"
 msgstr ""
-

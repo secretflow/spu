@@ -506,6 +506,9 @@ struct CompilerOptions {
 #else
   bool operator==(const CompilerOptions& other) const;
 #endif
+
+  bool ParseFromString(std::string_view data);
+  std::string SerializeAsString() const;
 };
 
 // The executable format accepted by SPU runtime.

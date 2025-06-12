@@ -23,7 +23,7 @@ import spu.libspu as libspu
 
 
 def _bytes_to_pb(msg: bytes):
-    ret = libspu.ValueMetaProto()
+    ret = libspu.ValueMeta()
     ret.ParseFromString(msg)
     return ret
 

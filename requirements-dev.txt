@@ -1,7 +1,6 @@
 # basic deps
 grpcio==1.66.0
 numpy>=1.22.0, <2 # FIXME: for SF compatibility
-protobuf==5.27.3
 cloudpickle>=2.0.0
 multiprocess>=0.70.12.2
 cachetools>=5.0.0
@@ -29,3 +28,4 @@ keras
 setuptools<71.0.0 # https://github.com/pypa/setuptools/issues/4487
 transformers
 datasets
+async_timeout

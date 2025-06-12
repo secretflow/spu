@@ -29,6 +29,13 @@ Note that SPU current only support Python 3.10 and 3.11.
 pip install spu
 ```
 
+
+
+
+
+
+### From Source
+
 It is recommended to install in a virtual environment, e.g.,
 
 ```bash

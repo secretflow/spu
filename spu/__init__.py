@@ -14,18 +14,38 @@
 
 
 from . import experimental, psi
-from .api import Io, Runtime, check_cpu_feature, compile
+from .api import (
+    Io,
+    Runtime,
+    check_cpu_feature,
+    compile,
+    parse_beaver_type,
+    parse_cheetah_ot_kind,
+    parse_data_type,
+    parse_exp_mode,
+    parse_field_type,
+    parse_log_mode,
+    parse_protocol_kind,
+    parse_sigmoid_mode,
+    parse_sort_method,
+    parse_visibility,
+)
 from .intrinsic import *
 from .libspu import (  # type: ignore;
     CompilationSource,
     CompilerOptions,
     DataType,
-    ExecutableProto,
+    Executable,
     FieldType,
     ProtocolKind,
     RuntimeConfig,
-    ShapeProto,
+    Shape,
+    SourceIRType,
+    ValueChunk,
+    ValueMeta,
     Visibility,
+    link,
+    logging,
 )
 from .utils import simulation
 from .version import __version__  # type: ignor
@@ -39,18 +59,31 @@ __all__ = [
     "Visibility",
     "ProtocolKind",
     "FieldType",
-    "ShapeProto",
+    "Shape",
+    "SourceIRType",
+    "ValueChunk",
+    "ValueMeta",
     "RuntimeConfig",
-    "ExecutableProto",
+    "Executable",
     # spu_api
     "Io",
     "Runtime",
     "compile",
+    "parse_beaver_type",
+    "parse_cheetah_ot_kind",
+    "parse_data_type",
+    "parse_exp_mode",
+    "parse_field_type",
+    "parse_log_mode",
+    "parse_protocol_kind",
+    "parse_sigmoid_mode",
+    "parse_sort_method",
+    "parse_visibility",
     # utils
     "simulation",
     # libs
     "psi",
     # intrinsic
-] + intrinsic.__all__
+]
 
 check_cpu_feature()

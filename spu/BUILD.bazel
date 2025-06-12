@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@protobuf//bazel:py_proto_library.bzl", "py_proto_library")
 load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
 load("@rules_python//python:packaging.bzl", "py_package")
 load("//bazel:spu.bzl", "spu_py_library")
@@ -76,78 +75,23 @@ spu_py_library(
     name = "api",
     srcs = [
         "api.py",
-        # "spu_pb2.py",
-        # "@spulib//libspu:spu_py_proto",
     ],
     data = [
+        "libpsi.pyi",
+        "libspu.pyi",
         ":libspu.so",
     ],
-)
-
-py_proto_library(
-    name = "psi_py_proto",
-    deps = ["@psi//psi/proto:psi_proto"],
-)
-
-py_proto_library(
-    name = "link_py_proto",
-    deps = ["@yacl//yacl/link:link_proto"],
-)
-
-py_proto_library(
-    name = "psi_v2_py_proto",
-    deps = ["@psi//psi/proto:psi_v2_proto"],
-)
-
-# Hack generated protobuf due to https://github.com/protocolbuffers/protobuf/issues/1491
-genrule(
-    name = "psi_v2_py_proto_fixed",
-    srcs = [":psi_v2_py_proto"],
-    outs = ["psi_v2_pb2.py"],
-    cmd = "sed 's#from yacl.link import#from . import#g;s#from psi.proto import#from . import#g;s#psi.proto.psi_v2_pb2#spu.psi_pb2#g' $(SRCS) > $(OUTS)",
-)
-
-genrule(
-    name = "psi_py_proto_fixed",
-    srcs = [":psi_py_proto"],
-    outs = ["psi_pb2.py"],
-    cmd = "sed 's/psi.proto.psi_pb2/spu.psi_pb2/g' $(SRCS) > $(OUTS)",
-)
-
-genrule(
-    name = "pir_py_proto_fixed",
-    srcs = [":pir_py_proto"],
-    outs = ["pir_pb2.py"],
-    cmd = """
-    sed "s/psi.proto.pir_pb2/spu.pir_pb2/g" $(SRCS) > $(OUTS)
-    """,
-)
-
-genrule(
-    name = "link_py_proto_fixed",
-    srcs = [":link_py_proto"],
-    outs = ["link_pb2.py"],
-    cmd = "sed 's/yacl.link.link_pb2/link.pir_pb2/g' $(SRCS) > $(OUTS)",
 )
 
 spu_py_library(
     name = "psi",
     srcs = [
         "psi.py",
-        ":link_py_proto_fixed",
-        ":pir_py_proto_fixed",
-        ":psi_py_proto_fixed",
-        ":psi_v2_py_proto_fixed",
     ],
     data = [
         ":libpsi.so",
         ":libspu.so",
     ],
-)
-
-py_proto_library(
-    name = "pir_py_proto",
-    deps = ["@psi//psi/proto:pir_proto"],
 )
 
 spu_py_library(

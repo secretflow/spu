@@ -12,12 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
 import unittest
 from tempfile import TemporaryDirectory
 
 import multiprocess
-from google.protobuf import json_format
 
 import spu.libspu.link as link
 import spu.psi as psi
@@ -36,38 +34,27 @@ class UnitTests(unittest.TestCase):
     def test_ub_psi(self):
         link_desc = create_link_desc(2)
 
-        # offline stage
-        server_offline_config = f'''
-        {{
-            "mode": "MODE_OFFLINE",
-            "role": "ROLE_SERVER",
-            "cache_path": "{self.tempdir_.name}/spu_test_ub_psi_server_cache",
-            "input_config": {{
-                "type" : "IO_TYPE_FILE_CSV",
-                "path": "spu/tests/data/alice.csv"
-            }},
-            "keys": [
-                "id"
-            ]
-        }}
-        '''
-
-        client_offline_config = f'''
-        {{
-            "mode": "MODE_OFFLINE",
-            "role": "ROLE_CLIENT",
-            "cache_path": "{self.tempdir_.name}/spu_test_ub_psi_client_cache"
-        }}
-        '''
-
         configs = [
-            json_format.ParseDict(json.loads(server_offline_config), psi.UbPsiConfig()),
-            json_format.ParseDict(json.loads(client_offline_config), psi.UbPsiConfig()),
+            psi.UbPsiExecuteConfig(
+                mode=psi.UbPsiMode.MODE_OFFLINE,
+                role=psi.UbPsiRole.ROLE_SERVER,
+                cache_path=f"{self.tempdir_.name}/spu_test_ub_psi_server_cache",
+                input_params=psi.InputParams(
+                    type=psi.SourceType.SOURCE_TYPE_FILE_CSV,
+                    path="spu/tests/data/alice.csv",
+                    selected_keys=["id"],
+                ),
+            ),
+            psi.UbPsiExecuteConfig(
+                mode=psi.UbPsiMode.MODE_OFFLINE,
+                role=psi.UbPsiRole.ROLE_CLIENT,
+                cache_path=f"{self.tempdir_.name}/spu_test_ub_psi_client_cache",
+            ),
         ]
 
         def wrap(rank, link_desc, configs):
             link_ctx = link.create_brpc(link_desc, rank)
-            psi.ub_psi(configs[rank], link_ctx)
+            psi.ub_psi_execute(configs[rank], link_ctx)
 
         jobs = [
             multiprocess.Process(
@@ -81,47 +68,36 @@ class UnitTests(unittest.TestCase):
             job.join()
             self.assertEqual(job.exitcode, 0)
 
-        # online stage
-        server_online_config = f'''
-        {{
-            "mode": "MODE_ONLINE",
-            "role": "ROLE_SERVER",
-            "cache_path": "{self.tempdir_.name}/spu_test_ub_psi_server_cache",
-            "output_config": {{
-                "type" : "IO_TYPE_FILE_CSV"
-            }}
-        }}
-        '''
-
-        client_online_config = f'''
-        {{
-            "mode": "MODE_ONLINE",
-            "role": "ROLE_CLIENT",
-            "input_config": {{
-                "type" : "IO_TYPE_FILE_CSV",
-                "path": "spu/tests/data/bob.csv"
-            }},
-            "output_config": {{
-                "type" : "IO_TYPE_FILE_CSV",
-                "path": "{self.tempdir_.name}/spu_test_ubpsi_bob_psi_ouput.csv"
-            }},
-            "keys": [
-                "id"
-            ],
-            "cache_path": "{self.tempdir_.name}/spu_test_ub_psi_client_cache"
-        }}
-        '''
-
         configs = [
-            json_format.ParseDict(json.loads(server_online_config), psi.UbPsiConfig()),
-            json_format.ParseDict(json.loads(client_online_config), psi.UbPsiConfig()),
+            psi.UbPsiExecuteConfig(
+                mode=psi.UbPsiMode.MODE_ONLINE,
+                role=psi.UbPsiRole.ROLE_SERVER,
+                cache_path=f"{self.tempdir_.name}/spu_test_ub_psi_server_cache",
+                output_params=psi.OutputParams(
+                    type=psi.SourceType.SOURCE_TYPE_FILE_CSV,
+                ),
+            ),
+            psi.UbPsiExecuteConfig(
+                mode=psi.UbPsiMode.MODE_ONLINE,
+                role=psi.UbPsiRole.ROLE_CLIENT,
+                cache_path=f"{self.tempdir_.name}/spu_test_ub_psi_client_cache",
+                input_params=psi.InputParams(
+                    type=psi.SourceType.SOURCE_TYPE_FILE_CSV,
+                    path="spu/tests/data/bob.csv",
+                    selected_keys=["id"],
+                ),
+                output_params=psi.OutputParams(
+                    type=psi.SourceType.SOURCE_TYPE_FILE_CSV,
+                    path=f"{self.tempdir_.name}/spu_test_ubpsi_bob_psi_ouput.csv",
+                ),
+            ),
         ]
 
         link_desc = create_link_desc(2)
 
         def wrap(rank, link_desc, configs):
             link_ctx = link.create_brpc(link_desc, rank)
-            psi.ub_psi(configs[rank], link_ctx)
+            psi.ub_psi_execute(configs[rank], link_ctx)
 
         jobs = [
             multiprocess.Process(

@@ -346,4 +346,3 @@ msgid ""
 "depicts the fact that HE is indeed a 2PC device, so more than 2PC cases "
 "should be handled specially."
 msgstr ""
-

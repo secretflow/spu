@@ -265,7 +265,7 @@ def compile(
     source = libspu.CompilationSource(libspu.SourceIRType.XLA, ir_text, input_vis)
     name = fn.func.__name__ if isinstance(fn, functools.partial) else fn.__name__
     mlir = spu_api.compile(source, copts)
-    executable = libspu.ExecutableProto(
+    executable = libspu.Executable(
         name=name,
         input_names=input_names,
         output_names=output_names,
@@ -336,7 +336,7 @@ def torch_compile(
         ]
     )
     mlir = spu_api.compile(source, copts)
-    executable = libspu.ExecutableProto(
+    executable = libspu.Executable(
         name=name,
         input_names=input_names,
         output_names=output_names,

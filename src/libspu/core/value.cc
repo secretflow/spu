@@ -177,7 +177,9 @@ Value Value::fromProto(const ValueProto& value) {
   }
 
   NdArrayRef data(eltype, shape);
-  SPU_ENFORCE(static_cast<size_t>(data.buf()->size()) == total_bytes);
+  SPU_ENFORCE(static_cast<size_t>(data.buf()->size()) == total_bytes,
+              "data buf size {}(elsize:{}) != total_bytes {}",
+              data.buf()->size(), data.elsize(), total_bytes);
 
   size_t chunk_end_pos = 0;
   for (const auto& [offset, chunk] : ordered_chunks) {

@@ -289,24 +289,6 @@ spu_py_test(
 )
 
 spu_py_test(
-    name = "pir_test",
-    srcs = ["pir_test.py"],
-    data = [
-        "//spu/tests/data",
-    ],
-    flaky = True,
-    tags = [
-        "exclusive-if-local",
-    ],
-    deps = [
-        ":utils",
-        "//spu:init",
-        "//spu:psi",
-        requirement("pandas"),
-    ],
-)
-
-spu_py_test(
     name = "frontend_test",
     srcs = ["frontend_test.py"],
     deps = [

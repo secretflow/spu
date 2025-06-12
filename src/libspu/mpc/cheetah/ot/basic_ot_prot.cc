@@ -280,10 +280,10 @@ std::array<NdArrayRef, 2> BasicOTProtocols::CorrelatedBitwiseAnd(
 // Algorithm 1. AND triple using 1-of-2 ROT.
 // Math
 // ROT sender obtains x_0, x_1
-// ROT recevier obtains x_a, a for a \in {0, 1}
+// ROT receiver obtains x_a, a for a \in {0, 1}
 //
 // Sender set (b = x0 ^ x1, v = x0)
-// Recevier set (a, u = x_a)
+// Receiver set (a, u = x_a)
 // a & b = a & (x0 ^ x1)
 //       = a & (x0 ^ x1) ^ (x0 ^ x0) <- zero m0 ^ m0
 //       = (a & (x0 ^ x1) ^ x0) ^ x0
