@@ -137,6 +137,11 @@ spu_cc_library(
     srcs = ["linalg.cc"],
     hdrs = ["linalg.h"],
     copts = OMP_CFLAGS,
+    defines = select({
+        "@bazel_tools//src/conditions:darwin_x86_64": ["__MACOS_NO_PARA__"],
+        "@bazel_tools//src/conditions:darwin_arm64": ["__MACOS_NO_PARA__"],
+        "//conditions:default": [],
+    }),
     linkopts = OMP_LINKFLAGS,
     deps = [
         "//libspu/core:parallel_utils",
