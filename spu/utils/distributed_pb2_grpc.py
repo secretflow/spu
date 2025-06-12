@@ -15,15 +15,15 @@ class NodeServiceStub(object):
             channel: A grpc.Channel.
         """
         self.Run = channel.stream_stream(
-                '/spu.utils.distributed.NodeService/Run',
-                request_serializer=spu_dot_utils_dot_distributed__pb2.RunRequest.SerializeToString,
-                response_deserializer=spu_dot_utils_dot_distributed__pb2.RunResponse.FromString,
-                )
+            '/spu.utils.distributed.NodeService/Run',
+            request_serializer=spu_dot_utils_dot_distributed__pb2.RunRequest.SerializeToString,
+            response_deserializer=spu_dot_utils_dot_distributed__pb2.RunResponse.FromString,
+        )
         self.RunReturn = channel.stream_stream(
-                '/spu.utils.distributed.NodeService/RunReturn',
-                request_serializer=spu_dot_utils_dot_distributed__pb2.RunRequest.SerializeToString,
-                response_deserializer=spu_dot_utils_dot_distributed__pb2.RunResponse.FromString,
-                )
+            '/spu.utils.distributed.NodeService/RunReturn',
+            request_serializer=spu_dot_utils_dot_distributed__pb2.RunRequest.SerializeToString,
+            response_deserializer=spu_dot_utils_dot_distributed__pb2.RunResponse.FromString,
+        )
 
 
 class NodeServiceServicer(object):
@@ -38,8 +38,7 @@ class NodeServiceServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def RunReturn(self, request_iterator, context):
-        """run a routine on node's context, return the object directly.
-        """
+        """run a routine on node's context, return the object directly."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
@@ -47,56 +46,81 @@ class NodeServiceServicer(object):
 
 def add_NodeServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'Run': grpc.stream_stream_rpc_method_handler(
-                    servicer.Run,
-                    request_deserializer=spu_dot_utils_dot_distributed__pb2.RunRequest.FromString,
-                    response_serializer=spu_dot_utils_dot_distributed__pb2.RunResponse.SerializeToString,
-            ),
-            'RunReturn': grpc.stream_stream_rpc_method_handler(
-                    servicer.RunReturn,
-                    request_deserializer=spu_dot_utils_dot_distributed__pb2.RunRequest.FromString,
-                    response_serializer=spu_dot_utils_dot_distributed__pb2.RunResponse.SerializeToString,
-            ),
+        'Run': grpc.stream_stream_rpc_method_handler(
+            servicer.Run,
+            request_deserializer=spu_dot_utils_dot_distributed__pb2.RunRequest.FromString,
+            response_serializer=spu_dot_utils_dot_distributed__pb2.RunResponse.SerializeToString,
+        ),
+        'RunReturn': grpc.stream_stream_rpc_method_handler(
+            servicer.RunReturn,
+            request_deserializer=spu_dot_utils_dot_distributed__pb2.RunRequest.FromString,
+            response_serializer=spu_dot_utils_dot_distributed__pb2.RunResponse.SerializeToString,
+        ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'spu.utils.distributed.NodeService', rpc_method_handlers)
+        'spu.utils.distributed.NodeService', rpc_method_handlers
+    )
     server.add_generic_rpc_handlers((generic_handler,))
 
 
- # This class is part of an EXPERIMENTAL API.
+# This class is part of an EXPERIMENTAL API.
 class NodeService(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
-    def Run(request_iterator,
+    def Run(
+        request_iterator,
+        target,
+        options=(),
+        channel_credentials=None,
+        call_credentials=None,
+        insecure=False,
+        compression=None,
+        wait_for_ready=None,
+        timeout=None,
+        metadata=None,
+    ):
+        return grpc.experimental.stream_stream(
+            request_iterator,
             target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.stream_stream(request_iterator, target, '/spu.utils.distributed.NodeService/Run',
+            '/spu.utils.distributed.NodeService/Run',
             spu_dot_utils_dot_distributed__pb2.RunRequest.SerializeToString,
             spu_dot_utils_dot_distributed__pb2.RunResponse.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+        )
 
     @staticmethod
-    def RunReturn(request_iterator,
+    def RunReturn(
+        request_iterator,
+        target,
+        options=(),
+        channel_credentials=None,
+        call_credentials=None,
+        insecure=False,
+        compression=None,
+        wait_for_ready=None,
+        timeout=None,
+        metadata=None,
+    ):
+        return grpc.experimental.stream_stream(
+            request_iterator,
             target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.stream_stream(request_iterator, target, '/spu.utils.distributed.NodeService/RunReturn',
+            '/spu.utils.distributed.NodeService/RunReturn',
             spu_dot_utils_dot_distributed__pb2.RunRequest.SerializeToString,
             spu_dot_utils_dot_distributed__pb2.RunResponse.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+        )

@@ -114,6 +114,7 @@ def mean_poisson_deviance(y_true, y_pred, sample_weight=None):
 def mean_gamma_deviance(y_true, y_pred, sample_weight=None):
     return _mean_tweedie_deviance(y_true, y_pred, sample_weight=sample_weight, power=2)
 
+
 def r2_score(y_true, y_pred):
     """
     Calculates the R^2 (coefficient of determination) regression score using JAX.

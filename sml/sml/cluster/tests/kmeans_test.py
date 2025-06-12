@@ -67,7 +67,9 @@ class UnitTests(unittest.TestCase):
         def load_data():
             n_samples = 1000
             n_features = 100
-            X, _ = make_blobs(n_samples=n_samples, n_features=n_features, centers=2, random_state=107)
+            X, _ = make_blobs(
+                n_samples=n_samples, n_features=n_features, centers=2, random_state=107
+            )
             split_index = n_features // 2
             return X[:, :split_index], X[:, split_index:]
 

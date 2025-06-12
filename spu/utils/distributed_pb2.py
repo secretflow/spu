@@ -6,25 +6,28 @@ from google.protobuf import descriptor as _descriptor
 from google.protobuf import descriptor_pool as _descriptor_pool
 from google.protobuf import symbol_database as _symbol_database
 from google.protobuf.internal import builder as _builder
+
 # @@protoc_insertion_point(imports)
 
 _sym_db = _symbol_database.Default()
 
 
-
-
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1bspu/utils/distributed.proto\x12\x15spu.utils.distributed\"\x1a\n\nRunRequest\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\x0c\"\x1b\n\x0bRunResponse\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\x0c\x32\xbb\x01\n\x0bNodeService\x12R\n\x03Run\x12!.spu.utils.distributed.RunRequest\x1a\".spu.utils.distributed.RunResponse\"\x00(\x01\x30\x01\x12X\n\tRunReturn\x12!.spu.utils.distributed.RunRequest\x1a\".spu.utils.distributed.RunResponse\"\x00(\x01\x30\x01\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(
+    b'\n\x1bspu/utils/distributed.proto\x12\x15spu.utils.distributed\"\x1a\n\nRunRequest\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\x0c\"\x1b\n\x0bRunResponse\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\x0c\x32\xbb\x01\n\x0bNodeService\x12R\n\x03Run\x12!.spu.utils.distributed.RunRequest\x1a\".spu.utils.distributed.RunResponse\"\x00(\x01\x30\x01\x12X\n\tRunReturn\x12!.spu.utils.distributed.RunRequest\x1a\".spu.utils.distributed.RunResponse\"\x00(\x01\x30\x01\x62\x06proto3'
+)
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
-_builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'spu.utils.distributed_pb2', _globals)
+_builder.BuildTopDescriptorsAndMessages(
+    DESCRIPTOR, 'spu.utils.distributed_pb2', _globals
+)
 if _descriptor._USE_C_DESCRIPTORS == False:
 
-  DESCRIPTOR._options = None
-  _globals['_RUNREQUEST']._serialized_start=54
-  _globals['_RUNREQUEST']._serialized_end=80
-  _globals['_RUNRESPONSE']._serialized_start=82
-  _globals['_RUNRESPONSE']._serialized_end=109
-  _globals['_NODESERVICE']._serialized_start=112
-  _globals['_NODESERVICE']._serialized_end=299
+    DESCRIPTOR._options = None
+    _globals['_RUNREQUEST']._serialized_start = 54
+    _globals['_RUNREQUEST']._serialized_end = 80
+    _globals['_RUNRESPONSE']._serialized_start = 82
+    _globals['_RUNRESPONSE']._serialized_end = 109
+    _globals['_NODESERVICE']._serialized_start = 112
+    _globals['_NODESERVICE']._serialized_end = 299
 # @@protoc_insertion_point(module_scope)
