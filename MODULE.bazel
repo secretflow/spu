@@ -32,7 +32,7 @@ local_path_override(
     path = "src",
 )
 
-bazel_dep(name = "psi", version = "0.6.0.dev250416")
+bazel_dep(name = "psi", version = "0.6.0.dev250507")
 bazel_dep(name = "yacl", version = "0.4.5b10-nightly-20250110")
 bazel_dep(name = "grpc", version = "1.66.0.bcr.4")
 
@@ -55,7 +55,6 @@ single_version_override(
 bazel_dep(name = "pybind11_bazel", version = "2.13.6")
 bazel_dep(name = "rules_cuda", version = "0.2.3")
 bazel_dep(name = "rules_python", version = "1.2.0")
-bazel_dep(name = "rules_proto_grpc_python", version = "5.0.0")
 
 # For experimental/squirrel and examples/cpp
 bazel_dep(name = "eigen", version = "3.4.90-20230801-66e8f3")
@@ -124,6 +123,9 @@ pip.override(
     ],
 )
 use_repo(pip, "spu_pip_dev")
+
+bazel_dep(name = "rules_proto_grpc_python", version = "5.0.0")
+
 
 # test
 bazel_dep(name = "googletest", version = "1.15.2", dev_dependency = True)

@@ -55,4 +55,3 @@ msgstr "SPU 运行时（后端）实现了多种多方计算协议，以提供�
 #: ../../getting_started/introduction.rst:14
 msgid "High-level system architecture of SPU"
 msgstr ""
-

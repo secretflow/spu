@@ -157,4 +157,3 @@ msgstr ""
 #: ../../development/visibility_inference_rule.rst:123
 msgid "visibility(result) == common_visibility(operand, source, init)"
 msgstr ""
-

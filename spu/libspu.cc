@@ -456,9 +456,6 @@ class IoWrapper {
 
  public:
   IoWrapper(size_t world_size, const spu::RuntimeConfig& config) {
-    // spu::RuntimeConfig config;
-    // SPU_ENFORCE(config.ParseFromString(config_pb));
-
     ptr_ = std::make_unique<spu::device::IoClient>(world_size, config);
     max_chunk_size_ = config.share_max_chunk_size;
     if (max_chunk_size_ == 0) {
@@ -665,7 +662,11 @@ void BindSPU(py::module& m) {
            py::arg("field"), py::arg("fxp_fraction_bits") = 0)
       .def(py::init<const RuntimeConfig&>())
       .def("ParseFromJsonString", &RuntimeConfig::ParseFromJsonString)
-      .def("ParseFromString", &RuntimeConfig::ParseFromString)
+      .def("ParseFromString",
+           [](RuntimeConfig& self, py::bytes data) {
+             std::string str_data = data.cast<std::string>();
+             return self.ParseFromString(str_data);
+           })
       .def("SerializeToString",
            [](const RuntimeConfig& self) {
              return py::bytes(self.SerializeAsString());
@@ -725,7 +726,16 @@ void BindSPU(py::module& m) {
       .def_readwrite("experimental_exp_prime_disable_lower_bound",
                      &RuntimeConfig::experimental_exp_prime_disable_lower_bound)
       .def_readwrite("experimental_exp_prime_enable_upper_bound",
-                     &RuntimeConfig::experimental_exp_prime_enable_upper_bound);
+                     &RuntimeConfig::experimental_exp_prime_enable_upper_bound)
+      .def(py::pickle(
+          [](const RuntimeConfig& self) {
+            return py::bytes(self.SerializeAsString());
+          },
+          [](py::bytes data) {
+            RuntimeConfig res;
+            res.ParseFromString(std::string(data));
+            return res;
+          }));
 
   // Compiler
   py::enum_<SourceIRType>(m, "SourceIRType")
@@ -737,7 +747,7 @@ void BindSPU(py::module& m) {
       .def(py::init<>())
       .def(py::init<SourceIRType, std::string, std::vector<Visibility>>(),
            py::arg("ir_type") = SourceIRType::XLA, py::arg("ir_txt") = "",
-           py::arg("input_visibility") = std::vector<Visibility>{})
+           py::arg("input_visibility") = py::list())
       .def("__hash__",
            [](const CompilationSource& self) {
              return std::hash<CompilationSource>{}(self);
@@ -806,21 +816,23 @@ void BindSPU(py::module& m) {
       .def_readwrite("disable_deallocation_insertion",
                      &CompilerOptions::disable_deallocation_insertion)
       .def_readwrite("disable_partial_sort_optimization",
-                     &CompilerOptions::disable_partial_sort_optimization);
+                     &CompilerOptions::disable_partial_sort_optimization)
+      .def(py::pickle(
+          [](const CompilerOptions& self) {
+            return py::bytes(self.SerializeAsString());
+          },
+          [](py::bytes data) {
+            CompilerOptions res;
+            res.ParseFromString(std::string(data));
+            return res;
+          }));
 
-  py::class_<ExecutableProto>(m, "ExecutableProto")
+  py::class_<ExecutableProto>(m, "Executable")
       .def(py::init<>())
       .def(py::init<std::string, std::vector<std::string>,
                     std::vector<std::string>, std::string>(),
-           py::arg("name") = "",
-           py::arg("input_names") = std::vector<std::string>{},
-           py::arg("output_names") = std::vector<std::string>{},
-           py::arg("code") = "")
-      .def("ParseFromString", &ExecutableProto::ParseFromString)
-      .def("SerializeToString",
-           [](const ExecutableProto& self) {
-             return py::bytes(self.SerializeAsString());
-           })
+           py::arg("name") = "", py::arg("input_names") = py::list(),
+           py::arg("output_names") = py::list(), py::arg("code") = py::bytes())
       .def_readwrite("name", &ExecutableProto::name)
       .def_readwrite("input_names", &ExecutableProto::input_names)
       .def_readwrite("output_names", &ExecutableProto::output_names)
@@ -829,28 +841,104 @@ void BindSPU(py::module& m) {
           [](const ExecutableProto& self) { return py::bytes(self.code); },
           [](ExecutableProto& self, const py::bytes& bytes) {
             self.code = std::string(bytes);
+          })
+      .def("ParseFromString",
+           [](ExecutableProto& self, py::bytes data) {
+             std::string str_data = data.cast<std::string>();
+             return self.ParseFromString(str_data);
+           })
+      .def("SerializeToString",
+           [](const ExecutableProto& self) {
+             return py::bytes(self.SerializeAsString());
+           })
+      .def(py::pickle(
+          [](const ExecutableProto& self) {
+            return py::bytes(self.SerializeAsString());
+          },
+          [](py::bytes data) {
+            ExecutableProto proto;
+            proto.ParseFromString(std::string(data));
+            return proto;
+          }));
+
+  py::class_<pb::ShapeProto>(m, "Shape")
+      .def(py::init<>())
+      .def_property(
+          "dims",
+          [](const pb::ShapeProto& self) {
+            return std::vector<int64_t>(self.dims().begin(), self.dims().end());
+          },
+          [](pb::ShapeProto& self, const std::vector<int64_t>& dims) {
+            self.mutable_dims()->Clear();
+            for (int64_t dim : dims) {
+              self.add_dims(dim);
+            }
           });
 
-  py::class_<pb::ShapeProto>(m, "ShapeProto")
+  py::class_<pb::ValueMetaProto>(m, "ValueMeta")
       .def(py::init<>())
-      .def_property_readonly("dims", [](const pb::ShapeProto& self) {
-        return std::vector<int64_t>(self.dims().begin(), self.dims().end());
+      .def_property(
+          "data_type",
+          [](const pb::ValueMetaProto& self) {
+            return DataType(self.data_type());
+          },
+          [](pb::ValueMetaProto& self, const DataType& data_type) {
+            self.set_data_type(pb::DataType(data_type));
+          })
+      .def_property("is_complex", &pb::ValueMetaProto::is_complex,
+                    &pb::ValueMetaProto::set_is_complex)
+      .def_property(
+          "visibility",
+          [](const pb::ValueMetaProto& self) {
+            return Visibility(self.visibility());
+          },
+          [](pb::ValueMetaProto& self, const Visibility& visibility) {
+            self.set_visibility(pb::Visibility(visibility));
+          })
+      .def_property(
+          "shape", &pb::ValueMetaProto::shape,
+          [](pb::ValueMetaProto& self, const std::vector<int64_t>& dims) {
+            auto shape = self.mutable_shape();
+            shape->mutable_dims()->Clear();
+            for (int64_t dim : dims) {
+              shape->add_dims(dim);
+            }
+          })
+      .def_property("storage_type", &pb::ValueMetaProto::storage_type,
+                    [](pb::ValueMetaProto& self, const std::string type) {
+                      self.set_storage_type(type);
+                    })
+      .def("ParseFromString",
+           [](pb::ValueMetaProto& self, py::bytes data) {
+             std::string str_data = data.cast<std::string>();
+             return self.ParseFromString(str_data);
+           })
+      .def("SerializeToString", [](const pb::ValueMetaProto& self) {
+        return py::bytes(self.SerializeAsString());
       });
 
-  py::class_<pb::ValueMetaProto>(m, "ValueMetaProto")
+  py::class_<pb::ValueChunkProto>(m, "ValueChunk")
       .def(py::init<>())
-      .def("ParseFromString", &pb::ValueMetaProto::ParseFromString)
-      .def_property_readonly("data_type",
-                             [](const pb::ValueMetaProto& self) {
-                               return DataType(self.data_type());
-                             })
-      .def_property_readonly("is_complex", &pb::ValueMetaProto::is_complex)
-      .def_property_readonly("visibility",
-                             [](const pb::ValueMetaProto& self) {
-                               return Visibility(self.visibility());
-                             })
-      .def_property_readonly("shape", &pb::ValueMetaProto::shape)
-      .def_property_readonly("storage_type", &pb::ValueMetaProto::storage_type);
+      .def_property("total_bytes", &pb::ValueChunkProto::total_bytes,
+                    &pb::ValueChunkProto::set_total_bytes)
+      .def_property("chunk_offset", &pb::ValueChunkProto::chunk_offset,
+                    &pb::ValueChunkProto::set_chunk_offset)
+      .def_property(
+          "content",
+          [](const pb::ValueChunkProto& self) {
+            return py::bytes(self.content());
+          },
+          [](pb::ValueChunkProto& self, const py::bytes& bytes) {
+            self.set_content(std::string(bytes));
+          })
+      .def("ParseFromString",
+           [](pb::ValueChunkProto& self, py::bytes data) {
+             std::string str_data = data.cast<std::string>();
+             return self.ParseFromString(str_data);
+           })
+      .def("SerializeToString", [](const pb::ValueChunkProto& self) {
+        return py::bytes(self.SerializeAsString());
+      });
 
   py::class_<PyBindShare>(m, "Share", "Share in python runtime")
       .def(py::init<>())

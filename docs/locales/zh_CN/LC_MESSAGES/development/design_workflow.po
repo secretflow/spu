@@ -494,4 +494,3 @@ msgid ""
 "In the above picture, we can do local computation on *VS* side, which "
 "makes it suitable for FL like application."
 msgstr ""
-

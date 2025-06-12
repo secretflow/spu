@@ -13,7 +13,115 @@
 # limitations under the License.
 
 import enum
+from dataclasses import dataclass
 from typing import overload
+
+class logging:
+    '''
+    Simulate the logging module using class
+    '''
+
+    class LogLevel(enum.IntEnum):
+        DEBUG = 0
+        INFO = 1
+        WARN = 2
+        ERROR = 3
+
+    @dataclass
+    class LogOptions:
+        enable_console_logger: bool = True
+        system_log_path: str = ""
+        trace_log_path: str = ""
+        log_level: logging.LogLevel = logging.LogLevel.INFO
+        max_log_file_size: int = 500 * 1024 * 1024
+        max_log_file_count: int = 10
+        trace_content_length: int = 100
+
+    @staticmethod
+    def setup_logging(options: LogOptions) -> None: ...
+
+class link:
+    '''
+    Simulate the link module using class
+    '''
+
+    @dataclass
+    class CertInfo:
+        certificate_path: str
+        private_key_path: str
+
+    @dataclass
+    class VerifyOptions:
+        verify_depth: str
+        ca_file_path: str
+
+    @dataclass
+    class RetryOptions:
+        max_retry: int
+        retry_interval_ms: int
+        retry_interval_incr_ms: int
+        max_retry_interval_ms: int
+        error_codes: set[int]
+        http_codes: set[int]
+        aggressive_retry: bool
+
+    @dataclass
+    class SSLOptions:
+        cert: link.CertInfo
+        verify: link.VerifyOptions
+
+    @dataclass
+    class ContextDesc:
+        class Party:
+            @property
+            def id(self) -> str: ...
+            @property
+            def host(self) -> str: ...
+
+        id: str
+        connect_retry_times: int
+        connect_retry_interval_ms: int
+        recv_timeout_ms: int
+        http_max_payload_size: int
+        http_timeout_ms: int
+        brpc_channel_protocol: str
+        brpc_channel_connection_type: str
+        throttle_window_size: int
+        enable_ssl: bool
+        client_ssl_opts: link.SSLOptions
+        server_ssl_opts: link.SSLOptions
+        link_type: str
+        retry_opts: link.RetryOptions
+        disable_msg_seq_id: bool
+
+        @property
+        def parties(self) -> list[Party]: ...
+        def add_party(self, id: str, host: str) -> None: ...
+
+    class Context:
+        @property
+        def rank(self) -> int: ...
+        @property
+        def world_size(self) -> int: ...
+        def id(self) -> str: ...
+        def spawn(self): ...
+        def barrier(self): ...
+        def all_gather(self, data: str) -> list[str]: ...
+        def gather(self, data: str, root: int) -> list[str]: ...
+        def broadcast(self, data: str, root: int) -> str: ...
+        def stop_link(self) -> None: ...
+        def scatter(self, data: str, root: int) -> str: ...
+        def send(self, dst_rank: int, data: str) -> None: ...
+        def send_async(self, dst_rank: int, data: str) -> None: ...
+        def recv(self, src_rank: int) -> bytes: ...
+        def next_rank(self, strides: int = 1) -> int: ...
+
+    @staticmethod
+    def create_brpc(
+        desc: ContextDesc, self_rank: int, *, log_details: bool = False
+    ) -> Context: ...
+    @staticmethod
+    def create_mem(desc: ContextDesc, self_rank: int) -> Context: ...
 
 class DataType(enum.IntEnum):
     DT_INVALID = 0
@@ -240,7 +348,7 @@ class CompilerOptions:
         self.disable_deallocation_insertion = disable_deallocation_insertion
         self.disable_partial_sort_optimization = disable_partial_sort_optimization
 
-class ExecutableProto:
+class Executable:
     def __init__(
         self,
         name: str = "",
@@ -260,26 +368,36 @@ class Share:
     meta: bytes
     share_chunks: list[bytes]
 
-class ShapeProto:
-    def __init__(self, dims: list[int]):
-        self.dims = dims
+class Shape:
+    dims: list[int]
 
-class ValueMetaProto:
+@dataclass
+class ValueMeta:
     data_type: DataType
     is_complex: bool
     visibility: Visibility
-    shape: ShapeProto
+    shape: Shape
     storage_type: str
 
     def ParseFromString(self, data: bytes) -> bool: ...
+    def SerializeToString(self) -> bytes: ...
+
+@dataclass
+class ValueChunk:
+    total_bytes: int
+    chunk_offset: int
+    content: bytes
+
+    def ParseFromString(self, data: bytes) -> bool: ...
+    def SerializeToString(self) -> bytes: ...
 
 class RuntimeWrapper:
     def __init__(self, link: link.Context, config: RuntimeConfig): ...
-    def Run(self, executable: ExecutableProto): ...
+    def Run(self, executable: Executable): ...
     def SetVar(self, name: str, value: Share): ...
     def GetVar(self, name: str) -> Share: ...
     def GetVarChunksCount(self, name: str) -> int: ...
-    def GetVarMeta(self, name: str) -> ValueMetaProto: ...
+    def GetVarMeta(self, name: str) -> ValueMeta: ...
     def DelVar(self, name: str): ...
     def Clear(self): ...
 
