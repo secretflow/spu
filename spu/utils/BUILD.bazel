@@ -13,8 +13,8 @@
 # limitations under the License.
 
 load("@rules_proto//proto:defs.bzl", "proto_library")
-load("@rules_proto_grpc_python//:defs.bzl", "python_grpc_library", "python_proto_library")
 load("//bazel:spu.bzl", "spu_py_library")
+# load("@rules_proto_grpc_python//:defs.bzl", "python_grpc_library", "python_proto_library")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -27,30 +27,31 @@ spu_py_library(
     ],
 )
 
-proto_library(
-    name = "distributed_proto",
-    srcs = ["distributed.proto"],
-)
+# proto_library(
+#     name = "distributed_proto",
+#     srcs = ["distributed.proto"],
+# )
 
-python_proto_library(
-    name = "distributed_py_proto",
-    protos = [":distributed_proto"],
-)
+# python_proto_library(
+#     name = "distributed_py_proto",
+#     protos = [":distributed_proto"],
+# )
 
-python_grpc_library(
-    name = "distributed_py_proto_grpc",
-    output_mode = "NO_PREFIX",
-    prefix_path = "../..",
-    protos = [":distributed_proto"],
-    deps = [":distributed_py_proto"],
-)
+# python_grpc_library(
+#     name = "distributed_py_proto_grpc",
+#     output_mode = "NO_PREFIX",
+#     prefix_path = "../..",
+#     protos = [":distributed_proto"],
+#     deps = [":distributed_py_proto"],
+# )
 
 spu_py_library(
     name = "distributed_impl",
     srcs = [
         "distributed_impl.py",
-        ":distributed_py_proto_grpc",
-        # "@spulib//libspu:spu_py_proto",
+        "distributed_pb2.py",
+        "distributed_pb2_grpc.py",
+        # ":distributed_py_proto_grpc",
     ],
     deps = [
         ":frontend",

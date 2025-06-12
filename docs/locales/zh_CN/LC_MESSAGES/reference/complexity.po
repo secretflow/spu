@@ -154,4 +154,3 @@ msgstr ""
 #: ../../reference/complexity.md
 msgid "4\\*K"
 msgstr ""
-

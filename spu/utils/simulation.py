@@ -81,7 +81,7 @@ class Simulator(object):
         # config.enable_type_checker = True
         return cls(wsize, config)
 
-    def __call__(self, executable: libspu.ExecutableProto, *flat_args):
+    def __call__(self, executable: libspu.Executable, *flat_args):
         flat_args = [np.array(jnp.array(x)) for x in flat_args]
         params = [
             self.io.make_shares(x, libspu.Visibility.VIS_SECRET) for x in flat_args

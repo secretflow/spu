@@ -66,13 +66,13 @@ After all these installed, you can run any test like:
 # run kmeans simulation
 # simulation: run program in single process
 # used for correctness test
-bazel run -c opt //sml/cluster/tests:kmeans_test
+pytest -n auto sml/sml/cluster/tests/kmeans_test.py
 
 # run kmeans emulation
 # emulation: run program with multiple processes(LAN setting)
 # or multiple dockers(WAN setting, will come soon)
 # used for efficiency test.
-bazel run -c opt //sml/cluster/emulations:kmeans_emul
+python3 sml/sml/cluster/emulations/kmeans_emul.py
 ```
 
 ## Algorithm Support lists

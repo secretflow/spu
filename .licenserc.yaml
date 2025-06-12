@@ -40,6 +40,8 @@ header: # <1>
     - '**/*.mlir'
     - '**/*.csv'
     - '**/*.tmpl'
+    - '**/*_pb2.py'
+    - '**/*_grpc.py'
     - 'src/libspu/compiler/tests/interpret/template/**.template'
     - 'LICENSE'
     - 'NOTICE'

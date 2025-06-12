@@ -37,6 +37,9 @@ The compiler portion of the project follows [MLIR style](https://mlir.llvm.org/g
 
 ## Build
 
+### Prerequisite
+
+
 #### Docker
 
 ```sh
@@ -83,6 +86,9 @@ brew install nasm
 ```
 
 ### Build & UnitTest
+
+
+
 
 ``` sh
 ####################################################
