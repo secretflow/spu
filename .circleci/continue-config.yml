@@ -112,7 +112,7 @@ commands:
               sh ../devtools/rename-junit-xml.sh
             fi
 
-            find bazel-testlogs/ -type f -name "test.log"  -print0 | xargs -0 tar -cvzf test_logs.tar.gz
+            find bazel-testlogs/ -type f -name "test.log"  -print0 | xargs -0 tar -cvf test_logs.tar
 
             status=$((${status0} + ${status1}))
             exit ${status}
@@ -142,14 +142,14 @@ commands:
             pytest --suppress-no-test-exit-code --testmon ./ | tee -a sml_test_result.log; status3=${PIPESTATUS[0]}
             popd
 
-            tar -rvf test_logs.tar.gz sml/sml_test_result.log
+            tar -rvf test_logs.tar sml/sml_test_result.log
 
             status=$((${status0} + ${status1} + ${status2} + ${status3}))
             exit ${status}
       - store_test_results:
           path: test-results
       - store_artifacts:
-          path: test_logs.tar.gz
+          path: test_logs.tar
 
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
