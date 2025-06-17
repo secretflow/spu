@@ -91,6 +91,14 @@ spu_cc_test(
     ],
 )
 
+spu_cc_test(
+    name = "gfmp_ops_test",
+    srcs = ["gfmp_ops_test.cc"],
+    deps = [
+        ":gfmp_ops",
+    ],
+)
+
 spu_cc_library(
     name = "gfmp_ops",
     srcs = ["gfmp_ops.cc"],
