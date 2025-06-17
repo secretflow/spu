@@ -73,6 +73,7 @@ commands:
 
             # build module spulib
             pushd src
+            ulimit -c unlimited
             bazelisk query <<parameters.targets>>; if [ $? -eq 0 ]; then
               bazelisk build <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning; status1=${PIPESTATUS[0]}
             fi
@@ -202,7 +203,8 @@ jobs:
             bash ~/miniconda.sh -b -p $HOME/miniconda
             source $HOME/miniconda/bin/activate
             conda init bash zsh
-      - build_and_test
+      - build_and_test:
+          targets: //libspu/mpc/semi2k/beaver/beaver_impl:beaver_test
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
 workflows:
