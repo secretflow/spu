@@ -15,8 +15,8 @@
 # limitations under the License.
 
 import argparse
-import re
 import os
+import re
 
 SPU_VERSION_PREFIX = "0.9.4.dev"
 
@@ -77,6 +77,13 @@ def main():
     update_first_matched_pattern_in_file(
         "src/libspu/version.h",
         version_pattern3.format('[^"]*'),
+        version_pattern3.format(new_version),
+    )
+
+    version_pattern3 = 'spu=={}'
+    update_first_matched_pattern_in_file(
+        "sml/requirements.txt",
+        version_pattern3.format('[^\n]*'),
         version_pattern3.format(new_version),
     )
 
