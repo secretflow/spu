@@ -46,10 +46,7 @@ from termcolor import colored
 
 from .. import api as spu_api
 from .. import libspu  # type: ignore
-
-# from .. import spu_pb2
-from . import distributed_pb2  # type: ignore
-from . import distributed_pb2_grpc  # type: ignore
+from . import distributed_pb2, distributed_pb2_grpc
 
 """
 This module is used as a simple scheduler to demonstrate SPU usage.
@@ -367,7 +364,6 @@ class NodeServicer(distributed_pb2_grpc.NodeServiceServicer):
 
 
 def shape_spu_to_np(spu_shape):
-    # x : spu_pb2.ShapeProto):
     return tuple(list(spu_shape.dims))
 
 
@@ -574,7 +570,7 @@ def builtin_spu_run(
     rt = server._locals[f"{device_name}-rt"]
     io = server._locals[f"{device_name}-io"]
 
-    spu_exec = libspu.ExecutableProto()
+    spu_exec = libspu.Executable()
     spu_exec.ParseFromString(exec_str)
 
     # do infeed.

@@ -14,151 +14,113 @@
 
 from __future__ import annotations
 
-from typing import List
-
-from . import libpsi  # type: ignore
-from .libpsi.libs import ProgressData
-from .libspu.link import Context  # type: ignore
-from .pir_pb2 import (  # type: ignore
-    ApsiReceiverConfig,
-    ApsiSenderConfig,
-    PirResultReport,
-)
-from .psi_pb2 import (  # type: ignore
-    BucketPsiConfig,
-    CurveType,
+from .libpsi import (  # type: ignore
+    CheckpointConfig,
+    DpParams,
+    EcdhParams,
+    EllipticCurveType,
     InputParams,
-    MemoryPsiConfig,
     OutputParams,
-    PsiResultReport,
-    PsiType,
+    ProgressData,
+    ProgressParams,
+    PsiExecuteConfig,
+    PsiExecuteReport,
+    PsiProtocol,
+    PsiProtocolConfig,
+    ResultJoinConfig,
+    ResultJoinType,
+    Rr22Rarams,
+    SourceType,
+    UbPsiExecuteConfig,
+    UbPsiMode,
+    UbPsiRole,
+    UbPsiServerParams,
+    psi_execute,
+    ub_psi_execute,
 )
-from .psi_v2_pb2 import (
-    DebugOptions,
-    EcdhConfig,
-    IoConfig,
-    IoType,
-    KkrtConfig,
-    Protocol,
-    ProtocolConfig,
-    PsiConfig,
-    RecoveryConfig,
-    Role,
-    Rr22Config,
-    UbPsiConfig,
-)
 
 
-def mem_psi(
-    link: Context, config: MemoryPsiConfig, input_items: List[str]
-) -> List[str]:
-    return libpsi.libs.mem_psi(link, config.SerializeToString(), input_items)
+def parse_protocol(v: str) -> PsiProtocol:
+    match v:
+        case "PROTOCOL_ECDH":
+            return PsiProtocol.PROTOCOL_ECDH
+        case "PROTOCOL_KKRT":
+            return PsiProtocol.PROTOCOL_KKRT
+        case "PROTOCOL_RR22":
+            return PsiProtocol.PROTOCOL_RR22
+        case "PROTOCOL_ECDH_3PC":
+            return PsiProtocol.PROTOCOL_ECDH_3PC
+        case "PROTOCOL_ECDH_NPC":
+            return PsiProtocol.PROTOCOL_ECDH_NPC
+        case "PROTOCOL_KKRT_NPC":
+            return PsiProtocol.PROTOCOL_KKRT_NPC
+        case "PROTOCOL_DP":
+            return PsiProtocol.PROTOCOL_DP
+        case _:
+            return PsiProtocol.PROTOCOL_UNSPECIFIED
 
 
-def bucket_psi(
-    link: Context,
-    config: BucketPsiConfig,
-    progress_callbacks: [[libpsi.libs.ProgressData], None] = None,
-    callbacks_interval_ms: int = 5 * 1000,
-    ic_mode: bool = False,
-) -> PsiResultReport:
-    """
-    Run bucket psi
-    :param link: the transport layer
-    :param config: psi config
-    :param progress_callbacks: callbacks func for psi progress. func defined: def progress_callbacks(data: ProgressData)
-    :param ic_mode: Whether to run in interconnection mode
-    :return: statistical results
-    """
-    report_str = libpsi.libs.bucket_psi(
-        link,
-        config.SerializeToString(),
-        progress_callbacks,
-        callbacks_interval_ms,
-        ic_mode,
-    )
-    report = PsiResultReport()
-    report.ParseFromString(report_str)
-    return report
+def parse_curve_type(v: str) -> EllipticCurveType:
+    match v:
+        case "CURVE_25519":
+            return EllipticCurveType.CURVE_25519
+        case "CURVE_FOURQ":
+            return EllipticCurveType.CURVE_FOURQ
+        case "CURVE_SM2":
+            return EllipticCurveType.CURVE_SM2
+        case "CURVE_SECP256K1":
+            return EllipticCurveType.CURVE_SECP256K1
+        case "CURVE_25519_ELLIGATOR2":
+            return EllipticCurveType.CURVE_25519_ELLIGATOR2
+        case _:
+            return EllipticCurveType.CURVE_INVALID_TYPE
 
 
-def gen_cache_for_2pc_ub_psi(config: BucketPsiConfig) -> PsiResultReport:
-    """This API is still experimental.
-
-    Args:
-        config (BucketPsiConfig): only the following fields are required:
-            - input_params
-            - output_params
-            - bucket_size
-            - curve_type
-            - ecdh_secret_key_path
-
-        Other fields would be overwritten.
-
-    Returns:
-        PsiResultReport: statistical results
-    """
-    config.psi_type = PsiType.Value('ECDH_OPRF_UB_PSI_2PC_GEN_CACHE')
-    config.broadcast_result = False
-    config.output_params.need_sort = False
-    config.receiver_rank = 0
-    report_str = libpsi.libs.bucket_psi(None, config.SerializeToString())
-    report = PsiResultReport()
-    report.ParseFromString(report_str)
-    return report
+def parse_source_type(v: str) -> SourceType:
+    match v:
+        case "SOURCE_TYPE_FILE_CSV":
+            return SourceType.SOURCE_TYPE_FILE_CSV
+        case _:
+            return SourceType.SOURCE_TYPE_UNSPECIFIED
 
 
-def psi(
-    config: PsiConfig,
-    link: Context = None,
-) -> PsiResultReport:
-    """
-    Run PSI with v2 API.
-    Check PsiConfig at https://www.secretflow.org.cn/docs/psi/latest/en-US/reference/psi_v2_config#psiconfig.
-    :param config: psi config
-    :param link: the transport layer
-    :return: statistical results
-    """
-    report_str = libpsi.libs.psi(
-        config.SerializeToString(),
-        link,
-    )
-    report = PsiResultReport()
-    report.ParseFromString(report_str)
-    return report
+def parse_join_type(v: str) -> ResultJoinType:
+    match v:
+        case "JOIN_TYPE_INNER_JOIN":
+            return ResultJoinType.JOIN_TYPE_INNER_JOIN
+        case "JOIN_TYPE_LEFT_JOIN":
+            return ResultJoinType.JOIN_TYPE_LEFT_JOIN
+        case "JOIN_TYPE_RIGHT_JOIN":
+            return ResultJoinType.JOIN_TYPE_RIGHT_JOIN
+        case "JOIN_TYPE_FULL_JOIN":
+            return ResultJoinType.JOIN_TYPE_FULL_JOIN
+        case "JOIN_TYPE_DIFFERENCE":
+            return ResultJoinType.JOIN_TYPE_DIFFERENCE
+        case _:
+            return ResultJoinType.JOIN_TYPE_UNSPECIFIED
 
 
-def ub_psi(
-    config: UbPsiConfig,
-    link: Context = None,
-) -> PsiResultReport:
-    """
-    Run PSI with v2 API.
-    Check UbPsiConfig at https://www.secretflow.org.cn/docs/psi/latest/en-US/reference/psi_v2_config#ubpsiconfig.
-    :param config: ub psi config
-    :param link: the transport layer
-    :return: statistical results
-    """
-    report_str = libpsi.libs.ub_psi(
-        config.SerializeToString(),
-        link,
-    )
-    report = PsiResultReport()
-    report.ParseFromString(report_str)
-    return report
+def parse_ub_psi_mode(mode: str) -> UbPsiMode:
+    match mode:
+        case "MODE_OFFLINE_GEN_CACHE":
+            return UbPsiMode.MODE_OFFLINE_GEN_CACHE
+        case "MODE_OFFLINE_TRANSFER_CACHE":
+            return UbPsiMode.MODE_OFFLINE_TRANSFER_CACHE
+        case "MODE_OFFLINE":
+            return UbPsiMode.MODE_OFFLINE
+        case "MODE_ONLINE":
+            return UbPsiMode.MODE_ONLINE
+        case "MODE_FULL":
+            return UbPsiMode.MODE_FULL
+        case _:
+            return UbPsiMode.MODE_UNSPECIFIED
 
 
-def apsi_send(config: ApsiSenderConfig, link: Context = None) -> PirResultReport:
-    report_str = libpsi.libs.apsi_send(config.SerializeToString(), link)
-
-    report = PirResultReport()
-    report.ParseFromString(report_str)
-    return report
-
-
-def apsi_receive(config: ApsiReceiverConfig, link: Context = None) -> PirResultReport:
-    report_str = libpsi.libs.apsi_receive(config.SerializeToString(), link)
-
-    report = PirResultReport()
-    report.ParseFromString(report_str)
-    return report
+def parse_ub_psi_role(role: str) -> UbPsiRole:
+    match role:
+        case "ROLE_SERVER":
+            return UbPsiRole.ROLE_SERVER
+        case "ROLE_CLIENT":
+            return UbPsiRole.ROLE_CLIENT
+        case _:
+            return UbPsiRole.ROLE_UNSPECIFIED
