@@ -213,7 +213,6 @@ class UnitTests(unittest.TestCase):
         model.fit(X)
         sk_result = model.cluster_centers_
         sk_result.sort(axis=0)
-        # print("sklearn:\n", sk_result)
 
         np.testing.assert_allclose(result, sk_result, rtol=0, atol=1e-4)
 
