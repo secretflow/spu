@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from datetime import date
 import os
 import re
 import subprocess
-from setuptools import setup, find_packages
+from datetime import date
+
+from setuptools import find_packages, setup
 
 this_directory = os.path.abspath(os.path.dirname(__file__))
 
@@ -88,7 +89,7 @@ if __name__ == "__main__":
         long_description = fh.read()
 
     setup(
-        name="sml",
+        name="sf-sml",
         version=find_version("version.py"),
         author="SecretFlow Team",
         author_email="secretflow-contact@service.alipay.com",
