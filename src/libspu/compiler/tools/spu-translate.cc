@@ -246,6 +246,11 @@ void evalModule(ModuleOp module) {
     numParties = 3;
     break;
   }
+  case 6: {
+    conf.protocol = ::spu::SWIFT;
+    numParties = 3;
+    break;
+  }
   }
 
   SPDLOG_INFO(conf.DebugString());
