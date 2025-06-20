@@ -140,7 +140,7 @@ commands:
             python -m pip install ./dist/*.whl; status2=${PIPESTATUS[0]}
 
             python -m pip install pytest==7.3.1 pytest-testmon pytest-custom-exit-code pytest-xdist pytest-cov
-            pytest --suppress-no-test-exit-code --testmon ./ | tee -a sml_test_result.log; status3=${PIPESTATUS[0]}
+            python -m pytest --suppress-no-test-exit-code --testmon ./ | tee -a sml_test_result.log; status3=${PIPESTATUS[0]}
             popd
 
             tar -rvf test_logs.tar sml/sml_test_result.log

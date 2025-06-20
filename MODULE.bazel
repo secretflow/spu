@@ -21,7 +21,7 @@
 
 module(
     name = "spu",
-    version = "0.9.4.dev20250522",
+    version = "0.9.4.dev20250618",
     compatibility_level = 1,
 )
 
@@ -74,7 +74,7 @@ llvm.configure(
 use_repo(llvm, "llvm-project")
 # END for experimental/squirrel and examples/cpp
 
-DEFAULT_PYTHON_VERSION = "3.11"
+DEFAULT_PYTHON_VERSION = "3.10"
 
 SUPPORTED_PYTHON_VERSIONS = [
     # "3.9",
