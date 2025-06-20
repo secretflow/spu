@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import os
+import platform
 import re
 import subprocess
+import sys
 from datetime import date
 
 from setuptools import find_packages, setup
@@ -32,6 +34,24 @@ def get_commit_id() -> str:
         commit_id = f"{commit_id}-dirty"
 
     return commit_id
+
+
+def plat_name():
+    # Default Linux platform tag
+    plat_name = "manylinux2014_x86_64"
+
+    if sys.platform == "darwin":
+        # macOS platform detection
+        if platform.machine() == "x86_64":
+            plat_name = "macosx_12_0_x86_64"
+        else:
+            plat_name = "macosx_12_0_arm64"
+    elif sys.platform.startswith("linux"):
+        # Linux platform detection
+        if platform.machine() == "aarch64":
+            plat_name = "manylinux_2_28_aarch64"
+
+    return plat_name
 
 
 def complete_version_file(*filepath):
@@ -106,5 +126,8 @@ if __name__ == "__main__":
             "Programming Language :: Python :: 3.10",
             "Programming Language :: Python :: 3.11",
         ],
+        options={
+            "bdist_wheel": {"plat_name": plat_name()},
+        },
         license="Apache 2.0",
     )
