@@ -270,6 +270,7 @@ std::string RuntimeConfig::DumpToString() const {
       break;
     case ProtocolKind::SWIFT:
       ss += "SWIFT";
+      break;
     case ProtocolKind::SHAMIR:
       ss += "SHAMIR";
       break;
