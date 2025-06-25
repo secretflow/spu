@@ -21,31 +21,33 @@ msgstr ""
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:9
 msgid "Develop Your First MPC-Application"
-msgstr ""
+msgstr "开发你的第一个 MPC 应用"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:20
 msgid ""
 "The following codes are demos only. It’s NOT for production due to system"
 " security concerns, please DO NOT use it directly in production."
 msgstr ""
+"以下代码仅为演示使用。出于系统安全方面的考虑，它不适用于生产环境，请勿直接在生产环境中使用。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:31
 msgid "This is an introductory secretflow tutorial that contains:"
-msgstr ""
+msgstr "这是一个 SecretFlow 的入门教程，其中包含以下内容："
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:33
 msgid "Implement a simple algorithm and run it in plaintext as baseline."
-msgstr ""
+msgstr "实现一个简单的算法，并以明文方式运行，将其结果作为基准。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:34
 msgid "Use simulator to check the **precision loss** and try to fix it."
-msgstr ""
+msgstr "使用模拟器检查精度损失，并尝试对其进行修正。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:35
 msgid ""
 "Run elaborated emulations to give reports on both **efficiency and "
 "correctness**."
 msgstr ""
+"运行精细的模拟，以提供关于 **效率和正确性** 两方面的报告。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:37
 msgid ""
@@ -54,10 +56,13 @@ msgid ""
 " which you can learn some basic usage of Device, DeviceObject and how to "
 "run program in secret."
 msgstr ""
+"我们 **强烈建议** 读者在继续阅读本教程之前，先阅读 `SPU 快速入门 "
+"<../tutorials/quick_start.ipynb>`__，在那里您可以学到 Device、DeviceObject "
+"的一些基本用法，以及如何在密态下运行程序。
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:49
 msgid "Part 0: Prepare the environment and dataset"
-msgstr ""
+msgstr "第 0 部分：准备环境和数据集"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:51
 msgid ""
@@ -65,6 +70,8 @@ msgid ""
 "environment(if not, you can refer to `this "
 "<https://www.secretflow.org.cn/docs/spu/en/getting_started/install.html>`__)."
 msgstr ""
+"环境：为了运行本教程，您的环境中应已安装 SPU（如果尚未安装，请参考 `这里 "
+"<https://www.secretflow.org.cn/docs/spu/en/getting_started/install.html>`__）。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:52
 msgid ""
@@ -72,10 +79,12 @@ msgid ""
 "obtained from sklearn. And we just do simple minmax transform for "
 "preprocessing"
 msgstr ""
+"数据集：我们使用威斯康星州乳腺癌数据集，该数据集可从 sklearn 库获取。"
+"在预处理阶段，我们仅进行简单的极小化极大变换。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:409
 msgid "Part 1: Implement algorithm in plaintext"
-msgstr ""
+msgstr "第 1 部分：算法的明文实现"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:411
 msgid ""
@@ -84,6 +93,9 @@ msgid ""
 "algorithm, so in MPC settings, it's common to use it to optimize the "
 "model."
 msgstr ""
+"`SGD <https://en.wikipedia.org/wiki/Stochastic_gradient_descent>`__\\"
+"（随机梯度下降）是一种简单而有效的优化算法，因此在 MPC 场景下，"
+"通常使用它来优化模型。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:413
 msgid ""
@@ -94,14 +106,17 @@ msgid ""
 "<../development/policy_sgd_insight.rst>`__, which can accelerate the "
 "speeds of training in most scenery."
 msgstr ""
+"`LR <https://en.wikipedia.org/wiki/Logistic_regression>`__\\ （逻辑回归）"
+"是一种被广泛使用的线性模型，尤其是在金融行业。因此，在本教程中，我们将以一个名为"
+" policy-sgd 的改进版 SGD 来实现 LR 作为示例，该算法在大多数场景下可以加速训练。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:424
 msgid "Here, we just list some important equations used in policy-sgd:"
-msgstr ""
+msgstr "这里，我们列出了 policy-sgd 中使用的一些重要公式："
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:426
 msgid "LR compute gradient with(``n`` is batch_size):"
-msgstr ""
+msgstr "LR 的梯度计算公式如下（其中 ``n`` 是 batch_size ）："
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:428
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:2420
@@ -113,7 +128,7 @@ msgstr ""
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:429
 msgid "Policy-sgd compute dk in first epoch with(``p`` is number of features):"
-msgstr ""
+msgstr "Policy-sgd 在第一个训练周期中计算 dk 的公式如下（其中 ``p`` 是特征数量）："
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:431
 msgid ""
@@ -123,7 +138,8 @@ msgstr ""
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:432
 msgid "Then, update weights with(``i`` means i-th epoch, ``k`` means k-th iter):"
-msgstr ""
+msgstr "然后，权重的更新公式如下（其中 ``i`` 表示第 i 个训练周期，"
+"``k`` 表示第 k 次迭代）："
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:434
 #, python-brace-format
@@ -142,6 +158,12 @@ msgid ""
 "<https://jax.readthedocs.io/en/latest/notebooks/Common_Gotchas_in_JAX.html>`__"
 " and gets some caveats and then write jax-code just like numpy-code."
 msgstr ""
+"在这一部分，我们先忽略 MPC 的设定（如数据切分、协议等），并以明文方式实现该算法。"
+"Secretflow 推荐用户使用 `Jax <https://jax.readthedocs.io/en/latest/>`__ "
+"来完成此操作，因为 jax.numpy 提供了一套与 NumPy 风格相似的 API，易于上手。"
+"如果您熟悉 Numpy，可以阅读 `这篇博客 "
+"<https://jax.readthedocs.io/en/latest/notebooks/Common_Gotchas_in_JAX.html>`__ "
+"来了解一些注意事项，之后便可以像编写 Numpy 代码一样编写 Jax 代码了。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:472
 msgid ""
@@ -150,16 +172,21 @@ msgid ""
 "approximate sigmoid function with other MPC-friendly function. Here we "
 "give two method, i.e. first-order Taylor and square root approximation."
 msgstr ""
+"LR 原始的响应函数是 Sigmoid 函数，该函数在 MPC 中包含了像指数和除法这样非常耗时的操作。"
+"因此，通常会使用其他对 MPC 更友好的函数来近似 Sigmoid 函数。这里我们给出了两种方法，"
+"即一阶泰勒近似和平方根近似。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:522
 msgid "policy-sgd needs scale learning rate in first epoch."
-msgstr ""
+msgstr "policy-sgd 需要在第一个训练周期中对学习率进行缩放。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:550
 msgid ""
 "Then, we give a brief implementation of LR with policy-sgd, and have "
 "similar interface(but less) with sklearn."
 msgstr ""
+"接着，我们给出一个使用 policy-sgd 实现 LR 的简要代码，"
+"它拥有与 sklearn 相似（但更少）的接口。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:552
 msgid ""
@@ -167,18 +194,20 @@ msgid ""
 "omit regularization and other techniques. For full version of SSLR, can "
 "refer to ``SSRegression`` in secretflow."
 msgstr ""
+"**注意**：为简单起见，我们将总是在 LR 模型中拟合截距项，并省略正则化及其他技术。"
+如需查看 SSLR 的完整版本，可以参考 SecretFlow 中的 ``SSRegression``。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:712
 msgid "Now, let's try this algorithm in plaintext!"
-msgstr ""
+msgstr "现在，让我们在明文上试试这个算法吧！"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:770
 msgid "Things seem go well, try to predict the dataset and compute auc."
-msgstr ""
+msgstr "看起来一切顺利，现在尝试对数据集进行预测并计算 AUC。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:829
 msgid "Part 2: Run algorithm with simulator"
-msgstr ""
+msgstr "第 2 部分：使用模拟器运行算法"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:831
 msgid ""
@@ -189,6 +218,11 @@ msgid ""
 "need(``reveal`` is a **very dangerous** op, and you should use it very "
 "carefully in real application)."
 msgstr ""
+"通常情况下，你只需进行类似 `LR with spu "
+"<https://www.secretflow.org.cn/docs/secretflow/en/tutorial/lr_with_spu.html>`__"
+" 的操作，即可在安全上下文中运行你的程序：将数据集移动到 PYU 或 SPU，使用你声明的 SPU "
+"运行程序，并揭露你需要的信息（``揭露`` 是一个 **非常危险** 的操作，"
+"在实际应用中应极其谨慎地使用）。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:833
 msgid ""
@@ -198,6 +232,9 @@ msgid ""
 "flexibility to adjust hyper-parameters like the size of ring, fxp or "
 "underlying MPC protocol etc."
 msgstr ""
+"然而，我们稍后会看到，你可能会在明文和密态的运行结果之间遇到巨大的 **指标差距**"
+"（例如 LR 中的 AUC）。因此，更好的方式是让开发者能够更简单地运行 MPC 程序，"
+"同时拥有高度的灵活性来调整诸如环的大小、定点数或底层 MPC 协议等超参数。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:835
 msgid ""
@@ -206,28 +243,35 @@ msgid ""
 " and verify the pitfall of the program. To use simulator but not running "
 "program with SPU Device directly has two advantages:"
 msgstr ""
+"因此，在这一部分，我们将展示如何使用模拟器来像运行普通 MPC 程序一样运行我们的算法，"
+"并通过最精简的实验来聚焦和验证程序中的潜在问题。使用模拟器而非直接通过 SPU "
+"设备运行程序有两个优点："
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:837
 msgid ""
 "**Fewer Code**: No need to deal with tons of ``DeviceObject`` and move "
 "data from PYU between SPU."
 msgstr ""
+"**代码更少**：无需处理大量的 ``DeviceObject`` 以及在 PYU 和 SPU 之间移动数据。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:838
 msgid ""
 "**Quicker Experiment**: No ray cluster connected, run experiments end-to-"
 "end."
 msgstr ""
+"**实验更快**：无需连接 Ray 集群，可以端到端地运行实验。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:861
 msgid ""
 "Here, to simulate , we first define a simple simulator with CHEETAH "
 "protocol and 64 bits ring in 2pc settings. We will talk about 3pc later."
 msgstr ""
+"这里，为了进行模拟，我们首先在两方计算的设定下，定义一个使用 CHEETAH 协议和"
+" 64 位环的简单模拟器。我们稍后会讨论三方计算。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:2284
 msgid "Then, we try it in 3pc setting, i.e. use ABY3 protocol."
-msgstr ""
+msgstr "然后，我们在三方计算的设定下进行尝试，即使用 ABY3 协议。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:2387
 msgid ""
@@ -235,32 +279,38 @@ msgid ""
 "drop dramatically after training 3 epochs(from 0.990 to 0.490 for "
 "cheetah)!"
 msgstr ""
+"当程序不经任何修改直接在密态下运行时，训练 3 个周期后，AUC 可能会急剧下降"
+"（例如在使用 cheetah 协议时，从 0.990 降至 0.490）！"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:2389
 msgid ""
 "We will give some analysis and try to fix it first from application "
 "perspective and think deeper in MPC perspective."
 msgstr ""
+"我们将给出一些分析，并首先尝试从应用视角来修复它，然后再从 MPC 视角进行更深入的思考。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:2401
 msgid "Application Perspective"
-msgstr ""
+msgstr "从应用视角分析"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:2403
 msgid ""
 "Before we dive into this question, we can first summarize the differences"
 " of policy-sgd between naive-sgd are:"
 msgstr ""
+"在深入探讨这个问题之前，我们可以先总结一下 policy-sgd 和"
+" naive-sgd 之间的不同之处："
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:2405
 msgid "Using approximation function to compute sigmoid(default is t1)."
-msgstr ""
+msgstr "使用近似函数来计算 sigmoid（默认为 t1 近似）。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:2407
 msgid ""
 "The scale of learning rate, which contains the computation of dk as "
 "defined in ``compute_dk_func``."
 msgstr ""
+"学习率的缩放，其中包含了 ``compute_dk_func`` 中所定义的 dk 的计算。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:2418
 msgid ""
@@ -268,6 +318,8 @@ msgid ""
 "the pred to 0 when inner product is less than -2 and to 1 when inner "
 "product is large than 2. So when we compute gradient with:"
 msgstr ""
+"通过一些简单的数学推导，我们可以注意到，当内积小于 -2 时，t1 近似会将预测值"
+"强制置为 0；而当内积大于 2 时，则会将其强制置为 1。因此，当我们用以下公式计算梯度时："
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:2422
 msgid ""
@@ -277,6 +329,10 @@ msgid ""
 "verify this by simply enlarge the ``batch_size`` to 64 which can decrease"
 " the probability of all-zero problem."
 msgstr ""
+"如果碰巧梯度的所有元素都非常接近 0（在 MPC 中可能会有微小误差），"
+"那么在第一个训练周期计算出的 ``dk`` 就会变得非常大，并可能导致训练失败。"
+"我们可以通过简单地将 ``batch_size`` 增大到 64 来验证这一点，"
+"因为这可以降低梯度“全零问题”的概率。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:2673
 msgid ""
@@ -284,6 +340,8 @@ msgid ""
 "make the scale factor smaller, we can also fix the question by enlarging "
 "the ``eps``, e.g. change ``eps`` from 1e-6 to 1e-2."
 msgstr ""
+"限制使用大的 batch_size 并非一个恰当的方法，关键在于让缩放因子变得更小。"
+"我们也可以通过增大 ``eps`` 来解决这个问题，例如，将 ``eps`` 从 1e-6 改为 1e-2。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:2675
 msgid ""
@@ -291,6 +349,8 @@ msgid ""
 " the zero-division error, the other is to restrict the maximum scale "
 "factor in warm-start phase(first epoch)."
 msgstr ""
+"**注意**：在 policy-sgd 中，``eps`` 实际上有两个作用：一是防止除零错误，"
+"另一个是在热启动阶段（即第一个训练周期）限制最大的缩放因子。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:4056
 msgid ""
@@ -298,28 +358,31 @@ msgid ""
 "we can switch the t1 approximation to other non-truncate but costly "
 "form(e.g. sr approximation)."
 msgstr ""
+"以上的分析都是基于 t1 型 Sigmoid 近似的，它会导致梯度为 0。因此，我们可以将 t1 "
+"近似切换为其他非截断但计算成本更高的形式（例如 sr 近似）。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:5437
 msgid ""
 "So, if we just consider it on app layer, we can get three rules for "
 "fixing:"
 msgstr ""
+"所以，如果我们只在应用层考虑这个问题，可以总结出三种修复规则："
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:5439
 msgid "enlarge ``batch_size``."
-msgstr ""
+msgstr "增大 ``batch_size``。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:5441
 msgid "enlarge ``eps``."
-msgstr ""
+msgstr "增大 ``eps``。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:5443
 msgid "use non-truncate sigmoid approximation(e.g. sr approximation)."
-msgstr ""
+msgstr "使用非截断的 Sigmoid 近似（例如 sr 近似）。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:5455
 msgid "MPC Perspective"
-msgstr ""
+msgstr "从 MPC 视角分析"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:5457
 msgid ""
@@ -328,12 +391,15 @@ msgid ""
 "simulator to do some **experiments** to confirm our hypothesis. Readers "
 "can do the similar things when you develop your own secure application."
 msgstr ""
+"在这一部分，我们更专注于探究为何会产生巨大的误差。为了实现这一目标，"
+"我们将根据底层的协议进行讨论，并使用模拟器做一些实验来证实我们的假设。"
+"当您开发自己的安全应用程序时，也可以采取类似的做法。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:5459
 msgid ""
 "Before diving into the problem deeper, we highly recommend the reader to "
 "read:"
-msgstr ""
+msgstr "在更深入地探究该问题之前，我们强烈建议读者阅读以下文档："
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:5461
 msgid ""
@@ -341,6 +407,9 @@ msgid ""
 "US/tutorials/spu_inside#Tracing>`__: gives some introductions how spu "
 "works inside for float-point operations."
 msgstr ""
+"`spu_inside <https://www.secretflow.org.cn/docs/spu/latest/en-"
+"US/tutorials/spu_inside#Tracing>`__："
+"该文档介绍了一些 SPU 内部处理浮点数操作的工作原理。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:5463
 msgid ""
@@ -350,6 +419,9 @@ msgid ""
 " will occur when inputs fall into some intervals. We list some known "
 "issue about this."
 msgstr ""
+"`pitfall <https://www.secretflow.org.cn/docs/spu/latest/en-"
+"US/development/fxp>`__：SPU 使用近似算法来实现数学函数（如 ``倒数``、``对数`` 等），"
+"因此当输入值落入某些特定区间时，会出现一些精度问题。我们列出了一些关于此问题的已知情况。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:5465
 msgid ""
@@ -358,18 +430,21 @@ msgid ""
 "Generally speaking, for 2pc, it's safe to use cheetah, while for 3pc, "
 "ABY3 is the only choice."
 msgstr ""
+"`protocols <https://www.secretflow.org.cn/docs/spu/latest/en-"
+"US/reference/mpc_status>`__：该文档列出了 SPU 目前实现的所有协议。"
+"总的来说，对于两方计算，使用 cheetah 是安全的；而对于三方计算，ABY3 是唯一的选择。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:5467
 msgid "First define a function just like ``fit_and_predict`` to get dk_arr."
-msgstr ""
+msgstr "首先，定义一个类似于 ``fit_and_predict`` 的函数来获取 dk_arr。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:5508
 msgid "2PC: Cheetah Protocol"
-msgstr ""
+msgstr "两方计算：Cheetah 协议"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:5510
 msgid "Recap:"
-msgstr ""
+msgstr "要点回顾："
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:5512
 msgid ""
@@ -377,6 +452,8 @@ msgid ""
 "protocol which uses FHE to accelerate the computation. But it will have "
 "0-2 bits error when do ``mul`` or ``dot``."
 msgstr ""
+"`cheetah <https://eprint.iacr.org/2022/207>`__ 是一个快速的两方半诚实协议，"
+"它使用全同态加密来加速计算。但在进行 ``乘法`` 或 ``点积`` 运算时，它会产生 0-2 比特的误差。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:5514
 msgid ""
@@ -384,10 +461,12 @@ msgid ""
 "the minimum positive float spu can represent is "
 ":math:`\\frac{1}{2^{18}}`."
 msgstr ""
+"如果使用 64 位环，那么大约会使用 18 位宽度的定点数。因此，SPU 能表示的"
+"最小正浮点数是 :math:`\\frac{1}{2^{18}}`。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:5525
 msgid "We first check the output of dk_arr and try to find the caveat."
-msgstr ""
+msgstr "我们首先检查 dk_arr 的输出，并尝试找出其中的问题。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:6005
 msgid ""
@@ -395,10 +474,12 @@ msgid ""
 "weight update wrong!(the opposite direction and large scale factor for "
 "sgd)"
 msgstr ""
+"令人惊讶的是，我们得到了一个非常 **小的负数** ，这导致了错误的权重更新！"
+"（SGD 的更新方向相反，且缩放因子过大）"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:6051
 msgid "However, if we use a bigger ring, then everything is ok."
-msgstr ""
+msgstr "然而，如果我们使用一个更大的环，那么一切就正常了。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:7947
 msgid ""
@@ -406,7 +487,9 @@ msgid ""
 ":math:`\\frac{1}{2^{18}}` and use cheetah protocol, when doing ``square``"
 " and ``sum``, the bit error may be significant and not negligible(``mul``"
 " and ``dot`` have 0-2 bit errors)."
-msgstr ""
+msgstr "从以上的输出中，我们可以猜测，如果输入值接近 :math:`\\frac{1}{2^{18}}`，"
+"并且使用 cheetah 协议，那么在进行 ``平方`` 和 ``求和`` 操作时，"
+"比特误差可能会变得显著且不可忽略（因为 ``乘法`` 和 ``点积`` 有 0-2 比特的误差）。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:8109
 msgid ""
@@ -414,32 +497,35 @@ msgid ""
 "each element of grad is near to :math:`\\frac{1}{2^{18}}`, then we get a "
 "very small negative dk."
 msgstr ""
+"所以，如果 ``eps=1e-6``，当梯度的每个元素都接近 :math:`\\frac{1}{2^{18}}` 时，"
+"梯度的二范数可能会成为一个负数，从而导致我们得到一个非常小的负值 dk。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:8111
 msgid "This explains the claims we get from app layer:"
-msgstr ""
+msgstr "这就解释了我们从应用层得到的那些结论："
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:8113
 msgid ""
 "Enlarging ``batch_size``: the probability of all elements of grad is zero"
 " becomes small."
 msgstr ""
+"增大 ``batch_size``：梯度的所有元素都为零的概率变小了。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:8115
 msgid "Enlarging ``eps``: force the denominator to be positive number."
-msgstr ""
+msgstr "增大 ``eps``：强制使分母成为一个正数。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:8127
 msgid "3PC: ABY3 Protocol"
-msgstr ""
+msgstr "三方计算：ABY3 协议"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:8129
 msgid "We still check the dk_arr first."
-msgstr ""
+msgstr "我们仍然先检查 dk_arr。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:8150
 msgid "emmmmmm, strange value occurs again, we find **0** in dk_arr!"
-msgstr ""
+msgstr "嗯...奇怪的值又出现了，我们在 dk_arr 中发现了 0！"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:8196
 msgid ""
@@ -448,18 +534,21 @@ msgid ""
 " little(from 0.99 to 0.97, users can test yourself that if you set eps to"
 " 1e-2, then the result will be very stable)."
 msgstr ""
+"与小的负数相比，0 对我们的更新过程来说是一个温和的错误。"
+"它只是导致在那次迭代中什么也不做，所以最终的 AUC 可能会轻微下降（从 0.99 "
+"降至 0.97，用户可以自行测试，如果将 eps 设置为 1e-2，结果将会非常稳定）。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:8207
 msgid "Likewise, We always check the computation of 2-norm."
-msgstr ""
+msgstr "同样地，我们总是检查二范数的计算过程。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:8290
 msgid "Then, check the reciprocal op."
-msgstr ""
+msgstr "然后，检查倒数操作。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:8349
 msgid "Something More"
-msgstr ""
+msgstr "更多内容"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:8351
 msgid ""
@@ -467,10 +556,12 @@ msgid ""
 "length limitations, we just give some hints, and readers can do more "
 "simulations yourself!"
 msgstr ""
+"实际上，在 SSLR 中还有一些其他有趣的事情。这里，由于篇幅限制，"
+"我们只给出一些提示，读者可以自己进行更多的模拟实验！"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:8363
 msgid "Rsqrt v.s. Norm"
-msgstr ""
+msgstr "平方根倒数与范数的对比"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:8365
 msgid ""
@@ -482,18 +573,26 @@ msgid ""
 "Operations) trace and profile on. Then we can figure out which op has "
 "been invoked and its time cost."
 msgstr ""
+"我们可以回想一下，在第 1 部分中定义的 ``compute_dk_func`` 函数包含一个 method"
+" 参数，而我们之前忽略了它。实际上，我们可以像 `spu_inside "
+"<https://www.secretflow.org.cn/docs/spu/latest/en-"
+"US/tutorials/spu_inside#Tracing>`__ 所做的那样，让模拟器打印更多信息："
+"开启 **HLO**\\（高级操作）追踪和性能分析。"
+"然后我们就能弄清楚哪些操作被调用了及其时间成本。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:8367
 msgid ""
 "Here, we list some advantages of using ``jax.lax.rsqrt`` rather than "
 "``jnp.linalg.norm``:"
 msgstr ""
+"这里，我们列出一些使用 ``jax.lax.rsqrt`` 而非 ``jnp.linalg.norm`` 的优点："
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:8369
 msgid ""
 "Fewer bytes and few send actions: which leads to smaller running time(See"
 " the following comments and notes for details)."
 msgstr ""
+"更少的字节数和更少的发送动作：这会带来更短的运行时间（详情请见下方的注释和说明）。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:8371
 msgid ""
@@ -502,20 +601,24 @@ msgid ""
 "``method=rsqrt``, then the users can do simulation yourself, and find "
 "``f(x)`` has higher relative error than ``g(x)``."
 msgstr ""
+"在给定相同 ``eps`` 时更稳定：如果我们将 ``method=norm`` 的 ``compute_dk_func``"
+" 视为函数 ``f(x)``，将 ``method=rsqrt`` 的视为函数 ``g(x)``，那么用户可以自己"
+"进行模拟，并会发现 ``f(x)`` 的相对误差比 ``g(x)`` 更高。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:8625
 msgid "If directly invoking rsqrt, you can find send actions have obvious drop!"
-msgstr ""
+msgstr "如果直接调用 rsqrt，你会发现发送动作的数量有明显下降！"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:9075
 msgid ""
 "When using aby3, you can find both the send actions and send bytes drop "
 "large if using rsqrt!"
 msgstr ""
+"当使用 aby3 时，如果使用 rsqrt，你会发现发送动作和发送字节数都有大幅下降！
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:9297
 msgid "Computing Loss"
-msgstr ""
+msgstr "计算损失"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:9299
 msgid ""
@@ -523,6 +626,8 @@ msgid ""
 "when using a validation dataset. It's straight to compute the loss in LR "
 "as follows:"
 msgstr ""
+"许多机器学习框架在使用验证数据集时，会在训练过程中显示验证损失。"
+"在 LR 中直接计算损失的方式如下："
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:9301
 #, python-brace-format
@@ -538,12 +643,16 @@ msgid ""
 ":math:`log(0)` problem. Here, we list two potential recipes to alleviate "
 "it."
 msgstr ""
+"但是，当你使用 t1 近似来计算 Sigmoid 时，你可能会遇到 :math:`log(0)` 的问题。"
+"这里，我们列出两种潜在的解决方案来缓解它。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:9305
 msgid ""
 "**Costly but accurate**: we plug in :math:`p_i = "
 "\\frac{1}{1+e^{-w^Tx_i}}` to (1), then we can get:"
 msgstr ""
+"**成本高但准确**：我们将 :math:`p_i = \\frac{1}{1+e^{-w^Tx_i}}` 代入公式 (1)，"
+"然后可以得到："
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:9307
 #, python-brace-format
@@ -564,6 +673,11 @@ msgid ""
 "so we can use the equation of Softplus: :math:`log(1+e^{x}) = log(1 + "
 "e^{-|x|}) + max(0, x)`, then we can get:"
 msgstr ""
+"这个公式解决了 :math:`log(0)` 的问题，但是如果 :math:`w^Tx_i` 变得过大，"
+正如我们在 pitfall <https://www.secretflow.org.cn/docs/spu/en/reference/fxp.html>`__ "
+"文档中已知的，这会产生 **巨大误差**！为了得到一个稳定且准确的计算损失的公式，我们注意到"
+" :math:`log(1+e^{w^T x_i})` 是著名的 *Softplus* 函数，所以我们可以使用 Softplus "
+"的等价形式 :math:`log(1+e^{x}) = log(1 + e^{-|x|}) + max(0, x)`，然后我们可以得到："
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:9311
 #, python-brace-format
@@ -572,6 +686,9 @@ msgid ""
 "max(w^T x_i, 0)] \\quad (3)\n"
 "\n"
 msgstr ""
+"loss = -\\frac{1}{N} \\sum_{i=1}^N [y_i w^Tx_i - log(1+e^{-|w^Tx_i|}) - "
+"max(w^T x_i, 0)] \\quad (3)\n"
+"\n"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:9313
 msgid ""
@@ -579,7 +696,9 @@ msgid ""
 "contains time-consuming ops(:math:`log`, :math:`exp`), which cost a lot! "
 "If you just want to compute an approximation of loss(e.g. maybe you want "
 "to do early stop with loss), you can try Taylor expansion, which gives:"
-msgstr ""
+msgstr "**成本低但近似**：公式 (3) 可以给出准确的结果，但它包含了耗时的操作（:math:`log`, "
+":math:`exp`），成本很高！如果你只想计算一个近似的损失值（例如，你可能想用损失值来做早停），"
+"你可以尝试泰勒展开，它会给出："
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:9315
 #, python-brace-format
@@ -588,10 +707,13 @@ msgid ""
 " x_i)^2]\n"
 "\n"
 msgstr ""
+"loss = \\frac{1}{N} \\sum_{i=1}^N [log(2) - (y-0.5)w^T x_i + 0.125 * (w^T"
+" x_i)^2]\n"
+"\n"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:9327
 msgid "Part 3: Run elaborated emulations"
-msgstr ""
+msgstr "第 3 部分：运行精细化仿真"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:9329
 msgid ""
@@ -601,7 +723,10 @@ msgid ""
 "have support for LAN setting(``MULTIPROCESS`` mode). ``Docker`` mode, "
 "which runs program like under WAN setting, will be posted in future "
 "version."
-msgstr ""
+msgstr "仿真目前是一项 **实验性** 功能，并且正处于快速开发中，因此我们没有将 SML "
+"的代码打包到 SPU 中。用户可以从 **源代码** 尝试此功能，并使用 Bazel 运行。到目前为止，"
+"我们只支持局域网设定（``MULTIPROCESS`` 模式）。像在广域网设定下运行程序的 ``Docker`` "
+"模式，将在未来的版本中发布。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:9331
 msgid ""
@@ -610,6 +735,9 @@ msgid ""
 "some facility(e.g. generate mock data) to make benchmark simpler. So spu "
 "provides an ``Emulator`` class and gives an easy-to-use interface."
 msgstr ""
+"最后，我们来谈谈如何进行仿真。与模拟器相比，仿真器使用一个像 SecretFlow "
+"那样的简单调度器来运行，并提供一些便利设施（例如，生成模拟数据）来简化基准测试。"
+"因此，SPU 提供了一个 ``Emulator`` 类并给出了一个易于使用的接口。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:9342
 msgid ""
@@ -617,10 +745,12 @@ msgid ""
 "directly in this tutorial notebook. Instead, we will show a big picture "
 "on how to design and run emulations for MPC application step by step."
 msgstr ""
+"通常，仿真会在更大的数据集上完成，所以我们不会在本教程的笔记中直接运行它。"
+"取而代之，我们将展示一个宏观的蓝图，介绍如何为 MPC 应用一步步地设计和运行模拟。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:9354
 msgid "Setup: define running function"
-msgstr ""
+msgstr "设置：定义运行函数"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:9356
 msgid ""
@@ -631,6 +761,9 @@ msgid ""
 "into training & validation parts, and return the probs of validation "
 "dataset.)."
 msgstr ""
+"就像我们在 SecretFlow 中所做的那样，我们应该首先定义一个将在 SPU 中运行的 Python "
+"函数。这里，作为一个例子，我们只定义一个非常简单的函数，它接受来自两方的数据，"
+"并在模型训练后返回预测的概率（你也可以将数据划分为训练集和验证集，并返回验证集的概率）。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:9358
 msgid ""
@@ -638,28 +771,35 @@ msgid ""
 "policy-sgd is better than naive-sgd in MPC setting, so we can design the "
 "following experiments:"
 msgstr ""
+"以 ``SSLRSGDClassifier`` 为例，我们主要想论证在 MPC 设定下，policy-sgd 比 "
+"naive-sgd 更好，因此我们可以设计以下实验："
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:9360
 msgid ""
 "Find best ``dk_method`` and ``eps`` for policy-sgd: for all datasets, "
 "compare the accuracy and efficiency."
 msgstr ""
+"为 policy-sgd 找到最佳的 ``dk_method`` 和 ``eps``：在所有数据集上，"
+"比较其准确性和效率。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:9362
 msgid ""
 "Compare the accuracy and efficiency when switching ``sig_type`` for both "
 "policy-sgd and naive-sgd."
 msgstr ""
+"比较 policy-sgd 和 naive-sgd 在切换 ``sig_type`` 时的准确性和效率。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:9364
 msgid ""
 "To compare policy-sgd and naive-sgd, we fix ``epochs`` and test the "
 "influence of ``learning_rate`` and ``batch_size``."
 msgstr ""
+"为了比较 policy-sgd 和 naive-sgd，我们固定``训练周期``，并测试 "
+"``learning_rate`` 和 ``batch_size`` 的影响。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:9420
 msgid "Define running config"
-msgstr ""
+msgstr "定义运行配置"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:9422
 msgid ""
@@ -668,7 +808,10 @@ msgid ""
 " to emulate multi-party and just like running in LAN(``DOCKER`` mode "
 "which can set ``bandwidth`` and ``latency`` to simulate the different WAN"
 " settings will be supported in future version)."
-msgstr ""
+msgstr "在设计完所有实验后，我们可以准备我们的运行配置。目前，我们只支持 ``MULTIPROCESS`` "
+"模式，该模式使用多进程来进行多方仿真，就像在局域网中运行一样"
+"（可以设置``带宽``和``延迟``以模拟不同广域网设定的 ``DOCKER`` "
+"模式将在未来版本中得到支持）。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:9424
 msgid ""
@@ -678,11 +821,14 @@ msgid ""
 "flexibly configure the number of nodes and device situations yourself. "
 "You can get some examples of config in ``examples/python/conf/``."
 msgstr ""
+"目前，我们的目标是比较切换超参数时的准确性/效率差异，在局域网中运行程序是一个不错的选择。"
+"此外，为了模拟多样的节点部署方式，用户可以自己灵活地配置节点数量和设备情况。"
+"你可以在 ``examples/python/conf/`` 目录下找到一些配置示例。"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:9888
 msgid "Put them together"
-msgstr ""
+msgstr "将它们整合在一起"
 
 #: ../../tutorials/develop_your_first_mpc_application.ipynb:9890
 msgid "Now we put all these together, we can get a simple paradigm of emulation."
-msgstr ""
+msgstr "现在我们将所有这些整合在一起，就可以得到一个简单的仿真范式。"
