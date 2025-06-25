@@ -21,423 +21,425 @@ msgstr ""
 
 #: ../../reference/runtime_config.md:1
 msgid "SPU Runtime Configuration"
-msgstr ""
+msgstr "SPU（密文运算单元）运行时配置"
 
 #: ../../reference/runtime_config.md:3
 msgid "Table of Contents"
-msgstr ""
+msgstr "目录表"
 
 #: ../../reference/runtime_config.md:7 ../../reference/runtime_config.md:42
 msgid "Messages"
-msgstr ""
+msgstr "信息"
 
 #: ../../reference/runtime_config.md:8
 msgid "[CheetahConfig](#cheetahconfig)"
-msgstr ""
+msgstr "[CheetahConfig](#cheetahconfig)"
 
 #: ../../reference/runtime_config.md:9
 msgid "[CompilationSource](#compilationsource)"
-msgstr ""
+msgstr "[CompilationSource](#compilationsource)"
 
 #: ../../reference/runtime_config.md:10
 msgid "[CompilerOptions](#compileroptions)"
-msgstr ""
+msgstr "[CompilerOptions](#compileroptions)"
 
 #: ../../reference/runtime_config.md:11
 msgid "[ExecutableProto](#executableproto)"
-msgstr ""
+msgstr "[ExecutableProto](#executableproto)"
 
 #: ../../reference/runtime_config.md:12
 msgid "[RuntimeConfig](#runtimeconfig)"
-msgstr ""
+msgstr "[RuntimeConfig](#runtimeconfig)"
 
 #: ../../reference/runtime_config.md:13
 msgid "[ShapeProto](#shapeproto)"
-msgstr ""
+msgstr "[ShapeProto](#shapeproto)"
 
 #: ../../reference/runtime_config.md:14
 msgid "[TTPBeaverConfig](#ttpbeaverconfig)"
-msgstr ""
+msgstr "[TTPBeaverConfig](#ttpbeaverconfig)"
 
 #: ../../reference/runtime_config.md:15
 msgid "[ValueChunkProto](#valuechunkproto)"
-msgstr ""
+msgstr "[ValueChunkProto](#valuechunkproto)"
 
 #: ../../reference/runtime_config.md:16
 msgid "[ValueMetaProto](#valuemetaproto)"
-msgstr ""
+msgstr "[ValueMetaProto](#valuemetaproto)"
 
 #: ../../reference/runtime_config.md:20 ../../reference/runtime_config.md:217
 msgid "Enums"
-msgstr ""
+msgstr "枚举"
 
 #: ../../reference/runtime_config.md:21
 msgid "[CheetahOtKind](#cheetahotkind)"
-msgstr ""
+msgstr "[CheetahOtKind](#cheetahotkind)"
 
 #: ../../reference/runtime_config.md:22
 msgid "[DataType](#datatype)"
-msgstr ""
+msgstr "[DataType](#datatype)"
 
 #: ../../reference/runtime_config.md:23
 msgid "[FieldType](#fieldtype)"
-msgstr ""
+msgstr "[FieldType](#fieldtype)"
 
 #: ../../reference/runtime_config.md:24
 msgid "[ProtocolKind](#protocolkind)"
-msgstr ""
+msgstr "[ProtocolKind](#protocolkind)"
 
 #: ../../reference/runtime_config.md:25
 msgid "[PtType](#pttype)"
-msgstr ""
+msgstr "[PtType](#pttype)"
 
 #: ../../reference/runtime_config.md:26
 msgid "[RuntimeConfig.BeaverType](#runtimeconfigbeavertype)"
-msgstr ""
+msgstr "[RuntimeConfig.BeaverType](#runtimeconfigbeavertype)"
 
 #: ../../reference/runtime_config.md:27
 msgid "[RuntimeConfig.ExpMode](#runtimeconfigexpmode)"
-msgstr ""
+msgstr "[RuntimeConfig.ExpMode](#runtimeconfigexpmode)"
 
 #: ../../reference/runtime_config.md:28
 msgid "[RuntimeConfig.LogMode](#runtimeconfiglogmode)"
-msgstr ""
+msgstr "[RuntimeConfig.LogMode](#runtimeconfiglogmode)"
 
 #: ../../reference/runtime_config.md:29
 msgid "[RuntimeConfig.SigmoidMode](#runtimeconfigsigmoidmode)"
-msgstr ""
+msgstr "[RuntimeConfig.SigmoidMode](#runtimeconfigsigmoidmode)"
 
 #: ../../reference/runtime_config.md:30
 msgid "[SourceIRType](#sourceirtype)"
-msgstr ""
+msgstr "[SourceIRType](#sourceirtype)"
 
 #: ../../reference/runtime_config.md:31
 msgid "[Visibility](#visibility)"
-msgstr ""
+msgstr "[Visibility](#visibility)"
 
 #: ../../reference/runtime_config.md:32
 msgid "[XLAPrettyPrintKind](#xlaprettyprintkind)"
-msgstr ""
+msgstr "[XLAPrettyPrintKind](#xlaprettyprintkind)"
 
 #: ../../reference/runtime_config.md:36
 msgid "[Scalar Value Types](#scalar-value-types)"
-msgstr ""
+msgstr "[Scalar Value Types](#scalar-value-types)"
 
 #: ../../reference/runtime_config.md:45
 msgid "CheetahConfig"
-msgstr ""
+msgstr "CheetahConfig"
 
 #: ../../reference/runtime_config.md
 msgid "Field"
-msgstr ""
+msgstr "字段"
 
 #: ../../reference/runtime_config.md
 msgid "Type"
-msgstr ""
+msgstr "类型"
 
 #: ../../reference/runtime_config.md
 msgid "Description"
-msgstr ""
+msgstr "描述"
 
 #: ../../reference/runtime_config.md
 msgid "disable_matmul_pack"
-msgstr ""
+msgstr "disable_matmul_pack"
 
 #: ../../reference/runtime_config.md
 msgid "[ bool](#bool)"
-msgstr ""
+msgstr "[ bool](#bool)"
 
 #: ../../reference/runtime_config.md
 msgid "disable the ciphertext packing for matmul"
-msgstr ""
+msgstr "禁用 matmul 的密文打包"
 
 #: ../../reference/runtime_config.md
 msgid "enable_mul_lsb_error"
-msgstr ""
+msgstr "enable_mul_lsb_error"
 
 #: ../../reference/runtime_config.md
 msgid "allow least significant bits error for point-wise mul"
-msgstr ""
+msgstr "允许逐点乘法出现最低有效位误差"
 
 #: ../../reference/runtime_config.md
 msgid "ot_kind"
-msgstr ""
+msgstr "ot_kind"
 
 #: ../../reference/runtime_config.md
 msgid "[ CheetahOtKind](#cheetahotkind)"
-msgstr ""
+msgstr "[ CheetahOtKind](#cheetahotkind)"
 
 #: ../../reference/runtime_config.md
 msgid "Setup for cheetah ot"
-msgstr ""
+msgstr "配置 Cheetah OT"
 
 #: ../../reference/runtime_config.md:58
 msgid "CompilationSource"
-msgstr ""
+msgstr "CompilationSource"
 
 #: ../../reference/runtime_config.md
 msgid "ir_type"
-msgstr ""
+msgstr "ir_type"
 
 #: ../../reference/runtime_config.md
 msgid "[ SourceIRType](#sourceirtype)"
-msgstr ""
+msgstr "[ SourceIRType](#sourceirtype)"
 
 #: ../../reference/runtime_config.md
 msgid "Input IR type"
-msgstr ""
+msgstr "输入 IR 类型"
 
 #: ../../reference/runtime_config.md
 msgid "ir_txt"
-msgstr ""
+msgstr "ir_txt"
 
 #: ../../reference/runtime_config.md
 msgid "[ bytes](#bytes)"
-msgstr ""
+msgstr "[ bytes](#bytes)"
 
 #: ../../reference/runtime_config.md
 msgid "IR"
-msgstr ""
+msgstr "IR"
 
 #: ../../reference/runtime_config.md
 msgid "input_visibility"
-msgstr ""
+msgstr "input_visibility"
 
 #: ../../reference/runtime_config.md
 msgid "[repeated Visibility](#visibility)"
-msgstr ""
+msgstr "[repeated Visibility](#visibility)"
 
 #: ../../reference/runtime_config.md
 msgid "Input visibilities"
-msgstr ""
+msgstr "输入可见度"
 
 #: ../../reference/runtime_config.md:71
 msgid "CompilerOptions"
-msgstr ""
+msgstr "CompilerOptions"
 
 #: ../../reference/runtime_config.md
 msgid "enable_pretty_print"
-msgstr ""
+msgstr "enable_pretty_print"
 
 #: ../../reference/runtime_config.md
 msgid "Pretty print"
-msgstr ""
+msgstr "格式化输出"
 
 #: ../../reference/runtime_config.md
 msgid "pretty_print_dump_dir"
-msgstr ""
+msgstr "pretty_print_dump_dir"
 
 #: ../../reference/runtime_config.md
 msgid "[ string](#string)"
-msgstr ""
+msgstr "[ string](#string)"
 
 #: ../../reference/runtime_config.md
 msgid "none"
-msgstr ""
+msgstr "无"
 
 #: ../../reference/runtime_config.md
 msgid "xla_pp_kind"
-msgstr ""
+msgstr "xla_pp_kind"
 
 #: ../../reference/runtime_config.md
 msgid "[ XLAPrettyPrintKind](#xlaprettyprintkind)"
-msgstr ""
+msgstr "[ XLAPrettyPrintKind](#xlaprettyprintkind)"
 
 #: ../../reference/runtime_config.md
 msgid "disable_sqrt_plus_epsilon_rewrite"
-msgstr ""
+msgstr "disable_sqrt_plus_epsilon_rewrite"
 
 #: ../../reference/runtime_config.md
 msgid "Disable sqrt(x) + eps to sqrt(x+eps) rewrite"
-msgstr ""
+msgstr "禁用将 sqrt(x) + eps 重写为 sqrt(x+eps)"
 
 #: ../../reference/runtime_config.md
 msgid "disable_div_sqrt_rewrite"
-msgstr ""
+msgstr "disable_div_sqrt_rewrite"
 
 #: ../../reference/runtime_config.md
 msgid "Disable x/sqrt(y) to x*rsqrt(y) rewrite"
-msgstr ""
+msgstr "禁用将 x/sqrt(y) 重写为 x*rsqrt(y)"
 
 #: ../../reference/runtime_config.md
 msgid "disable_reduce_truncation_optimization"
-msgstr ""
+msgstr "disable_reduce_truncation_optimization"
 
 #: ../../reference/runtime_config.md
 msgid "Disable reduce truncation optimization"
-msgstr ""
+msgstr "禁用归约截断优化"
 
 #: ../../reference/runtime_config.md
 msgid "disable_maxpooling_optimization"
-msgstr ""
+msgstr "disable_maxpooling_optimization"
 
 #: ../../reference/runtime_config.md
 msgid "Disable maxpooling optimization"
-msgstr ""
+msgstr "禁用最大池化优化"
 
 #: ../../reference/runtime_config.md
 msgid "disallow_mix_types_opts"
-msgstr ""
+msgstr "disallow_mix_types_opts"
 
 #: ../../reference/runtime_config.md
 msgid "Disallow mix type operations"
-msgstr ""
+msgstr "禁止混合类型操作"
 
 #: ../../reference/runtime_config.md
 msgid "disable_select_optimization"
-msgstr ""
+msgstr "disable_select_optimization"
 
 #: ../../reference/runtime_config.md
 msgid "Disable SelectOp optimization"
-msgstr ""
+msgstr "禁用 SelectOp 优化"
 
 #: ../../reference/runtime_config.md
 msgid "enable_optimize_denominator_with_broadcast"
-msgstr ""
+msgstr "enable_optimize_denominator_with_broadcast"
 
 #: ../../reference/runtime_config.md
 msgid "Enable optimize x/bcast(y) -> x * bcast(1/y)"
-msgstr ""
+msgstr "启用将 x / bcast(y) 重写为 x * bcast(1/y) 的优化"
 
 #: ../../reference/runtime_config.md
 msgid "disable_deallocation_insertion"
-msgstr ""
+msgstr "disable_deallocation_insertion"
 
 #: ../../reference/runtime_config.md
 msgid "Disable deallocation insertion pass"
-msgstr ""
+msgstr "禁用内存释放插入遍"
 
 #: ../../reference/runtime_config.md
 msgid "disable_partial_sort_optimization"
-msgstr ""
+msgstr "disable_partial_sort_optimization"
 
 #: ../../reference/runtime_config.md
 msgid "Disable sort->topk rewrite when only partial sort is required"
-msgstr ""
+msgstr "当仅需部分排序时，禁用将 sort 重写为 topk 的优化"
 
 #: ../../reference/runtime_config.md:93
 msgid "ExecutableProto"
-msgstr ""
+msgstr "ExecutableProto"
 
 #: ../../reference/runtime_config.md:94
 msgid "The executable format accepted by SPU runtime."
-msgstr ""
+msgstr "SPU 运行时支持的可执行文件格式。"
 
 #: ../../reference/runtime_config.md:96
 msgid "Inputs should be prepared before running executable."
-msgstr ""
+msgstr "在运行可执行文件之前，应准备好输入。"
 
 #: ../../reference/runtime_config.md:97
 msgid "Output is maintained after execution, and can be fetched by output name."
-msgstr ""
+msgstr "输出在执行后会被保留，并可通过输出名称获取。"
 
 #: ../../reference/runtime_config.md
 msgid "name"
-msgstr ""
+msgstr "name"
 
 #: ../../reference/runtime_config.md
 msgid "The name of the executable."
-msgstr ""
+msgstr "可执行文件名"
 
 #: ../../reference/runtime_config.md
 msgid "input_names"
-msgstr ""
+msgstr "input_names"
 
 #: ../../reference/runtime_config.md
 msgid "[repeated string](#string)"
-msgstr ""
+msgstr "[repeated string](#string)"
 
 #: ../../reference/runtime_config.md
 msgid "The input names."
-msgstr ""
+msgstr "输入名"
 
 #: ../../reference/runtime_config.md
 msgid "output_names"
-msgstr ""
+msgstr "output_names"
 
 #: ../../reference/runtime_config.md
 msgid "The output names."
-msgstr ""
+msgstr "输出名"
 
 #: ../../reference/runtime_config.md
 msgid "code"
-msgstr ""
+msgstr "code"
 
 #: ../../reference/runtime_config.md
 msgid "The bytecode of the program, with format IR_MLIR_SPU."
-msgstr ""
+msgstr "程序的字节码，格式为 IR_MLIR_SPU。"
 
 #: ../../reference/runtime_config.md:122
 msgid "RuntimeConfig"
-msgstr ""
+msgstr "RuntimeConfig"
 
 #: ../../reference/runtime_config.md:123
 msgid "The SPU runtime configuration."
-msgstr ""
+msgstr "SPU 运行时配置。"
 
 #: ../../reference/runtime_config.md
 msgid "protocol"
-msgstr ""
+msgstr "protocol"
 
 #: ../../reference/runtime_config.md
 msgid "[ ProtocolKind](#protocolkind)"
-msgstr ""
+msgstr "[ ProtocolKind](#protocolkind)"
 
 #: ../../reference/runtime_config.md ../../reference/runtime_config.md:270
 msgid "The protocol kind."
-msgstr ""
+msgstr "协议种类。"
 
 #: ../../reference/runtime_config.md
 msgid "field"
-msgstr ""
+msgstr "field"
 
 #: ../../reference/runtime_config.md
 msgid "[ FieldType](#fieldtype)"
-msgstr ""
+msgstr "[ FieldType](#fieldtype)"
 
 #: ../../reference/runtime_config.md
 msgid "The field type."
-msgstr ""
+msgstr "字段类型。"
 
 #: ../../reference/runtime_config.md
 msgid "fxp_fraction_bits"
-msgstr ""
+msgstr "fxp_fraction_bits"
 
 #: ../../reference/runtime_config.md
 msgid "[ int64](#int64)"
-msgstr ""
+msgstr "[ int64](#int64)"
 
 #: ../../reference/runtime_config.md
 msgid ""
 "Number of fraction bits of fixed-point number. 0(default) indicates "
 "implementation defined."
 msgstr ""
+"定点数的小数位数。默认值为 0，表示由具体实现来定义。"
 
 #: ../../reference/runtime_config.md
 msgid "max_concurrency"
-msgstr ""
+msgstr "max_concurrency"
 
 #: ../../reference/runtime_config.md
 msgid "[ int32](#int32)"
-msgstr ""
+msgstr "[ int32](#int32)"
 
 #: ../../reference/runtime_config.md
 msgid "Max number of cores"
-msgstr ""
+msgstr "最大核心数"
 
 #: ../../reference/runtime_config.md
 msgid "enable_action_trace"
-msgstr ""
+msgstr "enable_action_trace"
 
 #: ../../reference/runtime_config.md
 msgid ""
 "When enabled, runtime prints verbose info of the call stack, debug "
 "purpose only."
 msgstr ""
+"启用后，运行时将打印详细的调用栈信息，仅用于调试目的。"
 
 #: ../../reference/runtime_config.md
 msgid "enable_type_checker"
-msgstr ""
+msgstr "enable_type_checker"
 
 #: ../../reference/runtime_config.md
 msgid ""
@@ -445,32 +447,35 @@ msgid ""
 "ones, exceptions are raised if mismatches happen. Note: Runtime outputs "
 "prefer runtime type infos even when flag is on."
 msgstr ""
+"启用后，运行时会拿运行时的类型信息与编译时的类型信息进行比对，若不匹配则会抛出异常。"
+"注意：即使开启了此标志，运行时的输出也仍然优先使用其运行时的类型信息。"
 
 #: ../../reference/runtime_config.md
 msgid "enable_pphlo_trace"
-msgstr ""
+msgstr "enable_pphlo_trace"
 
 #: ../../reference/runtime_config.md
 msgid "When enabled, runtime prints executed pphlo list, debug purpose only."
-msgstr ""
+msgstr "启用后，运行时将打印已执行的 pphlo 指令列表，仅用于调试目的。"
 
 #: ../../reference/runtime_config.md
 msgid "enable_runtime_snapshot"
-msgstr ""
+msgstr "enable_runtime_snapshot"
 
 #: ../../reference/runtime_config.md
 msgid ""
 "When enabled, runtime dumps executed executables in the dump_dir, debug "
 "purpose only."
 msgstr ""
+"启用后，运行时会将已执行的可执行文件转存到 dump_dir 目录，仅用于调试目的。"
 
 #: ../../reference/runtime_config.md
 msgid "snapshot_dump_dir"
-msgstr ""
+msgstr "snapshot_dump_dir"
 
 #: ../../reference/runtime_config.md
 msgid "enable_pphlo_profile"
-msgstr ""
+msgstr "enable_pphlo_profile"
 
 #: ../../reference/runtime_config.md
 msgid ""
@@ -479,10 +484,13 @@ msgid ""
 "`experimental_enable_inter_op_par` and `experimental_enable_intra_op_par`"
 " options are disabled."
 msgstr ""
+"启用后，运行时将记录详细的 pphlo 计时数据，仅用于调试目的。"
+"警告：发送字节数的信息仅在 experimental_enable_inter_op_par 和"
+" experimental_enable_intra_op_par 选项被禁用时才是准确的。"
 
 #: ../../reference/runtime_config.md
 msgid "enable_hal_profile"
-msgstr ""
+msgstr "enable_hal_profile"
 
 #: ../../reference/runtime_config.md
 msgid ""
@@ -491,14 +499,17 @@ msgid ""
 "`experimental_enable_inter_op_par` and `experimental_enable_intra_op_par`"
 " options are disabled."
 msgstr ""
+"启用后，运行时将记录详细的 HAL 计时数据，仅用于调试目的。"
+"警告：发送字节数的信息仅在 experimental_enable_inter_op_par 和 "
+"experimental_enable_intra_op_par 选项被禁用时才是准确的。"
 
 #: ../../reference/runtime_config.md
 msgid "public_random_seed"
-msgstr ""
+msgstr "public_random_seed"
 
 #: ../../reference/runtime_config.md
 msgid "[ uint64](#uint64)"
-msgstr ""
+msgstr "[ uint64](#uint64)"
 
 #: ../../reference/runtime_config.md
 msgid ""
@@ -506,308 +517,318 @@ msgid ""
 "function is implementation defined. Note: this seed only applies to "
 "`public variable` only, it has nothing to do with security."
 msgstr ""
+"由运行时生成的公共随机变量，其所用的具体 PRG 函数由实现来定义。"
+"注意：此种子仅适用于该公共变量，与安全性无关。"
 
 #: ../../reference/runtime_config.md
 msgid "share_max_chunk_size"
-msgstr ""
+msgstr "share_max_chunk_size"
 
 #: ../../reference/runtime_config.md
 msgid "max chunk size for Value::toProto default: 128 * 1024 * 1024"
-msgstr ""
+msgstr "Value::toProto 的最大分块大小。默认值：128 MB。"
 
 #: ../../reference/runtime_config.md
 msgid "fxp_div_goldschmidt_iters"
-msgstr ""
+msgstr "fxp_div_goldschmidt_iters"
 
 #: ../../reference/runtime_config.md
 msgid ""
 "The iterations use in f_div with Goldschmidt method. 0(default) indicates"
 " implementation defined."
 msgstr ""
+"使用 Goldschmidt 方法进行浮点数除法时所用的迭代次数。默认值为 0，表示由具体实现来定义。"
 
 #: ../../reference/runtime_config.md
 msgid "fxp_exp_mode"
-msgstr ""
+msgstr "fxp_exp_mode"
 
 #: ../../reference/runtime_config.md
 msgid "[ RuntimeConfig.ExpMode](#runtimeconfigexpmode)"
-msgstr ""
+msgstr "[ RuntimeConfig.ExpMode](#runtimeconfigexpmode)"
 
 #: ../../reference/runtime_config.md
 msgid "The exponent approximation method."
-msgstr ""
+msgstr "指数函数的近似计算方法。"
 
 #: ../../reference/runtime_config.md
 msgid "fxp_exp_iters"
-msgstr ""
+msgstr "fxp_exp_iters"
 
 #: ../../reference/runtime_config.md
 msgid ""
 "Number of iterations of `exp` approximation, 0(default) indicates impl "
 "defined."
 msgstr ""
+"指数函数近似计算的迭代次数。默认值为 0，表示由具体实现来定义。"
 
 #: ../../reference/runtime_config.md
 msgid "fxp_log_mode"
-msgstr ""
+msgstr "fxp_log_mode"
 
 #: ../../reference/runtime_config.md
 msgid "[ RuntimeConfig.LogMode](#runtimeconfiglogmode)"
-msgstr ""
+msgstr "[ RuntimeConfig.LogMode](#runtimeconfiglogmode)"
 
 #: ../../reference/runtime_config.md ../../reference/runtime_config.md:339
 msgid "The logarithm approximation method."
-msgstr ""
+msgstr "对数函数的近似计算方法。"
 
 #: ../../reference/runtime_config.md
 msgid "fxp_log_iters"
-msgstr ""
+msgstr "fxp_log_iters"
 
 #: ../../reference/runtime_config.md
 msgid ""
 "Number of iterations of `log` approximation, 0(default) indicates impl-"
 "defined."
 msgstr ""
+"对数函数近似计算的迭代次数。默认值为 0，表示由具体实现来定义。"
 
 #: ../../reference/runtime_config.md
 msgid "fxp_log_orders"
-msgstr ""
+msgstr "fxp_log_orders"
 
 #: ../../reference/runtime_config.md
 msgid ""
 "Number of orders of `log` approximation, 0(default) indicates impl "
 "defined."
 msgstr ""
+"对数函数近似计算的阶数。默认值为 0，表示由具体实现来定义。"
 
 #: ../../reference/runtime_config.md
 msgid "sigmoid_mode"
-msgstr ""
+msgstr "sigmoid_mode"
 
 #: ../../reference/runtime_config.md
 msgid "[ RuntimeConfig.SigmoidMode](#runtimeconfigsigmoidmode)"
-msgstr ""
+msgstr "[ RuntimeConfig.SigmoidMode](#runtimeconfigsigmoidmode)"
 
 #: ../../reference/runtime_config.md
 msgid "The sigmoid function approximation model."
-msgstr ""
+msgstr "Sigmoid 函数的近似计算模型。"
 
 #: ../../reference/runtime_config.md
 msgid "enable_lower_accuracy_rsqrt"
-msgstr ""
+msgstr "enable_lower_accuracy_rsqrt"
 
 #: ../../reference/runtime_config.md
 msgid "Enable a simpler rsqrt approximation"
-msgstr ""
+msgstr "启用一种更简单的平方根倒数近似算法"
 
 #: ../../reference/runtime_config.md
 msgid "sine_cosine_iters"
-msgstr ""
+msgstr "sine_cosine_iters"
 
 #: ../../reference/runtime_config.md
 msgid "Sine/Cosine approximation iterations"
-msgstr ""
+msgstr "正弦/余弦函数的近似计算迭代次数。"
 
 #: ../../reference/runtime_config.md
 msgid "beaver_type"
-msgstr ""
+msgstr "beaver_type"
 
 #: ../../reference/runtime_config.md
 msgid "[ RuntimeConfig.BeaverType](#runtimeconfigbeavertype)"
-msgstr ""
+msgstr "[ RuntimeConfig.BeaverType](#runtimeconfigbeavertype)"
 
 #: ../../reference/runtime_config.md
 msgid "beaver config, works for semi2k and spdz2k for now."
-msgstr ""
+msgstr "Beaver 配置，目前适用于 semi2k 和 spdz2k 协议。"
 
 #: ../../reference/runtime_config.md
 msgid "ttp_beaver_config"
-msgstr ""
+msgstr "ttp_beaver_config"
 
 #: ../../reference/runtime_config.md
 msgid "[ TTPBeaverConfig](#ttpbeaverconfig)"
-msgstr ""
+msgstr "[ TTPBeaverConfig](#ttpbeaverconfig)"
 
 #: ../../reference/runtime_config.md
 msgid "TrustedThirdParty configs."
-msgstr ""
+msgstr "可信第三方的配置。"
 
 #: ../../reference/runtime_config.md
 msgid "cheetah_2pc_config"
-msgstr ""
+msgstr "cheetah_2pc_config"
 
 #: ../../reference/runtime_config.md
 msgid "[ CheetahConfig](#cheetahconfig)"
-msgstr ""
+msgstr "[ CheetahConfig](#cheetahconfig)"
 
 #: ../../reference/runtime_config.md
 msgid "Cheetah 2PC configs."
-msgstr ""
+msgstr "Cheetah 2PC 的配置。"
 
 #: ../../reference/runtime_config.md
 msgid "trunc_allow_msb_error"
-msgstr ""
+msgstr "trunc_allow_msb_error"
 
 #: ../../reference/runtime_config.md
 msgid ""
 "For protocol like SecureML, the most significant bit may have error with "
 "low probability, which lead to huge calculation error."
 msgstr ""
+"对于像 SecureML 这样的协议，最高有效位可能会有很小的概率出现错误，"
+"但这会导致巨大的计算误差。"
 
 #: ../../reference/runtime_config.md
 msgid "experimental_disable_mmul_split"
-msgstr ""
+msgstr "experimental_disable_mmul_split"
 
 #: ../../reference/runtime_config.md
 msgid "Experimental: DO NOT USE"
-msgstr ""
+msgstr "实验性功能：请勿使用。"
 
 #: ../../reference/runtime_config.md
 msgid "experimental_enable_inter_op_par"
-msgstr ""
+msgstr "experimental_enable_inter_op_par"
 
 #: ../../reference/runtime_config.md
 msgid "Inter op parallel, aka, DAG level parallel."
-msgstr ""
+msgstr "算子间并行，也称作 DAG 层级的并行。"
 
 #: ../../reference/runtime_config.md
 msgid "experimental_enable_intra_op_par"
-msgstr ""
+msgstr "experimental_enable_intra_op_par"
 
 #: ../../reference/runtime_config.md
 msgid "Intra op parallel, aka, hal/mpc level parallel."
-msgstr ""
+msgstr "算子内并行，也称作 HAL 或 MPC 层级的并行."
 
 #: ../../reference/runtime_config.md
 msgid "experimental_disable_vectorization"
-msgstr ""
+msgstr "experimental_disable_vectorization"
 
 #: ../../reference/runtime_config.md
 msgid "Disable kernel level vectorization."
-msgstr ""
+msgstr "禁用内核级别的向量化。"
 
 #: ../../reference/runtime_config.md
 msgid "experimental_inter_op_concurrency"
-msgstr ""
+msgstr "experimental_inter_op_concurrency"
 
 #: ../../reference/runtime_config.md
 msgid "Inter op concurrency."
-msgstr ""
+msgstr "算子间的并发度。"
 
 #: ../../reference/runtime_config.md
 msgid "experimental_enable_colocated_optimization"
-msgstr ""
+msgstr "experimental_enable_colocated_optimization""
 
 #: ../../reference/runtime_config.md
 msgid "Enable use of private type"
-msgstr ""
+msgstr "启用私有类型的使用。"
 
 #: ../../reference/runtime_config.md:164
 msgid "ShapeProto"
-msgstr ""
+msgstr "ShapeProto"
 
 #: ../../reference/runtime_config.md
 msgid "dims"
-msgstr ""
+msgstr "dims"
 
 #: ../../reference/runtime_config.md
 msgid "[repeated int64](#int64)"
-msgstr ""
+msgstr "[repeated int64](#int64)"
 
 #: ../../reference/runtime_config.md:175
 msgid "TTPBeaverConfig"
-msgstr ""
+msgstr "TTPBeaverConfig"
 
 #: ../../reference/runtime_config.md
 msgid "server_host"
-msgstr ""
+msgstr "server_host"
 
 #: ../../reference/runtime_config.md
 msgid "TrustedThirdParty beaver server's remote ip:port or load-balance uri."
-msgstr ""
+msgstr "可信第三方 Beaver 服务器的远程 ip:port，或者是负载均衡 URI。"
 
 #: ../../reference/runtime_config.md
 msgid "adjust_rank"
-msgstr ""
+msgstr "adjust_rank"
 
 #: ../../reference/runtime_config.md
 msgid ""
 "which rank do adjust rpc call, usually choose the rank closer to the "
 "server."
 msgstr ""
+"由哪个 rank 来调整 RPC 调用，通常选择离服务器更近的那个 rank。"
 
 #: ../../reference/runtime_config.md
 msgid "asym_crypto_schema"
-msgstr ""
+msgstr "asym_crypto_schema"
 
 #: ../../reference/runtime_config.md
 msgid ""
 "asym_crypto_schema: support [\"SM2\"] Will support 25519 in the future, "
 "after yacl supported it."
 msgstr ""
+"asym_crypto_schema：目前支持 [“SM2”]。未来在 yacl 支持 25519 后，将会支持 25519。"
 
 #: ../../reference/runtime_config.md
 msgid "server_public_key"
-msgstr ""
+msgstr "server_public_key"
 
 #: ../../reference/runtime_config.md
 msgid "server's public key"
-msgstr ""
+msgstr "服务器公钥"
 
 #: ../../reference/runtime_config.md:189
 msgid "ValueChunkProto"
-msgstr ""
+msgstr "ValueChunkProto"
 
 #: ../../reference/runtime_config.md:190
 msgid "The spu Value proto, used for spu value serialization."
-msgstr ""
+msgstr "SPU Value 的 Protobuf 消息，用于 SPU Value 的序列化。"
 
 #: ../../reference/runtime_config.md
 msgid "total_bytes"
-msgstr ""
+msgstr "total_bytes"
 
 #: ../../reference/runtime_config.md
 msgid "chunk info"
-msgstr ""
+msgstr "分块信息"
 
 #: ../../reference/runtime_config.md
 msgid "chunk_offset"
-msgstr ""
+msgstr "chunk_offset"
 
 #: ../../reference/runtime_config.md
 msgid "content"
-msgstr ""
+msgstr "content"
 
 #: ../../reference/runtime_config.md
 msgid "chunk bytes"
-msgstr ""
+msgstr "分块字节数"
 
 #: ../../reference/runtime_config.md:202
 msgid "ValueMetaProto"
-msgstr ""
+msgstr "ValueMetaProto"
 
 #: ../../reference/runtime_config.md
 msgid "data_type"
-msgstr ""
+msgstr "data_type"
 
 #: ../../reference/runtime_config.md
 msgid "[ DataType](#datatype)"
-msgstr ""
+msgstr "[ DataType](#datatype)"
 
 #: ../../reference/runtime_config.md
 msgid "The data type."
-msgstr ""
+msgstr "数据类型。"
 
 #: ../../reference/runtime_config.md
 msgid "is_complex"
-msgstr ""
+msgstr "is_complex"
 
 #: ../../reference/runtime_config.md
 msgid "visibility"
-msgstr ""
+msgstr "visibility"
 
 #: ../../reference/runtime_config.md
 msgid "[ Visibility](#visibility)"
-msgstr ""
+msgstr "[ Visibility](#visibility)"
 
 #: ../../reference/runtime_config.md
 msgid "The data visibility."
@@ -815,19 +836,19 @@ msgstr ""
 
 #: ../../reference/runtime_config.md
 msgid "shape"
-msgstr ""
+msgstr "shape"
 
 #: ../../reference/runtime_config.md
 msgid "[ ShapeProto](#shapeproto)"
-msgstr ""
+msgstr "[ ShapeProto](#shapeproto)"
 
 #: ../../reference/runtime_config.md
 msgid "The shape of the value."
-msgstr ""
+msgstr "值的形状。"
 
 #: ../../reference/runtime_config.md
 msgid "storage_type"
-msgstr ""
+msgstr "storage_type"
 
 #: ../../reference/runtime_config.md
 msgid ""
@@ -835,248 +856,251 @@ msgid ""
 "`aby3.AShr<FM64>` means an aby3 arithmetic share in FM64. usually, the "
 "application does not care about this attribute."
 msgstr ""
+"存储类型，由底层的计算引擎定义。即，aby3.AShr<FM64> 表示一个在 FM64 "
+"中的 aby3 算术份额。通常情况下，应用程序不需要关心此属性。"
 
 #: ../../reference/runtime_config.md:220
 msgid "CheetahOtKind"
-msgstr ""
+msgstr "CheetahOtKind"
 
 #: ../../reference/runtime_config.md
 msgid "Name"
-msgstr ""
+msgstr "名称"
 
 #: ../../reference/runtime_config.md
 msgid "Number"
-msgstr ""
+msgstr "数量"
 
 #: ../../reference/runtime_config.md
 msgid "YACL_Ferret"
-msgstr ""
+msgstr "YACL_Ferret"
 
 #: ../../reference/runtime_config.md
 msgid "0"
-msgstr ""
+msgstr "0"
 
 #: ../../reference/runtime_config.md
 msgid "YACL_Softspoken"
-msgstr ""
+msgstr "YACL_Softspoken"
 
 #: ../../reference/runtime_config.md
 msgid "1"
-msgstr ""
+msgstr "1"
 
 #: ../../reference/runtime_config.md
 msgid "EMP_Ferret"
-msgstr ""
+msgstr "EMP_Ferret"
 
 #: ../../reference/runtime_config.md
 msgid "2"
-msgstr ""
+msgstr "2"
 
 #: ../../reference/runtime_config.md:232
 msgid "DataType"
-msgstr ""
+msgstr "DataType"
 
 #: ../../reference/runtime_config.md:233
 msgid "The SPU datatype"
-msgstr ""
+msgstr "SPU 数据类型"
 
 #: ../../reference/runtime_config.md
 msgid "DT_INVALID"
-msgstr ""
+msgstr "DT_INVALID"
 
 #: ../../reference/runtime_config.md
 msgid "DT_I1"
-msgstr ""
+msgstr "DT_I1"
 
 #: ../../reference/runtime_config.md
 msgid "1bit integer (bool)."
-msgstr ""
+msgstr "1 位整数（bool 类型）。"
 
 #: ../../reference/runtime_config.md
 msgid "DT_I8"
-msgstr ""
+msgstr "DT_I8"
 
 #: ../../reference/runtime_config.md
 msgid "int8"
-msgstr ""
+msgstr "int8"
 
 #: ../../reference/runtime_config.md
 msgid "DT_U8"
-msgstr ""
+msgstr "DT_U8"
 
 #: ../../reference/runtime_config.md
 msgid "3"
-msgstr ""
+msgstr "3"
 
 #: ../../reference/runtime_config.md
 msgid "uint8"
-msgstr ""
+msgstr "uint8"
 
 #: ../../reference/runtime_config.md
 msgid "DT_I16"
-msgstr ""
+msgstr "DT_I16"
 
 #: ../../reference/runtime_config.md
 msgid "4"
-msgstr ""
+msgstr "4"
 
 #: ../../reference/runtime_config.md
 msgid "int16"
-msgstr ""
+msgstr "int16"
 
 #: ../../reference/runtime_config.md
 msgid "DT_U16"
-msgstr ""
+msgstr "DT_U16"
 
 #: ../../reference/runtime_config.md
 msgid "5"
-msgstr ""
+msgstr "5"
 
 #: ../../reference/runtime_config.md
 msgid "uint16"
-msgstr ""
+msgstr "uint16"
 
 #: ../../reference/runtime_config.md
 msgid "DT_I32"
-msgstr ""
+msgstr "DT_I32"
 
 #: ../../reference/runtime_config.md
 msgid "6"
-msgstr ""
+msgstr "6"
 
 #: ../../reference/runtime_config.md
 msgid "int32"
-msgstr ""
+msgstr "int32"
 
 #: ../../reference/runtime_config.md
 msgid "DT_U32"
-msgstr ""
+msgstr "DT_U32"
 
 #: ../../reference/runtime_config.md
 msgid "7"
-msgstr ""
+msgstr "7"
 
 #: ../../reference/runtime_config.md
 msgid "uint32"
-msgstr ""
+msgstr "uint32"
 
 #: ../../reference/runtime_config.md
 msgid "DT_I64"
-msgstr ""
+msgstr "DT_I64"
 
 #: ../../reference/runtime_config.md
 msgid "8"
-msgstr ""
+msgstr "8"
 
 #: ../../reference/runtime_config.md
 msgid "int64"
-msgstr ""
+msgstr "int64"
 
 #: ../../reference/runtime_config.md
 msgid "DT_U64"
-msgstr ""
+msgstr "DT_U64"
 
 #: ../../reference/runtime_config.md
 msgid "9"
-msgstr ""
+msgstr "9"
 
 #: ../../reference/runtime_config.md
 msgid "uint64"
-msgstr ""
+msgstr "uint64"
 
 #: ../../reference/runtime_config.md
 msgid "DT_F16"
-msgstr ""
+msgstr "DT_F16"
 
 #: ../../reference/runtime_config.md
 msgid "10"
-msgstr ""
+msgstr "10"
 
 #: ../../reference/runtime_config.md
 msgid "half"
-msgstr ""
+msgstr "half"
 
 #: ../../reference/runtime_config.md
 msgid "DT_F32"
-msgstr ""
+msgstr "DT_F32"
 
 #: ../../reference/runtime_config.md
 msgid "11"
-msgstr ""
+msgstr "11"
 
 #: ../../reference/runtime_config.md
 msgid "float"
-msgstr ""
+msgstr "float"
 
 #: ../../reference/runtime_config.md
 msgid "DT_F64"
-msgstr ""
+msgstr "DT_F64"
 
 #: ../../reference/runtime_config.md
 msgid "12"
-msgstr ""
+msgstr "12"
 
 #: ../../reference/runtime_config.md
 msgid "double"
-msgstr ""
+msgstr "double"
 
 #: ../../reference/runtime_config.md:254
 msgid "FieldType"
-msgstr ""
+msgstr "FieldType"
 
 #: ../../reference/runtime_config.md:255
 msgid "A security parameter type."
-msgstr ""
+msgstr "一个安全参数类型。"
 
 #: ../../reference/runtime_config.md:257
 msgid ""
 "The secure evaluation is based on some algebraic structure (ring or "
 "field),"
 msgstr ""
+"安全计算是基于某种代数结构（环或域）的。"
 
 #: ../../reference/runtime_config.md
 msgid "FT_INVALID"
-msgstr ""
+msgstr "FT_INVALID"
 
 #: ../../reference/runtime_config.md
 msgid "FM32"
-msgstr ""
+msgstr "FM32"
 
 #: ../../reference/runtime_config.md
 msgid "Ring 2^32"
-msgstr ""
+msgstr "环 Z_{2^32}"
 
 #: ../../reference/runtime_config.md
 msgid "FM64"
-msgstr ""
+msgstr "FM64"
 
 #: ../../reference/runtime_config.md
 msgid "Ring 2^64"
-msgstr ""
+msgstr "环 Z_{2^64}"
 
 #: ../../reference/runtime_config.md
 msgid "FM128"
-msgstr ""
+msgstr "FM128"
 
 #: ../../reference/runtime_config.md
 msgid "Ring 2^128"
-msgstr ""
+msgstr "环 Z_{2^128}"
 
 #: ../../reference/runtime_config.md:269
 msgid "ProtocolKind"
-msgstr ""
+msgstr "ProtocolKind"
 
 #: ../../reference/runtime_config.md
 msgid "PROT_INVALID"
-msgstr ""
+msgstr "PROT_INVALID"
 
 #: ../../reference/runtime_config.md
 msgid "Invalid protocol."
-msgstr ""
+msgstr "无效协议。"
 
 #: ../../reference/runtime_config.md
 msgid "REF2K"
-msgstr ""
+msgstr "REF2K"
 
 #: ../../reference/runtime_config.md
 msgid ""
@@ -1084,10 +1108,12 @@ msgid ""
 "behave-like a fixed point secure protocol without any security guarantee."
 " Hence, it should only be selected for debugging purposes."
 msgstr ""
+"一个在模 2^k 环上的参考实现。注意：这个“协议”只是在行为上模拟了一个定点数安全协议，"
+"但本身不提供任何安全保证。因此，它只应被用于调试目的。"
 
 #: ../../reference/runtime_config.md
 msgid "SEMI2K"
-msgstr ""
+msgstr "SEMI2K"
 
 #: ../../reference/runtime_config.md
 msgid ""
@@ -1096,44 +1122,52 @@ msgid ""
 "SecretFlow by default ships this protocol with a trusted first party. "
 "Hence, it should only be used for debugging purposes."
 msgstr ""
+"一个半诚实多方协议。该协议需要一个可信第三方来生成离线阶段所需的关联随机数。"
+"目前，SecretFlow 默认将此协议与一个可信第一方捆绑发布。因此，它只应被用于调试目的。"
 
 #: ../../reference/runtime_config.md
 msgid "ABY3"
-msgstr ""
+msgstr "ABY3"
 
 #: ../../reference/runtime_config.md
 msgid ""
 "A honest majority 3PC-protocol. SecretFlow provides the semi-honest "
 "implementation without Yao."
 msgstr ""
+"一个要求诚实方占多数的三方计算协议。SecretFlow 提供的是不包含"
+"姚氏混淆电路的半诚实实现版本。"
 
 #: ../../reference/runtime_config.md
 msgid "CHEETAH"
-msgstr ""
+msgstr "CHEETAH"
 
 #: ../../reference/runtime_config.md
 msgid ""
 "The famous [Cheetah](https://eprint.iacr.org/2022/207) protocol, a very "
 "fast 2PC protocol."
 msgstr ""
+"著名的 [Cheetah](https://eprint.iacr.org/2022/207) 协议，"
+"一个速度非常快的两方计算协议。"
 
 #: ../../reference/runtime_config.md
 msgid "SECURENN"
-msgstr ""
+msgstr "SECURENN"
 
 #: ../../reference/runtime_config.md
 msgid ""
 "A semi-honest 3PC-protocol for Neural Network, P2 as the helper, "
 "(https://eprint.iacr.org/2018/442)"
 msgstr ""
+"一个用于神经网络的半诚实三方计算协议，其中 P2 作为辅助方，"
+"(https://eprint.iacr.org/2018/442)"
 
 #: ../../reference/runtime_config.md:284
 msgid "PtType"
-msgstr ""
+msgstr "PtType"
 
 #: ../../reference/runtime_config.md:285
 msgid "Plaintext type"
-msgstr ""
+msgstr "明文类型"
 
 #: ../../reference/runtime_config.md:287
 msgid ""
@@ -1141,180 +1175,184 @@ msgid ""
 "mainly used for IO purposes, when converting a plaintext buffer to an SPU"
 " buffer, we have to let spu know which type the plaintext buffer is."
 msgstr ""
+"SPU 运行时不直接处理明文。明文类型主要用于输入/输出目的，当将一个明文缓冲区"
+"转换为 SPU 缓冲区时，我们必须告知 SPU 该明文缓冲区的类型。"
 
 #: ../../reference/runtime_config.md
 msgid "PT_INVALID"
-msgstr ""
+msgstr "PT_INVALID"
 
 #: ../../reference/runtime_config.md
 msgid "PT_I8"
-msgstr ""
+msgstr "PT_I8"
 
 #: ../../reference/runtime_config.md
 msgid "int8_t"
-msgstr ""
+msgstr "int8_t"
 
 #: ../../reference/runtime_config.md
 msgid "PT_U8"
-msgstr ""
+msgstr "PT_U8"
 
 #: ../../reference/runtime_config.md
 msgid "uint8_t"
-msgstr ""
+msgstr "uint8_t"
 
 #: ../../reference/runtime_config.md
 msgid "PT_I16"
-msgstr ""
+msgstr "PT_I16"
 
 #: ../../reference/runtime_config.md
 msgid "int16_t"
-msgstr ""
+msgstr "int16_t"
 
 #: ../../reference/runtime_config.md
 msgid "PT_U16"
-msgstr ""
+msgstr "PT_U16"
 
 #: ../../reference/runtime_config.md
 msgid "uint16_t"
-msgstr ""
+msgstr "uint16_t"
 
 #: ../../reference/runtime_config.md
 msgid "PT_I32"
-msgstr ""
+msgstr "PT_I32"
 
 #: ../../reference/runtime_config.md
 msgid "int32_t"
-msgstr ""
+msgstr "int32_t"
 
 #: ../../reference/runtime_config.md
 msgid "PT_U32"
-msgstr ""
+msgstr "PT_U32"
 
 #: ../../reference/runtime_config.md
 msgid "uint32_t"
-msgstr ""
+msgstr "uint32_t"
 
 #: ../../reference/runtime_config.md
 msgid "PT_I64"
-msgstr ""
+msgstr "PT_I64"
 
 #: ../../reference/runtime_config.md
 msgid "int64_t"
-msgstr ""
+msgstr "int64_t"
 
 #: ../../reference/runtime_config.md
 msgid "PT_U64"
-msgstr ""
+msgstr "PT_U64"
 
 #: ../../reference/runtime_config.md
 msgid "uint64_t"
-msgstr ""
+msgstr "uint64_t"
 
 #: ../../reference/runtime_config.md
 msgid "PT_I128"
-msgstr ""
+msgstr "PT_I128"
 
 #: ../../reference/runtime_config.md
 msgid "int128_t"
-msgstr ""
+msgstr "int128_t"
 
 #: ../../reference/runtime_config.md
 msgid "PT_U128"
-msgstr ""
+msgstr "PT_U128"
 
 #: ../../reference/runtime_config.md
 msgid "uint128_t"
-msgstr ""
+msgstr "uint128_t"
 
 #: ../../reference/runtime_config.md
 msgid "PT_I1"
-msgstr ""
+msgstr "PT_I1"
 
 #: ../../reference/runtime_config.md
 msgid "bool"
-msgstr ""
+msgstr "bool"
 
 #: ../../reference/runtime_config.md
 msgid "PT_F16"
-msgstr ""
+msgstr "PT_F16"
 
 #: ../../reference/runtime_config.md
 msgid "30"
-msgstr ""
+msgstr "30"
 
 #: ../../reference/runtime_config.md
 msgid "PT_F32"
-msgstr ""
+msgstr "PT_F32"
 
 #: ../../reference/runtime_config.md
 msgid "31"
-msgstr ""
+msgstr "31"
 
 #: ../../reference/runtime_config.md
 msgid "PT_F64"
-msgstr ""
+msgstr "PT_F64"
 
 #: ../../reference/runtime_config.md
 msgid "32"
-msgstr ""
+msgstr "32"
 
 #: ../../reference/runtime_config.md
 msgid "PT_CF32"
-msgstr ""
+msgstr "PT_CF32"
 
 #: ../../reference/runtime_config.md
 msgid "50"
-msgstr ""
+msgstr "50"
 
 #: ../../reference/runtime_config.md
 msgid "complex float"
-msgstr ""
+msgstr "complex float"
 
 #: ../../reference/runtime_config.md
 msgid "PT_CF64"
-msgstr ""
+msgstr "PT_CF64"
 
 #: ../../reference/runtime_config.md
 msgid "51"
-msgstr ""
+msgstr "51"
 
 #: ../../reference/runtime_config.md
 msgid "complex double"
-msgstr ""
+msgstr "complex double"
 
 #: ../../reference/runtime_config.md:314
 msgid "RuntimeConfig.BeaverType"
-msgstr ""
+msgstr "RuntimeConfig.BeaverType"
 
 #: ../../reference/runtime_config.md
 msgid "TrustedFirstParty"
-msgstr ""
+msgstr "TrustedFirstParty"
 
 #: ../../reference/runtime_config.md
 msgid ""
 "Assume first party (rank0) as trusted party to generate beaver triple. "
 "WARNING: It is NOT SAFE and SHOULD NOT BE used in production."
 msgstr ""
+"将第一方（rank0）视为可信方来生成 Beaver 三元组。"
+"警告：这种方式是不安全的，并且绝不应在生产环境中使用。"
 
 #: ../../reference/runtime_config.md
 msgid "TrustedThirdParty"
-msgstr ""
+msgstr "TrustedThirdParty"
 
 #: ../../reference/runtime_config.md
 msgid "Generate beaver triple through an additional trusted third party."
-msgstr ""
+msgstr "通过一个额外的可信第三方来生成 Beaver 三元组。"
 
 #: ../../reference/runtime_config.md
 msgid "MultiParty"
-msgstr ""
+msgstr "MultiParty"
 
 #: ../../reference/runtime_config.md
 msgid "Generate beaver triple through multi-party."
-msgstr ""
+msgstr "通过多方交互来生成 Beaver 三元组。"
 
 #: ../../reference/runtime_config.md:326
 msgid "RuntimeConfig.ExpMode"
-msgstr ""
+msgstr "RuntimeConfig.ExpMode"
 
 #: ../../reference/runtime_config.md:327
 msgid "The exponential approximation method."
@@ -1322,121 +1360,126 @@ msgstr ""
 
 #: ../../reference/runtime_config.md
 msgid "EXP_DEFAULT"
-msgstr ""
+msgstr "EXP_DEFAULT"
 
 #: ../../reference/runtime_config.md
 msgid "Implementation defined."
-msgstr ""
+msgstr "由实现定义。"
 
 #: ../../reference/runtime_config.md
 msgid "EXP_PADE"
-msgstr ""
+msgstr "EXP_PADE"
 
 #: ../../reference/runtime_config.md
 msgid "The pade approximation."
-msgstr ""
+msgstr "Pade 近似法。"
 
 #: ../../reference/runtime_config.md
 msgid "EXP_TAYLOR"
-msgstr ""
+msgstr "EXP_TAYLOR"
 
 #: ../../reference/runtime_config.md
 msgid "Taylor series approximation."
-msgstr ""
+msgstr "Taylor 级数近似法。"
 
 #: ../../reference/runtime_config.md:338
 msgid "RuntimeConfig.LogMode"
-msgstr ""
+msgstr "RuntimeConfig.LogMode"
 
 #: ../../reference/runtime_config.md
 msgid "LOG_DEFAULT"
-msgstr ""
+msgstr "LOG_DEFAULT"
 
 #: ../../reference/runtime_config.md
 msgid "LOG_PADE"
-msgstr ""
+msgstr "LOG_PADE"
 
 #: ../../reference/runtime_config.md
 msgid "LOG_NEWTON"
-msgstr ""
+msgstr "LOG_NEWTON"
 
 #: ../../reference/runtime_config.md
 msgid "The newton approximation."
-msgstr ""
+msgstr "Newton 近似法。"
 
 #: ../../reference/runtime_config.md
 msgid "LOG_MINMAX"
-msgstr ""
+msgstr "LOG_MINMAX"
 
 #: ../../reference/runtime_config.md
 msgid "The minmax approximation."
-msgstr ""
+msgstr "极小化极大近似法。"
 
 #: ../../reference/runtime_config.md:351
 msgid "RuntimeConfig.SigmoidMode"
-msgstr ""
+msgstr "RuntimeConfig.SigmoidMode"
 
 #: ../../reference/runtime_config.md:352
 msgid "The sigmoid approximation method."
-msgstr ""
+msgstr "Sigmoid 函数的近似计算方法。"
 
 #: ../../reference/runtime_config.md
 msgid "SIGMOID_DEFAULT"
-msgstr ""
+msgstr "SIGMOID_DEFAULT"
 
 #: ../../reference/runtime_config.md
 msgid "SIGMOID_MM1"
-msgstr ""
+msgstr "SIGMOID_MM1"
 
 #: ../../reference/runtime_config.md
 msgid "Minmax approximation one order. f(x) = 0.5 + 0.125 * x"
-msgstr ""
+msgstr "一阶极小化极大近似法。f(x) = 0.5 + 0.125 * x"
 
 #: ../../reference/runtime_config.md
 msgid "SIGMOID_SEG3"
-msgstr ""
+msgstr "SIGMOID_SEG3"
 
 #: ../../reference/runtime_config.md
 msgid ""
 "Piece-wise simulation. f(x) = 0.5 + 0.125x if -4 <= x <= 4 1 if x > 4 0 "
 "if -4 > x"
 msgstr ""
+"分段模拟。当 -4 <= x <= 4 时，f(x) = 0.5 + 0.125x；"
+"当 x > 4 时，f(x) = 1；当 x < -4 时，f(x) = 0。"
 
 #: ../../reference/runtime_config.md
 msgid "SIGMOID_REAL"
-msgstr ""
+msgstr "SIGMOID_REAL"
 
 #: ../../reference/runtime_config.md
 msgid ""
 "The real definition, which depends on exp's accuracy. f(x) = 1 / (1 + "
 "exp(-x))"
 msgstr ""
+"标准定义，其精度依赖于指数函数的计算精度。f(x) = 1 / (1 + exp(-x))"
 
 #: ../../reference/runtime_config.md:364
 msgid "SourceIRType"
-msgstr ""
+msgstr "SourceIRType"
 
 #: ../../reference/runtime_config.md:365
 msgid ""
 "Compiler relate definition "
 "////////////////////////////////////////////////////////////////////////"
 msgstr ""
+"编译器相关定义"
+"////////////////////////////////////////////////////////////////////////"
 
 #: ../../reference/runtime_config.md
 msgid "XLA"
-msgstr ""
+msgstr "XLA"
 
 #: ../../reference/runtime_config.md
 msgid "STABLEHLO"
-msgstr ""
+msgstr "STABLEHLO"
 
 #: ../../reference/runtime_config.md:376
 msgid "Visibility"
-msgstr ""
+msgstr "Visibility"
 
 #: ../../reference/runtime_config.md:377
 msgid "The visibility type."
-msgstr ""
+msgstr "可见性类型。"
 
 #: ../../reference/runtime_config.md:379
 msgid ""
@@ -1444,223 +1487,231 @@ msgid ""
 "them are publicly known to all parties, marking them as public will "
 "improve performance significantly."
 msgstr ""
+"SPU 是一个安全计算运行时，但并非所有数据都是秘密的，"
+"其中一些数据是所有参与方都公开知晓的。将这些数据标记为公开将显著提升性能。"
 
 #: ../../reference/runtime_config.md
 msgid "VIS_INVALID"
-msgstr ""
+msgstr "VIS_INVALID"
 
 #: ../../reference/runtime_config.md
 msgid "VIS_SECRET"
-msgstr ""
+msgstr "VIS_SECRET"
 
 #: ../../reference/runtime_config.md
 msgid "Invisible(unknown) for all or some of the parties."
-msgstr ""
+msgstr "对所有或部分参与方不可见（未知）。"
 
 #: ../../reference/runtime_config.md
 msgid "VIS_PUBLIC"
-msgstr ""
+msgstr "VIS_PUBLIC"
 
 #: ../../reference/runtime_config.md
 msgid "Visible(public) for all parties."
-msgstr ""
+msgstr "对所有参与方可见（公开）。"
 
 #: ../../reference/runtime_config.md
 msgid "VIS_PRIVATE"
-msgstr ""
+msgstr "VIS_PRIVATE"
 
 #: ../../reference/runtime_config.md
 msgid "Visible for only one party"
-msgstr ""
+msgstr "仅对一个参与方可见。"
 
 #: ../../reference/runtime_config.md:393
 msgid "XLAPrettyPrintKind"
-msgstr ""
+msgstr "XLAPrettyPrintKind"
 
 #: ../../reference/runtime_config.md
 msgid "TEXT"
-msgstr ""
+msgstr "TEXT"
 
 #: ../../reference/runtime_config.md
 msgid "DOT"
-msgstr ""
+msgstr "DOT"
 
 #: ../../reference/runtime_config.md
 msgid "HTML"
-msgstr ""
+msgstr "HTML"
 
 #: ../../reference/runtime_config.md:406
 msgid "Scalar Value Types"
-msgstr ""
+msgstr "Scalar Value Types"
 
 #: ../../reference/runtime_config.md
 msgid ".proto Type"
-msgstr ""
+msgstr ".proto 类型"
 
 #: ../../reference/runtime_config.md
 msgid "Notes"
-msgstr ""
+msgstr "备注"
 
 #: ../../reference/runtime_config.md
 msgid "C++ Type"
-msgstr ""
+msgstr "C++ 类型"
 
 #: ../../reference/runtime_config.md
 msgid "Java Type"
-msgstr ""
+msgstr "Java 类型"
 
 #: ../../reference/runtime_config.md
 msgid "Python Type"
-msgstr ""
+msgstr "Python 类型"
 
 #: ../../reference/runtime_config.md
 msgid "<div><h4 id=\"double\" /></div><a name=\"double\" /> double"
-msgstr ""
+msgstr "<div><h4 id=\"double\" /></div><a name=\"double\" /> double"
 
 #: ../../reference/runtime_config.md
 msgid "<div><h4 id=\"float\" /></div><a name=\"float\" /> float"
-msgstr ""
+msgstr "<div><h4 id=\"float\" /></div><a name=\"float\" /> float"
 
 #: ../../reference/runtime_config.md
 msgid "<div><h4 id=\"int32\" /></div><a name=\"int32\" /> int32"
-msgstr ""
+msgstr "<div><h4 id=\"int32\" /></div><a name=\"int32\" /> int32"
 
 #: ../../reference/runtime_config.md
 msgid ""
 "Uses variable-length encoding. Inefficient for encoding negative numbers "
 "– if your field is likely to have negative values, use sint32 instead."
 msgstr ""
+"使用可变长度编码。编码负数的效率较低——如果你的字段经常出现负值，请改用 sint32。"
 
 #: ../../reference/runtime_config.md
 msgid "int"
-msgstr ""
+msgstr "int"
 
 #: ../../reference/runtime_config.md
 msgid "<div><h4 id=\"int64\" /></div><a name=\"int64\" /> int64"
-msgstr ""
+msgstr "<div><h4 id=\"int64\" /></div><a name=\"int64\" /> int64"
 
 #: ../../reference/runtime_config.md
 msgid ""
 "Uses variable-length encoding. Inefficient for encoding negative numbers "
 "– if your field is likely to have negative values, use sint64 instead."
 msgstr ""
+"使用可变长度编码。编码负数的效率较低——如果你的字段经常出现负值，请改用 sint64。"
 
 #: ../../reference/runtime_config.md
 msgid "long"
-msgstr ""
+msgstr "long"
 
 #: ../../reference/runtime_config.md
 msgid "int/long"
-msgstr ""
+msgstr "int/long"
 
 #: ../../reference/runtime_config.md
 msgid "<div><h4 id=\"uint32\" /></div><a name=\"uint32\" /> uint32"
-msgstr ""
+msgstr "<div><h4 id=\"uint32\" /></div><a name=\"uint32\" /> uint32"
 
 #: ../../reference/runtime_config.md
 msgid "Uses variable-length encoding."
-msgstr ""
+msgstr "使用可变长度编码。"
 
 #: ../../reference/runtime_config.md
 msgid "<div><h4 id=\"uint64\" /></div><a name=\"uint64\" /> uint64"
-msgstr ""
+msgstr "<div><h4 id=\"uint64\" /></div><a name=\"uint64\" /> uint64"
 
 #: ../../reference/runtime_config.md
 msgid "<div><h4 id=\"sint32\" /></div><a name=\"sint32\" /> sint32"
-msgstr ""
+msgstr "<div><h4 id=\"sint32\" /></div><a name=\"sint32\" /> sint32"
 
 #: ../../reference/runtime_config.md
 msgid ""
 "Uses variable-length encoding. Signed int value. These more efficiently "
 "encode negative numbers than regular int32s."
 msgstr ""
+"使用可变长度编码。有符号整型值。它比常规的 int32 类型能更高效地编码负数。"
 
 #: ../../reference/runtime_config.md
 msgid "<div><h4 id=\"sint64\" /></div><a name=\"sint64\" /> sint64"
-msgstr ""
+msgstr "<div><h4 id=\"sint64\" /></div><a name=\"sint64\" /> sint64"
 
 #: ../../reference/runtime_config.md
 msgid ""
 "Uses variable-length encoding. Signed int value. These more efficiently "
 "encode negative numbers than regular int64s."
 msgstr ""
+"使用可变长度编码。有符号整型值。它比常规的 int64 类型能更高效地编码负数。"
 
 #: ../../reference/runtime_config.md
 msgid "<div><h4 id=\"fixed32\" /></div><a name=\"fixed32\" /> fixed32"
-msgstr ""
+msgstr "<div><h4 id=\"fixed32\" /></div><a name=\"fixed32\" /> fixed32"
 
 #: ../../reference/runtime_config.md
 msgid ""
 "Always four bytes. More efficient than uint32 if values are often greater"
 " than 2^28."
 msgstr ""
+"固定为四个字节。如果数值经常大于 2^28，它会比 uint32 更高效。"
 
 #: ../../reference/runtime_config.md
 msgid "<div><h4 id=\"fixed64\" /></div><a name=\"fixed64\" /> fixed64"
-msgstr ""
+msgstr "<div><h4 id=\"fixed64\" /></div><a name=\"fixed64\" /> fixed64"
 
 #: ../../reference/runtime_config.md
 msgid ""
 "Always eight bytes. More efficient than uint64 if values are often "
 "greater than 2^56."
 msgstr ""
+"固定为八个字节。如果数值经常大于 2^56，它会比 uint64 更高效。"
 
 #: ../../reference/runtime_config.md
 msgid "<div><h4 id=\"sfixed32\" /></div><a name=\"sfixed32\" /> sfixed32"
-msgstr ""
+msgstr "<div><h4 id=\"sfixed32\" /></div><a name=\"sfixed32\" /> sfixed32"
 
 #: ../../reference/runtime_config.md
 msgid "Always four bytes."
-msgstr ""
+msgstr "固定为四个字节。"
 
 #: ../../reference/runtime_config.md
 msgid "<div><h4 id=\"sfixed64\" /></div><a name=\"sfixed64\" /> sfixed64"
-msgstr ""
+msgstr "<div><h4 id=\"sfixed64\" /></div><a name=\"sfixed64\" /> sfixed64"
 
 #: ../../reference/runtime_config.md
 msgid "Always eight bytes."
-msgstr ""
+msgstr "固定为八个字节。"
 
 #: ../../reference/runtime_config.md
 msgid "<div><h4 id=\"bool\" /></div><a name=\"bool\" /> bool"
-msgstr ""
+msgstr "<div><h4 id=\"bool\" /></div><a name=\"bool\" /> bool"
 
 #: ../../reference/runtime_config.md
 msgid "boolean"
-msgstr ""
+msgstr "boolean"
 
 #: ../../reference/runtime_config.md
 msgid "<div><h4 id=\"string\" /></div><a name=\"string\" /> string"
-msgstr ""
+msgstr "<div><h4 id=\"string\" /></div><a name=\"string\" /> string"
 
 #: ../../reference/runtime_config.md
 msgid "A string must always contain UTF-8 encoded or 7-bit ASCII text."
-msgstr ""
+msgstr "字符串必须始终包含 UTF-8 编码或 7 位 ASCII 编码的文本。"
 
 #: ../../reference/runtime_config.md
 msgid "string"
-msgstr ""
+msgstr "string"
 
 #: ../../reference/runtime_config.md
 msgid "String"
-msgstr ""
+msgstr "String"
 
 #: ../../reference/runtime_config.md
 msgid "str/unicode"
-msgstr ""
+msgstr "str/unicode"
 
 #: ../../reference/runtime_config.md
 msgid "<div><h4 id=\"bytes\" /></div><a name=\"bytes\" /> bytes"
-msgstr ""
+msgstr "<div><h4 id=\"bytes\" /></div><a name=\"bytes\" /> bytes"
 
 #: ../../reference/runtime_config.md
 msgid "May contain any arbitrary sequence of bytes."
-msgstr ""
+msgstr "可以包含任意的字节序列。"
 
 #: ../../reference/runtime_config.md
 msgid "ByteString"
-msgstr ""
+msgstr "ByteString"
 
 #: ../../reference/runtime_config.md
 msgid "str"
-msgstr ""
+msgstr "str"
