@@ -25,11 +25,11 @@ msgstr "SPU（密文运算单元）运行时配置"
 
 #: ../../reference/runtime_config.md:3
 msgid "Table of Contents"
-msgstr "目录表"
+msgstr "目录"
 
 #: ../../reference/runtime_config.md:7 ../../reference/runtime_config.md:42
 msgid "Messages"
-msgstr "信息"
+msgstr "消息类型"
 
 #: ../../reference/runtime_config.md:8
 msgid "[CheetahConfig](#cheetahconfig)"
