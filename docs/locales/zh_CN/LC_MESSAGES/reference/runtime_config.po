@@ -485,8 +485,8 @@ msgid ""
 " options are disabled."
 msgstr ""
 "启用后，运行时将记录详细的 pphlo 计时数据，仅用于调试目的。"
-"警告：发送字节数的信息仅在 experimental_enable_inter_op_par 和"
-" experimental_enable_intra_op_par 选项被禁用时才是准确的。"
+"警告：发送字节数的信息仅在禁用 experimental_enable_inter_op_par 和"
+" experimental_enable_intra_op_par 选项时才是准确的。"
 
 #: ../../reference/runtime_config.md
 msgid "enable_hal_profile"
