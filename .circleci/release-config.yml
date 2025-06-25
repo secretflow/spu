@@ -60,6 +60,12 @@ commands:
 
             python3 -m twine upload -r pypi -u __token__ -p ${PYPI_TWINE_TOKEN} bazel-bin/spu*.whl
 
+            cd sml
+            python3 setup.py bdist_wheel
+            cd -
+            ls sml/dist/*.whl
+            python3 -m twine upload -r pypi -u __token__ -p ${PYPI_TWINE_TOKEN} sml/dist/*.whl
+
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
 jobs:

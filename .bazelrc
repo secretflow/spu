@@ -72,3 +72,4 @@ build:linux --linkopt=-fopenmp
 
 # NOTE: fix build on linux_aarch64, since `build:linux_aarch64` works only if `--config linux_aarch64` option included.
 build:linux --cxxopt=-Wno-mismatched-new-delete
+

@@ -21,7 +21,7 @@
 
 module(
     name = "spulib",
-    version = "0.9.4.dev20250522",
+    version = "0.9.4.dev20250618",
     compatibility_level = 1,
 )
 
@@ -62,8 +62,8 @@ bazel_dep(name = "leveldb", version = "1.23")
 
 # self-hosted registry
 bazel_dep(name = "eigen", version = "3.4.90-20230801-66e8f3")
-bazel_dep(name = "emp-tool", version = "0.2.5")
-bazel_dep(name = "emp-ot", version = "0.2.4")
+bazel_dep(name = "emp-tool", version = "0.2.5.bcr.1")
+bazel_dep(name = "emp-ot", version = "0.2.4.bcr.1")
 bazel_dep(name = "brpc", version = "1.11.0-20241212-282bc90")
 bazel_dep(name = "seal", version = "4.1.1")
 bazel_dep(name = "cutlass", version = "3.5.1")

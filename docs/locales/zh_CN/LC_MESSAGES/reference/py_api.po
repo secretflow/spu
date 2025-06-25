@@ -198,4 +198,3 @@ msgstr "装饰后，我们调用普通 jnp 函数就可以达到调用 SPU 函�
 #: of spu.utils.simulation.sim_jax:12
 msgid "The function will be evaluated in an spu simulator."
 msgstr "相应的函数会在 SPU 模拟器中运行。"
-

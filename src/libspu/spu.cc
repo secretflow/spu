@@ -266,6 +266,9 @@ std::string RuntimeConfig::DumpToString() const {
     case ProtocolKind::SECURENN:
       ss += "SECURENN";
       break;
+    case ProtocolKind::SWIFT:
+      ss += "SWIFT";
+      break;
   }
   ss += "\n";
 
@@ -466,6 +469,49 @@ bool RuntimeConfig::ParseFromString(std::string_view data) {
   if (!pb_conf.ParseFromString(data)) return false;
   convertFromPB(pb_conf, *this);
   return true;
+}
+
+bool CompilerOptions::ParseFromString(std::string_view data) {
+  pb::CompilerOptions pb_opts;
+  if (!pb_opts.ParseFromString(data)) return false;
+  enable_pretty_print = pb_opts.enable_pretty_print();
+  pretty_print_dump_dir = pb_opts.pretty_print_dump_dir();
+  xla_pp_kind = static_cast<XLAPrettyPrintKind>(pb_opts.xla_pp_kind());
+  disable_sqrt_plus_epsilon_rewrite =
+      pb_opts.disable_sqrt_plus_epsilon_rewrite();
+  disable_div_sqrt_rewrite = pb_opts.disable_div_sqrt_rewrite();
+  disable_reduce_truncation_optimization =
+      pb_opts.disable_reduce_truncation_optimization();
+  disable_maxpooling_optimization = pb_opts.disable_maxpooling_optimization();
+  disallow_mix_types_opts = pb_opts.disallow_mix_types_opts();
+  disable_select_optimization = pb_opts.disable_select_optimization();
+  enable_optimize_denominator_with_broadcast =
+      pb_opts.enable_optimize_denominator_with_broadcast();
+  disable_deallocation_insertion = pb_opts.disable_deallocation_insertion();
+  disable_partial_sort_optimization =
+      pb_opts.disable_partial_sort_optimization();
+  return true;
+}
+
+std::string CompilerOptions::SerializeAsString() const {
+  pb::CompilerOptions pb_opts;
+  pb_opts.set_enable_pretty_print(enable_pretty_print);
+  pb_opts.set_pretty_print_dump_dir(pretty_print_dump_dir);
+  pb_opts.set_xla_pp_kind(static_cast<pb::XLAPrettyPrintKind>(xla_pp_kind));
+  pb_opts.set_disable_sqrt_plus_epsilon_rewrite(
+      disable_sqrt_plus_epsilon_rewrite);
+  pb_opts.set_disable_div_sqrt_rewrite(disable_div_sqrt_rewrite);
+  pb_opts.set_disable_reduce_truncation_optimization(
+      disable_reduce_truncation_optimization);
+  pb_opts.set_disable_maxpooling_optimization(disable_maxpooling_optimization);
+  pb_opts.set_disallow_mix_types_opts(disallow_mix_types_opts);
+  pb_opts.set_disable_select_optimization(disable_select_optimization);
+  pb_opts.set_enable_optimize_denominator_with_broadcast(
+      enable_optimize_denominator_with_broadcast);
+  pb_opts.set_disable_deallocation_insertion(disable_deallocation_insertion);
+  pb_opts.set_disable_partial_sort_optimization(
+      disable_partial_sort_optimization);
+  return pb_opts.SerializeAsString();
 }
 
 bool ExecutableProto::ParseFromString(std::string_view data) {

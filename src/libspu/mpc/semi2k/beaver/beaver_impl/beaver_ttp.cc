@@ -174,19 +174,17 @@ class ProgressiveReader : public brpc::ProgressiveReader {
   }
 
   void OnEndOfMessage(const butil::Status& status) final {
-    {
-      std::lock_guard lk(lock_);
-      if (current_state_ == End) {
-        // received all data.
-        read_status_ = status;
-      } else if (status.ok()) {
-        // rpc streaming finished, but we expected more data
-        read_status_ =
-            butil::Status(-1, "response size mismatch, need more data");
-      } else {
-        // some error happend in network or OnReadOnePart
-        read_status_ = status;
-      }
+    std::lock_guard lk(lock_);
+    if (current_state_ == End) {
+      // received all data.
+      read_status_ = status;
+    } else if (status.ok()) {
+      // rpc streaming finished, but we expected more data
+      read_status_ =
+          butil::Status(-1, "response size mismatch, need more data");
+    } else {
+      // some error happend in network or OnReadOnePart
+      read_status_ = status;
     }
     cond_.notify_all();
   }

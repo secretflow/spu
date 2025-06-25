@@ -21,26 +21,9 @@ import multiprocess
 import spu.libspu.link as link
 import spu.psi as psi
 from spu.tests.utils import get_free_port, wc_count
-from spu.utils.simulation import PropagatingThread
 
 
 class UnitTests(unittest.TestCase):
-    def run_psi(self, fn):
-        wsize = 2
-
-        lctx_desc = link.Desc()
-        for rank in range(wsize):
-            lctx_desc.add_party(f"id_{rank}", f"thread_{rank}")
-
-        def wrap(rank):
-            lctx = link.create_mem(lctx_desc, rank)
-            return fn(lctx)
-
-        jobs = [PropagatingThread(target=wrap, args=(rank,)) for rank in range(wsize)]
-
-        [job.start() for job in jobs]
-        [job.join() for job in jobs]
-
     def run_streaming_psi(self, wsize, inputs, outputs, selected_fields, protocol):
         time_stamp = time.time()
         lctx_desc = link.Desc()
@@ -50,24 +33,27 @@ class UnitTests(unittest.TestCase):
             port = get_free_port()
             lctx_desc.add_party(f"id_{rank}", f"127.0.0.1:{port}")
 
-        def wrap(rank, selected_fields, input_path, output_path, type):
+        def wrap(rank, selected_fields, input_path, output_path, protocol):
             lctx = link.create_brpc(lctx_desc, rank)
 
-            config = psi.BucketPsiConfig(
-                psi_type=type,
-                broadcast_result=True,
-                input_params=psi.InputParams(
-                    path=input_path, select_fields=selected_fields
+            config = psi.PsiExecuteConfig(
+                protocol_conf=psi.PsiProtocolConfig(
+                    protocol=protocol,
+                    receiver_rank=0,
+                    broadcast_result=True,
+                    ecdh_params=psi.EcdhParams(curve=psi.EllipticCurveType.CURVE_25519),
                 ),
-                output_params=psi.OutputParams(path=output_path, need_sort=True),
-                curve_type=psi.CurveType.CURVE_25519,
+                input_params=psi.InputParams(
+                    type=psi.SourceType.SOURCE_TYPE_FILE_CSV,
+                    path=input_path,
+                    selected_keys=selected_fields,
+                ),
+                output_params=psi.OutputParams(
+                    type=psi.SourceType.SOURCE_TYPE_FILE_CSV, path=output_path
+                ),
             )
 
-            if type == psi.PsiType.DP_PSI_2PC:
-                config.dppsi_params.bob_sub_sampling = 0.9
-                config.dppsi_params.epsilon = 3
-
-            report = psi.bucket_psi(lctx, config)
+            report = psi.psi_execute(config, lctx)
 
             source_count = wc_count(input_path)
             output_count = wc_count(output_path)
@@ -109,29 +95,6 @@ class UnitTests(unittest.TestCase):
 
         return data, expected
 
-    def test_reveal_to(self):
-        data, expected = self.prep_data()
-        expected.sort()
-
-        reveal_to_rank = 0
-
-        def fn(lctx):
-            config = psi.MemoryPsiConfig(
-                psi_type=psi.PsiType.KKRT_PSI_2PC,
-                receiver_rank=reveal_to_rank,
-                broadcast_result=False,
-            )
-            joint = psi.mem_psi(lctx, config, data[lctx.rank])
-
-            joint.sort()
-
-            if lctx.rank == reveal_to_rank:
-                self.assertEqual(joint, expected)
-            else:
-                self.assertEqual(joint, [])
-
-        self.run_psi(fn)
-
     def test_ecdh_3pc(self):
         print("----------test_ecdh_3pc-------------")
 
@@ -144,7 +107,7 @@ class UnitTests(unittest.TestCase):
         selected_fields = ["id", "idx"]
 
         self.run_streaming_psi(
-            3, inputs, outputs, selected_fields, psi.PsiType.ECDH_PSI_3PC
+            3, inputs, outputs, selected_fields, psi.PsiProtocol.PROTOCOL_ECDH_3PC
         )
 
     def test_dppsi_2pc(self):
@@ -155,7 +118,7 @@ class UnitTests(unittest.TestCase):
         selected_fields = ["id", "idx"]
 
         self.run_streaming_psi(
-            2, inputs, outputs, selected_fields, psi.PsiType.DP_PSI_2PC
+            2, inputs, outputs, selected_fields, psi.PsiProtocol.PROTOCOL_DP
         )
 
 

@@ -21,6 +21,8 @@
 #include "libspu/mpc/aby3/protocol.h"
 #include "libspu/mpc/cheetah/io.h"
 #include "libspu/mpc/cheetah/protocol.h"
+#include "libspu/mpc/experimental/swift/io.h"
+#include "libspu/mpc/experimental/swift/protocol.h"
 #include "libspu/mpc/ref2k/ref2k.h"
 #include "libspu/mpc/securenn/io.h"
 #include "libspu/mpc/securenn/protocol.h"
@@ -48,6 +50,9 @@ void Factory::RegisterProtocol(
     case ProtocolKind::SECURENN: {
       return regSecurennProtocol(ctx, lctx);
     }
+    case ProtocolKind::SWIFT: {
+      return regSwiftProtocol(ctx, lctx);
+    }
     default: {
       SPU_THROW("Invalid protocol kind {}", ctx->config().protocol);
     }
@@ -71,6 +76,9 @@ std::unique_ptr<IoInterface> Factory::CreateIO(const RuntimeConfig& conf,
     }
     case ProtocolKind::SECURENN: {
       return securenn::makeSecurennIo(conf.field, npc);
+    }
+    case ProtocolKind::SWIFT: {
+      return swift::makeSwiftIo(conf.field, npc);
     }
     default: {
       SPU_THROW("Invalid protocol kind {}", conf.protocol);
