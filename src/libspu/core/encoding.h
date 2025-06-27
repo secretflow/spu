@@ -90,4 +90,10 @@ NdArrayRef encodeToRing(const PtBufferView& src, FieldType field,
 void decodeFromRing(const NdArrayRef& src, DataType in_dtype, size_t fxp_bits,
                     PtBufferView* out_bv, PtType* out_pt_type = nullptr);
 
+NdArrayRef encodeToGfmp(const PtBufferView& src, FieldType field,
+                        size_t fxp_bits, DataType* out_dtype = nullptr);
+
+void decodeFromGfmp(const NdArrayRef& src, DataType in_dtype, size_t fxp_bits,
+                    PtBufferView* out_bv, PtType* out_pt_type = nullptr);
+
 }  // namespace spu

@@ -57,6 +57,36 @@ void gfmp_mod_impl(NdArrayRef& ret, const NdArrayRef& x) {
   });
 }
 
+// batch inversion
+void gfmp_inverse_impl(NdArrayRef& ret, const NdArrayRef& x) {
+  ENFORCE_EQ_ELSIZE_AND_SHAPE(ret, x);
+  const auto* ty = x.eltype().as<GfmpTy>();
+  const auto field = ty->field();
+  const auto numel = x.numel();
+
+  NdArrayRef prefix_prod(ret.eltype(), ret.shape());
+
+  DISPATCH_ALL_FIELDS(field, [&]() {
+    NdArrayView<ring2k_t> _prefix_prod(prefix_prod);
+    NdArrayView<ring2k_t> _x(x);
+    NdArrayView<ring2k_t> _ret(ret);
+    _prefix_prod[0] = _x[0];
+    // TODO optimize prefix_mult in parallel
+    for (int64_t i = 1; i < numel; ++i) {
+      _prefix_prod[i] = mul_mod(_prefix_prod[i - 1], _x[i]);
+    }
+
+    _ret[numel - 1] = mul_inv(_prefix_prod[numel - 1]);
+    for (int64_t i = numel - 1; i >= 1; i--) {
+      _ret[i - 1] = mul_mod(_ret[i], _x[i]);
+    }
+
+    for (int64_t i = 1; i < numel; ++i) {
+      _ret[i] = mul_mod(_ret[i], _prefix_prod[i - 1]);
+    }
+  });
+}
+
 void gfmp_mul_mod_impl(NdArrayRef& ret, const NdArrayRef& x,
                        const NdArrayRef& y) {
   ENFORCE_EQ_ELSIZE_AND_SHAPE(ret, x);
@@ -124,6 +154,7 @@ void gfmp_div_mod_impl(NdArrayRef& ret, const NdArrayRef& x,
 }
 
 }  // namespace
+
 NdArrayRef gfmp_zeros(FieldType field, const Shape& shape) {
   NdArrayRef ret(makeType<GfmpTy>(field), shape);
   auto numel = ret.numel();
@@ -134,16 +165,21 @@ NdArrayRef gfmp_zeros(FieldType field, const Shape& shape) {
     return ret;
   });
 }
+
 NdArrayRef gfmp_rand(FieldType field, const Shape& shape) {
   uint64_t cnt = 0;
   return gfmp_rand(field, shape, yacl::crypto::SecureRandSeed(), &cnt);
 }
+
+// FIXME: this function is not strictly correct as the probability among the
+// range [0, p-1] is not uniform.
 
 NdArrayRef gfmp_rand(FieldType field, const Shape& shape, uint128_t prg_seed,
                      uint64_t* prg_counter) {
   constexpr yacl::crypto::SymmetricCrypto::CryptoType kCryptoType =
       yacl::crypto::SymmetricCrypto::CryptoType::AES128_CTR;
   constexpr uint128_t kAesInitialVector = 0U;
+
   NdArrayRef res(makeType<GfmpTy>(field), shape);
   DISPATCH_ALL_FIELDS(field, [&]() {
     *prg_counter = yacl::crypto::FillPRandWithMersennePrime<ring2k_t>(
@@ -163,6 +199,13 @@ NdArrayRef gfmp_mod(const NdArrayRef& x) {
 void gfmp_mod_(NdArrayRef& x) {
   SPU_ENFORCE_GFMP(x);
   gfmp_mod_impl(x, x);
+}
+
+NdArrayRef gfmp_batch_inverse(const NdArrayRef& x) {
+  SPU_ENFORCE_GFMP(x);
+  NdArrayRef ret(x.eltype(), x.shape());
+  gfmp_inverse_impl(ret, x);
+  return ret;
 }
 
 NdArrayRef gfmp_mul_mod(const NdArrayRef& x, const NdArrayRef& y) {
@@ -248,4 +291,153 @@ void gfmp_exp_mod_(NdArrayRef& x, const NdArrayRef& y) {
   gfmp_exp_mod_impl(x, x, y);
 }
 
+NdArrayRef gfmp_mmul_mod(const NdArrayRef& x, const NdArrayRef& y) {
+  SPU_ENFORCE_GFMP(x);
+  SPU_ENFORCE_GFMP(y);
+  SPU_ENFORCE_EQ(x.shape()[1], y.shape()[0]);
+  const auto field = x.eltype().as<GfmpTy>()->field();
+
+  // FIXME Optimize me with Eigen
+
+  return DISPATCH_ALL_FIELDS(field, [&]() {
+    NdArrayView<ring2k_t> _x(x);
+    NdArrayView<ring2k_t> _y(y);
+    NdArrayRef out(x.eltype(), {x.shape()[0], y.shape()[1]});
+    NdArrayView<ring2k_t> _out(out);
+    auto M = x.shape()[0];
+    auto N = y.shape()[1];
+    auto K = x.shape()[1];
+
+    pforeach(0, M, [&](int64_t i) {
+      for (int64_t j = 0; j < N; ++j) {
+        ring2k_t sum = 0;
+        for (int64_t k = 0; k < K; ++k) {
+          sum = add_mod(sum, mul_mod(_x[i * K + k], _y[k * N + j]));
+        }
+        _out[i * N + j] = sum;
+      }
+    });
+
+    return out;
+  });
+}
+
+NdArrayRef gfmp_arshift_mod(const NdArrayRef& in, const Sizes& bits) {
+  SPU_ENFORCE_GFMP(in);
+  const auto* ty = in.eltype().as<GfmpTy>();
+  const auto field = ty->field();
+  bool is_splat = bits.size() == 1;
+  NdArrayRef out(in.eltype(), in.shape());
+  DISPATCH_ALL_FIELDS(field, [&]() {
+    using ring_2k_s = std::make_signed_t<ring2k_t>;
+    size_t exp = ScalarTypeToPrime<ring2k_t>::exp;
+    ring2k_t prime = ScalarTypeToPrime<ring2k_t>::prime;
+    auto mask = static_cast<ring2k_t>(0xFF) << (exp - 1);
+    NdArrayView<ring2k_t> _in(in);
+    NdArrayView<ring2k_t> _out(out);
+    pforeach(0, in.numel(), [&](int64_t idx) {
+      auto msb = (_in[idx] >> (exp - 1)) & 1;
+      auto mask_ = msb ? mask : 0;
+      auto tmp = (_in[idx] & ~mask) | mask_;
+      auto shift =
+          static_cast<ring_2k_s>(tmp) >> (is_splat ? bits[0] : bits[idx]);
+      _out[idx] = shift & prime;
+    });
+  });
+  return out;
+}
+
+std::vector<NdArrayRef> gfmp_rand_shamir_shares(const NdArrayRef& x,
+                                                size_t world_size,
+                                                size_t threshold) {
+  auto field = x.eltype().as<GfmpTy>()->field();
+  auto coeffs = gfmp_rand(field, {static_cast<int64_t>(threshold) * x.numel()});
+  return gfmp_rand_shamir_shares(x, coeffs, world_size, threshold);
+}
+
+std::vector<NdArrayRef> gfmp_rand_shamir_shares(const NdArrayRef& x,
+                                                const NdArrayRef& coeffs,
+                                                size_t world_size,
+                                                size_t threshold) {
+  SPU_ENFORCE_GFMP(x);
+  SPU_ENFORCE(world_size > threshold && threshold >= 1,
+              "invalid party numbers {} or threshold {}", world_size,
+              threshold);
+  SPU_ENFORCE_EQ(coeffs.numel(), static_cast<int64_t>(threshold) * x.numel());
+  const auto* ty = x.eltype().as<GfmpTy>();
+  const auto field = ty->field();
+  // For each element, we need to generate `threshold` random coefficients
+  std::vector<NdArrayRef> shares;
+  shares.reserve(world_size);
+  for (size_t i = 0; i < world_size; ++i) {
+    shares.emplace_back(x.eltype(), x.shape());
+  }
+
+  DISPATCH_ALL_FIELDS(field, [&]() {
+    NdArrayView<ring2k_t> _x(x);
+    NdArrayView<ring2k_t> _coeffs(coeffs);
+    pforeach(0, x.numel(), [&](int64_t idx) {
+      for (size_t i = 1; i <= world_size; ++i) {
+        size_t coeff_beg = 0 + idx * threshold;
+        ring2k_t share = 0;
+        for (size_t j = 0; j < threshold; j++) {
+          ring2k_t coeff = _coeffs[coeff_beg + j];
+          share = mul_mod(static_cast<ring2k_t>(i), add_mod(share, coeff));
+        }
+        NdArrayView<ring2k_t> _share(shares[i - 1]);
+        _share[idx] = add_mod(share, _x[idx]);
+      }
+    });
+  });
+  return shares;
+}
+
+NdArrayRef gfmp_reconstruct_shamir_shares(absl::Span<const NdArrayRef> shares,
+                                          size_t world_size, size_t threshold) {
+  SPU_ENFORCE(std::all_of(shares.begin(), shares.end(),
+                          [&](const NdArrayRef& x) {
+                            return x.eltype() == shares[0].eltype() &&
+                                   x.shape() == shares[0].shape() &&
+                                   x.eltype().isa<GfmpTy>();
+                          }),
+              "Share shape and type should be the same");
+  SPU_ENFORCE_GT(shares.size(), threshold,
+                 "Shares size and threshold are not matched");
+  SPU_ENFORCE(world_size >= threshold * 2 + 1 && threshold >= 1,
+              "invalid party numbers {} or threshold {}", world_size,
+              threshold);
+  const auto* ty = shares[0].eltype().as<GfmpTy>();
+  const auto field = ty->field();
+  const auto numel = shares[0].numel();
+  NdArrayRef out(makeType<GfmpTy>(field), shares[0].shape());
+
+  DISPATCH_ALL_FIELDS(field, [&]() {
+    auto rec = GenReconstructVector<ring2k_t>(shares.size());
+
+    NdArrayView<ring2k_t> _out(out);
+    pforeach(0, numel, [&](int64_t idx) {
+      ring2k_t secret = 0;
+      // TODO optimize me: the reconstruction vector for a fixed point can be
+      // pre-computed
+      for (size_t i = 0; i < shares.size(); ++i) {
+        NdArrayView<ring2k_t> _share(shares[i]);
+        // ring2k_t y = _share[idx];
+        // ring2k_t prod = 1;
+        // for (size_t j = 0; j < shares.size(); ++j) {
+        //   if (i != j) {
+        //     ring2k_t xi = i + 1;
+        //     ring2k_t xj = j + 1;
+        //     auto tmp = mul_mod(xj, mul_inv(add_mod(xj, add_inv(xi))));
+        //     prod = mul_mod(prod, tmp);
+        //   }
+        // }
+        // auto tmp = mul_mod(y, prod);
+        // secret = add_mod(secret, tmp);
+        secret = add_mod(secret, mul_mod(_share[idx], rec[i]));
+      }
+      _out[idx] = secret;
+    });
+  });
+  return out;
+}
 }  // namespace spu::mpc
