@@ -11,7 +11,7 @@ With the aid of visualized DAG, the execution logic and required operators will 
 
 
 .. Note::
-    Please refer to :ref:`/development/compiler.rst` for description of the role of XLA in SPU.
+    Please refer to :doc:`/development/compiler` for description of the role of XLA in SPU.
 
 
 TL;DR
