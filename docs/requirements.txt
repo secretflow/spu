@@ -1,5 +1,5 @@
 linkify-it-py~=2.0
-mdutils~=1.6
+mdutils~=1.7
 myst-nb~=1.2
 pytablewriter~=1.2
 rstcheck~=6.2
