@@ -57,29 +57,6 @@ jobs:
       - run:
           name: Whitespace check
           command: bash ../devtools/lint-whitespace.sh
-  docs_publish:
-    docker:
-      - image: cimg/python:3.10-node
-    shell: /bin/bash --login -eo pipefail
-    steps:
-      - checkout
-      - run:
-          name: Build docs and publish
-          command: |
-            set -ex
-            cd docs
-            export DRY_RUN=0
-            export DOCTOOLS_PUBLISH_NPM_TOKEN=${DOCTOOLS_PUBLISH_NPM_TOKEN}
-            sudo apt-get update && sudo apt install -y git make build-essential g++
-            python3 -m venv ~/.venv/docs
-            source ~/.venv/docs/bin/activate
-            python -m pip install -r ../requirements.txt
-            pip install spu
-            python -m pip install -r requirements.txt
-            secretflow-doctools build --lang zh_CN --lang en
-            secretflow-doctools publish \
-              --name @secretflow/x-spu \
-              --index-js _build/esm/index.js
 
 workflows:
   unittest-workflow:
@@ -107,12 +84,6 @@ workflows:
             MODULE.bazel build-and-run true
             src/MODULE.bazel build-and-run true
       - lint
-      - docs_publish:
-          filters:
-            branches:
-              only: main
-            tags:
-              only: /^v.*/
   benchmark-workflow:
     when: << pipeline.parameters.run-schedule >>
     jobs:
