@@ -22,8 +22,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent.resolve()))
 project = "SPU"
 
 autodoc_mock_imports = [
-    "spu.libspu",
     "spu.libpsi",
+    "spu.libspu",
 ]
 
 extensions = [
