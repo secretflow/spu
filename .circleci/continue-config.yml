@@ -58,9 +58,9 @@ commands:
       - run:
           name: Setup BuildBuddy Cache
           command: |
-            ../devtools/bazel_cache_setup.py
+            ../devtools/bazel_cache_setup.py --min_download
             pushd src
-            ../../devtools/bazel_cache_setup.py
+            ../../devtools/bazel_cache_setup.py --min_download
             popd
       - run:
           name: "build"
