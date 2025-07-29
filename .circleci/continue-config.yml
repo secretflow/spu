@@ -56,12 +56,11 @@ commands:
           name: Checkout devtools
           command: git clone https://github.com/secretflow/devtools.git ../devtools
       - run:
-          name: Setup GCS
+          name: Setup BuildBuddy Cache
           command: |
-            echo ${gcs_content} > ../gcs.data
-            ../devtools/bazel_cache_setup.py --in_file=../gcs.data --out_file=../gcs.json --min_download
+            ../devtools/bazel_cache_setup.py
             pushd src
-            ../../devtools/bazel_cache_setup.py --in_file=../../gcs.data --out_file=../../gcs.json --min_download
+            ../../devtools/bazel_cache_setup.py
             popd
       - run:
           name: "build"
