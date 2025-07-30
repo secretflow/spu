@@ -21,6 +21,8 @@
 #include "libspu/mpc/aby3/protocol.h"
 #include "libspu/mpc/cheetah/io.h"
 #include "libspu/mpc/cheetah/protocol.h"
+#include "libspu/mpc/experimental/shamir/io.h"
+#include "libspu/mpc/experimental/shamir/protocol.h"
 #include "libspu/mpc/experimental/swift/io.h"
 #include "libspu/mpc/experimental/swift/protocol.h"
 #include "libspu/mpc/ref2k/ref2k.h"
@@ -53,6 +55,9 @@ void Factory::RegisterProtocol(
     case ProtocolKind::SWIFT: {
       return regSwiftProtocol(ctx, lctx);
     }
+    case ProtocolKind::SHAMIR: {
+      return regShamirProtocol(ctx, lctx);
+    }
     default: {
       SPU_THROW("Invalid protocol kind {}", ctx->config().protocol);
     }
@@ -79,6 +84,9 @@ std::unique_ptr<IoInterface> Factory::CreateIO(const RuntimeConfig& conf,
     }
     case ProtocolKind::SWIFT: {
       return swift::makeSwiftIo(conf.field, npc);
+    }
+    case ProtocolKind::SHAMIR: {
+      return shamir::makeShamirIo(conf.field, npc, conf.sss_threshold);
     }
     default: {
       SPU_THROW("Invalid protocol kind {}", conf.protocol);
