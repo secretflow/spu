@@ -369,9 +369,9 @@ filelock==3.16.1 \
     #   huggingface-hub
     #   torch
     #   transformers
-flatbuffers==24.12.23 \
-    --hash=sha256:2910b0bc6ae9b6db78dd2b18d0b7a0709ba240fb5585f286a3a2b30785c22dac \
-    --hash=sha256:c418e0d48890f4142b92fd3e343e73a48f194e1f80075ddcc5793779b3585444
+flatbuffers==25.2.10 \
+    --hash=sha256:97e451377a41262f8d9bd4295cc836133415cc03d8cb966410a4af92eb00d26e \
+    --hash=sha256:ebba5f4d5ea615af3f7fd70fc310636fbb2bbd1f566ac0a23d98dd412de50051
     # via tensorflow
 flax==0.9.0 \
     --hash=sha256:12cd8f7162165ddd56877fb1cd9a4fcb47a31569e4c5343eeb59a36369fa2cfe \
