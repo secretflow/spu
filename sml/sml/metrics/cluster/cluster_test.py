@@ -25,22 +25,27 @@ from sml.metrics.cluster.cluster import adjusted_rand_score, rand_score
 
 
 class UnitTests(unittest.TestCase):
-    def test_rand_score(self):
+    def test_Cluster(self):
         sim = spsim.Simulator.simple(
             2, libspu.ProtocolKind.SEMI2K, libspu.FieldType.FM64
         )
 
         def proc(labels_true, labels_pred):
-            sk_res = sk_rand_score(labels_true, labels_pred)
+            sk_ri = sk_rand_score(labels_true, labels_pred)
+            sk_ari = sk_adjusted_rand_score(labels_true, labels_pred)
             n_classes = int(jnp.unique(labels_true).shape[0])
             n_clusters = int(jnp.unique(labels_pred).shape[0])
-            spu_res = spsim.sim_jax(sim, rand_score, static_argnums=(2, 3))(
+            spu_ri = spsim.sim_jax(sim, rand_score, static_argnums=(2, 3))(
                 labels_true, labels_pred, n_classes, n_clusters
             )
-            return sk_res, spu_res
+            spu_ari = spsim.sim_jax(sim, adjusted_rand_score, static_argnums=(2, 3))(
+                labels_true, labels_pred, n_classes, n_clusters
+            )
+            return (sk_ri, sk_ari), (spu_ri, spu_ari)
 
-        def check(res1, res2):
-            return np.testing.assert_allclose(res1, res2, rtol=1e-3, atol=1e-3)
+        def check(spu_result, sk_result):
+            for pair in zip(spu_result, sk_result):
+                np.testing.assert_allclose(pair[0], pair[1], rtol=1e-3, atol=1e-3)
 
         # --- Test perfect match ---
         labels_true = jnp.array([0, 0, 1, 1], dtype=jnp.int32)
@@ -52,45 +57,13 @@ class UnitTests(unittest.TestCase):
         labels_pred = jnp.array([2, 2, 0, 0], dtype=jnp.int32)
         check(*proc(labels_true, labels_pred))
 
-        # --- Test partial match ---
-        labels_true = jnp.array([0, 0, 1, 2], dtype=jnp.int32)
-        labels_pred = jnp.array([0, 0, 1, 1], dtype=jnp.int32)
+        # --- Test total mismatch ---
+        labels_true = jnp.array([0, 1, 2], dtype=jnp.int32)
+        labels_pred = jnp.array([0, 0, 0], dtype=jnp.int32)
         check(*proc(labels_true, labels_pred))
 
-        # --- Test with more than 2 clusters ---
-        labels_true = jnp.array([0, 1, 2, 3], dtype=jnp.int32)
-        labels_pred = jnp.array([1, 2, 3, 0], dtype=jnp.int32)
-        check(*proc(labels_true, labels_pred))
-
-        labels_true = jnp.array([0, 0, 1, 2], dtype=jnp.int32)
-        labels_pred = jnp.array([2, 0, 2, 5], dtype=jnp.int32)
-        check(*proc(labels_true, labels_pred))
-
-    def test_adjusted_rand_score(self):
-        sim = spsim.Simulator.simple(
-            2, libspu.ProtocolKind.SEMI2K, libspu.FieldType.FM64
-        )
-
-        def proc(labels_true, labels_pred):
-            sk_res = sk_adjusted_rand_score(labels_true, labels_pred)
-            n_classes = int(jnp.unique(labels_true).shape[0])
-            n_clusters = int(jnp.unique(labels_pred).shape[0])
-            spu_res = spsim.sim_jax(sim, adjusted_rand_score, static_argnums=(2, 3))(
-                labels_true, labels_pred, n_classes, n_clusters
-            )
-            return sk_res, spu_res
-
-        def check(res1, res2):
-            return np.testing.assert_allclose(res1, res2, rtol=1e-3, atol=1e-3)
-
-        # --- Test perfect match ---
-        labels_true = jnp.array([0, 0, 1, 1], dtype=jnp.int32)
-        labels_pred = jnp.array([0, 0, 1, 1], dtype=jnp.int32)
-        check(*proc(labels_true, labels_pred))
-
-        # --- Test another perfect match ---
-        labels_true = jnp.array([0, 0, 1, 1], dtype=jnp.int32)
-        labels_pred = jnp.array([2, 2, 0, 0], dtype=jnp.int32)
+        labels_true = jnp.array([0, 1], dtype=jnp.int32)
+        labels_pred = jnp.array([0, 0], dtype=jnp.int32)
         check(*proc(labels_true, labels_pred))
 
         # --- Test partial match ---

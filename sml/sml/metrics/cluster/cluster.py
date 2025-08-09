@@ -121,8 +121,8 @@ def pair_confusion_matrix(
 
     C = jnp.zeros((2, 2), dtype=jnp.int32)
     C = C.at[1, 1].set(sum_squares - n_samples)
-    C = C.at[0, 1].set((contingency.dot(n_k)).sum() - sum_squares)
-    C = C.at[1, 0].set((contingency.T.dot(n_c)).sum() - sum_squares)
+    C = C.at[0, 1].set((n_k**2).sum() - sum_squares)
+    C = C.at[1, 0].set((n_c**2).sum() - sum_squares)
     C = C.at[0, 0].set(n_samples**2 - C[0, 1] - C[1, 0] - sum_squares)
 
     return C
@@ -161,9 +161,7 @@ def rand_score(
     numerator = C.diagonal().sum()
     denominator = C.sum()
 
-    return jnp.where(
-        (numerator == 0) | (denominator == 0), 1.0, numerator / denominator
-    )
+    return jnp.where(denominator == 0, 1.0, numerator / denominator)
 
 
 def adjusted_rand_score(

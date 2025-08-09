@@ -12,4 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import cluster
+from .cluster import rand_score, adjusted_rand_score
