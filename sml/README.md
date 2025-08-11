@@ -4,7 +4,7 @@
 
 The SML (SecretFlow Machine Learning) library is now maintained as an independent repository at:
 
-**🔗 https://github.com/secretflow/sml**
+**🔗 <https://github.com/secretflow/sml>**
 
 ## Migration Notice
 
