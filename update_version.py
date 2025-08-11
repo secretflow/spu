@@ -80,12 +80,6 @@ def main():
         version_pattern3.format(new_version),
     )
 
-    version_pattern3 = 'spu=={}'
-    update_first_matched_pattern_in_file(
-        "sml/requirements.txt",
-        version_pattern3.format('[^\n]*'),
-        version_pattern3.format(new_version),
-    )
 
 
 if __name__ == "__main__":
