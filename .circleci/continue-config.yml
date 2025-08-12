@@ -115,41 +115,6 @@ commands:
 
             status=$((${status0} + ${status1}))
             exit ${status}
-      - run:
-          name: "sml_test"
-          command: |
-            set +e
-
-            declare -i status0=0
-            declare -i status1=0
-            declare -i status2=0
-
-            # build module spu_wheel
-            bazelisk query <<parameters.spu_wheel>>; if [ $? -eq 0 ]; then
-              bazelisk build <<parameters.spu_wheel>> -c opt --ui_event_filters=-info,-debug,-warning; status0=${PIPESTATUS[0]}
-            fi
-
-            #install spu
-            python -m pip install ./bazel-bin/*.whl
-
-            pushd sml
-            python -m pip install -r requirements.txt
-            python setup.py bdist_wheel; status1=${PIPESTATUS[0]}
-            # install sml
-            python -m pip install ./dist/*.whl; status2=${PIPESTATUS[0]}
-
-            python -m pip install pytest==7.3.1 pytest-testmon pytest-custom-exit-code pytest-xdist pytest-cov
-            python -m pytest --suppress-no-test-exit-code --testmon ./ | tee -a sml_test_result.log; status3=${PIPESTATUS[0]}
-            popd
-
-            tar -rvf test_logs.tar sml/sml_test_result.log
-
-            status=$((${status0} + ${status1} + ${status2} + ${status3}))
-            exit ${status}
-      - store_test_results:
-          path: test-results
-      - store_artifacts:
-          path: test_logs.tar
 
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs

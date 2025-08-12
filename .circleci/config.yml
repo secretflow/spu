@@ -73,7 +73,6 @@ workflows:
           tag: "3.9"
           mapping: |
             spu/.* build-and-run true
-            sml/.* build-and-run true
             src/.* build-and-run true
             exmaples/.* build-and-run true
             bazel/.* build-and-run true

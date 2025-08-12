@@ -7,25 +7,12 @@ skip_glob = ["external/*", ".cache/*", "bazel-*/*"]
 
 [tool.rstcheck]
 report_level = "ERROR"
-ignore_directives = [
-    "include",
-    "mermaid",
-    "autoclass",
-    "autofunction",
-]
-ignore_roles = [
-    "spu_code_host",
-]
-ignore_languages = [
-    "cpp"
-]
+ignore_directives = ["include", "mermaid", "autoclass", "autofunction"]
+ignore_roles = ["spu_code_host"]
+ignore_languages = ["cpp"]
 
 [tool.pyright]
-include = [
-    "spu",
-    "sml",
-    "examples",
-]
+include = ["spu", "examples"]
 
 reportMissingImports = true
 reportMissingTypeStubs = false
