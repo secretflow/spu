@@ -89,7 +89,7 @@ def rand_default(rng):
 
 
 def rand_extra_large(rng):
-    return partial(jtu._rand_dtype, rng.randn, scale=2 ** 30)
+    return partial(jtu._rand_dtype, rng.randn, scale=2**30)
 
 
 def rand_not_small_nonzero(rng):

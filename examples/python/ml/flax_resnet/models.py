@@ -118,7 +118,7 @@ class ResNet(nn.Module):
             for j in range(block_size):
                 strides = (2, 2) if i > 0 and j == 0 else (1, 1)
                 x = self.block_cls(
-                    self.num_filters * 2 ** i,
+                    self.num_filters * 2**i,
                     strides=strides,
                     conv=conv,
                     norm=norm,
