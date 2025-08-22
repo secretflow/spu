@@ -27,15 +27,18 @@ from jax import random
 
 import examples.python.ml.flax_vae.utils as vae_utils
 
-# Replace absl.flags used by original authors with argparse for unittest
-parser = argparse.ArgumentParser(description='distributed driver.')
-parser.add_argument("--learning_rate", default=1e-3, type=float)
-parser.add_argument("--batch_size", default=128, type=int)
-parser.add_argument("--num_epochs", default=5, type=int)
-parser.add_argument("--num_steps", type=int)
-parser.add_argument("--latents", default=20, type=int)
-parser.add_argument("--output_dir", default=os.getcwd(), type=str)
-args = parser.parse_args()
+
+class GlobalArgs:
+    def __init__(self):
+        self.learning_rate = 1e-3
+        self.batch_size = 128
+        self.num_epochs = 5
+        self.num_steps = 1
+        self.latents = 20
+        self.output_dir = os.getcwd()
+
+
+args = GlobalArgs()
 
 
 class Encoder(nn.Module):
@@ -199,7 +202,7 @@ def prepare_image(x):
 import json
 import time
 
-import spu.utils.distributed as ppd
+import examples.python.utils.distributed as ppd
 
 with open("examples/python/conf/3pc.json", 'r') as file:
     conf = json.load(file)
@@ -318,4 +321,16 @@ def main():
 
 
 if __name__ == '__main__':
+    # Replace absl.flags used by original authors with argparse for unittest
+    parser = argparse.ArgumentParser(description='distributed driver.')
+    parser.add_argument("--learning_rate", default=1e-3, type=float)
+    parser.add_argument("--batch_size", default=128, type=int)
+    parser.add_argument("--num_epochs", default=5, type=int)
+    parser.add_argument("--num_steps", type=int)
+    parser.add_argument("--latents", default=20, type=int)
+    parser.add_argument("--output_dir", default=os.getcwd(), type=str)
+    pargs = parser.parse_args()
+    for k, v in vars(pargs).items():
+        setattr(args, k, v)
+
     main()

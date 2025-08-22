@@ -287,8 +287,6 @@ def torch_compile(
     from torch_xla import stablehlo
     from torch_xla.stablehlo import VariableType
 
-    from . import distributed
-
     assert isinstance(
         fn, torch.export.ExportedProgram
     ), "input should be an exported torch model"
@@ -327,11 +325,7 @@ def torch_compile(
 
     source.input_visibility.extend(
         [
-            (
-                arg.vtype
-                if isinstance(arg, distributed.SPU.Object)
-                else libspu.Visibility.VIS_PUBLIC
-            )
+            (arg.vtype if hasattr(arg, "vtype") else libspu.Visibility.VIS_PUBLIC)
             for arg in args_params_flat
         ]
     )

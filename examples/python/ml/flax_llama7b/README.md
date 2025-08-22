@@ -47,27 +47,14 @@ This example demonstrates how to use SPU to run secure inference on a pre-traine
 3. Launch SPU backend runtime
 
     ```sh
-    bazel run -c opt //examples/python/utils:nodectl -- --config `pwd`/examples/python/ml/flax_llama7b/3pc.json up
-    ```
-
-    or（recommended）
-
-    ```sh
-    cd examples/python/utils
-    python nodectl.py  --config ../ml/flax_llama7b/3pc.json up
+    python examples/python/utils/nodectl.py  --config ../ml/flax_llama7b/3pc.json up
     ```
 
 4. Run `flax_llama7b` example
 
     ```sh
-    bazel run -c opt //examples/python/ml/flax_llama7b -- --config `pwd`/examples/python/ml/flax_llama7b/3pc.json
+    python examples/python/ml/flax_llama7b/flax_llama7b_split.py --model_path dir-to-flax-llama7b-EasyLM   --config ./3pc.json
     ```
-
-    or（recommended）
-
-    ```sh
-    cd examples/python/ml/flax_llama7b
-    python flax_llama7b_split.py --model_path dir-to-flax-llama7b-EasyLM   --config ./3pc.json
 
     and you can get the following results from our example:
 

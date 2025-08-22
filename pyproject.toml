@@ -1,3 +1,75 @@
+[build-system]
+requires = ["pdm-backend", "packaging"]
+build-backend = "pdm.backend"
+
+[project]
+name = "spu"
+description = "spu"
+readme = "README.md"
+license = "Apache-2.0"
+authors = [
+    { name = "SecretFlow Team", email = "secretflow-contact@service.alipay.com" },
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+requires-python = ">=3.10,<3.12"
+dynamic = ["version"]
+
+dependencies = [
+    "numpy<2,>=1.22.0",          # FIXME: for SF compatibility
+    "cloudpickle>=2.0.0",
+    "multiprocess>=0.70.12.2",
+    "cachetools>=5.0.0",
+    "jax[cpu]<=0.4.34,>=0.4.16", # FIXME: Jax 0.4.26+ select perf issue
+    "termcolor>=2.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "build",
+    "protobuf==4.25.8",
+    "grpcio==1.56.2",
+    "pandas>=1.4.2",
+    "flax<0.10.0",
+    "scikit-learn<1.6.0",
+    "tensorflow>=2.12.0", # used in spu/utils/frontend.py
+]
+examples = [
+    "dm-haiku",
+    "plotnine",
+    "jraph",
+    "optax",
+    "torch==2.3.0",
+    "torch-xla==2.3.0; sys_platform == \"linux\" and platform_machine == \"x86_64\"",
+    "torchvision",
+    "tensorflow-datasets",
+    "keras",
+    # https://github.com/pypa/setuptools/issues/4487
+    "setuptools<71.0.0",
+    "transformers",
+    "datasets",
+    "async-timeout",
+]
+
+[project.urls]
+Homepage = "https://github.com/secretflow/spu"
+Repository = "https://github.com/secretflow/spu"
+
+[tool.pdm.version]
+source = "call"
+getter = "pdm_build:get_version"
+
+[tool.pdm.build]
+includes = ["spu/**/*.py", "spu/**/*.pyi"]
+excludes = ["spu/tests/**"]
+
+[tool.pdm.scripts]
+build_libs = { call = "pdm_build:build_libs" }
+
 [tool.black]
 skip-string-normalization = true
 

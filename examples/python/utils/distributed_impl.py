@@ -44,8 +44,10 @@ import multiprocess
 import numpy as np
 from termcolor import colored
 
-from .. import api as spu_api
-from .. import libspu  # type: ignore
+from spu import api as spu_api
+from spu import libspu  # type: ignore
+from spu.utils import frontend as spu_fe
+
 from . import distributed_pb2, distributed_pb2_grpc
 
 """
@@ -75,7 +77,7 @@ PPU_SPU_ENABLE_ATLS = os.environ.get("PPU_SPU_ENABLE_ATLS", False)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 syslog = logging.StreamHandler()
-formatter = logging.Formatter('[%(asctime)s] [%(processNameCorrected)s] %(message)s')
+formatter = logging.Formatter("[%(asctime)s] [%(processNameCorrected)s] %(message)s")
 syslog.setFormatter(formatter)
 logger.addHandler(syslog)
 logger.propagate = False
@@ -135,7 +137,7 @@ patch_pickle_for_security()
 class ObjectRef:
     # Use a static random id to solve pickle+isinstance issue.
     # Warning: this is only a demo, do not use in production code base.
-    KLASS_ID = '3fae14a7-66d6-48d6-b2c8-867a7b78af6e'
+    KLASS_ID = "3fae14a7-66d6-48d6-b2c8-867a7b78af6e"
 
     def __init__(self, uuid: str, origin_nodeid: str):
         """
@@ -156,16 +158,16 @@ class ObjectRef:
 
 
 def isObjectRef(obj):
-    return getattr(obj, 'KLASS_ID', None) == ObjectRef.KLASS_ID
+    return getattr(obj, "KLASS_ID", None) == ObjectRef.KLASS_ID
 
 
 class RPC:
     """A simple RPC wrapper"""
 
     OPTIONS = [
-        ('grpc.max_message_length', 1024 * 1024 * 1024),
-        ('grpc.max_receive_message_length', 1024 * 1024 * 1024),
-        ('grpc.so_reuseport', 0),
+        ("grpc.max_message_length", 1024 * 1024 * 1024),
+        ("grpc.max_receive_message_length", 1024 * 1024 * 1024),
+        ("grpc.so_reuseport", 0),
     ]
     CHUNK_SIZE = 10 * 1024 * 1024
 
@@ -190,7 +192,7 @@ class RPC:
             NodeServicer(node_id, nodes_def), server
         )
         global logger
-        processNameFix = {'processNameCorrected': multiprocess.current_process().name}
+        processNameFix = {"processNameCorrected": multiprocess.current_process().name}
         logger = logging.LoggerAdapter(logger, processNameFix)
         if PPU_SPU_ENABLE_ATLS:
             server_creds = grpc.alts_server_credentials()
@@ -208,7 +210,7 @@ def split_message(msg: bytes) -> Iterable[bytes]:
 
 
 def rebuild_messages(msgs: Generator[bytes, None, None]) -> bytes:
-    return b''.join([msg for msg in msgs])
+    return b"".join([msg for msg in msgs])
 
 
 class NodeClient:
@@ -534,7 +536,7 @@ def builtin_spu_init(
     server, name: str, my_rank: int, addrs: List[str], spu_config_str: str
 ):
     global logger
-    processNameFix = {'processNameCorrected': multiprocess.current_process().name}
+    processNameFix = {"processNameCorrected": multiprocess.current_process().name}
     logger = logging.LoggerAdapter(logger, processNameFix)
 
     if f"{name}-rt" in server._locals:
@@ -680,7 +682,7 @@ class SPU(Device):
                     futures.append(
                         executor.submit(
                             self.device.node_clients[idx].run,
-                            wraps(self.pyfunc, assigned=('__name__'))(builtin_spu_run),
+                            wraps(self.pyfunc, assigned=("__name__"))(builtin_spu_run),
                             self.device.name,
                             executable.SerializeToString(),
                             idx_args_flat,
@@ -707,7 +709,7 @@ class SPU(Device):
             executable, *_ = self._compile_jax_func(
                 self.pyfunc, self.static_argnums, self.copts, *args, **kwargs
             )
-            return executable.code.decode('utf-8')
+            return executable.code.decode("utf-8")
 
         def _compile_jax_func(self, fn, static_argnums, copts, *args, **kwargs):
             def mock_parameters(obj: Union[SPU.Object, np.ndarray]):
@@ -743,12 +745,10 @@ class SPU(Device):
                 for arg in args_flat
             ]
 
-            in_names = [f'{id(fn_name)}-in{idx}' for idx in range(len(args_flat))]
+            in_names = [f"{id(fn_name)}-in{idx}" for idx in range(len(args_flat))]
 
             def outputNameGen(out_flat: List):
-                return [f'{id(fn_name)}-out{idx}' for idx in range(len(out_flat))]
-
-            from . import frontend as spu_fe
+                return [f"{id(fn_name)}-out{idx}" for idx in range(len(out_flat))]
 
             executable, output = spu_fe.compile(
                 spu_fe.Kind.JAX,
@@ -794,7 +794,7 @@ class SPU(Device):
                     futures.append(
                         executor.submit(
                             self.device.node_clients[idx].run,
-                            wraps(self.pyfunc, assigned=('__name__'))(builtin_spu_run),
+                            wraps(self.pyfunc, assigned=("__name__"))(builtin_spu_run),
                             self.device.name,
                             pphlo_ir.SerializeToString(),
                             idx_args_flat,
@@ -846,12 +846,10 @@ class SPU(Device):
                 for arg in args_flat
             ]
 
-            in_names = [f'{id(fn_name)}-in{idx}' for idx in range(len(args_flat))]
+            in_names = [f"{id(fn_name)}-in{idx}" for idx in range(len(args_flat))]
 
             def outputNameGen(out_flat: List):
-                return [f'{id(fn_name)}-out{idx}' for idx in range(len(out_flat))]
-
-            from . import frontend as spu_fe
+                return [f"{id(fn_name)}-out{idx}" for idx in range(len(out_flat))]
 
             executable, output_tree = spu_fe.compile(
                 spu_fe.Kind.Tensorflow,
@@ -906,7 +904,7 @@ class SPU(Device):
                     futures.append(
                         executor.submit(
                             self.device.node_clients[idx].run,
-                            wraps(self.pyfunc, assigned=('__name__'))(builtin_spu_run),
+                            wraps(self.pyfunc, assigned=("__name__"))(builtin_spu_run),
                             self.device.name,
                             executable.SerializeToString(),
                             idx_args_flat,
@@ -936,7 +934,7 @@ class SPU(Device):
             self.state_dict = self._place_state_dict(state_dict)
             args, kwargs = self.device._place_arguments(*args, **kwargs)
             executable, *_ = self._compile_torch_func(self.pyfunc, *args, **kwargs)
-            return executable.code.decode('utf-8')
+            return executable.code.decode("utf-8")
 
         def _compile_torch_func(self, fn, copts, *args, **kwargs):
             import torch
@@ -961,8 +959,6 @@ class SPU(Device):
 
             args_flat, _ = tree_flatten((args, kwargs))
             m_args_flat, _ = tree_flatten((mock_args, mock_kwargs))
-
-            from . import frontend as spu_fe
 
             executable, output_tree, args_flat = spu_fe.torch_compile(
                 exported_fn,
@@ -1226,7 +1222,7 @@ def get(args):
     return tree_unflatten(tree, out_flat)
 
 
-def save(args, filename=f'spu-{uuid.uuid4()}.txt'):
+def save(args, filename=f"spu-{uuid.uuid4()}.txt"):
     from jax.tree_util import tree_flatten, tree_unflatten
 
     args_flat, tree = tree_flatten(args)
@@ -1242,22 +1238,22 @@ def save(args, filename=f'spu-{uuid.uuid4()}.txt'):
             parsed_arg.append(arg)
 
     if spu_objects:
-        device('SPU').save(spu_objects, filename)
+        device("SPU").save(spu_objects, filename)
 
     return {
-        'spu_object': tree_unflatten(tree, parsed_arg),
-        'experimental_filename': filename,
+        "spu_object": tree_unflatten(tree, parsed_arg),
+        "experimental_filename": filename,
     }
 
 
 def load(meta):
-    spu = device('SPU')
+    spu = device("SPU")
     from jax.tree_util import tree_flatten, tree_unflatten
 
-    args_flat, tree = tree_flatten(meta['spu_object'])
+    args_flat, tree = tree_flatten(meta["spu_object"])
     spu_objects = spu.load(
         filter(lambda x: isinstance(x, SPUObjectMetadata), args_flat),
-        meta['experimental_filename'],
+        meta["experimental_filename"],
     )
 
     origin_arg = []

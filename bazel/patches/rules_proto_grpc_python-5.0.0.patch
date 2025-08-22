@@ -1,0 +1,16 @@
+diff --git a/MODULE.bazel b/MODULE.bazel
+index 6f34575..c1f3078 100644
+--- a/MODULE.bazel
++++ b/MODULE.bazel
+@@ -33,6 +33,11 @@ pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
+         hub_name = "rules_proto_grpc_python_pip_deps",
+         python_version = python_version,
+         requirements_lock = "//:requirements.txt",
++        extra_pip_args = [
++            "--index-url=https://mirrors.aliyun.com/pypi/simple/",
++            "--trusted-host=mirrors.aliyun.com/pypi/simple/",
++            "--cache-dir=/tmp/bazel_repo_cache/pip_cache",
++        ],
+     )
+     for python_version in PYTHON_VERSIONS
+ ]

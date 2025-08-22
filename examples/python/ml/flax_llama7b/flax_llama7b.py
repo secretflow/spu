@@ -12,27 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Start nodes.
-# > bazel run -c opt //examples/python/utils:nodectl -- --config `pwd`/examples/python/ml/flax_llama/3pc.json" up
-# Run this example script.
-# > bazel run -c opt //examples/python/ml/flax_llama7b -- --config `pwd`/examples/python/ml/flax_llama7b/3pc.json
-
 import argparse
 import json
 from contextlib import contextmanager
-from typing import Any, Optional, Tuple, Union
+from typing import Optional, Tuple, Union
 
 import flax.linen as nn
-import jax
 import jax.nn as jnn
 import jax.numpy as jnp
 from EasyLM.models.llama.llama_model import FlaxLLaMAForCausalLM, LLaMAConfig
 from flax.linen.linear import Array
 from transformers import LlamaTokenizer
 
-import spu.intrinsic as intrinsic
+import examples.python.utils.distributed as ppd
 import spu.libspu as libspu
-import spu.utils.distributed as ppd
 
 parser = argparse.ArgumentParser(description='distributed driver.')
 parser.add_argument("-c", "--config", default="examples/python/ml/flax_llama/3pc.json")
@@ -163,8 +156,9 @@ def run_on_spu():
     input_ids = tokenizer.encode(
         'Q: What is the largest animal?\nA:', return_tensors='jax'
     )
-    with hack_softmax_context("hack exp of softmax", enabled=True), hack_silu_context(
-        "hack silu", enabled=True
+    with (
+        hack_softmax_context("hack exp of softmax", enabled=True),
+        hack_silu_context("hack silu", enabled=True),
     ):
         params = ppd.device("P2")(lambda x: x)(pretrained_model.params)
         input_ids = ppd.device("P1")(lambda x: x)(input_ids)

@@ -24,8 +24,8 @@ from time import perf_counter
 import numpy.testing as npt
 import pandas as pd
 
-import spu.utils.distributed as ppd
-import spu.utils.distributed_impl as ppd_impl
+import examples.python.utils.distributed as ppd
+import examples.python.utils.distributed_impl as ppd_impl
 from spu.utils.polyfill import Process
 
 with open("examples/python/conf/3pc.json", 'r') as file:
@@ -110,14 +110,8 @@ class UnitTests(unittest.TestCase):
     def test_haiku_lstm(self):
         from examples.python.ml.haiku_lstm import haiku_lstm
 
-        haiku_lstm.args.num_steps = 1
         _, train_loss = ppd.get(
-            profile_test_point(
-                haiku_lstm.train_model,
-                haiku_lstm.train_ds,
-                haiku_lstm.valid_ds,
-                run_on_spu=False,
-            )
+            profile_test_point(haiku_lstm.train_on_spu, num_steps=1)
         )
         self.assertTrue(0.4 < train_loss < 0.6)
 
@@ -130,8 +124,8 @@ class UnitTests(unittest.TestCase):
         npt.assert_array_equal(cpu_labels, spu_labels)
 
     def test_jax_lr(self):
-        from examples.python.utils import dataset_utils as dsutil
         from examples.python.ml.jax_lr import jax_lr
+        from examples.python.utils import dataset_utils as dsutil
 
         x, y = dsutil.mock_classification(10000, 100, 0.0, 42)
         w, b = profile_test_point(jax_lr.run_on_spu, x, y)
@@ -145,12 +139,11 @@ class UnitTests(unittest.TestCase):
     def test_jax_svm(self):
         from examples.python.ml.jax_svm import jax_svm
 
-        jax_svm.args.n_epochs = 5
-        w, b = jax_svm.run_on_cpu()
+        w, b = jax_svm.run_on_cpu(n_epochs=5)
         auc_cpu = jax_svm.compute_score(w, b, 'cpu')
         self.assertGreater(auc_cpu, 0.6)
 
-        w, b = profile_test_point(jax_svm.run_on_spu)
+        w, b = profile_test_point(jax_svm.run_on_spu, n_epochs=5)
         auc_spu = jax_svm.compute_score(w, b, 'spu')
 
         self.assertGreater(auc_spu, 0.6)
@@ -159,18 +152,14 @@ class UnitTests(unittest.TestCase):
     def test_jraph_gnn(self):
         from examples.python.ml.jraph_gnn import jraph_gnn
 
-        accuracy = profile_test_point(
-            jraph_gnn.optimize_club, num_steps=30, run_on_spu=True
-        )
+        accuracy = profile_test_point(jraph_gnn.optimize_club_on_spu)
 
         self.assertGreater(accuracy, 0.75)
 
     def test_ss_lr(self):
         from examples.python.ml.ss_lr import ss_lr
 
-        ss_lr.args.epochs = 1
-        ss_lr.dataset_config["n_samples"] = 50000
-        score, train_time, predict_time = ss_lr.train()
+        score, train_time, predict_time = ss_lr.main(dataset_n_samples=50000, epochs=1)
         self.assertGreater(score, 0.75)
 
         add_profile_data("test_ss_lr_train", train_time)
@@ -195,9 +184,8 @@ class UnitTests(unittest.TestCase):
     def test_stax_nn(self):
         from examples.python.ml.stax_nn import stax_nn
 
-        stax_nn.args.epoch = 1
         score = profile_test_point(
-            stax_nn.run_model, model_name="network_a", run_cpu=False
+            stax_nn.run_model, model_name="network_a", run_cpu=False, epochs=1
         )
         self.assertGreater(score, 0.9)
 

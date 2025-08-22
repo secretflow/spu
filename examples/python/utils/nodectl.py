@@ -15,7 +15,7 @@
 import argparse
 import json
 
-import spu.utils.distributed as ppd
+import examples.python.utils.distributed as ppd
 from spu.utils.polyfill import Process
 
 parser = argparse.ArgumentParser(description='SPU node service.')

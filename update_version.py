@@ -15,8 +15,8 @@
 # limitations under the License.
 
 import argparse
-import os
 import re
+import os
 
 SPU_VERSION_PREFIX = "0.9.4.dev"
 

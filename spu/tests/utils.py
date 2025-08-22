@@ -17,8 +17,6 @@ import time
 
 from numpy.random import randint
 
-import spu.libspu.link as link
-
 
 def get_free_port():
     return randint(low=49152, high=65536)
@@ -29,13 +27,24 @@ def wc_count(file_name):
     return int(out.split()[0])
 
 
-def create_link_desc(world_size: int):
+def create_link_desc_dict(world_size: int) -> dict:
     time_stamp = time.time()
-    lctx_desc = link.Desc()
-    lctx_desc.id = str(round(time_stamp * 1000))
+    link_id = str(round(time_stamp * 1000))
+    link_ports = []
+    for _ in range(world_size):
+        link_ports.append(get_free_port())
 
-    for rank in range(world_size):
-        port = get_free_port()
-        lctx_desc.add_party(f"id_{rank}", f"127.0.0.1:{port}")
+    return {"id": link_id, "wsize": world_size, "ports": link_ports}
+
+
+def build_link_desc(link_desc: dict):
+    import spu.libspu.link as link
+
+    lctx_desc = link.Desc()
+    lctx_desc.id = link_desc["id"]
+    link_ports = link_desc["ports"]
+    for idx in range(link_desc["wsize"]):
+        port = link_ports[idx]
+        lctx_desc.add_party(f"id_{idx}", f"127.0.0.1:{port}")
 
     return lctx_desc

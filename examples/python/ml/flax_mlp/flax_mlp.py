@@ -13,10 +13,10 @@
 # limitations under the License.
 
 # Start nodes.
-# > bazel run -c opt //examples/python/utils:nodectl -- up
+# > python examples/python/utils/nodectl.py up
 #
 # Run this example script.
-# > bazel run -c opt //examples/python/ml/flax_mlp:flax_mlp
+# > python examples/python/ml/flax_mlp/flax_mlp.py
 
 import argparse
 import json
@@ -29,7 +29,7 @@ import numpy as np
 from sklearn import metrics
 
 import examples.python.utils.dataset_utils as dsutil
-import spu.utils.distributed as ppd
+import examples.python.utils.distributed as ppd
 
 FEATURES = [30, 15, 8, 1]
 
@@ -97,15 +97,6 @@ def run_on_cpu():
     return params
 
 
-parser = argparse.ArgumentParser(description='distributed driver.')
-parser.add_argument("-c", "--config", default="examples/python/conf/3pc.json")
-args = parser.parse_args()
-
-with open(args.config, 'r') as file:
-    conf = json.load(file)
-
-ppd.init(conf["nodes"], conf["devices"])
-
 import tempfile
 
 import cloudpickle as pickle
@@ -119,7 +110,15 @@ def compute_score(param, type):
     return score
 
 
-def run_on_spu():
+DEFAULT_CONF_FILE = "examples/python/conf/3pc.json"
+
+
+def run_on_spu(config=DEFAULT_CONF_FILE):
+    with open(config, 'r') as file:
+        conf = json.load(file)
+
+    ppd.init(conf["nodes"], conf["devices"])
+
     @ppd.device("SPU")
     def main(x1, x2, y, params):
         x = jnp.concatenate((x1, x2), axis=1)
@@ -160,10 +159,14 @@ def save_and_load_model():
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='distributed driver.')
+    parser.add_argument("-c", "--config", default="examples/python/conf/3pc.json")
+    args = parser.parse_args()
+
     print('\n------\nRun on CPU')
     p = run_on_cpu()
     compute_score(p, 'cpu')
     print('\n------\nRun on SPU')
-    p = ppd.get(run_on_spu())
+    p = ppd.get(run_on_spu(args.config))
     compute_score(p, 'spu')
     save_and_load_model()

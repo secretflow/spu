@@ -20,11 +20,16 @@ import jax.numpy as jnp
 import numpy as np
 import numpy.testing as npt
 import tensorflow as tf
+from numpy.random import randint
 
-import spu.utils.distributed as ppd
-from spu import libspu
-from spu.tests.utils import get_free_port
+import examples.python.utils.distributed as ppd
+from spu import libspu  # type: ignore
 from spu.utils.polyfill import Process
+
+
+def get_free_port():
+    return randint(low=49152, high=65536)
+
 
 TEST_NODES_DEF = {
     "node:0": f"127.0.0.1:{get_free_port()}",

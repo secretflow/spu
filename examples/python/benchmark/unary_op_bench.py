@@ -19,7 +19,7 @@ import time
 import jax.numpy as jnp
 import numpy as np
 
-import spu.utils.distributed as ppd
+import examples.python.utils.distributed as ppd
 
 parser = argparse.ArgumentParser(description='distributed driver.')
 parser.add_argument("-c", "--config", default="../examples/python/conf/3pc.json")
@@ -37,28 +37,20 @@ def rand_from_alice():
     return np.random.rand(10000000)
 
 
-@ppd.device("P2")
-def rand_from_bob():
-    np.random.seed()
-    return np.random.rand(10000000)
-
-
 @ppd.device("SPU")
-def foo(x, y):
-    return jnp.multiply(x, y)
+def foo(x):
+    return jnp.max(x)
 
 
 x = rand_from_alice()
-y = rand_from_bob()
 
 # x & y will be automatically fetch by SPU (as secret shares)
 # z will be evaluated as a SPU function.
 t = time.time()
-z = foo(x, y)
+z = foo(x)
 elapsed = time.time() - t
 
 print(f'elapsed time = {elapsed}')
 
 print(f"x = {ppd.get(x)}")
-print(f"y = {ppd.get(y)}")
 print(f"z = {ppd.get(z)}")

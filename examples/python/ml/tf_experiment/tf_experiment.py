@@ -23,14 +23,14 @@ import numpy as np
 import tensorflow as tf
 from sklearn import metrics
 
-import spu.utils.distributed as ppd
+import examples.python.utils.distributed as ppd
 
 # This example is to show tf program could be converted to XLA IR and run by SPU.
 # Start nodes.
-# > bazel run -c opt //examples/python/utils:nodectl -- up
+# > python examples/python/utils/nodectl.py up
 #
 # Run this example script.
-# > bazel run -c opt //examples/python/ml/tf_experiment:tf_experiment
+# > python examples/python/ml/tf_experiment/tf_experiment.py
 # This example is tf counterpart to jax_lr
 
 
@@ -186,16 +186,6 @@ def compile_to_xla(fn, *args, **kwargs):
     return xla, cf
 
 
-parser = argparse.ArgumentParser(description='distributed driver.')
-parser.add_argument("-c", "--config", default="examples/python/conf/3pc.json")
-args = parser.parse_args()
-
-with open(args.config, 'r') as file:
-    conf = json.load(file)
-
-ppd.init(conf["nodes"], conf["devices"], framework=ppd.Framework.EXP_TF)
-
-
 def tf_to_xla():
     x, y = breast_cancer()
     x1, x2 = x[:, :15], x[:, 15:]
@@ -255,6 +245,15 @@ def run_fit_manual_grad_spu():
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='distributed driver.')
+    parser.add_argument("-c", "--config", default="examples/python/conf/3pc.json")
+    args = parser.parse_args()
+
+    with open(args.config, 'r') as file:
+        conf = json.load(file)
+
+    ppd.init(conf["nodes"], conf["devices"], framework=ppd.Framework.EXP_TF)
+
     # tf_to_xla()
     run_fit_manual_grad_cpu()
     run_fit_manual_grad_spu()

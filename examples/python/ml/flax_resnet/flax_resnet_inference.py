@@ -17,7 +17,7 @@ import json
 
 import jax
 
-import spu.utils.distributed as ppd
+import examples.python.utils.distributed as ppd
 
 parser = argparse.ArgumentParser(description='distributed driver.')
 parser.add_argument("-c", "--config", default="3pc.json")

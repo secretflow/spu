@@ -34,21 +34,13 @@ from jax.example_libraries import stax
 from keras.datasets import cifar10
 from sklearn.metrics import accuracy_score
 
-import spu.utils.distributed as ppd
+import examples.python.utils.distributed as ppd
 from examples.python.ml.stax_nn import models
 
-parser = argparse.ArgumentParser(description='distributed driver.')
-parser.add_argument("--model", default='network_a', type=str)
-parser.add_argument("-c", "--config", default="examples/python/conf/3pc.json", type=str)
-parser.add_argument("-e", "--epoch", default=5, type=int)
-parser.add_argument("-b", "--batch_size", default=128, type=int)
-parser.add_argument("-o", "--optimizer", default="SGD", type=str)
-parser.add_argument('--run_cpu', default=False, action='store_true')
-args = parser.parse_args()
-
 # Follows https://arxiv.org/pdf/2107.00501.pdf Appendix C.
-DEFAULT_EPOCHS = args.epoch
-DEFAULT_BATCH_SIZE = args.batch_size
+DEFAULT_EPOCHS = 5
+DEFAULT_BATCH_SIZE = 128
+DEFAULT_OPTIMIZER = "SGD"
 
 
 def train(
@@ -59,6 +51,7 @@ def train(
     epochs,
     batch_size,
     run_on_spu,
+    optimizer: str,
 ):
     # Model Initialization
     key = jax.random.PRNGKey(42)
@@ -66,7 +59,7 @@ def train(
         [-1 if idx == 0 else i for idx, i in enumerate(list(train_x.shape))]
     )
     _, params_init = init_fun(key, input_shape)
-    opt_kind = args.optimizer.lower()
+    opt_kind = optimizer.lower()
     if opt_kind == "sgd":
         from jax.example_libraries import optimizers
 
@@ -80,7 +73,7 @@ def train(
 
         opt_init, opt_update, get_params = optimizers.amsgrad(0.001)
     else:
-        raise RuntimeError(f"Unsupported optimizer type {args.optimizer}.")
+        raise RuntimeError(f"Unsupported optimizer type {optimizer}.")
     opt_state = opt_init(params_init)
 
     def update_model(state, imgs, labels, i):
@@ -147,14 +140,16 @@ def get_datasets(name='mnist'):
     return train_ds, test_ds
 
 
-def train_mnist(model, run_on_spu: bool = False):
+def train_mnist(
+    model,
+    run_on_spu: bool = False,
+    epochs=DEFAULT_EPOCHS,
+    batch_size=DEFAULT_BATCH_SIZE,
+    optimizer=DEFAULT_OPTIMIZER,
+):
     train_ds, test_ds = get_datasets('mnist')
     train_x, train_y = train_ds['image'], train_ds['label']
     train_y = jax.nn.one_hot(train_y, 10)
-
-    # Hyper-parameters
-    epochs = DEFAULT_EPOCHS
-    batch_size = DEFAULT_BATCH_SIZE
 
     init_fun, predict_fun = model()
 
@@ -167,6 +162,7 @@ def train_mnist(model, run_on_spu: bool = False):
         epochs,
         batch_size,
         run_on_spu,
+        optimizer,
     )
     end = time.perf_counter()
 
@@ -179,8 +175,8 @@ def train_mnist(model, run_on_spu: bool = False):
     return score
 
 
-def run_model(model_name, run_cpu=True):
-    print(f'The selected NN model is {args.model}.')
+def run_model(model_name, run_cpu=True, **kwargs):
+    print(f'The selected NN model is {model_name}.')
 
     MODEL_MAPS = {
         'network_a': models.secureml,
@@ -192,7 +188,7 @@ def run_model(model_name, run_cpu=True):
         'vgg16': models.vgg16,
     }
 
-    fn = partial(train_mnist, MODEL_MAPS.get(model_name))
+    fn = partial(train_mnist, MODEL_MAPS.get(model_name), **kwargs)
     if run_cpu:
         print('Run on CPU\n------\n')
         return fn(run_on_spu=False)
@@ -201,16 +197,31 @@ def run_model(model_name, run_cpu=True):
     return fn(run_on_spu=True)
 
 
-def main():
+def main(**kwargs):
     if args.run_cpu:
-        run_model(args.model, run_cpu=True)
+        run_model(args.model, run_cpu=True, **kwargs)
 
     with open(args.config, 'r') as file:
         conf = json.load(file)
     ppd.init(conf["nodes"], conf["devices"])
 
-    return run_model(args.model, run_cpu=False)
+    return run_model(args.model, run_cpu=False, **kwargs)
 
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser(description='distributed driver.')
+    parser.add_argument("--model", default='network_a', type=str)
+    parser.add_argument(
+        "-c", "--config", default="examples/python/conf/3pc.json", type=str
+    )
+    parser.add_argument("-e", "--epoch", default=5, type=int)
+    parser.add_argument("-b", "--batch_size", default=128, type=int)
+    parser.add_argument("-o", "--optimizer", default="SGD", type=str)
+    parser.add_argument('--run_cpu', default=False, action='store_true')
+    args = parser.parse_args()
+    kwargs = {
+        "epochs": args.epoch,
+        "batch_size": args.batch_size,
+        "optimizer": args.optimizer,
+    }
+    main(**kwargs)

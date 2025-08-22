@@ -13,25 +13,17 @@
 # limitations under the License.
 
 # Start nodes.
-# > bazel run -c opt //examples/python/utils:nodectl -- --config `pwd`/examples/python/ml/flax_t5/3pc.json up
+# > python examples/python/utils/nodectl.py --config `pwd`/examples/python/ml/flax_t5/3pc.json up
 #
 # Run this example script.
-# > bazel run -c opt //examples/python/ml/flax_t5:flax_t5
+# > python examples/python/ml/flax_t5/flax_t5.py
 
 import argparse
 import json
 
-import spu.utils.distributed as ppd
+import examples.python.utils.distributed as ppd
 
-parser = argparse.ArgumentParser(description='distributed driver.')
-parser.add_argument("-c", "--config", default="examples/python/ml/flax_t5/3pc.json")
-args = parser.parse_args()
-
-with open(args.config, 'r') as file:
-    conf = json.load(file)
-
-ppd.init(conf["nodes"], conf["devices"])
-
+DEFAULT_CONF_FILE = "examples/python/ml/flax_t5/3pc.json"
 
 from transformers import AutoTokenizer, FlaxT5ForConditionalGeneration
 
@@ -53,7 +45,12 @@ def run_on_cpu():
     return summary_ids.sequences
 
 
-def run_on_spu():
+def run_on_spu(config=DEFAULT_CONF_FILE):
+    with open(config, 'r') as file:
+        conf = json.load(file)
+
+    ppd.init(conf["nodes"], conf["devices"])
+
     input_ids = ppd.device("P1")(lambda x: x)(inputs["input_ids"])
     params = ppd.device("P2")(lambda x: x)(pretrained_model.params)
     summary_ids = ppd.device("SPU")(
@@ -64,6 +61,10 @@ def run_on_spu():
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='distributed driver.')
+    parser.add_argument("-c", "--config", default=DEFAULT_CONF_FILE)
+    args = parser.parse_args()
+
     print('\n------\nRun on CPU')
     summary_ids = run_on_cpu()
     print(
@@ -72,7 +73,7 @@ if __name__ == '__main__':
         )
     )
     print('\n------\nRun on SPU')
-    summary_ids = run_on_spu()
+    summary_ids = run_on_spu(args.config)
     print(
         tokenizer.decode(
             summary_ids[0], skip_special_tokens=True, clean_up_tokenization_spaces=False

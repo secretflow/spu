@@ -9,13 +9,13 @@ This example comes from Haiku official github repo:
 1. Launch SPU backend runtime
 
     ```sh
-    bazel run -c opt //examples/python/utils:nodectl -- up
+    python examples/python/utils/nodectl.py up
     ```
 
 2. Run `haiku_lstm` example
 
     ```sh
-    bazel run -c opt //examples/python/ml/haiku_lstm -- --output_dir `pwd`
+    python examples/python/ml/haiku_lstm/haiku_lstm.py --output_dir `pwd`
     ```
 
 3. Check results
