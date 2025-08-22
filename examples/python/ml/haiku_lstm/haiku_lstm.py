@@ -91,7 +91,7 @@ class Dataset:
         return x, y
 
 
-TRAIN_SIZE = 2**14
+TRAIN_SIZE = 2 ** 14
 VALID_SIZE = 128
 BATCH_SIZE = 8
 SEQ_LEN = 64

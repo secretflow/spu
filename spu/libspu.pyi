@@ -26,7 +26,6 @@ class logging:
         INFO = 1
         WARN = 2
         ERROR = 3
-
     @dataclass
     class LogOptions:
         enable_console_logger: bool = True
@@ -36,7 +35,6 @@ class logging:
         max_log_file_size: int = 500 * 1024 * 1024
         max_log_file_count: int = 10
         trace_content_length: int = 100
-
     @staticmethod
     def setup_logging(options: LogOptions) -> None: ...
 
@@ -49,12 +47,10 @@ class link:
     class CertInfo:
         certificate_path: str
         private_key_path: str
-
     @dataclass
     class VerifyOptions:
         verify_depth: str
         ca_file_path: str
-
     @dataclass
     class RetryOptions:
         max_retry: int
@@ -64,12 +60,10 @@ class link:
         error_codes: set[int]
         http_codes: set[int]
         aggressive_retry: bool
-
     @dataclass
     class SSLOptions:
         cert: link.CertInfo
         verify: link.VerifyOptions
-
     @dataclass
     class ContextDesc:
         class Party:
@@ -77,7 +71,6 @@ class link:
             def id(self) -> str: ...
             @property
             def host(self) -> str: ...
-
         id: str
         connect_retry_times: int
         connect_retry_interval_ms: int
@@ -93,11 +86,9 @@ class link:
         link_type: str
         retry_opts: link.RetryOptions
         disable_msg_seq_id: bool
-
         @property
         def parties(self) -> list[Party]: ...
         def add_party(self, id: str, host: str) -> None: ...
-
     class Context:
         @property
         def rank(self) -> int: ...
@@ -115,7 +106,6 @@ class link:
         def send_async(self, dst_rank: int, data: str) -> None: ...
         def recv(self, src_rank: int) -> bytes: ...
         def next_rank(self, strides: int = 1) -> int: ...
-
     @staticmethod
     def create_brpc(
         desc: ContextDesc, self_rank: int, *, log_details: bool = False
@@ -211,30 +201,25 @@ class RuntimeConfig:
         SORT_RADIX = 1
         SORT_QUICK = 2
         SORT_NETWORK = 3
-
     class ExpMode(enum.IntEnum):
         EXP_DEFAULT = 0
         EXP_PADE = 1
         EXP_TAYLOR = 2
         EXP_PRIME = 3
-
     class LogMode(enum.IntEnum):
         LOG_DEFAULT = 0
         LOG_PADE = 1
         LOG_NEWTON = 2
         LOG_MINMAX = 3
-
     class SigmoidMode(enum.IntEnum):
         SIGMOID_DEFAULT = 0
         SIGMOID_MM1 = 1
         SIGMOID_SEG3 = 2
         SIGMOID_REAL = 3
-
     class BeaverType(enum.IntEnum):
         TrustedFirstParty = 0
         TrustedThirdParty = 1
         MultiParty = 2
-
     protocol: ProtocolKind
     field: FieldType
     fxp_fraction_bits: int
@@ -288,7 +273,6 @@ class RuntimeConfig:
         self.protocol = protocol
         self.field = field
         self.fxp_fraction_bits = fxp_fraction_bits
-
     @overload
     def __init__(self, other: 'RuntimeConfig'): ...
     def ParseFromJsonString(self, data: str) -> bool: ...
@@ -361,7 +345,6 @@ class Executable:
         self.input_names = input_names
         self.output_names = output_names
         self.code = code
-
     def ParseFromString(self, data: bytes) -> bool: ...
     def SerializeToString(self) -> bytes: ...
 
@@ -379,7 +362,6 @@ class ValueMeta:
     visibility: Visibility
     shape: Shape
     storage_type: str
-
     def ParseFromString(self, data: bytes) -> bool: ...
     def SerializeToString(self) -> bytes: ...
 
@@ -388,7 +370,6 @@ class ValueChunk:
     total_bytes: int
     chunk_offset: int
     content: bytes
-
     def ParseFromString(self, data: bytes) -> bool: ...
     def SerializeToString(self) -> bytes: ...
 

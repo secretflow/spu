@@ -51,9 +51,9 @@ def get_time_unit(count: float, unit: str):
 
 
 def trans_rep(counts):
-    if counts == 2**10 or counts == 1000 or counts == '1000' or counts == '1024':
+    if counts == 2 ** 10 or counts == 1000 or counts == '1000' or counts == '1024':
         return '1k'
-    if counts == 2**20 or counts == 1e6 or counts == '1000000' or counts == '1048576':
+    if counts == 2 ** 20 or counts == 1e6 or counts == '1000000' or counts == '1048576':
         return '1M'
     return str(counts)
 

@@ -72,6 +72,10 @@ build_libs = { call = "pdm_build:build_libs" }
 
 [tool.black]
 skip-string-normalization = true
+line-length = 88
+target-version = ['py310']
+include = '\.pyi?$'
+extend-exclude = '''.*_pb2.py|.*_pb2_grpc.py'''
 
 [tool.isort]
 profile = "black"

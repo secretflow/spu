@@ -22,6 +22,7 @@
 """
 Secure Processing Unit
 """
+
 module(
     name = "spu",
     version = "0.9.4.dev20250618",
@@ -99,7 +100,6 @@ python = use_extension("@rules_python//python/extensions:python.bzl", "python")
 use_repo(python, "python_versions")
 
 bazel_dep(name = "rules_proto_grpc_python", version = "5.0.0")
-
 
 # test
 bazel_dep(name = "googletest", version = "1.15.2", dev_dependency = True)

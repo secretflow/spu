@@ -64,12 +64,16 @@ class LogitRegression:
         remainder = feature.shape[0] % self.n_iters
 
         xs = tf.split(
-            feature[:-remainder,],
+            feature[
+                :-remainder,
+            ],
             self.n_iters,
             axis=0,
         )
         ys = tf.split(
-            label[:-remainder,],
+            label[
+                :-remainder,
+            ],
             self.n_iters,
             axis=0,
         )
@@ -93,12 +97,16 @@ class LogitRegression:
         remainder = feature.shape[0] % self.n_iters
 
         xs = tf.split(
-            feature[:-remainder,],
+            feature[
+                :-remainder,
+            ],
             self.n_iters,
             axis=0,
         )
         ys = tf.split(
-            label[:-remainder,],
+            label[
+                :-remainder,
+            ],
             self.n_iters,
             axis=0,
         )
@@ -121,12 +129,16 @@ class LogitRegression:
         remainder = feature.shape[0] % self.n_iters
 
         xs = tf.split(
-            feature[:-remainder,],
+            feature[
+                :-remainder,
+            ],
             self.n_iters,
             axis=0,
         )
         ys = tf.split(
-            label[:-remainder,],
+            label[
+                :-remainder,
+            ],
             self.n_iters,
             axis=0,
         )
