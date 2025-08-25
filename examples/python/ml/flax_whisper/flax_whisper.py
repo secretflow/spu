@@ -13,10 +13,10 @@
 # limitations under the License.
 
 # Start nodes.
-# > bazel run -c opt //examples/python/utils:nodectl -- --config `pwd`/examples/python/ml/flax_whisper/3pc.json up
+# > python examples/python/utils/nodectl.py --config `pwd`/examples/python/ml/flax_whisper/3pc.json up
 #
 # Run this example script.
-# > bazel run -c opt //examples/python/ml/flax_whisper:flax_whisper
+# > python examples/python/ml/flax_whisper/flax_whisper.py
 
 import argparse
 import json
@@ -26,19 +26,10 @@ import jax.numpy as jnp
 from datasets import load_dataset
 from transformers import FlaxWhisperForConditionalGeneration, WhisperProcessor
 
-import spu.utils.distributed as ppd
+import examples.python.utils.distributed as ppd
 from spu import libspu
 
-parser = argparse.ArgumentParser(description='distributed driver.')
-parser.add_argument(
-    "-c", "--config", default="examples/python/ml/flax_whisper/3pc.json"
-)
-args = parser.parse_args()
-
-with open(args.config, 'r') as file:
-    conf = json.load(file)
-
-ppd.init(conf["nodes"], conf["devices"])
+DEFAULT_CONF_FILE = "examples/python/ml/flax_whisper/3pc.json"
 
 processor = WhisperProcessor.from_pretrained("openai/whisper-tiny.en")
 pretrained_model = FlaxWhisperForConditionalGeneration.from_pretrained(
@@ -61,7 +52,12 @@ def run_on_cpu():
     return generated_ids.sequences
 
 
-def run_on_spu():
+def run_on_spu(config=DEFAULT_CONF_FILE):
+    with open(config, 'r') as file:
+        conf = json.load(file)
+
+    ppd.init(conf["nodes"], conf["devices"])
+
     ds = load_dataset(
         "hf-internal-testing/librispeech_asr_dummy", "clean", split="validation"
     )
@@ -79,9 +75,13 @@ def run_on_spu():
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='distributed driver.')
+    parser.add_argument("-c", "--config", default=DEFAULT_CONF_FILE)
+    args = parser.parse_args()
+
     print('\n------\nRun on CPU')
     generated_ids = run_on_cpu()
     print(processor.batch_decode(generated_ids, skip_special_tokens=True)[0])
     print('\n------\nRun on SPU')
-    generated_ids = run_on_spu()
+    generated_ids = run_on_spu(args.config)
     print(processor.batch_decode(generated_ids, skip_special_tokens=True)[0])

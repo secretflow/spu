@@ -5,11 +5,11 @@ This example demonstrates how to use SPU to train an SVM model privately.
 1. Launch SPU backend runtime
 
     ```sh
-    bazel run -c opt //examples/python/utils:nodectl -- up
+    python examples/python/utils/nodectl.py up
     ```
 
 2. Run `jax_svm` example
 
     ```sh
-    bazel run -c opt //examples/python/ml/jax_svm
+    python examples/python/ml/jax_svm/jax_svm.py
     ```

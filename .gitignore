@@ -60,3 +60,14 @@ spu_wheel.name
 # doc translation files
 docs/**/*.mo
 docs/**/*.pot
+
+# spu/lib*
+spu/lib*.so
+spu/lib*.dylib
+spu/lib*.dll
+
+.pdm-build/
+
+BeaverCache.*
+*.jpg
+*.png

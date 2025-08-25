@@ -20,10 +20,10 @@ optimization.
 """
 
 # Start nodes.
-# > bazel run -c opt //examples/python/utils:nodectl -- up
+# > python examples/python/utils/nodectl.py up
 #
 # Run this example script.
-# > bazel run -c opt //examples/python/ml/stax_mnist_classifier:stax_mnist_classifier
+# > python examples/python/ml/stax_mnist_classifier/stax_mnist_classifier.py
 
 import itertools
 import time
@@ -125,17 +125,15 @@ def run_cpu():
         print("Test set accuracy {}".format(test_acc))
 
 
-def run_spu():
-    import argparse
+DEFAULT_CONF_FILE = "examples/python/conf/3pc.json"
+
+
+def run_spu(config_file=DEFAULT_CONF_FILE):
     import json
 
-    import spu.utils.distributed as ppd
+    import examples.python.utils.distributed as ppd
 
-    parser = argparse.ArgumentParser(description='distributed driver.')
-    parser.add_argument("-c", "--config", default="examples/python/conf/3pc.json")
-    args = parser.parse_args()
-
-    with open(args.config, 'r') as file:
+    with open(config_file, 'r') as file:
         conf = json.load(file)
 
     ppd.init(conf["nodes"], conf["devices"])
@@ -167,6 +165,12 @@ def run_spu():
 
 
 if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(description='distributed driver.')
+    parser.add_argument("-c", "--config", default=DEFAULT_CONF_FILE)
+    args = parser.parse_args()
+
     print("run_cpu:")
     run_cpu()
     print("run_spu:")

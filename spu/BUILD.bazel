@@ -13,8 +13,6 @@
 # limitations under the License.
 
 load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
-load("@rules_python//python:packaging.bzl", "py_package")
-load("//bazel:spu.bzl", "spu_py_library")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -68,48 +66,5 @@ pybind_extension(
         "@psi//psi/apps/psi_launcher:launch",
         "@psi//psi/legacy:memory_psi",
         "@yacl//yacl/link",
-    ],
-)
-
-spu_py_library(
-    name = "api",
-    srcs = [
-        "api.py",
-    ],
-    data = [
-        "libpsi.pyi",
-        "libspu.pyi",
-        ":libspu.so",
-    ],
-)
-
-spu_py_library(
-    name = "psi",
-    srcs = [
-        "psi.py",
-    ],
-    data = [
-        ":libpsi.so",
-        ":libspu.so",
-    ],
-)
-
-spu_py_library(
-    name = "init",
-    srcs = [
-        "__init__.py",
-        "version.py",
-        ":api",
-        ":psi",
-        "//spu/experimental:experimentals",
-        "//spu/intrinsic:all_intrinsics",
-        "//spu/utils:simulation",
-    ],
-)
-
-py_package(
-    name = "_lib_deps",
-    deps = [
-        ":api",
     ],
 )

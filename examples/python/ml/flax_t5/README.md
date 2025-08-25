@@ -10,11 +10,11 @@ This example demonstrates how to use SPU to run private inference on a pre-train
 2. Launch SPU backend runtime
 
     ```sh
-    bazel run -c opt //examples/python/utils:nodectl -- --config `pwd`/examples/python/ml/flax_t5/3pc.json up
+    python examples/python/utils/nodectl.py --config `pwd`/examples/python/ml/flax_t5/3pc.json up
     ```
 
 3. Run `flax_t5` example
 
     ```sh
-    bazel run -c opt //examples/python/ml/flax_t5 -- --config `pwd`/examples/python/ml/flax_t5/3pc.json
+    python examples/python/ml/flax_t5/flax_t5.py --config `pwd`/examples/python/ml/flax_t5/3pc.json
     ```

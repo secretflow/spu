@@ -7,11 +7,11 @@ This example demonstrates how to use SPU to make private inferences on PyTorch m
 1. Launch SPU backend runtime
 
     ```sh
-    bazel run -c opt //examples/python/utils:nodectl -- up
+    python examples/python/utils/nodectl.py up
     ```
 
 2. Run `torch_resnet_experiment` example
 
     ```sh
-    bazel run -c opt //examples/python/ml/torch_resnet_experiment
+    python examples/python/ml/torch_resnet_experiment/torch_resnet_experiment.py
     ```

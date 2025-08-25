@@ -19,9 +19,13 @@
 # For more details, please check https://github.com/bazelbuild/bazel/issues/18958
 ###############################################################################
 
+"""
+Secure Processing Unit
+"""
+
 module(
     name = "spu",
-    version = "0.9.4.dev20250618",
+    version = "0.9.4.dev20250822",
     compatibility_level = 1,
 )
 
@@ -94,35 +98,6 @@ python = use_extension("@rules_python//python/extensions:python.bzl", "python")
 ]
 
 use_repo(python, "python_versions")
-
-pip = use_extension("@rules_python//python/extensions:pip.bzl", "pip")
-
-[
-    pip.parse(
-        hub_name = "spu_pip",
-        python_version = python_version,
-        requirements_lock = "//:requirements_lock_{}.txt".format(python_version.replace(".", "_")),
-    )
-    for python_version in SUPPORTED_PYTHON_VERSIONS
-]
-
-use_repo(pip, "spu_pip")
-pip.parse(
-    hub_name = "spu_pip_dev",
-    python_version = DEFAULT_PYTHON_VERSION,
-    requirements_darwin = "//:requirements_dev_darwin_lock.txt",
-    requirements_lock = "//:requirements_dev_lock.txt",
-)
-pip.override(
-    file = "torch-2.3.0-cp311-cp311-manylinux1_x86_64.whl",
-    patch_strip = 1,
-    patches = [
-        # FIXME: https://github.com/pytorch/pytorch/issues/117350
-        "//bazel/patches:pytorch.patch",
-        "//bazel/patches:pytorch_record.patch",
-    ],
-)
-use_repo(pip, "spu_pip_dev")
 
 bazel_dep(name = "rules_proto_grpc_python", version = "5.0.0")
 

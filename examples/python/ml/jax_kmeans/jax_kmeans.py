@@ -13,10 +13,10 @@
 # limitations under the License.
 
 # Start nodes.
-# > bazel run -c opt //examples/python/utils:nodectl -- up
+# > python examples/python/utils/nodectl.py up
 #
 # Run this example script.
-# > bazel run -c opt //examples/python/ml/jax_kmeans:jax_kmeans
+# > python examples/python/ml/jax_kmeans/jax_kmeans.py
 
 
 import argparse
@@ -26,16 +26,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-import spu.utils.distributed as ppd
-
-parser = argparse.ArgumentParser(description="distributed driver.")
-parser.add_argument("-c", "--config", default="examples/python/conf/3pc.json")
-args = parser.parse_args()
-
-with open(args.config, "r") as file:
-    conf = json.load(file)
-
-ppd.init(conf["nodes"], conf["devices"])
+import examples.python.utils.distributed as ppd
 
 
 def kmeans(data_alice, data_bob, k, random_numbers, n_epochs=10):
@@ -106,18 +97,6 @@ def kmeans(data_alice, data_bob, k, random_numbers, n_epochs=10):
     return res[1], res[2]
 
 
-@ppd.device("P1")
-def points_from_alice(npoints):
-    np.random.seed(0xDEADBEEF)
-    return np.random.normal(size=(npoints, 2)) * 5
-
-
-@ppd.device("P2")
-def points_from_bob(npoints):
-    np.random.seed(0xC0FFEE)
-    return np.random.normal(size=(npoints, 2)) * 5
-
-
 def run_on_cpu():
     # Two party share a dataset, and use kmeans to cluster them.
 
@@ -143,12 +122,30 @@ def run_on_cpu():
     return centers, labels
 
 
-def run_on_spu():
+DEFAULT_CONF_FILE = "examples/python/conf/3pc.json"
+
+
+def run_on_spu(config: str = DEFAULT_CONF_FILE):
+    with open(config, "r") as file:
+        conf = json.load(file)
+
+    ppd.init(conf["nodes"], conf["devices"])
+
     # Two party share a dataset, and use kmeans to cluster them.
 
     n_points_each_party = 30
     k = 2
     n_epochs = 10
+
+    @ppd.device("P1")
+    def points_from_alice(npoints):
+        np.random.seed(0xDEADBEEF)
+        return np.random.normal(size=(npoints, 2)) * 5
+
+    @ppd.device("P2")
+    def points_from_bob(npoints):
+        np.random.seed(0xC0FFEE)
+        return np.random.normal(size=(npoints, 2)) * 5
 
     x = points_from_alice(n_points_each_party)
     y = points_from_bob(n_points_each_party)
@@ -169,7 +166,11 @@ def run_on_spu():
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="distributed driver.")
+    parser.add_argument("-c", "--config", default="examples/python/conf/3pc.json")
+    args = parser.parse_args()
+
     print('Run on CPU\n------\n')
     run_on_cpu()
     print('Run on SPU\n------\n')
-    run_on_spu()
+    run_on_spu(args.config)

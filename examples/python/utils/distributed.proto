@@ -14,7 +14,7 @@
 
 syntax = "proto3";
 
-package spu.utils.distributed;
+package examples.python.utils.distributed;
 
 service NodeService {
   // run a routine on node's context, save the return values as object refs,

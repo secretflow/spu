@@ -13,10 +13,10 @@
 # limitations under the License.
 
 # Start nodes.
-# > bazel run -c opt //examples/python/utils:nodectl -- -c examples/python/conf/2pc_semi2k.json up
+# > python examples/python/utils/nodectl.py -c examples/python/conf/2pc_semi2k.json up
 #
 # Run this example script.
-# > bazel run -c opt //examples/python/ml/jax_lr:jax_lr
+# > python examples/python/ml/jax_lr/jax_lr.py
 
 
 import argparse
@@ -27,8 +27,8 @@ import jax.numpy as jnp
 from sklearn import metrics
 
 import examples.python.utils.dataset_utils as dsutil
+import examples.python.utils.distributed as ppd
 import spu
-import spu.utils.distributed as ppd
 
 
 # FIXME: For un-normalized data, grad(sigmoid) is likely to overflow, either with exp/tanh or taylor series

@@ -31,7 +31,7 @@ from .api import (
     parse_visibility,
 )
 from .intrinsic import *
-from .libspu import (  # type: ignore;
+from .libspu import (  # type: ignore
     CompilationSource,
     CompilerOptions,
     DataType,
@@ -45,7 +45,6 @@ from .libspu import (  # type: ignore;
     ValueMeta,
     Visibility,
     link,
-    logging,
 )
 from .utils import simulation
 from .version import __version__  # type: ignor
@@ -65,6 +64,7 @@ __all__ = [
     "ValueMeta",
     "RuntimeConfig",
     "Executable",
+    "link",
     # spu_api
     "Io",
     "Runtime",

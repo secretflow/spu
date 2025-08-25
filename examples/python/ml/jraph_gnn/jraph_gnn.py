@@ -23,13 +23,15 @@ karate club to two distinct karate instructors (Mr. Hi and John A).
 """
 
 import logging
-
+import json
 import haiku as hk
 import jax
 import jax.numpy as jnp
 import jraph
 import optax
-from absl import app
+import argparse
+
+import examples.python.utils.distributed as ppd
 
 
 def get_zacharys_karate_club() -> jraph.GraphsTuple:
@@ -230,7 +232,6 @@ def optimize_club(num_steps: int, run_on_spu: bool):
         opt_state = ppd.device("P1")(lambda x: x)(opt_state)
 
     for step in range(num_steps):
-        logging.info("step %r accuracy %r", step, accuracy(ppd.get(params)).item())
         if run_on_spu:
             logging.info("step %r accuracy %r", step, accuracy(ppd.get(params)).item())
             params, opt_state = ppd.device("SPU")(update)(params, opt_state)
@@ -251,26 +252,22 @@ def optimize_club(num_steps: int, run_on_spu: bool):
         return accuracy(params).item()
 
 
-import argparse
-import json
-
-import spu.utils.distributed as ppd
-
-parser = argparse.ArgumentParser(description="distributed driver.")
-parser.add_argument("-c", "--config", default="examples/python/conf/3pc.json")
-args = parser.parse_args()
-
-with open(args.config, "r") as file:
-    conf = json.load(file)
-ppd.init(conf["nodes"], conf["devices"])
+DEFAULT_CONF_FILE = "examples/python/conf/3pc.json"
 
 
-def main(_):
-    print('Run on CPU\n------\n')
-    optimize_club(num_steps=30, run_on_spu=False)
-    print('Run on SPU\n------\n')
-    optimize_club(num_steps=30, run_on_spu=True)
+def optimize_club_on_spu(config: str = DEFAULT_CONF_FILE):
+    with open(config, "r") as file:
+        conf = json.load(file)
+    ppd.init(conf["nodes"], conf["devices"])
+    return optimize_club(num_steps=30, run_on_spu=True)
 
 
 if __name__ == "__main__":
-    app.run(main)
+    parser = argparse.ArgumentParser(description="distributed driver.")
+    parser.add_argument("-c", "--config", default=DEFAULT_CONF_FILE)
+    args = parser.parse_args()
+
+    print('Run on CPU\n------\n')
+    optimize_club(num_steps=30, run_on_spu=False)
+    print('Run on SPU\n------\n')
+    optimize_club_on_spu(args.config)

@@ -36,13 +36,10 @@ commands:
     parameters:
       targets:
         type: string
-        default: "//..."
-      extra_bazel_test_args:
+        default: "spu/tests"
+      groups:
         type: string
-        default: ""
-      spu_wheel:
-        type: string
-        default: "//:spu_wheel"
+        default: "--group dev"
     steps:
       # Kill the whole ci after 1hr
       - run:
@@ -67,54 +64,15 @@ commands:
           command: |
             set +e
 
-            declare -i status0=0
-            declare -i status1=0
-            declare -i status2=0
-
-            bazelisk --version && python3 --version && bazelisk run //:requirements-dev.update; status0=${PIPESTATUS[0]}
-
-            # build module spulib
-            pushd src
-            bazelisk query <<parameters.targets>>; if [ $? -eq 0 ]; then
-              bazelisk build <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning; status1=${PIPESTATUS[0]}
-            fi
-            popd
-
-            # build module spu
-            bazelisk query <<parameters.targets>>; if [ $? -eq 0 ]; then
-              bazelisk build <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning; status2=${PIPESTATUS[0]}
-            fi
-
-            status=$((${status0} + ${status1} + ${status2}))
-            exit ${status}
+            bazelisk build //... -c opt --ui_event_filters=-info,-debug,-warning;
+            cp bazel-bin/spu/*.so spu/
       - run:
           name: "test"
           command: |
             set +e
-
-            declare -i status0=0
-            declare -i status1=0
-            mkdir test-results
-            mkdir bazel-testlogs
-
-            pushd src
-            bazelisk query <<parameters.targets>>; if [ $? -eq 0 ]; then
-              bazelisk test <<parameters.extra_bazel_test_args>> <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors | tee test_result.log; status0=${PIPESTATUS[0]}
-              sh ../../devtools/rename-junit-xml.sh
-              cp -r test-results/ ../test-results/
-              cp -r bazel-testlogs/ ../bazel-testlogs/
-            fi
-            popd
-
-            bazelisk query <<parameters.targets>>; if [ $? -eq 0 ]; then
-              bazelisk test <<parameters.extra_bazel_test_args>> <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors | tee -a test_result.log; status1=${PIPESTATUS[0]}
-              sh ../devtools/rename-junit-xml.sh
-            fi
-
-            find bazel-testlogs/ -type f -name "test.log"  -print0 | xargs -0 tar -cvf test_logs.tar
-
-            status=$((${status0} + ${status1}))
-            exit ${status}
+            python3 -m pip install --upgrade pip
+            python3 -m pip install . << parameters.groups >>
+            PYTHONPATH=. pytest -v -x --capture=no << parameters.targets >>
 
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
@@ -146,15 +104,7 @@ jobs:
             elif [ -x "$(command -v yum)" ]; then
                 yum install -y npm && npm install -g @bazel/bazelisk
             fi
-      - restore_cache:
-          name: restore pip cache
-          key: &pip-cache pip-{{ arch }}-{{ .Branch }}-{{ checksum "requirements.txt" }}-{{ checksum "requirements-dev.txt" }}
       - build_and_test
-      - save_cache:
-          key: *pip-cache
-          paths:
-            - /root/miniconda3/lib/python3.10/site-packages
-          when: always
   linux_ml_ut:
     executor:
       name: linux_executor
@@ -182,8 +132,8 @@ jobs:
           command: |
             python3 -m pip install tzdata
       - build_and_test:
-          targets: //examples/python/ml:ml_test
-          extra_bazel_test_args: --test_env LD_LIBRARY_PATH=/root/miniconda3/lib/
+          targets: examples/python/ml/ml_test.py
+          groups: --group dev --group examples
   macOS_ut:
     macos:
       xcode: 16.0.0

@@ -12,14 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-# Start nodes.
-# > bazel run -c opt //examples/python/utils:nodectl -- up
-#
-# Run this example script.
-# > bazel run -c opt //examples/python/ir_dump:ir_dump
-
-
 import argparse
 import json
 import logging
@@ -28,8 +20,8 @@ import os
 import jax.numpy as jnp
 import numpy as np
 
+import examples.python.utils.distributed as ppd
 import spu.libspu as libspu
-import spu.utils.distributed as ppd
 
 logging.basicConfig(level=logging.INFO)
 

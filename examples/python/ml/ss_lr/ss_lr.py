@@ -31,7 +31,7 @@ from sklearn.metrics import explained_variance_score, roc_auc_score
 
 import examples.python.utils.appr_sigmoid as Sigmoid
 import examples.python.utils.dataset_utils as dsutil
-import spu.utils.distributed as ppd
+import examples.python.utils.distributed as ppd
 
 
 def sigmoid(x):
@@ -235,32 +235,23 @@ class SSLR:
         return yhat
 
 
-parser = argparse.ArgumentParser(description='distributed driver.')
-parser.add_argument("-c", "--config", default="examples/python/conf/3pc.json")
-parser.add_argument(
-    "-d",
-    "--dataset_config",
-    default="examples/python/conf/ds_mock_regression_basic.json",
-)
-parser.add_argument("--epochs", default=10, type=int)
-parser.add_argument("--learning_rate", default=0.1, type=float)
-parser.add_argument("--batch_size", default=1024, type=int)
-parser.add_argument("--penalty", default="None", choices=["None", "L1", "L2"])
-parser.add_argument("--l2_norm", default=0.0, type=float)
-args = parser.parse_args()
-
-with open(args.config, 'r') as file:
-    conf = json.load(file)
-
-with open(args.dataset_config, "r") as f:
-    dataset_config = json.load(f)
-
-ppd.init(conf["nodes"], conf["devices"])
-
 REGTYPE = None
 
+DEFAULT_EPOCHS = 10
+DEFAULT_LEARNING_RATE = 0.1
+DEFAULT_BATCH_SIZE = 1024
+DEFAULT_PENALTY = "None"
+DEFAULT_L2_NORM = 0.0
 
-def train():
+
+def train(
+    dataset_config: dict,
+    epochs=DEFAULT_EPOCHS,
+    learning_rate=DEFAULT_LEARNING_RATE,
+    batch_size=DEFAULT_BATCH_SIZE,
+    penalty=DEFAULT_PENALTY,
+    l2_norm=DEFAULT_L2_NORM,
+):
     if dataset_config["problem_type"] == "regression":
         REGTYPE = RegType.Linear.value
     elif dataset_config["problem_type"] == "classification":
@@ -276,12 +267,12 @@ def train():
     model = sslr.fit(
         xs,
         y,
-        epochs=args.epochs,
-        learning_rate=args.learning_rate,
-        batch_size=args.batch_size,
+        epochs=epochs,
+        learning_rate=learning_rate,
+        batch_size=batch_size,
         reg_type=REGTYPE,
-        penalty=args.penalty,
-        l2_norm=args.l2_norm,
+        penalty=penalty,
+        l2_norm=l2_norm,
     )
     train_time = time.time() - start
     print(f"train time {train_time}")
@@ -300,5 +291,39 @@ def train():
     return score, train_time, predict_time
 
 
+DEFAULT_CONF_FILE = "examples/python/conf/3pc.json"
+DEFAULT_DATASET_CONF_FILE = "examples/python/conf/ds_mock_regression_basic.json"
+
+
+def main(
+    config=DEFAULT_CONF_FILE,
+    dataset_config=DEFAULT_DATASET_CONF_FILE,
+    dataset_n_samples: int | None = None,
+    **kwargs,
+):
+    with open(config, 'r') as file:
+        conf = json.load(file)
+
+    with open(dataset_config, "r") as f:
+        dataset_conf = json.load(f)
+
+    if dataset_n_samples is not None:
+        dataset_conf["n_samples"] = dataset_n_samples
+
+    ppd.init(conf["nodes"], conf["devices"])
+    return train(dataset_conf, **kwargs)
+
+
 if __name__ == '__main__':
-    train()
+    parser = argparse.ArgumentParser(description='distributed driver.')
+    parser.add_argument("-c", "--config", default=DEFAULT_CONF_FILE)
+    parser.add_argument("-d", "--dataset_config", default=DEFAULT_DATASET_CONF_FILE)
+    parser.add_argument("--epochs", default=DEFAULT_EPOCHS, type=int)
+    parser.add_argument("--learning_rate", default=DEFAULT_LEARNING_RATE, type=float)
+    parser.add_argument("--batch_size", default=DEFAULT_BATCH_SIZE, type=int)
+    parser.add_argument(
+        "--penalty", default=DEFAULT_PENALTY, choices=["None", "L1", "L2"]
+    )
+    parser.add_argument("--l2_norm", default=DEFAULT_L2_NORM, type=float)
+    args = parser.parse_args()
+    main(**vars(args))
