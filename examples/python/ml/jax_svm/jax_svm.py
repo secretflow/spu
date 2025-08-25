@@ -27,7 +27,7 @@ import jax.numpy as jnp
 from sklearn import metrics
 
 import examples.python.utils.dataset_utils as dsutil
-import spu.utils.distributed as ppd
+import examples.python.utils.distributed as ppd
 
 
 def predict(x, w, b):
@@ -75,19 +75,6 @@ class LinearSVM:
         return jax.lax.fori_loop(0, self.n_epochs, epoch_loop, (w, b))
 
 
-parser = argparse.ArgumentParser(description='distributed driver.')
-parser.add_argument("-c", "--config", default="examples/python/conf/3pc.json")
-parser.add_argument("--n_epochs", default=1000, type=int)
-parser.add_argument("--step_size", default=0.001, type=float)
-parser.add_argument("--lambda_param", default=0.01, type=float)
-args = parser.parse_args()
-
-with open(args.config, 'r') as file:
-    conf = json.load(file)
-
-ppd.init(conf["nodes"], conf["devices"])
-
-
 def compute_score(w, b, type):
     x_test, y_test = dsutil.breast_cancer(slice(None, None, None), False)
     y_test = jnp.where(y_test <= 0, -1, 1)
@@ -96,10 +83,18 @@ def compute_score(w, b, type):
     return score
 
 
-def run_on_cpu():
+DEFAULT_CONF_FILE = "examples/python/conf/3pc.json"
+DEFAULT_EPOCHS = 1000
+DEFAULT_STEP_SIZE = 0.001
+DEFAULT_LAMBDA = 0.01
+
+
+def run_on_cpu(
+    n_epochs=DEFAULT_EPOCHS, step_size=DEFAULT_STEP_SIZE, lambda_param=DEFAULT_LAMBDA
+):
     x_train, y_train = dsutil.breast_cancer(slice(None, None, None), True)
 
-    svm = LinearSVM(args.n_epochs, args.step_size, args.lambda_param)
+    svm = LinearSVM(n_epochs, step_size, lambda_param)
     y_train = jnp.where(y_train <= 0, -1, 1)
     w, b = jax.jit(svm.fit)(x_train, y_train)
     print(w, b)
@@ -107,11 +102,21 @@ def run_on_cpu():
     return w, b
 
 
-def run_on_spu():
+def run_on_spu(
+    config=DEFAULT_CONF_FILE,
+    n_epochs=DEFAULT_EPOCHS,
+    step_size=DEFAULT_STEP_SIZE,
+    lambda_param=DEFAULT_LAMBDA,
+):
+    with open(config, 'r') as file:
+        conf = json.load(file)
+
+    ppd.init(conf["nodes"], conf["devices"])
+
     @ppd.device("SPU")
     def train(x1, x2, y):
         x = jnp.concatenate((x1, x2), axis=1)
-        svm = LinearSVM(args.n_epochs, args.step_size, args.lambda_param)
+        svm = LinearSVM(n_epochs, step_size, lambda_param)
         y = jnp.where(y <= 0, -1, 1)
         return svm.fit(x, y)
 
@@ -126,9 +131,20 @@ def run_on_spu():
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='distributed driver.')
+    parser.add_argument("-c", "--config", default="examples/python/conf/3pc.json")
+    parser.add_argument("--n_epochs", default=1000, type=int)
+    parser.add_argument("--step_size", default=0.001, type=float)
+    parser.add_argument("--lambda_param", default=0.01, type=float)
+    args = parser.parse_args()
+
+    spu_kwargs = vars(args)
+    cpu_kwargs = spu_kwargs.copy()
+    cpu_kwargs.pop("config")
+
     print('Run on CPU\n------\n')
-    w, b = run_on_cpu()
+    w, b = run_on_cpu(**cpu_kwargs)
     compute_score(w, b, 'cpu')
     print('Run on SPU\n------\n')
-    w, b = run_on_spu()
+    w, b = run_on_spu(**spu_kwargs)
     compute_score(w, b, 'spu')

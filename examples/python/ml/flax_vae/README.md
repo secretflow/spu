@@ -9,13 +9,13 @@ This example comes from Flax official github repo:
 1. Launch SPU backend runtime
 
     ```sh
-    bazel run -c opt //examples/python/utils:nodectl -- up
+    python examples/python/utils/nodectl.py up
     ```
 
 2. Run `flax_vae` example
 
     ```sh
-    bazel run -c opt //examples/python/ml/flax_vae -- --output_dir `pwd` --num_epochs 5
+    python examples/python/ml/flax_vae/flax_vae.py --output_dir `pwd` --num_epochs 5
     ```
 
 3. Check results

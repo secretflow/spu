@@ -5,11 +5,11 @@ This example demonstrates how to use SPU to train an MLP model privately.
 1. Launch SPU backend runtime
 
     ```sh
-    bazel run -c opt //examples/python/utils:nodectl -- up
+    python examples/python/utils/nodectl.py up
     ```
 
 2. Run `flax_mlp` example
 
     ```sh
-    bazel run -c opt //examples/python/ml/flax_mlp
+    python examples/python/ml/flax_mlp/flax_mlp.py
     ```

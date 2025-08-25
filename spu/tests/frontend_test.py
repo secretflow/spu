@@ -23,7 +23,7 @@ import spu.libspu as libspu
 import spu.utils.frontend as spu_fe
 
 
-def test_jax_add(*args, **kwargs):
+def jax_add_demo(*args, **kwargs):
     ret = jnp.zeros((2,))
     for arg in args:
         ret = jnp.add(ret, arg)
@@ -36,7 +36,7 @@ class UnitTests(unittest.TestCase):
     def test_jax_compile_static_args(self):
         executable, output = spu_fe.compile(
             spu_fe.Kind.JAX,
-            test_jax_add,
+            jax_add_demo,
             (1, np.array([2, 4])),
             {"in3": 2, "in4": np.array([2, 4])},
             ["in1", "in2", "in3", "in4"],
@@ -50,7 +50,7 @@ class UnitTests(unittest.TestCase):
             static_argnums=(0,),
             static_argnames=["in3"],
         )
-        self.assertEqual(executable.name, "test_jax_add")
+        self.assertEqual(executable.name, "jax_add_demo")
         self.assertEqual(executable.input_names, ["in1", "in2", "in3", "in4"])
         self.assertEqual(executable.output_names, ["test-out0"])
         print(executable.code.decode())

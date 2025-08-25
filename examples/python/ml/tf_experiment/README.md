@@ -7,11 +7,11 @@ Currently, SPU's support of TensorFlow is **experimental**.
 1. Launch SPU backend runtime
 
     ```sh
-    bazel run -c opt //examples/python/utils:nodectl -- up
+    python examples/python/utils/nodectl.py up
     ```
 
 2. Run `tf_experiment` example
 
     ```sh
-    bazel run -c opt //examples/python/ml/tf_experiment
+    python examples/python/ml/tf_experiment/tf_experiment.py
     ```

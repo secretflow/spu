@@ -132,17 +132,15 @@ bazelisk test //... --features=ubsan
 ### Build docs
 
 ```sh
-# prerequisite
 pip install -U -r docs/requirements.txt
 
 cd docs
 
-# build English docs
-make clean && make html  # html docs will be in docs/_build/html
-
-# build Chinese docs
-make clean && make -e SPHINXOPTS="-D language='zh_CN'" html  # html docs will be in docs/_build/html
+secretflow-doctools build --lang en --lang zh_CN
+secretflow-doctools preview
 ```
+
+For more details, please checkout [contributing docs](/docs/CONTRIBUTING.md)
 
 ## Release cycle
 

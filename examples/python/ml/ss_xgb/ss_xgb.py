@@ -13,17 +13,15 @@
 # limitations under the License.
 
 # Start nodes.
-# > bazel run -c opt //examples/python/utils:nodectl -- up
+# > python examples/python/utils/nodectl.py up
 #
 # Run this example script.
-# > bazel run -c opt //examples/python/ml/ss_xgb:ss_xgb
+# > python examples/python/ml/ss_xgb/ss_xgb.py
 
 import argparse
 import json
 import time
-from functools import reduce
-from statistics import mode
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List
 
 import jax.numpy as jnp
 import numpy as np
@@ -32,26 +30,8 @@ from sklearn.metrics import roc_auc_score
 
 import examples.python.utils.appr_sigmoid as Sigmoid
 import examples.python.utils.dataset_utils as dsutil
-import spu.utils.distributed as ppd
-from spu.utils.distributed import PYU, SPU
-
-parser = argparse.ArgumentParser(description='distributed driver.')
-parser.add_argument("-c", "--config", default="examples/python/conf/3pc.json")
-# use small dataset for this example
-parser.add_argument(
-    "-d", "--dataset_config", default="examples/python/conf/ds_breast_cancer_basic.json"
-)
-
-args = parser.parse_args()
-
-with open(args.config, 'r') as file:
-    conf = json.load(file)
-
-
-with open(args.dataset_config, "r") as f:
-    dataset_config = json.load(f)
-
-ppd.init(conf["nodes"], conf["devices"])
+import examples.python.utils.distributed as ppd
+from examples.python.utils.distributed import PYU, SPU
 
 
 class XgbModel:
@@ -434,7 +414,19 @@ class SSXgb:
         return self.spu(sigmoid)(pred)
 
 
-def main():
+DEFAULT_CONF_FILE = "examples/python/conf/3pc.json"
+DEFAULT_DATASET_CONF_FILE = "examples/python/conf/ds_breast_cancer_basic.json"
+
+
+def main(conf_file=DEFAULT_CONF_FILE, dataset_config_file=DEFAULT_DATASET_CONF_FILE):
+    with open(conf_file, 'r') as file:
+        conf = json.load(file)
+
+    with open(dataset_config_file, "r") as f:
+        dataset_config = json.load(f)
+
+    ppd.init(conf["nodes"], conf["devices"])
+
     x1, x2, y = dsutil.load_dataset_by_config(dataset_config)
     x1, y = ppd.device("P1")(dsutil.load_feature_r1)(x1, y)
     x2 = ppd.device("P2")(dsutil.load_feature_r2)(x2)
@@ -457,4 +449,15 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser(description='distributed driver.')
+    parser.add_argument("-c", "--config", default=DEFAULT_CONF_FILE)
+    # use small dataset for this example
+    parser.add_argument(
+        "-d",
+        "--dataset_config",
+        default=DEFAULT_DATASET_CONF_FILE,
+    )
+
+    args = parser.parse_args()
+
+    main(args.config, args.dataset_config)

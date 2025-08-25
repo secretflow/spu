@@ -13,64 +13,72 @@
 # limitations under the License.
 
 
+import os
 import time
 import unittest
 
-import multiprocess
-
-import spu.libspu.link as link
+import spu.libspu.link as link  # type: ignore
 import spu.psi as psi
-from spu.tests.utils import get_free_port, wc_count
+from spu.tests.utils import (
+    build_link_desc,
+    create_link_desc_dict,
+    get_free_port,
+    wc_count,
+)
+from spu.utils.polyfill import Process
 
 
 class UnitTests(unittest.TestCase):
+    @staticmethod
+    def run_psi(link_desc, rank, selected_fields, input_path, output_path, protocol):
+        lctx_desc = build_link_desc(link_desc)
+        lctx = link.create_brpc(lctx_desc, rank)
+
+        config = psi.PsiExecuteConfig(
+            protocol_conf=psi.PsiProtocolConfig(
+                protocol=protocol,
+                receiver_rank=0,
+                broadcast_result=True,
+                ecdh_params=psi.EcdhParams(curve=psi.EllipticCurveType.CURVE_25519),
+            ),
+            input_params=psi.InputParams(
+                type=psi.SourceType.SOURCE_TYPE_FILE_CSV,
+                path=input_path,
+                selected_keys=selected_fields,
+            ),
+            output_params=psi.OutputParams(
+                type=psi.SourceType.SOURCE_TYPE_FILE_CSV, path=output_path
+            ),
+        )
+
+        report = psi.psi_execute(config, lctx)
+
+        source_count = wc_count(input_path)
+        output_count = wc_count(output_path)
+        print(
+            f"id:{lctx.id()}, psi_type: {type}, original_count: {report.original_count}, intersection_count: {report.intersection_count}, source_count: {source_count}, output_count: {output_count}"
+        )
+
+        if report.original_count != source_count - 1:
+            raise ValueError(
+                f"original_count mismatch, {report.original_count}, {source_count - 1}"
+            )
+        if report.intersection_count != output_count - 1:
+            raise ValueError(
+                f"intersection_count mismatch, {report.intersection_count}, {output_count-1}"
+            )
+
+        lctx.stop_link()
+
     def run_streaming_psi(self, wsize, inputs, outputs, selected_fields, protocol):
-        time_stamp = time.time()
-        lctx_desc = link.Desc()
-        lctx_desc.id = str(round(time_stamp * 1000))
-
-        for rank in range(wsize):
-            port = get_free_port()
-            lctx_desc.add_party(f"id_{rank}", f"127.0.0.1:{port}")
-
-        def wrap(rank, selected_fields, input_path, output_path, protocol):
-            lctx = link.create_brpc(lctx_desc, rank)
-
-            config = psi.PsiExecuteConfig(
-                protocol_conf=psi.PsiProtocolConfig(
-                    protocol=protocol,
-                    receiver_rank=0,
-                    broadcast_result=True,
-                    ecdh_params=psi.EcdhParams(curve=psi.EllipticCurveType.CURVE_25519),
-                ),
-                input_params=psi.InputParams(
-                    type=psi.SourceType.SOURCE_TYPE_FILE_CSV,
-                    path=input_path,
-                    selected_keys=selected_fields,
-                ),
-                output_params=psi.OutputParams(
-                    type=psi.SourceType.SOURCE_TYPE_FILE_CSV, path=output_path
-                ),
-            )
-
-            report = psi.psi_execute(config, lctx)
-
-            source_count = wc_count(input_path)
-            output_count = wc_count(output_path)
-            print(
-                f"id:{lctx.id()}, psi_type: {type}, original_count: {report.original_count}, intersection_count: {report.intersection_count}, source_count: {source_count}, output_count: {output_count}"
-            )
-
-            self.assertEqual(report.original_count, source_count - 1)
-            self.assertEqual(report.intersection_count, output_count - 1)
-
-            lctx.stop_link()
+        link_desc = create_link_desc_dict(wsize)
 
         # launch with multiprocess
         jobs = [
-            multiprocess.Process(
-                target=wrap,
+            Process(
+                target=UnitTests.run_psi,
                 args=(
+                    link_desc,
                     rank,
                     selected_fields,
                     inputs[rank],
@@ -84,6 +92,9 @@ class UnitTests(unittest.TestCase):
         for job in jobs:
             job.join()
             self.assertEqual(job.exitcode, 0)
+
+        for f in outputs:
+            os.remove(f)
 
     def prep_data(self):
         data = [

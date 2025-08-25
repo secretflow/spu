@@ -20,13 +20,13 @@ import numpy as np
 import torch
 from sklearn import metrics
 
-import spu.utils.distributed as ppd
+import examples.python.utils.distributed as ppd
 
 # Start nodes.
-# > bazel run -c opt //examples/python/utils:nodectl -- up
+# > python examples/python/utils/nodectl.py up
 #
 # Run this example script.
-# > bazel run -c opt //examples/python/ml/torch_lr_experiment:torch_lr_experiment
+# > python examples/python/ml/torch_lr_experiment/torch_lr_experiment.py
 
 
 class LinearRegression(torch.nn.Module):
@@ -103,17 +103,6 @@ def run_inference_on_cpu(model):
     print(f"AUC(cpu)={auc}, time={end_ts-start_ts}\n------\n")
 
 
-parser = argparse.ArgumentParser(description='distributed driver.')
-parser.add_argument("-c", "--config", default="examples/python/conf/3pc.json")
-args = parser.parse_args()
-
-with open(args.config, 'r') as file:
-    conf = json.load(file)
-
-ppd.init(conf["nodes"], conf["devices"], framework=ppd.Framework.EXP_TORCH)
-
-from collections import OrderedDict
-
 from jax.tree_util import tree_map
 
 
@@ -139,6 +128,15 @@ def run_inference_on_spu(model):
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='distributed driver.')
+    parser.add_argument("-c", "--config", default="examples/python/conf/3pc.json")
+    args = parser.parse_args()
+
+    with open(args.config, 'r') as file:
+        conf = json.load(file)
+
+    ppd.init(conf["nodes"], conf["devices"], framework=ppd.Framework.EXP_TORCH)
+
     # For reproducibility
     torch.manual_seed(0)
 

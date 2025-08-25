@@ -28,18 +28,7 @@ import optax
 import pandas as pd
 import plotnine as gg
 
-import spu.utils.distributed as ppd
-
-parser = argparse.ArgumentParser(description='SPU LSTM example.')
-parser.add_argument("--output_dir", default=os.getcwd())
-parser.add_argument("--num_steps", default=2001, type=int)
-args = parser.parse_args()
-
-with open("examples/python/conf/3pc.json", 'r') as file:
-    conf = json.load(file)
-
-ppd.init(conf["nodes"], conf["devices"])
-
+import examples.python.utils.distributed as ppd
 
 T = TypeVar('T')
 Pair = Tuple[T, T]
@@ -113,7 +102,7 @@ train, valid = generate_data(SEQ_LEN, TRAIN_SIZE, VALID_SIZE)
 df = pd.DataFrame({'x': train[0][:, 0, 0], 'y': train[1][:, 0, 0]}).reset_index()
 df = pd.melt(df, id_vars=['index'], value_vars=['x', 'y'])
 plot = gg.ggplot(df) + gg.aes(x='index', y='value', color='variable') + gg.geom_line()
-plot.save(filename=f"{args.output_dir}/observation_target_pair.png")
+
 
 train_ds = Dataset(train, BATCH_SIZE)
 valid_ds = Dataset(valid, BATCH_SIZE)
@@ -136,7 +125,7 @@ model = hk.transform(unroll_net)
 
 
 def train_model(
-    train_ds: Dataset, valid_ds: Dataset, run_on_spu: bool = True
+    train_ds: Dataset, valid_ds: Dataset, run_on_spu: bool = True, num_steps=2001
 ) -> hk.Params:
     """Initializes and trains a model on train_ds, returning the final params."""
     rng = jax.random.PRNGKey(428)
@@ -162,7 +151,7 @@ def train_model(
     import time
 
     start_ts = time.time()
-    for step in range(args.num_steps):
+    for step in range(num_steps):
         if step % 100 == 0:
             x, y = next(valid_ds)
             if run_on_spu:
@@ -278,12 +267,26 @@ def draw_from_reused_params(run_on_spu: bool, trained_params, context, sample_x)
     )
 
 
-def main():
+DEFAULT_CONF_FILE = "examples/python/conf/3pc.json"
+DEFAULT_NUM_STEPS = 2001
+
+
+def train_on_spu(config=DEFAULT_CONF_FILE, num_steps=DEFAULT_NUM_STEPS):
+    with open(config, 'r') as file:
+        conf = json.load(file)
+
+    ppd.init(conf["nodes"], conf["devices"])
+    return train_model(train_ds, valid_ds, run_on_spu=True, num_steps=num_steps)
+
+
+def main(num_steps: int):
     # Train models
     print('Run on CPU\n------\n')
-    cpu_trained_params, _ = train_model(train_ds, valid_ds, run_on_spu=False)
+    cpu_trained_params, _ = train_model(
+        train_ds, valid_ds, run_on_spu=False, num_steps=num_steps
+    )
     print('Run on SPU\n------\n')
-    spu_trained_params, _ = ppd.get(train_model(train_ds, valid_ds, run_on_spu=True))
+    spu_trained_params, _ = ppd.get(train_on_spu(num_steps=num_steps))
 
     # Grab a sample from the validation set.
     sample_x, _ = next(valid_ds)
@@ -312,4 +315,10 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser(description='SPU LSTM example.')
+    parser.add_argument("--output_dir", default=os.getcwd())
+    parser.add_argument("--num_steps", default=2001, type=int)
+    args = parser.parse_args()
+    plot.save(filename=f"{args.output_dir}/observation_target_pair.png")
+
+    main(args.num_steps)

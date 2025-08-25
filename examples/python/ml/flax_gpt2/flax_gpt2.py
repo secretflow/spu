@@ -12,19 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Start nodes.
-# > bazel run -c opt //examples/python/utils:nodectl -- --config `pwd`/examples/python/ml/flax_gpt2/3pc.json up
-#
-# Run this example script.
-# > bazel run -c opt //examples/python/ml/flax_gpt2:flax_gpt2
-
 import argparse
 import json
 
 import jax.numpy as jnp
 from transformers import AutoTokenizer, FlaxGPT2LMHeadModel, GPT2Config
 
-import spu.utils.distributed as ppd
+import examples.python.utils.distributed as ppd
 
 parser = argparse.ArgumentParser(description='distributed driver.')
 parser.add_argument("-c", "--config", default="examples/python/ml/flax_gpt2/3pc.json")

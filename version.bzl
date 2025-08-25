@@ -12,4 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-SPU_VERSION = "0.9.4.dev20250618"
+SPU_VERSION = "0.9.4.dev20250822"

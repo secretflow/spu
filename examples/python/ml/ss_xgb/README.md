@@ -5,11 +5,11 @@ This example demonstrates how to use SPU to train XGB models privately.
 1. Launch SPU backend runtime
 
     ```sh
-    bazel run -c opt //examples/python/utils:nodectl -- up
+    python examples/python/utils/nodectl.py up
     ```
 
 2. Run `ss_xgb` example
 
     ```sh
-    bazel run -c opt //examples/python/ml/ss_xgb
+    python examples/python/ml/ss_xgb/ss_xgb.py
     ```
