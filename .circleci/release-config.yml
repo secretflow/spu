@@ -52,6 +52,7 @@ commands:
             conda create -n build python=<< parameters.python_ver >> -y
             conda activate build
 
+            python3 -m pip install build
             python3 -m build --wheel
             ls dist/spu*.whl
 
