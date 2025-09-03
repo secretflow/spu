@@ -122,6 +122,11 @@ std::vector<Value> intrinsic_dispatcher(SPUContext* ctx,
 
     return kernel::hlo::TopK(ctx, inputs[0], k, -1, largest, value_only);
   }
+  if (name == IS_FINITE) {
+    SPU_ENFORCE(inputs.size() == 1);
+    // we always return true for is_finite
+    return {kernel::hlo::Constant(ctx, true, inputs[0].shape())};
+  }
 
   if (name == GATHER) {
     kernel::hlo::GatherConfig config;
