@@ -16,10 +16,11 @@ __all__ = ["reveal"]
 
 from functools import partial
 
-from jax import core
+import numpy as np
+from jax._src.core import ShapedArray
+from jax.extend import core
 from jax.interpreters import ad, batching, mlir, xla
 from jaxlib.hlo_helpers import custom_call
-import numpy as np
 
 
 # Public facing interface
@@ -30,7 +31,7 @@ def reveal(input: np.ndarray) -> np.ndarray:
 # For JIT compilation we need a function to evaluate the shape and dtype of the
 # outputs of our op for some given inputs
 def _reveal_abstract(input):
-    return core.ShapedArray(input.shape, input.dtype)
+    return ShapedArray(input.shape, input.dtype)
 
 
 # We also need a lowering rule to provide an MLIR "lowering" of out primitive.
