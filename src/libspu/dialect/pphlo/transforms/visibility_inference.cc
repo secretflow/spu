@@ -286,6 +286,12 @@ void VisibilityInference::inferIntrinsic(Operation &op) {
     return;
   }
 
+  if (c_op.getCallTargetName() == "spu.epsilon") {
+    SPU_ENFORCE(op.getNumResults() == 1, "epsilon op should have no output");
+    value_vis_.setValueVisibility(c_op->getResult(0), Visibility::PUBLIC);
+    return;
+  }
+
   // Default rule
   if (op.getNumResults() == 1) {
     SmallVector<Visibility, 2> operand_vis;

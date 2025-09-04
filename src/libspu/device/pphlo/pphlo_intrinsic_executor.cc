@@ -83,6 +83,12 @@ std::vector<Value> intrinsic_dispatcher(SPUContext* ctx,
     return {v};
   }
 
+  if (name == EPSILON) {
+    SPU_ENFORCE(inputs.size() == 0);
+    auto eps = kernel::hlo::Epsilon(ctx, spu::DT_F32);
+    return {eps};
+  }
+
   // DO-NOT-EDIT: Add_DISPATCH_CODE
 
   // Default: Identity function
