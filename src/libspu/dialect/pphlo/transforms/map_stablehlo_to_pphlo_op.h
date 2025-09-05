@@ -101,6 +101,7 @@ MAP_HLO_TO_PPHLO(ComplexOp)
 
 MAP_HLO_TO_PPHLO_DIFF_NAME(BroadcastInDimOp, BroadcastOp)
 MAP_HLO_TO_PPHLO_DIFF_NAME(GatherOp, CustomCallOp)
+MAP_HLO_TO_PPHLO_DIFF_NAME(IsFiniteOp, CustomCallOp)
 
 #undef MAP_HLO_TO_PPHLO
 

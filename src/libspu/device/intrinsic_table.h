@@ -19,6 +19,7 @@
 //         MACRO_NAME       FCN_NAME
 #define    TOPK             "mhlo.topk"
 #define    ERF              "mhlo.erf"
+#define    IS_FINITE        "mhlo.is_finite"
 #define    PREFER_A         "spu.prefer_a"
 #define    DBG_PRINT        "spu.dbg_print"
 #define    GATHER           "spu.gather"
@@ -26,5 +27,6 @@
 #define    MAKE_CACHED_VAR  "spu.make_cached_var"
 #define    DROP_CACHED_VAR  "spu.drop_cached_var"
 #define    REVEAL           "spu.reveal"
+#define    EPSILON          "spu.epsilon"
 
 // clang-format on

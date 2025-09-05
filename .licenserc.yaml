@@ -46,6 +46,7 @@ header: # <1>
     - 'LICENSE'
     - 'NOTICE'
     - 'MODULE.bazel.lock'
+    - 'pdm.lock'
     - '.bazeliskrc'
     - '.clang-format'
     - '.clang-tidy'
