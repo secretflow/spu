@@ -92,55 +92,31 @@ def _jax_compilation(
     fn: Callable, static_argnums, static_argnames, args: List, kwargs: Dict
 ):
     import jax
-    from jax._src.lib import xla_client, xla_extension_version
     from jax._src.xla_bridge import _backend_lock, _backends, register_backend_factory
 
-    # Register interpreter backend since we don't want any cpu/gpu/tpu specific optimization
-    if xla_extension_version < 164:
-        # interpreter is registerd by default before jaxlib 0.4.13
-        pass
-    else:
-        has_interpreter_backend = False
-        with _backend_lock:
-            if 'interpreter' in _backends:
-                has_interpreter_backend = True
-        if not has_interpreter_backend:
-            if xla_extension_version < 194:
-                # make_interpreter_client has been removed after jaxlib 0.4.16
-                register_backend_factory(
-                    'interpreter', xla_client.make_interpreter_client, priority=-100
-                )
-            else:
-                from jax.interpreters.xla import Backend as xla_back
+    has_interpreter_backend = False
+    with _backend_lock:
+        if 'interpreter' in _backends:
+            has_interpreter_backend = True
+    if not has_interpreter_backend:
+        from jax.interpreters.xla import Backend as xla_back
 
-                register_backend_factory('interpreter', xla_back, priority=-100)
+        register_backend_factory('interpreter', xla_back, priority=-100)
 
-    jax_version = jax.__version_info__
-
-    if jax_version[0] > 1 or jax_version[1] > 4 or jax_version[2] > 29:
-        # xla_computation is deprecated since 0.4.30, move to new api
-        lowered = (
-            jax.jit(
-                fn,
-                static_argnums=static_argnums,
-                static_argnames=static_argnames,
-                keep_unused=True,
-            )
-            .trace(*args, **kwargs)
-            .lower(lowering_platforms=('interpreter',))
+    lowered = (
+        jax.jit(
+            fn,
+            static_argnums=static_argnums,
+            static_argnames=static_argnames,
+            keep_unused=True,
         )
-        return (
-            lowered.compiler_ir('hlo').as_serialized_hlo_module_proto(),
-            lowered.out_info,
-        )
-    else:
-        fn, kwargs = _argnames_partial_except(fn, static_argnames, kwargs)
-
-        cfn, output = jax.xla_computation(
-            fn, return_shape=True, static_argnums=static_argnums, backend="interpreter"
-        )(*args, **kwargs)
-
-        return cfn.as_serialized_hlo_module_proto(), output
+        .trace(*args, **kwargs)
+        .lower(lowering_platforms=('interpreter',))
+    )
+    return (
+        lowered.compiler_ir('hlo').as_serialized_hlo_module_proto(),
+        lowered.out_info,
+    )
 
 
 ## Frontend patches

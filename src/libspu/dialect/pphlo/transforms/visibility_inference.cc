@@ -286,6 +286,12 @@ void VisibilityInference::inferIntrinsic(Operation &op) {
     return;
   }
 
+  if (c_op.getCallTargetName() == "spu.epsilon") {
+    SPU_ENFORCE(op.getNumResults() == 1, "epsilon op should have no output");
+    value_vis_.setValueVisibility(c_op->getResult(0), Visibility::PUBLIC);
+    return;
+  }
+
   // Default rule
   if (op.getNumResults() == 1) {
     SmallVector<Visibility, 2> operand_vis;
@@ -335,6 +341,9 @@ void VisibilityInference::inferOperation(Operation &op) {
     value_vis_.setValueVisibility(op.getResult(0), ret_vis);
     value_vis_.setOperationInputVisibility(
         &op, llvm::SmallVector<Visibility>(op.getNumOperands(), ret_vis));
+  } else if (llvm::isa<stablehlo::IsFiniteOp>(op)) {
+    // force the visibility to PUBLIC for IsFinite
+    value_vis_.setValueVisibility(op.getResult(0), Visibility::PUBLIC);
   } else if (op.getNumResults() == 1) {
     SmallVector<Visibility, 2> operand_vis;
     for (auto operand : op.getOperands()) {

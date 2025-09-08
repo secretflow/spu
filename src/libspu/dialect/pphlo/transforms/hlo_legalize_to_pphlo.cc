@@ -1199,6 +1199,30 @@ class HloToPPHloOpConverter<stablehlo::ConcatenateOp>
 };
 
 template <>
+class HloToPPHloOpConverter<stablehlo::IsFiniteOp>
+    : public OpConversionPattern<stablehlo::IsFiniteOp>, BasePPHloOpConverter {
+ public:
+  HloToPPHloOpConverter(TypeConverter &type_converter, MLIRContext *context,
+                        const ValueVisibilityMap &vis)
+      : OpConversionPattern<stablehlo::IsFiniteOp>(type_converter, context),
+        BasePPHloOpConverter(context, vis, type_converter) {}
+
+  LogicalResult matchAndRewrite(
+      stablehlo::IsFiniteOp op, stablehlo::IsFiniteOpAdaptor adaptor,
+      ConversionPatternRewriter &rewriter) const override {
+    auto result_type = convertResultType(op.getResult());
+    auto materialized_operands = materializeInputs(op, adaptor.getOperands());
+
+    auto call = rewriter.create<pphlo::CustomCallOp>(
+        op.getLoc(), result_type, materialized_operands, IS_FINITE);
+
+    rewriter.replaceOp(op, call);
+
+    return success();
+  }
+};
+
+template <>
 class HloToPPHloOpConverter<stablehlo::GatherOp>
     : public OpConversionPattern<stablehlo::GatherOp>, BasePPHloOpConverter {
  public:
@@ -1359,6 +1383,7 @@ struct HloLegalizeToPPHlo
                     HloToPPHloOpConverter<stablehlo::Expm1Op>,
                     HloToPPHloOpConverter<stablehlo::FloorOp>,
                     HloToPPHloOpConverter<stablehlo::GatherOp>,
+                    HloToPPHloOpConverter<stablehlo::IsFiniteOp>,
                     HloToPPHloOpConverter<stablehlo::IfOp>,
                     HloToPPHloOpConverter<stablehlo::ImagOp>,
                     HloToPPHloOpConverter<stablehlo::IotaOp>,

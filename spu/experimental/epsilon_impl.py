@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ["reveal"]
+__all__ = ["epsilon"]
 
 from functools import partial
 
+import jax.numpy as jnp
 import numpy as np
 from jax._src.core import ShapedArray
 from jax.extend import core
@@ -24,18 +25,18 @@ from jaxlib.hlo_helpers import custom_call
 
 
 # Public facing interface
-def reveal(input: np.ndarray) -> np.ndarray:
-    return _reveal_prim.bind(input)
+def epsilon() -> np.ndarray:
+    return _epsilon_prim.bind()
 
 
 # For JIT compilation we need a function to evaluate the shape and dtype of the
 # outputs of our op for some given inputs
-def _reveal_abstract(input):
-    return ShapedArray(input.shape, input.dtype)
+def _epsilon_abstract():
+    return ShapedArray((), jnp.float32)
 
 
 # We also need a lowering rule to provide an MLIR "lowering" of out primitive.
-def _reveal_lowering(ctx, input):
+def _epsilon_lowering(ctx, *args, **kwargs):
     # Check current platform
     platform = (
         ctx.module_context.platforms[0]
@@ -44,48 +45,54 @@ def _reveal_lowering(ctx, input):
     )
 
     if platform == "interpreter":
+        # Create proper MLIR type for scalar float32
+        f32_type = mlir.ir.F32Type.get()
+        dtype = mlir.ir.RankedTensorType.get([], f32_type)
         # For SPU, use custom_call
-        dtype = mlir.ir.RankedTensorType(input.type)
-
         call = custom_call(
-            "spu.reveal",
+            "spu.epsilon",
             # Output types
             result_types=[dtype],
             # The inputs:
-            operands=[input],
+            operands=[],
             has_side_effect=True,
         )
 
         return call.results
     else:
-        return [input]
+        # For now, return a simple constant implementation
+        # This creates a scalar constant with value 2^-18
+        import jax._src.interpreters.mlir as mlir_impl
+
+        constant_val = mlir_impl.ir_constant(jnp.array(2**-18, dtype=jnp.float32))
+        return [constant_val]
 
 
 # *********************************************
 # *  BOILERPLATE TO REGISTER THE OP WITH JAX  *
 # *********************************************
-_reveal_prim = core.Primitive("reveal")
-_reveal_prim.multiple_results = False
-_reveal_prim.def_impl(partial(xla.apply_primitive, _reveal_prim))
-_reveal_prim.def_abstract_eval(_reveal_abstract)
+_epsilon_prim = core.Primitive("epsilon")
+_epsilon_prim.multiple_results = False
+_epsilon_prim.def_impl(partial(xla.apply_primitive, _epsilon_prim))
+_epsilon_prim.def_abstract_eval(_epsilon_abstract)
 
 # Register MLIR lowering
-mlir.register_lowering(_reveal_prim, _reveal_lowering)
+mlir.register_lowering(_epsilon_prim, _epsilon_lowering)
 
 
-def _make_reveal_transpose(ct, input):
-    return [ct]
+def _make_epsilon_transpose(ct):
+    # Since epsilon has no inputs, transpose just returns empty list
+    return []
 
 
 # Connect the JVP and batching rules
-ad.primitive_jvps[_reveal_prim] = partial(ad.linear_jvp, _reveal_prim)
-ad.primitive_transposes[_reveal_prim] = _make_reveal_transpose
+ad.primitive_jvps[_epsilon_prim] = partial(ad.linear_jvp, _epsilon_prim)
+ad.primitive_transposes[_epsilon_prim] = _make_epsilon_transpose
 
 
-def _reveal_batch(batched_args, batch_dims):
-    (x,) = batched_args
-    (bd,) = batch_dims
-    return reveal(x), bd
+def _epsilon_batch(batched_args, batch_dims):
+    # Since epsilon has no inputs, just return epsilon() with no batch dimension
+    return epsilon(), None
 
 
-batching.primitive_batchers[_reveal_prim] = _reveal_batch
+batching.primitive_batchers[_epsilon_prim] = _epsilon_batch

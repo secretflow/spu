@@ -17,8 +17,9 @@ __all__ = ["example_binary"]
 from functools import partial
 
 import numpy as np
-from jax import core, dtypes
+from jax import dtypes
 from jax.core import ShapedArray
+from jax.extend import core
 from jax.interpreters import ad, batching, mlir, xla
 
 # from jax.lib import xla_client

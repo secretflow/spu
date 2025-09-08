@@ -83,6 +83,12 @@ std::vector<Value> intrinsic_dispatcher(SPUContext* ctx,
     return {v};
   }
 
+  if (name == EPSILON) {
+    SPU_ENFORCE(inputs.size() == 0);
+    auto eps = kernel::hlo::Epsilon(ctx, spu::DT_F32);
+    return {eps};
+  }
+
   // DO-NOT-EDIT: Add_DISPATCH_CODE
 
   // Default: Identity function
@@ -121,6 +127,11 @@ std::vector<Value> intrinsic_dispatcher(SPUContext* ctx,
     }
 
     return kernel::hlo::TopK(ctx, inputs[0], k, -1, largest, value_only);
+  }
+  if (name == IS_FINITE) {
+    SPU_ENFORCE(inputs.size() == 1);
+    // we always return true for is_finite
+    return {kernel::hlo::Constant(ctx, true, inputs[0].shape())};
   }
 
   if (name == GATHER) {

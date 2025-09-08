@@ -16,7 +16,8 @@ __all__ = ["drop_cached_var"]
 
 from functools import partial
 
-from jax import core
+from jax._src.core import ShapedArray
+from jax.extend import core
 
 # from jax.abstract_arrays import ShapedArray
 from jax.interpreters import ad, batching, mlir, xla
@@ -39,7 +40,7 @@ def drop_cached_var(input, *dependencies):
 # For JIT compilation we need a function to evaluate the shape and dtype of the
 # outputs of our op for some given inputs
 def _drop_cached_var_abstract(input, *dependencies):
-    return core.ShapedArray(input.shape, input.dtype)
+    return ShapedArray(input.shape, input.dtype)
 
 
 # We also need a lowering rule to provide an MLIR "lowering" of out primitive.
