@@ -122,6 +122,12 @@ Value _prefer_a(SPUContext* ctx, const Value& x);
 // Note: theoretically, we should not leak `share` concept to hal layer.
 Value _prefer_b(SPUContext* ctx, const Value& x);
 
+// Return value in binary shared form if it's not, with valid_bits for
+// efficiency.
+// Note: theoretically, we should not leak `share` concept to hal
+// layer.
+Value _prefer_b_bits(SPUContext* ctx, const Value& x, int64_t valid_bits = -1);
+
 // Tensor contraction x and y on index ix and iy.
 // See awesome [tutorial](https://www.tensors.net/tutorial-1) for details.
 Value _tensordot(SPUContext* ctx, const Value& x, const Value& y,

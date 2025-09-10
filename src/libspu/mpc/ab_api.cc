@@ -437,14 +437,20 @@ Value add_bb(SPUContext* ctx, const Value& x, const Value& y) {
 
   auto type = CircuitType::KoggeStone;
 
+  Value sum;
   switch (type) {
     case CircuitType::KoggeStone:
-      return ppa_kogge_stone(ctx, x, y, nbits);
+      sum = ppa_kogge_stone(ctx, x, y, nbits);
+      break;
     case CircuitType::Sklansky:
-      return ppa_sklansky(ctx, x, y, nbits);
+      sum = ppa_sklansky(ctx, x, y, nbits);
+      break;
     default:
       SPU_THROW("unknown circuit type {}", static_cast<uint32_t>(type));
   }
+
+  sum = setNumBits(sum, nbits);
+  return sum;
 }
 
 Value carry_a2b(SPUContext* ctx, const Value& x, const Value& y, size_t k) {

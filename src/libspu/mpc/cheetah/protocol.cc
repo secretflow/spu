@@ -62,9 +62,10 @@ void regCheetahProtocol(SPUContext* ctx,
 
   // register arithmetic & binary kernels
   ctx->prot()
-      ->regKernel<cheetah::P2A, cheetah::A2P, cheetah::V2A,
-                  cheetah::A2V,                                               //
-                  cheetah::B2P, cheetah::P2B, cheetah::A2B, cheetah::B2A,     //
+      ->regKernel<cheetah::P2A, cheetah::A2P,                                 //
+                  cheetah::V2A, cheetah::A2V,                                 //
+                  cheetah::B2P, cheetah::P2B,                                 //
+                  cheetah::A2B, cheetah::A2B_Bits, cheetah::B2A,              //
                   cheetah::NegateA,                                           //
                   cheetah::AddAP, cheetah::AddAA,                             //
                   cheetah::MulAP, cheetah::MulAA, cheetah::MulAV,             //

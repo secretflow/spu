@@ -549,7 +549,10 @@ Value _prefix_or(SPUContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 
   auto b0 = _prefer_b(ctx, x);
-  const size_t bit_width = SizeOf(ctx->getField()) * 8;
+  size_t bit_width = SizeOf(ctx->getField()) * 8;
+  if (b0.storage_type().isa<BShare>()) {
+    bit_width = b0.storage_type().as<BShare>()->nbits();
+  }
   for (int idx = 0; idx < absl::bit_width(bit_width) - 1; idx++) {
     const int64_t offset = 1L << idx;
     auto b1 = _rshift(ctx, b0, {offset});
@@ -603,6 +606,22 @@ Value _prefer_b(SPUContext* ctx, const Value& x) {
   if (x.storage_type().isa<AShare>()) {
     const auto k0 = _constant(ctx, 0U, x.shape());
     return _xor(ctx, x, k0).setDtype(x.dtype());  // noop, to bshare
+  }
+
+  return x;
+}
+
+// nearly same with _prefer_b, but with valid_bits for efficiency.
+Value _prefer_b_bits(SPUContext* ctx, const Value& x, int64_t valid_bits) {
+  if (!ctx->hasKernel("a2b_bits")) {
+    // a2b with full bits.
+    return _prefer_b(ctx, x);
+  }
+
+  if (x.storage_type().isa<AShare>()) {
+    // FIXME: use dynamic dispatch will skip the tiling optimization
+    SPU_TRACE_HAL_LEAF(ctx, x, valid_bits);
+    return dynDispatch<Value>(ctx, "a2b_bits", x, valid_bits);
   }
 
   return x;

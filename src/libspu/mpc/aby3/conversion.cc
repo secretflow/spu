@@ -37,17 +37,21 @@ static NdArrayRef wrap_add_bb(SPUContext* ctx, const NdArrayRef& x,
   return UnwrapValue(add_bb(ctx, WrapValue(x), WrapValue(y)));
 }
 
+namespace {
 // Reference:
 // ABY3: A Mixed Protocol Framework for Machine Learning
 // P16 5.3 Share Conversions, Bit Decomposition
 // https://eprint.iacr.org/2018/403.pdf
 //
 // Latency: 2 + log(nbits) from 1 rotate and 1 ppa.
-NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
+NdArrayRef a2b_impl(KernelEvalContext* ctx, const NdArrayRef& in,
+                    int64_t nbits) {
   const auto field = in.eltype().as<Ring2k>()->field();
 
   auto* comm = ctx->getState<Communicator>();
   auto* prg_state = ctx->getState<PrgState>();
+
+  int64_t valid_bits = nbits == -1 ? SizeOf(field) * 8 : nbits;
 
   // Let
   //   X = [(x0, x1), (x1, x2), (x2, x0)] as input.
@@ -58,8 +62,8 @@ NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   //   N = [(0, 0), (0, x2), (x2, 0)]
   // Then
   //   Y = PPA(M, N) as the output.
-  const PtType out_btype = calcBShareBacktype(SizeOf(field) * 8);
-  const auto out_ty = makeType<BShrTy>(out_btype, SizeOf(out_btype) * 8);
+  const PtType out_btype = calcBShareBacktype(valid_bits);
+  const auto out_ty = makeType<BShrTy>(out_btype, valid_bits);
   NdArrayRef m(out_ty, in.shape());
   NdArrayRef n(out_ty, in.shape());
 
@@ -109,7 +113,51 @@ NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
     });
   });
 
-  return wrap_add_bb(ctx->sctx(), m, n);  // comm => log(k) + 1, 2k(logk) + k
+  auto ret =
+      wrap_add_bb(ctx->sctx(), m, n);  // comm => log(k) + 1, 2k(logk) + k
+
+  // truncate to the valid bits if nbits is specified
+  if (nbits != -1) {
+    // Note: not inplace, because ret may be different type from out_ty
+    NdArrayRef out(out_ty, in.shape());
+
+    DISPATCH_UINT_PT_TYPES(ret.eltype().as<BShrTy>()->getBacktype(), [&]() {
+      using bshr_el_t = ScalarT;
+      using bshr_t = std::array<bshr_el_t, 2>;
+
+      DISPATCH_UINT_PT_TYPES(out_btype, [&]() {
+        using bshr_out_el_t = ScalarT;
+        using bshr_out_t = std::array<bshr_out_el_t, 2>;
+
+        NdArrayView<bshr_t> _ret(ret);
+        NdArrayView<bshr_out_t> _out(out);
+
+        bshr_el_t mask = (valid_bits == sizeof(bshr_el_t) * 8)
+                             ? ~bshr_el_t(0)
+                             : (bshr_el_t(1) << valid_bits) - 1;
+
+        pforeach(0, numel, [&](int64_t idx) {
+          _out[idx][0] = static_cast<bshr_out_el_t>(_ret[idx][0] & mask);
+          _out[idx][1] = static_cast<bshr_out_el_t>(_ret[idx][1] & mask);
+        });
+      });
+    });
+
+    return out;
+  }
+
+  return ret;
+}
+}  // namespace
+
+NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
+  // full bits A2B
+  return a2b_impl(ctx, in, -1);
+}
+
+NdArrayRef A2B_Bits::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                          int64_t nbits) const {
+  return a2b_impl(ctx, in, nbits);
 }
 
 NdArrayRef B2ASelector::proc(KernelEvalContext* ctx,

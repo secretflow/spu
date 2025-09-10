@@ -62,21 +62,26 @@ PtType getBacktype(size_t nbits) {
   SPU_THROW("invalid number of bits={}", nbits);
 }
 
-NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& x) const {
+namespace {
+NdArrayRef a2b_impl(KernelEvalContext* ctx, const NdArrayRef& x,
+                    int64_t nbits) {
   const auto field = x.eltype().as<Ring2k>()->field();
   auto* comm = ctx->getState<Communicator>();
   auto* prg_state = ctx->getState<PrgState>();
 
   std::vector<NdArrayRef> bshrs;
-  const auto bty = makeType<BShrTy>(field);
+  int64_t valid_bits = nbits == -1 ? SizeOf(field) * 8 : nbits;
+
+  const auto bty = makeType<BShrTy>(field, valid_bits);
   for (size_t idx = 0; idx < comm->getWorldSize(); idx++) {
     auto [r0, r1] =
         prg_state->genPrssPair(field, x.shape(), PrgState::GenPrssCtrl::Both);
-    auto b = ring_xor(r0, r1).as(bty);
+    auto b = ring_xor(r0, r1);
 
     if (idx == comm->getRank()) {
       ring_xor_(b, x);
     }
+
     bshrs.push_back(b.as(bty));
   }
 
@@ -84,7 +89,22 @@ NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& x) const {
                            [&](const NdArrayRef& xx, const NdArrayRef& yy) {
                              return wrap_add_bb(ctx->sctx(), xx, yy);
                            });
+
+  if (nbits != -1) {
+    ring_bitmask_(res, 0, valid_bits);
+  }
   return res.as(bty);
+}
+}  // namespace
+
+NdArrayRef A2B::proc(KernelEvalContext* ctx, const NdArrayRef& x) const {
+  // full bits A2B
+  return a2b_impl(ctx, x, -1);
+}
+
+NdArrayRef A2B_Bits::proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                          int64_t nbits) const {
+  return a2b_impl(ctx, x, nbits);
 }
 
 NdArrayRef B2A::proc(KernelEvalContext* ctx, const NdArrayRef& x) const {

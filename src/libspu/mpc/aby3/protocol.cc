@@ -51,7 +51,7 @@ void regAby3Protocol(SPUContext* ctx,
   ctx->prot()
       ->regKernel<                                              //
           aby3::P2A, aby3::V2A, aby3::A2P, aby3::A2V,           // Conversions
-          aby3::B2P, aby3::P2B, aby3::A2B,                      // Conversion2
+          aby3::B2P, aby3::P2B, aby3::A2B, aby3::A2B_Bits,      // Conversion2
           aby3::B2ASelector, /*aby3::B2AByOT, aby3::B2AByPPA*/  // B2A
           aby3::CastTypeB,                                      // Cast
           aby3::NegateA,                                        // Negate

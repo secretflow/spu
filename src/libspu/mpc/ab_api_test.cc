@@ -936,4 +936,77 @@ TEST_P(ConversionTest, EqualAP) {
   });
 }
 
+TEST_P(ConversionTest, A2B_Bits) {
+  const auto factory = std::get<0>(GetParam());
+  const RuntimeConfig& conf = std::get<1>(GetParam());
+  const size_t npc = std::get<2>(GetParam());
+
+  auto k = static_cast<int64_t>(SizeOf(conf.field)) * 8;
+
+  // define several test cases to test the cost of a2b_bits
+  const std::vector<std::tuple<int64_t, int64_t>> test_cases = {
+      {2, 8}, {11, 32}, {15, k}, {k / 4, k}};
+
+  utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+    auto obj = factory(conf, lctx);
+
+    if (!obj->hasKernel("a2b_bits")) {
+      return;
+    }
+
+    for (const auto& [small_bits, large_bits] : test_cases) {
+      /* GIVEN */
+      auto p0 = rand_p(obj.get(), kShape);
+      // truncate to small_bits/large_bits
+      auto p_small =
+          rshift_p(obj.get(), lshift_p(obj.get(), p0, {k - small_bits}),
+                   {k - small_bits});
+      auto p_large =
+          rshift_p(obj.get(), lshift_p(obj.get(), p0, {k - large_bits}),
+                   {k - large_bits});
+
+      auto a_small = p2a(obj.get(), p_small);
+      auto a_large = p2a(obj.get(), p_large);
+
+      size_t b0 = lctx->GetStats()->sent_bytes;
+      size_t r0 = lctx->GetStats()->sent_actions;
+      auto b_small =
+          dynDispatch<Value>(obj.get(), "a2b_bits", a_small, small_bits);
+      size_t b1 = lctx->GetStats()->sent_bytes;
+      size_t r1 = lctx->GetStats()->sent_actions;
+      auto comm_small = b1 - b0;
+      auto action_small = r1 - r0;
+
+      b0 = lctx->GetStats()->sent_bytes;
+      r0 = lctx->GetStats()->sent_actions;
+      auto b_large =
+          dynDispatch<Value>(obj.get(), "a2b_bits", a_large, large_bits);
+      size_t b2 = lctx->GetStats()->sent_bytes;
+      size_t r2 = lctx->GetStats()->sent_actions;
+      auto comm_large = b2 - b0;
+      auto action_large = r2 - r0;
+
+      auto p_small_recovered = b2p(obj.get(), b_small);
+      auto p_large_recovered = b2p(obj.get(), b_large);
+
+      /* THEN */
+      if (lctx->Rank() == 0) {
+        // 1. check correctness
+        EXPECT_VALUE_EQ(p_small, p_small_recovered);
+        EXPECT_VALUE_EQ(p_large, p_large_recovered);
+
+        // 2. check nbits
+        EXPECT_EQ(b_small.data().eltype().as<BShare>()->nbits(), small_bits);
+        EXPECT_EQ(b_large.data().eltype().as<BShare>()->nbits(), large_bits);
+
+        // 3. check cost
+        SPDLOG_INFO("small_bits: {}, large_bits: {}", small_bits, large_bits);
+        SPDLOG_INFO("comm: {}, comm_large: {}", comm_small, comm_large);
+        SPDLOG_INFO("action: {}, action_large: {}", action_small, action_large);
+        EXPECT_LT(comm_small, comm_large);
+        EXPECT_LT(action_small, action_large);
+      }
+    }
+  });
+}
 }  // namespace spu::mpc::test

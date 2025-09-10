@@ -287,4 +287,13 @@ void MultiKeyLowMcKernel::evaluate(KernelEvalContext* ctx) const {
   ctx->pushOutput(WrapValue(y));
 }
 
+void SharingConvertKernel::evaluate(KernelEvalContext* ctx) const {
+  const auto& in = ctx->getParam<Value>(0);
+  const auto& nbits = ctx->getParam<int64_t>(1);
+
+  auto z = proc(ctx, UnwrapValue(in), nbits);
+
+  ctx->pushOutput(WrapValue(z));
+}
+
 }  // namespace spu::mpc

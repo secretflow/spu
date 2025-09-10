@@ -62,7 +62,8 @@ void regSemi2kProtocol(SPUContext* ctx,
           semi2k::ARShiftB,                                             //
           semi2k::CommonTypeB, semi2k::CommonTypeV, semi2k::CastTypeB,  //
           semi2k::B2P, semi2k::P2B,                                     //
-          semi2k::A2B, semi2k::B2A_Randbit, semi2k::B2A_Disassemble,    //
+          semi2k::A2B, semi2k::A2B_Bits, semi2k::B2A_Randbit,           //
+          semi2k::B2A_Disassemble,                                      //
           semi2k::AndBP, semi2k::AndBB, semi2k::XorBP, semi2k::XorBB,   //
           semi2k::BitrevB,                                              //
           semi2k::BitIntlB, semi2k::BitDeintlB,                         //

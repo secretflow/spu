@@ -233,4 +233,12 @@ class MultiKeyLowMcKernel : public Kernel {
                           const std::vector<NdArrayRef>& inputs) const = 0;
 };
 
+class SharingConvertKernel : public Kernel {
+ public:
+  void evaluate(KernelEvalContext* ctx) const override;
+
+  virtual NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                          int64_t nbits) const = 0;
+};
+
 }  // namespace spu::mpc

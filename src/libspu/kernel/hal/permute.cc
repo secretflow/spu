@@ -950,7 +950,7 @@ spu::Value _opt_apply_perm_ss(SPUContext *ctx, const spu::Value &perm,
 
 std::vector<spu::Value> _bit_decompose(SPUContext *ctx, const spu::Value &x,
                                        int64_t valid_bits) {
-  auto x_bshare = _prefer_b(ctx, x);
+  auto x_bshare = _prefer_b_bits(ctx, x, valid_bits);
   size_t nbits = valid_bits != -1
                      ? static_cast<size_t>(valid_bits)
                      : x_bshare.storage_type().as<BShare>()->nbits();

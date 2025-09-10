@@ -38,6 +38,17 @@ class A2B : public UnaryKernel {
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x) const override;
 };
 
+class A2B_Bits : public SharingConvertKernel {
+ public:
+  static constexpr const char* kBindName() { return "a2b_bits"; }
+
+  // the exact costs depends on the nbits and adder circuit.
+  Kind kind() const override { return Kind::Dynamic; }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                  int64_t nbits) const override;
+};
+
 class B2A : public UnaryKernel {
  public:
   static constexpr const char* kBindName() { return "b2a"; }

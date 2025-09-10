@@ -29,7 +29,6 @@ class AShrTy : public TypeImpl<AShrTy, RingTy, Secret, AShare> {
 
 class BShrTy : public TypeImpl<BShrTy, RingTy, Secret, BShare> {
   using Base = TypeImpl<BShrTy, RingTy, Secret, BShare>;
-
   static constexpr size_t kDefaultNumBits = std::numeric_limits<size_t>::max();
 
  public:

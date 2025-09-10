@@ -186,11 +186,13 @@ Value div_goldschmidt_general(SPUContext* ctx, const Value& a, const Value& b,
     is_negative = _constant(ctx, static_cast<uint128_t>(1), b.shape());
     b_abs = _negate(ctx, b).setDtype(b.dtype());
   }
+  const size_t num_fxp_bits = ctx->getFxpBits();
 
-  auto b_msb = detail::highestOneBit(ctx, b_abs);
+  // TODO: add bits hint for a2b
+  auto b_abs_bshr = _prefer_b_bits(ctx, b_abs, 2 * num_fxp_bits);
+  auto b_msb = detail::highestOneBit(ctx, b_abs_bshr);
 
   // factor = 2^{f-m} = 2^{-m} * 2^f, the fixed point repr of 2^{-m}
-  const size_t num_fxp_bits = ctx->getFxpBits();
   auto factor = _bitrev(ctx, b_msb, 0, 2 * num_fxp_bits).setDtype(b.dtype());
 
   factor = maskNumberOfBits(ctx, factor, 2 * num_fxp_bits);
