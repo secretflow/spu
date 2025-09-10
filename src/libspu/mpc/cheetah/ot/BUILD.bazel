@@ -77,3 +77,36 @@ spu_cc_test(
         "//libspu/mpc/utils:simulate",
     ],
 )
+
+spu_cc_library(
+    name = "matrix_transpose",
+    hdrs = ["matrix_transpose.h"],
+    deps = [
+        "//libspu/core:prelude",
+        "@yacl//yacl/base:int128",
+    ] + select({
+        "@platforms//cpu:aarch64": [
+            "@com_github_dltcollab_sse2neon//:sse2neon",
+        ],
+        "//conditions:default": [],
+    }),
+)
+
+# spu_cc_test(
+#     name = "matrix_transpose_test",
+#     srcs = ["matrix_transpose_test.cc"],
+#     deps = [
+#         ":matrix_transpose",
+#         "@yacl//yacl/base:aligned_vector",
+#     ],
+# )
+
+# spu_cc_binary(
+#     name = "matrix_transpose_bench",
+#     srcs = ["matrix_transpose_bench.cc"],
+#     deps = [
+#         ":matrix_transpose",
+#         "@com_github_google_benchmark//:benchmark_main",
+#         "@yacl//yacl/base:aligned_vector",
+#     ],
+# )

@@ -33,6 +33,15 @@ inline uint8_t mul(uint8_t x, uint8_t y, uint8_t* z) {
   return lo;
 }
 
+inline uint16_t mul(uint16_t x, uint16_t y, uint16_t* z) {
+  uint32_t hi = static_cast<uint32_t>(x) * static_cast<uint32_t>(y);
+  auto lo = static_cast<uint16_t>(hi);
+  if (z != nullptr) {
+    *z = static_cast<uint16_t>(hi >> 16);
+  }
+  return lo;
+}
+
 inline uint32_t mul(uint32_t x, uint32_t y, uint32_t* z) {
   uint64_t hi = static_cast<uint64_t>(x) * static_cast<uint64_t>(y);
   auto lo = static_cast<uint32_t>(hi);

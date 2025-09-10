@@ -89,9 +89,11 @@ enum PtType {
 enum FieldType {
   FT_INVALID = 0,
 
-  FM32 = 1,   // Ring 2^32
-  FM64 = 2,   // Ring 2^64
-  FM128 = 3,  // Ring 2^128
+  FM8 = 1,    // Ring 2^8
+  FM16 = 2,   // Ring 2^16
+  FM32 = 3,   // Ring 2^32
+  FM64 = 4,   // Ring 2^64
+  FM128 = 5,  // Ring 2^128
 };
 
 // The protocol kind.
@@ -428,7 +430,7 @@ struct RuntimeConfig {
                 int64_t fxp_fraction_bits = 0)
       : protocol(protocol),
         field(field),
-        fxp_fraction_bits(fxp_fraction_bits) {};
+        fxp_fraction_bits(fxp_fraction_bits){};
   RuntimeConfig(const RuntimeConfig& other) = default;
   explicit RuntimeConfig(const pb::RuntimeConfig& pb_conf);
 

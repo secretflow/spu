@@ -234,6 +234,41 @@ NdArrayRef ring_rand(FieldType field, const Shape& shape, uint128_t prg_seed,
   return res;
 }
 
+// TODO(zjj): should fix it in yacl
+// just make other unittest can be run, the implementation may not be correct.
+namespace {
+template <typename T>
+uint64_t FillPRandWithLtNTemp(
+    yacl::crypto::SymmetricCrypto::CryptoType crypto_type, uint128_t seed,
+    uint64_t iv, uint64_t count, absl::Span<T> out, T n) {
+  size_t n_bit_width = 0;
+  // first, fill all outputs with randomness
+  if constexpr (std::is_same_v<T, uint128_t>) {
+    n_bit_width = yacl::CountBitWidth(n);
+  } else {
+    n_bit_width = absl::bit_width(n);
+  }
+
+  auto required_size =
+      (n_bit_width + YACL_MODULE_SECPARAM_S_UINT("prg") + 7) / 8;
+  yacl::Buffer rand_bytes(out.size() * required_size);
+  auto ret = yacl::crypto::FillPRand(crypto_type, seed, iv, count,
+                                     (char*)rand_bytes.data(),
+                                     out.size() * required_size);
+
+  // then, perform mod
+  yacl::ByteContainerView rand_view(rand_bytes);
+  for (size_t i = 0; i < out.size(); ++i) {
+    yacl::math::MPInt r;
+    r.FromMagBytes(rand_view.subspan(i * required_size, required_size),
+                   yacl::Endian::little);
+    yacl::math::MPInt::Mod(r, yacl::math::MPInt(n), &r);
+    out[i] = r.Get<T>();
+  }
+  return ret;
+}
+}  // namespace
+
 NdArrayRef ring_rand_range(FieldType field, const Shape& shape, uint128_t min,
                            uint128_t max) {
   constexpr yacl::crypto::SymmetricCrypto::CryptoType kCryptoType =
@@ -246,7 +281,7 @@ NdArrayRef ring_rand_range(FieldType field, const Shape& shape, uint128_t min,
 
   DISPATCH_ALL_FIELDS(field, [&]() {
     std::vector<ring2k_t> rand_range(numel);
-    yacl::crypto::FillPRandWithLtN<ring2k_t>(
+    FillPRandWithLtNTemp<ring2k_t>(
         kCryptoType, yacl::crypto::SecureRandSeed(), kAesInitialVector, cnt,
         absl::MakeSpan(rand_range), static_cast<ring2k_t>(max - min + 1));
     SPU_ENFORCE(sizeof(ring2k_t) >= sizeof(int32_t));

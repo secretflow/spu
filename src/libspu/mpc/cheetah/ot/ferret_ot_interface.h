@@ -26,6 +26,8 @@ class FerretOtInterface {
   // choice \in [0, N-1]
   virtual void SendCMCC(absl::Span<const uint8_t> msg_array, size_t N,
                         size_t bit_width = 0) = 0;
+  virtual void SendCMCC(absl::Span<const uint16_t> msg_array, size_t N,
+                        size_t bit_width = 0) = 0;
   virtual void SendCMCC(absl::Span<const uint32_t> msg_array, size_t N,
                         size_t bit_width = 0) = 0;
   virtual void SendCMCC(absl::Span<const uint64_t> msg_array, size_t N,
@@ -36,6 +38,8 @@ class FerretOtInterface {
   virtual void RecvCMCC(absl::Span<const uint8_t> one_oo_N_choices, size_t N,
                         absl::Span<uint8_t> output, size_t bit_width = 0) = 0;
   virtual void RecvCMCC(absl::Span<const uint8_t> one_oo_N_choices, size_t N,
+                        absl::Span<uint16_t> output, size_t bit_width = 0) = 0;
+  virtual void RecvCMCC(absl::Span<const uint8_t> one_oo_N_choices, size_t N,
                         absl::Span<uint32_t> output, size_t bit_width = 0) = 0;
   virtual void RecvCMCC(absl::Span<const uint8_t> one_oo_N_choices, size_t N,
                         absl::Span<uint64_t> output, size_t bit_width = 0) = 0;
@@ -45,6 +49,8 @@ class FerretOtInterface {
   // Random Message Random Choice
   virtual void SendRMRC(absl::Span<uint8_t> output0,
                         absl::Span<uint8_t> output1, size_t bit_width = 0) = 0;
+  virtual void SendRMRC(absl::Span<uint16_t> output0,
+                        absl::Span<uint16_t> output1, size_t bit_width = 0) = 0;
   virtual void SendRMRC(absl::Span<uint32_t> output0,
                         absl::Span<uint32_t> output1, size_t bit_width = 0) = 0;
   virtual void SendRMRC(absl::Span<uint64_t> output0,
@@ -55,6 +61,8 @@ class FerretOtInterface {
 
   virtual void RecvRMRC(absl::Span<uint8_t> binary_choices,
                         absl::Span<uint8_t> output, size_t bit_width = 0) = 0;
+  virtual void RecvRMRC(absl::Span<uint8_t> binary_choices,
+                        absl::Span<uint16_t> output, size_t bit_width = 0) = 0;
   virtual void RecvRMRC(absl::Span<uint8_t> binary_choices,
                         absl::Span<uint32_t> output, size_t bit_width = 0) = 0;
   virtual void RecvRMRC(absl::Span<uint8_t> binary_choices,
@@ -68,6 +76,8 @@ class FerretOtInterface {
   // use the full range.
   virtual void SendCAMCC(absl::Span<const uint8_t> corr,
                          absl::Span<uint8_t> output, int bit_width = 0) = 0;
+  virtual void SendCAMCC(absl::Span<const uint16_t> corr,
+                         absl::Span<uint16_t> output, int bit_width = 0) = 0;
   virtual void SendCAMCC(absl::Span<const uint32_t> corr,
                          absl::Span<uint32_t> output, int bit_width = 0) = 0;
   virtual void SendCAMCC(absl::Span<const uint64_t> corr,
@@ -77,6 +87,8 @@ class FerretOtInterface {
 
   virtual void RecvCAMCC(absl::Span<const uint8_t> binary_choices,
                          absl::Span<uint8_t> output, int bit_width = 0) = 0;
+  virtual void RecvCAMCC(absl::Span<const uint8_t> binary_choices,
+                         absl::Span<uint16_t> output, int bit_width = 0) = 0;
   virtual void RecvCAMCC(absl::Span<const uint8_t> binary_choices,
                          absl::Span<uint32_t> output, int bit_width = 0) = 0;
   virtual void RecvCAMCC(absl::Span<const uint8_t> binary_choices,
@@ -88,6 +100,9 @@ class FerretOtInterface {
   // bit_width_begin - k
   virtual void SendCAMCC_Collapse(absl::Span<const uint8_t> corr,
                                   absl::Span<uint8_t> output,
+                                  int bit_width_begin, int num_level) = 0;
+  virtual void SendCAMCC_Collapse(absl::Span<const uint16_t> corr,
+                                  absl::Span<uint16_t> output,
                                   int bit_width_begin, int num_level) = 0;
   virtual void SendCAMCC_Collapse(absl::Span<const uint32_t> corr,
                                   absl::Span<uint32_t> output,
@@ -102,6 +117,9 @@ class FerretOtInterface {
                                   absl::Span<uint8_t> output,
                                   int bit_width_begin, int num_level) = 0;
   virtual void RecvCAMCC_Collapse(absl::Span<const uint8_t> binary_choices,
+                                  absl::Span<uint16_t> output,
+                                  int bit_width_begin, int num_level) = 0;
+  virtual void RecvCAMCC_Collapse(absl::Span<const uint8_t> binary_choices,
                                   absl::Span<uint32_t> output,
                                   int bit_width_begin, int num_level) = 0;
   virtual void RecvCAMCC_Collapse(absl::Span<const uint8_t> binary_choices,
@@ -114,6 +132,8 @@ class FerretOtInterface {
   // Random Message Chosen Choice
   virtual void SendRMCC(absl::Span<uint8_t> output0,
                         absl::Span<uint8_t> output1, size_t bit_width = 0) = 0;
+  virtual void SendRMCC(absl::Span<uint16_t> output0,
+                        absl::Span<uint16_t> output1, size_t bit_width = 0) = 0;
   virtual void SendRMCC(absl::Span<uint32_t> output0,
                         absl::Span<uint32_t> output1, size_t bit_width = 0) = 0;
   virtual void SendRMCC(absl::Span<uint64_t> output0,
@@ -124,6 +144,8 @@ class FerretOtInterface {
 
   virtual void RecvRMCC(absl::Span<const uint8_t> binary_choices,
                         absl::Span<uint8_t> output, size_t bit_width = 0) = 0;
+  virtual void RecvRMCC(absl::Span<const uint8_t> binary_choices,
+                        absl::Span<uint16_t> output, size_t bit_width = 0) = 0;
   virtual void RecvRMCC(absl::Span<const uint8_t> binary_choices,
                         absl::Span<uint32_t> output, size_t bit_width = 0) = 0;
   virtual void RecvRMCC(absl::Span<const uint8_t> binary_choices,

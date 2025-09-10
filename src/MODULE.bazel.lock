@@ -517,7 +517,7 @@
     "//bazel:defs.bzl%non_module_dependencies": {
       "general": {
         "bzlTransitiveDigest": "JT8ZLEUdrYXN19gijrHtztFq/cEAhJlRlNjhtQUlDIE=",
-        "usagesDigest": "+b2uLT9tSjfn3mYJ5cnCFUUpexWFRHgQaF1YrXxS54M=",
+        "usagesDigest": "TzkHL6WwGrcHFKKHy91t11Vsa62b6M5waj7niDKTnd4=",
         "recordedFileInputs": {},
         "recordedDirentsInputs": {},
         "envVariables": {},

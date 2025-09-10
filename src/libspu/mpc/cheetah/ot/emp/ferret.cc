@@ -1015,6 +1015,7 @@ size_t CheckBitWidth(size_t bw) {
   }
 
 DEF_SEND_RECV(uint8_t)
+DEF_SEND_RECV(uint16_t)
 DEF_SEND_RECV(uint32_t)
 DEF_SEND_RECV(uint64_t)
 DEF_SEND_RECV(uint128_t)

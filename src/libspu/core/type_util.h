@@ -214,6 +214,8 @@ std::ostream& operator<<(std::ostream& os, ProtocolKind protocol);
 // Field GFP mappings, currently only support Mersenne primes
 //////////////////////////////////////////////////////////////
 #define FIELD_TO_MERSENNE_PRIME_EXP_MAP(FN) \
+  FN(FM8, uint8_t, 7)                       \
+  FN(FM16, uint16_t, 13)                    \
   FN(FM32, uint32_t, 31)                    \
   FN(FM64, uint64_t, 61)                    \
   FN(FM128, uint128_t, 127)
@@ -224,6 +226,8 @@ size_t GetMersennePrimeExp(FieldType field);
 // Field 2k types
 //////////////////////////////////////////////////////////////
 #define FIELD_TO_STORAGE_MAP(FN) \
+  FN(FM8, PT_U8)                 \
+  FN(FM16, PT_U16)               \
   FN(FM32, PT_U32)               \
   FN(FM64, PT_U64)               \
   FN(FM128, PT_U128)
@@ -260,6 +264,8 @@ inline size_t SizeOf(FieldType field) { return SizeOf(GetStorageType(field)); }
 #define DISPATCH_ALL_FIELDS(FIELD, ...)                 \
   [&] {                                                 \
     switch (FIELD) {                                    \
+      __CASE_FIELD(spu::FieldType::FM8, __VA_ARGS__)    \
+      __CASE_FIELD(spu::FieldType::FM16, __VA_ARGS__)   \
       __CASE_FIELD(spu::FieldType::FM32, __VA_ARGS__)   \
       __CASE_FIELD(spu::FieldType::FM64, __VA_ARGS__)   \
       __CASE_FIELD(spu::FieldType::FM128, __VA_ARGS__)  \
@@ -292,5 +298,29 @@ enum class SignType {
   Negative,
 };
 std::ostream& operator<<(std::ostream& os, const SignType& sign);
+
+//////////////////////////////////////////////////////////////
+// Helper for field choosen according to bit-width
+//////////////////////////////////////////////////////////////
+
+inline FieldType FixGetProperFiled(size_t bit_width) {
+  if (bit_width <= 8) {
+    return FM8;
+  }
+  if (bit_width <= 16) {
+    return FM16;
+  }
+  if (bit_width <= 32) {
+    return FM32;
+  }
+  if (bit_width <= 64) {
+    return FM64;
+  }
+  if (bit_width <= 128) {
+    return FM128;
+  }
+
+  SPU_THROW("bw can not exceed 128 now.");
+}
 
 }  // namespace spu

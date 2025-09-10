@@ -18,6 +18,7 @@
 
 #include "gtest/gtest.h"
 
+#include "libspu/mpc/cheetah/ot/matrix_transpose.h"
 #include "libspu/mpc/cheetah/type.h"
 #include "libspu/mpc/utils/ring_ops.h"
 #include "libspu/mpc/utils/simulate.h"
@@ -29,7 +30,8 @@ class FerretCOTTest
 
 INSTANTIATE_TEST_SUITE_P(
     Cheetah, FerretCOTTest,
-    testing::Combine(testing::Values(FieldType::FM32, FieldType::FM64,
+    testing::Combine(testing::Values(FieldType::FM8, FieldType::FM16,
+                                     FieldType::FM32, FieldType::FM64,
                                      FieldType::FM128),
                      testing::Values(true, false)),
     [](const testing::TestParamInfo<FerretCOTTest::ParamType> &p) {
@@ -41,13 +43,25 @@ absl::Span<const T> makeConstSpan(NdArrayView<T> a) {
   return {&a[0], (size_t)a.numel()};
 }
 
+template <typename T>
+typename std::make_unsigned<T>::type makeMask(size_t bw) {
+  using U = typename std::make_unsigned<T>::type;
+  if (bw == sizeof(U) * 8) {
+    return static_cast<U>(-1);
+  }
+  return (static_cast<U>(1) << bw) - 1;
+}
+
+// cot, given delta & choice, output (x, x + delta * choice)
 TEST_P(FerretCOTTest, ChosenCorrelationChosenChoice) {
   size_t kWorldSize = 2;
   int64_t n = 10;
   auto field = std::get<0>(GetParam());
   auto use_ss = std::get<1>(GetParam());
 
+  // random correlation delta
   auto _correlation = ring_rand(field, {n});
+  // generate random choices
   std::vector<uint8_t> choices(n);
   std::default_random_engine rdv;
   std::uniform_int_distribution<uint64_t> uniform(0, -1);
@@ -62,6 +76,7 @@ TEST_P(FerretCOTTest, ChosenCorrelationChosenChoice) {
       auto conn = std::make_shared<Communicator>(ctx);
       int rank = ctx->Rank();
       computed[rank].resize(n);
+      // rank = 0 -> sender
       YaclFerretOt ferret(conn, rank == 0, use_ss);
       if (rank == 0) {
         ferret.SendCAMCC(makeConstSpan<ring2k_t>(correlation),
@@ -80,6 +95,7 @@ TEST_P(FerretCOTTest, ChosenCorrelationChosenChoice) {
   });
 }
 
+// random OT, random msgs, random choices
 TEST_P(FerretCOTTest, RndMsgRndChoice) {
   size_t kWorldSize = 2;
   auto field = std::get<0>(GetParam());
@@ -118,6 +134,7 @@ TEST_P(FerretCOTTest, RndMsgRndChoice) {
   });
 }
 
+// random OT, random msgs, chosen choices
 TEST_P(FerretCOTTest, RndMsgChosenChoice) {
   size_t kWorldSize = 2;
   auto field = std::get<0>(GetParam());
@@ -161,6 +178,7 @@ TEST_P(FerretCOTTest, RndMsgChosenChoice) {
   });
 }
 
+// ot, chosen msgs, chosen choices
 TEST_P(FerretCOTTest, ChosenMsgChosenChoice) {
   size_t kWorldSize = 2;
   int64_t n = 1 << 10;
@@ -170,8 +188,11 @@ TEST_P(FerretCOTTest, ChosenMsgChosenChoice) {
     using scalar_t = ring2k_t;
     std::default_random_engine rdv;
     std::uniform_int_distribution<uint32_t> uniform(0, -1);
-    for (int64_t N : {2, 4, 8}) {
-      for (size_t bw : {4UL, 8UL, 32UL}) {
+    for (int64_t N : {32, 64, 128}) {
+      for (size_t bw : {4UL, 8UL, 23UL, 32UL, 64UL}) {
+        if (bw > SizeOf(field)) {
+          continue;
+        }
         scalar_t mask = (static_cast<scalar_t>(1) << bw) - 1;
         auto _msg = ring_rand(field, {N * n});
         NdArrayView<scalar_t> msg(_msg);
@@ -198,6 +219,8 @@ TEST_P(FerretCOTTest, ChosenMsgChosenChoice) {
                                             absl::MakeSpan(selected), bw);
                           }
                           sent = ctx->GetStats()->sent_bytes - sent;
+                          SPDLOG_INFO("rank: {}, N: {}, bw: {}, send bytes:{}",
+                                      rank, N, bw, sent);
                         });
 
         for (int64_t i = 0; i < n; ++i) {
@@ -210,31 +233,55 @@ TEST_P(FerretCOTTest, ChosenMsgChosenChoice) {
   });
 }
 
-template <typename T>
-T makeMask(int bw) {
-  if (bw == sizeof(T) * 8) {
-    return static_cast<T>(-1);
-  }
-  return (static_cast<T>(1) << bw) - 1;
-}
+class FerretCOTLessLevelTest
+    : public testing::TestWithParam<std::tuple<FieldType, bool, int>> {};
 
-TEST_P(FerretCOTTest, COT_Collapse) {
+INSTANTIATE_TEST_SUITE_P(
+    Cheetah, FerretCOTLessLevelTest,
+    testing::Combine(testing::Values(FieldType::FM8, FieldType::FM16,
+                                     FieldType::FM32, FieldType::FM64,
+                                     FieldType::FM128),
+                     testing::Values(true, false), testing::Values(0, 8, 23)),
+    [](const testing::TestParamInfo<FerretCOTLessLevelTest::ParamType> &p) {
+      return fmt::format("{}_SS{}_Level{}", std::get<0>(p.param),
+                         std::get<1>(p.param), std::get<2>(p.param));
+    });
+
+// cot, given delta & choice, output (x, x + delta * choice)
+// but i-th cot, get \ell-i bits msgs
+TEST_P(FerretCOTLessLevelTest, COT_Collapse) {
   size_t kWorldSize = 2;
-  int64_t n = 8;
+  int64_t n = 2;
   auto field = std::get<0>(GetParam());
   auto use_ss = std::get<1>(GetParam());
+  auto level = std::get<2>(GetParam());
 
   const auto bw = SizeOf(field) * 8;
-  const int level = bw;
+  if (level == 0) {
+    level = bw / 2;
+  }
+  if (static_cast<size_t>(level) > bw) {
+    return;
+  }
 
   // generate random choices and correlation
   const auto _correlation = ring_rand(field, {static_cast<int64_t>(n * level)});
+  // const auto _correlation =
+  //     ring_iota(field, {static_cast<int64_t>(n * level)}, 100);
   const auto N = _correlation.numel();
 
   NdArrayRef oup1 = ring_zeros(field, _correlation.shape());
   NdArrayRef oup2 = ring_zeros(field, _correlation.shape());
 
-  std::vector<uint8_t> choices(N, 1);
+  // fixed choices to 1 for debug
+  // std::vector<uint8_t> choices(N, 1);
+
+  std::vector<uint8_t> choices(N);
+  std::default_random_engine rdv;
+  std::uniform_int_distribution<uint64_t> uniform(0, -1);
+  std::generate_n(choices.begin(), N, [&]() -> uint8_t {
+    return static_cast<uint8_t>(uniform(rdv) & 1);
+  });
 
   DISPATCH_ALL_FIELDS(field, [&]() {
     using u2k = std::make_unsigned<ring2k_t>::type;
@@ -260,19 +307,47 @@ TEST_P(FerretCOTTest, COT_Collapse) {
       }
     });
 
-    // Sample-major order
-    //      n ||     n     || n         || .... || n
-    // k=level||k=level - 1||k=level - 2|| ....
+    // direct test of COT
     for (int64_t i = 0; i < N; i += n) {
+      // Sample-major order
+      //      n ||     n     || n         || .... || n
+      // k=bw||k=bw - 1||k=bw - 2|| ....
       const auto cur_bw = bw - (i / n);
       const auto mask = makeMask<ring2k_t>(cur_bw);
+
       for (int64_t j = 0; j < n; ++j) {
         ring2k_t c = (-out1_span[i + j] + out2_span[i + j]) & mask;
         ring2k_t e = (choices[i + j] ? correlation[i + j] : 0) & mask;
+        // SPDLOG_INFO("i: {}  mask c: {}", i + j, c);
+        // SPDLOG_INFO("i: {} ,e: {}, mask e: {}", i + j,
+        //             (choices[i + j] ? correlation[i + j] : 0), e);
+        EXPECT_EQ(c, e);
+      }
+    }
 
-        ASSERT_EQ(c, e);
+    // first do transpose, then check
+    std::vector<u2k> transposed1(N);
+    std::vector<u2k> transposed2(N);
+    sse_transpose(out1_span.data(), transposed1.data(), level, n);
+    sse_transpose(out2_span.data(), transposed2.data(), level, n);
+
+    for (int64_t i = 0; i < n; ++i) {
+      for (int64_t j = 0; j < level; ++j) {
+        const auto idx = i * level + j;
+        const auto transposed_idx = j * n + i;
+        const auto cur_bw = bw - j;
+        const auto mask = makeMask<ring2k_t>(cur_bw);
+
+        auto c = (-transposed1[idx] + transposed2[idx]) & mask;
+        auto e =
+            (choices[transposed_idx] ? correlation[transposed_idx] : 0) & mask;
+
+        // SPDLOG_INFO("mask c: {}", c);
+        // SPDLOG_INFO("mask e: {}", e);
+        EXPECT_EQ(c, e);
       }
     }
   });
 }
+
 }  // namespace spu::mpc::cheetah::test

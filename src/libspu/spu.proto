@@ -94,9 +94,11 @@ enum PtType {
 // The secure evaluation is based on some algebraic structure (ring or field),
 enum FieldType {
   FT_INVALID = 0;
-  FM32 = 1;   // Ring 2^32
-  FM64 = 2;   // Ring 2^64
-  FM128 = 3;  // Ring 2^128
+  FM8 = 1;    // Field 2^8
+  FM16 = 2;   // Field 2^16
+  FM32 = 3;   // Ring 2^32
+  FM64 = 4;   // Ring 2^64
+  FM128 = 5;  // Ring 2^128
 }
 
 // The protocol kind.

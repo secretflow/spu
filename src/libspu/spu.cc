@@ -278,6 +278,12 @@ std::string RuntimeConfig::DumpToString() const {
     case FieldType::FT_INVALID:
       ss += "INVALID";
       break;
+    case FieldType::FM8:
+      ss += "FM8";
+      break;
+    case FieldType::FM16:
+      ss += "FM16";
+      break;
     case FieldType::FM32:
       ss += "FM32";
       break;

@@ -139,6 +139,147 @@ NdArrayRef gfmp_rand(FieldType field, const Shape& shape) {
   return gfmp_rand(field, shape, yacl::crypto::SecureRandSeed(), &cnt);
 }
 
+// TODO(zjj): should fix it in yacl
+// just make other unittest can be run, the implementation may not be correct.
+namespace {
+
+// these codes are copied from yacl/crypto/tools/prg.h
+template <typename T>
+struct IsSupportedMersennePrimeContainerType
+    : public std::disjunction<
+          std::is_same<uint128_t, T>, std::is_same<uint64_t, T>,
+          std::is_same<uint32_t, T>, std::is_same<uint16_t, T>,
+          std::is_same<uint8_t, T>> {};
+
+template <typename T,
+          std::enable_if_t<IsSupportedMersennePrimeContainerType<T>::value,
+                           bool> = true>
+constexpr T GetMersennePrimeMask() {
+  if constexpr (std::is_same_v<T, uint128_t>) {
+    return yacl::MakeUint128(std::numeric_limits<uint64_t>::max() >> 1,
+                             std::numeric_limits<uint64_t>::max());
+  } else if constexpr (std::is_same_v<T, uint64_t>) {
+    return std::numeric_limits<uint64_t>::max() >> 3;
+  } else if constexpr (std::is_same_v<T, uint32_t>) {
+    return std::numeric_limits<uint32_t>::max() >> 1;
+  } else if constexpr (std::is_same_v<T, uint16_t>) {
+    return std::numeric_limits<uint16_t>::max() >> 3;
+  } else if constexpr (std::is_same_v<T, uint8_t>) {
+    return std::numeric_limits<uint8_t>::max() >> 1;
+  } else {
+    YACL_THROW("Type T is not supported by FillPRandWithMersennePrime()");
+  }
+}
+
+template <typename T,
+          std::enable_if_t<IsSupportedMersennePrimeContainerType<T>::value,
+                           bool> = true>
+constexpr size_t GetMersennePrimeBitWidth() {
+  if constexpr (std::is_same_v<T, uint128_t>) {
+    return 127;
+  } else if constexpr (std::is_same_v<T, uint64_t>) {
+    return 61;
+  } else if constexpr (std::is_same_v<T, uint32_t>) {
+    return 31;
+  } else if constexpr (std::is_same_v<T, uint16_t>) {
+    return 13;
+  } else if constexpr (std::is_same_v<T, uint8_t>) {
+    return 7;
+  } else {
+    YACL_THROW("Type T is not supported by FillPRandWithMersennePrime()");
+  }
+}
+
+template <typename T,
+          std::enable_if_t<IsSupportedMersennePrimeContainerType<T>::value,
+                           bool> = true>
+T MersennePrimeMod(yacl::ByteContainerView buf) {
+  YACL_ENFORCE(buf.size() ==
+               sizeof(T) + (YACL_MODULE_SECPARAM_S_UINT("prg") + 7) / 8);
+  YACL_ENFORCE((YACL_MODULE_SECPARAM_S_UINT("prg") + 7) / 8 < sizeof(uint64_t));
+
+  constexpr auto k_mask = GetMersennePrimeMask<T>();
+  // // using mpint::mod, expensive
+  // math::MPInt rand;
+  // rand.FromMagBytes(buf, Endian::little);
+  // return rand.Mod(math::MPInt(k_mask)).Get<T>();
+
+  // using native methods
+  // buf should have 1 * T and 1 * s
+  // | --- T-len --- | --- s-len --- |
+  // lsb                         msb
+  //
+  // int i = k % p (where p = 2^s - 1) <= what we want
+  // ---------------------------------
+  // int i = (k & p) + (k >> s);
+  // return (i >= p) ? i - p : i;
+  //
+
+  if constexpr (std::is_same_v<T, uint128_t> || std::is_same_v<T, uint64_t>) {
+    T rand = 0;
+    uint64_t aux_rand = 0;
+    memcpy(&rand, buf.data(), sizeof(T));
+    memcpy(&aux_rand, buf.data() + sizeof(T),
+           (YACL_MODULE_SECPARAM_S_UINT("prg") + 7) / 8);
+
+    // single round would work
+    T i = (rand & k_mask) + aux_rand;
+    return (i > k_mask) ? i - k_mask : i;
+  } else {
+    YACL_ENFORCE(buf.size() <= sizeof(uint128_t));
+    uint128_t all_rand = 0;
+    memcpy(&all_rand, buf.data(), buf.size());
+
+    // constant round
+    do {
+      uint128_t i = (all_rand & k_mask) /* < 31 bit */ +
+                    (all_rand >> GetMersennePrimeBitWidth<T>()) /* 40 bit */;
+      all_rand = (i >= k_mask) ? i - k_mask : i;
+    } while (all_rand >= k_mask);
+    return (T)all_rand;
+  }
+}
+
+template <typename T>
+uint64_t FillPRandWithMersennePrimeTemp(
+    yacl::crypto::SymmetricCrypto::CryptoType crypto_type, uint128_t seed,
+    uint64_t iv, uint64_t count, absl::Span<T> out) {
+  if constexpr (std::is_same_v<T, uint128_t> || std::is_same_v<T, uint64_t>) {
+    // first, fill all outputs with randomness
+    auto ret =
+        yacl::crypto::FillPRand(crypto_type, seed, iv, count, (char*)out.data(),
+                                out.size() * sizeof(T));
+
+    // then, perform fast mod (in a non-standardized way)
+    // NOTE: for mersenne prime with 127, 61 bit width, it's sufficient to
+    // sample 127/61 bit uniform randomness directly, and then let the 2^127
+    // value to be zero. Though this is not strictly uniform random, it will
+    // provide statistical security of no less than 40 bits.
+    constexpr auto k_mask = GetMersennePrimeMask<T>();
+    for (auto& e : out) {
+      e = (e & k_mask) == k_mask ? 0 : e & k_mask;
+    }
+    return ret;
+  } else {
+    // first, fill all outputs with randomness
+    auto required_size =
+        sizeof(T) + (YACL_MODULE_SECPARAM_S_UINT("prg") + 7) / 8;
+    yacl::Buffer rand_bytes(out.size() * required_size);
+    auto ret = yacl::crypto::FillPRand(crypto_type, seed, iv, count,
+                                       (char*)rand_bytes.data(),
+                                       out.size() * required_size);
+
+    // then, perform mod
+    yacl::ByteContainerView rand_view(rand_bytes);
+    for (size_t i = 0; i < out.size(); ++i) {
+      out[i] = MersennePrimeMod<T>(
+          rand_view.subspan(i * required_size, required_size));
+    }
+    return ret;
+  }
+}
+}  // namespace
+
 NdArrayRef gfmp_rand(FieldType field, const Shape& shape, uint128_t prg_seed,
                      uint64_t* prg_counter) {
   constexpr yacl::crypto::SymmetricCrypto::CryptoType kCryptoType =
@@ -146,7 +287,7 @@ NdArrayRef gfmp_rand(FieldType field, const Shape& shape, uint128_t prg_seed,
   constexpr uint128_t kAesInitialVector = 0U;
   NdArrayRef res(makeType<GfmpTy>(field), shape);
   DISPATCH_ALL_FIELDS(field, [&]() {
-    *prg_counter = yacl::crypto::FillPRandWithMersennePrime<ring2k_t>(
+    *prg_counter = FillPRandWithMersennePrimeTemp<ring2k_t>(
         kCryptoType, prg_seed, kAesInitialVector, *prg_counter,
         absl::MakeSpan(&res.at<ring2k_t>(0), res.numel()));
   });

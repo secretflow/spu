@@ -44,6 +44,8 @@ class YaclFerretOt : public spu::mpc::cheetah::FerretOtInterface {
   // choice \in [0, N-1]
   void SendCMCC(absl::Span<const uint8_t> msg_array, size_t N,
                 size_t bit_width = 0) override;
+  void SendCMCC(absl::Span<const uint16_t> msg_array, size_t N,
+                size_t bit_width = 0) override;
   void SendCMCC(absl::Span<const uint32_t> msg_array, size_t N,
                 size_t bit_width = 0) override;
   void SendCMCC(absl::Span<const uint64_t> msg_array, size_t N,
@@ -54,6 +56,8 @@ class YaclFerretOt : public spu::mpc::cheetah::FerretOtInterface {
   void RecvCMCC(absl::Span<const uint8_t> one_oo_N_choices, size_t N,
                 absl::Span<uint8_t> output, size_t bit_width = 0) override;
   void RecvCMCC(absl::Span<const uint8_t> one_oo_N_choices, size_t N,
+                absl::Span<uint16_t> output, size_t bit_width = 0) override;
+  void RecvCMCC(absl::Span<const uint8_t> one_oo_N_choices, size_t N,
                 absl::Span<uint32_t> output, size_t bit_width = 0) override;
   void RecvCMCC(absl::Span<const uint8_t> one_oo_N_choices, size_t N,
                 absl::Span<uint64_t> output, size_t bit_width = 0) override;
@@ -63,6 +67,8 @@ class YaclFerretOt : public spu::mpc::cheetah::FerretOtInterface {
   // Random Message Random Choice
   void SendRMRC(absl::Span<uint8_t> output0, absl::Span<uint8_t> output1,
                 size_t bit_width = 0) override;
+  void SendRMRC(absl::Span<uint16_t> output0, absl::Span<uint16_t> output1,
+                size_t bit_width = 0) override;
   void SendRMRC(absl::Span<uint32_t> output0, absl::Span<uint32_t> output1,
                 size_t bit_width = 0) override;
   void SendRMRC(absl::Span<uint64_t> output0, absl::Span<uint64_t> output1,
@@ -71,6 +77,8 @@ class YaclFerretOt : public spu::mpc::cheetah::FerretOtInterface {
                 size_t bit_width = 0) override;
 
   void RecvRMRC(absl::Span<uint8_t> binary_choices, absl::Span<uint8_t> output,
+                size_t bit_width = 0) override;
+  void RecvRMRC(absl::Span<uint8_t> binary_choices, absl::Span<uint16_t> output,
                 size_t bit_width = 0) override;
   void RecvRMRC(absl::Span<uint8_t> binary_choices, absl::Span<uint32_t> output,
                 size_t bit_width = 0) override;
@@ -85,6 +93,8 @@ class YaclFerretOt : public spu::mpc::cheetah::FerretOtInterface {
   // use the full range.
   void SendCAMCC(absl::Span<const uint8_t> corr, absl::Span<uint8_t> output,
                  int bit_width = 0) override;
+  void SendCAMCC(absl::Span<const uint16_t> corr, absl::Span<uint16_t> output,
+                 int bit_width = 0) override;
   void SendCAMCC(absl::Span<const uint32_t> corr, absl::Span<uint32_t> output,
                  int bit_width = 0) override;
   void SendCAMCC(absl::Span<const uint64_t> corr, absl::Span<uint64_t> output,
@@ -94,6 +104,8 @@ class YaclFerretOt : public spu::mpc::cheetah::FerretOtInterface {
 
   void RecvCAMCC(absl::Span<const uint8_t> binary_choices,
                  absl::Span<uint8_t> output, int bit_width = 0) override;
+  void RecvCAMCC(absl::Span<const uint8_t> binary_choices,
+                 absl::Span<uint16_t> output, int bit_width = 0) override;
   void RecvCAMCC(absl::Span<const uint8_t> binary_choices,
                  absl::Span<uint32_t> output, int bit_width = 0) override;
   void RecvCAMCC(absl::Span<const uint8_t> binary_choices,
@@ -105,6 +117,9 @@ class YaclFerretOt : public spu::mpc::cheetah::FerretOtInterface {
   // bit_width_begin - k
   void SendCAMCC_Collapse(absl::Span<const uint8_t> corr,
                           absl::Span<uint8_t> output, int bit_width_begin,
+                          int num_level) override;
+  void SendCAMCC_Collapse(absl::Span<const uint16_t> corr,
+                          absl::Span<uint16_t> output, int bit_width_begin,
                           int num_level) override;
   void SendCAMCC_Collapse(absl::Span<const uint32_t> corr,
                           absl::Span<uint32_t> output, int bit_width_begin,
@@ -119,6 +134,9 @@ class YaclFerretOt : public spu::mpc::cheetah::FerretOtInterface {
                           absl::Span<uint8_t> output, int bit_width_begin,
                           int num_level) override;
   void RecvCAMCC_Collapse(absl::Span<const uint8_t> binary_choices,
+                          absl::Span<uint16_t> output, int bit_width_begin,
+                          int num_level) override;
+  void RecvCAMCC_Collapse(absl::Span<const uint8_t> binary_choices,
                           absl::Span<uint32_t> output, int bit_width_begin,
                           int num_level) override;
   void RecvCAMCC_Collapse(absl::Span<const uint8_t> binary_choices,
@@ -131,6 +149,8 @@ class YaclFerretOt : public spu::mpc::cheetah::FerretOtInterface {
   // Random Message Chosen Choice
   void SendRMCC(absl::Span<uint8_t> output0, absl::Span<uint8_t> output1,
                 size_t bit_width = 0) override;
+  void SendRMCC(absl::Span<uint16_t> output0, absl::Span<uint16_t> output1,
+                size_t bit_width = 0) override;
   void SendRMCC(absl::Span<uint32_t> output0, absl::Span<uint32_t> output1,
                 size_t bit_width = 0) override;
   void SendRMCC(absl::Span<uint64_t> output0, absl::Span<uint64_t> output1,
@@ -140,6 +160,8 @@ class YaclFerretOt : public spu::mpc::cheetah::FerretOtInterface {
 
   void RecvRMCC(absl::Span<const uint8_t> binary_choices,
                 absl::Span<uint8_t> output, size_t bit_width = 0) override;
+  void RecvRMCC(absl::Span<const uint8_t> binary_choices,
+                absl::Span<uint16_t> output, size_t bit_width = 0) override;
   void RecvRMCC(absl::Span<const uint8_t> binary_choices,
                 absl::Span<uint32_t> output, size_t bit_width = 0) override;
   void RecvRMCC(absl::Span<const uint8_t> binary_choices,
