@@ -583,19 +583,6 @@ static NdArrayRef wrap_mulvvs(SPUContext* ctx, const NdArrayRef& x,
   return UnwrapValue(mul_vv(ctx, WrapValue(x), WrapValue(y)));
 }
 
-// TODO: define more smaller fields.
-FieldType getTruncField(size_t bits) {
-  if (bits <= 32) {
-    return FM32;
-  } else if (bits <= 64) {
-    return FM64;
-  } else if (bits <= 128) {
-    return FM128;
-  } else {
-    SPU_THROW("Unsupported truncation bits: {}", bits);
-  }
-}
-
 // Ref: Improved secure two-party computation from a geometric perspective
 // Algorithm 2: Compute MW(x, L) with |x| < L / 4
 NdArrayRef computeMW(KernelEvalContext* ctx, const NdArrayRef& in,
@@ -603,7 +590,7 @@ NdArrayRef computeMW(KernelEvalContext* ctx, const NdArrayRef& in,
   const auto numel = in.numel();
   const auto field = in.eltype().as<Ring2k>()->field();
   const size_t k = SizeOf(field) * 8;
-  const auto trunc_field = getTruncField(bits);
+  const auto trunc_field = FixGetProperFiled(bits);
   auto* comm = ctx->getState<Communicator>();
 
   NdArrayRef mw;
@@ -670,7 +657,7 @@ NdArrayRef TruncAPr2::proc(KernelEvalContext* ctx, const NdArrayRef& in,
   const auto numel = in.numel();
   const auto field = in.eltype().as<Ring2k>()->field();
   const size_t k = SizeOf(field) * 8;
-  const auto trunc_field = getTruncField(bits);
+  const auto trunc_field = FixGetProperFiled(bits);
   auto* comm = ctx->getState<Communicator>();
   const auto rank = comm->getRank();
   SPU_ENFORCE(rank == 0 || rank == 1, "Invalid rank: {}", rank);

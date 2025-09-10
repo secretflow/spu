@@ -752,19 +752,6 @@ std::vector<T> openWith(Communicator* comm, size_t peer_rank,
 
 namespace {
 
-// TODO: define more smaller fields.
-FieldType getTruncField(size_t bits) {
-  if (bits <= 32) {
-    return FM32;
-  } else if (bits <= 64) {
-    return FM64;
-  } else if (bits <= 128) {
-    return FM128;
-  } else {
-    SPU_THROW("Unsupported truncation bits: {}", bits);
-  }
-}
-
 // Basic idea is to use Beaver's private multiplication protocol
 // Let P2 to serve as a helper
 // P2: Generate (c0, c1), (a, b) s.t. ab = c0 + c1
@@ -858,7 +845,7 @@ NdArrayRef TruncPrWithMsbKnown(KernelEvalContext* ctx, const NdArrayRef& in,
   const auto field = in.eltype().as<AShrTy>()->field();
   const auto numel = in.numel();
   const size_t ell = SizeOf(field) * 8;
-  const auto wrap_field = getTruncField(bits);
+  const auto wrap_field = FixGetProperFiled(bits);
 
   auto* prg_state = ctx->getState<PrgState>();
   auto* comm = ctx->getState<Communicator>();
@@ -1265,7 +1252,7 @@ NdArrayRef computeMW(KernelEvalContext* ctx, const NdArrayRef& in, size_t bits,
   const auto field = in.eltype().as<Ring2k>()->field();
   const auto numel = in.numel();
   const size_t k = SizeOf(field) * 8;
-  const auto trunc_field = getTruncField(bits);
+  const auto trunc_field = FixGetProperFiled(bits);
   const auto P0 = party[0];
   const auto P1 = party[1];
 
@@ -1323,7 +1310,7 @@ NdArrayRef TruncAPr2::proc(KernelEvalContext* ctx, const NdArrayRef& in,
   const auto numel = in.numel();
   const auto field = in.eltype().as<Ring2k>()->field();
   const size_t k = SizeOf(field) * 8;
-  const auto trunc_field = getTruncField(bits);
+  const auto trunc_field = FixGetProperFiled(bits);
 
   auto* prg_state = ctx->getState<PrgState>();
   auto* comm = ctx->getState<Communicator>();

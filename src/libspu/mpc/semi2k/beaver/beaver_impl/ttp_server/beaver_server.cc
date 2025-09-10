@@ -71,6 +71,14 @@ BuildOperand(const AdjustRequest& req, uint32_t field_size,
 
   FieldType field;
   switch (field_size) {
+    case 1: {
+      field = FieldType::FM8;
+      break;
+    }
+    case 2: {
+      field = FieldType::FM16;
+      break;
+    }
     case 4: {
       field = FieldType::FM32;
       break;
