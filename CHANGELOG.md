@@ -7,9 +7,12 @@
 > - Add `[API]` prefix for API changes
 
 ## staging
->
+
 > please add your unreleased change here.
 
+## 20250917
+
+- [SPU] 0.9.4 release
 - [SPU] Migrating to Bazel Modules and update minimum Python version to 3.10.
 - [Feature] Add soPRF (LowMC cipher) for SEMI2K
 - [API] Add Permute/InvPermute support in HLO
@@ -223,7 +226,7 @@
 - [SPU] 0.0.6 release
 - [API] Add storage_type/data_type, remove type_data.
 - [Experimental] Log(natural logarithm) is calculated with Pade approximation
-                 instead of Householder's approximation.
+  instead of Householder's approximation.
 - [API] Fix typo, goldschmdit.
 - [Improvement] fxp div, improvement accuracy with normal distributed inputs.
 
@@ -238,7 +241,7 @@
 - [Improvement] Lift Convolution limitations.
 - [Improvement] Optimize maximum/minimum speed, with MPC B2A single bit conversion.
 - [Experimental] Div is calculated with direct goldschmdit method instead of
-                 multiplication of dividend and divisor reciprocal.
+  multiplication of dividend and divisor reciprocal.
 - [API] change RuntimeConfig.enable_op_time_profile to enable_pphlo_profile.
 - [API] change RuntimeConfig.fxp_reciprocal_goldschmdit_iters to fxp_div_goldschmdit_iters.
 
@@ -246,9 +249,9 @@
 
 - [SPU] 0.0.4 release
 - [Feature] add silent ot support for various ot scenarios (chosen/correlated/random
-            messages, chosen/correlated/random choices, 1o2/1oN)
+  messages, chosen/correlated/random choices, 1o2/1oN)
 - [Feature] add non-linear computation protocols based on silent ot (comparison,
-            truncation, b2a, triple, randbit, etc)
+  truncation, b2a, triple, randbit, etc)
 - [Feature] add a 2PC protocol: Cheetah
 - [Improvement] concatenate is a lot faster
 - [API] add RuntimeConfig.enable_op_time_profile to ask SPU to collect timing profiling data
