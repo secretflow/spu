@@ -144,6 +144,10 @@ jobs:
       - run:
           name: "Install homebrew dependencies"
           command: brew install bazelisk cmake ninja libomp wget md5sha1sum
+      - run:
+          name: "install uv"
+          command: |
+            wget -qO- https://astral.sh/uv/install.sh | sh
       - build_and_test
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
