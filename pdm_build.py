@@ -53,7 +53,7 @@ def _build_lib(libname: str, force: bool = False) -> Path:
     ver_info = sys.version_info
     version = f"{ver_info.major}.{ver_info.minor}"
     args = [
-        "bazel",
+        "bazelisk",
         "build",
         target,
         f"--@rules_python//python/config_settings:python_version={version}",
