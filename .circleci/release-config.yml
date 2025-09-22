@@ -49,15 +49,12 @@ commands:
           name: "build package and publish"
           command: |
             set +e
-            conda create -n build python=<< parameters.python_ver >> -y
-            conda activate build
+            uv venv --python << parameters.python_ver >>
+            uv sync --group dev
 
-            python3 -m pip install build
-            python3 -m build --wheel
+            uv build
             ls dist/spu*.whl
-
-            python3 -m pip install twine
-            python3 -m twine upload -r pypi -u __token__ -p ${PYPI_TWINE_TOKEN} dist/spu*.whl
+            uv publish --index pypi -u __token__ -p ${PYPI_TWINE_TOKEN}
 
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
@@ -75,13 +72,6 @@ jobs:
           name: "Install homebrew dependencies"
           command: |
             brew install bazelisk cmake ninja libomp wget
-      - run:
-          name: "Install Miniconda"
-          command: |
-            wget https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-arm64.sh -O ~/miniconda.sh
-            bash ~/miniconda.sh -b -p $HOME/miniconda
-            source $HOME/miniconda/bin/activate
-            conda init zsh bash
       - build_and_upload:
           python_ver: <<parameters.python_ver>>
   linux_publish:
