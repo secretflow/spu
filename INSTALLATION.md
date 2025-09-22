@@ -53,8 +53,14 @@ pip install spu
 - At the root of repo, run
 
 ```bash
-bazelisk build //:spu_wheel -c opt
-pip install bazel-bin/spu-*.whl --force-reinstall
+conda create -n build python=3.11 -y
+conda activate build
+
+python3 -m pip install build
+python3 -m build --wheel
+ls dist/spu*.whl
+
+pip install dist/spu*.whl --force-reinstall
 ```
 
 - Note that:
