@@ -2,6 +2,19 @@
 requires = ["pdm-backend", "packaging"]
 build-backend = "pdm.backend"
 
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple/"
+publish-url = "https://upload.pypi.org/legacy/"
+
+[[tool.uv.index]]
+name = "aliyun"
+url = "https://mirrors.aliyun.com/pypi/simple/"
+default = true
+
+[tool.uv]
+default-groups = ["dev"]
+
 [project]
 name = "spu"
 description = "spu"
