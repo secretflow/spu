@@ -138,7 +138,7 @@ jobs:
   macOS_ut:
     macos:
       xcode: 16.0.0
-    resource_class: macos.m1.large.gen1
+    resource_class: m4pro.medium
     steps:
       - checkout
       - run:
