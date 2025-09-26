@@ -13,14 +13,19 @@
 // limitations under the License.
 
 #include <cstddef>
+#include <cstring>
 #include <functional>
+#include <string>
 #include <utility>
+#include <vector>
 
 #include "pybind11/iostream.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
+#include "spdlog/spdlog.h"
 #include "spu/pychannel.h"
+#include "yacl/base/exception.h"
 #include "yacl/link/algorithm/allgather.h"
 #include "yacl/link/algorithm/barrier.h"
 #include "yacl/link/algorithm/broadcast.h"
@@ -41,17 +46,20 @@
 #include "libspu/spu.h"
 #include "libspu/version.h"
 
+// Add missing includes for brpc and fmt
+#include "butil/macros.h"
+#include "fmt/format.h"
+
 #ifdef CHECK_AVX
 #include "cpu_features/cpuinfo_x86.h"
 #endif
 
 namespace py = pybind11;
 
+// Forward declare brpc FLAGS
 namespace brpc {
-
-DECLARE_uint64(max_body_size);
-DECLARE_int64(socket_max_unwritten_bytes);
-
+extern uint64_t FLAGS_max_body_size;
+extern int64_t FLAGS_socket_max_unwritten_bytes;
 }  // namespace brpc
 
 namespace spu {
@@ -67,6 +75,51 @@ namespace {
 }
 
 }  // namespace
+
+// Convert yacl::Buffer to py::array_t using zero-copy with move semantics
+py::array_t<uint8_t> BufferToArray(yacl::Buffer buffer) {
+  // Create a capsule that takes ownership of the buffer data using move
+  // semantics This achieves zero-copy by transferring ownership instead of
+  // copying
+  auto* buf_ptr = new yacl::Buffer(std::move(buffer));
+  py::capsule capsule(
+      buf_ptr, [](void* data) { delete static_cast<yacl::Buffer*>(data); });
+
+  // Create numpy array as a view of the buffer data without copying
+  return py::array_t<uint8_t>({buf_ptr->size()},         // shape
+                              {1},                       // strides
+                              buf_ptr->data<uint8_t>(),  // data pointer
+                              capsule);  // capsule to manage lifetime
+}
+
+// Generic buffer to numpy array conversion with type information (zero-copy)
+template <typename T>
+py::array_t<T> BufferToTypedArray(yacl::Buffer buffer) {
+  // Calculate number of elements
+  size_t num_elements = buffer.size() / sizeof(T);
+  SPU_ENFORCE(buffer.size() % sizeof(T) == 0,
+              "Buffer size {} is not divisible by sizeof({})", buffer.size(),
+              sizeof(T));
+
+  // Create a capsule that takes ownership of the buffer using move semantics
+  auto* buf_ptr = new yacl::Buffer(std::move(buffer));
+  py::capsule capsule(
+      buf_ptr, [](void* data) { delete static_cast<yacl::Buffer*>(data); });
+
+  // Create typed numpy array that shares the buffer memory
+  return py::array_t<T>(
+      {num_elements},                                  // shape
+      {1},                                             // strides
+      reinterpret_cast<T*>(buf_ptr->data<uint8_t>()),  // data pointer
+      capsule);  // capsule to manage lifetime
+}
+
+// Specialization for uint8_t (most common case)
+template <>
+py::array_t<uint8_t> BufferToTypedArray<uint8_t>(yacl::Buffer buffer) {
+  return BufferToArray(
+      std::move(buffer));  // Use the existing zero-copy implementation
+}
 
 #define NO_GIL py::call_guard<py::gil_scoped_release>()
 
@@ -1122,6 +1175,10 @@ PYBIND11_MODULE(libspu, m) {
   });
 
   m.def("_get_version", []() { return spu::getVersionStr(); });
+
+  // Expose buffer conversion functions
+  m.def("buffer_to_array", &BufferToArray,
+        "Convert yacl::Buffer to numpy array", py::arg("buffer"));
 }
 
 }  // namespace spu
