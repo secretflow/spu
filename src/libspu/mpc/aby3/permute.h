@@ -26,7 +26,8 @@ class RandPermM : public RandKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  NdArrayRef proc(KernelEvalContext* ctx, const Shape& shape) const override;
+  NdArrayRef proc(KernelEvalContext* ctx, const Shape& shape,
+                  FieldType perm_field = FieldType::FM64) const override;
 };
 
 class PermAM : public PermKernel {

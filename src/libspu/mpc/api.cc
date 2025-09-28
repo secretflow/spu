@@ -262,8 +262,9 @@ Value cast_type_s(SPUContext* ctx, const Value& frm, const Type& to_type) {
   }
 }
 
-Value make_p(SPUContext* ctx, uint128_t init, const Shape& shape) {
-  FORCE_DISPATCH(ctx, init, shape);
+Value make_p(SPUContext* ctx, uint128_t init, const Shape& shape,
+             FieldType field) {
+  FORCE_DISPATCH(ctx, init, shape, field);
 }
 
 Value rand_p(SPUContext* ctx, const Shape& shape) {
@@ -759,9 +760,10 @@ Value oram_read_sp(SPUContext* ctx, const Value& x, const Value& y,
 
 //////////////////////////////////////////////////////////////////////////////
 
-OptionalAPI<Value> rand_perm_s(SPUContext* ctx, const Shape& shape) {
-  SPU_TRACE_MPC_DISP(ctx, shape);
-  TRY_NAMED_DISPATCH(ctx, "rand_perm_m", shape);
+OptionalAPI<Value> rand_perm_s(SPUContext* ctx, const Shape& shape,
+                               FieldType perm_field) {
+  SPU_TRACE_MPC_DISP(ctx, shape, perm_field);
+  TRY_NAMED_DISPATCH(ctx, "rand_perm_m", shape, perm_field);
   return NotAvailable;
 }
 

@@ -114,7 +114,8 @@ spu::Value associative_scan(Fn&& fn, SPUContext* ctx, const Value& in) {
       ctx, {hal::slice(ctx, in_2d, {0, 0}, {M, 1}), even_elems}, 1);
 
   // concat even and odd elems interleavely
-  auto zero = hal::constant(ctx, 0U, in.dtype(), {1});
+  const auto perm_field = in.storage_type().as<Ring2k>()->field();
+  auto zero = hal::constant(ctx, 0U, in.dtype(), {1}, perm_field);
   auto pad_even = hal::pad(
       ctx, final_even_elems, zero, {0, 0},
       {0, final_even_elems.numel() == odd_elems.numel() ? 1 : 0}, {0, 1});

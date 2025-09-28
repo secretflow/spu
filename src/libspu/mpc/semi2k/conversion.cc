@@ -229,57 +229,66 @@ NdArrayRef B2A_Randbit::proc(KernelEvalContext* ctx,
 //  Input: BShr
 //  Return: a vector of k AShr, k is the valid bits of BShr
 std::vector<NdArrayRef> B2A_Disassemble::proc(KernelEvalContext* ctx,
-                                              const NdArrayRef& x) const {
-  const auto field = x.eltype().as<Ring2k>()->field();
+                                              const NdArrayRef& x,
+                                              FieldType perm_field) const {
+  const auto bshr_field = x.eltype().as<Ring2k>()->field();
+  FieldType ashr_field = bshr_field;
+  if (perm_field != FT_INVALID) {
+    ashr_field = perm_field;
+  }
   auto* comm = ctx->getState<Communicator>();
   auto* beaver = ctx->getState<Semi2kState>()->beaver();
 
   const int64_t nbits = x.eltype().as<BShare>()->nbits();
-  SPU_ENFORCE((size_t)nbits > 0 && (size_t)nbits <= SizeOf(field) * 8,
+  SPU_ENFORCE((size_t)nbits > 0 && (size_t)nbits <= SizeOf(bshr_field) * 8,
               "invalid nbits={}", nbits);
 
   const auto numel = x.numel();
   const auto rand_numel = numel * static_cast<int64_t>(nbits);
   const PtType backtype = getBacktype(nbits);
 
-  auto randbits = beaver->RandBit(field, rand_numel);
+  auto randbits = beaver->RandBit(ashr_field, rand_numel);
 
   std::vector<NdArrayRef> res;
   res.reserve(nbits);
   for (int64_t idx = 0; idx < nbits; ++idx) {
-    res.emplace_back(makeType<AShrTy>(field), x.shape());
+    res.emplace_back(makeType<AShrTy>(ashr_field), x.shape());
   }
-  DISPATCH_ALL_FIELDS(field, [&]() {
+  DISPATCH_ALL_FIELDS(ashr_field, [&]() {
     using U = ring2k_t;
 
-    absl::Span<const U> _randbits(randbits.data<U>(), rand_numel);
-    NdArrayView<U> _x(x);
+    DISPATCH_ALL_FIELDS(bshr_field, [&]() {
+      using UU = ring2k_t;
 
-    DISPATCH_UINT_PT_TYPES(backtype, [&]() {
-      using V = ScalarT;
-      std::vector<V> x_xor_r(numel);
+      absl::Span<const U> _randbits(randbits.data<U>(), rand_numel);
+      NdArrayView<UU> _x(x);
 
-      pforeach(0, numel, [&](int64_t idx) {
-        // use _r[i*nbits, (i+1)*nbits) to construct rb[i]
-        V mask = 0;
-        for (int64_t bit = 0; bit < nbits; ++bit) {
-          mask += (static_cast<V>(_randbits[idx * nbits + bit]) & 0x1) << bit;
-        }
-        x_xor_r[idx] = _x[idx] ^ mask;
-      });
+      DISPATCH_UINT_PT_TYPES(backtype, [&]() {
+        using V = ScalarT;
+        std::vector<V> x_xor_r(numel);
 
-      // open c = x ^ r
-      x_xor_r = comm->allReduce<V, std::bit_xor>(x_xor_r, "open(x^r)");
-
-      pforeach(0, numel, [&](int64_t idx) {
-        pforeach(0, nbits, [&](int64_t bit) {
-          NdArrayView<U> _res(res[bit]);
-          auto c_i = static_cast<U>(x_xor_r[idx] >> bit) & 0x1;
-          if (comm->getRank() == 0) {
-            _res[idx] = (c_i + (1 - c_i * 2) * _randbits[idx * nbits + bit]);
-          } else {
-            _res[idx] = ((1 - c_i * 2) * _randbits[idx * nbits + bit]);
+        pforeach(0, numel, [&](int64_t idx) {
+          // use _r[i*nbits, (i+1)*nbits) to construct rb[i]
+          V mask = 0;
+          for (int64_t bit = 0; bit < nbits; ++bit) {
+            mask += (static_cast<V>(_randbits[idx * nbits + bit]) & 0x1) << bit;
           }
+          x_xor_r[idx] = _x[idx] ^ mask;
+        });
+
+        // open c = x ^ r
+        x_xor_r = comm->allReduce<V, std::bit_xor>(x_xor_r, "open(x^r)");
+
+        pforeach(0, numel, [&](int64_t idx) {
+          pforeach(0, nbits, [&](int64_t bit) {
+            NdArrayView<U> _res(res[bit]);
+            auto c_i = static_cast<U>(x_xor_r[idx] >> bit) & 0x1;
+            if (comm->getRank() == 0) {
+              _res[idx] = (c_i + (1 - c_i * 2) * _randbits[idx * nbits + bit]);
+            } else {
+              _res[idx] = ((1 - c_i * 2) * _randbits[idx * nbits + bit]);
+            }
+          });
         });
       });
     });

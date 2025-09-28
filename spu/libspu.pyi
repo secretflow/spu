@@ -145,9 +145,11 @@ class Visibility(enum.IntEnum):
 
 class FieldType(enum.IntEnum):
     FT_INVALID = 0
-    FM32 = 1
-    FM64 = 2
-    FM128 = 3
+    FM8 = 1
+    FM16 = 2
+    FM32 = 3
+    FM64 = 4
+    FM128 = 5
 
 class ProtocolKind(enum.IntEnum):
     PROT_INVALID = 0

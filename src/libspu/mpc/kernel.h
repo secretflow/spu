@@ -21,7 +21,8 @@ namespace spu::mpc {
 class RandKernel : public Kernel {
  public:
   void evaluate(KernelEvalContext* ctx) const override;
-  virtual NdArrayRef proc(KernelEvalContext* ctx, const Shape& shape) const = 0;
+  virtual NdArrayRef proc(KernelEvalContext* ctx, const Shape& shape,
+                          FieldType perm_field) const = 0;
 };
 
 class UnaryKernel : public Kernel {

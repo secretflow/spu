@@ -95,8 +95,9 @@ class B2A_Disassemble : public DisassembleKernel {
         ;
   }
 
-  std::vector<NdArrayRef> proc(KernelEvalContext* ctx,
-                               const NdArrayRef& x) const override;
+  std::vector<NdArrayRef> proc(
+      KernelEvalContext* ctx, const NdArrayRef& x,
+      FieldType perm_field = FT_INVALID) const override;
 };
 
 // Note: current only for 2PC.

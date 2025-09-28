@@ -117,13 +117,15 @@ Value _bitrev_p(SPUContext* ctx, const Value& in, size_t start, size_t end);
 Value _bitrev_s(SPUContext* ctx, const Value& in, size_t start, size_t end);
 Value _bitrev_v(SPUContext* ctx, const Value& in, size_t start, size_t end);
 
-Value _make_p(SPUContext* ctx, uint128_t init, const Shape& shape);
+Value _make_p(SPUContext* ctx, uint128_t init, const Shape& shape,
+              FieldType field = FieldType::FT_INVALID);
 
 Value _rand_p(SPUContext* ctx, const Shape& shape);
 Value _rand_s(SPUContext* ctx, const Shape& shape, DataType dtype);
 
 // FIXME: temporary API, formalize later
-Value _rand_perm_s(SPUContext* ctx, const Shape& shape);
+Value _rand_perm_s(SPUContext* ctx, const Shape& shape,
+                   FieldType perm_field = FieldType::FM64);
 Value _perm_ss(SPUContext* ctx, const Value& x, const Value& perm);
 Value _perm_sp(SPUContext* ctx, const Value& x, const Value& perm);
 Value _perm_pp(SPUContext* ctx, const Value& x, const Value& perm);

@@ -76,9 +76,10 @@ Value _cast_type_s(SPUContext* ctx, const Value& in, const Type& to) {
   return ret;
 }
 
-Value _make_p(SPUContext* ctx, uint128_t init, const Shape& shape) {
+Value _make_p(SPUContext* ctx, uint128_t init, const Shape& shape,
+              FieldType field) {
   SPU_TRACE_HAL_DISP(ctx, init);
-  auto res = mpc::make_p(ctx, init, shape);
+  auto res = mpc::make_p(ctx, init, shape, field);
   return res;
 }
 
@@ -260,10 +261,10 @@ MAP_OPTIONAL_PERM_OP(inv_perm_ss);
 MAP_OPTIONAL_PERM_OP(inv_perm_sp);
 MAP_OPTIONAL_PERM_OP(inv_perm_sv);
 
-Value _rand_perm_s(SPUContext* ctx, const Shape& shape) {
-  SPU_TRACE_HAL_DISP(ctx, shape);
+Value _rand_perm_s(SPUContext* ctx, const Shape& shape, FieldType perm_field) {
+  SPU_TRACE_HAL_DISP(ctx, shape, perm_field);
   SPU_ENFORCE(shape.ndim() == 1, "shape should be 1-d");
-  auto ret = mpc::rand_perm_s(ctx, shape);
+  auto ret = mpc::rand_perm_s(ctx, shape, perm_field);
   SPU_ENFORCE(ret.has_value(), "rand_perm_s api not implemented");
   return ret.value();
 }

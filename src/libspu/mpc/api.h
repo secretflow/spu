@@ -85,7 +85,8 @@ Value cast_type_s(SPUContext* ctx, const Value& frm, const Type& to_type);
 // Make a public variable with given plaintext input.
 //
 // All parties knowns the value.
-Value make_p(SPUContext* ctx, uint128_t init, const Shape& shape);
+Value make_p(SPUContext* ctx, uint128_t init, const Shape& shape,
+             FieldType field = FieldType::FT_INVALID);
 
 // parties random a public together.
 Value rand_p(SPUContext* ctx, const Shape& shape);
@@ -185,7 +186,8 @@ Value oram_read_sp(SPUContext* ctx, const Value& x, const Value& y,
 // is composed of a series of individual permutations hold by each party.
 // Specifically, if Perm = Perm1(Perm0), then party0 holds Perm0 and party1
 // holds Perm1
-OptionalAPI<Value> rand_perm_s(SPUContext* ctx, const Shape& shape);
+OptionalAPI<Value> rand_perm_s(SPUContext* ctx, const Shape& shape,
+                               FieldType perm_field = FieldType::FM64);
 
 // Permute 1-D x with permutation perm
 // ret[i] = x[perm[i]]

@@ -571,6 +571,8 @@ void BindSPU(py::module& m) {
 
   py::enum_<FieldType>(m, "FieldType")
       .value("FT_INVALID", FieldType::FT_INVALID)
+      .value("FM8", FieldType::FM8)
+      .value("FM16", FieldType::FM16)
       .value("FM32", FieldType::FM32)
       .value("FM64", FieldType::FM64)
       .value("FM128", FieldType::FM128)

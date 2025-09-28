@@ -29,11 +29,24 @@
 #include "libspu/kernel/hal/shape_ops.h"
 #include "libspu/kernel/hal/type_cast.h"
 #include "libspu/kernel/hal/utils.h"
+#include "libspu/mpc/common/pv2k.h"
 #include "libspu/spu.h"
 
 namespace spu::kernel::hal {
 
 namespace internal {
+
+inline FieldType _get_field_from_n(size_t n) {
+  if (n <= (static_cast<uint64_t>(1) << 8)) {
+    return FieldType::FM8;
+  } else if (n <= (static_cast<uint64_t>(1) << 16)) {
+    return FieldType::FM16;
+  } else if (n <= (static_cast<uint64_t>(1) << 32)) {
+    return FieldType::FM32;
+  } else {
+    return FieldType::FM64;
+  }
+}
 
 inline int64_t _get_owner(const Value &x) {
   return x.storage_type().as<Private>()->owner();
@@ -847,8 +860,9 @@ spu::Value _gen_inv_perm_by_bv(SPUContext *ctx, const spu::Value &x,
                                const spu::Value &y) {
   SPU_ENFORCE(x.shape() == y.shape(), "x and y should has the same shape");
   SPU_ENFORCE(x.shape().ndim() == 1, "x and y should be 1-d");
+  const auto field = x.storage_type().as<Ring2k>()->field();
 
-  const auto k1 = _constant(ctx, 1U, x.shape());
+  const auto k1 = _constant(ctx, 1U, x.shape(), field);
   auto rev_x = _sub(ctx, k1, x);
   auto rev_y = _sub(ctx, k1, y);
   auto f0 = _mul(ctx, rev_x, rev_y);
@@ -904,8 +918,9 @@ spu::Value _gen_inv_perm_by_bv(SPUContext *ctx, const spu::Value &x,
 //      res = [3, 0, 4, 1, 2]
 spu::Value _gen_inv_perm_by_bv(SPUContext *ctx, const spu::Value &x) {
   SPU_ENFORCE(x.shape().ndim() == 1, "x should be 1-d");
+  const auto field = x.storage_type().as<Ring2k>()->field();
 
-  const auto k1 = _constant(ctx, 1U, x.shape());
+  const auto k1 = _constant(ctx, 1U, x.shape(), field);
   auto rev_x = _sub(ctx, k1, x);
 
   const auto numel = x.numel();
@@ -956,8 +971,10 @@ std::vector<spu::Value> _bit_decompose(SPUContext *ctx, const spu::Value &x,
                      : x_bshare.storage_type().as<BShare>()->nbits();
   _hint_nbits(x_bshare, nbits);
   if (ctx->hasKernel("b2a_disassemble")) {
-    auto ret =
-        dynDispatch<std::vector<spu::Value>>(ctx, "b2a_disassemble", x_bshare);
+    SPDLOG_INFO("run exactly b2a_disassemble for bit decomposition");
+    const auto perm_field = internal::_get_field_from_n(x.numel());
+    auto ret = dynDispatch<std::vector<spu::Value>>(ctx, "b2a_disassemble",
+                                                    x_bshare, perm_field);
     return ret;
   }
 
@@ -983,7 +1000,9 @@ std::vector<spu::Value> _gen_bv_vector(SPUContext *ctx,
                                        SortDirection direction,
                                        int64_t valid_bits) {
   std::vector<spu::Value> ret;
-  const auto k1 = _constant(ctx, 1U, keys[0].shape());
+  const auto perm_field = internal::_get_field_from_n(keys[0].numel());
+  const auto k1 = _constant(ctx, 1U, keys[0].shape(), perm_field);
+
   // keys[0] is the most significant key
   for (size_t i = keys.size(); i > 0; --i) {
     const auto t = _bit_decompose(ctx, keys[i - 1], valid_bits);
@@ -1011,21 +1030,33 @@ std::vector<spu::Value> _gen_bv_vector(SPUContext *ctx,
 // Generate shared inverse permutation by key
 spu::Value _gen_inv_perm_s(SPUContext *ctx, absl::Span<spu::Value const> keys,
                            SortDirection direction, int64_t valid_bits) {
+  const auto perm_field = internal::_get_field_from_n(keys[0].numel());
+
   // 1. generate bit decomposition vector of keys
   std::vector<spu::Value> bv = _gen_bv_vector(ctx, keys, direction, valid_bits);
-  SPU_ENFORCE_GT(bv.size(), 0U);
+  size_t bv_size = bv.size();
+  SPU_ENFORCE_GT(bv_size, 0U);
 
-  // 2. generate natural permutation for initialization
-  auto dt = ctx->config().field == FieldType::FM32 ? spu::DT_I32 : spu::DT_I64;
-  auto init_perm = iota(ctx, dt, keys[0].numel());
-  auto shared_perm = _p2s(ctx, init_perm);
+  SPU_ENFORCE(bv[0].storage_type().as<Ring2k>()->field() == perm_field,
+              "all bvs should be in field={}, got {}", perm_field,
+              bv[0].storage_type().as<Ring2k>()->field());
+
+  // quick path for one or two valid bits
+  if (bv_size == 1) {
+    return _gen_inv_perm_by_bv(ctx, bv[0]);
+  }
+  if (bv_size == 2) {
+    return _gen_inv_perm_by_bv(ctx, bv[0], bv[1]);
+  }
+
+  // 2. generate the first two-bits permutation for initialization
+  auto shared_perm = _gen_inv_perm_by_bv(ctx, bv[0], bv[1]);
 
   // 3. generate shared inverse permutation by bit vector and process
-  size_t bv_size = bv.size();
-  size_t bv_idx = 0;
+  size_t bv_idx = 2;
   for (; bv_idx < bv_size - 1; bv_idx += 2) {
     // generate random permutation for shuffle
-    auto random_perm = hal::_rand_perm_s(ctx, keys[0].shape());
+    auto random_perm = hal::_rand_perm_s(ctx, keys[0].shape(), perm_field);
     auto [shuffled_bv, shuffled_perm] = _opt_apply_inv_perm_ss(
         ctx, std::vector<spu::Value>{bv[bv_idx], bv[bv_idx + 1]}, shared_perm,
         random_perm);
@@ -1035,7 +1066,7 @@ spu::Value _gen_inv_perm_s(SPUContext *ctx, absl::Span<spu::Value const> keys,
 
   if (bv_idx == bv_size - 1) {
     // generate random permutation for shuffle
-    auto random_perm = hal::_rand_perm_s(ctx, keys[0].shape());
+    auto random_perm = hal::_rand_perm_s(ctx, keys[0].shape(), perm_field);
     auto [shuffled_bv, shuffled_perm] = _opt_apply_inv_perm_ss(
         ctx, std::vector<spu::Value>{bv[bv_idx]}, shared_perm, random_perm);
     auto perm = _gen_inv_perm_by_bv(ctx, shuffled_bv[0]);
@@ -1321,7 +1352,11 @@ spu::Value _apply_inv_perm(SPUContext *ctx, const spu::Value &x,
 // ret[perm[i]] = i
 spu::Value _inverse(SPUContext *ctx, const Value &perm) {
   auto dt = ctx->config().field == FieldType::FM32 ? spu::DT_I32 : spu::DT_I64;
-  auto iota_perm = iota(ctx, dt, perm.numel());
+  const auto perm_field = internal::_get_field_from_n(perm.numel());
+  SPU_ENFORCE(perm.storage_type().as<Ring2k>()->field() == perm_field,
+              "perm should be in field={}, got {}", perm_field,
+              perm.storage_type().as<Ring2k>()->field());
+  auto iota_perm = iota(ctx, dt, perm.numel(), perm_field);
   return _apply_inv_perm(ctx, iota_perm, perm);
 }
 
@@ -1453,6 +1488,7 @@ spu::Value gen_inv_perm(SPUContext *ctx, absl::Span<spu::Value const> inputs,
   for (int64_t i = merged_keys.size() - 2; i >= 0; --i) {
     const auto &cur_key = merged_keys[i];
     auto cur_key_hat = _apply_inv_perm(ctx, cur_key, inv_perm);
+    // TODO: +2 to +1 if unsigned. (Log2Ceil may be better? -1 more?)
     auto real_valid_bits =
         cur_key.isSecret() ? valid_bits : Log2Floor(cur_key.numel()) + 2;
     auto cur_inv_perm =

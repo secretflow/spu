@@ -101,11 +101,14 @@ class MakeP : public Kernel {
         proc(ctx, ctx->getParam<uint128_t>(0), ctx->getParam<Shape>(1)));
   }
 
-  static Value proc(KernelEvalContext* ctx, uint128_t init,
-                    const Shape& shape) {
-    const auto field = ctx->getState<Z2kState>()->getDefaultField();
+  static Value proc(KernelEvalContext* ctx, uint128_t init, const Shape& shape,
+                    FieldType field = FT_INVALID) {
+    FieldType real_field = field;
+    if (real_field == FT_INVALID) {
+      real_field = ctx->getState<Z2kState>()->getDefaultField();
+    }
 
-    const auto eltype = makeType<Pub2kTy>(field);
+    const auto eltype = makeType<Pub2kTy>(real_field);
     auto buf = std::make_shared<yacl::Buffer>(1 * eltype.size());
     NdArrayRef arr(buf,                       // buffer
                    eltype,                    // eltype
@@ -113,7 +116,7 @@ class MakeP : public Kernel {
                    Strides(shape.size(), 0),  // strides
                    0);
 
-    DISPATCH_ALL_FIELDS(field, [&]() {
+    DISPATCH_ALL_FIELDS(real_field, [&]() {
       arr.at<ring2k_t>(Index(shape.size(), 0)) = static_cast<ring2k_t>(init);
     });
     return Value(arr, DT_INVALID);
@@ -688,6 +691,20 @@ class BitrevV : public BitrevKernel {
   }
 };
 
+namespace {
+inline FieldType _get_field_from_n(size_t n) {
+  if (n <= (static_cast<uint64_t>(1) << 8)) {
+    return FieldType::FM8;
+  } else if (n <= (static_cast<uint64_t>(1) << 16)) {
+    return FieldType::FM16;
+  } else if (n <= (static_cast<uint64_t>(1) << 32)) {
+    return FieldType::FM32;
+  } else {
+    return FieldType::FM64;
+  }
+}
+}  // namespace
+
 class GenInvPermP : public GenInvPermKernel {
  public:
   static constexpr const char* kBindName() { return "gen_inv_perm_p"; }
@@ -699,25 +716,29 @@ class GenInvPermP : public GenInvPermKernel {
   NdArrayRef proc(KernelEvalContext*, const NdArrayRef& in,
                   bool is_ascending) const override {
     const auto field = in.eltype().as<Ring2k>()->field();
-    NdArrayRef out(makeType<Pub2kTy>(field), in.shape());
+    const auto perm_field = _get_field_from_n(in.numel());
+
+    NdArrayRef out(makeType<Pub2kTy>(perm_field), in.shape());
 
     auto numel = in.numel();
 
-    DISPATCH_ALL_FIELDS(field, [&]() {
-      using T = std::make_signed_t<ring2k_t>;
-      std::vector<T> perm(numel);
-      std::iota(perm.begin(), perm.end(), 0);
-      // TODO: Add an iterator for NdArrayView
-      NdArrayView<T> _in(in);
-      NdArrayView<T> _out(out);
-      auto cmp = [&_in, is_ascending](int64_t a, int64_t b) {
-        return is_ascending ? _in[a] < _in[b] : _in[a] > _in[b];
-      };
-      std::stable_sort(perm.begin(), perm.end(), cmp);
-      for (int64_t idx = 0; idx < numel; ++idx) {
-        _out[perm[idx]] = idx;
-      }
+    DISPATCH_ALL_FIELDS(perm_field, [&]() {
+      using P = std::make_unsigned_t<ring2k_t>;
+      DISPATCH_ALL_FIELDS(field, [&]() {
+        using T = std::make_unsigned_t<ring2k_t>;
+        std::vector<P> perm(numel);
+        std::iota(perm.begin(), perm.end(), 0);
+        // TODO: Add an iterator for NdArrayView
+        NdArrayView<T> _in(in);
+        NdArrayView<P> _out(out);
+        auto cmp = [&_in, is_ascending](P a, P b) {
+          return is_ascending ? _in[a] < _in[b] : _in[a] > _in[b];
+        };
+        std::stable_sort(perm.begin(), perm.end(), cmp);
+        pforeach(0, numel, [&](int64_t idx) { _out[perm[idx]] = idx; });
+      });
     });
+
     return out;
   }
 };
@@ -733,25 +754,31 @@ class GenInvPermV : public GenInvPermKernel {
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
                   bool is_ascending) const override {
     if (isOwner(ctx, in.eltype())) {
-      NdArrayRef out(in.eltype(), in.shape());
+      const auto perm_field = _get_field_from_n(in.numel());
+
+      NdArrayRef out(
+          makeType<Priv2kTy>(perm_field, in.eltype().as<Priv2kTy>()->owner()),
+          in.shape());
       auto numel = in.numel();
       const auto field = in.eltype().as<Ring2k>()->field();
 
-      DISPATCH_ALL_FIELDS(field, [&]() {
-        using T = std::make_signed_t<ring2k_t>;
-        std::vector<T> perm(numel);
-        std::iota(perm.begin(), perm.end(), 0);
-        // TODO: Add an iterator for NdArrayView
-        NdArrayView<T> _in(in);
-        NdArrayView<T> _out(out);
-        auto cmp = [&_in, is_ascending](int64_t a, int64_t b) {
-          return is_ascending ? _in[a] < _in[b] : _in[a] > _in[b];
-        };
-        std::stable_sort(perm.begin(), perm.end(), cmp);
-        for (int64_t idx = 0; idx < numel; ++idx) {
-          _out[perm[idx]] = idx;
-        }
+      DISPATCH_ALL_FIELDS(perm_field, [&]() {
+        using P = std::make_unsigned_t<ring2k_t>;
+        DISPATCH_ALL_FIELDS(field, [&]() {
+          using T = std::make_unsigned_t<ring2k_t>;
+          std::vector<P> perm(numel);
+          std::iota(perm.begin(), perm.end(), 0);
+          // TODO: Add an iterator for NdArrayView
+          NdArrayView<T> _in(in);
+          NdArrayView<P> _out(out);
+          auto cmp = [&_in, is_ascending](P a, P b) {
+            return is_ascending ? _in[a] < _in[b] : _in[a] > _in[b];
+          };
+          std::stable_sort(perm.begin(), perm.end(), cmp);
+          pforeach(0, numel, [&](int64_t idx) { _out[perm[idx]] = idx; });
+        });
       });
+
       return out;
     } else {
       return in;

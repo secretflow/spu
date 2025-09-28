@@ -491,8 +491,9 @@ Value _clamp_upper(SPUContext* ctx, const Value& x, const Value& maxv) {
   return _mux(ctx, _less(ctx, x, maxv), x, maxv);
 }
 
-Value _constant(SPUContext* ctx, uint128_t init, const Shape& shape) {
-  return _make_p(ctx, init, shape);
+Value _constant(SPUContext* ctx, uint128_t init, const Shape& shape,
+                FieldType field) {
+  return _make_p(ctx, init, shape, field);
 }
 
 Value _bit_parity(SPUContext* ctx, const Value& x, size_t bits) {

@@ -97,7 +97,8 @@ Value _clamp_upper(SPUContext* ctx, const Value& x, const Value& maxv);
 //
 // If the current working field has less than 128bit, the lower sizeof(field)
 // bits are used.
-Value _constant(SPUContext* ctx, uint128_t init, const Shape& shape);
+Value _constant(SPUContext* ctx, uint128_t init, const Shape& shape,
+                FieldType field = FieldType::FT_INVALID);
 
 // Return the parity of bits, that is
 // - 1 if there are odd number of 1s.

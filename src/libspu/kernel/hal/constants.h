@@ -25,7 +25,8 @@ namespace spu::kernel::hal {
 //
 // The result visibility is public.
 Value constant(SPUContext* ctx, PtBufferView init, DataType dtype,
-               const Shape& shape = {});
+               const Shape& shape = {},
+               FieldType perm_field = FieldType::FT_INVALID);
 
 // Returns a SPU zero value, which is equal to
 //  constant(ctx, 0, dtype, shape);
@@ -36,7 +37,8 @@ Value zeros(SPUContext* ctx, DataType dtype, const Shape& shape = {});
 // Returns a one-dimensional value.
 //
 // The result visibility is public.
-Value iota(SPUContext* ctx, DataType dtype, int64_t numel);
+Value iota(SPUContext* ctx, DataType dtype, int64_t numel,
+           FieldType perm_field = FieldType::FT_INVALID);
 
 // Returns the SPU epsilon, the positive distance between two fixed point value.
 //

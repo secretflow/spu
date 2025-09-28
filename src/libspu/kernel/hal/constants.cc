@@ -28,10 +28,14 @@ namespace {
 // make a public typed value.
 //
 // FIXME: this is a abstraction leakage, we should NOT invoke Pub2kTy directly.
-Value make_pub2k(SPUContext* ctx, const PtBufferView& bv) {
-  SPU_TRACE_HAL_DISP(ctx, bv);
+Value make_pub2k(SPUContext* ctx, const PtBufferView& bv,
+                 FieldType perm_field = FieldType::FT_INVALID) {
+  SPU_TRACE_HAL_DISP(ctx, bv, perm_field);
 
-  const auto field = ctx->getField();
+  FieldType field = ctx->getField();
+  if (perm_field != FieldType::FT_INVALID) {
+    field = perm_field;
+  }
   const auto fxp_bits = ctx->getFxpBits();
 
   DataType dtype;
@@ -69,10 +73,10 @@ bool kCastFlags[DT_F64+1][DT_F64+1] = {
 }  // namespace
 
 Value constant(SPUContext* ctx, PtBufferView init, DataType dtype,
-               const Shape& shape) {
-  SPU_TRACE_HAL_DISP(ctx, init, dtype, shape);
+               const Shape& shape, FieldType perm_field) {
+  SPU_TRACE_HAL_DISP(ctx, init, dtype, shape, perm_field);
 
-  auto result = make_pub2k(ctx, init).setDtype(dtype, true);
+  auto result = make_pub2k(ctx, init, perm_field).setDtype(dtype, true);
 
   if (shape.numel() == 0) {
     return Value(NdArrayRef(nullptr, result.storage_type(), shape),
@@ -102,11 +106,12 @@ spu::Value zeros(SPUContext* ctx, DataType dtype, const Shape& shape) {
   }
 }
 
-Value iota(SPUContext* ctx, DataType dtype, int64_t numel) {
+Value iota(SPUContext* ctx, DataType dtype, int64_t numel,
+           FieldType perm_field) {
   return DISPATCH_ALL_NONE_BOOL_PT_TYPES(getDecodeType(dtype), [&]() {
     std::vector<ScalarT> arr(numel);
     std::iota(arr.begin(), arr.end(), 0);
-    return constant(ctx, arr, dtype, {numel});
+    return constant(ctx, arr, dtype, {numel}, perm_field);
   });
 }
 
