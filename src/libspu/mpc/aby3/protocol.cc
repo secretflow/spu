@@ -77,7 +77,8 @@ void regAby3Protocol(SPUContext* ctx,
           aby3::OramOneHotAA, aby3::OramOneHotAP, aby3::OramReadOA,      // oram
           aby3::OramReadOP,                                              // oram
           aby3::RandPermM, aby3::PermAM, aby3::PermAP, aby3::InvPermAM,  // perm
-          aby3::InvPermAP                                                // perm
+          aby3::InvPermAP,                                               // perm
+          aby3::RingCastDownA                                            // cast
           >();
 }
 

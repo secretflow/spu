@@ -18,7 +18,7 @@
 
 namespace spu::mpc::semi2k {
 
-class RandPermM : public RandKernel {
+class RandPermM : public RandPermKernel {
  public:
   static constexpr const char* kBindName() { return "rand_perm_m"; }
 

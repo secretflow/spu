@@ -24,6 +24,15 @@ void RandKernel::evaluate(KernelEvalContext* ctx) const {
   ctx->pushOutput(WrapValue(res));
 }
 
+void RandPermKernel::evaluate(KernelEvalContext* ctx) const {
+  const auto& shape = ctx->getParam<Shape>(0);
+  const auto& perm_field = ctx->getParam<FieldType>(1);
+
+  auto res = proc(ctx, shape, perm_field);
+
+  ctx->pushOutput(WrapValue(res));
+}
+
 void UnaryKernel::evaluate(KernelEvalContext* ctx) const {
   const auto& in = ctx->getParam<Value>(0);
 
@@ -239,7 +248,8 @@ void ConcateKernel::evaluate(KernelEvalContext* ctx) const {
 
 void DisassembleKernel::evaluate(KernelEvalContext* ctx) const {
   const auto& in = ctx->getParam<Value>(0);
-  auto z = proc(ctx, UnwrapValue(in));
+  const auto& perm_field = ctx->getParam<FieldType>(1);
+  auto z = proc(ctx, UnwrapValue(in), perm_field);
 
   std::vector<Value> wrapped(z.size());
   for (size_t idx = 0; idx < z.size(); ++idx) {
@@ -292,6 +302,15 @@ void SharingConvertKernel::evaluate(KernelEvalContext* ctx) const {
   const auto& nbits = ctx->getParam<int64_t>(1);
 
   auto z = proc(ctx, UnwrapValue(in), nbits);
+
+  ctx->pushOutput(WrapValue(z));
+}
+
+void RingCastDownKernel::evaluate(KernelEvalContext* ctx) const {
+  const auto& in = ctx->getParam<Value>(0);
+  const auto& to_field = ctx->getParam<FieldType>(1);
+
+  auto z = proc(ctx, UnwrapValue(in), to_field);
 
   ctx->pushOutput(WrapValue(z));
 }

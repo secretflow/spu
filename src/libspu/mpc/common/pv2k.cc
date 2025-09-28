@@ -969,6 +969,85 @@ class MergeKeysV : public MergeKeysKernel {
   }
 };
 
+class RingCastDownP : public RingCastDownKernel {
+ public:
+  static constexpr const char* kBindName() { return "ring_cast_down_p"; }
+
+  ce::CExpr latency() const override { return ce::Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
+
+  NdArrayRef proc(KernelEvalContext*, const NdArrayRef& in,
+                  FieldType to_field) const override {
+    SPU_ENFORCE(in.eltype().isa<Pub2kTy>());
+    const auto from_field = in.eltype().as<Ring2k>()->field();
+    SPU_ENFORCE(SizeOf(from_field) >= SizeOf(to_field),
+                "from_field={} to_field={}", magic_enum::enum_name(from_field),
+                magic_enum::enum_name(to_field));
+
+    if (from_field == to_field) {
+      return in;
+    }
+
+    NdArrayRef out(makeType<Pub2kTy>(to_field), in.shape());
+
+    DISPATCH_ALL_FIELDS(from_field, [&]() {
+      using FromT = std::make_unsigned_t<ring2k_t>;
+      DISPATCH_ALL_FIELDS(to_field, [&]() {
+        using ToT = std::make_unsigned_t<ring2k_t>;
+        NdArrayView<FromT> _in(in);
+        NdArrayView<ToT> _out(out);
+        pforeach(0, in.numel(),
+                 [&](int64_t idx) { _out[idx] = static_cast<ToT>(_in[idx]); });
+      });
+    });
+
+    return out;
+  }
+};
+
+class RingCastDownV : public RingCastDownKernel {
+ public:
+  static constexpr const char* kBindName() { return "ring_cast_down_v"; }
+
+  ce::CExpr latency() const override { return ce::Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                  FieldType to_field) const override {
+    SPU_ENFORCE(in.eltype().isa<Priv2kTy>());
+    const auto from_field = in.eltype().as<Ring2k>()->field();
+    SPU_ENFORCE(SizeOf(from_field) >= SizeOf(to_field),
+                "from_field={} to_field={}", magic_enum::enum_name(from_field),
+                magic_enum::enum_name(to_field));
+
+    if (from_field == to_field) {
+      return in;
+    }
+
+    if (isOwner(ctx, in.eltype())) {
+      NdArrayRef out(
+          makeType<Priv2kTy>(to_field, in.eltype().as<Priv2kTy>()->owner()),
+          in.shape());
+
+      DISPATCH_ALL_FIELDS(from_field, [&]() {
+        using FromT = std::make_unsigned_t<ring2k_t>;
+        DISPATCH_ALL_FIELDS(to_field, [&]() {
+          using ToT = std::make_unsigned_t<ring2k_t>;
+          NdArrayView<FromT> _in(in);
+          NdArrayView<ToT> _out(out);
+          pforeach(0, in.numel(), [&](int64_t idx) {
+            _out[idx] = static_cast<ToT>(_in[idx]);
+          });
+        });
+      });
+
+      return out;
+    } else {
+      return in;
+    }
+  }
+};
+
 }  // namespace
 
 void Priv2kTy::fromString(std::string_view str) {
@@ -993,24 +1072,25 @@ void regPV2kTypes() {
 }
 
 void regPV2kKernels(Object* obj) {
-  obj->regKernel<V2P, P2V,                               //
-                 MakeP, RandP,                           //
-                 NegateV, NegateP,                       //
-                 EqualVVV, EqualVP, EqualPP,             //
-                 AddVVV, AddVP, AddPP,                   //
-                 MulVVV, MulVP, MulPP,                   //
-                 MatMulVVV, MatMulVP, MatMulPP,          //
-                 AndVVV, AndVP, AndPP,                   //
-                 XorVVV, XorVP, XorPP,                   //
-                 LShiftV, LShiftP,                       //
-                 RShiftV, RShiftP,                       //
-                 BitrevV, BitrevP,                       //
-                 ARShiftV, ARShiftP,                     //
-                 MsbV, MsbP,                             //
-                 TruncV, TruncP,                         //
-                 GenInvPermV, GenInvPermP,               //
-                 InvPermPP, InvPermVV,                   //
-                 PermPP, PermVV, MergeKeysP, MergeKeysV  //
+  obj->regKernel<V2P, P2V,                                //
+                 MakeP, RandP,                            //
+                 NegateV, NegateP,                        //
+                 EqualVVV, EqualVP, EqualPP,              //
+                 AddVVV, AddVP, AddPP,                    //
+                 MulVVV, MulVP, MulPP,                    //
+                 MatMulVVV, MatMulVP, MatMulPP,           //
+                 AndVVV, AndVP, AndPP,                    //
+                 XorVVV, XorVP, XorPP,                    //
+                 LShiftV, LShiftP,                        //
+                 RShiftV, RShiftP,                        //
+                 BitrevV, BitrevP,                        //
+                 ARShiftV, ARShiftP,                      //
+                 MsbV, MsbP,                              //
+                 TruncV, TruncP,                          //
+                 GenInvPermV, GenInvPermP,                //
+                 InvPermPP, InvPermVV,                    //
+                 PermPP, PermVV, MergeKeysP, MergeKeysV,  //
+                 RingCastDownP, RingCastDownV             //
                  >();
 }
 

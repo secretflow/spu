@@ -71,7 +71,9 @@ void regSemi2kProtocol(SPUContext* ctx,
           semi2k::RandPermM, semi2k::PermAM, semi2k::PermAP,            //
           semi2k::InvPermAM, semi2k::InvPermAP, semi2k::InvPermAV,      //
           semi2k::EqualAA, semi2k::EqualAP,                             //
-          semi2k::BeaverCacheKernel>();
+          semi2k::BeaverCacheKernel,                                    //
+          semi2k::RingCastDownA                                         //
+          >();
 
   if (ctx->config().trunc_allow_msb_error) {
     ctx->prot()->regKernel<semi2k::TruncA>();

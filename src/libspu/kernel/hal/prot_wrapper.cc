@@ -356,4 +356,26 @@ MAP_PERM_OP(inv_perm_vv);
 MAP_PERM_OP(perm_pp);
 MAP_PERM_OP(perm_vv);
 
+#define MAP_RING_CAST_OP(NAME)                                   \
+  Value _##NAME(SPUContext* ctx, const Value& x, FieldType to) { \
+    SPU_TRACE_HAL_DISP(ctx, x, to);                              \
+    auto ret = mpc::NAME(ctx, x, to);                            \
+    return ret.setDtype(x.dtype());                              \
+  }
+
+MAP_RING_CAST_OP(ring_cast_down_p);
+MAP_RING_CAST_OP(ring_cast_down_v);
+#undef MAP_RING_CAST_OP
+
+#define MAP_OPTIONAL_RING_CAST_OP(NAME)                            \
+  Value _##NAME(SPUContext* ctx, const Value& x, FieldType to) {   \
+    SPU_TRACE_HAL_DISP(ctx, x, to);                                \
+    auto ret = mpc::NAME(ctx, x, to);                              \
+    SPU_ENFORCE(ret.has_value(), "{} api not implemented", #NAME); \
+    return ret.value().setDtype(x.dtype());                        \
+  }
+
+MAP_OPTIONAL_RING_CAST_OP(ring_cast_down_s);
+#undef MAP_OPTIONAL_RING_CAST_OP
+
 }  // namespace spu::kernel::hal

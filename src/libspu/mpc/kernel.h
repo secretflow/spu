@@ -21,6 +21,12 @@ namespace spu::mpc {
 class RandKernel : public Kernel {
  public:
   void evaluate(KernelEvalContext* ctx) const override;
+  virtual NdArrayRef proc(KernelEvalContext* ctx, const Shape& shape) const = 0;
+};
+
+class RandPermKernel : public Kernel {
+ public:
+  void evaluate(KernelEvalContext* ctx) const override;
   virtual NdArrayRef proc(KernelEvalContext* ctx, const Shape& shape,
                           FieldType perm_field) const = 0;
 };
@@ -223,7 +229,8 @@ class DisassembleKernel : public Kernel {
   void evaluate(KernelEvalContext* ctx) const override;
 
   virtual std::vector<NdArrayRef> proc(KernelEvalContext* ctx,
-                                       const NdArrayRef& in) const = 0;
+                                       const NdArrayRef& in,
+                                       FieldType perm_field) const = 0;
 };
 
 class MultiKeyLowMcKernel : public Kernel {
@@ -240,6 +247,14 @@ class SharingConvertKernel : public Kernel {
 
   virtual NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
                           int64_t nbits) const = 0;
+};
+
+class RingCastDownKernel : public Kernel {
+ public:
+  void evaluate(KernelEvalContext* ctx) const override;
+
+  virtual NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                          FieldType to_field) const = 0;
 };
 
 }  // namespace spu::mpc

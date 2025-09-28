@@ -30,7 +30,7 @@ namespace spu::mpc::cheetah {
 ///  to support Perm or InvPerm (and Secret Radix Sort) under the "Additive"
 ///  semantic of perm (refer to hlo/permute.h for more details), SPU currently
 ///  implements them relying on some perm-related kernels in MPC layer.
-class RandPermM : public RandKernel {
+class RandPermM : public RandPermKernel {
  public:
   static constexpr const char* kBindName() { return "rand_perm_m"; }
 

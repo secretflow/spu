@@ -156,7 +156,8 @@ NdArrayRef SecureInvPerm(KernelEvalContext* ctx, NdArrayRef& x,
 ///
 /// The following implementations are mainly borrowed from semi2k/permute.cc
 ///
-NdArrayRef RandPermM::proc(KernelEvalContext* ctx, const Shape& shape) const {
+NdArrayRef RandPermM::proc(KernelEvalContext* ctx, const Shape& shape,
+                           FieldType perm_field) const {
   NdArrayRef out(makeType<PShrTy>(), shape);
 
   auto* prg_state = ctx->getState<PrgState>();

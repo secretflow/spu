@@ -173,6 +173,11 @@ std::optional<Value> _oramonehot_sp(SPUContext* ctx, const Value& x,
 Value _oramread_sp(SPUContext* ctx, const Value& x, const Value& y,
                    int64_t offset);
 
+// ring cast
+Value _ring_cast_down_s(SPUContext* ctx, const Value& x, FieldType to);
+Value _ring_cast_down_p(SPUContext* ctx, const Value& x, FieldType to);
+Value _ring_cast_down_v(SPUContext* ctx, const Value& x, FieldType to);
+
 // NOLINTEND(readability-identifier-naming)
 
 }  // namespace spu::kernel::hal

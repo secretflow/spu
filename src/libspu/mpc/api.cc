@@ -884,4 +884,19 @@ Value concatenate(SPUContext* ctx, const std::vector<Value>& values,
   FORCE_DISPATCH(ctx, values, axis);
 }
 
+OptionalAPI<Value> ring_cast_down_s(SPUContext* ctx, const Value& in,
+                                    FieldType to_field) {
+  SPU_TRACE_MPC_DISP(ctx, in, to_field);
+  SPU_ENFORCE(IsA(in), "only support AShare for ring_cast_down_s now.");
+  TRY_NAMED_DISPATCH(ctx, "ring_cast_down_a", _2a(ctx, in), to_field);
+  return NotAvailable;
+}
+
+Value ring_cast_down_v(SPUContext* ctx, const Value& in, FieldType to_field) {
+  FORCE_DISPATCH(ctx, in, to_field);
+}
+Value ring_cast_down_p(SPUContext* ctx, const Value& in, FieldType to_field) {
+  FORCE_DISPATCH(ctx, in, to_field);
+}
+
 }  // namespace spu::mpc

@@ -731,4 +731,18 @@ Value _oramread(SPUContext* ctx, const Value& x, const Value& y,
   return ret;
 }
 
+Value _ring_cast_down(SPUContext* ctx, const Value& x, FieldType to) {
+  SPU_TRACE_HAL_LEAF(ctx, x, to);
+
+  if (x.isPublic()) {
+    return _ring_cast_down_p(ctx, x, to);
+  } else if (x.isSecret()) {
+    return _ring_cast_down_s(ctx, x, to);
+  } else if (x.isPrivate()) {
+    return _ring_cast_down_v(ctx, x, to);
+  } else {
+    SPU_THROW("unsupport unary op={} for {}", __func__, x);
+  }
+}
+
 }  // namespace spu::kernel::hal

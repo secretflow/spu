@@ -18,7 +18,7 @@
 
 namespace spu::mpc::aby3 {
 
-class RandPermM : public RandKernel {
+class RandPermM : public RandPermKernel {
  public:
   static constexpr const char* kBindName() { return "rand_perm_m"; }
 

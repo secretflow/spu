@@ -964,4 +964,35 @@ void CommonTypeV::evaluate(KernelEvalContext* ctx) const {
   ctx->pushOutput(makeType<AShrTy>(std::max(lhs_v->field(), rhs_v->field())));
 }
 
+NdArrayRef RingCastDownA::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                               FieldType to_field) const {
+  SPU_ENFORCE(in.eltype().isa<AShrTy>());
+  const auto from_field = in.eltype().as<Ring2k>()->field();
+  SPU_ENFORCE(SizeOf(from_field) >= SizeOf(to_field),
+              "from_field={} to_field={}", from_field, to_field);
+
+  if (from_field == to_field) {
+    return in;
+  }
+
+  NdArrayRef out(makeType<AShrTy>(to_field), in.shape());
+
+  DISPATCH_ALL_FIELDS(from_field, [&]() {
+    using FromT = std::make_unsigned_t<ring2k_t>;
+    using from_ashr_t = std::array<FromT, 2>;
+    DISPATCH_ALL_FIELDS(to_field, [&]() {
+      using ToT = std::make_unsigned_t<ring2k_t>;
+      using to_ashr_t = std::array<ToT, 2>;
+      NdArrayView<from_ashr_t> _in(in);
+      NdArrayView<to_ashr_t> _out(out);
+      pforeach(0, in.numel(), [&](int64_t idx) {
+        _out[idx][0] = static_cast<ToT>(_in[idx][0]);
+        _out[idx][1] = static_cast<ToT>(_in[idx][1]);
+      });
+    });
+  });
+
+  return out;
+}
+
 }  // namespace spu::mpc::aby3

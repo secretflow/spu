@@ -1353,11 +1353,17 @@ spu::Value _apply_inv_perm(SPUContext *ctx, const spu::Value &x,
 spu::Value _inverse(SPUContext *ctx, const Value &perm) {
   auto dt = ctx->config().field == FieldType::FM32 ? spu::DT_I32 : spu::DT_I64;
   const auto perm_field = internal::_get_field_from_n(perm.numel());
-  SPU_ENFORCE(perm.storage_type().as<Ring2k>()->field() == perm_field,
-              "perm should be in field={}, got {}", perm_field,
-              perm.storage_type().as<Ring2k>()->field());
+  const auto running_field = perm.storage_type().as<Ring2k>()->field();
+
+  auto used_perm = perm;
+  if (perm_field != running_field) {
+    SPU_ENFORCE(SizeOf(perm_field) <= SizeOf(running_field),
+                "cannot convert field {} to {}", running_field, perm_field);
+    used_perm = _ring_cast_down(ctx, perm, perm_field);
+  }
+
   auto iota_perm = iota(ctx, dt, perm.numel(), perm_field);
-  return _apply_inv_perm(ctx, iota_perm, perm);
+  return _apply_inv_perm(ctx, iota_perm, used_perm);
 }
 
 spu::Value _apply_perm_sv(SPUContext *ctx, const Value &in, const Value &perm) {

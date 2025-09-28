@@ -23,7 +23,8 @@
 
 namespace spu::mpc::aby3 {
 
-NdArrayRef RandPermM::proc(KernelEvalContext* ctx, const Shape& shape) const {
+NdArrayRef RandPermM::proc(KernelEvalContext* ctx, const Shape& shape,
+                           FieldType perm_field) const {
   NdArrayRef out(makeType<PShrTy>(), shape);
 
   auto* prg_state = ctx->getState<PrgState>();

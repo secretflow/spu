@@ -158,4 +158,16 @@ class CommonTypeV : public Kernel {
   void evaluate(KernelEvalContext* ctx) const override;
 };
 
+class RingCastDownA : public RingCastDownKernel {
+ public:
+  static constexpr const char* kBindName() { return "ring_cast_down_a"; }
+
+  ce::CExpr latency() const override { return ce::Const(0); }
+
+  ce::CExpr comm() const override { return ce::Const(0); }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                  FieldType to_field) const override;
+};
+
 }  // namespace spu::mpc::aby3

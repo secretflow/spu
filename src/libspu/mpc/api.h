@@ -241,4 +241,11 @@ Value pad(SPUContext* ctx, const Value& in, const Value& padding_value,
 // Concate Values at an axis
 Value concatenate(SPUContext* ctx, const std::vector<Value>& values,
                   int64_t axis);
+
+/*---------- Dynamic Ring related APIs ----------*/
+OptionalAPI<Value> ring_cast_down_s(SPUContext* ctx, const Value& in,
+                                    FieldType to_field);
+Value ring_cast_down_v(SPUContext* ctx, const Value& in, FieldType to_field);
+Value ring_cast_down_p(SPUContext* ctx, const Value& in, FieldType to_field);
+
 }  // namespace spu::mpc

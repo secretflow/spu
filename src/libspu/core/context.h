@@ -106,7 +106,8 @@ class KernelEvalContext final {
       Axes,                        //
       Index,                       //
       Strides,                     //
-      Sizes                        //
+      Sizes,                       //
+      FieldType                    // field type for dynamic ring
       >;
 
   SPUContext* sctx_;
