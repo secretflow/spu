@@ -298,7 +298,6 @@ spu_cc_library(
 
 spu_cc_test(
     name = "sort_test",
-    timeout = "short",
     srcs = ["sort_test.cc"],
     deps = [
         ":casting",
@@ -389,7 +388,6 @@ spu_cc_library(
 
 spu_cc_test(
     name = "permute_test",
-    timeout = "short",
     srcs = ["permute_test.cc"],
     deps = [
         ":casting",
