@@ -70,7 +70,7 @@ bool verifyCost(Kernel* kernel, std::string_view name, FieldType field,
 }
 
 Value hack_make_p(SPUContext* ctx, uint128_t init, const Shape& shape) {
-  return dynDispatch(ctx, "make_p", init, shape);
+  return dynDispatch(ctx, "make_p", init, shape, FT_INVALID);
 }
 
 }  // namespace

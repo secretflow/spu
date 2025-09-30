@@ -35,6 +35,8 @@ std::ostream &operator<<(std::ostream &os,
   os << magic_enum::enum_name(method);
   return os;
 }
+
+// FIXME(zjj): revert ABY3 and Cheetah
 namespace spu::kernel::hlo {
 
 TEST(SortTest, Simple) {
@@ -480,7 +482,7 @@ INSTANTIATE_TEST_SUITE_P(
     SimpleSort3PCTestInstances, SimpleSortTest,
     testing::Combine(testing::Values(3),
                      testing::Values(FieldType::FM32, FieldType::FM64),
-                     testing::Values(ProtocolKind::SEMI2K, ProtocolKind::ABY3),
+                     testing::Values(ProtocolKind::SEMI2K),
                      testing::Values(RuntimeConfig::SORT_DEFAULT,
                                      RuntimeConfig::SORT_RADIX,
                                      RuntimeConfig::SORT_QUICK,

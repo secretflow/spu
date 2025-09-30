@@ -1090,9 +1090,11 @@ spu::Value _gen_inv_perm_s(SPUContext *ctx, const spu::Value &key,
 std::vector<spu::Value> _apply_inv_perm_ss(SPUContext *ctx,
                                            absl::Span<spu::Value const> x,
                                            const spu::Value &perm) {
+  const auto perm_field = internal::_get_field_from_n(perm.numel());
   // 1. <SP> = secure shuffle <perm>
-  auto shuffle_perm = hal::_rand_perm_s(ctx, x[0].shape());
-  auto sp = hal::_perm_ss(ctx, perm, shuffle_perm);
+  auto shuffle_perm = hal::_rand_perm_s(ctx, x[0].shape(), perm_field);
+  auto sp = hal::_perm_ss(ctx, hal::_ring_cast_down(ctx, perm, perm_field),
+                          shuffle_perm);
 
   // 2. <SX> = secure shuffle <x>
   std::vector<spu::Value> sx;
@@ -1130,9 +1132,11 @@ spu::Value _apply_inv_perm_ss(SPUContext *ctx, const spu::Value &x,
 std::vector<spu::Value> _apply_perm_ss(SPUContext *ctx,
                                        absl::Span<spu::Value const> x,
                                        const Value &perm) {
+  const auto perm_field = internal::_get_field_from_n(perm.numel());
   // 1. <SP> = secure shuffle <perm>
-  auto shuffle_perm = hal::_rand_perm_s(ctx, x[0].shape());
-  auto sp = hal::_perm_ss(ctx, perm, shuffle_perm);
+  auto shuffle_perm = hal::_rand_perm_s(ctx, x[0].shape(), perm_field);
+  auto sp = hal::_perm_ss(ctx, hal::_ring_cast_down(ctx, perm, perm_field),
+                          shuffle_perm);
 
   // 2. M = reveal(<SP>)
   auto m = _s2p(ctx, sp);
@@ -1220,10 +1224,13 @@ spu::Value _gen_inv_perm(SPUContext *ctx, const Value &in, bool is_ascending,
 
 spu::Value _apply_inv_perm_sv(SPUContext *ctx, const Value &in,
                               const Value &perm) {
+  const auto perm_field = internal::_get_field_from_n(perm.numel());
   if (ctx->hasKernel("inv_perm_av")) {
-    return hal::_inv_perm_sv(ctx, in, perm);
+    return hal::_inv_perm_sv(ctx, in,
+                             hal::_ring_cast_down(ctx, perm, perm_field));
   } else {
-    return _apply_inv_perm_ss(ctx, in, _v2s(ctx, perm));
+    return _apply_inv_perm_ss(
+        ctx, in, _v2s(ctx, hal::_ring_cast_down(ctx, perm, perm_field)));
   }
 }
 
@@ -1246,7 +1253,8 @@ std::vector<Value> _apply_inv_perm_sv(SPUContext *ctx,
 #define MAP_APPLY_PERM_OP(NAME)                                             \
   spu::Value _apply##NAME(SPUContext *ctx, const Value &in,                 \
                           const Value &perm) {                              \
-    return hal::NAME(ctx, in, perm);                                        \
+    const auto perm_field = internal::_get_field_from_n(perm.numel());      \
+    return hal::NAME(ctx, in, hal::_ring_cast_down(ctx, perm, perm_field)); \
   }                                                                         \
                                                                             \
   std::vector<Value> _apply##NAME(                                          \
@@ -1348,12 +1356,26 @@ spu::Value _apply_inv_perm(SPUContext *ctx, const spu::Value &x,
   return std::move(ret[0]);
 }
 
+namespace {
+DataType _get_dtype_from_n(int64_t n) {
+  if (n <= (1LL << 8)) {
+    return spu::DT_I8;
+  } else if (n <= (1LL << 16)) {
+    return spu::DT_I16;
+  } else if (n <= (1LL << 32)) {
+    return spu::DT_I32;
+  } else {
+    return spu::DT_I64;
+  }
+}
+}  // namespace
+
 // Given a permutation, generate its inverse permutation
 // ret[perm[i]] = i
 spu::Value _inverse(SPUContext *ctx, const Value &perm) {
-  auto dt = ctx->config().field == FieldType::FM32 ? spu::DT_I32 : spu::DT_I64;
   const auto perm_field = internal::_get_field_from_n(perm.numel());
   const auto running_field = perm.storage_type().as<Ring2k>()->field();
+  const auto dt = _get_dtype_from_n(perm.numel());
 
   auto used_perm = perm;
   if (perm_field != running_field) {
@@ -1486,6 +1508,7 @@ spu::Value gen_inv_perm(SPUContext *ctx, absl::Span<spu::Value const> inputs,
     return perm;
   }
   bool is_ascending = direction == SortDirection::Ascending;
+  // TODO(zjj): consider merge key when dynamic ring
   auto merged_keys = _merge_sorting_keys(ctx, keys, is_ascending);
 
   // generate inverse permutation

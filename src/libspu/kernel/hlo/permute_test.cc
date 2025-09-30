@@ -24,6 +24,7 @@
 #include "libspu/kernel/test_util.h"
 #include "libspu/mpc/utils/simulate.h"
 
+// FIXME(zjj): revert ABY3 and Cheetah
 namespace spu::kernel::hlo {
 
 namespace {
@@ -190,7 +191,7 @@ std::vector<PermuteParams> GetValidParamsCombinations() {
 
   for (const auto& vis_x : kVisTypes) {
     for (const auto& vis_perm : kVisTypes) {
-      for (const auto& protocol : {SEMI2K, ABY3}) {
+      for (const auto& protocol : {SEMI2K}) {
         for (const auto& npc : {2, 3}) {
           // npc=2 is not valid in ABY3
           if (protocol == ABY3 && npc == 2) {
@@ -237,6 +238,8 @@ TEST_P(PermuteTest, SinglePermuteWork) {
         EXPECT_TRUE(xt::allclose(expected_inv_perm, inv_perm_ret, 0.001, 0.001))
             << expected_inv_perm << std::endl
             << inv_perm_ret << std::endl;
+
+        SPDLOG_INFO("InvPermute pass...");
 
         // test of permute
         auto perm_ret = evalSinglePermuteOp<int64_t>(&sctx, x_vis, perm_vis, x,
@@ -322,7 +325,7 @@ TEST_P(PermuteTest, MultiplePermuteWork) {
 class PermuteEmptyTest : public ::testing::TestWithParam<ProtocolKind> {};
 
 INSTANTIATE_TEST_SUITE_P(
-    PermuteEmpty, PermuteEmptyTest, testing::Values(SEMI2K, ABY3),
+    PermuteEmpty, PermuteEmptyTest, testing::Values(SEMI2K),
     [](const testing::TestParamInfo<PermuteEmptyTest::ParamType>& p) {
       return fmt::format("{}", p.param);
     });

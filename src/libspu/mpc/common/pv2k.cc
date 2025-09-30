@@ -46,7 +46,7 @@ class P2V : public RevealToKernel {
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
                   size_t rank) const override {
     auto* comm = ctx->getState<Communicator>();
-    const auto field = ctx->getState<Z2kState>()->getDefaultField();
+    const auto field = in.eltype().as<Ring2k>()->field();
     const auto ty = makeType<Priv2kTy>(field, rank);
     if (comm->getRank() == rank) {
       return in.as(ty);
@@ -66,7 +66,7 @@ class V2P : public UnaryKernel {
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override {
     auto* comm = ctx->getState<Communicator>();
-    const auto field = ctx->getState<Z2kState>()->getDefaultField();
+    const auto field = in.eltype().as<Ring2k>()->field();
     size_t owner = in.eltype().as<Priv2kTy>()->owner();
 
     NdArrayRef out(makeType<Pub2kTy>(field), in.shape());
@@ -97,8 +97,8 @@ class MakeP : public Kernel {
   ce::CExpr comm() const override { return ce::Const(0); }
 
   void evaluate(KernelEvalContext* ctx) const override {
-    ctx->pushOutput(
-        proc(ctx, ctx->getParam<uint128_t>(0), ctx->getParam<Shape>(1)));
+    ctx->pushOutput(proc(ctx, ctx->getParam<uint128_t>(0),
+                         ctx->getParam<Shape>(1), ctx->getParam<FieldType>(2)));
   }
 
   static Value proc(KernelEvalContext* ctx, uint128_t init, const Shape& shape,
@@ -795,17 +795,26 @@ class InvPermPP : public PermKernel {
 
   NdArrayRef proc(KernelEvalContext*, const NdArrayRef& x,
                   const NdArrayRef& y) const override {
-    SPU_ENFORCE_EQ(x.eltype(), y.eltype());
     NdArrayRef z(x.eltype(), x.shape());
     const auto field = x.eltype().as<Ring2k>()->field();
-    DISPATCH_ALL_FIELDS(field, [&]() {
-      using T = std::make_signed_t<ring2k_t>;
-      NdArrayView<T> _x(x);
-      NdArrayView<T> _y(y);
-      NdArrayView<T> _z(z);
-      for (int64_t idx = 0; idx < x.numel(); ++idx) {
-        _z[_y[idx]] = _x[idx];
-      }
+    const auto perm_field = y.eltype().as<Ring2k>()->field();
+
+    SPU_ENFORCE(perm_field == _get_field_from_n(x.numel()),
+                "Invalid permutation field {}, should be {}",
+                magic_enum::enum_name(perm_field),
+                magic_enum::enum_name(_get_field_from_n(x.numel())));
+
+    DISPATCH_ALL_FIELDS(perm_field, [&]() {
+      using P = std::make_unsigned_t<ring2k_t>;
+      DISPATCH_ALL_FIELDS(field, [&]() {
+        using T = std::make_unsigned_t<ring2k_t>;
+        NdArrayView<T> _x(x);
+        NdArrayView<P> _y(y);
+        NdArrayView<T> _z(z);
+        for (int64_t idx = 0; idx < x.numel(); ++idx) {
+          _z[_y[idx]] = _x[idx];
+        }
+      });
     });
     return z;
   }
@@ -820,19 +829,29 @@ class InvPermVV : public PermKernel {
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x,
                   const NdArrayRef& y) const override {
-    SPU_ENFORCE_EQ(x.eltype(), y.eltype());
+    const auto field = x.eltype().as<Ring2k>()->field();
+    const auto perm_field = y.eltype().as<Ring2k>()->field();
+
+    SPU_ENFORCE(perm_field == _get_field_from_n(x.numel()),
+                "Invalid permutation field {}, should be {}",
+                magic_enum::enum_name(perm_field),
+                magic_enum::enum_name(_get_field_from_n(x.numel())));
+
     if (isOwner(ctx, x.eltype())) {
       NdArrayRef z(x.eltype(), x.shape());
-      const auto field = x.eltype().as<Ring2k>()->field();
-      DISPATCH_ALL_FIELDS(field, [&]() {
-        using T = std::make_signed_t<ring2k_t>;
-        NdArrayView<T> _x(x);
-        NdArrayView<T> _y(y);
-        NdArrayView<T> _z(z);
-        for (int64_t idx = 0; idx < x.numel(); ++idx) {
-          _z[_y[idx]] = _x[idx];
-        }
+      DISPATCH_ALL_FIELDS(perm_field, [&]() {
+        using P = std::make_unsigned_t<ring2k_t>;
+        DISPATCH_ALL_FIELDS(field, [&]() {
+          using T = std::make_unsigned_t<ring2k_t>;
+          NdArrayView<T> _x(x);
+          NdArrayView<P> _y(y);
+          NdArrayView<T> _z(z);
+          for (int64_t idx = 0; idx < x.numel(); ++idx) {
+            _z[_y[idx]] = _x[idx];
+          }
+        });
       });
+
       return z;
     } else {
       return x;
@@ -849,18 +868,27 @@ class PermPP : public PermKernel {
 
   NdArrayRef proc(KernelEvalContext*, const NdArrayRef& x,
                   const NdArrayRef& y) const override {
-    SPU_ENFORCE_EQ(x.eltype(), y.eltype());
     NdArrayRef z(x.eltype(), x.shape());
     const auto field = x.eltype().as<Ring2k>()->field();
-    DISPATCH_ALL_FIELDS(field, [&]() {
-      using T = std::make_signed_t<ring2k_t>;
-      NdArrayView<T> _x(x);
-      NdArrayView<T> _y(y);
-      NdArrayView<T> _z(z);
-      for (int64_t idx = 0; idx < x.numel(); ++idx) {
-        _z[idx] = _x[_y[idx]];
-      }
+    const auto perm_field = y.eltype().as<Ring2k>()->field();
+    SPU_ENFORCE(perm_field == _get_field_from_n(x.numel()),
+                "Invalid permutation field {}, should be {}",
+                magic_enum::enum_name(perm_field),
+                magic_enum::enum_name(_get_field_from_n(x.numel())));
+
+    DISPATCH_ALL_FIELDS(perm_field, [&]() {
+      using P = std::make_unsigned_t<ring2k_t>;
+      DISPATCH_ALL_FIELDS(field, [&]() {
+        using T = std::make_unsigned_t<ring2k_t>;
+        NdArrayView<T> _x(x);
+        NdArrayView<P> _y(y);
+        NdArrayView<T> _z(z);
+        for (int64_t idx = 0; idx < x.numel(); ++idx) {
+          _z[idx] = _x[_y[idx]];
+        }
+      });
     });
+
     return z;
   }
 };
@@ -874,19 +902,29 @@ class PermVV : public PermKernel {
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x,
                   const NdArrayRef& y) const override {
-    SPU_ENFORCE_EQ(x.eltype(), y.eltype());
+    const auto field = x.eltype().as<Ring2k>()->field();
+    const auto perm_field = y.eltype().as<Ring2k>()->field();
+    SPU_ENFORCE(perm_field == _get_field_from_n(x.numel()),
+                "Invalid permutation field {}, should be {}",
+                magic_enum::enum_name(perm_field),
+                magic_enum::enum_name(_get_field_from_n(x.numel())));
+
     if (isOwner(ctx, x.eltype())) {
       NdArrayRef z(x.eltype(), x.shape());
-      const auto field = x.eltype().as<Ring2k>()->field();
-      DISPATCH_ALL_FIELDS(field, [&]() {
-        using T = std::make_signed_t<ring2k_t>;
-        NdArrayView<T> _x(x);
-        NdArrayView<T> _y(y);
-        NdArrayView<T> _z(z);
-        for (int64_t idx = 0; idx < x.numel(); ++idx) {
-          _z[idx] = _x[_y[idx]];
-        }
+
+      DISPATCH_ALL_FIELDS(perm_field, [&]() {
+        using P = std::make_unsigned_t<ring2k_t>;
+        DISPATCH_ALL_FIELDS(field, [&]() {
+          using T = std::make_unsigned_t<ring2k_t>;
+          NdArrayView<T> _x(x);
+          NdArrayView<P> _y(y);
+          NdArrayView<T> _z(z);
+          for (int64_t idx = 0; idx < x.numel(); ++idx) {
+            _z[idx] = _x[_y[idx]];
+          }
+        });
       });
+
       return z;
     } else {
       return x;
@@ -1043,7 +1081,9 @@ class RingCastDownV : public RingCastDownKernel {
 
       return out;
     } else {
-      return in;
+      return makeConstantArrayRef(
+          makeType<Priv2kTy>(to_field, in.eltype().as<Priv2kTy>()->owner()),
+          in.shape());
     }
   }
 };

@@ -229,7 +229,7 @@ static inline Value setNumBits(const Value& in, size_t nbits) {
 
 // TODO: we can not ref api.h, circular reference
 static Value hack_make_p(SPUContext* ctx, uint128_t init, const Shape& shape) {
-  return dynDispatch(ctx, "make_p", init, shape);
+  return dynDispatch(ctx, "make_p", init, shape, FT_INVALID);
 }
 
 Value bitintl_b(SPUContext* ctx, const Value& x, size_t stride) {

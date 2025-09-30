@@ -78,7 +78,7 @@ Value _cast_type_s(SPUContext* ctx, const Value& in, const Type& to) {
 
 Value _make_p(SPUContext* ctx, uint128_t init, const Shape& shape,
               FieldType field) {
-  SPU_TRACE_HAL_DISP(ctx, init);
+  SPU_TRACE_HAL_DISP(ctx, init, shape, field);
   auto res = mpc::make_p(ctx, init, shape, field);
   return res;
 }
