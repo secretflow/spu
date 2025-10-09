@@ -49,6 +49,7 @@
 // Add missing includes for brpc and fmt
 #include "butil/macros.h"
 #include "fmt/format.h"
+#include "gflags/gflags.h"
 
 #ifdef CHECK_AVX
 #include "cpu_features/cpuinfo_x86.h"
@@ -56,11 +57,7 @@
 
 namespace py = pybind11;
 
-// Forward declare brpc FLAGS
-namespace brpc {
-extern uint64_t FLAGS_max_body_size;
-extern int64_t FLAGS_socket_max_unwritten_bytes;
-}  // namespace brpc
+// Remove conflicting extern declarations - FLAGS are declared by gflags
 
 namespace spu {
 
@@ -353,9 +350,17 @@ void BindLink(py::module& m) {
       [](const ContextDesc& desc, size_t self_rank,
          bool log_details) -> std::shared_ptr<Context> {
         py::gil_scoped_release release;
-        brpc::FLAGS_max_body_size = std::numeric_limits<uint64_t>::max();
-        brpc::FLAGS_socket_max_unwritten_bytes =
-            std::numeric_limits<int64_t>::max() / 2;
+        // Use gflags to set the flags properly
+        if (google::CommandLineFlagInfo info;
+            google::GetCommandLineFlagInfo("max_body_size", &info)) {
+          google::SetCommandLineOption("max_body_size", 
+              std::to_string(std::numeric_limits<uint64_t>::max()).c_str());
+        }
+        if (google::CommandLineFlagInfo info;
+            google::GetCommandLineFlagInfo("socket_max_unwritten_bytes", &info)) {
+          google::SetCommandLineOption("socket_max_unwritten_bytes", 
+              std::to_string(std::numeric_limits<int64_t>::max() / 2).c_str());
+        }
 
         auto ctx = yacl::link::FactoryBrpc().CreateContext(desc, self_rank);
         ctx->ConnectToMesh(log_details ? spdlog::level::info

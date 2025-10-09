@@ -39,7 +39,8 @@ class HttpChannelConfig:
         http_max_payload_size: int = 32 * 1024 * 1024,  # 32MB
         enable_ssl: bool = False,
         ssl_verify: bool = True,
-        connection_pool_size: int = 10,
+        pool_connections: int = 10,
+        pool_maxsize: int = 20,
     ):
         self.peer_url = peer_url.rstrip('/')
         self.timeout_ms = timeout_ms
@@ -48,7 +49,8 @@ class HttpChannelConfig:
         self.http_max_payload_size = http_max_payload_size
         self.enable_ssl = enable_ssl
         self.ssl_verify = ssl_verify
-        self.connection_pool_size = connection_pool_size
+        self.pool_connections = pool_connections
+        self.pool_maxsize = pool_maxsize
 
 
 class HttpChannel(link.IChannel):
@@ -73,13 +75,13 @@ class HttpChannel(link.IChannel):
 
         # Configure connection pooling
         adapter = requests.adapters.HTTPAdapter(
-            pool_connections=self.config.connection_pool_size,
-            pool_maxsize=self.config.connection_pool_size,
+            pool_connections=self.config.pool_connections,
+            pool_maxsize=self.config.pool_maxsize,
             max_retries=requests.adapters.Retry(
                 total=self.config.max_retry,
                 backoff_factor=self.config.retry_interval_ms / 1000.0,
-                status_forcelist=[500, 502, 503, 504]
-            )
+                status_forcelist=[500, 502, 503, 504],
+            ),
         )
 
         session.mount('http://', adapter)
@@ -98,10 +100,7 @@ class HttpChannel(link.IChannel):
 
         try:
             response = self.session.request(
-                method=method,
-                url=url,
-                timeout=timeout,
-                **kwargs
+                method=method, url=url, timeout=timeout, **kwargs
             )
             response.raise_for_status()
             return response
@@ -119,19 +118,17 @@ class HttpChannel(link.IChannel):
             data = bytes(buf)
 
             if len(data) > self.config.http_max_payload_size:
-                raise ValueError(f"Payload size {len(data)} exceeds maximum {self.config.http_max_payload_size}")
+                raise ValueError(
+                    f"Payload size {len(data)} exceeds maximum {self.config.http_max_payload_size}"
+                )
 
             # Prepare message metadata
-            metadata = {
-                'key': key,
-                'timestamp': time.time(),
-                'size': len(data)
-            }
+            metadata = {'key': key, 'timestamp': time.time(), 'size': len(data)}
 
             # Make async request
             files = {
                 'metadata': ('metadata.json', json.dumps(metadata), 'application/json'),
-                'data': ('data.bin', data, 'application/octet-stream')
+                'data': ('data.bin', data, 'application/octet-stream'),
             }
 
             response = self._make_request('POST', f'/send_async/{key}', files=files)
@@ -196,7 +193,9 @@ class HttpChannel(link.IChannel):
                     time.sleep(0.01)
                     continue
                 else:
-                    raise RuntimeError(f"Recv failed with status {response.status_code}")
+                    raise RuntimeError(
+                        f"Recv failed with status {response.status_code}"
+                    )
 
             except requests.exceptions.RequestException as e:
                 logger.warning(f"Recv request failed for key {key}: {e}")
@@ -221,6 +220,7 @@ class HttpChannel(link.IChannel):
         if self._pending_messages:
             # Wait for all pending tasks
             import asyncio
+
             if asyncio.iscoroutinefunction(self._wait_pending_messages):
                 loop = asyncio.get_event_loop()
                 loop.run_until_complete(self._wait_pending_messages())
@@ -230,7 +230,9 @@ class HttpChannel(link.IChannel):
     async def _wait_pending_messages(self) -> None:
         """Wait for all pending message tasks"""
         if self._pending_messages:
-            await asyncio.gather(*self._pending_messages.values(), return_exceptions=True)
+            await asyncio.gather(
+                *self._pending_messages.values(), return_exceptions=True
+            )
             self._pending_messages.clear()
 
     def Abort(self) -> None:
@@ -284,7 +286,9 @@ class HttpChannel(link.IChannel):
                 self.Recv(test_key)
                 logger.info("Test receive successful")
             except TimeoutError:
-                logger.info("Test receive timeout (expected if no test message available)")
+                logger.info(
+                    "Test receive timeout (expected if no test message available)"
+                )
             finally:
                 self._recv_timeout_ms = old_timeout
 

@@ -83,11 +83,6 @@ use_repo(llvm, "llvm-project")
 bazel_dep(name = "stablehlo", version = "20240808.0-24d1807")
 bazel_dep(name = "xla", version = "20240814.0-64bdcc5")
 bazel_dep(name = "yacl", version = "0.4.5b10-nightly-20250110")
-git_override(
-    module_name = "yacl",
-    remote = "https://github.com/secretflow/yacl.git",
-    commit = "974b3c45949d0ca0483f64bd2b6e9080a3f511c9",
-)
 
 spu_dependencies = use_extension("//bazel:defs.bzl", "non_module_dependencies")
 use_repo(spu_dependencies, "xtensor")
