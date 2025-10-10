@@ -20,11 +20,13 @@ from typing import Dict, Optional, Any
 from urllib.parse import urljoin
 
 import requests
+import spu.libspu as libspu
 import spu.libspu.link as link
-import yacl
-
 
 logger = logging.getLogger(__name__)
+
+print("libspu: ", libspu.__file__)
+print(dir(link))
 
 
 class HttpChannelConfig:
@@ -67,7 +69,7 @@ class HttpChannel(link.IChannel):
         self._shutdown = False
 
         # Initialize storage for received messages
-        self._message_store: Dict[str, yacl.Buffer] = {}
+        self._message_store: Dict[str, bytes] = {}
 
     def _create_session(self) -> requests.Session:
         """Create HTTP session with proper configuration"""
@@ -108,14 +110,14 @@ class HttpChannel(link.IChannel):
             logger.error(f"HTTP request failed: {method} {url} - {e}")
             raise RuntimeError(f"HTTP request failed: {e}")
 
-    def SendAsync(self, key: str, buf: yacl.Buffer) -> None:
+    def SendAsync(self, key: str, buf: bytes) -> None:
         """Send data asynchronously"""
         if self._shutdown:
             raise RuntimeError("Channel is shut down")
 
         try:
-            # Convert buffer to bytes
-            data = bytes(buf)
+            # Use bytes directly
+            data = buf
 
             if len(data) > self.config.http_max_payload_size:
                 raise ValueError(
@@ -142,21 +144,20 @@ class HttpChannel(link.IChannel):
             logger.error(f"SendAsync failed for key {key}: {e}")
             raise
 
-    def SendAsyncThrottled(self, key: str, buf: yacl.Buffer) -> None:
+    def SendAsyncThrottled(self, key: str, buf: bytes) -> None:
         """Send data asynchronously with throttling"""
         # For now, implement same as SendAsync
         # Throttling logic can be added later if needed
         self.SendAsync(key, buf)
 
-    def Send(self, key: str, value: yacl.ByteContainerView) -> None:
+    def Send(self, key: str, value: bytes) -> None:
         """Send data synchronously"""
         if self._shutdown:
             raise RuntimeError("Channel is shut down")
 
         try:
-            # Convert to buffer and send
-            buf = yacl.Buffer(value)
-            self.SendAsync(key, buf)
+            # Send bytes directly
+            self.SendAsync(key, value)
 
             # Wait for confirmation (simplified)
             time.sleep(0.01)  # Small delay to ensure message is processed
@@ -167,7 +168,7 @@ class HttpChannel(link.IChannel):
             logger.error(f"Send failed for key {key}: {e}")
             raise
 
-    def Recv(self, key: str) -> yacl.Buffer:
+    def Recv(self, key: str) -> bytes:
         """Receive data for a specific key"""
         if self._shutdown:
             raise RuntimeError("Channel is shut down")
@@ -187,7 +188,7 @@ class HttpChannel(link.IChannel):
                 if response.status_code == 200:
                     data = response.content
                     logger.debug(f"Received message with key: {key}")
-                    return yacl.Buffer(data)
+                    return data
                 elif response.status_code == 404:
                     # Message not available yet, wait and retry
                     time.sleep(0.01)
