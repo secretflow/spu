@@ -725,7 +725,7 @@ class GenInvPermP : public GenInvPermKernel {
     DISPATCH_ALL_FIELDS(perm_field, [&]() {
       using P = std::make_unsigned_t<ring2k_t>;
       DISPATCH_ALL_FIELDS(field, [&]() {
-        using T = std::make_unsigned_t<ring2k_t>;
+        using T = std::make_signed_t<ring2k_t>;
         std::vector<P> perm(numel);
         std::iota(perm.begin(), perm.end(), 0);
         // TODO: Add an iterator for NdArrayView
@@ -765,7 +765,7 @@ class GenInvPermV : public GenInvPermKernel {
       DISPATCH_ALL_FIELDS(perm_field, [&]() {
         using P = std::make_unsigned_t<ring2k_t>;
         DISPATCH_ALL_FIELDS(field, [&]() {
-          using T = std::make_unsigned_t<ring2k_t>;
+          using T = std::make_signed_t<ring2k_t>;
           std::vector<P> perm(numel);
           std::iota(perm.begin(), perm.end(), 0);
           // TODO: Add an iterator for NdArrayView
@@ -781,7 +781,10 @@ class GenInvPermV : public GenInvPermKernel {
 
       return out;
     } else {
-      return in;
+      const auto perm_field = _get_field_from_n(in.numel());
+      return makeConstantArrayRef(
+          makeType<Priv2kTy>(perm_field, in.eltype().as<Priv2kTy>()->owner()),
+          in.shape());
     }
   }
 };
@@ -942,24 +945,38 @@ class MergeKeysP : public MergeKeysKernel {
   NdArrayRef proc(KernelEvalContext* ctx, absl::Span<NdArrayRef const> inputs,
                   bool is_ascending) const override {
     SPU_ENFORCE(!inputs.empty(), "Inputs should not be empty");
-    NdArrayRef out(inputs[0].eltype(), inputs[0].shape());
     const auto field = inputs[0].eltype().as<Ring2k>()->field();
+
+    SPU_ENFORCE(std::all_of(inputs.begin(), inputs.end(),
+                            [&field](const NdArrayRef& v) {
+                              return v.eltype().as<Ring2k>()->field() == field;
+                            }),
+                "Inputs should belong to the same field");
+
     const auto numel = inputs[0].numel();
-    DISPATCH_ALL_FIELDS(field, [&]() {
-      using T = std::make_signed_t<ring2k_t>;
-      NdArrayView<T> _out(out);
-      _out[0] = 0;
-      for (int64_t i = 1; i < numel; ++i) {
-        if (std::all_of(inputs.begin(), inputs.end(), [i](const NdArrayRef& x) {
-              NdArrayView<T> _x(x);
-              return _x[i] == _x[i - 1];
-            })) {
-          _out[i] = _out[i - 1];
-        } else {
-          _out[i] = is_ascending ? _out[i - 1] + 1 : _out[i - 1] - 1;
+    const auto perm_field = _get_field_from_n(numel);
+    NdArrayRef out(makeType<Pub2kTy>(perm_field), inputs[0].shape());
+
+    DISPATCH_ALL_FIELDS(perm_field, [&]() {
+      using P = std::make_unsigned_t<ring2k_t>;
+      DISPATCH_ALL_FIELDS(field, [&]() {
+        using T = std::make_unsigned_t<ring2k_t>;
+        NdArrayView<P> _out(out);
+        _out[0] = is_ascending ? (P)0 : static_cast<P>(numel - 1);
+        for (int64_t i = 1; i < numel; ++i) {
+          if (std::all_of(inputs.begin(), inputs.end(),
+                          [i](const NdArrayRef& x) {
+                            NdArrayView<T> _x(x);
+                            return _x[i] == _x[i - 1];
+                          })) {
+            _out[i] = _out[i - 1];
+          } else {
+            _out[i] = is_ascending ? _out[i - 1] + 1 : _out[i - 1] - 1;
+          }
         }
-      }
+      });
     });
+
     return out;
   }
 };
@@ -976,33 +993,48 @@ class MergeKeysV : public MergeKeysKernel {
     SPU_ENFORCE(!inputs.empty(), "Inputs should not be empty");
     SPU_ENFORCE(std::all_of(inputs.begin(), inputs.end(),
                             [&inputs](const NdArrayRef& v) {
-                              return getOwner(v) == getOwner(inputs[0]);
+                              return (getOwner(v) == getOwner(inputs[0])) &&
+                                     (v.eltype().as<Ring2k>()->field() ==
+                                      inputs[0].eltype().as<Ring2k>()->field());
                             }),
                 "Inputs should belong to the same owner");
 
     if (isOwner(ctx, inputs[0].eltype())) {
-      NdArrayRef out(inputs[0].eltype(), inputs[0].shape());
       const auto field = inputs[0].eltype().as<Ring2k>()->field();
       const auto numel = inputs[0].numel();
-      DISPATCH_ALL_FIELDS(field, [&]() {
-        using T = std::make_signed_t<ring2k_t>;
-        NdArrayView<T> _out(out);
-        _out[0] = 0;
-        for (int64_t i = 1; i < numel; ++i) {
-          if (std::all_of(inputs.begin(), inputs.end(),
-                          [i](const NdArrayRef& x) {
-                            NdArrayView<T> _x(x);
-                            return _x[i] == _x[i - 1];
-                          })) {
-            _out[i] = _out[i - 1];
-          } else {
-            _out[i] = is_ascending ? _out[i - 1] + 1 : _out[i - 1] - 1;
+      const auto perm_field = _get_field_from_n(numel);
+      NdArrayRef out(
+          makeType<Priv2kTy>(perm_field,
+                             inputs[0].eltype().as<Priv2kTy>()->owner()),
+          inputs[0].shape());
+
+      DISPATCH_ALL_FIELDS(perm_field, [&]() {
+        using P = std::make_unsigned_t<ring2k_t>;
+        DISPATCH_ALL_FIELDS(field, [&]() {
+          using T = std::make_unsigned_t<ring2k_t>;
+          NdArrayView<P> _out(out);
+          _out[0] = is_ascending ? (P)0 : static_cast<P>(numel - 1);
+          for (int64_t i = 1; i < numel; ++i) {
+            if (std::all_of(inputs.begin(), inputs.end(),
+                            [i](const NdArrayRef& x) {
+                              NdArrayView<T> _x(x);
+                              return _x[i] == _x[i - 1];
+                            })) {
+              _out[i] = _out[i - 1];
+            } else {
+              _out[i] = is_ascending ? _out[i - 1] + 1 : _out[i - 1] - 1;
+            }
           }
-        }
+        });
       });
+
       return out;
     } else {
-      return makeConstantArrayRef(inputs[0].eltype(), inputs[0].shape());
+      const auto perm_field = _get_field_from_n(inputs[0].numel());
+      return makeConstantArrayRef(
+          makeType<Priv2kTy>(perm_field,
+                             inputs[0].eltype().as<Priv2kTy>()->owner()),
+          inputs[0].shape());
     }
   }
 };

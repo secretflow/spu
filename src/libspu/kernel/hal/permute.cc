@@ -1508,7 +1508,6 @@ spu::Value gen_inv_perm(SPUContext *ctx, absl::Span<spu::Value const> inputs,
     return perm;
   }
   bool is_ascending = direction == SortDirection::Ascending;
-  // TODO(zjj): consider merge key when dynamic ring
   auto merged_keys = _merge_sorting_keys(ctx, keys, is_ascending);
 
   // generate inverse permutation

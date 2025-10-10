@@ -21,7 +21,7 @@
 
 namespace spu::kernel::hal {
 
-void dbg_print(SPUContext* ctx, const Value& v) {
+void dbg_print(SPUContext* ctx, const Value& v, std::string_view hint) {
   if (v.isPublic()) {
     std::stringstream ss;
     if (v.isFxp()) {
@@ -34,10 +34,10 @@ void dbg_print(SPUContext* ctx, const Value& v) {
       SPU_THROW("unsupport dtype={}", v.dtype());
     }
     if ((ctx->lctx() && ctx->lctx()->Rank() == 0) || ctx->lctx() == nullptr) {
-      SPDLOG_INFO("dbg_print {}", ss.str());
+      SPDLOG_INFO("dbg_print of {}: {}", hint, ss.str());
     }
   } else if (v.isSecret() || v.isPrivate()) {
-    dbg_print(ctx, reveal(ctx, v));
+    dbg_print(ctx, reveal(ctx, v), hint);
   } else {
     SPU_THROW("unsupport vtype={}", v.vtype());
   }

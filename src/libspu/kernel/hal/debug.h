@@ -21,6 +21,6 @@ namespace spu::kernel::hal {
 
 /// Debug print a value, this action may reveal secret.
 // @param v, value to print
-void dbg_print(SPUContext* ctx, const Value& v);
+void dbg_print(SPUContext* ctx, const Value& v, std::string_view hint = "");
 
 }  // namespace spu::kernel::hal
