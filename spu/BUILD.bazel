@@ -38,6 +38,7 @@ pybind_extension(
     deps = [
         ":exported_symbols.lds",
         ":pychannel",
+        ":pybind_caster",
         ":version_script.lds",
         "@spulib//libspu:version",
         "@spulib//libspu/compiler:compile",
@@ -76,5 +77,14 @@ pybind_library(
     visibility = ["//visibility:private"],
     deps = [
         "@yacl//yacl/link/transport:channel",
+    ],
+)
+
+pybind_library(
+    name = "pybind_caster",
+    hdrs = ["pybind_caster.h"],
+    visibility = ["//visibility:private"],
+    deps = [
+        "@yacl//yacl/base:buffer",
     ],
 )

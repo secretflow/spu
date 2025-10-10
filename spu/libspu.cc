@@ -24,6 +24,7 @@
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
 #include "spdlog/spdlog.h"
+#include "spu/pybind_caster.h"
 #include "spu/pychannel.h"
 #include "yacl/base/exception.h"
 #include "yacl/link/algorithm/allgather.h"
@@ -56,8 +57,6 @@
 #endif
 
 namespace py = pybind11;
-
-// Remove conflicting extern declarations - FLAGS are declared by gflags
 
 namespace spu {
 
@@ -353,12 +352,14 @@ void BindLink(py::module& m) {
         // Use gflags to set the flags properly
         if (google::CommandLineFlagInfo info;
             google::GetCommandLineFlagInfo("max_body_size", &info)) {
-          google::SetCommandLineOption("max_body_size", 
+          google::SetCommandLineOption(
+              "max_body_size",
               std::to_string(std::numeric_limits<uint64_t>::max()).c_str());
         }
-        if (google::CommandLineFlagInfo info;
-            google::GetCommandLineFlagInfo("socket_max_unwritten_bytes", &info)) {
-          google::SetCommandLineOption("socket_max_unwritten_bytes", 
+        if (google::CommandLineFlagInfo info; google::GetCommandLineFlagInfo(
+                "socket_max_unwritten_bytes", &info)) {
+          google::SetCommandLineOption(
+              "socket_max_unwritten_bytes",
               std::to_string(std::numeric_limits<int64_t>::max() / 2).c_str());
         }
 
