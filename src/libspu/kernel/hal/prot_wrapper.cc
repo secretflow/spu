@@ -246,7 +246,7 @@ MAP_BINARY_OP(equal_pp)
 
 #define MAP_OPTIONAL_PERM_OP(NAME)                                    \
   Value _##NAME(SPUContext* ctx, const Value& x, const Value& y) {    \
-    SPU_TRACE_HAL_DISP(ctx, x, y);                                    \
+    SPU_TRACE_HAL_LEAF(ctx, x, y);                                    \
     SPU_ENFORCE(x.shape() == y.shape(), "shape mismatch: x={}, y={}", \
                 x.shape(), y.shape());                                \
     SPU_ENFORCE(x.shape().ndim() == 1, "x should be a 1-d tensor");   \
@@ -343,7 +343,7 @@ Value _merge_keys_v(SPUContext* ctx, absl::Span<Value const> inputs,
 
 #define MAP_PERM_OP(NAME)                                             \
   Value _##NAME(SPUContext* ctx, const Value& x, const Value& y) {    \
-    SPU_TRACE_HAL_DISP(ctx, x, y);                                    \
+    SPU_TRACE_HAL_LEAF(ctx, x, y);                                    \
     SPU_ENFORCE(x.shape() == y.shape(), "shape mismatch: x={}, y={}", \
                 x.shape(), y.shape());                                \
     SPU_ENFORCE(x.shape().ndim() == 1, "x should be a 1-d tensor");   \
@@ -358,7 +358,7 @@ MAP_PERM_OP(perm_vv);
 
 #define MAP_RING_CAST_OP(NAME)                                   \
   Value _##NAME(SPUContext* ctx, const Value& x, FieldType to) { \
-    SPU_TRACE_HAL_DISP(ctx, x, to);                              \
+    SPU_TRACE_HAL_LEAF(ctx, x, to);                              \
     auto ret = mpc::NAME(ctx, x, to);                            \
     return ret.setDtype(x.dtype());                              \
   }
@@ -369,7 +369,7 @@ MAP_RING_CAST_OP(ring_cast_down_v);
 
 #define MAP_OPTIONAL_RING_CAST_OP(NAME)                            \
   Value _##NAME(SPUContext* ctx, const Value& x, FieldType to) {   \
-    SPU_TRACE_HAL_DISP(ctx, x, to);                                \
+    SPU_TRACE_HAL_LEAF(ctx, x, to);                                \
     auto ret = mpc::NAME(ctx, x, to);                              \
     SPU_ENFORCE(ret.has_value(), "{} api not implemented", #NAME); \
     return ret.value().setDtype(x.dtype());                        \

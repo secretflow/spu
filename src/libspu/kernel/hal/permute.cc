@@ -971,7 +971,6 @@ std::vector<spu::Value> _bit_decompose(SPUContext *ctx, const spu::Value &x,
                      : x_bshare.storage_type().as<BShare>()->nbits();
   _hint_nbits(x_bshare, nbits);
   if (ctx->hasKernel("b2a_disassemble")) {
-    SPDLOG_INFO("run exactly b2a_disassemble for bit decomposition");
     const auto perm_field = internal::_get_field_from_n(x.numel());
     auto ret = dynDispatch<std::vector<spu::Value>>(ctx, "b2a_disassemble",
                                                     x_bshare, perm_field);
