@@ -8,6 +8,7 @@ import spu.libspu as spu
 from typing import Dict, Optional
 
 print(dir(link))
+print(spu.__file__)
 
 
 class SimpleChannel(link.IChannel):
@@ -133,6 +134,25 @@ def test_with_create_with_channels():
         # Test basic context functionality
         print(f"Alice context rank: {ctxA.rank}")
         print(f"Bob context rank: {ctxB.rank}")
+        print(f"Alice world size: {ctxA.world_size}")
+        print(f"Bob world size: {ctxB.world_size}")
+
+        # Test context communication interfaces
+        print("Testing context Send and Recv...")
+        test_msg = "hello from Alice via context"
+        ctxA.send(1, test_msg)
+        received = ctxB.recv(0)
+        print(f"Bob received via context: {received}")
+
+        test_msg_back = "hello from Bob via context"
+        ctxB.send(0, test_msg_back)
+        received_back = ctxA.recv(1)
+        print(f"Alice received via context: {received_back}")
+
+        # Test async send
+        ctxA.send_async(1, "async from Alice")
+        received_async = ctxB.recv(0)
+        print(f"Bob received async: {received_async}")
 
     except Exception as e:
         print(f"❌ create_with_channels interface call failed: {e}")
@@ -144,5 +164,3 @@ if __name__ == "__main__":
     # Run tests
     test_basic_functionality()
     test_with_create_with_channels()
-
-    print("\n✅ All verification tests passed!")
