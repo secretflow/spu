@@ -570,6 +570,7 @@ def builtin_spu_init(
         spu_config.enable_pphlo_profile = False
     server._locals[f"{name}-rt"] = spu_api.Runtime(link, spu_config)
     server._locals[f"{name}-io"] = spu_api.Io(len(addrs), spu_config)
+    server._locals[f"{name}-channels"] = channels
     logger.info(f"spu-runtime ({name}) initialized")
 
 
