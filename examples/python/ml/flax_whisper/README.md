@@ -10,11 +10,11 @@ This example demonstrates how to use SPU to run private inference on a pre-train
 2. Launch SPU backend runtime
 
     ```sh
-    python examples/python/utils/nodectl.py --config `pwd`/examples/python/ml/flax_whisper/3pc.json up
+    uv run examples/python/utils/nodectl.py --config `pwd`/examples/python/ml/flax_whisper/3pc.json up
     ```
 
 3. Run `flax_whisper` example
 
     ```sh
-    python examples/python/ml/flax_whisper/flax_whisper.py --config `pwd`/examples/python/ml/flax_whisper/3pc.json
+    uv run examples/python/ml/flax_whisper/flax_whisper.py --config `pwd`/examples/python/ml/flax_whisper/3pc.json
     ```
