@@ -15,25 +15,22 @@ class HttpChannel(link.IChannel):
     """HTTP-based channel implementation for IChannel interface"""
 
     def __init__(
-        self, 
-        name: str, 
-        local_rank: int, 
+        self,
+        local_rank: int,
         remote_rank: int,
         base_port: int = 8080,
         channel_id: Optional[str] = None
     ):
         """
         Initialize HTTP Channel
-        
+
         Args:
-            name: Channel name for identification
             local_rank: Local node rank
-            remote_rank: Remote node rank  
+            remote_rank: Remote node rank
             base_port: Port of the HTTP server
             channel_id: Unique channel identifier (optional)
         """
         super().__init__()
-        self.name = name
         self.local_rank = local_rank
         self.remote_rank = remote_rank
         self.base_port = base_port
@@ -75,13 +72,13 @@ class HttpChannel(link.IChannel):
             response.raise_for_status()
             return response
         except Exception as e:
-            print(f"[{self.name}] HTTP request failed: {e}")
+            print(f"[{self.channel_id}] HTTP request failed: {e}")
             return None
 
     def SendAsync(self, key: str, buf: bytes) -> None:
         """Asynchronously send data via HTTP"""
         final_key = self._send_key(key)
-        print(f"[{self.name}] SendAsync: key={final_key}, size={len(buf)}")
+        print(f"[{self.channel_id}] SendAsync: key={final_key}, size={len(buf)}")
 
         data = {
             'action': 'send_async',
@@ -96,7 +93,7 @@ class HttpChannel(link.IChannel):
     def SendAsyncThrottled(self, key: str, buf: bytes) -> None:
         """Asynchronously send data with throttling via HTTP"""
         final_key = self._send_key(key)
-        print(f"[{self.name}] SendAsyncThrottled: key={final_key}, size={len(buf)}")
+        print(f"[{self.channel_id}] SendAsyncThrottled: key={final_key}, size={len(buf)}")
 
         data = {
             'action': 'send_async_throttled',
@@ -112,7 +109,7 @@ class HttpChannel(link.IChannel):
     def Send(self, key: str, value: bytes) -> None:
         """Synchronously send data via HTTP"""
         final_key = self._send_key(key)
-        print(f"[{self.name}] Send: key={final_key}, size={len(value)}")
+        print(f"[{self.channel_id}] Send: key={final_key}, size={len(value)}")
 
         data = {
             'action': 'send',
@@ -127,7 +124,7 @@ class HttpChannel(link.IChannel):
     def Recv(self, key: str) -> bytes:
         """Receive data via HTTP"""
         final_key = self._recv_key(key)
-        print(f"[{self.name}] Recv: key={final_key}")
+        print(f"[{self.channel_id}] Recv: key={final_key}")
 
         params = {
             'key': final_key,
@@ -147,7 +144,7 @@ class HttpChannel(link.IChannel):
 
     def SetRecvTimeout(self, timeout_ms: int) -> None:
         """Set receive timeout"""
-        print(f"[{self.name}] SetRecvTimeout: {timeout_ms}ms")
+        print(f"[{self.channel_id}] SetRecvTimeout: {timeout_ms}ms")
         self.recv_timeout = timeout_ms
 
     def GetRecvTimeout(self) -> int:
@@ -156,7 +153,7 @@ class HttpChannel(link.IChannel):
 
     def WaitLinkTaskFinish(self) -> None:
         """Wait for link tasks to finish"""
-        print(f"[{self.name}] WaitLinkTaskFinish")
+        print(f"[{self.channel_id}] WaitLinkTaskFinish")
 
         # Send wait request to server
         data = {
@@ -167,7 +164,7 @@ class HttpChannel(link.IChannel):
 
     def Abort(self) -> None:
         """Abort operation"""
-        print(f"[{self.name}] Abort")
+        print(f"[{self.channel_id}] Abort")
 
         # Send abort request to server
         data = {
@@ -178,22 +175,22 @@ class HttpChannel(link.IChannel):
 
     def SetThrottleWindowSize(self, size: int) -> None:
         """Set throttle window size"""
-        print(f"[{self.name}] SetThrottleWindowSize: {size}")
+        print(f"[{self.channel_id}] SetThrottleWindowSize: {size}")
         self.throttle_window_size = size
 
     def TestSend(self, timeout: int) -> None:
         """Test send functionality"""
-        print(f"[{self.name}] TestSend with timeout={timeout}")
+        print(f"[{self.channel_id}] TestSend with timeout={timeout}")
         self.Send("test", b"")
 
     def TestRecv(self) -> None:
         """Test receive functionality"""
-        print(f"[{self.name}] TestRecv")
+        print(f"[{self.channel_id}] TestRecv")
         self.Recv("test")
 
     def SetChunkParallelSendSize(self, size: int) -> None:
         """Set chunk parallel send size"""
-        print(f"[{self.name}] SetChunkParallelSendSize: {size}")
+        print(f"[{self.channel_id}] SetChunkParallelSendSize: {size}")
         self.chunk_parallel_send_size = size
 
     def __del__(self):
@@ -201,6 +198,6 @@ class HttpChannel(link.IChannel):
         try:
             if hasattr(self, '_session'):
                 self._session.close()
-            print(f"[{self.name}] Channel closed")
+            print(f"[{self.channel_id}] Channel closed")
         except Exception:
             pass

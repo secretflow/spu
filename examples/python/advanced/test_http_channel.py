@@ -23,7 +23,6 @@ def create_channels_for_node(
             channels.append(None)  # Self position gets None
         else:
             channel = HttpChannel(
-                name=f"Node{node_rank}-to-Node{remote_rank}",
                 local_rank=node_rank,
                 remote_rank=remote_rank,
                 base_port=server_port,
@@ -43,8 +42,8 @@ def test_basic_http_channel(server_port: int):
 
     try:
         # Create two channels
-        alice = HttpChannel("Alice", 0, 1, server_port)
-        bob = HttpChannel("Bob", 1, 0, server_port)
+        alice = HttpChannel(0, 1, server_port)
+        bob = HttpChannel(1, 0, server_port)
 
         # Test basic communication
         print("Alice sending message to Bob...")
