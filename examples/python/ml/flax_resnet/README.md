@@ -25,5 +25,5 @@ and the inference example comes from pre-trained microsoft resnet-50 model on hu
 3. Run `flax_resnet_inference` example
 
     ```sh
-    uv run examples/python/ml/flax_resnet/flax_resnet_inference.py --config `pwd`/examples/python/ml/flax_resnet/3pc.json
+    uv run examples/python/ml/flax_resnet/flax_resnet_inference.py --config examples/python/ml/flax_resnet/3pc.json
     ```
