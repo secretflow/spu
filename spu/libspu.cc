@@ -20,6 +20,7 @@
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 #include "pybind11/stl.h"
+#include "spu/pychannel.h"
 #include "yacl/link/algorithm/allgather.h"
 #include "yacl/link/algorithm/barrier.h"
 #include "yacl/link/algorithm/broadcast.h"
@@ -76,6 +77,7 @@ void BindLink(py::module& m) {
   using yacl::link::RetryOptions;
   using yacl::link::SSLOptions;
   using yacl::link::VerifyOptions;
+  using yacl::link::transport::IChannel;
 
   // TODO(jint) expose this tag to python?
   constexpr char PY_CALL_TAG[] = "PY_CALL";
@@ -83,6 +85,23 @@ void BindLink(py::module& m) {
   m.doc() = R"pbdoc(
               SPU Link Library
                   )pbdoc";
+
+  py::class_<IChannel, std::shared_ptr<IChannel>, PyChannel>(m, "IChannel")
+      .def(py::init<>())
+      .def("send_async",
+           static_cast<void (IChannel::*)(const std::string&, yacl::Buffer)>(
+               &IChannel::SendAsync))
+      .def("send_async_throttled",
+           static_cast<void (IChannel::*)(const std::string&, yacl::Buffer)>(
+               &IChannel::SendAsyncThrottled))
+      .def("send", &IChannel::Send)
+      .def("recv", &IChannel::Recv)
+      .def("test_send", &IChannel::TestSend)
+      .def("test_recv", &IChannel::TestRecv)
+      .def("set_throttle_window_size", &IChannel::SetThrottleWindowSize)
+      .def("set_chunk_parallel_send_size", &IChannel::SetChunkParallelSendSize)
+      .def("wait_link_task_finish", &IChannel::WaitLinkTaskFinish)
+      .def("abort", &IChannel::Abort);
 
   py::class_<CertInfo>(m, "CertInfo", "The config info used for certificate")
       .def_readwrite("certificate_path", &CertInfo::certificate_path,
@@ -302,6 +321,17 @@ void BindLink(py::module& m) {
           ctx->ConnectToMesh();
           return ctx;
         });
+  m.def(
+      "create_with_channels",
+      [](const ContextDesc& desc, size_t self_rank,
+         std::vector<std::shared_ptr<IChannel>> channels) {
+        py::gil_scoped_release release;
+        auto ctx = std::make_shared<yacl::link::Context>(
+            desc, self_rank, std::move(channels), nullptr, false);
+        ctx->ConnectToMesh();
+        return ctx;
+      },
+      py::arg("desc"), py::arg("self_rank"), py::arg("channels"));
 }
 
 struct PyBindShare {
