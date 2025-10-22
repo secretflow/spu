@@ -7,6 +7,7 @@ import json
 import threading
 import time
 from http.server import HTTPServer, BaseHTTPRequestHandler
+from socketserver import ThreadingMixIn
 from typing import Dict, Optional
 from urllib.parse import urlparse, parse_qs
 import binascii
@@ -108,7 +109,7 @@ class ChannelRequestHandler(BaseHTTPRequestHandler):
         receiver_rank = data.get('receiver_rank')
 
         print(
-            f"[Server] {action}: key={key}, from_rank={sender_rank}, to_rank={receiver_rank}, size={len(data_hex)//2}"
+            f"[Server-{threading.current_thread().name}] {action}: key={key}, from_rank={sender_rank}, to_rank={receiver_rank}, size={len(data_hex)//2}"
         )
 
         try:
@@ -139,7 +140,7 @@ class ChannelRequestHandler(BaseHTTPRequestHandler):
         timeout_ms = int(query_params.get('timeout_ms', ['5000'])[0])
 
         print(
-            f"[Server] Recv request: key={key}, from_rank={sender_rank}, to_rank={receiver_rank}, timeout={timeout_ms}"
+            f"[Server-{threading.current_thread().name}] Recv request: key={key}, from_rank={sender_rank}, to_rank={receiver_rank}, timeout={timeout_ms}"
         )
 
         try:
@@ -197,10 +198,14 @@ class ChannelRequestHandler(BaseHTTPRequestHandler):
         self._send_json_response(status_code, error_data)
 
 
+class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
+    """Multi-threaded HTTP server"""
+    pass
+
 def run_server(port=11450):
     """Run the HTTP server"""
     server_address = ('localhost', port)
-    httpd = HTTPServer(server_address, ChannelRequestHandler)
+    httpd = ThreadedHTTPServer(server_address, ChannelRequestHandler)
 
     print(f"HTTP Channel Server starting on localhost:{port}")
     print("Available endpoints:")
