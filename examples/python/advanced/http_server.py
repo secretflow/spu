@@ -13,53 +13,42 @@ import binascii
 
 
 class ChannelMessageStorage:
-    """Thread-safe storage for channel messages"""
+    """Thread-safe key-value message storage using a single Condition."""
 
     def __init__(self):
         self._storage: Dict[str, bytes] = {}
-        self._lock = threading.Lock()
-        self._wait_conditions: Dict[str, threading.Condition] = {}
+        self._cond = (
+            threading.Condition()
+        )  # Condition comes with its own re-entrant lock
 
     def store_message(self, key: str, data: bytes):
-        """Store a message"""
-        with self._lock:
+        """Put a message into the store and wake any waiting threads."""
+        with self._cond:
             self._storage[key] = data
-            # Notify any waiting threads
-            if key in self._wait_conditions:
-                self._wait_conditions[key].notify_all()
+            # Wake up all waiters; threads waiting for other keys will go back to sleep
+            self._cond.notify_all()
 
     def get_message(self, key: str, timeout_ms: int = 5000) -> Optional[bytes]:
-        """Get a message, with optional timeout"""
-        start_time = time.time()
-        timeout_sec = timeout_ms / 1000.0
-
-        with self._lock:
-            if key in self._storage:
-                return self._storage.pop(key)
-
-            # Create condition variable for this key if not exists
-            if key not in self._wait_conditions:
-                self._wait_conditions[key] = threading.Condition(self._lock)
-
-            condition = self._wait_conditions[key]
-
-            # Wait for message with timeout
-            while time.time() - start_time < timeout_sec:
-                if key in self._storage:
-                    return self._storage.pop(key)
-
-                remaining_time = timeout_sec - (time.time() - start_time)
-                if remaining_time > 0:
-                    condition.wait(remaining_time)
-
-            return None
+        """
+        Blocking read: wait until a message for `key` arrives,
+        or until `timeout_ms` expires. Returns None on timeout.
+        """
+        timeout = timeout_ms / 1000.0
+        deadline = time.monotonic() + timeout
+        with self._cond:
+            # wait_for repeatedly evaluates the predicate, preventing lost wake-ups
+            self._cond.wait_for(
+                lambda: key in self._storage,
+                timeout=max(0.0, deadline - time.monotonic()),
+            )
+            # Remove and return the message (may be None if we timed out)
+            return self._storage.pop(key, None)
 
     def get_stats(self):
-        """Get storage statistics"""
-        with self._lock:
+        """Return a lightweight snapshot of current storage state."""
+        with self._cond:
             return {
-                'total_messages': len(self._storage),
-                'pending_waiters': len(self._wait_conditions),
+                "total_messages": len(self._storage),
             }
 
 
