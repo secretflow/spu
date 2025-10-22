@@ -53,7 +53,7 @@ This example demonstrates how to use SPU to run secure inference on a pre-traine
 4. Run `flax_llama7b` example
 
     ```sh
-    uv run examples/python/ml/flax_llama7b/flax_llama7b_split.py --model_path dir-to-flax-llama7b-EasyLM   --config ./3pc.json
+    uv run examples/python/ml/flax_llama7b/flax_llama7b.py --model_path dir-to-flax-llama7b-EasyLM   --config ./3pc.json
     ```
 
     and you can get the following results from our example:
