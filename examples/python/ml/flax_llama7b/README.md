@@ -47,7 +47,7 @@ This example demonstrates how to use SPU to run secure inference on a pre-traine
 3. Launch SPU backend runtime
 
     ```sh
-    uv run examples/python/utils/nodectl.py  --config ../ml/flax_llama7b/3pc.json up
+    uv run examples/python/utils/nodectl.py  --config examples/python/ml/flax_llama7b/3pc.json up
     ```
 
 4. Run `flax_llama7b` example
