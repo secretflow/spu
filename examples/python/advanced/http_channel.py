@@ -19,7 +19,7 @@ class HttpChannel(link.IChannel):
         local_rank: int,
         remote_rank: int,
         base_port: int = 8080,
-        channel_id: Optional[str] = None
+        channel_id: Optional[str] = None,
     ):
         """
         Initialize HTTP Channel
@@ -36,20 +36,22 @@ class HttpChannel(link.IChannel):
         self.base_port = base_port
         self.base_url = f"http://localhost:{base_port}"
         self.channel_id = channel_id or f"channel_{local_rank}_{remote_rank}"
-        
+
         # Configuration settings
         self.recv_timeout = 5000  # 5 seconds default
         self.throttle_window_size = 1024
         self.chunk_parallel_send_size = 4
-        
+
         # Session for HTTP requests
         self._session = requests.Session()
-        self._session.headers.update({
-            'Content-Type': 'application/json',
-            'X-Channel-Id': self.channel_id,
-            'X-Local-Rank': str(local_rank),
-            'X-Remote-Rank': str(remote_rank)
-        })
+        self._session.headers.update(
+            {
+                'Content-Type': 'application/json',
+                'X-Channel-Id': self.channel_id,
+                'X-Local-Rank': str(local_rank),
+                'X-Remote-Rank': str(remote_rank),
+            }
+        )
 
     def _send_key(self, key: str) -> str:
         """Create a unique key for sending messages"""
@@ -59,7 +61,13 @@ class HttpChannel(link.IChannel):
         """Create the key for receiving messages"""
         return f"{key}_{self.remote_rank}_{self.local_rank}"
 
-    def _send_request(self, path: str, data: Optional[dict] = None, method: str = 'POST', params: Optional[dict] = None) -> Optional[requests.Response]:
+    def _send_request(
+        self,
+        path: str,
+        data: Optional[dict] = None,
+        method: str = 'POST',
+        params: Optional[dict] = None,
+    ) -> Optional[requests.Response]:
         """Send HTTP request to server"""
         try:
             url = urljoin(self.base_url, path)
@@ -85,7 +93,7 @@ class HttpChannel(link.IChannel):
             'key': final_key,
             'data': buf.hex(),  # Convert bytes to hex for JSON transport
             'sender_rank': self.local_rank,
-            'receiver_rank': self.remote_rank
+            'receiver_rank': self.remote_rank,
         }
 
         self._send_request('/send', data)
@@ -93,7 +101,9 @@ class HttpChannel(link.IChannel):
     def SendAsyncThrottled(self, key: str, buf: bytes) -> None:
         """Asynchronously send data with throttling via HTTP"""
         final_key = self._send_key(key)
-        print(f"[{self.channel_id}] SendAsyncThrottled: key={final_key}, size={len(buf)}")
+        print(
+            f"[{self.channel_id}] SendAsyncThrottled: key={final_key}, size={len(buf)}"
+        )
 
         data = {
             'action': 'send_async_throttled',
@@ -101,7 +111,7 @@ class HttpChannel(link.IChannel):
             'data': buf.hex(),
             'sender_rank': self.local_rank,
             'receiver_rank': self.remote_rank,
-            'throttle_window_size': self.throttle_window_size
+            'throttle_window_size': self.throttle_window_size,
         }
 
         self._send_request('/send', data)
@@ -116,30 +126,48 @@ class HttpChannel(link.IChannel):
             'key': final_key,
             'data': value.hex(),
             'sender_rank': self.local_rank,
-            'receiver_rank': self.remote_rank
+            'receiver_rank': self.remote_rank,
         }
 
         self._send_request('/send', data)
 
     def Recv(self, key: str) -> bytes:
-        """Receive data via HTTP"""
+        """Receive data via HTTP with retry mechanism"""
         final_key = self._recv_key(key)
         print(f"[{self.channel_id}] Recv: key={final_key}")
 
-        params = {
-            'key': final_key,
-            'sender_rank': self.remote_rank,
-            'receiver_rank': self.local_rank,
-            'timeout_ms': self.recv_timeout
-        }
+        max_retries = 5
 
-        response = self._send_request('/recv', method='GET', params=params)
-        if response:
-            result = response.json()
-            if result.get('found', False):
-                data_hex = result.get('data', '')
-                return bytes.fromhex(data_hex)
+        for attempt in range(max_retries + 1):  # +1 for the initial attempt
+            params = {
+                'key': final_key,
+                'sender_rank': self.remote_rank,
+                'receiver_rank': self.local_rank,
+                'timeout_ms': self.recv_timeout,
+            }
 
+            response = self._send_request('/recv', method='GET', params=params)
+            if response:
+                result = response.json()
+                if result.get('found', False):
+                    data_hex = result.get('data', '')
+                    if attempt > 0:
+                        print(
+                            f"[{self.channel_id}] Recv SUCCESS on retry {attempt}: key={final_key}, size={len(data_hex)//2}"
+                        )
+                    return bytes.fromhex(data_hex)
+
+            if attempt < max_retries:
+                retry_delay = 0.05 * (2**attempt)  # 50ms, 100ms, 200ms, 400ms, 800ms
+                retry_delay = min(retry_delay, 1.0)  # 最大等待1秒
+                print(
+                    f"[{self.channel_id}] Recv RETRY {attempt+1}/{max_retries}: key={final_key}, timeout={self.recv_timeout}ms, delay={retry_delay*1000:.0f}ms"
+                )
+                time.sleep(retry_delay)
+
+        print(
+            f"[{self.channel_id}] Recv FAILED after {max_retries + 1} attempts: key={final_key}"
+        )
         return b""
 
     def SetRecvTimeout(self, timeout_ms: int) -> None:
@@ -156,10 +184,7 @@ class HttpChannel(link.IChannel):
         print(f"[{self.channel_id}] WaitLinkTaskFinish")
 
         # Send wait request to server
-        data = {
-            'action': 'wait_link_task_finish',
-            'channel_id': self.channel_id
-        }
+        data = {'action': 'wait_link_task_finish', 'channel_id': self.channel_id}
         self._send_request('/control', data)
 
     def Abort(self) -> None:
@@ -167,10 +192,7 @@ class HttpChannel(link.IChannel):
         print(f"[{self.channel_id}] Abort")
 
         # Send abort request to server
-        data = {
-            'action': 'abort',
-            'channel_id': self.channel_id
-        }
+        data = {'action': 'abort', 'channel_id': self.channel_id}
         self._send_request('/control', data)
 
     def SetThrottleWindowSize(self, size: int) -> None:
