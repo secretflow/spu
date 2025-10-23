@@ -62,7 +62,7 @@ single_version_override(
     version = "27.3",
 )
 
-bazel_dep(name = "pybind11_bazel", version = "2.13.6")
+bazel_dep(name = "pybind11_bazel", version = "3.0.0")
 bazel_dep(name = "rules_cuda", version = "0.2.3")
 bazel_dep(name = "rules_python", version = "1.2.0")
 

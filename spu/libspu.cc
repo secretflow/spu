@@ -135,7 +135,8 @@ void BindLink(py::module& m) {
               SPU Link Library
                   )pbdoc";
 
-  py::class_<IChannel, std::shared_ptr<IChannel>, PyChannel>(m, "IChannel")
+  // bind with py::smart_holder
+  py::classh<IChannel, PyChannel>(m, "IChannel")
       .def(py::init<>())
       .def("send_async",
            static_cast<void (IChannel::*)(const std::string&, yacl::Buffer)>(

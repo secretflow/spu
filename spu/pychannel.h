@@ -17,7 +17,8 @@
 #include "pybind11/pybind11.h"
 #include "yacl/link/transport/channel.h"
 
-class PyChannel : public yacl::link::transport::IChannel {
+class PyChannel : public yacl::link::transport::IChannel,
+                  public pybind11::trampoline_self_life_support {
  public:
   using yacl::link::transport::IChannel::IChannel;
 
