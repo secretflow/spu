@@ -18,11 +18,11 @@
 
 namespace spu::kernel::hlo {
 
-std::vector<Value> groupby_agg(SPUContext* ctx,
-                               absl::Span<spu::Value const> keys,
-                               absl::Span<spu::Value const> payloads,
-                               AggFunc agg_func, absl::Span<int64_t> valid_bits,
-                               const GroupByAggOptions& options) {
+std::vector<Value> GroupByAgg(SPUContext* ctx,
+                              absl::Span<spu::Value const> keys,
+                              absl::Span<spu::Value const> payloads,
+                              AggFunc agg_func, absl::Span<int64_t> valid_bits,
+                              const GroupByAggOptions& options) {
   // normal sanity checks
   // TODO(zjj): support more valid_bits hint after radix sort supporting.
   SPU_ENFORCE(valid_bits.size() <= 1);
@@ -49,6 +49,14 @@ std::vector<Value> groupby_agg(SPUContext* ctx,
 
     SPU_ENFORCE(keys[0].numel() == payloads[0].numel(),
                 "Keys and payloads shape mismatched");
+  }
+  // empty
+  if (keys[0].numel() == 0) {
+    std::vector<Value> rets;
+    rets.reserve(keys.size() + payloads.size());
+    rets.insert(rets.end(), keys.begin(), keys.end());
+    rets.insert(rets.end(), payloads.begin(), payloads.end());
+    return rets;
   }
 
   // TODO(zjj): only support the private groupby sum for now.

@@ -14,6 +14,7 @@
 
 #include "libspu/kernel/hal/group_by_agg.h"
 
+#include "libspu/core/trace.h"
 #include "libspu/kernel/hal/permute.h"
 #include "libspu/kernel/hal/polymorphic.h"
 #include "libspu/kernel/hal/prot_wrapper.h"
@@ -75,6 +76,8 @@ void _inplace_merge_keys_and_payloads(std::vector<Value> &keys,
 std::vector<Value> private_groupby_sum_1d(
     SPUContext *ctx, absl::Span<spu::Value const> keys,
     absl::Span<spu::Value const> payloads) {
+  SPU_TRACE_HAL_DISP(ctx, keys.size(), payloads.size());
+
   // TODO(zjj): add key merge scheme for private/public keys and payloads.
   SPU_ENFORCE(keys[0].isPrivate() && payloads[0].isPrivate(),
               "keys and payloads should be private");

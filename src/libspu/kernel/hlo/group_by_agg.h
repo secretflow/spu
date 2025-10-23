@@ -43,11 +43,13 @@ enum class OutputFormat {
 struct GroupByAggOptions {
   // if true, then the valid bits also cover the bits of payloads
   bool valid_bits_include_payloads = false;
-  // if true, fill the rest of keys or payloads with dummy values
-  // the dummy value will be set to 1000 0000 ... 0000 which is not used under
-  // the encoding scheme of SPU
-  bool key_fill_with_dummy = false;
-  bool payload_fill_with_dummy = false;
+
+  /// Here are two ways to extract the valid results:
+  ///   1. using a valid bit mask to indicate the valid positions
+  ///   2. user can find the valid results by themselves
+  ///
+  // if true, return a flag vector indicating whether each output key is valid
+  bool return_valid_flag = false;
   // if true, only output the aggregated payloads
   // you can set this to true when you can generate the keys locally
   bool drop_keys = false;
@@ -66,10 +68,10 @@ enum class AggFunc {
 
 // TODO(zjj): add unsigned hint after implementing unsigned optimization of sort
 // Note: we only support 1d keys and payloads now.
-std::vector<Value> groupby_agg(SPUContext* ctx,
-                               absl::Span<spu::Value const> keys,
-                               absl::Span<spu::Value const> payloads,
-                               AggFunc agg_func, absl::Span<int64_t> valid_bits,
-                               const GroupByAggOptions& options);
+std::vector<Value> GroupByAgg(SPUContext* ctx,
+                              absl::Span<spu::Value const> keys,
+                              absl::Span<spu::Value const> payloads,
+                              AggFunc agg_func, absl::Span<int64_t> valid_bits,
+                              const GroupByAggOptions& options = {});
 
 }  // namespace spu::kernel::hlo
