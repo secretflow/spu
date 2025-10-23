@@ -65,7 +65,7 @@ Value _circular_right_shift_1d(SPUContext *ctx, const Value &input) {
 
 // Warning: after this call, payloads can not be used anymore
 void _inplace_merge_keys_and_payloads(std::vector<Value> &keys,
-                                      const std::vector<Value> &&payloads) {
+                                      std::vector<Value> &&payloads) {
   keys.reserve(keys.size() + payloads.size());
   keys.insert(keys.end(), std::make_move_iterator(payloads.begin()),
               std::make_move_iterator(payloads.end()));
