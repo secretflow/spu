@@ -314,3 +314,23 @@ spu_cc_library(
         ":ring",
     ],
 )
+
+spu_cc_library(
+    name = "group_by_agg",
+    srcs = ["group_by_agg.cc"],
+    hdrs = ["group_by_agg.h"],
+    deps = [
+        ":permute",
+    ],
+)
+
+spu_cc_test(
+    name = "group_by_agg_test",
+    srcs = ["group_by_agg_test.cc"],
+    deps = [
+        ":group_by_agg",
+        ":type_cast",
+        "//libspu/kernel:test_util",
+        "//libspu/mpc/utils:simulate",
+    ],
+)

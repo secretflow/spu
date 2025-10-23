@@ -32,7 +32,7 @@ SPUContext makeSPUContext(
 
 Value makeValue(SPUContext* ctx, PtBufferView init,
                 Visibility vtype = VIS_PUBLIC, DataType dtype = DT_INVALID,
-                const Shape& shape = {});
+                const Shape& shape = {}, int64_t owner = -1);
 
 template <typename T>
 auto xt_random(const std::vector<size_t>& shape, double min = -100,
@@ -105,5 +105,48 @@ xt::xarray<T> evalUnaryOp(Visibility in_vtype, UnaryOp* op, PtBufferView in) {
 
   return hal::dump_public_as<T>(&ctx, b);
 }
+
+/// Some profile utils
+// nearly copied from device/api.cc
+///
+void printProfileData(SPUContext* sctx);
+
+struct CommunicationStats {
+  size_t send_bytes = 0;
+  size_t recv_bytes = 0;
+  size_t send_actions = 0;
+  size_t recv_actions = 0;
+
+  void reset(const std::shared_ptr<yacl::link::Context>& lctx) {
+    if (!lctx) {
+      return;
+    }
+    send_actions = lctx->GetStats()->sent_actions;
+    recv_actions = lctx->GetStats()->recv_actions;
+    send_bytes = lctx->GetStats()->sent_bytes;
+    recv_bytes = lctx->GetStats()->recv_bytes;
+  }
+
+  void diff(const std::shared_ptr<yacl::link::Context>& lctx) {
+    if (!lctx) {
+      return;
+    }
+    send_bytes = lctx->GetStats()->sent_bytes - send_bytes;
+    recv_bytes = lctx->GetStats()->recv_bytes - recv_bytes;
+    send_actions = lctx->GetStats()->sent_actions - send_actions;
+    recv_actions = lctx->GetStats()->recv_actions - recv_actions;
+  }
+
+  void print_link_comm_stats(const std::shared_ptr<yacl::link::Context>& lctx,
+                             uint64_t print_rank = 0) const {
+    if (lctx->Rank() != print_rank) {
+      return;
+    }
+    SPDLOG_INFO(
+        "Link details: rank {}, total send bytes {}, recv bytes {}, send "
+        "actions {}, recv actions {}",
+        print_rank, send_bytes, recv_bytes, send_actions, recv_actions);
+  }
+};
 
 }  // namespace spu::kernel::test
