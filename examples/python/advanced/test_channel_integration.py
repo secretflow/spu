@@ -5,7 +5,7 @@ Test script: Verify Python class implementing IChannel and passing to C++
 
 import spu.libspu.link as link
 import spu.libspu as spu
-from typing import Dict, Optional
+from typing import Dict
 
 print(dir(link))
 print(spu.__file__)
