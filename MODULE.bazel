@@ -37,12 +37,7 @@ local_path_override(
 )
 
 bazel_dep(name = "psi", version = "0.6.0.dev250922")
-bazel_dep(name = "yacl", version = "0.4.5b10-nightly-20250110")
-git_override(
-    module_name = "yacl",
-    remote = "https://github.com/secretflow/yacl.git",
-    commit = "a8af9f85816139f62712e29f0e5421da6f7f1e32",
-)
+bazel_dep(name = "yacl", version = "0.4.5b12-nightly-20251024")
 
 bazel_dep(name = "grpc", version = "1.66.0.bcr.4")
 
