@@ -32,7 +32,7 @@ namespace spu::kernel::hal {
 //  result:  [1, 2, 3, x, x] , payload: [5, 1, 9, x, x] (x means don't care)
 //
 // Steps:
-// 1. Compute k_g = [1,1,2,3,4] , the group marks e = [0,1,1,0,1] (locally)
+// 1. Compute k_g = [1,1,2,3,3] , the group marks e = [0,1,1,0,1] (locally)
 // 2. Compute v_g = [2,3,1,4,5] (need one `inv_perm_xv`, x relying on the
 // visibility of payloads)
 // 3. Compute w_g = prefix_sum(v_g) = [2,5,6,10,15] (locally)
