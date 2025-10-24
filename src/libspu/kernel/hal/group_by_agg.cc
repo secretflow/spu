@@ -89,7 +89,7 @@ std::vector<Value> private_groupby_sum_1d(
   auto output_order_keys =
       apply_inv_permute_1d(ctx, sorted_keys, group_mark_perm);
 
-  // inv_perm_sv called here
+  // inv_perm_xv called here, x relies on the visibility of payloads
   auto permuted_payloads = apply_inv_permute_1d(ctx, payloads, private_perm);
 
   std::vector<Value> prefix_sum_payloads;
@@ -100,7 +100,7 @@ std::vector<Value> private_groupby_sum_1d(
   for (uint64_t i = 0; i < permuted_payloads.size(); ++i) {
     auto w = associative_scan(hal::add, ctx, permuted_payloads[i]);
     auto x = hal::_mux(ctx, group_marks, w, zero);
-    // inv_perm_sv called here
+    // inv_perm_xv called here
     //
     // multiple calls of inv_perm_sv(value) = single call of
     // inv_perm_sv(vector[value]), so we just do it in the loop
