@@ -36,10 +36,10 @@ namespace spu::kernel::hal {
 // 2. Compute v_g = [2,3,1,4,5] (need one `inv_perm_xv`, x relying on the
 // visibility of payloads)
 // 3. Compute w_g = prefix_sum(v_g) = [2,5,6,10,15] (locally)
-// 4. Compute x = mux(group_marks, w_g, 0) = [0,5,6,0,15] (locally)
+// 4. Compute x = mul(group_marks, w_g) = [0,5,6,0,15] (mul_ss here)
 // 5. Sort e descending (locally) and permute x accordingly (need one
 // `inv_perm_xv`), i.e. y = [5,6,15,0,0]
-// 6. Compute s = y - [0,5,6,15,0] = [5,1,9,x,x]
+// 6. Compute s =  y - right_shift(y)  = y - [0,5,6,15,0] = [5,1,9,x,x]
 //
 // Note: As the keys are private, the caller can extract the output keys and
 // valid groupby payloads by itself

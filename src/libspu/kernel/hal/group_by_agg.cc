@@ -96,10 +96,9 @@ std::vector<Value> private_groupby_sum_1d(
   prefix_sum_payloads.reserve(payloads.size());
 
   // use zero to mark the temporay dummy value
-  auto zero = hal::zeros(ctx, payloads[0].dtype(), payloads[0].shape());
   for (uint64_t i = 0; i < permuted_payloads.size(); ++i) {
     auto w = associative_scan(hal::add, ctx, permuted_payloads[i]);
-    auto x = hal::_mux(ctx, group_marks, w, zero);
+    auto x = hal::_mul(ctx, group_marks, w);
     // inv_perm_xv called here
     //
     // multiple calls of inv_perm_sv(value) = single call of
