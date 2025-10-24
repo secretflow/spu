@@ -36,8 +36,9 @@ local_path_override(
     path = "src",
 )
 
-bazel_dep(name = "psi", version = "0.6.0.dev250507")
-bazel_dep(name = "yacl", version = "0.4.5b10-nightly-20250110")
+bazel_dep(name = "psi", version = "0.6.0.dev250922")
+bazel_dep(name = "yacl", version = "0.4.5b12-nightly-20251024")
+
 bazel_dep(name = "grpc", version = "1.66.0.bcr.4")
 
 # pin grpc@1.66.0.bcr.4
@@ -56,7 +57,7 @@ single_version_override(
     version = "27.3",
 )
 
-bazel_dep(name = "pybind11_bazel", version = "2.13.6")
+bazel_dep(name = "pybind11_bazel", version = "3.0.0")
 bazel_dep(name = "rules_cuda", version = "0.2.3")
 bazel_dep(name = "rules_python", version = "1.2.0")
 
