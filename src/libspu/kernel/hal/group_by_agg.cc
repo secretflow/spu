@@ -78,22 +78,6 @@ std::vector<Value> private_groupby_sum_1d(
     absl::Span<spu::Value const> payloads) {
   SPU_TRACE_HAL_DISP(ctx, keys.size(), payloads.size());
 
-  // TODO(zjj): add key merge scheme for private/public keys and payloads.
-  SPU_ENFORCE(keys[0].isPrivate() && payloads[0].isPrivate(),
-              "keys and payloads should be private");
-  SPU_ENFORCE(_get_owner(keys[0]) != _get_owner(payloads[0]),
-              "keys and payloads should not have the same owner");
-  SPU_ENFORCE(std::all_of(keys.begin(), keys.end(),
-                          [&keys](const spu::Value &v) {
-                            return _has_same_owner(v, keys[0]);
-                          }),
-              "keys owner mismatched");
-  SPU_ENFORCE(std::all_of(payloads.begin(), payloads.end(),
-                          [&payloads](const spu::Value &v) {
-                            return _has_same_owner(v, payloads[0]);
-                          }),
-              "payloads owner mismatched");
-
   auto private_perm = gen_inv_perm_1d(ctx, keys, SortDirection::Ascending);
   auto sorted_keys = apply_inv_permute_1d(ctx, keys, private_perm);
   auto group_marks =

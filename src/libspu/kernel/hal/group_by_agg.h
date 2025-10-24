@@ -26,11 +26,9 @@ namespace spu::kernel::hal {
 
 // A quick path for groupby sum, when:
 //   1. all keys are private and have the same owner
-//   2. all payloads are private and have the same owner
-//   3. keys and payloads have different owners
 //
-// Note: indeed, this function can be extended to support public/private
-// mixed keys and payloads, but we have not implemented it yet.
+// Warning: we skip the sanity checks here, which should be done by the caller
+// if the visibility requirements are not met, the performance may be degraded.
 std::vector<Value> private_groupby_sum_1d(
     SPUContext *ctx, absl::Span<spu::Value const> keys,
     absl::Span<spu::Value const> payloads);

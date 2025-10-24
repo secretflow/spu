@@ -90,8 +90,8 @@ INSTANTIATE_TEST_SUITE_P(
     testing::Combine(testing::Values(3),
                      testing::Values(FieldType::FM32, FieldType::FM64),
                      testing::Values(ProtocolKind::SEMI2K, ProtocolKind::ABY3),
-                     testing::Values(VisType::VisPriv0),
-                     testing::Values(VisType::VisPriv1)),
+                     testing::ValuesIn(kVisTypes),
+                     testing::ValuesIn(kVisTypes)),
     [](const testing::TestParamInfo<SingleKeyGroupBySumTest::ParamType> &p) {
       return fmt::format("{}x{}x{}x{}x{}", std::get<0>(p.param),
                          std::get<1>(p.param), std::get<2>(p.param),
@@ -107,6 +107,11 @@ TEST_P(SingleKeyGroupBySumTest, Basic) {
   const VisType payload_vis = std::get<4>(GetParam());
 
   const AggFunc agg_func = AggFunc::Sum;
+
+  // Skip test if key is secret now.
+  if (key_vis == VisType::VisSec) {
+    return;
+  }
 
   mpc::utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>
                                     &lctx) {

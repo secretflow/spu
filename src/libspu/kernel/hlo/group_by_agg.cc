@@ -18,6 +18,33 @@
 
 namespace spu::kernel::hlo {
 
+namespace {
+
+inline int64_t _get_owner(const Value& x) {
+  return x.storage_type().as<Private>()->owner();
+}
+
+bool _all_pub_or_pri_with_same_owner(absl::Span<spu::Value const> values) {
+  bool flag = true;
+
+  int64_t pri_rank = -1;
+  for (const auto& v : values) {
+    if (v.isPrivate()) {
+      if (pri_rank == -1) {
+        pri_rank = _get_owner(v);
+      } else if (pri_rank != _get_owner(v)) {
+        flag = false;
+        break;
+      }
+    } else if (v.isSecret()) {
+      flag = false;
+      break;
+    }
+  }
+  return flag;
+}
+}  // namespace
+
 std::vector<Value> GroupByAgg(SPUContext* ctx,
                               absl::Span<spu::Value const> keys,
                               absl::Span<spu::Value const> payloads,
@@ -49,6 +76,17 @@ std::vector<Value> GroupByAgg(SPUContext* ctx,
 
     SPU_ENFORCE(keys[0].numel() == payloads[0].numel(),
                 "Keys and payloads shape mismatched");
+
+    SPU_ENFORCE(std::all_of(keys.begin(), keys.end(),
+                            [&keys](const spu::Value& v) {
+                              return v.vtype() == keys[0].vtype();
+                            }),
+                "Keys visibility mismatched");
+    SPU_ENFORCE(std::all_of(payloads.begin(), payloads.end(),
+                            [&payloads](const spu::Value& v) {
+                              return v.vtype() == payloads[0].vtype();
+                            }),
+                "Payloads visibility mismatched");
   }
   // empty
   if (keys[0].numel() == 0) {
@@ -60,10 +98,14 @@ std::vector<Value> GroupByAgg(SPUContext* ctx,
   }
 
   // TODO(zjj): only support the private groupby sum for now.
+  // maybe we should implement a switch function to dispatch different
+  // groupby-agg implementations.
   switch (agg_func) {
     case AggFunc::Sum:
       if ((options.mode != GroupByAggMode::PrefixSumMode) &&
           (options.output_format == OutputFormat::OutputOrder)) {
+        SPU_ENFORCE(_all_pub_or_pri_with_same_owner(keys),
+                    "keys should be all public or private with the same owner");
         return hal::private_groupby_sum_1d(ctx, keys, payloads);
       } else {
         SPU_THROW(

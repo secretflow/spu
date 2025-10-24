@@ -68,6 +68,8 @@ enum class AggFunc {
 
 // TODO(zjj): add unsigned hint after implementing unsigned optimization of sort
 // Note: we only support 1d keys and payloads now.
+// To simplify the implementation, we require all keys/payloads to have the same
+// visibility.
 std::vector<Value> GroupByAgg(SPUContext* ctx,
                               absl::Span<spu::Value const> keys,
                               absl::Span<spu::Value const> payloads,
