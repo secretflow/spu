@@ -89,4 +89,6 @@ std::vector<spu::Value> apply_permute_1d(SPUContext *ctx,
                                          absl::Span<const spu::Value> inputs,
                                          const spu::Value &perm);
 
+spu::Value gen_inv_perm_1d(SPUContext *ctx, absl::Span<spu::Value const> inputs,
+                           SortDirection direction, int64_t valid_bits = -1);
 }  // namespace spu::kernel::hal

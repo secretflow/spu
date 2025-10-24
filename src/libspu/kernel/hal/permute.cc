@@ -1858,4 +1858,10 @@ std::vector<spu::Value> apply_permute_1d(SPUContext *ctx,
   return internal::_apply_perm(ctx, inputs, perm);
 }
 
+spu::Value gen_inv_perm_1d(SPUContext *ctx, absl::Span<spu::Value const> inputs,
+                           SortDirection direction, int64_t valid_bits) {
+  return internal::gen_inv_perm(ctx, inputs, direction, inputs.size(),
+                                valid_bits);
+}
+
 }  // namespace spu::kernel::hal
