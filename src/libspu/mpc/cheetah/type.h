@@ -58,7 +58,7 @@ class PShrTy : public TypeImpl<PShrTy, RingTy, Secret, PShare> {
  public:
   using Base::Base;
   static std::string_view getStaticId() { return "cheetah.PShr"; }
-  explicit PShrTy() { field_ = FieldType::FM64; }
+  explicit PShrTy(FieldType field = FieldType::FM64) { field_ = field; }
 };
 
 void registerTypes();

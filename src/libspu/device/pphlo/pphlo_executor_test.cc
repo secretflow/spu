@@ -2785,7 +2785,6 @@ func.func @main(%arg0: tensor<20xi32>) -> (tensor<20xi32>, tensor<20xi32>) {
   r.verifyOutput(expected_ret1.data(), 1);
 }
 
-// FIXME(zjj): revert ABY3, SEMI2K
 INSTANTIATE_TEST_SUITE_P(
     ExecutorTestInstances, ExecutorTest,
     testing::Combine(testing::Values(3, 2),
@@ -2797,15 +2796,14 @@ INSTANTIATE_TEST_SUITE_P(
     });
 
 // NOTE(junfeng): ABY3 is 3pc only.
-// INSTANTIATE_TEST_SUITE_P(
-//     ExecutorTestABY3Instances, ExecutorTest,
-//     testing::Combine(testing::Values(3),
-//                      testing::Values(FieldType::FM64, FieldType::FM128),
-//                      testing::Values(ProtocolKind::ABY3)),
-//     [](const testing::TestParamInfo<ExecutorTest::ParamType> &p) {
-//       return fmt::format("{}x{}x{}", std::get<0>(p.param),
-//       std::get<1>(p.param),
-//                          std::get<2>(p.param));
-//     });
+INSTANTIATE_TEST_SUITE_P(
+    ExecutorTestABY3Instances, ExecutorTest,
+    testing::Combine(testing::Values(3),
+                     testing::Values(FieldType::FM64, FieldType::FM128),
+                     testing::Values(ProtocolKind::ABY3)),
+    [](const testing::TestParamInfo<ExecutorTest::ParamType> &p) {
+      return fmt::format("{}x{}x{}", std::get<0>(p.param), std::get<1>(p.param),
+                         std::get<2>(p.param));
+    });
 
 }  // namespace spu::device::pphlo::test

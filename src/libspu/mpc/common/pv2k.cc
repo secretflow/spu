@@ -692,7 +692,12 @@ class BitrevV : public BitrevKernel {
 };
 
 namespace {
-inline FieldType _get_field_from_n(size_t n) {
+inline FieldType _get_field_from_n(SPUContext* ctx, size_t n) {
+  const auto protocol = ctx->config().protocol;
+  // only semi2k support flexible field selection now
+  if (protocol != ProtocolKind::SEMI2K) {
+    return FieldType::FT_INVALID;
+  }
   if (n <= (static_cast<uint64_t>(1) << 8)) {
     return FieldType::FM8;
   } else if (n <= (static_cast<uint64_t>(1) << 16)) {
@@ -713,10 +718,13 @@ class GenInvPermP : public GenInvPermKernel {
 
   ce::CExpr comm() const override { return ce::Const(0); }
 
-  NdArrayRef proc(KernelEvalContext*, const NdArrayRef& in,
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
                   bool is_ascending) const override {
     const auto field = in.eltype().as<Ring2k>()->field();
-    const auto perm_field = _get_field_from_n(in.numel());
+    auto perm_field = _get_field_from_n(ctx->sctx(), in.numel());
+    if (perm_field == FT_INVALID) {
+      perm_field = field;
+    }
 
     NdArrayRef out(makeType<Pub2kTy>(perm_field), in.shape());
 
@@ -753,14 +761,16 @@ class GenInvPermV : public GenInvPermKernel {
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
                   bool is_ascending) const override {
+    auto perm_field = _get_field_from_n(ctx->sctx(), in.numel());
+    const auto field = in.eltype().as<Ring2k>()->field();
+    if (perm_field == FT_INVALID) {
+      perm_field = field;
+    }
     if (isOwner(ctx, in.eltype())) {
-      const auto perm_field = _get_field_from_n(in.numel());
-
       NdArrayRef out(
           makeType<Priv2kTy>(perm_field, in.eltype().as<Priv2kTy>()->owner()),
           in.shape());
       auto numel = in.numel();
-      const auto field = in.eltype().as<Ring2k>()->field();
 
       DISPATCH_ALL_FIELDS(perm_field, [&]() {
         using P = std::make_unsigned_t<ring2k_t>;
@@ -781,7 +791,6 @@ class GenInvPermV : public GenInvPermKernel {
 
       return out;
     } else {
-      const auto perm_field = _get_field_from_n(in.numel());
       return makeConstantArrayRef(
           makeType<Priv2kTy>(perm_field, in.eltype().as<Priv2kTy>()->owner()),
           in.shape());
@@ -801,11 +810,6 @@ class InvPermPP : public PermKernel {
     NdArrayRef z(x.eltype(), x.shape());
     const auto field = x.eltype().as<Ring2k>()->field();
     const auto perm_field = y.eltype().as<Ring2k>()->field();
-
-    SPU_ENFORCE(perm_field == _get_field_from_n(x.numel()),
-                "Invalid permutation field {}, should be {}",
-                magic_enum::enum_name(perm_field),
-                magic_enum::enum_name(_get_field_from_n(x.numel())));
 
     DISPATCH_ALL_FIELDS(perm_field, [&]() {
       using P = std::make_unsigned_t<ring2k_t>;
@@ -834,11 +838,6 @@ class InvPermVV : public PermKernel {
                   const NdArrayRef& y) const override {
     const auto field = x.eltype().as<Ring2k>()->field();
     const auto perm_field = y.eltype().as<Ring2k>()->field();
-
-    SPU_ENFORCE(perm_field == _get_field_from_n(x.numel()),
-                "Invalid permutation field {}, should be {}",
-                magic_enum::enum_name(perm_field),
-                magic_enum::enum_name(_get_field_from_n(x.numel())));
 
     if (isOwner(ctx, x.eltype())) {
       NdArrayRef z(x.eltype(), x.shape());
@@ -874,10 +873,6 @@ class PermPP : public PermKernel {
     NdArrayRef z(x.eltype(), x.shape());
     const auto field = x.eltype().as<Ring2k>()->field();
     const auto perm_field = y.eltype().as<Ring2k>()->field();
-    SPU_ENFORCE(perm_field == _get_field_from_n(x.numel()),
-                "Invalid permutation field {}, should be {}",
-                magic_enum::enum_name(perm_field),
-                magic_enum::enum_name(_get_field_from_n(x.numel())));
 
     DISPATCH_ALL_FIELDS(perm_field, [&]() {
       using P = std::make_unsigned_t<ring2k_t>;
@@ -907,10 +902,6 @@ class PermVV : public PermKernel {
                   const NdArrayRef& y) const override {
     const auto field = x.eltype().as<Ring2k>()->field();
     const auto perm_field = y.eltype().as<Ring2k>()->field();
-    SPU_ENFORCE(perm_field == _get_field_from_n(x.numel()),
-                "Invalid permutation field {}, should be {}",
-                magic_enum::enum_name(perm_field),
-                magic_enum::enum_name(_get_field_from_n(x.numel())));
 
     if (isOwner(ctx, x.eltype())) {
       NdArrayRef z(x.eltype(), x.shape());
@@ -954,7 +945,11 @@ class MergeKeysP : public MergeKeysKernel {
                 "Inputs should belong to the same field");
 
     const auto numel = inputs[0].numel();
-    const auto perm_field = _get_field_from_n(numel);
+    auto perm_field = _get_field_from_n(ctx->sctx(), numel);
+    if (perm_field == FT_INVALID) {
+      perm_field = field;
+    }
+
     NdArrayRef out(makeType<Pub2kTy>(perm_field), inputs[0].shape());
 
     DISPATCH_ALL_FIELDS(perm_field, [&]() {
@@ -998,11 +993,14 @@ class MergeKeysV : public MergeKeysKernel {
                                       inputs[0].eltype().as<Ring2k>()->field());
                             }),
                 "Inputs should belong to the same owner");
+    const auto field = inputs[0].eltype().as<Ring2k>()->field();
+    const auto numel = inputs[0].numel();
+    auto perm_field = _get_field_from_n(ctx->sctx(), numel);
+    if (perm_field == FT_INVALID) {
+      perm_field = field;
+    }
 
     if (isOwner(ctx, inputs[0].eltype())) {
-      const auto field = inputs[0].eltype().as<Ring2k>()->field();
-      const auto numel = inputs[0].numel();
-      const auto perm_field = _get_field_from_n(numel);
       NdArrayRef out(
           makeType<Priv2kTy>(perm_field,
                              inputs[0].eltype().as<Priv2kTy>()->owner()),
@@ -1030,7 +1028,6 @@ class MergeKeysV : public MergeKeysKernel {
 
       return out;
     } else {
-      const auto perm_field = _get_field_from_n(inputs[0].numel());
       return makeConstantArrayRef(
           makeType<Priv2kTy>(perm_field,
                              inputs[0].eltype().as<Priv2kTy>()->owner()),

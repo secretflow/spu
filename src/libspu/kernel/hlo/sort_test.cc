@@ -36,7 +36,6 @@ std::ostream &operator<<(std::ostream &os,
   return os;
 }
 
-// FIXME(zjj): revert ABY3 and Cheetah
 namespace spu::kernel::hlo {
 
 TEST(SortTest, Simple) {
@@ -698,7 +697,7 @@ INSTANTIATE_TEST_SUITE_P(
     SimpleSort3PCTestInstances, SimpleSortTest,
     testing::Combine(testing::Values(3),
                      testing::Values(FieldType::FM32, FieldType::FM64),
-                     testing::Values(ProtocolKind::SEMI2K),
+                     testing::Values(ProtocolKind::SEMI2K, ABY3),
                      testing::Values(RuntimeConfig::SORT_DEFAULT,
                                      RuntimeConfig::SORT_RADIX,
                                      RuntimeConfig::SORT_QUICK,

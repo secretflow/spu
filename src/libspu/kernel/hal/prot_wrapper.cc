@@ -264,6 +264,9 @@ MAP_OPTIONAL_PERM_OP(inv_perm_sv);
 Value _rand_perm_s(SPUContext* ctx, const Shape& shape, FieldType perm_field) {
   SPU_TRACE_HAL_DISP(ctx, shape, perm_field);
   SPU_ENFORCE(shape.ndim() == 1, "shape should be 1-d");
+  if (perm_field == FieldType::FT_INVALID) {
+    perm_field = FieldType::FM64;
+  }
   auto ret = mpc::rand_perm_s(ctx, shape, perm_field);
   SPU_ENFORCE(ret.has_value(), "rand_perm_s api not implemented");
   return ret.value();

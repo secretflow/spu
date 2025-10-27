@@ -113,7 +113,7 @@ class PShrTy : public TypeImpl<PShrTy, RingTy, Secret, PShare> {
   using Base::Base;
   static std::string_view getStaticId() { return "aby3.PShr"; }
 
-  explicit PShrTy() { field_ = FieldType::FM64; }
+  explicit PShrTy(FieldType field = FieldType::FM64) { field_ = field; }
 
   size_t size() const override { return SizeOf(GetStorageType(field_)) * 2; }
 };

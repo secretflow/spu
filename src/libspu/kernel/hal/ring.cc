@@ -734,6 +734,11 @@ Value _oramread(SPUContext* ctx, const Value& x, const Value& y,
 Value _ring_cast_down(SPUContext* ctx, const Value& x, FieldType to) {
   SPU_TRACE_HAL_LEAF(ctx, x, to);
 
+  // only support semi2k ring cast down
+  if (ctx->config().protocol != ProtocolKind::SEMI2K) {
+    return x;
+  }
+
   if (x.isPublic()) {
     return _ring_cast_down_p(ctx, x, to);
   } else if (x.isSecret()) {

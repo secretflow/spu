@@ -158,7 +158,7 @@ NdArrayRef SecureInvPerm(KernelEvalContext* ctx, NdArrayRef& x,
 ///
 NdArrayRef RandPermM::proc(KernelEvalContext* ctx, const Shape& shape,
                            FieldType perm_field) const {
-  NdArrayRef out(makeType<PShrTy>(), shape);
+  NdArrayRef out(makeType<PShrTy>(perm_field), shape);
 
   auto* prg_state = ctx->getState<PrgState>();
   const auto perm_vector = prg_state->genPrivPerm(out.numel());

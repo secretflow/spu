@@ -36,7 +36,13 @@ namespace spu::kernel::hal {
 
 namespace internal {
 
-inline FieldType _get_field_from_n(size_t n) {
+inline FieldType _get_field_from_n(SPUContext *ctx, size_t n) {
+  const auto protocol = ctx->config().protocol;
+  // only semi2k support flexible field selection now
+  if (protocol != ProtocolKind::SEMI2K) {
+    return FieldType::FT_INVALID;
+  }
+
   if (n <= (static_cast<uint64_t>(1) << 8)) {
     return FieldType::FM8;
   } else if (n <= (static_cast<uint64_t>(1) << 16)) {
@@ -971,7 +977,7 @@ std::vector<spu::Value> _bit_decompose(SPUContext *ctx, const spu::Value &x,
                      : x_bshare.storage_type().as<BShare>()->nbits();
   _hint_nbits(x_bshare, nbits);
   if (ctx->hasKernel("b2a_disassemble")) {
-    const auto perm_field = internal::_get_field_from_n(x.numel());
+    const auto perm_field = internal::_get_field_from_n(ctx, x.numel());
     auto ret = dynDispatch<std::vector<spu::Value>>(ctx, "b2a_disassemble",
                                                     x_bshare, perm_field);
     return ret;
@@ -999,7 +1005,7 @@ std::vector<spu::Value> _gen_bv_vector(SPUContext *ctx,
                                        SortDirection direction,
                                        int64_t valid_bits) {
   std::vector<spu::Value> ret;
-  const auto perm_field = internal::_get_field_from_n(keys[0].numel());
+  const auto perm_field = internal::_get_field_from_n(ctx, keys[0].numel());
   const auto k1 = _constant(ctx, 1U, keys[0].shape(), perm_field);
 
   // keys[0] is the most significant key
@@ -1029,16 +1035,12 @@ std::vector<spu::Value> _gen_bv_vector(SPUContext *ctx,
 // Generate shared inverse permutation by key
 spu::Value _gen_inv_perm_s(SPUContext *ctx, absl::Span<spu::Value const> keys,
                            SortDirection direction, int64_t valid_bits) {
-  const auto perm_field = internal::_get_field_from_n(keys[0].numel());
+  const auto perm_field = internal::_get_field_from_n(ctx, keys[0].numel());
 
   // 1. generate bit decomposition vector of keys
   std::vector<spu::Value> bv = _gen_bv_vector(ctx, keys, direction, valid_bits);
   size_t bv_size = bv.size();
   SPU_ENFORCE_GT(bv_size, 0U);
-
-  SPU_ENFORCE(bv[0].storage_type().as<Ring2k>()->field() == perm_field,
-              "all bvs should be in field={}, got {}", perm_field,
-              bv[0].storage_type().as<Ring2k>()->field());
 
   // quick path for one or two valid bits
   if (bv_size == 1) {
@@ -1089,7 +1091,7 @@ spu::Value _gen_inv_perm_s(SPUContext *ctx, const spu::Value &key,
 std::vector<spu::Value> _apply_inv_perm_ss(SPUContext *ctx,
                                            absl::Span<spu::Value const> x,
                                            const spu::Value &perm) {
-  const auto perm_field = internal::_get_field_from_n(perm.numel());
+  const auto perm_field = internal::_get_field_from_n(ctx, perm.numel());
   // 1. <SP> = secure shuffle <perm>
   auto shuffle_perm = hal::_rand_perm_s(ctx, x[0].shape(), perm_field);
   auto sp = hal::_perm_ss(ctx, hal::_ring_cast_down(ctx, perm, perm_field),
@@ -1131,7 +1133,7 @@ spu::Value _apply_inv_perm_ss(SPUContext *ctx, const spu::Value &x,
 std::vector<spu::Value> _apply_perm_ss(SPUContext *ctx,
                                        absl::Span<spu::Value const> x,
                                        const Value &perm) {
-  const auto perm_field = internal::_get_field_from_n(perm.numel());
+  const auto perm_field = internal::_get_field_from_n(ctx, perm.numel());
   // 1. <SP> = secure shuffle <perm>
   auto shuffle_perm = hal::_rand_perm_s(ctx, x[0].shape(), perm_field);
   auto sp = hal::_perm_ss(ctx, hal::_ring_cast_down(ctx, perm, perm_field),
@@ -1223,7 +1225,7 @@ spu::Value _gen_inv_perm(SPUContext *ctx, const Value &in, bool is_ascending,
 
 spu::Value _apply_inv_perm_sv(SPUContext *ctx, const Value &in,
                               const Value &perm) {
-  const auto perm_field = internal::_get_field_from_n(perm.numel());
+  const auto perm_field = internal::_get_field_from_n(ctx, perm.numel());
   if (ctx->hasKernel("inv_perm_av")) {
     return hal::_inv_perm_sv(ctx, in,
                              hal::_ring_cast_down(ctx, perm, perm_field));
@@ -1252,7 +1254,7 @@ std::vector<Value> _apply_inv_perm_sv(SPUContext *ctx,
 #define MAP_APPLY_PERM_OP(NAME)                                             \
   spu::Value _apply##NAME(SPUContext *ctx, const Value &in,                 \
                           const Value &perm) {                              \
-    const auto perm_field = internal::_get_field_from_n(perm.numel());      \
+    const auto perm_field = internal::_get_field_from_n(ctx, perm.numel()); \
     return hal::NAME(ctx, in, hal::_ring_cast_down(ctx, perm, perm_field)); \
   }                                                                         \
                                                                             \
@@ -1372,12 +1374,12 @@ DataType _get_dtype_from_n(int64_t n) {
 // Given a permutation, generate its inverse permutation
 // ret[perm[i]] = i
 spu::Value _inverse(SPUContext *ctx, const Value &perm) {
-  const auto perm_field = internal::_get_field_from_n(perm.numel());
+  const auto perm_field = internal::_get_field_from_n(ctx, perm.numel());
   const auto running_field = perm.storage_type().as<Ring2k>()->field();
   const auto dt = _get_dtype_from_n(perm.numel());
 
   auto used_perm = perm;
-  if (perm_field != running_field) {
+  if (perm_field != running_field && perm_field != FT_INVALID) {
     SPU_ENFORCE(SizeOf(perm_field) <= SizeOf(running_field),
                 "cannot convert field {} to {}", running_field, perm_field);
     used_perm = _ring_cast_down(ctx, perm, perm_field);

@@ -125,7 +125,7 @@ Value _rand_s(SPUContext* ctx, const Shape& shape, DataType dtype);
 
 // FIXME: temporary API, formalize later
 Value _rand_perm_s(SPUContext* ctx, const Shape& shape,
-                   FieldType perm_field = FieldType::FM64);
+                   FieldType perm_field = FieldType::FT_INVALID);
 Value _perm_ss(SPUContext* ctx, const Value& x, const Value& perm);
 Value _perm_sp(SPUContext* ctx, const Value& x, const Value& perm);
 Value _perm_pp(SPUContext* ctx, const Value& x, const Value& perm);
