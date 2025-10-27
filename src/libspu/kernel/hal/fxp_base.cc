@@ -189,7 +189,7 @@ Value div_goldschmidt_general(SPUContext* ctx, const Value& a, const Value& b,
   const size_t num_fxp_bits = ctx->getFxpBits();
 
   // TODO: add bits hint for a2b
-  auto b_abs_bshr = _prefer_b_bits(ctx, b_abs, 2 * num_fxp_bits);
+  auto b_abs_bshr = _prefer_b_bits(ctx, b_abs, -1);
   auto b_msb = detail::highestOneBit(ctx, b_abs_bshr);
 
   // factor = 2^{f-m} = 2^{-m} * 2^f, the fixed point repr of 2^{-m}
