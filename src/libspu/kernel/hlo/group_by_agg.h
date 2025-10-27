@@ -70,6 +70,7 @@ enum class AggFunc {
 // Note: we only support 1d keys and payloads now.
 // To simplify the implementation, we require all keys/payloads to have the same
 // visibility.
+// we may support several agg_func later.
 std::vector<Value> GroupByAgg(SPUContext* ctx,
                               absl::Span<spu::Value const> keys,
                               absl::Span<spu::Value const> payloads,
