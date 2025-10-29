@@ -156,6 +156,14 @@ class MergeKeysKernel : public Kernel {
                           bool is_ascending) const = 0;
 };
 
+class GroupMarkKernel : public Kernel {
+ public:
+  void evaluate(KernelEvalContext* ctx) const override;
+  virtual NdArrayRef proc(KernelEvalContext* ctx,
+                          absl::Span<NdArrayRef const> inputs,
+                          bool end_group_mark) const = 0;
+};
+
 class BroadcastKernel : public Kernel {
  public:
   void evaluate(KernelEvalContext* ctx) const override;

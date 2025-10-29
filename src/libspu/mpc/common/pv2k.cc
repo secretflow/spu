@@ -942,6 +942,122 @@ class MergeKeysV : public MergeKeysKernel {
   }
 };
 
+// For GroupMark, there are two types:
+//
+// if end_group_mark = true, 1 means end of the group while 0 means other
+// conditions. [0,0,1,1,0,1]
+// else, 0 means start of the group while 1 means other conditions.
+//
+// e.g. key = [1,1,1,2,3,3]
+//   end_group_mark = true  => [0,0,1,1,0,1]
+//   end_group_mark = false => [0,1,1,0,0,1]
+class GroupMarkP : public GroupMarkKernel {
+ public:
+  static constexpr const char* kBindName() { return "group_mark_p"; }
+
+  ce::CExpr latency() const override { return ce::Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
+
+  NdArrayRef proc(KernelEvalContext* ctx, absl::Span<NdArrayRef const> inputs,
+                  bool end_group_mark) const override {
+    SPU_ENFORCE(!inputs.empty(), "Inputs should not be empty");
+    SPU_ENFORCE(std::all_of(inputs.begin(), inputs.end(),
+                            [](const NdArrayRef& v) {
+                              return v.eltype().isa<Pub2kTy>();
+                            }),
+                "Inputs should be Public type");
+
+    const auto field = inputs[0].eltype().as<Ring2k>()->field();
+    NdArrayRef out(makeType<Pub2kTy>(field), inputs[0].shape());
+    const auto numel = inputs[0].numel();
+
+    DISPATCH_ALL_FIELDS(field, [&]() {
+      using T = ring2k_t;
+      NdArrayView<T> _out(out);
+
+      std::vector<NdArrayView<T>> _inputs;
+      _inputs.reserve(inputs.size());
+      for (const auto& in : inputs) {
+        _inputs.emplace_back(in);
+      }
+
+      if (end_group_mark) {
+        _out[numel - 1] = 1;
+        for (int64_t i = numel - 2; i >= 0; --i) {
+          bool is_equal = std::all_of(
+              _inputs.begin(), _inputs.end(),
+              [i](const NdArrayView<T>& x) { return x[i] == x[i + 1]; });
+          _out[i] = is_equal ? 0 : 1;
+        }
+      } else {
+        _out[0] = 0;
+        for (int64_t i = 1; i < numel; ++i) {
+          bool is_equal = std::all_of(
+              _inputs.begin(), _inputs.end(),
+              [i](const NdArrayView<T>& x) { return x[i] == x[i - 1]; });
+          _out[i] = is_equal ? 1 : 0;
+        }
+      }
+    });
+    return out;
+  }
+};
+
+class GroupMarkV : public GroupMarkKernel {
+ public:
+  static constexpr const char* kBindName() { return "group_mark_v"; }
+
+  ce::CExpr latency() const override { return ce::Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
+
+  NdArrayRef proc(KernelEvalContext* ctx, absl::Span<NdArrayRef const> inputs,
+                  bool end_group_mark) const override {
+    SPU_ENFORCE(!inputs.empty(), "Inputs should not be empty");
+    SPU_ENFORCE(std::all_of(inputs.begin(), inputs.end(),
+                            [&inputs](const NdArrayRef& v) {
+                              return getOwner(v) == getOwner(inputs[0]);
+                            }),
+                "Inputs should belong to the same owner");
+    if (isOwner(ctx, inputs[0].eltype())) {
+      NdArrayRef out(inputs[0].eltype(), inputs[0].shape());
+      const auto field = inputs[0].eltype().as<Ring2k>()->field();
+      const auto numel = inputs[0].numel();
+
+      DISPATCH_ALL_FIELDS(field, [&]() {
+        using T = ring2k_t;
+        NdArrayView<T> _out(out);
+
+        std::vector<NdArrayView<T>> _inputs;
+        _inputs.reserve(inputs.size());
+        for (const auto& in : inputs) {
+          _inputs.emplace_back(in);
+        }
+
+        if (end_group_mark) {
+          _out[numel - 1] = 1;
+          for (int64_t i = numel - 2; i >= 0; --i) {
+            bool is_equal = std::all_of(
+                _inputs.begin(), _inputs.end(),
+                [i](const NdArrayView<T>& x) { return x[i] == x[i + 1]; });
+            _out[i] = is_equal ? 0 : 1;
+          }
+        } else {
+          _out[0] = 0;
+          for (int64_t i = 1; i < numel; ++i) {
+            bool is_equal = std::all_of(
+                _inputs.begin(), _inputs.end(),
+                [i](const NdArrayView<T>& x) { return x[i] == x[i - 1]; });
+            _out[i] = is_equal ? 1 : 0;
+          }
+        }
+      });
+      return out;
+    } else {
+      return makeConstantArrayRef(inputs[0].eltype(), inputs[0].shape());
+    }
+  }
+};
+
 }  // namespace
 
 void Priv2kTy::fromString(std::string_view str) {
@@ -966,24 +1082,25 @@ void regPV2kTypes() {
 }
 
 void regPV2kKernels(Object* obj) {
-  obj->regKernel<V2P, P2V,                               //
-                 MakeP, RandP,                           //
-                 NegateV, NegateP,                       //
-                 EqualVVV, EqualVP, EqualPP,             //
-                 AddVVV, AddVP, AddPP,                   //
-                 MulVVV, MulVP, MulPP,                   //
-                 MatMulVVV, MatMulVP, MatMulPP,          //
-                 AndVVV, AndVP, AndPP,                   //
-                 XorVVV, XorVP, XorPP,                   //
-                 LShiftV, LShiftP,                       //
-                 RShiftV, RShiftP,                       //
-                 BitrevV, BitrevP,                       //
-                 ARShiftV, ARShiftP,                     //
-                 MsbV, MsbP,                             //
-                 TruncV, TruncP,                         //
-                 GenInvPermV, GenInvPermP,               //
-                 InvPermPP, InvPermVV,                   //
-                 PermPP, PermVV, MergeKeysP, MergeKeysV  //
+  obj->regKernel<V2P, P2V,                                //
+                 MakeP, RandP,                            //
+                 NegateV, NegateP,                        //
+                 EqualVVV, EqualVP, EqualPP,              //
+                 AddVVV, AddVP, AddPP,                    //
+                 MulVVV, MulVP, MulPP,                    //
+                 MatMulVVV, MatMulVP, MatMulPP,           //
+                 AndVVV, AndVP, AndPP,                    //
+                 XorVVV, XorVP, XorPP,                    //
+                 LShiftV, LShiftP,                        //
+                 RShiftV, RShiftP,                        //
+                 BitrevV, BitrevP,                        //
+                 ARShiftV, ARShiftP,                      //
+                 MsbV, MsbP,                              //
+                 TruncV, TruncP,                          //
+                 GenInvPermV, GenInvPermP,                //
+                 InvPermPP, InvPermVV,                    //
+                 PermPP, PermVV, MergeKeysP, MergeKeysV,  //
+                 GroupMarkP, GroupMarkV                   //
                  >();
 }
 
