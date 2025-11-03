@@ -16,6 +16,9 @@ compile_commands.json
 .clangd
 Pipfile
 
+# codeql artifacts
+_codeql_detected_source_root
+
 # python-package
 /dist
 *.egg-info
