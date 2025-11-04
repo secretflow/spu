@@ -57,7 +57,7 @@ single_version_override(
 )
 
 bazel_dep(name = "pybind11_bazel", version = "2.13.6")
-bazel_dep(name = "rules_cuda", version = "0.2.3")
+bazel_dep(name = "rules_cuda", version = "0.2.5")
 bazel_dep(name = "rules_python", version = "1.2.0")
 
 # For experimental/squirrel and examples/cpp
