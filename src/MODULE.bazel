@@ -25,16 +25,15 @@ module(
     compatibility_level = 1,
 )
 
-bazel_dep(name = "grpc", version = "1.66.0.bcr.4")
-bazel_dep(name = "protobuf", version = "27.3")
+bazel_dep(name = "grpc", version = "1.74.1")
 single_version_override(
-    module_name = "protobuf",
+    module_name = "grpc",
     patch_strip = 1,
-    patches = [
-        "//bazel/patches:protobuf-xla.patch",
-    ],
-    version = "27.3",
+    patches = ["//bazel/patches:grpc.patch"],
+    version = "1.74.1",
 )
+
+bazel_dep(name = "protobuf", version = "32.1")
 
 bazel_dep(name = "bazel_skylib", version = "1.7.1")
 bazel_dep(name = "apple_support", version = "1.24.3")
@@ -53,11 +52,23 @@ single_version_override(
 bazel_dep(name = "bazel_features", version = "1.20.0")
 bazel_dep(name = "platforms", version = "0.0.8")
 bazel_dep(name = "rules_proto", version = "6.0.0-rc1")
-bazel_dep(name = "spdlog", version = "1.14.1")
-bazel_dep(name = "fmt", version = "11.0.2")
-bazel_dep(name = "abseil-cpp", version = "20240722.0")
+bazel_dep(name = "spdlog", version = "1.15.2")
+bazel_dep(name = "fmt", version = "11.1.4")
+bazel_dep(name = "abseil-cpp", version = "20250814.1")
+
 bazel_dep(name = "rules_python", version = "0.29.0")
 bazel_dep(name = "magic_enum", version = "0.9.6")
+bazel_dep(name = "openssl", version = "3.3.2.bcr.1")
+single_version_override(
+    module_name = "openssl",
+    version = "3.3.2.bcr.1",
+)
+
+bazel_dep(name = "boringssl", version = "0.20250818.0")
+single_version_override(
+    module_name = "boringssl",
+    version = "0.20250818.0",
+)
 
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
 python.toolchain(
@@ -73,10 +84,20 @@ bazel_dep(name = "leveldb", version = "1.23")
 bazel_dep(name = "eigen", version = "3.4.90-20230801-66e8f3")
 bazel_dep(name = "emp-tool", version = "0.2.5.bcr.1")
 bazel_dep(name = "emp-ot", version = "0.2.4.bcr.1")
-bazel_dep(name = "brpc", version = "1.11.0-20241212-282bc90")
+bazel_dep(name = "brpc", version = "1.15.0")
+git_override(
+    module_name = "brpc",
+    commit = "50a9075de62f1d2b825b902acbfecfddb3d9f314",
+    patch_strip = 1,
+    patches = [
+        "//bazel/patches:brpc-string_view.patch",
+    ],
+    remote = "https://github.com/apache/brpc.git",
+)
+
 bazel_dep(name = "seal", version = "4.1.1")
 bazel_dep(name = "cutlass", version = "3.5.1")
-bazel_dep(name = "llvm-raw", version = "20240809.0-35f55f5")
+bazel_dep(name = "llvm-raw", version = "20251010.0-3a6b818")
 bazel_dep(name = "sse2neon", version = "1.7.0-20240330-8df2f48")
 
 llvm = use_extension("@llvm-raw//utils/bazel:extension.bzl", "llvm")
@@ -89,8 +110,8 @@ llvm.configure(
 )
 use_repo(llvm, "llvm-project")
 
-bazel_dep(name = "stablehlo", version = "20240808.0-24d1807")
-bazel_dep(name = "xla", version = "20240814.0-64bdcc5")
+bazel_dep(name = "stablehlo", version = "20251004.0-0a4440a")
+bazel_dep(name = "xla", version = "20251016.0-9f150f6")
 bazel_dep(name = "yacl", version = "0.4.5b10-nightly-20250110")
 
 spu_dependencies = use_extension("//bazel:defs.bzl", "non_module_dependencies")
