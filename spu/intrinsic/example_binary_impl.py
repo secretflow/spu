@@ -20,10 +20,11 @@ import numpy as np
 from jax import dtypes
 from jax.core import ShapedArray
 from jax.extend import core
-from jax.interpreters import ad, batching, mlir, xla
+from jax.interpreters import ad, batching, xla
+from jax.extend.mlir import ir
 
 # from jax.lib import xla_client
-from jaxlib.hlo_helpers import custom_call
+from jax.ffi import ffi_call
 
 
 # Public facing interface
@@ -38,7 +39,7 @@ def example_binary(in1, in2):
 
 
 def _compute_result_shape(shape1, shape2):
-    return np.shape([shape1[0] + shape2[0], shape1[1] + shape2[1]])
+    return [shape1[0] + shape2[0], shape1[1] + shape2[1]]
 
 
 # For JIT compilation we need a function to evaluate the shape and dtype of the
@@ -60,21 +61,22 @@ def _example_binary_abstract(in1, in2):
 def _example_binary_lowering(ctx, in1, in2):
     # The inputs and outputs all have the same shape and memory layout
     # so let's predefine this specification
-    in1_dtype = mlir.ir.RankedTensorType(in1.type)
-    in2_dtype = mlir.ir.RankedTensorType(in2.type)
+    in1_dtype = ir.RankedTensorType(in1.type)
+    in2_dtype = ir.RankedTensorType(in2.type)
 
     result_shape = _compute_result_shape(in1_dtype.shape, in2_dtype.shape)
-    result_type = mlir.ir.RankedTensorType.get(result_shape, in1_dtype.element_type)
+    result_type = ir.RankedTensorType.get(result_shape, in1_dtype.element_type)
 
-    call = custom_call(
+    # Use the new ffi_call API
+    call = ffi_call(
         "example_binary",
         # Output types
-        result_types=[result_type],
-        # The inputs:
-        operands=[in1, in2],
-    )
+        result_shape_dtypes=[result_type],
+        # Vmap method for batching support
+        vmap_method="broadcast_all",
+    )(in1, in2)
 
-    return call.results
+    return call
 
 
 # **********************************
@@ -88,7 +90,7 @@ def _example_binary_jvp(args, tangents):
 
 # ************************************
 # *  SUPPORT FOR BATCHING WITH VMAP  *
-# ************************************
+# **********************************
 
 
 # Our op already supports arbitrary dimensions so the batching rule is quite
@@ -107,7 +109,9 @@ _example_binary_prim.multiple_results = False
 _example_binary_prim.def_impl(partial(xla.apply_primitive, _example_binary_prim))
 _example_binary_prim.def_abstract_eval(_example_binary_abstract)
 
-mlir.register_lowering(_example_binary_prim, _example_binary_lowering)
+# Register the lowering rule
+from jax.interpreters.mlir import register_lowering
+register_lowering(_example_binary_prim, _example_binary_lowering)
 
 # Connect the JVP and batching rules
 ad.primitive_jvps[_example_binary_prim] = _example_binary_jvp
