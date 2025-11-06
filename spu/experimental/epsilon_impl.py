@@ -18,10 +18,11 @@ from functools import partial
 
 import jax.numpy as jnp
 import numpy as np
-from jax._src.core import ShapedArray
+from jax.core import ShapedArray
 from jax.extend import core
-from jax.interpreters import ad, batching, mlir, xla
-from jaxlib.hlo_helpers import custom_call
+from jax.interpreters import ad, batching, xla
+from jax.extend.mlir import ir
+from jax.ffi import ffi_call
 
 
 # Public facing interface
@@ -46,25 +47,25 @@ def _epsilon_lowering(ctx, *args, **kwargs):
 
     if platform == "interpreter":
         # Create proper MLIR type for scalar float32
-        f32_type = mlir.ir.F32Type.get()
-        dtype = mlir.ir.RankedTensorType.get([], f32_type)
-        # For SPU, use custom_call
-        call = custom_call(
+        f32_type = ir.F32Type.get()
+        dtype = ir.RankedTensorType.get([], f32_type)
+        # For SPU, use ffi_call
+        call_result = ffi_call(
             "spu.epsilon",
             # Output types
-            result_types=[dtype],
-            # The inputs:
-            operands=[],
+            result_shape_dtypes=[dtype],
             has_side_effect=True,
-        )
+            # Vmap method for batching support
+            vmap_method="broadcast_all",
+        )()
 
-        return call.results
+        return call_result
     else:
         # For now, return a simple constant implementation
         # This creates a scalar constant with value 2^-18
-        import jax._src.interpreters.mlir as mlir_impl
+        from jax._src.interpreters.mlir import ir_constant
 
-        constant_val = mlir_impl.ir_constant(jnp.array(2**-18, dtype=jnp.float32))
+        constant_val = ir_constant(jnp.array(2**-18, dtype=jnp.float32))
         return [constant_val]
 
 
@@ -77,7 +78,8 @@ _epsilon_prim.def_impl(partial(xla.apply_primitive, _epsilon_prim))
 _epsilon_prim.def_abstract_eval(_epsilon_abstract)
 
 # Register MLIR lowering
-mlir.register_lowering(_epsilon_prim, _epsilon_lowering)
+from jax.interpreters.mlir import register_lowering
+register_lowering(_epsilon_prim, _epsilon_lowering)
 
 
 def _make_epsilon_transpose(ct):
