@@ -1,0 +1,48 @@
+diff --git a/MODULE.bazel b/MODULE.bazel
+index be3a727..6528ebe 100644
+--- a/MODULE.bazel
++++ b/MODULE.bazel
+@@ -26,7 +26,7 @@ use_repo(python, "python_3_12")
+ tools = use_extension("@rules_foreign_cc//foreign_cc:extensions.bzl", "tools")
+ use_repo(
+     tools,
+-    "cmake_3.31.7_toolchains",
++    "cmake_3.23.2_toolchains",
+     "cmake_src",
+     "gettext_runtime",
+     "glib_dev",
+@@ -41,7 +41,7 @@ use_repo(
+ 
+ register_toolchains(
+     "@rules_foreign_cc_framework_toolchains//:all",
+-    "@cmake_3.31.7_toolchains//:all",
++    "@cmake_3.23.2_toolchains//:all",
+     "@ninja_1.12.1_toolchains//:all",
+     "@python_3_12//:all",
+     "@rules_foreign_cc//toolchains:all",
+diff --git a/foreign_cc/extensions.bzl b/foreign_cc/extensions.bzl
+index a027279..5b84a87 100644
+--- a/foreign_cc/extensions.bzl
++++ b/foreign_cc/extensions.bzl
+@@ -3,7 +3,7 @@
+ load("//foreign_cc:repositories.bzl", "rules_foreign_cc_dependencies")
+ load("//toolchains:prebuilt_toolchains.bzl", "prebuilt_toolchains")
+ 
+-_DEFAULT_CMAKE_VERSION = "3.31.7"
++_DEFAULT_CMAKE_VERSION = "3.23.2"
+ _DEFAULT_NINJA_VERSION = "1.12.1"
+ 
+ cmake_toolchain_version = tag_class(attrs = {
+diff --git a/foreign_cc/repositories.bzl b/foreign_cc/repositories.bzl
+index cc6266b..cc87f2a 100644
+--- a/foreign_cc/repositories.bzl
++++ b/foreign_cc/repositories.bzl
+@@ -9,7 +9,7 @@ load("//toolchains:toolchains.bzl", "built_toolchains", "prebuilt_toolchains", "
+ def rules_foreign_cc_dependencies(
+         native_tools_toolchains = [],
+         register_default_tools = True,
+-        cmake_version = "3.31.7",
++        cmake_version = "3.23.2",
+         make_version = "4.4.1",
+         ninja_version = "1.12.1",
+         meson_version = "1.5.1",
