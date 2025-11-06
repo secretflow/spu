@@ -53,6 +53,14 @@ spu_cc_library(
     ],
 )
 
+
+spu_cc_library(
+    name = "simd_batchmm_prot",
+    srcs = ["simd_batchmm_prot.cc"],
+    hdrs = ["simd_batchmm_prot.h"],
+    deps = [":arith_comm"],
+)
+
 spu_cc_library(
     name = "simd_mul_prot",
     srcs = ["simd_mul_prot.cc"],
@@ -115,6 +123,18 @@ spu_cc_test(
     srcs = ["simd_mul_prot_test.cc"],
     deps = [
         ":simd_mul_prot",
+        "//libspu/mpc/utils:ring_ops",
+        "//libspu/mpc/utils:simulate",
+    ],
+)
+
+
+
+spu_cc_test(
+    name = "simd_batchmm_test",
+    srcs = ["simd_batchmm_prot_test.cc"],
+    deps = [
+        ":simd_batchmm_prot",
         "//libspu/mpc/utils:ring_ops",
         "//libspu/mpc/utils:simulate",
     ],
