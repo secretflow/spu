@@ -19,11 +19,11 @@ requires-python = ">=3.10,<3.12"
 dynamic = ["version"]
 
 dependencies = [
-    "numpy<2,>=1.22.0",        # FIXME: for SF compatibility
+    "numpy<2,>=1.22.0",          # FIXME: for SF compatibility
     "cloudpickle>=2.0.0",
     "multiprocess>=0.70.12.2",
     "cachetools>=5.0.0",
-    "jax[cpu]==0.6.2",
+    "jax[cpu]<=0.4.34,>=0.4.16", # FIXME: Jax 0.4.26+ select perf issue
     "termcolor>=2.0.0",
 ]
 
@@ -34,7 +34,7 @@ dev = [
     "protobuf==4.25.8",
     "grpcio==1.56.2",
     "pandas>=1.4.2",
-    "flax==0.10.7",
+    "flax<0.10.0",
     "scikit-learn<1.8.0",
     "tensorflow>=2.12.0", # used in spu/utils/frontend.py
 ]
