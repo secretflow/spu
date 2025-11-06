@@ -37,14 +37,14 @@ def _{%NAME}_lowering(ctx, input):
     dtype = ir.RankedTensorType(input.type)
     
     # Use the new ffi_call API
-    call = ffi_call(
+    call_result = ffi_call(
         "{%NAME}",
         # Output types
         result_shape_dtypes=[dtype],
         # Vmap method for batching support
         vmap_method="broadcast_all",
     )
-    return call
+    return call_result
 
 
 # **********************************

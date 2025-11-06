@@ -51,7 +51,7 @@ def _example_lowering(ctx, input):
     dtype = ir.RankedTensorType(input.type)
 
     # Use the new ffi_call API
-    call = ffi_call(
+    call_result = ffi_call(
         "example",
         # Output types
         result_shape_dtypes=[dtype],
@@ -59,7 +59,7 @@ def _example_lowering(ctx, input):
         vmap_method="broadcast_all",
     )(input)
 
-    return call
+    return call_result
 
 
 # **********************************

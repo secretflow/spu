@@ -68,7 +68,7 @@ def _example_binary_lowering(ctx, in1, in2):
     result_type = ir.RankedTensorType.get(result_shape, in1_dtype.element_type)
 
     # Use the new ffi_call API
-    call = ffi_call(
+    call_result = ffi_call(
         "example_binary",
         # Output types
         result_shape_dtypes=[result_type],
@@ -76,7 +76,7 @@ def _example_binary_lowering(ctx, in1, in2):
         vmap_method="broadcast_all",
     )(in1, in2)
 
-    return call
+    return call_result
 
 
 # **********************************
