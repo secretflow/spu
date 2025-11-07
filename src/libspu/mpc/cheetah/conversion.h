@@ -72,4 +72,35 @@ class RingCastDownA : public RingCastDownKernel {
                   FieldType to_field) const override;
 };
 
+class RingCastUp : public GeneralRingCastUpKernel {
+ public:
+  static constexpr const char* kBindName() { return "ring_cast_up"; }
+  Kind kind() const override { return Kind::Dynamic; }
+
+  // currently, force always be `true`. (Not sure about the false condition.)
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in, size_t bw,
+                  FieldType to_field, SignType sign,  //
+                  bool signed_arith, bool force = true,
+                  bool heuristic = false) const override;
+
+  bool hasLsbError() const override { return false; }
+};
+
+class TruncateReduce : public GeneralRingCastDownKernel {
+ public:
+  static constexpr const char* kBindName() { return "tr_a"; }
+  Kind kind() const override { return Kind::Dynamic; }
+
+  NdArrayRef proc(
+      KernelEvalContext* ctx, const NdArrayRef& in,
+      const NdArrayRef& wrap_s,         //  only useful for exact truncation
+      size_t bits, FieldType to_field,  //
+      bool exact = true) const override;
+
+  // depends on `exact`, can be `Exact` or `Probabilistic`.
+  TruncLsbRounding lsbRounding() const override {
+    return TruncLsbRounding::Exact;
+  }
+};
+
 }  // namespace spu::mpc::cheetah

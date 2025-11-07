@@ -21,6 +21,8 @@ spu_cc_library(
     deps = [
         ":compare_prot",
         ":equal_prot",
+        ":ext_prot",
+        ":truncate_and_reduce_prot",
         ":truncate_prot",
     ],
 )
@@ -72,6 +74,7 @@ spu_cc_test(
     deps = [
         ":truncate_prot",
         "//libspu/mpc/utils:simulate",
+        "@yacl//yacl/utils:elapsed_timer",
     ],
 )
 
@@ -81,5 +84,63 @@ spu_cc_test(
     deps = [
         ":equal_prot",
         "//libspu/mpc/utils:simulate",
+    ],
+)
+
+spu_cc_library(
+    name = "ext_prot",
+    srcs = ["ext_prot.cc"],
+    hdrs = ["ext_prot.h"],
+    deps = [
+        ":compare_prot",
+    ],
+)
+
+spu_cc_test(
+    name = "ext_prot_test",
+    srcs = ["ext_prot_test.cc"],
+    deps = [
+        ":ext_prot",
+        "//libspu/mpc/utils:simulate",
+        "@yacl//yacl/utils:elapsed_timer",
+    ],
+)
+
+spu_cc_library(
+    name = "truncate_and_reduce_prot",
+    srcs = ["truncate_and_reduce_prot.cc"],
+    hdrs = ["truncate_and_reduce_prot.h"],
+    deps = [
+        ":compare_prot",
+    ],
+)
+
+spu_cc_test(
+    name = "truncate_and_reduce_prot_test",
+    srcs = ["truncate_and_reduce_prot_test.cc"],
+    deps = [
+        ":truncate_and_reduce_prot",
+        "//libspu/mpc/utils:simulate",
+        "@yacl//yacl/utils:elapsed_timer",
+    ],
+)
+
+spu_cc_library(
+    name = "mix_mul_prot",
+    srcs = ["mix_mul_prot.cc"],
+    hdrs = ["mix_mul_prot.h"],
+    deps = [
+        ":compare_prot",
+        "//libspu/mpc/cheetah/ot:matrix_transpose",
+    ],
+)
+
+spu_cc_test(
+    name = "mix_mul_prot_test",
+    srcs = ["mix_mul_prot_test.cc"],
+    deps = [
+        ":mix_mul_prot",
+        "//libspu/mpc/utils:simulate",
+        "@yacl//yacl/utils:elapsed_timer",
     ],
 )

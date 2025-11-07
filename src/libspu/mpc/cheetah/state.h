@@ -42,6 +42,9 @@ using OTBinaryFuncWithU8 = std::function<NdArrayRef(
     const NdArrayRef& op0, absl::Span<const uint8_t> op1,
     const std::shared_ptr<BasicOTProtocols>& ot)>;
 
+using OTUnaryFuncForMill = std::function<std::array<NdArrayRef, 2>(
+    const NdArrayRef& x, const std::shared_ptr<BasicOTProtocols>& ot)>;
+
 NdArrayRef TiledDispatchOTFunc(KernelEvalContext* ctx, const NdArrayRef& x,
                                OTUnaryFunc func);
 
@@ -56,6 +59,14 @@ NdArrayRef TiledDispatchOTFunc(KernelEvalContext* ctx, const NdArrayRef& x,
                                absl::Span<const uint8_t> y,
                                OTBinaryFuncWithU8 func);
 
+NdArrayRef TiledDispatchOTFuncForLUT(KernelEvalContext* ctx,
+                                     const NdArrayRef& x, const NdArrayRef& y,
+                                     OTBinaryFunc func);
+
+std::array<NdArrayRef, 2> TiledDispatchOTFuncForMill(KernelEvalContext* ctx,
+                                                     const NdArrayRef& x,
+                                                     OTUnaryFuncForMill func);
+
 class CheetahMulState : public State {
  private:
   mutable std::mutex lock_;
@@ -68,7 +79,7 @@ class CheetahMulState : public State {
   std::shared_ptr<yacl::link::Context> duplx_;
 
   // NOTE(juhou): make sure the lock is obtained
-  void makeSureCacheSize(FieldType, int64_t numel);
+  void makeSureCacheSize(FieldType, int64_t numel, uint32_t msg_width_hint = 0);
 
   explicit CheetahMulState(std::unique_ptr<CheetahMul> mul_prot)
       : mul_prot_(std::move(mul_prot)) {}
@@ -88,7 +99,8 @@ class CheetahMulState : public State {
 
   std::shared_ptr<yacl::link::Context> duplx() { return duplx_; }
 
-  std::array<NdArrayRef, 3> TakeCachedBeaver(FieldType field, int64_t num);
+  std::array<NdArrayRef, 3> TakeCachedBeaver(FieldType field, int64_t num,
+                                             uint32_t msg_width_hint = 0);
 };
 
 class CheetahDotState : public State {

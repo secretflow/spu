@@ -116,6 +116,17 @@ void TruncAKernel::evaluate(KernelEvalContext* ctx) const {
   ctx->pushOutput(WrapValue(z));
 }
 
+void TruncAWithSignedKernel::evaluate(KernelEvalContext* ctx) const {
+  const auto& in = ctx->getParam<Value>(0);
+  size_t bits = ctx->getParam<size_t>(1);
+  SignType sign = ctx->getParam<SignType>(2);
+  bool signed_arith = ctx->getParam<bool>(3);
+
+  auto z = proc(ctx, UnwrapValue(in), bits, sign, signed_arith);
+
+  ctx->pushOutput(WrapValue(z));
+}
+
 void BitSplitKernel::evaluate(KernelEvalContext* ctx) const {
   const auto& in = ctx->getParam<Value>(0);
   size_t stride = ctx->getParam<size_t>(1);
@@ -313,6 +324,81 @@ void RingCastDownKernel::evaluate(KernelEvalContext* ctx) const {
   auto z = proc(ctx, UnwrapValue(in), to_field);
 
   ctx->pushOutput(WrapValue(z));
+}
+
+void LookUpTableKernel::evaluate(KernelEvalContext* ctx) const {
+  const auto& in = ctx->getParam<Value>(0);
+  const auto& table = ctx->getParam<Value>(1);
+  const auto bw = ctx->getParam<size_t>(2);
+  const auto field = ctx->getParam<FieldType>(3);
+
+  SPU_ENFORCE(table.shape().size() == 1, "table should be 1D");
+
+  ctx->pushOutput(
+      WrapValue(proc(ctx, UnwrapValue(in), UnwrapValue(table), bw, field)));
+}
+
+void GeneralRingCastUpKernel::evaluate(KernelEvalContext* ctx) const {
+  const auto& in = ctx->getParam<Value>(0);
+  size_t bw = ctx->getParam<size_t>(1);
+  FieldType to_field = ctx->getParam<FieldType>(2);
+  SignType sign = ctx->getParam<SignType>(3);
+  bool signed_arith = ctx->getParam<bool>(4);
+  bool force = ctx->getParam<bool>(5);
+  bool heuristic = ctx->getParam<bool>(6);
+
+  auto z = proc(ctx, UnwrapValue(in), bw, to_field, sign, signed_arith, force,
+                heuristic);
+
+  ctx->pushOutput(WrapValue(z));
+}
+
+void GeneralRingCastDownKernel::evaluate(KernelEvalContext* ctx) const {
+  const auto& in = ctx->getParam<Value>(0);
+  const auto& wrap_s = ctx->getParam<Value>(1);
+
+  size_t bits = ctx->getParam<size_t>(2);
+  FieldType to_field = ctx->getParam<FieldType>(3);
+
+  bool exact = ctx->getParam<bool>(4);
+  auto z =
+      proc(ctx, UnwrapValue(in), UnwrapValue(wrap_s), bits, to_field, exact);
+  ctx->pushOutput(WrapValue(z));
+}
+
+void MixBitMulKernel::evaluate(KernelEvalContext* ctx) const {
+  const auto& x = ctx->getParam<Value>(0);
+  const auto& y = ctx->getParam<Value>(1);
+
+  SPU_ENFORCE(x.shape() == y.shape(), "shape mismatch {} {}", x.shape(),
+              y.shape());
+
+  const auto& x_sign = ctx->getParam<SignType>(2);
+  const auto& y_sign = ctx->getParam<SignType>(3);
+
+  FieldType to_field = ctx->getParam<FieldType>(4);
+
+  size_t out_bw = ctx->getParam<size_t>(5);
+
+  bool signed_arith = ctx->getParam<bool>(6);
+
+  auto z = proc(ctx, UnwrapValue(x), UnwrapValue(y), x_sign, y_sign, to_field,
+                out_bw, signed_arith);
+
+  ctx->pushOutput(WrapValue(z));
+}
+
+void CmpEqKernel::evaluate(KernelEvalContext* ctx) const {
+  const auto& x = ctx->getParam<Value>(0);
+
+  auto z = proc(ctx, UnwrapValue(x));
+  SPU_ENFORCE(z.size() == 2);
+
+  std::vector<Value> wrapped(z.size());
+  for (size_t idx = 0; idx < z.size(); ++idx) {
+    wrapped[idx] = WrapValue(z[idx]);
+  }
+  ctx->pushOutput(wrapped);
 }
 
 }  // namespace spu::mpc

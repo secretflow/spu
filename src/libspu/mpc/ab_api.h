@@ -49,6 +49,13 @@ OptionalAPI<Value> mul_a1bv(SPUContext* ctx, const Value& x, const Value& y);
 Value lshift_a(SPUContext* ctx, const Value& x, const Sizes& nbits);
 Value trunc_a(SPUContext* ctx, const Value& x, size_t nbits, SignType sign);
 
+// truncation with signed arithmetic
+Value trunc_a2(SPUContext* ctx, const Value& x, size_t nbits, SignType sign,
+               bool signed_arith = true);
+// exact truncation with signed arithmetic
+Value trunc_ae(SPUContext* ctx, const Value& x, size_t nbits, SignType sign,
+               bool signed_arith = true);
+
 Value mmul_ap(SPUContext* ctx, const Value& x, const Value& y);
 Value mmul_aa(SPUContext* ctx, const Value& x, const Value& y);
 OptionalAPI<Value> mmul_av(SPUContext* ctx, const Value& x, const Value& y);

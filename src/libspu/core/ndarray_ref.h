@@ -53,13 +53,16 @@ class NdArrayRef {
   bool use_fast_indexing_{false};
   Stride fast_indexing_stride_{0};
 
+  // indicate fxp_bits for some floating-point based protocol
+  int64_t fxp_bits_{0};
+
  public:
   NdArrayRef() = default;
 
   // full constructor
   explicit NdArrayRef(std::shared_ptr<yacl::Buffer> buf, Type eltype,
                       const Shape& shape, const Strides& strides,
-                      int64_t offset);
+                      int64_t offset, int64_t fxp_bits = 0);
 
   // constructor, view buf as a compact buffer with given shape.
   explicit NdArrayRef(std::shared_ptr<yacl::Buffer> buf, Type eltype,
@@ -85,6 +88,7 @@ class NdArrayRef {
       std::swap(this->offset_, other.offset_);
       std::swap(this->use_fast_indexing_, other.use_fast_indexing_);
       std::swap(this->fast_indexing_stride_, other.fast_indexing_stride_);
+      std::swap(this->fxp_bits_, other.fxp_bits_);
     }
     return *this;
   }
@@ -94,7 +98,8 @@ class NdArrayRef {
 
   bool operator==(const NdArrayRef& other) const {
     return shape_ == other.shape_ && strides_ == other.strides_ &&
-           offset_ == other.offset_ && buf_ == other.buf_;
+           offset_ == other.offset_ && buf_ == other.buf_ &&
+           fxp_bits_ == other.fxp_bits_;
   }
 
   bool operator!=(const NdArrayRef& other) const { return !(*this == other); }
@@ -120,6 +125,10 @@ class NdArrayRef {
   Shape const& shape() const { return shape_; }
 
   int64_t offset() const { return offset_; }
+
+  int64_t fxp_bits() const { return fxp_bits_; }
+
+  void set_fxp_bits(int64_t fxp_bits) { fxp_bits_ = fxp_bits; }
 
   std::shared_ptr<yacl::Buffer> buf() const { return buf_; }
 

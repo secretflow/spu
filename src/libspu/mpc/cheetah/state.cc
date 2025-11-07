@@ -41,7 +41,8 @@ size_t InitOTState(KernelEvalContext* ctx, size_t njobs) {
 }
 }  // namespace
 
-void CheetahMulState::makeSureCacheSize(FieldType field, int64_t numel) {
+void CheetahMulState::makeSureCacheSize(FieldType field, int64_t numel,
+                                        uint32_t msg_width_hint) {
   // NOTE(juhou): make sure the lock is obtained
   SPU_ENFORCE(numel > 0);
   if (field_ != field) {
@@ -56,18 +57,18 @@ void CheetahMulState::makeSureCacheSize(FieldType field, int64_t numel) {
   //  create one batch OLE which then converted to Beavers
   //  Math:
   //   Alice samples rand0 and views it as rand0 = a0||b0
-  //   Bob samples rand1 and views it as rand1 = b1||a0
+  //   Bob samples rand1 and views it as rand1 = b1||a1
   //   The multiplication rand0 * rand1 gives two cross term a0*b1||a1*b0
   //   Then the beaver (a0, b0, c0) and (a1, b1, c1)
   //   where c0 = a0*b0 + <a0*b1> + <a1*b0>
   //         c1 = a1*b1 + <a0*b1> + <a1*b0>
-  mul_prot_->LazyInitKeys(field);
+  mul_prot_->LazyInitKeys(field, msg_width_hint);
   const int rank = mul_prot_->Rank();
   const int64_t ole_sze = mul_prot_->OLEBatchSize();
   const int64_t num_ole = CeilDiv<size_t>(2 * numel, ole_sze);
   const int64_t num_beaver = (num_ole * ole_sze) / 2;
   auto rand = ring_rand(field, {num_ole * ole_sze});
-  auto cross = mul_prot_->MulOLE(rand, rank == 0);
+  auto cross = mul_prot_->MulOLE(rand, rank == 0, msg_width_hint);
 
   NdArrayRef beaver[3];
   NdArrayRef a0b1;
@@ -112,8 +113,8 @@ void CheetahMulState::makeSureCacheSize(FieldType field, int64_t numel) {
   SPU_ENFORCE(cached_sze_ >= numel);
 }
 
-std::array<NdArrayRef, 3> CheetahMulState::TakeCachedBeaver(FieldType field,
-                                                            int64_t numel) {
+std::array<NdArrayRef, 3> CheetahMulState::TakeCachedBeaver(
+    FieldType field, int64_t numel, uint32_t msg_width_hint) {
   SPU_ENFORCE(numel > 0);
   std::unique_lock guard(lock_);
   makeSureCacheSize(field, numel);
@@ -340,6 +341,119 @@ NdArrayRef TiledDispatchOTFunc(KernelEvalContext* ctx, const NdArrayRef& x,
   }
 
   return out;
+}
+
+// y will not be sliced
+NdArrayRef TiledDispatchOTFuncForLUT(KernelEvalContext* ctx,
+                                     const NdArrayRef& x, const NdArrayRef& y,
+                                     OTBinaryFunc func) {
+  const Shape& shape = x.shape();
+  SPU_ENFORCE(shape.numel() > 0);
+
+  // (lazy) init OT
+  int64_t numel = x.numel();
+  int64_t nworker = InitOTState(ctx, numel);
+  int64_t workload = nworker == 0 ? 0 : CeilDiv(numel, nworker);
+
+  if (shape.ndim() != 1) {
+    // TiledDispatchOTFunc over flatten input
+    return TiledDispatchOTFunc(ctx, x.reshape({numel}), y, func)
+        .reshape(x.shape());
+  }
+
+  std::vector<NdArrayRef> outs(nworker);
+  std::vector<std::future<void>> futures;
+
+  int64_t slice_end = 0;
+  for (int64_t wi = 0; wi + 1 < nworker; ++wi) {
+    int64_t slice_bgn = wi * workload;
+    slice_end = std::min(numel, slice_bgn + workload);
+    auto x_slice = x.slice({slice_bgn}, {slice_end}, {1});
+    futures.emplace_back(std::async(
+        [&](int64_t idx, const NdArrayRef& inp0, const NdArrayRef& inp1) {
+          auto ot_instance = ctx->getState<CheetahOTState>()->get(idx);
+          outs[idx] = func(inp0, inp1, ot_instance);
+        },
+        wi, x_slice, y));
+  }
+
+  auto x_slice = x.slice({slice_end}, {numel}, {});
+  auto ot_instance = ctx->getState<CheetahOTState>()->get(nworker - 1);
+  outs[nworker - 1] = func(x_slice, y, ot_instance);
+
+  for (auto&& f : futures) {
+    f.get();
+  }
+
+  NdArrayRef out(outs[0].eltype(), x.shape());
+  int64_t offset = 0;
+
+  for (auto& out_slice : outs) {
+    std::memcpy(out.data<std::byte>() + offset, out_slice.data(),
+                out_slice.numel() * out.elsize());
+    offset += out_slice.numel() * out.elsize();
+  }
+
+  return out;
+}
+
+std::array<NdArrayRef, 2> TiledDispatchOTFuncForMill(KernelEvalContext* ctx,
+                                                     const NdArrayRef& x,
+                                                     OTUnaryFuncForMill func) {
+  const Shape& shape = x.shape();
+  SPU_ENFORCE(shape.numel() > 0);
+  // (lazy) init OT
+  int64_t numel = x.numel();
+  int64_t nworker = InitOTState(ctx, numel);
+  int64_t workload = nworker == 0 ? 0 : CeilDiv(numel, nworker);
+
+  if (shape.ndim() != 1) {
+    // over flatten input then reshape
+    auto ret = TiledDispatchOTFuncForMill(ctx, x.reshape({numel}), func);
+    return {ret[0].reshape(x.shape()), ret[1].reshape(x.shape())};
+  }
+
+  std::vector<std::array<NdArrayRef, 2>> outs(nworker);
+  std::vector<std::future<void>> futures;
+
+  int64_t slice_end = 0;
+  for (int64_t wi = 0; wi + 1 < nworker; ++wi) {
+    int64_t slice_bgn = wi * workload;
+    slice_end = std::min(numel, slice_bgn + workload);
+    auto slice_input = x.slice({slice_bgn}, {slice_end}, {});
+    futures.emplace_back(std::async(
+        [&](int64_t idx, const NdArrayRef& input) {
+          auto ot_instance = ctx->getState<CheetahOTState>()->get(idx);
+          outs[idx] = func(input, ot_instance);
+        },
+        wi, slice_input));
+  }
+
+  auto slice_input = x.slice({slice_end}, {numel}, {1});
+  auto ot_instance = ctx->getState<CheetahOTState>()->get(nworker - 1);
+  outs[nworker - 1] = func(slice_input, ot_instance);
+
+  for (auto&& f : futures) {
+    f.get();
+  }
+
+  NdArrayRef ret0(outs[0][0].eltype(), x.shape());
+  NdArrayRef ret1(outs[0][1].eltype(), x.shape());
+  // msb and eq are the same field
+  SPU_ENFORCE(outs[0][0].elsize() == outs[0][1].elsize());
+
+  int64_t offset = 0;
+
+  for (auto& out_slice : outs) {
+    std::memcpy(ret0.data<std::byte>() + offset, out_slice[0].data(),
+                out_slice[0].numel() * ret0.elsize());
+    std::memcpy(ret1.data<std::byte>() + offset, out_slice[1].data(),
+                out_slice[1].numel() * ret1.elsize());
+
+    offset += out_slice[0].numel() * ret0.elsize();
+  }
+
+  return {ret0, ret1};
 }
 
 }  // namespace spu::mpc::cheetah

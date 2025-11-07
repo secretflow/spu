@@ -63,6 +63,7 @@ spu_cc_library(
         "//libspu/core:vectorize",
         "//libspu/mpc:ab_api",
         "//libspu/mpc:kernel",
+        "//libspu/mpc/cheetah/nonlinear:ext_prot",
         "//libspu/mpc/common:communicator",
     ],
 )
@@ -78,6 +79,10 @@ spu_cc_library(
     deps = [
         ":state",
         ":type",
+        "//libspu/mpc:ab_api",
+        "//libspu/mpc:api",
+        "//libspu/mpc/cheetah/nonlinear:ext_prot",
+        "//libspu/mpc/cheetah/nonlinear:mix_mul_prot",
     ],
 )
 
@@ -109,6 +114,7 @@ spu_cc_test(
     deps = [
         ":protocol",
         "//libspu/mpc:api_test",
+        "@yacl//yacl/utils:elapsed_timer",
     ],
 )
 

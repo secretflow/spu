@@ -388,6 +388,9 @@ struct RuntimeConfig {
   // low probability, which lead to huge calculation error.
   bool trunc_allow_msb_error = false;
 
+  // when doing mix mul, use the naive extend then mul method.
+  bool cheetah_naive_mix_mul = false;
+
   /// System related configurations start.
 
   // Experimental: DO NOT USE

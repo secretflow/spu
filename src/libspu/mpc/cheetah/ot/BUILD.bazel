@@ -64,6 +64,7 @@ spu_cc_test(
     deps = [
         ":ot",
         "//libspu/mpc/utils:simulate",
+        "@yacl//yacl/utils:elapsed_timer",
     ],
 )
 

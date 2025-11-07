@@ -157,12 +157,13 @@ std::pair<bool, Stride> can_use_fast_indexing(const Shape& shape,
 // full constructor
 NdArrayRef::NdArrayRef(std::shared_ptr<yacl::Buffer> buf, Type eltype,
                        const Shape& shape, const Strides& strides,
-                       int64_t offset)
+                       int64_t offset, int64_t fxp_bits)
     : buf_(std::move(buf)),
       eltype_(std::move(eltype)),
       shape_(shape.begin(), shape.end()),
       strides_(strides.begin(), strides.end()),
-      offset_(offset) {
+      offset_(offset),
+      fxp_bits_(fxp_bits) {
   std::tie(use_fast_indexing_, fast_indexing_stride_) =
       can_use_fast_indexing(shape_, strides_);
 }
@@ -191,7 +192,9 @@ NdArrayRef NdArrayRef::as(const Type& new_ty, bool force) const {
   if (!force) {
     SPU_ENFORCE(elsize() == new_ty.size(),
                 "viewed type={} not equal to origin type={}", new_ty, eltype());
-    return NdArrayRef(buf(), new_ty, shape(), strides(), offset());
+    auto ret = NdArrayRef(buf(), new_ty, shape(), strides(), offset());
+    ret.set_fxp_bits(fxp_bits_);
+    return ret;
   }
   // Force view, we need to adjust strides
   auto distance = ((strides().empty() ? 1 : strides().back()) * elsize());
@@ -201,7 +204,10 @@ NdArrayRef NdArrayRef::as(const Type& new_ty, bool force) const {
   std::transform(new_strides.begin(), new_strides.end(), new_strides.begin(),
                  [&](int64_t s) { return (elsize() * s) / new_ty.size(); });
 
-  return NdArrayRef(buf(), new_ty, shape(), new_strides, offset());
+  auto ret = NdArrayRef(buf(), new_ty, shape(), new_strides, offset());
+  ret.set_fxp_bits(fxp_bits_);
+
+  return ret;
 }
 
 NdArrayRef NdArrayRef::clone() const {
@@ -216,6 +222,7 @@ NdArrayRef NdArrayRef::clone() const {
   for (int64_t idx = 0, e = numel(); idx < e; ++idx, ++src_iter) {
     std::memcpy(ret_ptr + idx * elsize, src_iter.getRawPtr(), elsize);
   }
+  res.set_fxp_bits(fxp_bits_);
 
   return res;
 }
@@ -259,7 +266,9 @@ NdArrayRef NdArrayRef::broadcast_to(const Shape& to_shape,
     }
   }
 
-  return NdArrayRef(buf(), eltype(), to_shape, new_strides, offset());
+  auto ret = NdArrayRef(buf(), eltype(), to_shape, new_strides, offset());
+  ret.set_fxp_bits(fxp_bits_);
+  return ret;
 }
 
 NdArrayRef NdArrayRef::reshape(const Shape& to_shape) const {
@@ -273,18 +282,24 @@ NdArrayRef NdArrayRef::reshape(const Shape& to_shape) const {
 
   // Reshape empty is always a noop
   if (to_shape.numel() == 0) {
-    return NdArrayRef(buf(), eltype(), to_shape, makeCompactStrides(to_shape),
-                      offset());
+    auto ret = NdArrayRef(buf(), eltype(), to_shape,
+                          makeCompactStrides(to_shape), offset());
+    ret.set_fxp_bits(fxp_bits_);
+    return ret;
   }
 
   Strides new_strides(to_shape.size(), 0);
   if (attempt_nocopy_reshape(*this, to_shape, new_strides)) {
     // No copy reshape
-    return NdArrayRef(buf(), eltype(), to_shape, new_strides, offset());
+    auto ret = NdArrayRef(buf(), eltype(), to_shape, new_strides, offset());
+    ret.set_fxp_bits(fxp_bits_);
+    return ret;
   }
 
   auto compact_clone = clone();
-  return NdArrayRef(compact_clone.buf(), compact_clone.eltype(), to_shape);
+  auto ret = NdArrayRef(compact_clone.buf(), compact_clone.eltype(), to_shape);
+  ret.set_fxp_bits(fxp_bits_);
+  return ret;
 }
 
 NdArrayRef NdArrayRef::slice(const Index& start_indices,
@@ -314,13 +329,17 @@ NdArrayRef NdArrayRef::slice(const Index& start_indices,
     }
   }
 
-  return NdArrayRef(buf(), eltype(), new_shape, new_strides,
-                    &at(start_indices) - buf()->data<std::byte>());
+  auto ret = NdArrayRef(buf(), eltype(), new_shape, new_strides,
+                        &at(start_indices) - buf()->data<std::byte>());
+  ret.set_fxp_bits(fxp_bits_);
+  return ret;
 }
 
 NdArrayRef NdArrayRef::slice_scalar_at(const Index& indices) const {
-  return NdArrayRef(buf(), eltype(), {}, {},
-                    &at(indices) - buf()->data<std::byte>());
+  auto ret = NdArrayRef(buf(), eltype(), {}, {},
+                        &at(indices) - buf()->data<std::byte>());
+  ret.set_fxp_bits(fxp_bits_);
+  return ret;
 }
 
 NdArrayRef NdArrayRef::transpose() const {
@@ -343,7 +362,9 @@ NdArrayRef NdArrayRef::transpose(const Axes& perm) const {
     ret_strides[i] = strides()[perm[i]];
   }
 
-  return NdArrayRef{buf(), eltype(), ret_shape, ret_strides, offset()};
+  auto ret = NdArrayRef{buf(), eltype(), ret_shape, ret_strides, offset()};
+  ret.set_fxp_bits(fxp_bits_);
+  return ret;
 }
 
 NdArrayRef NdArrayRef::reverse(const Axes& dimensions) const {
@@ -356,8 +377,10 @@ NdArrayRef NdArrayRef::reverse(const Axes& dimensions) const {
     el_offset += strides()[axis] * (shape()[axis] - 1);
   }
 
-  return NdArrayRef(buf(), eltype(), shape(), new_strides,
-                    offset() + el_offset * elsize());
+  auto ret = NdArrayRef(buf(), eltype(), shape(), new_strides,
+                        offset() + el_offset * elsize());
+  ret.set_fxp_bits(fxp_bits_);
+  return ret;
 }
 
 NdArrayRef NdArrayRef::expand(const Shape& to_shape) const {
@@ -377,11 +400,23 @@ NdArrayRef NdArrayRef::expand(const Shape& to_shape) const {
                 copy_size);
     bytes_copied += copy_size;
   }
+
+  ret.set_fxp_bits(fxp_bits_);
   return ret;
 }
 
 NdArrayRef NdArrayRef::concatenate(absl::Span<const NdArrayRef> others,
                                    int64_t axis) const {
+  if (!others.empty()) {
+    const auto f_bits = others[0].fxp_bits();
+    if (!std::all_of(others.begin(), others.end(),
+                     [&f_bits](const NdArrayRef& arr) {
+                       return arr.fxp_bits() == f_bits;
+                     })) {
+      SPU_THROW("fxp bits should be all equal.");
+    }
+  }
+
   Shape result_shape = shape();
   for (const auto& o : others) {
     result_shape[axis] += o.shape()[axis];
@@ -448,6 +483,7 @@ NdArrayRef NdArrayRef::pad(const NdArrayRef& padding_value,
     }
   });
 
+  result.set_fxp_bits(fxp_bits_);
   return result;
 }
 
@@ -467,6 +503,7 @@ NdArrayRef NdArrayRef::linear_gather(const Index& indices) const {
     ++result_iter;
   }
 
+  result.set_fxp_bits(fxp_bits_);
   return result;
 }
 
@@ -476,6 +513,7 @@ NdArrayRef& NdArrayRef::linear_scatter(const NdArrayRef& new_values,
   SPU_ENFORCE(new_values.eltype() == eltype(),
               "new value eltype = {}, expected = {}", new_values.eltype(),
               eltype());
+  SPU_ENFORCE(new_values.fxp_bits() == fxp_bits_);
 
   auto new_values_iter = new_values.cbegin();
 

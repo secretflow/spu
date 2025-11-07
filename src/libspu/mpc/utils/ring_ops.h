@@ -83,6 +83,9 @@ NdArrayRef ring_sum(absl::Span<NdArrayRef const> arrs);
 bool ring_all_equal(const NdArrayRef& x, const NdArrayRef& y,
                     size_t abs_err = 0);
 
+bool ring_all_equal_val(const NdArrayRef& x, const NdArrayRef& y,
+                        bool signed_arith = false, size_t abs_err = 0);
+
 // Note: here we use uint8_t instead of bool because most of the time the casted
 // boolean will participate in arithmetic computation in the future.
 std::vector<uint8_t> ring_cast_boolean(const NdArrayRef& x);
@@ -106,5 +109,12 @@ void ring_set_value(NdArrayRef& in, const T& value) {
   NdArrayView<T> _in(in);
   pforeach(0, in.numel(), [&](int64_t idx) { _in[idx] = value; });
 };
+
+// preserve [0, bw) bits
+NdArrayRef ring_reduce(const NdArrayRef& x, size_t bw);
+void ring_reduce_(NdArrayRef& x, size_t bw);
+
+// debug only
+NdArrayRef ring_iota(FieldType field, const Shape& shape, int64_t start);
 
 }  // namespace spu::mpc

@@ -15,6 +15,8 @@
 #include "libspu/mpc/cheetah/ot/basic_ot_prot.h"
 
 #include "ot_util.h"
+#include "yacl/crypto/rand/rand.h"
+#include "yacl/crypto/tools/prg.h"
 
 #include "libspu/mpc/cheetah/ot/emp/ferret.h"
 #include "libspu/mpc/cheetah/ot/ot_util.h"
@@ -220,23 +222,30 @@ NdArrayRef BasicOTProtocols::B2ASingleBitWithSize(const NdArrayRef &inp,
   const auto *share_t = inp.eltype().as<BShrTy>();
   SPU_ENFORCE(share_t->nbits() == 1, "Support for 1bit boolean only");
   auto field = inp.eltype().as<Ring2k>()->field();
-  SPU_ENFORCE(bit_width > 1 && bit_width < (int)(8 * SizeOf(field)),
+  SPU_ENFORCE(bit_width >= 1 && bit_width <= (int)(8 * SizeOf(field)),
               "bit_width={} is invalid", bit_width);
   return SingleB2A(inp, bit_width);
 }
+
+namespace {
+size_t getNumBits(const NdArrayRef &in) {
+  return in.eltype().as<BShrTy>()->nbits();
+}
+}  // namespace
 
 NdArrayRef BasicOTProtocols::BitwiseAnd(const NdArrayRef &lhs,
                                         const NdArrayRef &rhs) {
   SPU_ENFORCE_EQ(lhs.shape(), rhs.shape());
 
   auto field = lhs.eltype().as<Ring2k>()->field();
-  const auto *shareType = lhs.eltype().as<BShrTy>();
-  auto [a, b, c] = AndTriple(field, lhs.shape(), shareType->nbits());
+  const size_t out_nbits = std::min(getNumBits(lhs), getNumBits(rhs));
+  const auto ty = makeType<BShrTy>(field, out_nbits);
+
+  auto [a, b, c] = AndTriple(field, lhs.shape(), out_nbits);
 
   // open x^a, y^b
-  int nbits = shareType->nbits();
-  auto xa = OpenShare(ring_xor(lhs, a), ReduceOp::XOR, nbits, conn_);
-  auto yb = OpenShare(ring_xor(rhs, b), ReduceOp::XOR, nbits, conn_);
+  auto xa = OpenShare(ring_xor(lhs, a), ReduceOp::XOR, out_nbits, conn_);
+  auto yb = OpenShare(ring_xor(rhs, b), ReduceOp::XOR, out_nbits, conn_);
 
   // Zi = Ci ^ ((X ^ A) & Bi) ^ ((Y ^ B) & Ai) ^ <(X ^ A) & (Y ^ B)>
   auto z = ring_xor(ring_xor(ring_and(xa, b), ring_and(yb, a)), c);
@@ -244,7 +253,7 @@ NdArrayRef BasicOTProtocols::BitwiseAnd(const NdArrayRef &lhs,
     ring_xor_(z, ring_and(xa, yb));
   }
 
-  return z.as(lhs.eltype());
+  return z.as(ty);
 }
 
 std::array<NdArrayRef, 2> BasicOTProtocols::CorrelatedBitwiseAnd(
@@ -462,6 +471,84 @@ NdArrayRef BasicOTProtocols::Multiplexer(const NdArrayRef &msg,
   });
 }
 
+NdArrayRef BasicOTProtocols::Multiplexer(const NdArrayRef &msg,
+                                         const NdArrayRef &select,
+                                         const MultiplexMeta &meta) {
+  SPU_ENFORCE_EQ(msg.shape(), select.shape());
+  const auto *shareType = select.eltype().as<BShrTy>();
+  SPU_ENFORCE_EQ(shareType->nbits(), 1UL);
+
+  const auto src_field = msg.eltype().as<Ring2k>()->field();
+  const int64_t numel = msg.numel();
+
+  // sanity check
+  {
+    SPU_ENFORCE(meta.src_width >= meta.dst_width);
+    SPU_ENFORCE(src_field == meta.src_ring);
+    SPU_ENFORCE(static_cast<size_t>(meta.src_width) <= SizeOf(src_field) * 8);
+    SPU_ENFORCE(static_cast<size_t>(meta.dst_width) <=
+                SizeOf(meta.dst_ring) * 8);
+  }
+
+  auto corr_data = ring_zeros(meta.dst_ring, msg.shape());
+  auto sent = ring_zeros(meta.dst_ring, msg.shape());
+  auto recv = ring_zeros(meta.dst_ring, msg.shape());
+  std::vector<uint8_t> sel(numel);
+
+  // Idea:
+  // Compute (x0 + x1) * (b0 ^ b1)
+  // = x0b0 + b1(x0 - 2x0b0) +
+  //   x1b1 + b0(x1 - 2x1b1)
+  // so just two calls of COT is enough
+  DISPATCH_ALL_FIELDS(meta.src_ring, [&]() {
+    using src_el_t = std::make_unsigned_t<ring2k_t>;
+    const auto src_mask = makeBitsMask<src_el_t>(meta.src_width);
+
+    NdArrayView<src_el_t> _msg(msg);
+
+    DISPATCH_ALL_FIELDS(shareType->field(), [&]() {
+      using sel_el_t = std::make_unsigned_t<ring2k_t>;
+      NdArrayView<sel_el_t> _sel(select);
+
+      DISPATCH_ALL_FIELDS(meta.dst_ring, [&]() {
+        using dest_el_t = std::make_unsigned_t<ring2k_t>;
+        const auto mask = makeBitsMask<dest_el_t>(meta.dst_width);
+
+        auto _corr = absl::MakeSpan(&corr_data.at<dest_el_t>(0), numel);
+        auto _sent = absl::MakeSpan(&sent.at<dest_el_t>(0), numel);
+        auto _recv = absl::MakeSpan(&recv.at<dest_el_t>(0), numel);
+
+        // cast to other rings
+        pforeach(0, numel, [&](int64_t idx) {
+          sel[idx] = static_cast<uint8_t>(_sel[idx] & 1);
+          _corr[idx] = static_cast<dest_el_t>(
+              ((_msg[idx] & src_mask) * (1 - 2 * _sel[idx])) & mask);
+        });
+
+        if (Rank() == 0) {
+          ferret_sender_->SendCAMCC(_corr, _sent);
+          ferret_sender_->Flush();
+          ferret_receiver_->RecvCAMCC(absl::MakeSpan(sel), _recv);
+        } else {
+          ferret_receiver_->RecvCAMCC(absl::MakeSpan(sel), _recv);
+          ferret_sender_->SendCAMCC(_corr, _sent);
+          ferret_sender_->Flush();
+        }
+
+        pforeach(0, numel, [&](int64_t idx) {  //
+          _recv[idx] = static_cast<dest_el_t>(
+              (_msg[idx] * static_cast<src_el_t>(sel[idx]) - _sent[idx] +
+               _recv[idx]) &
+              mask);
+        });
+      });
+    });
+  });
+
+  recv.set_fxp_bits(meta.dst_width);
+  return recv;
+}
+
 NdArrayRef BasicOTProtocols::PrivateMulxRecv(const NdArrayRef &msg,
                                              const NdArrayRef &select) {
   SPU_ENFORCE_EQ(msg.shape(), select.shape());
@@ -527,6 +614,79 @@ NdArrayRef BasicOTProtocols::PrivateMulxSend(const NdArrayRef &msg) {
   });
 
   return recv.as(msg.eltype());
+}
+
+NdArrayRef BasicOTProtocols::LookUpTable(const NdArrayRef &index,
+                                         const NdArrayRef &table, size_t bw,
+                                         FieldType to_field) {
+  SPU_ENFORCE(bw > 0);
+  SPU_ENFORCE(table.shape().size() == 1, "table should be 1-D array");
+
+  const auto dst_field =
+      to_field == FieldType::FT_INVALID ? FixGetProperFiled(bw) : to_field;
+  SPU_ENFORCE(bw <= SizeOf(dst_field) * 8, "Setting too small to_field.");
+
+  const auto field = index.eltype().as<Ring2k>()->field();
+
+  const auto n = index.numel();
+  // 1-of-N OT
+  const auto N = table.numel();
+  SPU_ENFORCE((N & (N - 1)) == 0, "Table size must be power of 2.");
+  SPU_ENFORCE(N <= 256);
+
+  const auto N_bits = Log2Ceil(N);
+
+  NdArrayRef out = ring_zeros(dst_field, index.shape());
+
+  DISPATCH_ALL_FIELDS(field, [&]() {
+    using ind_u2k = std::make_unsigned_t<ring2k_t>;
+    NdArrayView<const ind_u2k> _index(index);
+    // we force N <= 256, so N_mask <= 255
+    const auto N_mask = makeBitsMask<ind_u2k>(N_bits);
+
+    DISPATCH_ALL_FIELDS(dst_field, [&]() {
+      using dst_u2k = std::make_unsigned_t<ring2k_t>;
+      auto _out = absl::MakeSpan(&out.at<dst_u2k>(0), n);
+      const auto out_mask = makeBitsMask<dst_u2k>(bw);
+
+      DISPATCH_ALL_FIELDS(table.eltype().as<Ring2k>()->field(), [&]() {
+        using table_u2k = std::make_unsigned_t<ring2k_t>;
+        NdArrayView<const table_u2k> _table(table);
+
+        // TODO: maybe move to kernel, then switch the rank occasionally
+        // generate permuted table
+        if (Rank() == 0) {
+          std::vector<dst_u2k> permuted_table(n * N);
+
+          yacl::crypto::Prg<dst_u2k> prg(yacl::crypto::SecureRandSeed());
+          prg.Fill(_out);
+
+          pforeach(0, n, [&](int64_t i) {
+            _out[i] &= out_mask;
+            for (int64_t j = 0; j < N; ++j) {
+              const auto idx = (_index[i] + j) & N_mask;
+              permuted_table[i * N + j] =
+                  (static_cast<dst_u2k>(_table[idx]) - _out[i]) & out_mask;
+            }
+          });
+
+          // do 1-out-of-N OT
+          ferret_sender_->SendCMCC(absl::MakeSpan(permuted_table), N, bw);
+          ferret_sender_->Flush();
+
+        } else {
+          std::vector<uint8_t> choices(n);
+          pforeach(0, n, [&](int64_t i) {
+            choices[i] = static_cast<uint8_t>(_index[i] & N_mask);
+          });
+
+          ferret_receiver_->RecvCMCC(absl::MakeSpan(choices), N, _out, bw);
+        }
+      });
+    });
+  });
+
+  return out;
 }
 
 }  // namespace spu::mpc::cheetah

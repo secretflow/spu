@@ -141,6 +141,16 @@ Value trunc_a(SPUContext* ctx, const Value& x, size_t nbits, SignType sign) {
   TILED_DISPATCH(ctx, x, nbits, sign);
 }
 
+Value trunc_a2(SPUContext* ctx, const Value& x, size_t nbits, SignType sign,
+               bool signed_arith) {
+  TILED_DISPATCH(ctx, x, nbits, sign, signed_arith);
+}
+
+Value trunc_ae(SPUContext* ctx, const Value& x, size_t nbits, SignType sign,
+               bool signed_arith) {
+  TILED_DISPATCH(ctx, x, nbits, sign, signed_arith);
+}
+
 Value mmul_ap(SPUContext* ctx, const Value& x, const Value& y) {
   FORCE_DISPATCH(ctx, x, y);
 }

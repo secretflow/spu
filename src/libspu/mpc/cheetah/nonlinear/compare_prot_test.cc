@@ -29,7 +29,8 @@ class CompareProtTest
 
 INSTANTIATE_TEST_SUITE_P(
     Cheetah, CompareProtTest,
-    testing::Combine(testing::Values(FieldType::FM32, FieldType::FM64),
+    testing::Combine(testing::Values(FieldType::FM8, FieldType::FM16,
+                                     FieldType::FM32, FieldType::FM64),
                      testing::Values(true, false),
                      testing::Values(1UL, 4UL, 8UL)),  // divide k
     [](const testing::TestParamInfo<CompareProtTest::ParamType> &p) {
@@ -52,16 +53,12 @@ TEST_P(CompareProtTest, Compare) {
     auto xinp = NdArrayView<ring2k_t>(inp[0]);
     xinp[0] = 1;
     xinp[1] = 10;
-    xinp[2] = 100;
+    xinp[2] = 7;
 
     xinp = NdArrayView<ring2k_t>(inp[1]);
     xinp[0] = 1;
     xinp[1] = 9;
-    if constexpr (std::is_same_v<ring2k_t, uint8_t>) {
-      xinp[2] = 100;
-    } else {
-      xinp[2] = 1000;
-    }
+    xinp[2] = 25;
   });
 
   NdArrayRef cmp_oup[2];
@@ -94,7 +91,8 @@ TEST_P(CompareProtTest, CompareBitWidth) {
   FieldType field = std::get<0>(GetParam());
   size_t radix = std::get<2>(GetParam());
   bool greater_than = std::get<1>(GetParam());
-  int64_t bw = std::min<int>(32, SizeOf(field) * 8);
+  // int64_t bw = std::min<int>(32, SizeOf(field) * 8);
+  int64_t bw = SizeOf(field) * 8;
 
   NdArrayRef inp[2];
   int64_t n = 100;
@@ -106,17 +104,13 @@ TEST_P(CompareProtTest, CompareBitWidth) {
     auto xinp = NdArrayView<ring2k_t>(inp[0]);
     xinp[0] = 1;
     xinp[1] = 10;
-    xinp[2] = 100;
+    xinp[2] = 7;
     pforeach(0, inp[0].numel(), [&](int64_t i) { xinp[i] &= mask; });
 
     xinp = NdArrayView<ring2k_t>(inp[1]);
     xinp[0] = 1;
     xinp[1] = 9;
-    if constexpr (std::is_same_v<ring2k_t, uint8_t>) {
-      xinp[2] = 100;
-    } else {
-      xinp[2] = 1000;
-    }
+    xinp[2] = 25;
     pforeach(0, inp[0].numel(), [&](int64_t i) { xinp[i] &= mask; });
   });
 
@@ -181,16 +175,12 @@ TEST_P(CompareProtTest, WithEq) {
     auto xinp = NdArrayView<ring2k_t>(inp[0]);
     xinp[0] = 1;
     xinp[1] = 10;
-    xinp[2] = 100;
+    xinp[2] = 5;
 
     xinp = NdArrayView<ring2k_t>(inp[1]);
     xinp[0] = 1;
     xinp[1] = 9;
-    if constexpr (std::is_same_v<ring2k_t, uint8_t>) {
-      xinp[2] = 100;
-    } else {
-      xinp[2] = 1000;
-    }
+    xinp[2] = 23;
   });
 
   NdArrayRef cmp_oup[2];
@@ -231,7 +221,8 @@ TEST_P(CompareProtTest, WithEqBitWidth) {
   size_t radix = std::get<2>(GetParam());
   bool greater_than = std::get<1>(GetParam());
 
-  int64_t bw = std::min<int>(32, SizeOf(field) * 8);
+  // int64_t bw = std::min<int>(32, SizeOf(field) * 8);
+  int64_t bw = SizeOf(field) * 8;
 
   NdArrayRef inp[2];
   int64_t n = 1 << 10;
@@ -243,17 +234,13 @@ TEST_P(CompareProtTest, WithEqBitWidth) {
     auto xinp = NdArrayView<ring2k_t>(inp[0]);
     xinp[0] = 1;
     xinp[1] = 10;
-    xinp[2] = 100;
+    xinp[2] = 5;
     pforeach(0, inp[0].numel(), [&](int64_t i) { xinp[i] &= mask; });
 
     xinp = NdArrayView<ring2k_t>(inp[1]);
     xinp[0] = 1;
     xinp[1] = 9;
-    if constexpr (std::is_same_v<ring2k_t, uint8_t>) {
-      xinp[2] = 100;
-    } else {
-      xinp[2] = 1000;
-    }
+    xinp[2] = 23;
     pforeach(0, inp[0].numel(), [&](int64_t i) { xinp[i] &= mask; });
   });
 

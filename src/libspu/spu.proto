@@ -342,6 +342,9 @@ message RuntimeConfig {
   // low probability, which lead to huge calculation error.
   bool trunc_allow_msb_error = 73;
 
+  // when doing mix mul, use the naive extend then mul method.
+  bool cheetah_naive_mix_mul = 74;
+
   /// System related configurations start.
 
   // Experimental: DO NOT USE

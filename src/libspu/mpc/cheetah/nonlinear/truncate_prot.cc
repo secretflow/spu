@@ -21,6 +21,17 @@
 
 namespace spu::mpc::cheetah {
 
+namespace {
+template <typename T>
+typename std::make_unsigned<T>::type makeMask(size_t bw) {
+  using U = typename std::make_unsigned<T>::type;
+  if (bw == sizeof(U) * 8) {
+    return static_cast<U>(-1);
+  }
+  return (static_cast<U>(1) << bw) - 1;
+}
+}  // namespace
+
 TruncateProtocol::TruncateProtocol(
     const std::shared_ptr<BasicOTProtocols>& base)
     : basic_ot_prot_(base) {
@@ -31,8 +42,6 @@ TruncateProtocol::~TruncateProtocol() { basic_ot_prot_->Flush(); }
 
 NdArrayRef TruncateProtocol::ComputeWrap(const NdArrayRef& inp,
                                          const Meta& meta) {
-  const int rank = basic_ot_prot_->Rank();
-
   switch (meta.sign) {
     case SignType::Positive: {
       if (!meta.signed_arith) {
@@ -56,26 +65,45 @@ NdArrayRef TruncateProtocol::ComputeWrap(const NdArrayRef& inp,
     }
     case SignType::Unknown:
     default: {
-      CompareProtocol compare_prot(basic_ot_prot_);
-      NdArrayRef wrap_bool;
-      // w = 1{x_A + x_B > 2^k - 1}
-      //   = 1{x_A > 2^k - 1 - x_B}
       const auto field = inp.eltype().as<Ring2k>()->field();
-      if (rank == 0) {
-        wrap_bool = compare_prot.Compute(inp, true);
-      } else {
-        auto adjusted = ring_neg(inp);
-        DISPATCH_ALL_FIELDS(field, [&]() {
-          NdArrayView<ring2k_t> xadj(adjusted);
-          pforeach(0, inp.numel(), [&](int64_t i) { xadj[i] -= 1; });
-        });
-        wrap_bool = compare_prot.Compute(adjusted, true);
-      }
-      return basic_ot_prot_->B2ASingleBitWithSize(
-          wrap_bool.as(makeType<BShrTy>(field, 1)), meta.shift_bits);
-      break;
+      const size_t bit_width =
+          inp.fxp_bits() == 0 ? SizeOf(field) * 8 : inp.fxp_bits();
+      return ComputeWrapByCompare(inp, bit_width, meta.shift_bits);
     }
   }
+}
+
+NdArrayRef TruncateProtocol::ComputeWrapByCompare(const NdArrayRef& inp,
+                                                  size_t inp_width,
+                                                  size_t oup_width) {
+  const int rank = basic_ot_prot_->Rank();
+  const auto field = inp.eltype().as<Ring2k>()->field();
+  SPU_ENFORCE(SizeOf(field) * 8 >= inp_width and inp_width > 0);
+  SPU_ENFORCE(SizeOf(field) * 8 >= oup_width and oup_width > 0);
+
+  auto inp_mask = ring_reduce(inp, inp_width);
+
+  CompareProtocol compare_prot(basic_ot_prot_);
+  // w = 1{x_A + x_B >= 2^k}
+  //   = 1{x_A > 2^k - 1 - x_B}
+  NdArrayRef wrap_bool;
+  if (rank == 0) {
+    wrap_bool = compare_prot.Compute(inp_mask, true, inp_width);
+  } else {
+    DISPATCH_ALL_FIELDS(field, [&]() {
+      NdArrayView<ring2k_t> xadj(inp_mask);
+      // 2^{k} - 1 = 2^{k-1}*2 - 2 + 1
+      //           = 2*(2^{k-1} - 1) + 1
+      auto shift = ((static_cast<ring2k_t>(1) << (inp_width - 1)) - 1) * 2 + 1;
+      auto msk = makeMask<ring2k_t>(inp_width);
+      pforeach(0, inp.numel(),
+               [&](int64_t i) { xadj[i] = (shift - xadj[i]) & msk; });
+    });
+    wrap_bool = compare_prot.Compute(inp_mask, true, inp_width);
+  }
+
+  return basic_ot_prot_->B2ASingleBitWithSize(
+      wrap_bool.as(makeType<BShrTy>(field, 1)), oup_width);
 }
 
 // Given msb(xA + xB mod 2^k) = 1, and xA, xB \in [0, 2^k)
@@ -89,7 +117,7 @@ NdArrayRef TruncateProtocol::MSB1ToWrap(const NdArrayRef& inp,
   const auto field = inp.eltype().as<Ring2k>()->field();
   const int64_t numel = inp.numel();
   const int rank = basic_ot_prot_->Rank();
-  const size_t bw = SizeOf(field) * 8;
+  const size_t bw = inp.fxp_bits() == 0 ? SizeOf(field) * 8 : inp.fxp_bits();
 
   NdArrayRef cot_output = ring_zeros(field, inp.shape());
   DISPATCH_ALL_FIELDS(field, [&]() {
@@ -116,7 +144,8 @@ NdArrayRef TruncateProtocol::MSB1ToWrap(const NdArrayRef& inp,
     }
   });
 
-  return cot_output.as(makeType<BShrTy>(field, 1));
+  // return cot_output.as(makeType<BShrTy>(field, 1));
+  return cot_output.as(makeType<AShrTy>(field));
 }
 
 // Given msb(xA + xB mod 2^k) = 0, and xA, xB \in [0, 2^k)
@@ -137,7 +166,7 @@ NdArrayRef TruncateProtocol::MSB0ToWrap(const NdArrayRef& inp,
   const auto field = inp.eltype().as<Ring2k>()->field();
   const int64_t numel = inp.numel();
   const int rank = basic_ot_prot_->Rank();
-  const size_t bw = SizeOf(field) * 8;
+  const size_t bw = inp.fxp_bits() == 0 ? SizeOf(field) * 8 : inp.fxp_bits();
 
   constexpr size_t N = 2;  // 1-of-2 OT
   constexpr size_t nbits = 1;
@@ -197,17 +226,24 @@ NdArrayRef TruncateProtocol::Compute(const NdArrayRef& inp, Meta meta) {
   }
 
   auto field = inp.eltype().as<Ring2k>()->field();
-  const size_t bit_width = SizeOf(field) * 8;
+  const size_t bit_width =
+      inp.fxp_bits() == 0 ? SizeOf(field) * 8 : inp.fxp_bits();
   SPU_ENFORCE(shift < bit_width, "truncate should not truncate full bit width");
   if (meta.signed_arith) {
     SPU_ENFORCE((bit_width >= shift + 1),
                 "signed truncate should keep the sign bit");
   }
+  // add extra constraint for heuristic
+  if (meta.use_heuristic) {
+    SPU_ENFORCE(meta.signed_arith, "use_heuristic=true need signed arith=true");
+  }
 
   const int rank = basic_ot_prot_->Rank();
 
   if (meta.signed_arith && meta.sign == SignType::Unknown &&
-      meta.use_heuristic) {
+      meta.use_heuristic &&
+      (inp.fxp_bits() == 0 ||
+       inp.fxp_bits() == static_cast<int64_t>(SizeOf(field)) * 8)) {
     // Use heuristic optimization from SecureQ8: Add a large positive to make
     // sure the value is always positive
     // We assume |x| < 2^{k - b - 1}
@@ -242,12 +278,14 @@ NdArrayRef TruncateProtocol::Compute(const NdArrayRef& inp, Meta meta) {
     }
   }
 
-  NdArrayRef wrap_ashr;
+  NdArrayRef hi_wrap_ashr;
+  NdArrayRef lo_wrap_ashr;
   NdArrayRef out = ring_zeros(field, inp.shape());
 
-  return DISPATCH_ALL_FIELDS(field, [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     const ring2k_t component = (static_cast<ring2k_t>(1) << (bit_width - 1));
     NdArrayView<const ring2k_t> xinp(inp);
+    const auto msk = makeMask<ring2k_t>(bit_width);
 
     // Compute w = 1{x0 + x1 >= 2^{k}}
     if (meta.signed_arith && rank == 0) {
@@ -255,13 +293,27 @@ NdArrayRef TruncateProtocol::Compute(const NdArrayRef& inp, Meta meta) {
       // by convert to two-component form.
       auto tmp = ring_zeros(field, inp.shape());
       NdArrayView<ring2k_t> xtmp(tmp);
-      pforeach(0, inp.numel(),
-               [&](int64_t i) { xtmp[i] = xinp[i] + component; });
-      wrap_ashr = ComputeWrap(tmp, meta);
+      pforeach(0, inp.numel(), [&](int64_t i) {
+        // mask is necessary, for addition of uint8_t or uint16_t will be cast
+        // to int type
+        xtmp[i] = (xinp[i] + component) & msk;
+      });
+      tmp.set_fxp_bits(bit_width);
+      hi_wrap_ashr = ComputeWrap(tmp, meta);
+
+      if (meta.exact) {
+        // NOTE(lwj): the low-end wrap need to export to the share width
+        lo_wrap_ashr = ComputeWrapByCompare(tmp, meta.shift_bits, bit_width);
+      }
     } else {
-      wrap_ashr = ComputeWrap(inp, meta);
+      hi_wrap_ashr = ComputeWrap(inp, meta);
+
+      if (meta.exact) {
+        lo_wrap_ashr = ComputeWrapByCompare(inp, meta.shift_bits, bit_width);
+      }
     }
-    NdArrayView<const ring2k_t> xwrap(wrap_ashr);
+
+    NdArrayView<const ring2k_t> xwrap(hi_wrap_ashr);
 
     // NOTE(lwj) We need logic right shift here
     /// m' = (m >> shift) - wrap * 2^{k - shift}
@@ -269,31 +321,52 @@ NdArrayRef TruncateProtocol::Compute(const NdArrayRef& inp, Meta meta) {
     NdArrayView<ring2k_t> xout(out);
     if (meta.signed_arith && rank == 0) {
       pforeach(0, inp.numel(), [&](int64_t i) {
-        xout[i] = ((xinp[i] + component) >> shift);
+        // mask is necessary, for addition of uint8_t or uint16_t will be cast
+        // to int type
+        xout[i] = (((xinp[i] + component) & msk) >> shift);
         xout[i] -= (xwrap[i] << (bit_width - shift));
+        xout[i] &= msk;
       });
     } else {
       pforeach(0, inp.numel(), [&](int64_t i) {
         xout[i] = (xinp[i] >> shift) - (xwrap[i] << (bit_width - shift));
+        xout[i] &= msk;
       });
     }
 
     if (meta.signed_arith && rank == 0) {
       ring2k_t u = static_cast<ring2k_t>(1) << (bit_width - shift - 1);
-      pforeach(0, inp.numel(), [&](int64_t i) { xout[i] -= u; });
+      pforeach(0, inp.numel(), [&](int64_t i) {
+        xout[i] -= u;
+        xout[i] &= msk;
+      });
     }
 
-    if (rank == 0) {
+    if (meta.exact) {
+      NdArrayView<const ring2k_t> xwrap(lo_wrap_ashr);
+      pforeach(0, inp.numel(), [&](int64_t i) {
+        xout[i] += xwrap[i];
+        xout[i] &= msk;
+      });
+    } else if (rank == 0) {
       // The origin Truncate introduce -1 error by 50%.
       // We balance it by +1 at the rate of 50%.
       // As a result, we introduce 0 error by 50%， +1 error by 25% and -1 error
       // by 25%.
-      pforeach(0, inp.numel(), [&](int64_t i) { xout[i] += (xout[i] & 1); });
+      pforeach(0, inp.numel(), [&](int64_t i) {
+        xout[i] += (xout[i] & 1);
+        xout[i] &= msk;
+      });
     }
 
     basic_ot_prot_->Flush();
-    return out.as(inp.eltype());
+    out = out.as(inp.eltype());
   });
+
+  if (inp.fxp_bits() > 0) {
+    out.set_fxp_bits(inp.fxp_bits());
+  }
+  return out;
 }
 
 }  // namespace spu::mpc::cheetah

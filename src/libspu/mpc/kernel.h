@@ -95,6 +95,8 @@ enum class TruncLsbRounding {
   Probabilistic,
   // For some deterministic truncation, the LSB is deterministic.
   Nearest,
+  // For protocols like CryptoFlow2, the LSB is exact.
+  Exact,
 };
 
 class TruncAKernel : public Kernel {
@@ -111,6 +113,23 @@ class TruncAKernel : public Kernel {
 
   virtual NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
                           size_t bits, SignType sign) const = 0;
+};
+
+class TruncAWithSignedKernel : public Kernel {
+ public:
+  void evaluate(KernelEvalContext* ctx) const override;
+
+  // For protocol like SecureML, the most significant bit may have error with
+  // low probability, which lead to huge calculation error.
+  //
+  // Return true if the protocol has this kind of error.
+  virtual bool hasMsbError() const = 0;
+
+  virtual TruncLsbRounding lsbRounding() const = 0;
+
+  virtual NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                          size_t bits, SignType sign,
+                          bool signed_arith) const = 0;
 };
 
 class BitSplitKernel : public Kernel {
@@ -255,6 +274,67 @@ class RingCastDownKernel : public Kernel {
 
   virtual NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
                           FieldType to_field) const = 0;
+};
+
+class LookUpTableKernel : public Kernel {
+ public:
+  void evaluate(KernelEvalContext* ctx) const override;
+  virtual NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                          const NdArrayRef& table, size_t bw,
+                          FieldType field) const = 0;
+};
+
+// signed or unsigned extension
+class GeneralRingCastUpKernel : public Kernel {
+ public:
+  void evaluate(KernelEvalContext* ctx) const override;
+  virtual NdArrayRef proc(
+      KernelEvalContext* ctx, const NdArrayRef& in,  //
+      size_t bw, FieldType to_field,     // TODO: atomically determine field
+      SignType sign, bool signed_arith,  //
+      bool force, bool heuristic) const = 0;  // force cast if bw change
+
+  virtual bool hasLsbError() const = 0;
+};
+
+class GeneralRingCastDownKernel : public Kernel {
+ public:
+  void evaluate(KernelEvalContext* ctx) const override;
+  virtual NdArrayRef proc(
+      KernelEvalContext* ctx, const NdArrayRef& in,
+      const NdArrayRef& wrap_s,         //  only useful for exact truncation
+      size_t bits, FieldType to_field,  //
+      bool exact) const = 0;
+
+  virtual TruncLsbRounding lsbRounding() const = 0;
+};
+
+class MixBitMulKernel : public Kernel {
+ public:
+  void evaluate(KernelEvalContext* ctx) const override;
+  // 1. if out_bw=0 and to_field=FT_INVALID, to_field is the same as
+  // max{x_field, y_field}
+  // 2. if to_field=FT_INVALID, but out_bw>0, then to_field is choosen as the
+  // minimum field
+  // 3. if out_bw=0, to_field != FT_INVALID, just use to_field
+  // 4. else, first check if to_field is valid
+  virtual NdArrayRef proc(KernelEvalContext* ctx,
+                          const NdArrayRef& x,                         //
+                          const NdArrayRef& y,                         //
+                          SignType sign_x,                             //
+                          SignType sign_y,                             //
+                          FieldType to_field = FieldType::FT_INVALID,  //
+                          size_t out_bw = 0,                           //
+                          bool signed_arith = true                     //
+  ) const = 0;
+};
+
+class CmpEqKernel : public Kernel {
+ public:
+  void evaluate(KernelEvalContext* ctx) const override;
+
+  virtual std::vector<NdArrayRef> proc(KernelEvalContext* ctx,
+                                       const NdArrayRef& x) const = 0;
 };
 
 }  // namespace spu::mpc

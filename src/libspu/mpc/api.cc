@@ -498,6 +498,17 @@ Value square_v(SPUContext* ctx, const Value& x) { return mul_vv(ctx, x, x); }
 
 Value square_p(SPUContext* ctx, const Value& x) { return mul_pp(ctx, x, x); }
 
+Value mix_mul_ss(SPUContext* ctx, const Value& x, const Value& y,
+                 SignType sign_x, SignType sign_y, FieldType to_field,
+                 size_t out_bw, bool signed_arith) {
+  SPU_TRACE_MPC_DISP(ctx, x, y, sign_x, sign_y, to_field, out_bw, signed_arith);
+  SPU_ENFORCE(IsA(x) && IsA(y));
+  SPU_ENFORCE(x.shape() == y.shape());
+
+  FORCE_NAMED_DISPATCH(ctx, "mixmul_aa", x, y, sign_x, sign_y, to_field, out_bw,
+                       signed_arith);
+}
+
 //////////////////////////////////////////////////////////////////////////////
 
 Value mmul_ss(SPUContext* ctx, const Value& x, const Value& y) {
@@ -699,6 +710,26 @@ Value trunc_p(SPUContext* ctx, const Value& x, size_t nbits, SignType sign) {
   FORCE_DISPATCH(ctx, x, trunc_bits, sign);
 }
 
+Value trunc2_s(SPUContext* ctx, const Value& x, size_t bits, SignType sign,
+               bool exact, bool signed_arith) {
+  SPU_TRACE_MPC_DISP(ctx, x, bits, sign, exact, signed_arith);
+  SPU_ENFORCE(IsA(x));
+
+  if (exact) {
+    trunc_ae(ctx, x, bits, sign, signed_arith);
+  }
+
+  return trunc_a2(ctx, x, bits, sign, signed_arith);
+}
+
+Value tr_s(SPUContext* ctx, const Value& x, const Value& y, size_t nbits,
+           FieldType to_field, bool exact) {
+  SPU_TRACE_MPC_DISP(ctx, x, y, nbits, to_field, exact);
+  SPU_ENFORCE(IsA(x));
+
+  FORCE_NAMED_DISPATCH(ctx, "tr_a", x, y, nbits, to_field, exact);
+}
+
 //////////////////////////////////////////////////////////////////////////////
 
 Value bitrev_s(SPUContext* ctx, const Value& x, size_t start, size_t end) {
@@ -757,6 +788,16 @@ Value oram_read_sp(SPUContext* ctx, const Value& x, const Value& y,
 
   return dynDispatch(ctx, "oram_read_ap", x, y, offset);
 };
+
+Value lut_sp(SPUContext* ctx, const Value& x, const Value& y, size_t bw,
+             FieldType field) {
+  SPU_TRACE_MPC_LEAF(ctx, x, y);
+
+  SPU_ENFORCE(x.isSecret());
+  SPU_ENFORCE(y.isPublic());
+
+  return dynDispatch(ctx, "lut_ap", x, y, bw, field);
+}
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -897,6 +938,13 @@ Value ring_cast_down_v(SPUContext* ctx, const Value& in, FieldType to_field) {
 }
 Value ring_cast_down_p(SPUContext* ctx, const Value& in, FieldType to_field) {
   FORCE_DISPATCH(ctx, in, to_field);
+}
+
+Value ring_cast_up_s(SPUContext* ctx, const Value& x, size_t bw,
+                     FieldType to_field, SignType sign, bool signed_arith,
+                     bool force, bool heuristic) {
+  FORCE_NAMED_DISPATCH(ctx, "ring_cast_up", x, bw, to_field, sign, signed_arith,
+                       force, heuristic);
 }
 
 }  // namespace spu::mpc

@@ -95,6 +95,7 @@ spu_cc_test(
         "//libspu/mpc/utils:ring_ops",
         "//libspu/mpc/utils:simulate",
         "@xtensor",
+        "@yacl//yacl/utils:elapsed_timer",
     ],
 )
 

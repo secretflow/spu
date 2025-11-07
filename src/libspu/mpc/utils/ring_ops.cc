@@ -577,6 +577,98 @@ bool ring_all_equal(const NdArrayRef& x, const NdArrayRef& y, size_t abs_err) {
   });
 }
 
+namespace {
+template <typename T>
+typename std::make_unsigned_t<T> makeMask(size_t bw) {
+  using U = typename std::make_unsigned_t<T>;
+  if (bw == sizeof(U) * 8) {
+    return static_cast<U>(-1);
+  }
+  return (static_cast<U>(1) << bw) - 1;
+}
+
+// view [0, 2^k) as [-2^k/2, 2^k/2)
+// positive part: [0, 2^{k-1}) => 0,1,2,...2^{k-1}-1
+// negative part: [2^{k-1}, 2^k) => -2^{k-1}, -2^{k-1}+1, ..., -1
+template <typename U>
+auto ToSignType(U x, size_t width) {
+  using S = typename std::make_signed<U>::type;
+  if (sizeof(U) * 8 == width) {
+    return static_cast<S>(x);
+  }
+
+  U half = static_cast<U>(1) << (width - 1);
+  if (x >= half) {
+    U upper = static_cast<U>(1) << width;
+    x -= upper;
+  }
+  return static_cast<S>(x);
+}
+}  // namespace
+
+bool ring_all_equal_val(const NdArrayRef& x, const NdArrayRef& y,
+                        bool signed_arith, size_t abs_err) {
+  SPU_ENFORCE((x).shape() == (y).shape(), "numel mismatch, x={}, y={}", x, y);
+
+  const auto x_field = x.eltype().as<Ring2k>()->field();
+  const auto y_field = y.eltype().as<Ring2k>()->field();
+  const auto x_bw = x.fxp_bits() > 0 ? x.fxp_bits() : SizeOf(x_field) * 8;
+  const auto y_bw = y.fxp_bits() > 0 ? y.fxp_bits() : SizeOf(y_field) * 8;
+
+  // test of valid bits
+  if (x.fxp_bits() > 0) {
+    auto x_reduced = ring_reduce(x, x_bw);
+    if (!ring_all_equal(x_reduced, x, 0)) {
+      SPU_THROW("Valid Bits Mismatch of x, should be {}.", x_bw);
+    }
+  }
+  if (y.fxp_bits() > 0) {
+    auto y_reduced = ring_reduce(y, y_bw);
+    if (!ring_all_equal(y_reduced, y, 0)) {
+      SPU_THROW("Valid Bits Mismatch of y, should be {}.", y_bw);
+    }
+  }
+
+  auto numel = x.numel();
+
+  return DISPATCH_ALL_FIELDS(x_field, [&]() {
+    using x_sign_ty = std::make_signed_t<ring2k_t>;
+    // using x_unsign_ty = std::make_unsigned_t<ring2k_t>;
+    NdArrayView<x_sign_ty> _x_s(x);
+    // NdArrayView<x_unsign_ty> _x_u(x);
+
+    return DISPATCH_ALL_FIELDS(y_field, [&]() {
+      using y_sign_ty = std::make_signed_t<ring2k_t>;
+      using y_unsign_ty = std::make_unsigned_t<ring2k_t>;
+      NdArrayView<y_sign_ty> _y_s(y);
+      // NdArrayView<y_unsign_ty> _y_u(y);
+      bool passed = true;
+
+      if (signed_arith) {
+        for (int64_t i = 0; i < numel; ++i) {
+          auto x_el = ToSignType(_x_s[i], x_bw);
+          auto y_el = ToSignType(_y_s[i], y_bw);
+          if (std::abs(x_el - y_el) > static_cast<y_sign_ty>(abs_err)) {
+            fmt::print("error: {0} {1} abs_err: {2}\n", x_el, y_el, abs_err);
+            return false;
+          }
+        }
+      } else {
+        for (int64_t i = 0; i < numel; ++i) {
+          auto x_el = _x_s[i];
+          auto y_el = _y_s[i];
+          if (static_cast<y_unsign_ty>(std::abs(x_el - y_el)) >
+              static_cast<y_unsign_ty>(abs_err)) {
+            fmt::print("error: {0} {1} abs_err: {2}\n", x_el, y_el, abs_err);
+            return false;
+          }
+        }
+      }
+      return passed;
+    });
+  });
+}
+
 std::vector<uint8_t> ring_cast_boolean(const NdArrayRef& x) {
   // SPU_ENFORCE_RING(x);
   const auto field = x.eltype().as<Ring2k>()->field();
@@ -647,4 +739,30 @@ std::vector<NdArrayRef> ring_rand_boolean_splits(const NdArrayRef& arr,
 
   return splits;
 }
+
+// preserve [0, bw) bits
+NdArrayRef ring_reduce(const NdArrayRef& x, size_t bw) {
+  auto ret = ring_bitmask(x, 0, bw);
+  ret.set_fxp_bits(bw);
+
+  return ret;
+}
+void ring_reduce_(NdArrayRef& x, size_t bw) {
+  ring_bitmask_(x, 0, bw);
+  x.set_fxp_bits(bw);
+}
+
+// debug only
+NdArrayRef ring_iota(FieldType field, const Shape& shape, int64_t start) {
+  NdArrayRef x(makeType<RingTy>(field), shape);
+  auto numel = x.numel();
+
+  DISPATCH_ALL_FIELDS(field, [&]() {
+    NdArrayView<ring2k_t> _x(x);
+    pforeach(0, numel, [&](int64_t idx) { _x[idx] = idx + start; });
+  });
+
+  return x;
+}
+
 }  // namespace spu::mpc

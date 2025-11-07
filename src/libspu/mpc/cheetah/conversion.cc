@@ -17,6 +17,8 @@
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/core/trace.h"
 #include "libspu/mpc/ab_api.h"
+#include "libspu/mpc/cheetah/nonlinear/ext_prot.h"
+#include "libspu/mpc/cheetah/nonlinear/truncate_and_reduce_prot.h"
 #include "libspu/mpc/cheetah/ot/basic_ot_prot.h"
 #include "libspu/mpc/cheetah/state.h"
 #include "libspu/mpc/cheetah/type.h"
@@ -33,14 +35,25 @@ static NdArrayRef wrap_add_bb(SPUContext* ctx, const NdArrayRef& x,
 }
 
 namespace {
+
 NdArrayRef a2b_impl(KernelEvalContext* ctx, const NdArrayRef& x,
                     int64_t nbits) {
   const auto field = x.eltype().as<Ring2k>()->field();
   auto* comm = ctx->getState<Communicator>();
   auto* prg_state = ctx->getState<PrgState>();
+  const auto ring_bits = x.fxp_bits();
 
+  int64_t valid_bits;
+  if (ring_bits > 0) {
+    SPU_ENFORCE(nbits == -1, "nbits={} inconsistent with ring fxp_bits={}",
+                nbits, ring_bits);
+    SPU_ENFORCE((size_t)ring_bits <= SizeOf(field) * 8,
+                "ring fxp_bits={} invalid for field={}", ring_bits, field);
+    valid_bits = ring_bits;
+  } else {
+    valid_bits = nbits == -1 ? SizeOf(field) * 8 : nbits;
+  }
   std::vector<NdArrayRef> bshrs;
-  int64_t valid_bits = nbits == -1 ? SizeOf(field) * 8 : nbits;
 
   const auto bty = makeType<BShrTy>(field, valid_bits);
   for (size_t idx = 0; idx < comm->getWorldSize(); idx++) {
@@ -52,6 +65,7 @@ NdArrayRef a2b_impl(KernelEvalContext* ctx, const NdArrayRef& x,
       ring_xor_(b, x);
     }
 
+    ring_reduce_(b, valid_bits);
     bshrs.push_back(b.as(bty));
   }
 
@@ -60,8 +74,8 @@ NdArrayRef a2b_impl(KernelEvalContext* ctx, const NdArrayRef& x,
                              return wrap_add_bb(ctx->sctx(), xx, yy);
                            });
 
-  if (nbits != -1) {
-    ring_bitmask_(res, 0, valid_bits);
+  if (nbits != -1 || ring_bits > 0) {
+    ring_reduce_(res, valid_bits);
   }
   return res.as(bty);
 }
@@ -129,6 +143,120 @@ NdArrayRef RingCastDownA::proc(KernelEvalContext* ctx, const NdArrayRef& in,
   });
 
   return out;
+}
+
+NdArrayRef RingCastUp::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                            size_t bw, FieldType to_field, SignType sign,
+                            bool signed_arith, bool force,
+                            bool heuristic) const {
+  SPU_ENFORCE(SizeOf(to_field) * 8 >= bw);
+  // TODO: make force=true, heuristic=false;
+  SPU_ENFORCE(force && (!heuristic));
+  // for bshare, just change the type
+  if (in.eltype().isa<BShrTy>()) {
+    const auto from_ty = in.eltype().as<RingTy>()->field();
+    const auto new_ty = makeType<BShrTy>(to_field, bw);
+    NdArrayRef res(new_ty, in.shape());
+
+    DISPATCH_ALL_FIELDS(from_ty, [&]() {
+      using sT = ring2k_t;
+      NdArrayView<const sT> src(in);
+
+      DISPATCH_ALL_FIELDS(to_field, [&]() {
+        using dT = ring2k_t;
+        NdArrayView<dT> dst(res);
+        pforeach(0, in.numel(),
+                 [&](int64_t i) { dst[i] = static_cast<dT>(src[i]); });
+      });
+    });
+  }
+
+  SPU_ENFORCE(in.eltype().isa<AShrTy>(),
+              "only BshrTy and AshrTy are supported.");
+  const auto field = in.eltype().as<RingTy>()->field();
+  const auto src_bw = in.fxp_bits() == 0 ? SizeOf(field) * 8 : in.fxp_bits();
+  SPU_ENFORCE(src_bw <= bw);
+
+  if (src_bw == bw) {
+    SPU_ENFORCE(field == to_field,
+                "Should be same field when bit width is same.");
+    return in;
+  }
+
+  // if (!force && (field == to_field)) {
+  //   SPDLOG_WARN("In Cheetah CastUp: not do casting up because field is
+  //   same."); return in;
+  // }
+
+  const auto out_ty = makeType<AShrTy>(to_field);
+
+  auto ret = TiledDispatchOTFunc(
+                 ctx, in,
+                 [&](const NdArrayRef& input,
+                     const std::shared_ptr<BasicOTProtocols>& base_ot) {
+                   RingExtendProtocol::Meta meta;
+
+                   meta.sign = sign;
+                   meta.signed_arith = signed_arith;
+
+                   meta.src_width = src_bw;
+                   meta.src_ring = field;
+                   meta.dst_width = bw;
+                   meta.dst_ring = to_field;
+
+                   // use heuristic only for signed arith
+                   meta.use_heuristic = heuristic;
+
+                   RingExtendProtocol prot(base_ot);
+                   return prot.Compute(input, meta);
+                 })
+                 .as(out_ty);
+
+  ret.set_fxp_bits(bw);
+  return ret;
+}
+
+NdArrayRef TruncateReduce::proc(
+    KernelEvalContext* ctx, const NdArrayRef& in,
+    const NdArrayRef& wrap_s,         //  only useful for exact truncation
+    size_t bits, FieldType to_field,  //
+    bool exact) const {
+  SPU_ENFORCE(in.eltype().isa<AShrTy>());
+
+  const auto field = in.eltype().as<RingTy>()->field();
+  const auto src_bw = in.fxp_bits() == 0 ? SizeOf(field) * 8 : in.fxp_bits();
+  const auto bw = src_bw - bits;
+
+  SPU_ENFORCE(SizeOf(to_field) * 8 >= bw);
+  SPU_ENFORCE(src_bw >= bw);
+
+  if (src_bw == bw) {
+    SPU_ENFORCE(field == to_field,
+                "Should be same field when bit width is same.");
+    return in;
+  }
+
+  const auto out_ty = makeType<AShrTy>(to_field);
+
+  auto ret = TiledDispatchOTFunc(
+                 ctx, in,
+                 [&](const NdArrayRef& input,
+                     const std::shared_ptr<BasicOTProtocols>& base_ot) {
+                   RingTruncateAndReduceProtocol::Meta meta;
+
+                   meta.exact = exact;
+                   meta.src_width = src_bw;
+                   meta.src_ring = field;
+                   meta.dst_width = bw;
+                   meta.dst_ring = to_field;
+
+                   RingTruncateAndReduceProtocol prot(base_ot);
+                   return prot.Compute(input, wrap_s, meta);
+                 })
+                 .as(out_ty);
+
+  ret.set_fxp_bits(bw);
+  return ret;
 }
 
 }  // namespace spu::mpc::cheetah

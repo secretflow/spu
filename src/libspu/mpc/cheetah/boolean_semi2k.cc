@@ -105,7 +105,7 @@ NdArrayRef AndBP::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
                        const NdArrayRef& rhs) const {
   SPU_ENFORCE(lhs.shape() == rhs.shape());
 
-  const auto field = ctx->getState<Z2kState>()->getDefaultField();
+  const auto field = lhs.eltype().as<Ring2k>()->field();
   const size_t out_nbits = std::min(getNumBits(lhs), getNumBits(rhs));
   NdArrayRef out(makeType<BShrTy>(field, out_nbits), lhs.shape());
 
@@ -140,7 +140,9 @@ NdArrayRef XorBB::proc(KernelEvalContext* ctx, const NdArrayRef& lhs,
                        const NdArrayRef& rhs) const {
   SPU_ENFORCE(lhs.numel() == rhs.numel());
 
-  const auto field = ctx->getState<Z2kState>()->getDefaultField();
+  const auto field = lhs.eltype().as<Ring2k>()->field();
+  SPU_ENFORCE(field == rhs.eltype().as<Ring2k>()->field());
+
   const size_t out_nbits = std::max(getNumBits(lhs), getNumBits(rhs));
   return makeBShare(ring_xor(lhs, rhs), field, out_nbits);
 }

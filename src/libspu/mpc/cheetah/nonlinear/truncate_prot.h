@@ -23,6 +23,7 @@ namespace spu::mpc::cheetah {
 
 class BasicOTProtocols;
 
+// If exact = false:
 // Implementation the one-bit approximate truncation
 // Ref: Huang et al. "Cheetah: Lean and Fast Secure Two-Party Deep Neural
 // Network Inference"
@@ -34,6 +35,12 @@ class BasicOTProtocols;
 //   Given x = x0 + x1 mod 2^k
 //   x >> s \approx (x0 >> s) + (x1 >> s) - w * 2^{k - s} mod 2^k
 //   where w = 1{x0 + x1 > 2^{k} - 1} indicates whether the sum wrap round 2^k
+//
+// If exact = true;
+// Implementation the exact truncation
+// REF: "SIRNN: A Math Library for Secure RNN Inference"
+// Similar with the one-bit approximate truncation, but we compute the wrap of
+// the lower bits using a Millionaire protocol
 class TruncateProtocol {
  public:
   // For x \in [-2^{k - 2}, 2^{k - 2})
@@ -42,6 +49,7 @@ class TruncateProtocol {
 
   struct Meta {
     SignType sign = SignType::Unknown;
+    bool exact = false;
     bool use_heuristic = false;
     bool signed_arith = true;
     size_t shift_bits = 0;
@@ -55,6 +63,9 @@ class TruncateProtocol {
 
  private:
   NdArrayRef ComputeWrap(const NdArrayRef &inp, const Meta &meta);
+
+  NdArrayRef ComputeWrapByCompare(const NdArrayRef &inp, size_t inp_width,
+                                  size_t oup_width);
 
   // w = msbA | msbB
   NdArrayRef MSB0ToWrap(const NdArrayRef &inp, size_t shift_bits);

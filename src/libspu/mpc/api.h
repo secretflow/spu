@@ -128,6 +128,10 @@ Value square_s(SPUContext* ctx, const Value& x);
 Value square_v(SPUContext* ctx, const Value& x);
 Value square_p(SPUContext* ctx, const Value& x);
 
+Value mix_mul_ss(SPUContext* ctx, const Value& x, const Value& y,
+                 SignType sign_x, SignType sign_y, FieldType to_field,
+                 size_t out_bw, bool signed_arith);
+
 Value mmul_ss(SPUContext* ctx, const Value& x, const Value& y);
 Value mmul_sv(SPUContext* ctx, const Value& x, const Value& y);
 Value mmul_sp(SPUContext* ctx, const Value& x, const Value& y);
@@ -165,6 +169,13 @@ Value trunc_s(SPUContext* ctx, const Value& x, size_t nbits, SignType sign);
 Value trunc_v(SPUContext* ctx, const Value& x, size_t nbits, SignType sign);
 Value trunc_p(SPUContext* ctx, const Value& x, size_t nbits, SignType sign);
 
+Value trunc2_s(SPUContext* ctx, const Value& x, size_t bits, SignType sign,
+               bool exact, bool signed_arith = true);
+
+// truncate and reduce
+Value tr_s(SPUContext* ctx, const Value& x, const Value& y, size_t nbits,
+           FieldType to_field, bool exact = false);
+
 // Reverse bit, like MIPS BITREV instruction, and linux bitrev library.
 Value bitrev_s(SPUContext* ctx, const Value& x, size_t start, size_t end);
 Value bitrev_v(SPUContext* ctx, const Value& x, size_t start, size_t end);
@@ -178,6 +189,9 @@ Value oram_read_ss(SPUContext* ctx, const Value& x, const Value& y,
                    int64_t offset);
 Value oram_read_sp(SPUContext* ctx, const Value& x, const Value& y,
                    int64_t offset);
+
+Value lut_sp(SPUContext* ctx, const Value& x, const Value& y, size_t bw,
+             FieldType field);
 
 //////////////////////////////////////////////////////////////////////////////
 // TODO: Formalize these permutation APIs
@@ -247,5 +261,9 @@ OptionalAPI<Value> ring_cast_down_s(SPUContext* ctx, const Value& in,
                                     FieldType to_field);
 Value ring_cast_down_v(SPUContext* ctx, const Value& in, FieldType to_field);
 Value ring_cast_down_p(SPUContext* ctx, const Value& in, FieldType to_field);
+
+Value ring_cast_up_s(SPUContext* ctx, const Value& x, size_t bw,
+                     FieldType to_field, SignType sign, bool signed_arith,
+                     bool force = true, bool heuristic = false);
 
 }  // namespace spu::mpc

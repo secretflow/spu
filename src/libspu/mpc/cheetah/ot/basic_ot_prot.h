@@ -41,6 +41,18 @@ class BasicOTProtocols {
   // msg * select for select \in {0, 1}
   NdArrayRef Multiplexer(const NdArrayRef &msg, const NdArrayRef &select);
 
+  struct MultiplexMeta {
+    FieldType src_ring;
+    FieldType dst_ring;
+
+    int64_t src_width;
+    int64_t dst_width;
+  };
+
+  // msg * select for select \in {0, 1}, but output to the specified ring
+  NdArrayRef Multiplexer(const NdArrayRef &msg, const NdArrayRef &select,
+                         const MultiplexMeta &meta);
+
   // multiplexer with private choices (sender part)
   NdArrayRef PrivateMulxSend(const NdArrayRef &msg);
 
@@ -65,6 +77,12 @@ class BasicOTProtocols {
   std::array<NdArrayRef, 2> CorrelatedBitwiseAnd(const NdArrayRef &lhs,
                                                  const NdArrayRef &rhs0,
                                                  const NdArrayRef &rhs1);
+
+  // if `to_field` == FT_INVALID, then use the deduced field
+  // table should be a 1-D array
+  // field of index/table is not checked
+  NdArrayRef LookUpTable(const NdArrayRef &index, const NdArrayRef &table,
+                         size_t bw, FieldType to_field = FieldType::FT_INVALID);
 
   std::shared_ptr<FerretOtInterface> GetSenderCOT() { return ferret_sender_; }
 

@@ -86,8 +86,14 @@ void regCheetahProtocol(SPUContext* ctx,
                   cheetah::RandPermM, cheetah::PermAM, cheetah::PermAP,     //
                   cheetah::InvPermAM, cheetah::InvPermAP,                   //
                   cheetah::InvPermAV,                                       //
-                  cheetah::RingCastDownA  // dynamic ring cast down
-                  >();
+                  cheetah::RingCastDownA,   // dynamic ring cast down
+                  cheetah::LutAP,           //  look up table
+                  cheetah::RingCastUp,      // ring bw cast up
+                  cheetah::TruncateReduce,  // truncate and reduce
+                  cheetah::TruncA2,         // truncate with unsigned
+                  cheetah::TruncAE,         // exact truncation
+                  cheetah::MsbEq,           // msb_eq kernel
+                  cheetah::MixMulAA>();
 }
 
 std::unique_ptr<SPUContext> makeCheetahProtocol(

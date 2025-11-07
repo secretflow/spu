@@ -36,6 +36,7 @@ TEST(NdArrayRefTest, Empty) {
   EXPECT_EQ(a.shape().ndim(), 0);
   EXPECT_EQ(a.offset(), 0);
   EXPECT_EQ(a.elsize(), 0);
+  EXPECT_EQ(a.fxp_bits(), 0);
 }
 
 void verify_array(const NdArrayRef &in, const std::vector<int32_t> &expected) {

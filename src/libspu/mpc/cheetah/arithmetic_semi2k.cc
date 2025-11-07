@@ -41,6 +41,11 @@ NdArrayRef P2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
     ring_add_(x, in);
   }
 
+  if (in.fxp_bits() > 0) {
+    ring_reduce_(x, in.fxp_bits());
+    x.set_fxp_bits(in.fxp_bits());
+  }
+
   return x.as(makeType<AShrTy>(field));
 }
 
@@ -48,7 +53,14 @@ NdArrayRef A2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const auto field = in.eltype().as<Ring2k>()->field();
   auto* comm = ctx->getState<Communicator>();
   auto out = comm->allReduce(ReduceOp::ADD, in, kBindName());
-  return out.as(makeType<Pub2kTy>(field));
+  auto ret = out.as(makeType<Pub2kTy>(field));
+
+  if (in.fxp_bits() > 0) {
+    ring_reduce_(ret, in.fxp_bits());
+    ret.set_fxp_bits(in.fxp_bits());
+  }
+
+  return ret;
 }
 
 NdArrayRef A2V::proc(KernelEvalContext* ctx, const NdArrayRef& in,
