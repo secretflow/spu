@@ -112,6 +112,14 @@ use_repo(llvm, "llvm-project")
 
 bazel_dep(name = "stablehlo", version = "20251004.0-0a4440a")
 bazel_dep(name = "xla", version = "20251016.0-9f150f6")
+single_version_override(
+    module_name = "xla",
+    patch_strip = 1,
+    patches = [
+        "//bazel/patches:xla.patch",
+    ],
+    version = "20251016.0-9f150f6",
+)
 bazel_dep(name = "yacl", version = "0.4.5b10-nightly-20250110")
 
 spu_dependencies = use_extension("//bazel:defs.bzl", "non_module_dependencies")
