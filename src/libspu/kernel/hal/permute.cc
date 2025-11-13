@@ -1923,4 +1923,32 @@ std::vector<spu::Value> apply_permute_1d(SPUContext *ctx,
   return internal::_apply_perm(ctx, inputs, perm);
 }
 
+spu::Value apply_general_permute_1d(SPUContext *ctx, const spu::Value &input,
+                                    const spu::Value &perm) {
+  SPU_TRACE_HAL_DISP(ctx, input, perm);
+  SPU_ENFORCE(!perm.isSecret(), "Secret permutation is not supported");
+
+  if (input.isPublic() && perm.isPublic()) { /*PP*/
+    return hal::_perm_pp(ctx, input, perm);
+  } else if (input.isPublic() && perm.isPrivate()) { /*PV*/
+    return hal::_perm_vv(ctx, hal::_p2v(ctx, input, internal::_get_owner(perm)),
+                         perm);
+  } else if (input.isPrivate() && perm.isPrivate()) { /*VV*/
+    if (internal::_has_same_owner(input, perm)) {
+      return hal::_perm_vv(ctx, input, perm);
+    } else {
+      return hal::_perm2_sv(ctx, hal::_v2s(ctx, input), perm);
+    }
+  } else if (input.isPrivate() && perm.isPublic()) { /*VP*/
+    return hal::_perm_vv(ctx, input,
+                         hal::_p2v(ctx, perm, internal::_get_owner(input)));
+  } else if (input.isSecret() && perm.isPublic()) { /*SP*/
+    return hal::_perm2_sp(ctx, input, perm);
+  } else if (input.isSecret() && perm.isPrivate()) { /*SV*/
+    return hal::_perm2_sv(ctx, input, perm);
+  } else {
+    SPU_THROW("should not be here");
+  }
+}
+
 }  // namespace spu::kernel::hal

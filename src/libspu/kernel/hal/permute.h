@@ -89,4 +89,9 @@ std::vector<spu::Value> apply_permute_1d(SPUContext *ctx,
                                          absl::Span<const spu::Value> inputs,
                                          const spu::Value &perm);
 
+// For each input x, we get y = perm(x), i.e. y[i] = x[perm(i)]
+// len(x) can not be len(perm) and perm can not be a bijection.
+spu::Value apply_general_permute_1d(SPUContext *ctx, const spu::Value &input,
+                                    const spu::Value &perm);
+
 }  // namespace spu::kernel::hal

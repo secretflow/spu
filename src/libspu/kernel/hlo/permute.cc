@@ -26,6 +26,10 @@ bool check_permute_kernel(SPUContext* ctx) {
          ctx->hasKernel("perm_ap") && ctx->hasKernel("inv_perm_am") &&
          ctx->hasKernel("inv_perm_ap");
 }
+
+bool check_general_permute_kernel(SPUContext* ctx) {
+  return ctx->hasKernel("perm2_ap") && ctx->hasKernel("perm2_av");
+}
 }  // namespace
 
 std::vector<spu::Value> InvPermute(SPUContext* ctx,
@@ -53,4 +57,26 @@ std::vector<spu::Value> Permute(SPUContext* ctx,
 
   return hal::permute(ctx, inputs, perm_dim, perm_fn);
 }
+
+std::vector<spu::Value> GeneralPermute(SPUContext* ctx,
+                                       absl::Span<const spu::Value> inputs,
+                                       const spu::Value& perm,
+                                       int64_t perm_dim) {
+  SPU_ENFORCE(check_permute_kernel(ctx),
+              "permute related kernel not supported");
+  SPU_ENFORCE(check_general_permute_kernel(ctx),
+              "general permute related kernel not supported");
+
+  SPU_ENFORCE(!inputs.empty(), "inputs can not be empty");
+
+  std::vector<Value> ret;
+  ret.reserve(inputs.size());
+  for (const auto& input : inputs) {
+    SPU_ENFORCE(input.shape().ndim() == 1, "only support 1-d input");
+    ret.emplace_back(hal::apply_general_permute_1d(ctx, input, perm)
+                         .setDtype(input.dtype()));
+  }
+  return ret;
+}
+
 }  // namespace spu::kernel::hlo
