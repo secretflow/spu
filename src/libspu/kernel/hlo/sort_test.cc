@@ -678,6 +678,56 @@ TEST_P(SimpleSortTest, ComplicatedMultiKeysMerge) {
   });
 }
 
+TEST_P(SimpleSortTest, SingleKeyWithPayloadWithValidBits) {
+  size_t npc = std::get<0>(GetParam());
+  FieldType field = std::get<1>(GetParam());
+  ProtocolKind prot = std::get<2>(GetParam());
+  RuntimeConfig::SortMethod method = std::get<3>(GetParam());
+
+  if (method != RuntimeConfig::SORT_RADIX) {
+    GTEST_SKIP() << "Valid bits only supported in radix sort";
+  }
+
+  mpc::utils::simulate(
+      npc, [&](const std::shared_ptr<yacl::link::Context> &lctx) {
+        RuntimeConfig cfg;
+        cfg.protocol = prot;
+        cfg.field = field;
+        cfg.enable_action_trace = false;
+        cfg.sort_method = method;
+        SPUContext ctx = test::makeSPUContext(cfg, lctx);
+
+        xt::xarray<uint8_t> k1 = {0, 1, 1, 0, 0, 1, 0};
+        xt::xarray<float> k2 = {1, 2, 3, 6, 7, 6, 5};
+
+        xt::xarray<uint8_t> sorted_k1 = {0, 0, 0, 0, 1, 1, 1};
+        xt::xarray<float> sorted_k2 = {1, 6, 7, 5, 2, 3, 6};
+
+        Value k1_v = test::makeValue(&ctx, k1, VIS_SECRET);
+        Value k2_v = test::makeValue(&ctx, k2, VIS_SECRET);
+
+        // FIXME: another sign bit, so valid bits = 2
+        std::vector<spu::Value> rets =
+            SimpleSort(&ctx, {k1_v, k2_v}, 0, hal::SortDirection::Ascending, 1,
+                       /*valid_bits*/ 2);
+
+        EXPECT_EQ(rets.size(), 2);
+
+        auto sorted_k1_hat =
+            hal::dump_public_as<uint8_t>(&ctx, hal::reveal(&ctx, rets[0]));
+        auto sorted_k2_hat =
+            hal::dump_public_as<float>(&ctx, hal::reveal(&ctx, rets[1]));
+
+        EXPECT_TRUE(xt::allclose(sorted_k1, sorted_k1_hat, 0.01, 0.001))
+            << sorted_k1 << std::endl
+            << sorted_k1_hat << std::endl;
+
+        EXPECT_TRUE(xt::allclose(sorted_k2, sorted_k2_hat, 0.01, 0.001))
+            << sorted_k2 << std::endl
+            << sorted_k2_hat << std::endl;
+      });
+}
+
 INSTANTIATE_TEST_SUITE_P(
     SimpleSort2PCTestInstances, SimpleSortTest,
     testing::Combine(testing::Values(2),
