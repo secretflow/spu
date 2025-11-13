@@ -59,6 +59,7 @@ std::vector<spu::Value> Permute(SPUContext* ctx,
                                 absl::Span<const spu::Value> inputs,
                                 const spu::Value& perm, int64_t perm_dim);
 
+// nearly the same as Permute, but support general perm (can be non-bijection)
 std::vector<spu::Value> GeneralPermute(SPUContext* ctx,
                                        absl::Span<const spu::Value> inputs,
                                        const spu::Value& perm);
