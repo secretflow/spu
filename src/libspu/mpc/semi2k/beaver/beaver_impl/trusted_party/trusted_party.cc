@@ -236,4 +236,12 @@ NdArrayRef TrustedParty::adjustPerm(absl::Span<Operand> ops,
   return ring_sub(applyInvPerm(rs[0], perm_vec), rs[1]);
 }
 
+NdArrayRef TrustedParty::adjustGeneralPerm(absl::Span<Operand> ops,
+                                           absl::Span<const int64_t> perm_vec) {
+  SPU_ENFORCE_EQ(ops.size(), 2U);
+  auto rs = reconstruct(RecOp::ADD, ops);
+
+  return ring_sub(applyPerm(rs[0], perm_vec), rs[1]);
+}
+
 }  // namespace spu::mpc::semi2k

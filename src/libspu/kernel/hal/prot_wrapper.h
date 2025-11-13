@@ -136,6 +136,9 @@ Value _inv_perm_sv(SPUContext* ctx, const Value& x, const Value& perm);
 Value _inv_perm_pp(SPUContext* ctx, const Value& x, const Value& perm);
 Value _inv_perm_vv(SPUContext* ctx, const Value& x, const Value& perm);
 
+Value _perm2_sp(SPUContext* ctx, const Value& x, const Value& perm);
+Value _perm2_sv(SPUContext* ctx, const Value& x, const Value& perm);
+
 Value _gen_inv_perm_p(SPUContext* ctx, const Value& x, bool is_ascending);
 Value _gen_inv_perm_v(SPUContext* ctx, const Value& x, bool is_ascending);
 Value _merge_keys_p(SPUContext* ctx, absl::Span<Value const> inputs,

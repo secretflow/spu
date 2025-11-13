@@ -93,4 +93,28 @@ class InvPermAV : public PermKernel {
                   const NdArrayRef& perm) const override;
 };
 
+class PermAV2 : public PermKernel {
+ public:
+  static constexpr const char* kBindName() { return "perm2_av"; }
+
+  ce::CExpr latency() const override { return ce::Const(1); }
+
+  ce::CExpr comm() const override { return ce::K(); }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                  const NdArrayRef& perm) const override;
+};
+
+class PermAP2 : public PermKernel {
+ public:
+  static constexpr const char* kBindName() { return "perm2_ap"; }
+
+  ce::CExpr latency() const override { return ce::Const(0); }
+
+  ce::CExpr comm() const override { return ce::Const(0); }
+
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                  const NdArrayRef& perm) const override;
+};
+
 }  // namespace spu::mpc::semi2k

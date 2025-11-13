@@ -68,6 +68,9 @@ class BeaverTfpUnsafe final : public Beaver {
 
   PremTriple PermPair(FieldType field, int64_t size, size_t perm_rank) override;
 
+  PremTriple GeneralPermPair(FieldType field, int64_t size,
+                             size_t perm_rank) override;
+
   std::unique_ptr<Beaver> Spawn() override;
 
   Pair Eqz(FieldType field, int64_t size) override;

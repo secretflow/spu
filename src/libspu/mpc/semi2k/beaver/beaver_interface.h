@@ -102,6 +102,24 @@ class Beaver {
   virtual PremTriple PermPair(FieldType field, int64_t size,
                               size_t perm_rank) = 0;
 
+  // Generate another share permutation pair.
+  /*
+          ┌───────────────────────┐   A i
+          │                       ├─────►
+  size    │      Permutation      │   B i
+ ────────►│                       ├─────►
+          │    Pair  Generator    │   π
+          │                       ├─────►
+          └───────────────────────┘
+
+           Permute(A, π) = B
+
+  if rank == perm_rank ret[2] is π, otherwise, ret[2] is empty.
+  perm_rank should use ret[2] as a Span<const int64_t>(buffer, size) view.
+  */
+  virtual PremTriple GeneralPermPair(FieldType field, int64_t size,
+                                     size_t perm_rank) = 0;
+
   virtual std::unique_ptr<Beaver> Spawn() = 0;
 
   // ret[0] (in a share) = ret[1] (in b share)

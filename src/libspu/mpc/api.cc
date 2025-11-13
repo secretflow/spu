@@ -831,6 +831,20 @@ spu::Value perm_vv(SPUContext* ctx, const Value& in, const Value& perm) {
   FORCE_DISPATCH(ctx, in, perm);
 }
 
+OptionalAPI<Value> perm2_sp(SPUContext* ctx, const Value& x,
+                            const Value& perm) {
+  SPU_TRACE_MPC_DISP(ctx, x, perm);
+  TRY_NAMED_DISPATCH(ctx, "perm2_ap", _2a(ctx, x), perm);
+  return NotAvailable;
+}
+
+OptionalAPI<Value> perm2_sv(SPUContext* ctx, const Value& x,
+                            const Value& perm) {
+  SPU_TRACE_MPC_DISP(ctx, x, perm);
+  TRY_NAMED_DISPATCH(ctx, "perm2_av", _2a(ctx, x), perm);
+  return NotAvailable;
+}
+
 OptionalAPI<Value> inv_perm_ss(SPUContext* ctx, const Value& x,
                                const Value& perm) {
   SPU_ENFORCE(IsPShr(perm), "perm should be a PShare");

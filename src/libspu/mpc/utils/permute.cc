@@ -99,6 +99,44 @@ NdArrayRef applyPerm(const NdArrayRef& x, const NdArrayRef& pv) {
   return y;
 }
 
+NdArrayRef generalApplyPerm(const NdArrayRef& x, const NdArrayRef& pv) {
+  SPU_ENFORCE_EQ(x.shape().ndim(), 1U, "x should be 1-d tensor");
+  SPU_ENFORCE_EQ(pv.shape().ndim(), 1U, "pv should be 1-d tensor");
+
+  NdArrayRef y(x.eltype(), pv.shape());
+  const auto field = x.eltype().as<Ring2k>()->field();
+  DISPATCH_ALL_FIELDS(field, [&]() {
+    NdArrayView<ring2k_t> _x(x);
+    NdArrayView<ring2k_t> _y(y);
+    const auto pv_field = pv.eltype().as<Ring2k>()->field();
+    DISPATCH_ALL_FIELDS(pv_field, [&]() {
+      NdArrayView<ring2k_t> _pv(pv);
+      pforeach(0, y.numel(), [&](int64_t i) { _y[i] = _x[_pv[i]]; });
+    });
+  });
+  return y;
+}
+
+// e.g. m = 8, n = 6
+// perm = (3,2,3,6,3,6), po = (1,6,0,3,4,7,2,5)
+// got pr = (3,6,3,1,3,1)
+// then we have: perm = po ∘ pr
+NdArrayRef solvePerm(const NdArrayRef& perm, absl::Span<const int64_t> po) {
+  SPU_ENFORCE_EQ(perm.shape().ndim(), 1U, "perm should be 1-d tensor");
+
+  NdArrayRef pr(perm.eltype(), perm.shape());
+  const auto field = perm.eltype().as<Ring2k>()->field();
+  DISPATCH_ALL_FIELDS(field, [&]() {
+    NdArrayView<ring2k_t> _perm(perm);
+    NdArrayView<ring2k_t> _pr(pr);
+    pforeach(0, perm.numel(), [&](int64_t i) {
+      _pr[i] = static_cast<ring2k_t>(std::distance(
+          po.begin(), std::find(po.begin(), po.end(), int64_t(_perm[i]))));
+    });
+  });
+  return pr;
+}
+
 NdArrayRef genInversePerm(const NdArrayRef& perm) {
   NdArrayRef ret(perm.eltype(), perm.shape());
   auto field = perm.eltype().as<Ring2k>()->field();

@@ -94,6 +94,55 @@ NdArrayRef SecureInvPerm(KernelEvalContext* ctx, const NdArrayRef& x,
   // InvPerm(X, perm)
 }
 
+// Input: perm = (3,2,3,6,3,6), X = (4,1,8,2,7,9,5,5)
+// Expected output: perm(X) = (2,8,2,5,2,5)
+NdArrayRef GeneralSecurePerm(KernelEvalContext* ctx, const NdArrayRef& x,
+                             const NdArrayRef& perm, size_t perm_rank) {
+  const auto lctx = ctx->lctx();
+  const auto field = x.eltype().as<AShrTy>()->field();
+  auto* comm = ctx->getState<Communicator>();
+  auto* beaver = ctx->getState<Semi2kState>()->beaver();
+  // NOTE: len(x)=m may not equal to len(perm)=n
+  auto numel = x.numel();
+
+  if (lctx->Rank() == perm_rank) {
+    SPU_ENFORCE(perm.eltype().isa<PShare>() ||
+                (perm.eltype().isa<Private>() && isOwner(ctx, perm.eltype())));
+  }
+
+  // beaver gives ai, bi, pr makes pr(A) = B
+  // po is a private random permutation owned by perm_rank.
+  // po is the bijective permutation, so len(A) = len(B) = m
+  auto [a_buf, b_buf, po] = beaver->GeneralPermPair(field, numel, perm_rank);
+
+  NdArrayRef pr;
+  if (lctx->Rank() == perm_rank) {
+    auto p = std::move(po);
+    // solve pr, s.t. perm = po ∘ pr
+    // len(pr) = n
+    pr = solvePerm(perm, p);
+  }
+  // broadcast po to all rank.
+  pr = comm->broadcast(pr, perm_rank, perm.eltype(), perm.shape(),
+                       "perm_open_perm");
+
+  NdArrayRef a(std::make_shared<yacl::Buffer>(std::move(a_buf)), x.eltype(),
+               x.shape());
+  NdArrayRef b(std::make_shared<yacl::Buffer>(std::move(b_buf)), x.eltype(),
+               x.shape());
+
+  // reveal X-A to perm_rank
+  auto x_a = wrap_a2v(ctx->sctx(), ring_sub(x, a).as(x.eltype()), perm_rank);
+
+  if (lctx->Rank() == perm_rank) {
+    auto ret = generalApplyPerm(b, pr);
+    ring_add_(ret, generalApplyPerm(x_a, perm));
+    return ret.as(x.eltype());
+  } else {
+    return generalApplyPerm(b, pr).as(x.eltype());
+  }
+}
+
 }  // namespace
 
 NdArrayRef RandPermM::proc(KernelEvalContext* ctx, const Shape& shape,
@@ -148,6 +197,20 @@ NdArrayRef InvPermAP::proc(KernelEvalContext* ctx, const NdArrayRef& in,
 NdArrayRef InvPermAV::proc(KernelEvalContext* ctx, const NdArrayRef& in,
                            const NdArrayRef& perm) const {
   return SecureInvPerm(ctx, in, perm, getOwner(perm));
+}
+
+// compute perm(x), where perm is owned by perm_rank, x is secret shared.
+// x: m elements
+// perm: n elements
+// output: perm(x), n elements
+NdArrayRef PermAV2::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                         const NdArrayRef& perm) const {
+  return GeneralSecurePerm(ctx, in, perm, getOwner(perm));
+}
+
+NdArrayRef PermAP2::proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                         const NdArrayRef& perm) const {
+  return generalApplyPerm(in, perm);
 }
 
 }  // namespace spu::mpc::semi2k

@@ -52,6 +52,9 @@ class TrustedParty {
 
   static NdArrayRef adjustPerm(absl::Span<Operand>,
                                absl::Span<const int64_t> perm_vec);
+
+  static NdArrayRef adjustGeneralPerm(absl::Span<Operand>,
+                                      absl::Span<const int64_t> perm_vec);
 };
 
 }  // namespace spu::mpc::semi2k

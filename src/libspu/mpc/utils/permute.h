@@ -35,6 +35,18 @@ NdArrayRef applyInvPerm(const NdArrayRef& x, const NdArrayRef& pv);
 NdArrayRef applyPerm(const NdArrayRef& x, absl::Span<const int64_t> pv);
 NdArrayRef applyPerm(const NdArrayRef& x, const NdArrayRef& pv);
 
+// pv can not be the bijection.
+// the shape of x and pv can be different.
+// e.g.
+// \pi=(3,2,3,6,3,6), X = (4,1,8,2,7,9,5,5)
+// then \pi(X) = (2,8,2,5,2,5)
+NdArrayRef generalApplyPerm(const NdArrayRef& x, const NdArrayRef& pv);
+
+// perm: [n] -> [m], po: [m] -> [m] (a bijection)
+// got pr: [n] -> [m]
+// s.t. perm = po ∘ pr
+NdArrayRef solvePerm(const NdArrayRef& perm, absl::Span<const int64_t> po);
+
 // get a permutation vector from a ring
 Index ring2pv(const NdArrayRef& x);
 

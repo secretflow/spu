@@ -763,6 +763,11 @@ BeaverTtp::PremTriple BeaverTtp::PermPair(FieldType field, int64_t size,
   return ret;
 }
 
+BeaverTtp::PremTriple BeaverTtp::GeneralPermPair(FieldType field, int64_t size,
+                                                 size_t perm_rank) {
+  SPU_THROW("Not Implemented Yet");
+}
+
 std::unique_ptr<Beaver> BeaverTtp::Spawn() {
   auto new_options = options_;
   return std::make_unique<BeaverTtp>(lctx_->Spawn(), std::move(new_options));

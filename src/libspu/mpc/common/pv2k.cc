@@ -870,7 +870,8 @@ class PermPP : public PermKernel {
 
   NdArrayRef proc(KernelEvalContext*, const NdArrayRef& x,
                   const NdArrayRef& y) const override {
-    NdArrayRef z(x.eltype(), x.shape());
+    // for general perm, the output should have the same shape of y
+    NdArrayRef z(x.eltype(), y.shape());
     const auto field = x.eltype().as<Ring2k>()->field();
     const auto perm_field = y.eltype().as<Ring2k>()->field();
 
@@ -881,7 +882,7 @@ class PermPP : public PermKernel {
         NdArrayView<T> _x(x);
         NdArrayView<P> _y(y);
         NdArrayView<T> _z(z);
-        for (int64_t idx = 0; idx < x.numel(); ++idx) {
+        for (int64_t idx = 0; idx < y.numel(); ++idx) {
           _z[idx] = _x[_y[idx]];
         }
       });
@@ -904,7 +905,8 @@ class PermVV : public PermKernel {
     const auto perm_field = y.eltype().as<Ring2k>()->field();
 
     if (isOwner(ctx, x.eltype())) {
-      NdArrayRef z(x.eltype(), x.shape());
+      // for general perm, the output should have the same shape of y
+      NdArrayRef z(x.eltype(), y.shape());
 
       DISPATCH_ALL_FIELDS(perm_field, [&]() {
         using P = std::make_unsigned_t<ring2k_t>;
@@ -913,7 +915,7 @@ class PermVV : public PermKernel {
           NdArrayView<T> _x(x);
           NdArrayView<P> _y(y);
           NdArrayView<T> _z(z);
-          for (int64_t idx = 0; idx < x.numel(); ++idx) {
+          for (int64_t idx = 0; idx < y.numel(); ++idx) {
             _z[idx] = _x[_y[idx]];
           }
         });

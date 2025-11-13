@@ -419,6 +419,50 @@ BeaverTfpUnsafe::PremTriple BeaverTfpUnsafe::PermPair(FieldType field,
   return ret;
 }
 
+BeaverTfpUnsafe::PremTriple BeaverTfpUnsafe::GeneralPermPair(FieldType field,
+                                                             int64_t size,
+                                                             size_t perm_rank) {
+  constexpr char kTag[] = "BEAVER_TFP:GENERAL_PERM";
+  SPU_ENFORCE(perm_rank < lctx_->WorldSize(), "perm rank out of range");
+
+  std::vector<TrustedParty::Operand> ops(2);
+  Shape shape({size});
+
+  auto a = prgCreateArray(field, shape, seed_, &counter_, &ops[0].desc);
+  auto b = prgCreateArray(field, shape, seed_, &counter_, &ops[1].desc);
+  Index pi;
+
+  if (lctx_->Rank() == perm_rank) {
+    pi = genRandomPerm(size, seed_, &counter_);
+  }
+
+  if (lctx_->Rank() == 0) {
+    for (auto& op : ops) {
+      op.seeds = seeds_;
+    }
+    if (perm_rank != 0) {
+      auto pi = genRandomPerm(size, seeds_[perm_rank], &counter_);
+      ring_add_(b, TrustedParty::adjustGeneralPerm(absl::MakeSpan(ops), pi));
+    } else {
+      ring_add_(b, TrustedParty::adjustGeneralPerm(absl::MakeSpan(ops), pi));
+    }
+  }
+
+  auto new_counter_buf = yacl::link::Broadcast(
+      lctx_, yacl::SerializeVars<PrgCounter>(counter_), perm_rank, kTag);
+
+  counter_ = yacl::DeserializeVars<PrgCounter>(new_counter_buf);
+
+  PremTriple ret;
+  std::get<0>(ret) = std::move(*a.buf());
+  std::get<1>(ret) = std::move(*b.buf());
+  if (lctx_->Rank() == perm_rank) {
+    std::get<2>(ret) = std::move(pi);
+  }
+
+  return ret;
+}
+
 std::unique_ptr<Beaver> BeaverTfpUnsafe::Spawn() {
   return std::make_unique<BeaverTfpUnsafe>(lctx_->Spawn());
 }

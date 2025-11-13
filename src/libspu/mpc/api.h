@@ -210,6 +210,10 @@ OptionalAPI<Value> perm_ss(SPUContext* ctx, const Value& x, const Value& perm);
 Value perm_pp(SPUContext* ctx, const Value& x, const Value& perm);
 Value perm_vv(SPUContext* ctx, const Value& x, const Value& perm);
 
+// the shape of x and perm can be not the same.
+OptionalAPI<Value> perm2_sp(SPUContext* ctx, const Value& x, const Value& perm);
+OptionalAPI<Value> perm2_sv(SPUContext* ctx, const Value& x, const Value& perm);
+
 // Inverse permute 1-D x with permutation perm
 // ret[perm[i]] = x[i]
 OptionalAPI<Value> inv_perm_sp(SPUContext* ctx, const Value& x,

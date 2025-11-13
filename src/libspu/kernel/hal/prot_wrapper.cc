@@ -253,7 +253,7 @@ MAP_BINARY_OP(equal_pp)
     auto ret = mpc::NAME(ctx, x, y);                                  \
     SPU_ENFORCE(ret.has_value(), "{} api not implemented", #NAME);    \
     return ret.value().setDtype(x.dtype());                           \
-  }  // namespace spu::kernel::hal
+  }
 
 MAP_OPTIONAL_PERM_OP(perm_ss);
 MAP_OPTIONAL_PERM_OP(perm_sp);
@@ -380,5 +380,19 @@ MAP_RING_CAST_OP(ring_cast_down_v);
 
 MAP_OPTIONAL_RING_CAST_OP(ring_cast_down_s);
 #undef MAP_OPTIONAL_RING_CAST_OP
+
+#define MAP_OPTIONAL_GENERAL_PERM_OP(NAME)                          \
+  Value _##NAME(SPUContext* ctx, const Value& x, const Value& y) {  \
+    SPU_TRACE_HAL_LEAF(ctx, x, y);                                  \
+    SPU_ENFORCE(x.shape().ndim() == 1, "x should be a 1-d tensor"); \
+    SPU_ENFORCE(y.shape().ndim() == 1, "y should be a 1-d tensor"); \
+    auto ret = mpc::NAME(ctx, x, y);                                \
+    SPU_ENFORCE(ret.has_value(), "{} api not implemented", #NAME);  \
+    return ret.value().setDtype(x.dtype());                         \
+  }
+
+MAP_OPTIONAL_GENERAL_PERM_OP(perm2_sp);
+MAP_OPTIONAL_GENERAL_PERM_OP(perm2_sv);
+#undef MAP_OPTIONAL_GENERAL_PERM_OP
 
 }  // namespace spu::kernel::hal
