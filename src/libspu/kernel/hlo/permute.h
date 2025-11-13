@@ -61,6 +61,5 @@ std::vector<spu::Value> Permute(SPUContext* ctx,
 
 std::vector<spu::Value> GeneralPermute(SPUContext* ctx,
                                        absl::Span<const spu::Value> inputs,
-                                       const spu::Value& perm,
-                                       int64_t perm_dim);
+                                       const spu::Value& perm);
 }  // namespace spu::kernel::hlo
