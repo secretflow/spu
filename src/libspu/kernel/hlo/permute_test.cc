@@ -356,4 +356,118 @@ TEST_P(PermuteEmptyTest, Empty) {
       });
 }
 
+// GeneralPermute test parameters: input_vis, perm_vis, npc
+using GeneralPermuteParams = std::tuple<VisType, VisType, size_t>;
+
+std::vector<GeneralPermuteParams> GetValidGeneralPermuteParams() {
+  std::vector<GeneralPermuteParams> valid_combinations;
+
+  // perm can be Public or Private (not Secret)
+  std::vector<VisType> perm_vis_types = {VisType::VisPub, VisType::VisPriv0,
+                                         VisType::VisPriv1};
+
+  for (const auto& vis_x : kVisTypes) {
+    for (const auto& vis_perm : perm_vis_types) {
+      for (const auto& npc : {2, 3}) {
+        valid_combinations.emplace_back(vis_x, vis_perm, npc);
+      }
+    }
+  }
+  return valid_combinations;
+}
+
+class GeneralPermuteTest
+    : public ::testing::TestWithParam<GeneralPermuteParams> {};
+
+INSTANTIATE_TEST_SUITE_P(
+    GeneralPermuteVis, GeneralPermuteTest,
+    testing::ValuesIn(GetValidGeneralPermuteParams()),
+    [](const testing::TestParamInfo<GeneralPermuteTest::ParamType>& p) {
+      return fmt::format("{}x{}x{}", get_vis_str(std::get<0>(p.param)),
+                         get_vis_str(std::get<1>(p.param)),
+                         std::get<2>(p.param));
+    });
+
+TEST_P(GeneralPermuteTest, BasicWork) {
+  const VisType x_vis = std::get<0>(GetParam());
+  const VisType perm_vis = std::get<1>(GetParam());
+  const size_t npc = std::get<2>(GetParam());
+  // only SEMI2K is supported now
+  const ProtocolKind protocol = SEMI2K;
+
+  xt::xarray<int64_t> x = {4, 1, 8, 2, 7, 9, 5, 5};
+  xt::xarray<int64_t> perm = {3, 2, 3, 6, 3, 6};
+  xt::xarray<int64_t> expected = {2, 8, 2, 5, 2, 5};
+
+  mpc::utils::simulate(
+      npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+        SPUContext sctx = test::makeSPUContext(protocol, kField, lctx);
+
+        auto x_v = makeTestValue(&sctx, x, x_vis);
+        auto perm_v = makeTestValue(&sctx, perm, perm_vis);
+
+        auto result = GeneralPermute(&sctx, {x_v}, perm_v);
+        EXPECT_EQ(result.size(), 1);
+
+        auto ret = result[0];
+        if (!ret.isPublic()) {
+          ret = Reveal(&sctx, ret);
+        }
+        EXPECT_TRUE(ret.isPublic());
+
+        auto ret_val = hal::dump_public_as<int64_t>(&sctx, ret);
+        EXPECT_TRUE(xt::allclose(expected, ret_val, 0.001, 0.001))
+            << expected << std::endl
+            << ret_val << std::endl;
+      });
+}
+
+TEST_P(GeneralPermuteTest, MultipleInputsWork) {
+  const VisType x_vis = std::get<0>(GetParam());
+  const VisType perm_vis = std::get<1>(GetParam());
+  const size_t npc = std::get<2>(GetParam());
+  // only SEMI2K is supported now
+  const ProtocolKind protocol = SEMI2K;
+
+  xt::xarray<int64_t> x1 = {4, 1, 8, 2, 7, 9, 5, 5};
+  xt::xarray<int64_t> x2 = {10, 20, 30, 40, 50, 60, 70, 80};
+  xt::xarray<int64_t> perm = {3, 2, 3, 6, 3, 6};
+
+  xt::xarray<int64_t> expected1 = {2, 8, 2, 5, 2, 5};
+  xt::xarray<int64_t> expected2 = {40, 30, 40, 70, 40, 70};
+
+  mpc::utils::simulate(
+      npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+        SPUContext sctx = test::makeSPUContext(protocol, kField, lctx);
+
+        auto x1_v = makeTestValue(&sctx, x1, x_vis);
+        auto x2_v = makeTestValue(&sctx, x2, x_vis);
+        auto perm_v = makeTestValue(&sctx, perm, perm_vis);
+
+        std::vector<Value> inputs = {x1_v, x2_v};
+        auto results = GeneralPermute(&sctx, inputs, perm_v);
+        EXPECT_EQ(results.size(), 2);
+
+        auto ret1 = results[0];
+        if (!ret1.isPublic()) {
+          ret1 = Reveal(&sctx, ret1);
+        }
+        EXPECT_TRUE(ret1.isPublic());
+        auto ret_val1 = hal::dump_public_as<int64_t>(&sctx, ret1);
+        EXPECT_TRUE(xt::allclose(expected1, ret_val1, 0.001, 0.001))
+            << expected1 << std::endl
+            << ret_val1 << std::endl;
+
+        auto ret2 = results[1];
+        if (!ret2.isPublic()) {
+          ret2 = Reveal(&sctx, ret2);
+        }
+        EXPECT_TRUE(ret2.isPublic());
+        auto ret_val2 = hal::dump_public_as<int64_t>(&sctx, ret2);
+        EXPECT_TRUE(xt::allclose(expected2, ret_val2, 0.001, 0.001))
+            << expected2 << std::endl
+            << ret_val2 << std::endl;
+      });
+}
+
 }  // namespace spu::kernel::hlo

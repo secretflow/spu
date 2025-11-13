@@ -153,6 +153,13 @@ class PermKernel : public Kernel {
                           const NdArrayRef& perm) const = 0;
 };
 
+class GeneralPermKernel : public Kernel {
+ public:
+  void evaluate(KernelEvalContext* ctx) const override;
+  virtual NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in,
+                          const NdArrayRef& perm) const = 0;
+};
+
 class OramOneHotKernel : public Kernel {
   void evaluate(KernelEvalContext* ctx) const override;
 

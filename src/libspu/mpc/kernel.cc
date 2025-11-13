@@ -150,8 +150,20 @@ void PermKernel::evaluate(KernelEvalContext* ctx) const {
   const auto& y = ctx->getParam<Value>(1);
 
   SPU_ENFORCE(x.shape() == y.shape(), "shape mismatch {} {}", x.shape(),
-              x.shape());
+              y.shape());
   SPU_ENFORCE(x.shape().ndim() == 1, "input should be a 1-d tensor");
+
+  auto z = proc(ctx, UnwrapValue(x), UnwrapValue(y));
+
+  ctx->pushOutput(WrapValue(z));
+}
+
+void GeneralPermKernel::evaluate(KernelEvalContext* ctx) const {
+  const auto& x = ctx->getParam<Value>(0);
+  const auto& y = ctx->getParam<Value>(1);
+
+  SPU_ENFORCE(x.shape().ndim() == 1, "input should be a 1-d tensor");
+  SPU_ENFORCE(y.shape().ndim() == 1, "perm should be a 1-d tensor");
 
   auto z = proc(ctx, UnwrapValue(x), UnwrapValue(y));
 

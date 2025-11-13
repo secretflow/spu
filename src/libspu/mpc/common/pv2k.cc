@@ -861,7 +861,7 @@ class InvPermVV : public PermKernel {
   }
 };
 
-class PermPP : public PermKernel {
+class PermPP : public GeneralPermKernel {
  public:
   static constexpr const char* kBindName() { return "perm_pp"; }
 
@@ -892,7 +892,7 @@ class PermPP : public PermKernel {
   }
 };
 
-class PermVV : public PermKernel {
+class PermVV : public GeneralPermKernel {
  public:
   static constexpr const char* kBindName() { return "perm_vv"; }
 
@@ -923,7 +923,8 @@ class PermVV : public PermKernel {
 
       return z;
     } else {
-      return x;
+      NdArrayRef z(x.eltype(), y.shape());
+      return z;
     }
   }
 };

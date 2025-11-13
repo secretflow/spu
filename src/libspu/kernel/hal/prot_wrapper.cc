@@ -354,10 +354,21 @@ Value _merge_keys_v(SPUContext* ctx, absl::Span<Value const> inputs,
     return ret.setDtype(x.dtype());                                   \
   }
 
+#define MAP_GENERAL_PERM_OP(NAME)                                   \
+  Value _##NAME(SPUContext* ctx, const Value& x, const Value& y) {  \
+    SPU_TRACE_HAL_LEAF(ctx, x, y);                                  \
+    SPU_ENFORCE(x.shape().ndim() == 1, "x should be a 1-d tensor"); \
+    auto ret = mpc::NAME(ctx, x, y);                                \
+    return ret.setDtype(x.dtype());                                 \
+  }
+
 MAP_PERM_OP(inv_perm_pp);
 MAP_PERM_OP(inv_perm_vv);
-MAP_PERM_OP(perm_pp);
-MAP_PERM_OP(perm_vv);
+MAP_GENERAL_PERM_OP(perm_pp);
+MAP_GENERAL_PERM_OP(perm_vv);
+
+#undef MAP_GENERAL_PERM_OP
+#undef MAP_PERM_OP
 
 #define MAP_RING_CAST_OP(NAME)                                   \
   Value _##NAME(SPUContext* ctx, const Value& x, FieldType to) { \
