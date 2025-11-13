@@ -154,20 +154,15 @@ namespace spu::compiler {
 
 mlir::OwningOpRef<mlir::ModuleOp>
 HloImporter::parseXlaModuleFromString(const std::string &content) {
-  absl::string_view content_sv(content);
-  if (absl::StartsWith(content_sv, "goo.gle/debugproto")) {
-    content_sv = content_sv.substr(strlen("goo.gle/debugproto"));
-  }
   // Stage 1: Load hlo_module
   xla::HloModuleProto hlo_module;
-  if (!hlo_module.ParseFromString(content_sv)) {
+  if (!hlo_module.ParseFromString(content)) {
     // If parse as HloModuleProto fails, try HloProto.
     xla::HloProto hlo_proto;
-    if (!hlo_proto.ParseFromString(content_sv)) {
+    if (!hlo_proto.ParseFromString(content)) {
       // Try human-readable format
-      if (!google::protobuf::TextFormat::ParseFromString(content_sv,
-                                                         &hlo_proto)) {
-        SPU_THROW("Failed to parse hlo module from string {}", content_sv);
+      if (!google::protobuf::TextFormat::ParseFromString(content, &hlo_proto)) {
+        SPU_THROW("Failed to parse hlo module from string {}", content);
       }
     }
     hlo_module = hlo_proto.hlo_module();
