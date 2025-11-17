@@ -50,6 +50,17 @@ bazel_dep(name = "protobuf", version = "32.1")
 bazel_dep(name = "pybind11_bazel", version = "2.13.6")
 bazel_dep(name = "rules_cuda", version = "0.2.5")
 bazel_dep(name = "rules_python", version = "1.2.0")
+bazel_dep(name = "openssl", version = "3.3.2.bcr.1")
+single_version_override(
+    module_name = "openssl",
+    version = "3.3.2.bcr.1",
+)
+
+bazel_dep(name = "boringssl", version = "0.20250818.0")
+single_version_override(
+    module_name = "boringssl",
+    version = "0.20250818.0",
+)
 
 # For experimental/squirrel and examples/cpp
 bazel_dep(name = "eigen", version = "3.4.90-20230801-66e8f3")
