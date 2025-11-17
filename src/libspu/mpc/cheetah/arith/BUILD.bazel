@@ -62,6 +62,18 @@ spu_cc_library(
 )
 
 spu_cc_library(
+    name = "batch_matmul",
+    srcs = ["batch_matmul.cc"],
+    hdrs = ["batch_matmul.h"],
+    deps = [
+        ":arith_comm",
+        "simd_batchmm_prot",
+        "@yacl//yacl/utils:elapsed_timer",
+        "//libspu/mpc/cheetah/rlwe:packlwes",
+    ],
+)
+
+spu_cc_library(
     name = "simd_mul_prot",
     srcs = ["simd_mul_prot.cc"],
     hdrs = ["simd_mul_prot.h"],
@@ -137,6 +149,18 @@ spu_cc_test(
         ":simd_batchmm_prot",
         "//libspu/mpc/utils:ring_ops",
         "//libspu/mpc/utils:simulate",
+        "@yacl//yacl/utils:elapsed_timer",
+    ],
+)
+
+spu_cc_test(
+    name = "batch_matmul_test",
+    srcs = ["batch_matmul_test.cc"],
+    deps = [
+        ":batch_matmul",
+        "//libspu/mpc/utils:ring_ops",
+        "//libspu/mpc/utils:simulate",
+        "@yacl//yacl/utils:elapsed_timer",
     ],
 )
 

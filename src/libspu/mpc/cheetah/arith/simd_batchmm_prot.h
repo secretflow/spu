@@ -24,7 +24,7 @@
 
 namespace spu::mpc::cheetah {
 
-class SIMDBatchMMProt {
+class SIMDBatchMMProt : public EnableCPRNG {
  public:
 
   struct Meta {
@@ -53,6 +53,10 @@ class SIMDBatchMMProt {
                   const seal::SEALContext& context, bool save_seed,
                   absl::Span<RLWECt> out) const;
 
+  void EncodeSingle(absl::Span<const uint64_t> array, RLWEPt& out) const;
+
+  void DecodeSingle(const RLWEPt& poly, absl::Span<uint64_t> array) const;
+
   void EncodeBatch(absl::Span<const uint64_t> array,
                    absl::Span<RLWEPt> batch_out, seal::BatchEncoder& encoder) const;
 
@@ -73,24 +77,39 @@ class SIMDBatchMMProt {
                            absl::Span<const uint64_t> weight,
                            absl::Span<uint64_t> weight_vec) const;
 
+  NdArrayRef PrepareWeightVector(const Meta& meta, Shape2D in_shape,
+                                 const NdArrayRef& weight) const;
+
   // Transform input matrix into col packed vectors
   void PrepareInputVector(const Meta& meta, Shape2D in_shape,
                           absl::Span<const uint64_t> input,
                           absl::Span<uint64_t> input_vec) const;
 
+  NdArrayRef PrepareInputVector(const Meta& meta, Shape2D in_shape,
+                                const NdArrayRef& input) const;
+
   // Input col packed ct and diag packed pt
   // Output col packed ct
   void BatchMatMatMul(const Meta& meta, Shape2D in_shape,
-                 absl::Span<RLWECt> lhs_input, absl::Span<const RLWEPt> rhs_weight,
+                 absl::Span<const RLWECt> lhs_input, absl::Span<const RLWEPt> rhs_weight,
                  const RLWEPublicKey& public_key, const GaloisKeys& gal_keys,
                  const seal::SEALContext& context, 
                  absl::Span<RLWECt> out) const;
+
+  void ReshareOutputInplace(absl::Span<RLWECt> ct,
+                            absl::Span<const uint64_t> share_mask,
+                            const RLWEPublicKey& public_key,
+                            const seal::SEALContext& context);
+
 
   // Parse the result matrix from col packed polys
   // ans_poly is the decoded vector of the decrypted plaintext poly result
   void ParseResult(const Meta& meta, Shape2D in_shape,
                    absl::Span<const uint64_t> ans_poly,
                    absl::Span<uint64_t> res_mat) const;
+
+  NdArrayRef ParseResult(const Meta& meta, Shape2D in_shape,
+                         const NdArrayRef& ans_poly) const;
 
   // Shape2D GetInShape() const { return in_shape_; }
 
@@ -102,10 +121,14 @@ class SIMDBatchMMProt {
  private:
   void NoiseFloodInplace(RLWECt &ct, const seal::SEALContext &context);
 
+  void PopulateMatrixRepsIndexMap(
+      uint64_t simd_lane, std::vector<size_t>& matrix_reps_index_map);
+
   uint64_t simd_lane_;
   uint64_t row_size_;
   seal::Modulus prime_modulus_;
   std::unique_ptr<seal::util::NTTTables> encode_tabl_;
+  std::unique_ptr<std::vector<size_t>> matrix_reps_index_map_;
   // Shape2D in_shape_{0, 0};
 };
 

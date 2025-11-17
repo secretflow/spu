@@ -42,9 +42,98 @@ SIMDBatchMMProt::SIMDBatchMMProt(uint64_t simd_lane, uint64_t prime_modulus)
   row_size_ = simd_lane_ / 2;
   encode_tabl_ = std::make_unique<seal::util::NTTTables>(
       absl::bit_width(simd_lane) - 1, prime_modulus_);
+
+  // populate matrix_reps_index_map_
+  matrix_reps_index_map_ = std::make_unique<std::vector<size_t>>();
+  PopulateMatrixRepsIndexMap(simd_lane_, *matrix_reps_index_map_);
+
 }
 
+// Same as seal::BatchEncoder::populate_matrix_reps_index_map
+void SIMDBatchMMProt::PopulateMatrixRepsIndexMap(uint64_t simd_lane, std::vector<size_t>& matrix_reps_index_map) {
+  matrix_reps_index_map.resize(simd_lane);
+  size_t logn = seal::util::get_power_of_two(simd_lane);
+
+  // Copy from the matrix to the value vectors
+  size_t row_size = simd_lane >> 1;
+  size_t m = simd_lane << 1;
+  uint64_t gen = 3;
+  uint64_t pos = 1;
+  for (size_t i = 0; i < row_size; i++)
+  {
+      // Position in normal bit order
+      uint64_t index1 = (pos - 1) >> 1;
+      uint64_t index2 = (m - pos - 1) >> 1;
+      // Set the bit-reversed locations
+      matrix_reps_index_map[i] = seal::util::reverse_bits(index1, logn);
+      matrix_reps_index_map[row_size | i] = seal::util::reverse_bits(index2, logn);
+      // Next primitive root
+      pos *= gen;
+      pos &= (m - 1);
+  }
+}
+
+
 SIMDBatchMMProt::~SIMDBatchMMProt() = default;
+
+// SIMDMulProt::EncodeSingle + matrix position arrangement from seal::BatchEncoder
+void SIMDBatchMMProt::EncodeSingle(absl::Span<const uint64_t> array, RLWEPt &out) const {
+  SPU_ENFORCE_LE(array.size(), (size_t)simd_lane_);
+
+  SPU_ENFORCE(
+      std::all_of(array.cbegin(), array.cend(),
+                  [&](uint64_t x) { return x < prime_modulus_.value(); }),
+      "array value out-of-range to encode");
+
+  out.parms_id() = seal::parms_id_zero;
+  out.resize(simd_lane_);
+  std::copy_n(array.data(), array.size(), out.data());
+  std::fill_n(out.data() + array.size(), simd_lane_ - array.size(), 0);
+
+  // First write the values to destination coefficients.
+  // Read in top row, then bottom row.
+  for (size_t i = 0; i < array.size(); i++) {
+      *(out.data() + (*matrix_reps_index_map_)[i]) = array[i];
+  }
+  for (size_t i = array.size(); i < simd_lane_; i++) {
+      *(out.data() + (*matrix_reps_index_map_)[i]) = 0;
+  }
+
+  seal::util::inverse_ntt_negacyclic_harvey(out.data(), *encode_tabl_);
+}
+
+// SIMDMulProt::DecodeSingle + matrix position arrangement from seal::BatchEncoder
+void SIMDBatchMMProt::DecodeSingle(const RLWEPt &poly, absl::Span<uint64_t> array) const {
+  SPU_ENFORCE_EQ(poly.coeff_count(), (size_t)simd_lane_);
+  SPU_ENFORCE_LE(array.size(), poly.coeff_count());
+  if (array.empty()) {
+    return;
+  }
+
+  std::vector<uint64_t> temp_dest(simd_lane_, 0);
+  if (array.size() == (size_t)simd_lane_) {
+    // SIMD encode is doing intt
+    // inplace ntt
+    std::copy_n(poly.data(), simd_lane_, temp_dest.data());
+    seal::util::ntt_negacyclic_harvey(temp_dest.data(), *encode_tabl_);
+
+    // Read top row, then bottom row
+    for (size_t i = 0; i < array.size(); i++) {
+        array[i] = temp_dest[(*matrix_reps_index_map_)[i]];
+    }
+  } else {
+    // only take the front part
+    std::vector<uint64_t> tmp(simd_lane_);
+    std::copy_n(poly.data(), simd_lane_, tmp.data());
+    seal::util::ntt_negacyclic_harvey(tmp.data(), *encode_tabl_);
+    std::copy_n(tmp.data(), simd_lane_, temp_dest.data());
+
+    // Read top row, then bottom row
+    for (size_t i = 0; i < array.size(); i++) {
+        array[i] = temp_dest[(*matrix_reps_index_map_)[i]];
+    }
+  }
+}
 
 
 void SIMDBatchMMProt::EncodeBatch(absl::Span<const uint64_t> array,
@@ -55,9 +144,7 @@ void SIMDBatchMMProt::EncodeBatch(absl::Span<const uint64_t> array,
     for (int64_t i = bgn; i < end; ++i) {
       int64_t slice_bgn = i * simd_lane_;
       int64_t slice_n = std::min<int64_t>(simd_lane_, array.size() - slice_bgn);
-      std::vector<uint64_t> plain_vec(encoder.slot_count(), 0);
-      std::copy_n(array.data() + slice_bgn, slice_n, plain_vec.data());
-      encoder.encode(plain_vec, batch_out[i]);
+      EncodeSingle(array.subspan(slice_bgn, slice_n), batch_out[i]);
     }
   });
 }
@@ -70,41 +157,41 @@ void SIMDBatchMMProt::DecodeBatch(absl::Span<const RLWEPt> polys,
     for (int64_t i = bgn; i < end; ++i) {
       int64_t slice_bgn = i * simd_lane_;
       int64_t slice_n = std::min<int64_t>(simd_lane_, array.size() - slice_bgn);
-      std::vector<uint64_t> plain_vec;
-      encoder.decode(polys[i], plain_vec);
+      std::vector<uint64_t> plain_vec(simd_lane_, 0);
+      // encoder.decode(polys[i], plain_vec);
+      DecodeSingle(polys[i], absl::MakeSpan(plain_vec));
       std::copy_n(plain_vec.data(), slice_n, array.data() + slice_bgn);
     }
   });
 }
 
+// Same as SIMDMulProt::SymEncrypt
 void SIMDBatchMMProt::SymEncrypt(absl::Span<const RLWEPt> polys,
                                  const RLWESecretKey &secret_key,
                                  const seal::SEALContext &context, bool save_seed,
                                  absl::Span<RLWECt> out) const {
   SPU_ENFORCE_EQ(polys.size(), out.size());
 
-  // yacl::parallel_for(0, polys.size(), [&](int64_t bgn, int64_t end) {
-  //   for (int64_t i = bgn; i < end; ++i) {
-  //     seal::util::encrypt_zero_symmetric(secret_key, context,
-  //                                        context.first_parms_id(), false,
-  //                                        save_seed, out[i]);
-  //     seal::util::multiply_add_plain_with_scaling_variant(
-  //         polys[i], *context.first_context_data(),
-  //         seal::util::RNSIter{out[i].data(), out[i].poly_modulus_degree()});
-  //   }
-  // });
-
-  seal::Encryptor encryptor(context, secret_key);
-  // seal::Evaluator evaluator(context);
-
   yacl::parallel_for(0, polys.size(), [&](int64_t bgn, int64_t end) {
     for (int64_t i = bgn; i < end; ++i) {
-      encryptor.encrypt_symmetric(polys[i], out[i]);
+      seal::util::encrypt_zero_symmetric(secret_key, context,
+                                         context.first_parms_id(), false,
+                                         save_seed, out[i]);
+      seal::util::multiply_add_plain_with_scaling_variant(
+          polys[i], *context.first_context_data(),
+          seal::util::RNSIter{out[i].data(), out[i].poly_modulus_degree()});
     }
   });
 
-}
+  // seal::Encryptor encryptor(context, secret_key);
+  // // seal::Evaluator evaluator(context);
 
+  // yacl::parallel_for(0, polys.size(), [&](int64_t bgn, int64_t end) {
+  //   for (int64_t i = bgn; i < end; ++i) {
+  //     encryptor.encrypt_symmetric(polys[i], out[i]);
+  //   }
+  // });
+}
 
 
 Shape2D SIMDBatchMMProt::ComputeInShape(const Meta& meta) {
@@ -156,7 +243,6 @@ size_t SIMDBatchMMProt::ComputeOutputCtNum(const Meta& meta, Shape2D in_shape) c
 
 }
 
-
 void SIMDBatchMMProt::PrepareWeightVector(const Meta& meta, Shape2D in_shape,
                                                 absl::Span<const uint64_t> weight,
                                                 absl::Span<uint64_t> weight_vec) const {
@@ -170,7 +256,7 @@ void SIMDBatchMMProt::PrepareWeightVector(const Meta& meta, Shape2D in_shape,
 
 
   // Fill weight_vec with 0
-  std::fill(weight_vec.begin(), weight_vec.end(), 100);
+  std::fill(weight_vec.begin(), weight_vec.end(), 0);
 
   // Very similar with BOLT BSGS weight preparation
   // Use weight from different batch to align with different input in {eff_row_size}
@@ -187,8 +273,12 @@ void SIMDBatchMMProt::PrepareWeightVector(const Meta& meta, Shape2D in_shape,
     // input_groups == 1
     SPU_ENFORCE_EQ(input_groups, (size_t)1);
     SPU_ENFORCE_EQ(weight_vec.size(), num_row_blocks * CeilDiv(num_col_blocks, (size_t)2) * block_size * simd_lane_);
-    for (size_t rb = 0; rb < num_row_blocks; ++rb) {
-      for (size_t cb2 = 0; cb2 < CeilDiv(num_col_blocks, (size_t)2); ++cb2) { // for each block pair of 2 cols
+
+    size_t job_number = num_row_blocks * CeilDiv(num_col_blocks, (size_t)2);
+    yacl::parallel_for(0, job_number, [&](int64_t bgn, int64_t end) {
+      for (int64_t job_id = bgn; job_id < end; ++job_id) {
+        size_t rb = job_id / CeilDiv(num_col_blocks, (size_t)2);
+        size_t cb2 = job_id % CeilDiv(num_col_blocks, (size_t)2); // for each block pair of 2 cols
         size_t block_start = (rb * CeilDiv(num_col_blocks, (size_t)2) + cb2) * block_size * simd_lane_;
 
         for (size_t d = 0; d < block_size; ++d) { // for each block diag
@@ -234,7 +324,7 @@ void SIMDBatchMMProt::PrepareWeightVector(const Meta& meta, Shape2D in_shape,
           }
         }
       }
-    }
+    });
   } else {
     // block_size == 1
     SPU_ENFORCE_EQ(block_size, (size_t)1);
@@ -266,6 +356,106 @@ void SIMDBatchMMProt::PrepareWeightVector(const Meta& meta, Shape2D in_shape,
     }
 
   }
+}
+
+NdArrayRef SIMDBatchMMProt::PrepareWeightVector(const Meta& meta, Shape2D in_shape,
+                                                const NdArrayRef &weight) const {
+  const Type& eltype = weight.eltype();
+  SPU_ENFORCE(eltype.isa<Ring2k>(), "must be ring_type, got={}", eltype);
+
+  size_t block_size = in_shape[1];
+  size_t num_row_blocks = CeilDiv((size_t)meta.dims[1], block_size);
+  size_t num_col_blocks = CeilDiv((size_t)meta.dims[2], block_size);
+  // input_groups > 1 if and only if eff_row_size > simd_lane_ <-> meta.dims[0] > simd_lane_
+  size_t input_groups = CeilDiv((uint64_t)in_shape[0], simd_lane_);
+
+  SPU_ENFORCE_EQ((size_t)weight.numel(), (size_t)meta.batch * meta.dims[1] * meta.dims[2]);
+
+  const auto field = eltype.as<Ring2k>()->field();
+  NdArrayRef weight_vec;
+
+  DISPATCH_ALL_FIELDS(field, [&]() {
+    using uT = std::make_unsigned<ring2k_t>::type;
+    if ((uint64_t)in_shape[0] <= row_size_) { 
+      size_t baby_step = absl::bit_ceil(
+        static_cast<uint64_t>(std::sqrt(block_size * meta.dims[2] / (double)meta.dims[1])));
+      baby_step = std::min(baby_step, block_size);
+      
+      SPU_ENFORCE_EQ(input_groups, (size_t)1);
+      weight_vec = ring_zeros(field, {static_cast<int64_t>(num_row_blocks *
+                                                CeilDiv(num_col_blocks, (size_t)2) * block_size * simd_lane_)});
+
+      size_t job_number = num_row_blocks * CeilDiv(num_col_blocks, (size_t)2);
+      yacl::parallel_for(0, job_number, [&](int64_t bgn, int64_t end) {
+        for (int64_t job_id = bgn; job_id < end; ++job_id) {
+          size_t rb = job_id / CeilDiv(num_col_blocks, (size_t)2);
+          size_t cb2 = job_id % CeilDiv(num_col_blocks, (size_t)2); // for each block pair of 2 cols
+          size_t block_start = (rb * CeilDiv(num_col_blocks, (size_t)2) + cb2) * block_size * simd_lane_;
+
+          for (size_t d = 0; d < block_size; ++d) { // for each block diag
+            size_t diag_start = block_start + d * simd_lane_;
+            size_t diag_step = (size_t)(d / baby_step) * baby_step;
+
+            for (size_t k = 0; k < block_size; ++k) { // for each diag element
+              size_t src_row_idx1 = rb * block_size + (k + d - diag_step + block_size) % block_size; 
+              size_t src_col_idx1 = (2*cb2) * block_size + (k - diag_step + block_size) % block_size;
+
+              if (src_row_idx1 < (size_t)meta.dims[1] && src_col_idx1 < (size_t)meta.dims[2]) {
+                // std::cout << "k: " << k << " src_row_idx1: " << src_row_idx1 << " src_col_idx1: " << src_col_idx1 << std::endl;
+                for (size_t r = 0; r < (size_t)in_shape[0]; ++r) {
+                  size_t batch_idx = r / meta.dims[0];
+                  if (batch_idx >= meta.batch) {
+                      break;
+                  }
+                  uint64_t value = weight.at<uT>(batch_idx * meta.dims[1] * meta.dims[2] + src_row_idx1 * meta.dims[2] + src_col_idx1);
+                  weight_vec.at<uT>(diag_start + k * in_shape[0] + r) = value;
+                }
+              }
+
+              size_t src_row_idx2 = src_row_idx1;
+              size_t src_col_idx2 = (2*cb2+1) * block_size + (k - diag_step + block_size) % block_size;
+              if (src_row_idx2 < (size_t)meta.dims[1] && src_col_idx2 < (size_t)meta.dims[2]) {
+                for (size_t r = 0; r < (size_t)in_shape[0]; ++r) {
+                  size_t batch_idx = r / meta.dims[0];
+                  if (batch_idx >= meta.batch) {
+                      break;
+                  }
+                  uint64_t value = weight.at<uT>(batch_idx * meta.dims[1] * meta.dims[2] + src_row_idx2 * meta.dims[2] + src_col_idx2);
+                  weight_vec.at<uT>(diag_start + k * in_shape[0] + r + row_size_) = value;
+                }
+              }
+            }
+          }
+        }
+      });
+    } else {
+      SPU_ENFORCE_EQ(block_size, (size_t)1);
+      weight_vec = ring_zeros(field, {static_cast<int64_t>(input_groups * num_row_blocks * num_col_blocks * simd_lane_)});
+
+      for (size_t i = 0; i < input_groups; ++i) { // for each group of input
+
+        for (size_t rb = 0; rb < num_row_blocks; ++rb) { 
+          for (size_t cb = 0; cb < num_col_blocks; ++cb) { // for each block
+            size_t block_start = ((i * num_row_blocks + rb) * num_col_blocks + cb) * simd_lane_;
+
+            for (size_t r = 0; r < simd_lane_; ++r) { // for each input col element
+              size_t batch_idx = (i * simd_lane_ + r) / meta.dims[0];
+              if (batch_idx >= meta.batch) {
+                  break;
+              }
+              size_t src_row_idx = batch_idx * meta.dims[1] + rb;
+              size_t src_col_idx = cb;
+              if (src_row_idx <  meta.batch * meta.dims[1] && src_col_idx < (size_t)meta.dims[2]) {
+                uint64_t value = weight.at<uT>(src_row_idx * meta.dims[2] + src_col_idx);
+                weight_vec.at<uT>(block_start + r) = value;
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+  return weight_vec;
 }
 
 void SIMDBatchMMProt::PrepareInputVector(const Meta& meta, Shape2D in_shape,
@@ -310,6 +500,55 @@ void SIMDBatchMMProt::PrepareInputVector(const Meta& meta, Shape2D in_shape,
       }
     }
   }
+}
+
+NdArrayRef SIMDBatchMMProt::PrepareInputVector(const Meta& meta, Shape2D in_shape,
+                                               const NdArrayRef &input) const {
+  const Type& eltype = input.eltype();
+  SPU_ENFORCE(eltype.isa<Ring2k>(), "must be ring_type, got={}", eltype);
+
+  size_t block_size = in_shape[1];
+  size_t number_blocks = CeilDiv((size_t)meta.dims[1], block_size);
+  // input_groups > 1 if and only if eff_row_size > simd_lane_ <-> meta.dims[0] > simd_lane_
+  size_t input_groups = CeilDiv((uint64_t)in_shape[0], simd_lane_);
+  
+  SPU_ENFORCE_EQ((size_t)input.numel(), (size_t)meta.batch * meta.dims[0] * meta.dims[1]);
+
+  const auto field = eltype.as<Ring2k>()->field();
+  NdArrayRef input_vec = ring_zeros(field, {static_cast<int64_t>(input_groups * number_blocks * simd_lane_)});
+
+  DISPATCH_ALL_FIELDS(field, [&]() {
+    using uT = std::make_unsigned<ring2k_t>::type;
+
+    yacl::parallel_for(0, input_groups, [&](uint64_t bgn, uint64_t end) {
+      for (uint64_t i = bgn; i < end; ++i) { // for each group of input
+        for (size_t b = 0; b < number_blocks; ++b) { // for each block
+          size_t block_start = (i * number_blocks + b) * simd_lane_;
+
+          for (size_t c = 0; c < block_size; ++c) { // for each col of the block
+            size_t col_start = c * in_shape[0];
+
+            for (size_t r = 0; r < std::min((size_t)in_shape[0], simd_lane_); ++r) { // for each row of the block
+              size_t src_row_idx = i * simd_lane_ + r;
+              size_t src_col_idx = b * block_size + c;
+
+              if (src_row_idx < meta.batch * meta.dims[0] && src_col_idx < (size_t)meta.dims[1]) {
+                input_vec.at<uT>(block_start + col_start + r) =
+                    input.at<uT>(src_row_idx * meta.dims[1] + src_col_idx);
+                if ((size_t)in_shape[0] <= row_size_) {
+                    input_vec.at<uT>(block_start + col_start + r + row_size_) =
+                        input.at<uT>(src_row_idx * meta.dims[1] + src_col_idx);
+                }
+              }
+              // else pad 0
+            }
+          }
+        }
+      }
+    });
+  });
+
+  return input_vec;
 }
 
 void SIMDBatchMMProt::ParseResult(const Meta& meta, Shape2D in_shape,
@@ -380,10 +619,75 @@ void SIMDBatchMMProt::ParseResult(const Meta& meta, Shape2D in_shape,
 
 }
 
+NdArrayRef SIMDBatchMMProt::ParseResult(const Meta& meta, Shape2D in_shape,
+                                       const NdArrayRef &ans_poly) const {
+  const Type& eltype = ans_poly.eltype();
+  SPU_ENFORCE(eltype.isa<Ring2k>(), "must be ring_type, got={}", eltype);
+
+  size_t block_size = in_shape[1];
+  size_t num_col_blocks = CeilDiv((size_t)meta.dims[2], block_size);
+  size_t input_groups = CeilDiv((uint64_t)in_shape[0], simd_lane_);
+
+  NdArrayRef res_mat = ring_zeros(eltype.as<Ring2k>()->field(),
+                                  {static_cast<int64_t>(meta.batch * meta.dims[0] * meta.dims[2])});
+
+  DISPATCH_ALL_FIELDS(eltype.as<Ring2k>()->field(), [&]() {
+    using uT = std::make_unsigned<ring2k_t>::type;
+
+    if ((size_t)in_shape[0] <= row_size_) { 
+      SPU_ENFORCE_EQ(input_groups, (size_t)1);
+      SPU_ENFORCE_EQ((size_t)ans_poly.numel(), CeilDiv(num_col_blocks, (size_t)2) * simd_lane_);
+
+      for (size_t cb2 = 0; cb2 < CeilDiv(num_col_blocks, (size_t)2); ++cb2) { // for each block pair of 2 cols
+        size_t block_start = cb2 * simd_lane_;
+
+        for (size_t c = 0; c < block_size; ++c) { // for each col of the block
+          size_t col_start = c * in_shape[0];
+
+          for (size_t r = 0; r < (size_t)in_shape[0]; ++r) { // for each row of the block
+            size_t res_row_idx = r;
+            size_t res_col_idx1 = (2*cb2) * block_size + c;
+            size_t res_col_idx2 = (2*cb2+1) * block_size + c;
+
+            if (res_row_idx < (size_t)meta.batch * meta.dims[0] && res_col_idx1 < (size_t)meta.dims[2]) {
+              res_mat.at<uT>(res_row_idx * meta.dims[2] + res_col_idx1) =
+                  ans_poly.at<uT>(block_start + col_start + r);
+            }
+            if (res_row_idx < (size_t)meta.batch * meta.dims[0] && res_col_idx2 < (size_t)meta.dims[2]) {
+              res_mat.at<uT>(res_row_idx * meta.dims[2] + res_col_idx2) =
+                  ans_poly.at<uT>(block_start + col_start + r + row_size_);
+            }
+            // else skip
+          }
+        }
+      }
+    } else {
+      SPU_ENFORCE_EQ((size_t)ans_poly.numel(), input_groups * num_col_blocks * simd_lane_);
+      SPU_ENFORCE_EQ(block_size, (size_t)1);
+      for (size_t i = 0; i < input_groups; ++i) { // for each group of input
+        for (size_t cb = 0; cb < num_col_blocks; ++cb) { // for each block
+          size_t block_start = (i * num_col_blocks + cb) * simd_lane_;
+
+          for (size_t r = 0; r < simd_lane_; ++r) { // for each row of the block
+            size_t res_row_idx = i * simd_lane_ + r;
+            size_t res_col_idx = cb;
+
+            if (res_row_idx < (size_t)meta.batch * meta.dims[0] && res_col_idx < (size_t)meta.dims[2]) {
+              res_mat.at<uT>(res_row_idx * meta.dims[2] + res_col_idx) =
+                  ans_poly.at<uT>(block_start + r);
+            }
+            // else skip
+          }
+        }
+      }
+    }
+  });
+  return res_mat;
+}
 
 
 void SIMDBatchMMProt::BatchMatMatMul(const Meta& meta, Shape2D in_shape,
-                   absl::Span<RLWECt> lhs_input, absl::Span<const RLWEPt> rhs_weight,
+                   absl::Span<const RLWECt> lhs_input, absl::Span<const RLWEPt> rhs_weight,
                    const RLWEPublicKey& public_key, const GaloisKeys& gal_keys,
                    const seal::SEALContext& context, 
                    absl::Span<RLWECt> out) const {
@@ -408,30 +712,35 @@ void SIMDBatchMMProt::BatchMatMatMul(const Meta& meta, Shape2D in_shape,
     uint64_t baby_step = absl::bit_ceil(
         static_cast<uint64_t>(std::sqrt(block_size * meta.dims[2] / (double)meta.dims[1])));
     baby_step = std::min(baby_step, block_size);
-    std::cout << "baby_step: " << baby_step << std::endl;
+    // std::cout << "baby_step: " << baby_step << std::endl;
 
     // 2. Pre-compute all the necessary rotations of input
     //    Rotate ct to get all baby steps
     std::vector<RLWECt> rotated_input(num_row_blocks * baby_step);
 
-    yacl::parallel_for(0, num_row_blocks, [&](size_t bgn, size_t end) {
-      for (size_t rb = bgn; rb < end; ++rb) {
-        rotated_input[rb * baby_step + 0] = lhs_input[rb];
-        for (size_t s = 1; s < baby_step; ++s) {
-          evaluator.rotate_rows(rotated_input[rb * baby_step + s-1], in_shape[0], gal_keys, rotated_input[rb * baby_step + s]);
+
+    yacl::parallel_for(0, num_row_blocks*baby_step, [&](size_t bgn, size_t end) {
+      for (size_t idx = bgn; idx < end; ++idx) {
+        size_t rb = idx / baby_step;
+        size_t s = idx % baby_step;
+        if (s == 0) {
+          rotated_input[rb * baby_step + 0] = lhs_input[rb];
+        } else {
+          CATCH_SEAL_ERROR(evaluator.rotate_rows(lhs_input[rb], s*in_shape[0], gal_keys, 
+                                                 rotated_input[rb * baby_step + s]));
         }
       }
     });
 
     // 3. For each col block pair, compute the BSGS result
-    yacl::parallel_for(0, CeilDiv(num_col_blocks, (size_t)2), [&](size_t bgn, size_t end) {
-      for (size_t cb2 = bgn; cb2 < end; ++cb2) { // for each block pair of 2 cols
-        // output ct must be encrypted zero
-        seal::util::encrypt_zero_asymmetric(public_key, context, lhs_input[0].parms_id(), 
-                                            lhs_input[0].is_ntt_form(), out[cb2]);
+    std::vector<RLWECt> tmp_out(CeilDiv(num_col_blocks, (size_t)2) * (block_size / baby_step));
 
-        for (size_t gs_id = 0; gs_id < (block_size / baby_step); ++gs_id) {
-          // for each giant step
+    yacl::parallel_for(0, CeilDiv(num_col_blocks, (size_t)2)*(block_size / baby_step), [&](size_t bgn, size_t end) {
+      for (size_t job_id = bgn; job_id < end; ++job_id) { // for each block pair of 2 cols
+        size_t cb2 = job_id / (block_size / baby_step);
+        size_t gs_id = job_id % (block_size / baby_step);
+      // for (size_t cb2 = bgn; cb2 < end; ++cb2) { // for each block pair of 2 cols
+        // for (size_t gs_id = 0; gs_id < (block_size / baby_step); ++gs_id) { // for each giant step
           RLWECt res; //zero
 
           seal::util::encrypt_zero_asymmetric(public_key, context, lhs_input[0].parms_id(), 
@@ -449,7 +758,19 @@ void SIMDBatchMMProt::BatchMatMatMul(const Meta& meta, Shape2D in_shape,
             }
           }
           evaluator.rotate_rows_inplace(res, gs_id * baby_step * in_shape[0], gal_keys);
-          evaluator.add_inplace(out[cb2], res);
+          // evaluator.add_inplace(out[cb2], res);
+          tmp_out[job_id] = std::move(res);
+      }
+    });
+
+    yacl::parallel_for(0, CeilDiv(num_col_blocks, (size_t)2), [&](size_t bgn, size_t end) {
+      for (size_t cb2 = bgn; cb2 < end; ++cb2) { // for each block pair of 2 cols
+        // output ct must be encrypted zero
+        seal::util::encrypt_zero_asymmetric(public_key, context, lhs_input[0].parms_id(), 
+                                            lhs_input[0].is_ntt_form(), out[cb2]);
+        for (size_t gs_id = 0; gs_id < (block_size / baby_step); ++gs_id) { // for each giant step
+          size_t tmp_out_idx = cb2 * (block_size / baby_step) + gs_id;
+          evaluator.add_inplace(out[cb2], tmp_out[tmp_out_idx]);
         }
       }
     });
@@ -481,6 +802,56 @@ void SIMDBatchMMProt::BatchMatMatMul(const Meta& meta, Shape2D in_shape,
     });
 
   }
+}
+
+void SIMDBatchMMProt::ReshareOutputInplace(absl::Span<RLWECt> ct,
+                          absl::Span<const uint64_t> share_mask,
+                          const RLWEPublicKey& public_key,
+                          const seal::SEALContext& context) {
+  SPU_ENFORCE_EQ(CeilDiv(share_mask.size(), (size_t)simd_lane_), ct.size());
+
+  seal::Evaluator evaluator(context);
+  // seal::BatchEncoder encoder(context);
+  
+  constexpr int kMarginBitsForDec = 10;
+  seal::parms_id_type final_level_id = context.last_parms_id();
+  while (final_level_id != context.first_parms_id()) {
+    auto cntxt = context.get_context_data(final_level_id);
+    if (cntxt->total_coeff_modulus_bit_count() >=
+        kMarginBitsForDec + cntxt->parms().plain_modulus().bit_count()) {
+      break;
+    }
+    final_level_id = cntxt->prev_context_data()->parms_id();
+  }
+
+  yacl::parallel_for(0, ct.size(), [&](uint64_t bgn, uint64_t end) {
+    for (uint64_t i = bgn; i < end; ++i) {
+      RLWEPt rnd;
+      RLWECt zero_enc;
+
+      // 1. Noise flooding
+      NoiseFloodInplace(ct[i], context);
+
+      // 2. Drop some modulus for a smaller communication
+      evaluator.mod_switch_to_inplace(ct[i], final_level_id);
+
+      // 3. Re-randomize via adding enc(0)
+      seal::util::encrypt_zero_asymmetric(public_key, context, ct[i].parms_id(), 
+                                          ct[i].is_ntt_form(), zero_enc);
+      evaluator.add_inplace(ct[i], zero_enc);
+      
+      // 4. Additive share
+      size_t slice_bgn = i * simd_lane_;
+      size_t slice_n = simd_lane_;
+      EncodeSingle(share_mask.subspan(slice_bgn, slice_n), rnd);
+      evaluator.sub_plain_inplace(ct[i], rnd);
+
+      // 5. Truncate for smaller communication
+      if (ct[i].coeff_modulus_size() == 1) {
+        TruncateBFVForDecryption(ct[i], context);
+      }
+    }
+  });
 }
 
 void SIMDBatchMMProt::NoiseFloodInplace(RLWECt &ct,
