@@ -85,15 +85,6 @@ bazel_dep(name = "eigen", version = "3.4.90-20230801-66e8f3")
 bazel_dep(name = "emp-tool", version = "0.2.5.bcr.1")
 bazel_dep(name = "emp-ot", version = "0.2.4.bcr.1")
 bazel_dep(name = "brpc", version = "1.15.0")
-git_override(
-    module_name = "brpc",
-    commit = "50a9075de62f1d2b825b902acbfecfddb3d9f314",
-    patch_strip = 1,
-    patches = [
-        "//bazel/patches:brpc-string_view.patch",
-    ],
-    remote = "https://github.com/apache/brpc.git",
-)
 
 bazel_dep(name = "seal", version = "4.1.1")
 bazel_dep(name = "cutlass", version = "3.5.1")
