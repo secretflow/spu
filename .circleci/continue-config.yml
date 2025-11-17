@@ -137,7 +137,7 @@ jobs:
           groups: --group dev --group examples
   macOS_ut:
     macos:
-      xcode: 16.0.0
+      xcode: 16.4.0
     resource_class: m4pro.medium
     steps:
       - checkout
