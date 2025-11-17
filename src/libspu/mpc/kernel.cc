@@ -160,6 +160,19 @@ void MergeKeysKernel::evaluate(KernelEvalContext* ctx) const {
   ctx->pushOutput(WrapValue(y));
 }
 
+void GroupMarkKernel::evaluate(KernelEvalContext* ctx) const {
+  const auto& in = ctx->getParam<std::vector<Value>>(0);
+  bool end_group_mark = ctx->getParam<bool>(1);
+  std::vector<NdArrayRef> inputs;
+  inputs.reserve(in.size());
+  for (const auto& i : in) {
+    inputs.push_back(UnwrapValue(i));
+  }
+  auto y = proc(ctx, inputs, end_group_mark);
+
+  ctx->pushOutput(WrapValue(y));
+}
+
 void BroadcastKernel::evaluate(KernelEvalContext* ctx) const {
   const auto& in = ctx->getParam<Value>(0);
   const auto& to_shape = ctx->getParam<Shape>(1);

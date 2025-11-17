@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: SPU \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-03-13 15:10+0800\n"
+"POT-Creation-Date: 2025-10-28 13:50+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -46,66 +46,67 @@ msgstr "删除所有的 SPU 变量。"
 msgid "Delete an SPU value."
 msgstr "删除一个 SPU 变量。"
 
-#: of spu.api.Io.make_shares:3 spu.api.Io.reconstruct:3
-#: spu.api.Runtime.del_var:3 spu.api.Runtime.get_var:3
-#: spu.api.Runtime.get_var_chunk_count:3 spu.api.Runtime.get_var_meta:3
-#: spu.api.Runtime.run:3 spu.api.Runtime.set_var:3 spu.api.compile:3
-#: spu.utils.simulation.Simulator.simple:3
-msgid "Args:"
-msgstr "参数："
+#: ../../reference/py_api.rst
+msgid "参数"
+msgstr ""
 
-#: of spu.api.Runtime.del_var:4
-msgid "name (str): Id of the value."
+#: of spu.api.Runtime.del_var:3
+#, fuzzy
+msgid "Id of the value."
 msgstr "name (str): 变量的 Id。"
 
 #: of spu.api.Runtime.get_var:1 spu.api.Runtime.get_var_chunk_count:1
 msgid "Get an SPU value."
 msgstr "返回一个 SPU 变量。"
 
-#: of spu.api.Runtime.get_var:4 spu.api.Runtime.get_var_chunk_count:4
-#: spu.api.Runtime.get_var_meta:4
-msgid "name (str): Id of value."
+#: of spu.api.Runtime.get_var:3 spu.api.Runtime.get_var_chunk_count:3
+#: spu.api.Runtime.get_var_meta:3 spu.api.Runtime.set_var:3
+#, fuzzy
+msgid "Id of value."
 msgstr "name (str): 变量的 Id。"
 
-#: of spu.api.Io.make_shares:8 spu.api.Io.reconstruct:6
-#: spu.api.Runtime.get_var:6 spu.api.Runtime.get_var_chunk_count:6
-#: spu.api.Runtime.get_var_meta:6 spu.api.compile:7
-#: spu.utils.simulation.Simulator.simple:10
-msgid "Returns:"
-msgstr "返回类型和返回值："
+#: ../../reference/py_api.rst
+msgid "返回"
+msgstr ""
 
-#: of spu.api.Runtime.get_var:7
-msgid "libspu.Share: Data data."
-msgstr "libspu.Share: 相应的数据。"
+#: of spu.api.Runtime.get_var:6
+msgid "Data data."
+msgstr ""
 
-#: of spu.api.Runtime.get_var_chunk_count:7
-msgid "int: chunks count in libspu.Share"
+#: ../../reference/py_api.rst
+msgid "返回类型"
+msgstr ""
+
+#: of spu.api.Runtime.get_var_chunk_count:6
+#, fuzzy
+msgid "chunks count in libspu.Share"
 msgstr "int: :code:`libspu.Share` 中数据块的数量。"
 
 #: of spu.api.Runtime.get_var_meta:1
 msgid "Get an SPU value without content."
 msgstr "返回一个 SPU 变量的元数据（无变量内容）。"
 
-#: of spu.api.Runtime.get_var_meta:7
-msgid "libspu.ValueMeta: Data meta with out content."
+#: of spu.api.Runtime.get_var_meta:6
+#, fuzzy
+msgid "Data meta with out content."
 msgstr "libspu.ValueMeta: 变量的元数据（无变量内容）。"
 
 #: of spu.api.Runtime.run:1
 msgid "Run an SPU executable."
 msgstr "返回一个 SPU 的可执行代码。"
 
-#: of spu.api.Runtime.run:4
-msgid "executable (libspu.ExecutableProto): executable."
-msgstr "executable (libspu.ExecutableProto): 可执行代码。"
+#: of spu.api.Runtime.run:3
+#, fuzzy
+msgid "executable."
+msgstr "返回一个 SPU 的可执行代码。"
 
 #: of spu.api.Runtime.set_var:1
 msgid "Set an SPU value."
 msgstr "设置一个 SPU 变量。"
 
-#: of spu.api.Runtime.set_var:4
-msgid "name (str): Id of value. value (libspu.Share): value data."
-msgstr "name (str): 变量的Id。"
-"value (libspu.Share): 变量的值。"
+#: of spu.api.Runtime.set_var:5
+msgid "value data."
+msgstr ""
 
 #: ../../reference/py_api.rst:15
 msgid "Runtime IO"
@@ -119,30 +120,31 @@ msgstr "SPU 的输入/输出接口。"
 msgid "Convert from NumPy array to list of SPU value(s)."
 msgstr "将 NumPy array 转为 SPU 变量的 list。"
 
-#: of spu.api.Io.make_shares:4
+#: of spu.api.Io.make_shares:3 spu.api.Io.reconstruct:3
+msgid "input."
+msgstr ""
+
+#: of spu.api.Io.make_shares:5
+msgid "visibility."
+msgstr ""
+
+#: of spu.api.Io.make_shares:7
+#, fuzzy
 msgid ""
-"x (np.ndarray): input. vtype (libspu.Visibility): visibility. owner_rank "
-"(int): the index of the trusted piece. if >= 0, colocation optimization "
-"may be applied."
-msgstr "x (np.ndarray): 输入。\n"
+"the index of the trusted piece. if >= 0, colocation optimization may be "
+"applied."
+msgstr ""
+"x (np.ndarray): 输入。\n"
 "vtype (libspu.Visibility): 可见性。\n"
 "owner_rank (int): 可信部分的下标，如果该参数 >=0，那么可能会用 colocation 优化。"
 
-#: of spu.api.Io.make_shares:9
-msgid "[libspu.Share]: output."
-msgstr "libspu.Share: 输出。"
+#: of spu.api.Io.make_shares:10 spu.api.Io.reconstruct:6 spu.api.compile:8
+msgid "output."
+msgstr ""
 
 #: of spu.api.Io.reconstruct:1
 msgid "Convert from list of SPU value(s) to NumPy array."
 msgstr "将 SPU 变量的 list 转为 NumPy array。"
-
-#: of spu.api.Io.reconstruct:4
-msgid "xs ([libspu.Share]): input."
-msgstr "xs (libspu.Share): 输入。"
-
-#: of spu.api.Io.reconstruct:7
-msgid "np.ndarray: output."
-msgstr "np.ndarray: 输出。"
 
 #: ../../reference/py_api.rst:21
 msgid "Compiler"
@@ -152,16 +154,15 @@ msgstr "编译器"
 msgid "Compile from textual HLO/MHLO IR to SPU bytecode."
 msgstr "将文本的 HLO/MHLO 中间代码编译为 SPU 虚拟机的字节码"
 
-#: of spu.api.compile:4
-msgid ""
-"source (libspu.CompilationSource): input to compiler. copts "
-"(libspu.CompilerOptions): compiler options."
-msgstr "source (libspu.CompilationSource): 编译器输入。\n"
-"copts (libspu.CompilerOptions): 编译器选项。\n"
+#: of spu.api.compile:3
+#, fuzzy
+msgid "input to compiler."
+msgstr "编译器"
 
-#: of spu.api.compile:8
-msgid "[libspu.ValueProto]: output."
-msgstr "libspu.ValueProto: 输出。"
+#: of spu.api.compile:5
+#, fuzzy
+msgid "compiler options."
+msgstr "编译器"
 
 #: ../../reference/py_api.rst:26
 msgid "Simulation"
@@ -171,19 +172,20 @@ msgstr "模拟器"
 msgid "helper method to create an SPU Simulator"
 msgstr "用于创建一个 SPU 模拟器的工具函数。"
 
-#: of spu.utils.simulation.Simulator.simple:4
-msgid "wsize (int): the world size."
+#: of spu.utils.simulation.Simulator.simple:3
+#, fuzzy
+msgid "the world size."
 msgstr "wsize (int): world 大小。"
 
-#: of spu.utils.simulation.Simulator.simple:6
-msgid "prot (libspu.ProtocolKind): protocol."
-msgstr "prot (libspu.ProtocolKind): 协议。"
+#: of spu.utils.simulation.Simulator.simple:5
+msgid "protocol."
+msgstr ""
 
-#: of spu.utils.simulation.Simulator.simple:8
-msgid "field (libspu.FieldType): field type."
-msgstr "field (libspu.FieldType): 有限域类型。"
+#: of spu.utils.simulation.Simulator.simple:7
+msgid "field type."
+msgstr ""
 
-#: of spu.utils.simulation.Simulator.simple:11
+#: of spu.utils.simulation.Simulator.simple:10
 msgid "A SPU Simulator"
 msgstr "一个 SPU 模拟器。"
 
@@ -198,3 +200,45 @@ msgstr "装饰后，我们调用普通 jnp 函数就可以达到调用 SPU 函�
 #: of spu.utils.simulation.sim_jax:12
 msgid "The function will be evaluated in an spu simulator."
 msgstr "相应的函数会在 SPU 模拟器中运行。"
+
+#~ msgid "Args:"
+#~ msgstr "参数："
+
+#~ msgid "Returns:"
+#~ msgstr "返回类型和返回值："
+
+#~ msgid "libspu.Share: Data data."
+#~ msgstr "libspu.Share: 相应的数据。"
+
+#~ msgid "executable (libspu.ExecutableProto): executable."
+#~ msgstr "executable (libspu.ExecutableProto): 可执行代码。"
+
+#~ msgid "name (str): Id of value. value (libspu.Share): value data."
+#~ msgstr "name (str): 变量的Id。value (libspu.Share): 变量的值。"
+
+#~ msgid "[libspu.Share]: output."
+#~ msgstr "libspu.Share: 输出。"
+
+#~ msgid "xs ([libspu.Share]): input."
+#~ msgstr "xs (libspu.Share): 输入。"
+
+#~ msgid "np.ndarray: output."
+#~ msgstr "np.ndarray: 输出。"
+
+#~ msgid ""
+#~ "source (libspu.CompilationSource): input to "
+#~ "compiler. copts (libspu.CompilerOptions): compiler"
+#~ " options."
+#~ msgstr ""
+#~ "source (libspu.CompilationSource): 编译器输入。\n"
+#~ "copts (libspu.CompilerOptions): 编译器选项。\n"
+
+#~ msgid "[libspu.ValueProto]: output."
+#~ msgstr "libspu.ValueProto: 输出。"
+
+#~ msgid "prot (libspu.ProtocolKind): protocol."
+#~ msgstr "prot (libspu.ProtocolKind): 协议。"
+
+#~ msgid "field (libspu.FieldType): field type."
+#~ msgstr "field (libspu.FieldType): 有限域类型。"
+

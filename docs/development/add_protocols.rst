@@ -26,7 +26,7 @@ Add a new protocol kind
 ~~~~~~~~~~~~~~~~~~~~~~~
 When users launch the SPU backend runtime, they will specify the running MPC protocol kind
 through the runtime config. The protocol kinds supported by SPU are enumerations defined
-in `spu.proto <https://github.com/secretflow/spu/blob/main/libspu/spu.proto>`_. Thus,
+in `spu.proto <https://github.com/secretflow/spu/blob/main/src/libspu/spu.proto>`_. Thus,
 developers must add their protocol kinds in this protobuf file to enable SPU to be aware
 of the new protocols.
 
@@ -47,9 +47,9 @@ of the new protocols.
 
 Register protocol
 ~~~~~~~~~~~~~~~~~
-Each MPC protocol execution environment is abstracted as a C++ instance of an `Object <https://github.com/secretflow/spu/blob/main/libspu/core/object.h>`_
+Each MPC protocol execution environment is abstracted as a C++ instance of an `Object <https://github.com/secretflow/spu/blob/main/src/libspu/core/object.h>`_
 class in SPU. SPU constructs an MPC object when creating an **SPUContext**. Then, SPU registers a concrete protocol implementation through a factory function
-named `RegisterProtocol <https://github.com/secretflow/spu/blob/main/libspu/mpc/factory.cc>`_ according to the runtime config. Therefore, protocol developers
+named `RegisterProtocol <https://github.com/secretflow/spu/blob/main/src/libspu/mpc/factory.cc>`_ according to the runtime config. Therefore, protocol developers
 need to add their functions in **RegisterProtocol** to implement protocols.
 
 .. code-block:: c++
@@ -77,12 +77,12 @@ Implement protocol IO interface
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Another function called by the factory class is the **CreateIO** function. As different protocols use different secret sharing schemas,
 which means SPU has to use different ways to input/output secret data from plaintext data. As a results, developers have to implement these protocol-specific APIs
-defined in `io_interface.h <https://github.com/secretflow/spu/blob/main/libspu/mpc/io_interface.h>`_.
-Developers can check the `ABY3 implementation <https://github.com/secretflow/spu/blob/main/libspu/mpc/aby3/io.cc>`_ as a reference.
+defined in `io_interface.h <https://github.com/secretflow/spu/blob/main/src/libspu/mpc/io_interface.h>`_.
+Developers can check the `ABY3 implementation <https://github.com/secretflow/spu/blob/main/src/libspu/mpc/aby3/io.cc>`_ as a reference.
 
 Understand protocol object
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
-SPU protocol `Object <https://github.com/secretflow/spu/blob/main/libspu/core/object.h>`_
+SPU protocol `Object <https://github.com/secretflow/spu/blob/main/src/libspu/core/object.h>`_
 may be the key concept for adding new protocols. Let's take a closer look at its design.
 The goal of **Object** class is to realize the generalization and flexibility of developing MPC protocols through dynamic binding.
 An Object instance has a series of kernels and states. A kernel and a state can be regarded as a
@@ -127,10 +127,10 @@ Construct protocol object
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 We take the ABY3 implementation as a specific example to further explain the description above.
 
-First of all, we can see that there is an independent aby3 directory under the `libspu/mpc <https://github.com/secretflow/spu/tree/main/libspu/mpc>`_
+First of all, we can see that there is an independent aby3 directory under the `src/libspu/mpc <https://github.com/secretflow/spu/tree/main/src/libspu/mpc>`_
 directory in SPU's repository layout. The aby3 directory includes the C++ source files and header
 files required by the ABY3 protocol implementation. These files may be confusing at first glance.
-The key to know its code organization is to open the `protocol <https://github.com/secretflow/spu/blob/main/libspu/mpc/aby3/protocol.cc>`_
+The key to know its code organization is to open the `protocol <https://github.com/secretflow/spu/blob/main/src/libspu/mpc/aby3/protocol.cc>`_
 file, which defines the **regAby3Protocol** function for registering kernels and states.
 This function will be called by the factory class described in previous step.
 
@@ -163,7 +163,7 @@ This function will be called by the factory class described in previous step.
 
 Inside the **regAby3Protocol** function, it does three things.
 
-- The first is to register the protocol types. These types are defined in the `type.h <https://github.com/secretflow/spu/blob/main/libspu/mpc/aby3/type.h>`_ header file, \
+- The first is to register the protocol types. These types are defined in the `type.h <https://github.com/secretflow/spu/blob/main/src/libspu/mpc/aby3/type.h>`_ header file, \
   representing an arithmetic secret share and a boolean secret share, respectively.
 
 - The second is to register protocol states (variables), specifically including the three states of Z2kState, \
@@ -171,14 +171,14 @@ Inside the **regAby3Protocol** function, it does three things.
   pseudorandom number generator for protocol implementation.
 
 - The third is to register the protocol kernels (functions). We can see that two types of kernels are registered. \
-  The first type is the common kernels implemented in the `pv2k.cc <https://github.com/secretflow/spu/blob/main/libspu/mpc/common/pv2k.cc>`_ \
-  file. The second type is implemented in `arithmetic.cc <https://github.com/secretflow/spu/blob/main/libspu/mpc/aby3/arithmetic.cc>`_, \
-  `boolean.cc <https://github.com/secretflow/spu/blob/main/libspu/mpc/aby3/boolean.cc>`_ and other files under the aby3 directory.
+  The first type is the common kernels implemented in the `pv2k.cc <https://github.com/secretflow/spu/blob/main/src/libspu/mpc/common/pv2k.cc>`_ \
+  file. The second type is implemented in `arithmetic.cc <https://github.com/secretflow/spu/blob/main/src/libspu/mpc/aby3/arithmetic.cc>`_, \
+  `boolean.cc <https://github.com/secretflow/spu/blob/main/src/libspu/mpc/aby3/boolean.cc>`_ and other files under the aby3 directory.
 
 Implement protocol kernels
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 In this section, we further explain why the ABY3 developer registers these two types of kernels.
-In SPU, the interfaces between MPC and HAL layers are defined in the `api.h <https://github.com/secretflow/spu/blob/main/libspu/mpc/api.h>`_
+In SPU, the interfaces between MPC and HAL layers are defined in the `api.h <https://github.com/secretflow/spu/blob/main/src/libspu/mpc/api.h>`_
 file, which consists of a set of operations with public or secret operands (referred as **basic APIs** for the rest of this document).
 As long as a protocol developer implements basic APIs, he/she can use the SPU full-stack infrastructure
 to run high-level applications, e.g., training complex neural network models.
@@ -234,7 +234,7 @@ As a result, the ABY3 developer can directly register these kernels through the 
 
 Besides, ABY3 protocol-specific operations need to be implemented by developers as kernels to register.
 For example, the multiplication of two arithmetic secret shares of ABY3 is implemented as the **MulAA** kernel located in the
-`arithmetic.cc <https://github.com/secretflow/spu/blob/main/libspu/mpc/aby3/arithmetic.cc>`_ source file.
+`arithmetic.cc <https://github.com/secretflow/spu/blob/main/src/libspu/mpc/aby3/arithmetic.cc>`_ source file.
 When kernels are implemented and registered, a new protocol is finally added.
 
 .. code-block:: c++
@@ -265,8 +265,8 @@ whether the low-level protocol development is correct.
 The second way is to write and run unittest. Some protocols do not cover all the basic APIs and cannot run examples,
 or developers only want to test the functionalities of some specific MPC operations (such as addition and multiplication).
 In these cases it is more practical to run unittest. SPU developers have construct a general test frameworks in
-`api_test.cc <https://github.com/secretflow/spu/blob/main/libspu/mpc/api_test.cc>`_ and
-`ab_api_test.cc <https://github.com/secretflow/spu/blob/main/libspu/mpc/ab_api_test.cc>`_.
+`api_test.cc <https://github.com/secretflow/spu/blob/main/src/libspu/mpc/api_test.cc>`_ and
+`ab_api_test.cc <https://github.com/secretflow/spu/blob/main/src/libspu/mpc/ab_api_test.cc>`_.
 Developers of new protocols need to instantiate these frameworks to test their own protocol functionalities.
-Developers can refer to the `protocol_test.cc <https://github.com/secretflow/spu/blob/main/libspu/mpc/aby3/protocol_test.cc>`_
+Developers can refer to the `protocol_test.cc <https://github.com/secretflow/spu/blob/main/src/libspu/mpc/aby3/protocol_test.cc>`_
 file in the aby3 directory to learn how to write their own protocol test files.

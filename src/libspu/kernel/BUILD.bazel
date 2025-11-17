@@ -22,6 +22,7 @@ spu_cc_library(
     hdrs = ["test_util.h"],
     deps = [
         "//libspu/core:context",
+        "//libspu/core:trace",
         "//libspu/core:value",
         "//libspu/kernel/hal:constants",  # BAD
         "//libspu/kernel/hal:prot_wrapper",  # BAD

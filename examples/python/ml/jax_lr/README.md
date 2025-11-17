@@ -5,11 +5,11 @@ This example demonstrates how to use SPU to train a logistic regression model pr
 1. Launch SPU backend runtime
 
     ```sh
-    python examples/python/utils/nodectl.py -c examples/python/conf/2pc_semi2k.json up
+    uv run examples/python/utils/nodectl.py -c examples/python/conf/2pc_semi2k.json up
     ```
 
 2. Run `jax_lr` example
 
     ```sh
-    python examples/python/ml/jax_lr/jax_lr.py
+    uv run examples/python/ml/jax_lr/jax_lr.py
     ```
