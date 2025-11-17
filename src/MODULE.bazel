@@ -34,7 +34,6 @@ single_version_override(
 )
 
 bazel_dep(name = "protobuf", version = "32.1")
-
 bazel_dep(name = "bazel_skylib", version = "1.7.1")
 bazel_dep(name = "apple_support", version = "1.24.3")
 bazel_dep(name = "rules_cc", version = "0.0.12")
@@ -55,7 +54,6 @@ bazel_dep(name = "rules_proto", version = "6.0.0-rc1")
 bazel_dep(name = "spdlog", version = "1.15.2")
 bazel_dep(name = "fmt", version = "11.1.4")
 bazel_dep(name = "abseil-cpp", version = "20250814.1")
-
 bazel_dep(name = "rules_python", version = "0.29.0")
 bazel_dep(name = "magic_enum", version = "0.9.6")
 bazel_dep(name = "openssl", version = "3.3.2.bcr.1")
@@ -85,7 +83,6 @@ bazel_dep(name = "eigen", version = "3.4.90-20230801-66e8f3")
 bazel_dep(name = "emp-tool", version = "0.2.5.bcr.1")
 bazel_dep(name = "emp-ot", version = "0.2.4.bcr.1")
 bazel_dep(name = "brpc", version = "1.15.0")
-
 bazel_dep(name = "seal", version = "4.1.1")
 bazel_dep(name = "cutlass", version = "3.5.1")
 bazel_dep(name = "llvm-raw", version = "20251010.0-3a6b818")
