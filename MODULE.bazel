@@ -36,8 +36,15 @@ local_path_override(
     path = "src",
 )
 
-bazel_dep(name = "psi", version = "0.6.0.dev250507")
+bazel_dep(name = "psi", version = "0.6.0.dev250922")
 bazel_dep(name = "yacl", version = "0.4.5b10-nightly-20250110")
+bazel_dep(name = "heu")
+git_override(
+    module_name = "heu",
+    commit = "93ba44263048e2080cd33d16d6680b435d7602e0",
+    remote = "https://github.com/secretflow/heu.git",
+)
+
 bazel_dep(name = "grpc", version = "1.74.1")
 single_version_override(
     module_name = "grpc",
