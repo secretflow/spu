@@ -7,4 +7,4 @@ secretflow-doctools~=0.8.5
 sphinx-autobuild
 sphinx-intl~=2.3
 sphinx~=8.0
-sphinxcontrib-mermaid~=1.0
+sphinxcontrib-mermaid~=1.1
