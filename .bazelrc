@@ -15,7 +15,7 @@
 common --experimental_repo_remote_exec
 common --experimental_cc_shared_library
 
-common --registry=https://raw.githubusercontent.com/secretflow/bazel-registry/main
+common --registry=https://raw.githubusercontent.com/secretflow/bazel-registry/tk-fix-macos-build
 common --registry=https://bcr.bazel.build
 common --registry=https://baidu.github.io/babylon/registry
 
