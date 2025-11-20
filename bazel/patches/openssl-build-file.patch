@@ -1,0 +1,72 @@
+--- /dev/null
++++ BUILD.bazel
+@@ -0,0 +1,69 @@
++load("@rules_foreign_cc//foreign_cc:defs.bzl", "configure_make")
++
++# An openssl build file based on a snippet found in the github issue:
++# https://github.com/bazelbuild/rules_foreign_cc/issues/337
++
++# Read https://wiki.openssl.org/index.php/Compilation_and_Installation
++
++filegroup(
++    name = "all_srcs",
++    srcs = glob(
++        include = ["**"],
++        exclude = ["*.bazel"],
++    ),
++)
++
++CONFIGURE_OPTIONS = [
++    # fixed openssl work dir for deterministic build.
++    "--openssldir=/tmp/openssl",
++    "--libdir=lib",
++    "no-legacy",
++    "no-weak-ssl-ciphers",
++    "no-tests",
++    "no-shared",
++    "no-ui-console",
++]
++
++MAKE_TARGETS = [
++    "build_programs",
++    "install_sw",
++]
++
++alias(
++  name = 'ssl',
++  actual = 'openssl',
++  visibility = ['//visibility:public'],
++)
++
++alias(
++  name = 'crypto',
++  actual = 'openssl',
++  visibility = ['//visibility:public'],
++)
++
++configure_make(
++    name = "openssl",
++    args = ["-j 4"],
++    configure_command = "Configure",
++    configure_in_place = True,
++    configure_options = CONFIGURE_OPTIONS,
++    env = select({
++        "@platforms//os:macos": {
++            "AR": "",
++        },
++        "//conditions:default": {
++            "MODULESDIR": "",
++        },
++    }),
++    lib_name = "openssl",
++    lib_source = ":all_srcs",
++    linkopts = ["-ldl"],
++    # Note that for Linux builds, libssl must come before libcrypto on the linker command-line.
++    # As such, libssl must be listed before libcrypto
++    out_static_libs = [
++        "libssl.a",
++        "libcrypto.a",
++    ],
++    targets = MAKE_TARGETS,
++    visibility = ["//visibility:public"],
++)

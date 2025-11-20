@@ -62,12 +62,6 @@ single_version_override(
     version = "3.3.2.bcr.1",
 )
 
-bazel_dep(name = "boringssl", version = "0.20250818.0")
-single_version_override(
-    module_name = "boringssl",
-    version = "0.20250818.0",
-)
-
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
 python.toolchain(
     configure_coverage_tool = False,
@@ -100,7 +94,7 @@ use_repo(llvm, "llvm-project")
 
 bazel_dep(name = "stablehlo", version = "20251004.0-0a4440a")
 bazel_dep(name = "xla", version = "20251016.0-9f150f6")
-bazel_dep(name = "yacl", version = "0.4.5b10-nightly-20250110")
+bazel_dep(name = "yacl", version = "0.4.5b12-nightly-20251024")
 
 spu_dependencies = use_extension("//bazel:defs.bzl", "non_module_dependencies")
 use_repo(spu_dependencies, "xtensor")

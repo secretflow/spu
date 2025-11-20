@@ -63,11 +63,22 @@ single_version_override(
     version = "3.3.2.bcr.1",
 )
 
-# bazel_dep(name = "boringssl", version = "0.20250818.0")
-# single_version_override(
-#     module_name = "boringssl",
-#     version = "0.20250818.0",
-# )
+bazel_dep(name = "boringssl", version = "0.20250818.0")
+
+# override boringssl with openssl
+archive_override(
+    module_name = "boringssl",
+    integrity = "sha256-vtuxaVVVX5mxp7G6kPyXh560ECUIG+NZ7Nap/L3xyNI=",
+    patch_strip = 0,
+    patches = [
+        # Note: the openssl-build-file.patch copied from https://github.com/secretflow/bazel-registry/tree/main/modules/openssl/3.3.2.bcr.1/patches
+        "//bazel/patches:openssl-build-file.patch",
+        "//bazel/patches:openssl-module-file.patch",
+    ],
+    strip_prefix = "openssl-openssl-3.3.2",
+    urls = ["https://github.com/openssl/openssl/archive/refs/tags/openssl-3.3.2.tar.gz"],
+)
+
 bazel_dep(name = "orc", version = "2.2.1")
 
 # For experimental/squirrel and examples/cpp
