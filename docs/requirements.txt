@@ -1,6 +1,6 @@
 linkify-it-py~=2.0
 mdutils~=1.6
-myst-nb~=1.2
+myst-nb~=1.3
 pytablewriter~=1.2
 rstcheck~=6.2
 secretflow-doctools~=0.8.5
