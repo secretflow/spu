@@ -29,15 +29,17 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: "22"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
       - uses: actions/setup-python@v6
         with:
           python-version: "3.10"
-      - name: pubilsh docs
+      - name: publish docs
         run: |
-          python3 -m venv ~/.venv/docs
-          source ~/.venv/docs/bin/activate
-          python -m pip install spu
-          python -m pip install -r docs/requirements.txt
+          uv venv
+          source .venv/bin/activate
+          uv pip install spu
+          uv pip install -r docs/requirements.txt
           secretflow-doctools build --lang zh_CN --lang en
           secretflow-doctools publish \
             --name @secretflow/x-spu \
