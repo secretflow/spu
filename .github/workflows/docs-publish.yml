@@ -19,6 +19,9 @@ on:
       - main
     tags:
       - "*"
+  pull_request:
+    branches:
+    - main
 
 jobs:
   check-docs:
@@ -45,5 +48,5 @@ jobs:
             --name @secretflow/x-spu \
             --index-js docs/_build/esm/index.js
         env:
-          DRY_RUN: "0" # omit in test runs
+          DRY_RUN: "1" # omit in test runs
           DOCTOOLS_PUBLISH_NPM_TOKEN: ${{secrets.DOCTOOLS_PUBLISH_NPM_TOKEN}}
