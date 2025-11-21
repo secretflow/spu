@@ -41,7 +41,7 @@ jobs:
         run: |
           uv venv
           source .venv/bin/activate
-          uv pip install spu
+          uv pip install spu --prerelease=allow
           uv pip install -r docs/requirements.txt
           secretflow-doctools build --lang zh_CN --lang en
           secretflow-doctools publish \
