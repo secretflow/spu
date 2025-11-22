@@ -66,7 +66,7 @@ func.func @main(%arg0: tensor<9x1x!pphlo.secret<f64>>) -> tensor<9x1x!pphlo.secr
 // -----
 
 func.func @main(%arg0: tensor<9x9x1xf64>) -> tensor<9x9x1xf64> {
-  // expected-error @+1 {{op all dimensions should be non-negative. Got dimension: -11917540144205.}}
+  // expected-error @+1 {{op all dimensions should be non-negative. Got dimension: -4367244318167.}}
   %0 = pphlo.reverse %arg0, dims = [-4367244318167, -11917540144205, -9774346241042] : tensor<9x9x1xf64>
   pphlo.return %0 : tensor<9x9x1xf64>
 }
@@ -74,7 +74,7 @@ func.func @main(%arg0: tensor<9x9x1xf64>) -> tensor<9x9x1xf64> {
 // -----
 
 func.func @main(%arg0: tensor<9x9x1xf64>) -> tensor<9x9x1xf64> {
-  // expected-error @+1 {{op all dimensions should be between [0, 3). Got dimension: 4367244339678518167.}}
+  // expected-error @+1 {{op all dimensions should be between [0, 3). Got dimension: 1191754011229144205.}}
   %0 = pphlo.reverse %arg0, dims = [4367244339678518167, 1191754011229144205, 977434623931441042] : tensor<9x9x1xf64>
   pphlo.return %0 : tensor<9x9x1xf64>
 }

@@ -106,7 +106,9 @@ struct SignbitPattern : public RewriteSignbitPatternsBase<SignbitPattern> {
   void runOnOperation() override {
     RewritePatternSet patterns(&getContext());
     populateOwningPatterns(&patterns, &getContext());
-    (void)applyPatternsAndFoldGreedily(getOperation(), std::move(patterns));
+    GreedyRewriteConfig config;
+    config.enableFolding();
+    (void)applyPatternsGreedily(getOperation(), std::move(patterns), config);
   }
 
  private:
