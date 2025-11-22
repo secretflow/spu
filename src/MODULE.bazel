@@ -50,7 +50,7 @@ single_version_override(
     version = "0.15.0",
 )
 
-bazel_dep(name = "bazel_features", version = "1.20.0")
+bazel_dep(name = "bazel_features", version = "1.38.0")
 bazel_dep(name = "platforms", version = "0.0.8")
 bazel_dep(name = "rules_proto", version = "6.0.0-rc1")
 bazel_dep(name = "spdlog", version = "1.14.1")
