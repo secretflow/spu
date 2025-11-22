@@ -3,11 +3,12 @@ __all__ = ["{%NAME}"]
 from functools import partial
 
 from jax import core, dtypes
-from jax.abstract_arrays import ShapedArray
-from jax.interpreters import ad, batching, mlir, xla
+from jax.core import ShapedArray
+from jax.interpreters import ad, batching, xla
+from jax.extend.mlir import ir
 
 # from jax.lib import xla_client
-from jaxlib.hlo_helpers import custom_call
+from jax.ffi import ffi_call
 
 
 # Public facing interface
@@ -33,15 +34,17 @@ def _{%NAME}_abstract(input):
 def _{%NAME}_lowering(ctx, input):
     # The inputs and outputs all have the same shape and memory layout
     # so let's predefine this specification
-    dtype = mlir.ir.RankedTensorType(input.type)
-
-    return custom_call(
+    dtype = ir.RankedTensorType(input.type)
+    
+    # Use the new ffi_call API
+    call_result = ffi_call(
         "{%NAME}",
         # Output types
-        out_types=[dtype],
-        # The inputs:
-        operands=[input],
+        result_shape_dtypes=[dtype],
+        # Vmap method for batching support
+        vmap_method="broadcast_all",
     )
+    return call_result
 
 
 # **********************************
@@ -55,7 +58,7 @@ def _{%NAME}_jvp(args, tangents):
 
 # ************************************
 # *  SUPPORT FOR BATCHING WITH VMAP  *
-# ************************************
+# **********************************
 
 
 # Our op already supports arbitrary dimensions so the batching rule is quite
@@ -74,7 +77,9 @@ _{%NAME}_prim.multiple_results = False
 _{%NAME}_prim.def_impl(partial(xla.apply_primitive, _{%NAME}_prim))
 _{%NAME}_prim.def_abstract_eval(_{%NAME}_abstract)
 
-mlir.register_lowering(_{%NAME}_prim, _{%NAME}_lowering)
+# Register the lowering rule
+from jax.interpreters.mlir import register_lowering
+register_lowering(_{%NAME}_prim, _{%NAME}_lowering)
 
 # Connect the JVP and batching rules
 ad.primitive_jvps[_{%NAME}_prim] = _{%NAME}_jvp

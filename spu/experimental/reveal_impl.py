@@ -17,10 +17,11 @@ __all__ = ["reveal"]
 from functools import partial
 
 import numpy as np
-from jax._src.core import ShapedArray
+from jax.core import ShapedArray
 from jax.extend import core
-from jax.interpreters import ad, batching, mlir, xla
-from jaxlib.hlo_helpers import custom_call
+from jax.interpreters import ad, batching, xla
+from jax.extend.mlir import ir
+from jax.ffi import ffi_call
 
 
 # Public facing interface
@@ -44,19 +45,20 @@ def _reveal_lowering(ctx, input):
     )
 
     if platform == "interpreter":
-        # For SPU, use custom_call
-        dtype = mlir.ir.RankedTensorType(input.type)
+        # For SPU, use ffi_call
+        dtype = ir.RankedTensorType(input.type)
 
-        call = custom_call(
+        # Use the new ffi_call API
+        call_result = ffi_call(
             "spu.reveal",
             # Output types
-            result_types=[dtype],
-            # The inputs:
-            operands=[input],
+            result_shape_dtypes=[dtype],
             has_side_effect=True,
-        )
+            # Vmap method for batching support
+            vmap_method="broadcast_all",
+        )(input)
 
-        return call.results
+        return call_result
     else:
         return [input]
 
@@ -70,7 +72,8 @@ _reveal_prim.def_impl(partial(xla.apply_primitive, _reveal_prim))
 _reveal_prim.def_abstract_eval(_reveal_abstract)
 
 # Register MLIR lowering
-mlir.register_lowering(_reveal_prim, _reveal_lowering)
+from jax.interpreters.mlir import register_lowering
+register_lowering(_reveal_prim, _reveal_lowering)
 
 
 def _make_reveal_transpose(ct, input):
