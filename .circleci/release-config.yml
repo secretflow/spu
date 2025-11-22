@@ -61,7 +61,7 @@ commands:
 jobs:
   macOS_publish:
     macos:
-      xcode: 16.4.0
+      xcode: 16.2.0
     resource_class: m4pro.medium
     parameters:
       python_ver:
