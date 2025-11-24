@@ -36,7 +36,7 @@ single_version_override(
     version = "27.3",
 )
 
-bazel_dep(name = "bazel_skylib", version = "1.7.1")
+bazel_dep(name = "bazel_skylib", version = "1.8.2")
 bazel_dep(name = "apple_support", version = "1.24.5")
 bazel_dep(name = "rules_cc", version = "0.0.12")
 bazel_dep(name = "rules_cuda", version = "0.2.3")
