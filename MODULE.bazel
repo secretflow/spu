@@ -25,11 +25,11 @@ Secure Processing Unit
 
 module(
     name = "spu",
-    version = "0.10.0.dev",
+    version = "0.9.5",
     compatibility_level = 1,
 )
 
-bazel_dep(name = "apple_support", version = "1.24.5")
+bazel_dep(name = "apple_support", version = "1.17.1")
 bazel_dep(name = "spulib")
 local_path_override(
     module_name = "spulib",
@@ -57,7 +57,7 @@ single_version_override(
 )
 
 bazel_dep(name = "pybind11_bazel", version = "2.13.6")
-bazel_dep(name = "rules_cuda", version = "0.2.5")
+bazel_dep(name = "rules_cuda", version = "0.2.3")
 bazel_dep(name = "rules_python", version = "1.2.0")
 
 # For experimental/squirrel and examples/cpp

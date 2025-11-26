@@ -18,7 +18,7 @@ import argparse
 import re
 import os
 
-SPU_VERSION_PREFIX = "0.10.0.dev"
+SPU_VERSION_PREFIX = "0.9.4.dev"
 
 
 def get_today_tag():

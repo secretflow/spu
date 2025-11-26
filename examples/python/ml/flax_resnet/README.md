@@ -13,17 +13,17 @@ and the inference example comes from pre-trained microsoft resnet-50 model on hu
 1. Launch SPU backend runtime
 
     ```sh
-    uv run examples/python/utils/nodectl.py --config `pwd`/examples/python/ml/flax_resnet/3pc.json up
+    python examples/python/utils/nodectl.py --config `pwd`/examples/python/ml/flax_resnet/3pc.json up
     ```
 
 2. Run `flax_resnet_training` example
 
     ```sh
-    uv run examples/python/ml/flax_resnet/flax_resnet_training.py --config `pwd`/examples/python/ml/flax_resnet/3pc.json --num_epochs 5
+    python examples/python/ml/flax_resnet/flax_resnet_training.py --config `pwd`/examples/python/ml/flax_resnet/3pc.json --num_epochs 5
     ```
 
 3. Run `flax_resnet_inference` example
 
     ```sh
-    uv run examples/python/ml/flax_resnet/flax_resnet_inference.py --config examples/python/ml/flax_resnet/3pc.json
+    python examples/python/ml/flax_resnet/flax_resnet_inference.py --config `pwd`/examples/python/ml/flax_resnet/3pc.json
     ```

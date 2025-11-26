@@ -6,11 +6,11 @@ This example demonstrates how to use SPU to train a neural network model private
 1. Launch SPU backend runtime
 
     ```sh
-    uv run examples/python/utils/nodectl.py up
+    python examples/python/utils/nodectl.py up
     ```
 
 2. Run `stax_mnist_classifier` example
 
     ```sh
-    uv run examples/python/ml/stax_mnist_classifier/stax_mnist_classifier.py
+    python examples/python/ml/stax_mnist_classifier/stax_mnist_classifier.py
     ```

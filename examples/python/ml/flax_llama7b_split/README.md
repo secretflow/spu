@@ -65,13 +65,28 @@ This example demonstrates how to use SPU to run secure inference on a pre-traine
 3. Launch SPU backend runtime
 
     ```sh
-    uv run examples/python/utils/nodectl.py --config examples/python/ml/flax_llama7b_split/3pc.json up
+    bazel run -c opt //examples/python/utils:nodectl -- --config `pwd`/examples/python/ml/flax_llama7b_split/3pc.json up
+    ```
+
+    or
+    （recommended）
+
+    ```sh
+    cd examples/python/utils
+    python nodectl.py  --config ../ml/flax_llama7b_split/3pc.json up
     ```
 
 4. Run `flax_llama7b_split` example
 
     ```sh
-    uv run examples/python/ml/flax_llama7b_split/flax_llama7b_split.py --model_path path-to-flax-llama7b-EasyLM.msgpack  --tokenizer_path path-to-flax-llama7b-dir --config examples/python/ml/flax_llama7b_split/3pc.json
+    bazel run -c opt //examples/python/ml/flax_llama7b_split -- --model_path path-to-flax-llama7b-EasyLM.msgpack  --tokenizer_path path-to-flax-llama7b-dir --config `pwd`/examples/python/ml/flax_llama7b_split/3pc.json
+    ```
+
+    or（recommended）
+
+    ```sh
+    cd examples/python/ml/flax_llama7b_split
+    python flax_llama7b_split.py --model_path path-to-flax-llama7b-EasyLM.msgpack  --tokenizer_path path-to-flax-llama7b-dir   --config ./3pc.json
     ```
 
     and you can get the following results from our example:

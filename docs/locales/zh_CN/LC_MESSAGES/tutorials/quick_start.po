@@ -5,402 +5,397 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version:  SPU\n"
+"Project-Id-Version: SPU\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-10-28 13:50+0800\n"
+"POT-Creation-Date: 2025-05-22 21:30+0800\n"
 "PO-Revision-Date: 2025-05-22 21:31+0800\n"
 "Last-Translator: \n"
-"Language: zh_CN\n"
 "Language-Team: zh_CN <LL@li.org>\n"
-"Plural-Forms: nplurals=1; plural=0;\n"
+"Language: zh_CN\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
 "Generated-By: Babel 2.17.0\n"
+"X-Generator: Poedit 3.6\n"
 
-#: ../../tutorials/quick_start.ipynb:10002
+#: ../../tutorials/quick_start.ipynb:9
 msgid "SPU Quickstart"
 msgstr "SPU 快速入门"
 
-#: ../../tutorials/quick_start.ipynb:10004
+#: ../../tutorials/quick_start.ipynb:12
 msgid "Program with JAX"
 msgstr "使用 JAX 编写程序"
 
-#: ../../tutorials/quick_start.ipynb:10006
-#, fuzzy
+#: ../../tutorials/quick_start.ipynb:14
 msgid ""
-"SPU, as an [XLA](https://www.tensorflow.org/xla) backend, does not "
-"provide a high-level programming API by itself, instead, we can use any "
-"API that supports the XLA backend to program. In this tutorial, we use "
-"[JAX](https://github.com/google/jax) as the programming API and "
-"demonstrate how to run a JAX program on SPU."
+"SPU, as an `XLA <https://www.tensorflow.org/xla>`__ backend, does not "
+"provide a high-level programming API by itself, instead, we can use any API "
+"that supports the XLA backend to program. In this tutorial, we use `JAX "
+"<https://github.com/google/jax>`__ as the programming API and demonstrate "
+"how to run a JAX program on SPU."
 msgstr ""
-"作为 `XLA <https://www.tensorflow.org/xla>`__ 后端， SPU 本身不提供高层编程 API "
-"。相反，我们可以使用支持 XLA 后端的任何 API 来编程。在此教程中，我们以 `JAX "
-"<https://github.com/google/jax>`__ 作为编程接口，并演示如何在 SPU 上运行 JAX 程序。"
+"作为 `XLA <https://www.tensorflow.org/xla>`__ 后端， SPU 本身不提供高层编程 "
+"API 。相反，我们可以使用支持 XLA 后端的任何 API 来编程。在此教程中，我们以 "
+"`JAX <https://github.com/google/jax>`__ 作为编程接口，并演示如何在 SPU 上运"
+"行 JAX 程序。"
 
-#: ../../tutorials/quick_start.ipynb:10008
+#: ../../tutorials/quick_start.ipynb:16
 msgid ""
 "JAX is an AI framework from Google. Users can write the program in NumPy "
-"syntax, and let JAX translate it to GPU/TPU for acceleration, please read"
-" the following pages before you start:"
+"syntax, and let JAX translate it to GPU/TPU for acceleration, please read "
+"the following pages before you start:"
 msgstr ""
-"JAX 是 Google 开发的 AI 框架。用户可以用 NumPy 语法编写程序，然后让 JAX 将其转换到 GPU/TPU "
-"上进行加速。在开始之前，请先阅读以下文档："
+"JAX 是 Google 开发的 AI 框架。用户可以用 NumPy 语法编写程序，然后让 JAX 将其"
+"转换到 GPU/TPU 上进行加速。在开始之前，请先阅读以下文档："
 
-#: ../../tutorials/quick_start.ipynb:10010
-#, fuzzy
+#: ../../tutorials/quick_start.ipynb:18
 msgid ""
-"[JAX "
-"Quickstart](https://jax.readthedocs.io/en/latest/notebooks/quickstart.html)"
+"`JAX Quickstart <https://jax.readthedocs.io/en/latest/notebooks/"
+"quickstart.html>`__"
 msgstr ""
-"`JAX 快速入门 "
-"<https://jax.readthedocs.io/en/latest/notebooks/quickstart.html>`__"
+"`JAX 快速入门 <https://jax.readthedocs.io/en/latest/notebooks/"
+"quickstart.html>`__"
 
-#: ../../tutorials/quick_start.ipynb:10011
-#, fuzzy
+#: ../../tutorials/quick_start.ipynb:19
 msgid ""
-"[How to Think in "
-"JAX](https://jax.readthedocs.io/en/latest/notebooks/thinking_in_jax.html)"
+"`How to Think in JAX <https://jax.readthedocs.io/en/latest/notebooks/"
+"thinking_in_jax.html>`__"
 msgstr ""
-"`建立对 JAX 的理解 "
-"<https://jax.readthedocs.io/en/latest/notebooks/thinking_in_jax.html>`__"
+"`建立对 JAX 的理解 <https://jax.readthedocs.io/en/latest/notebooks/"
+"thinking_in_jax.html>`__"
 
-#: ../../tutorials/quick_start.ipynb:10012
-#, fuzzy
+#: ../../tutorials/quick_start.ipynb:20
 msgid ""
-"[JAX - The Sharp "
-"Bits](https://jax.readthedocs.io/en/latest/notebooks/Common_Gotchas_in_JAX.html)"
+"`JAX - The Sharp Bits <https://jax.readthedocs.io/en/latest/notebooks/"
+"Common_Gotchas_in_JAX.html>`__"
 msgstr ""
-"`JAX 的注意事项 "
-"<https://jax.readthedocs.io/en/latest/notebooks/Common_Gotchas_in_JAX.html>`__"
+"`JAX 的注意事项 <https://jax.readthedocs.io/en/latest/notebooks/"
+"Common_Gotchas_in_JAX.html>`__"
 
-#: ../../tutorials/quick_start.ipynb:10014
+#: ../../tutorials/quick_start.ipynb:22
 msgid "Now we start to write some simple JAX code."
 msgstr "现在我们开始编写一些简单的 JAX 代码。"
 
-#: ../../tutorials/quick_start.ipynb:30002
+#: ../../tutorials/quick_start.ipynb:92
 msgid ""
-"The above code snippet creates two random variables and compares which "
-"one is greater. Yes, the code snippet is not interesting yet~"
-msgstr "上述代码片段创建了两个随机变量并比较它们的大小。不过目前这段代码还比较基础~"
+"The above code snippet creates two random variables and compares which one "
+"is greater. Yes, the code snippet is not interesting yet~"
+msgstr ""
+"上述代码片段创建了两个随机变量并比较它们的大小。不过目前这段代码还比较基础~"
 
-#: ../../tutorials/quick_start.ipynb:40002
+#: ../../tutorials/quick_start.ipynb:104
 msgid "Program with SPU"
 msgstr "使用 SPU 编写程序"
 
-#: ../../tutorials/quick_start.ipynb:40004
+#: ../../tutorials/quick_start.ipynb:106
 msgid "Now, let's convert the above code to an SPU program."
 msgstr "现在，我们将把上述代码转换为 SPU 程序。"
 
-#: ../../tutorials/quick_start.ipynb:40006
+#: ../../tutorials/quick_start.ipynb:109
 msgid "A Quick introduction to device system"
 msgstr "设备系统速览"
 
-#: ../../tutorials/quick_start.ipynb:40008
+#: ../../tutorials/quick_start.ipynb:111
 msgid ""
 "MPC programs are \"designed\" to be used in distributed way. In this "
 "tutorial, we use SPU builtin distributed framework for demonstration."
-msgstr "MPC 程序是“设计”为分布式方式使用的。在此教程中，我们使用 SPU 内置的分布式框架进行演示。"
+msgstr ""
+"MPC 程序是“设计”为分布式方式使用的。在此教程中，我们使用 SPU 内置的分布式框架"
+"进行演示。"
 
-#: ../../tutorials/quick_start.ipynb:40010
+#: ../../tutorials/quick_start.ipynb:113
 msgid ""
 "Warn: it's for demonstration purpose only, you should use an industrial "
 "framework like SecretFlow in production."
 msgstr "警告：此功能仅用于演示目的，生产环境中应使用 SecretFlow 等工业框架。"
 
-#: ../../tutorials/quick_start.ipynb:40012
+#: ../../tutorials/quick_start.ipynb:115
 msgid "To start the ppd cluster. In a separate terminal, run"
 msgstr "要启动 ppd 集群，请在一个单独的终端中运行"
 
-#: ../../tutorials/quick_start.ipynb:40018
+#: ../../tutorials/quick_start.ipynb:121
 msgid ""
-"This command starts multi-processes to simulate parties that do not trust"
-" each other. Please keep the terminal alive."
+"This command starts multi-processes to simulate parties that do not trust "
+"each other. Please keep the terminal alive."
 msgstr "此命令启动多个进程来模拟互不信任的各方。请保持终端运行。"
 
-#: ../../tutorials/quick_start.ipynb:80002
-#, fuzzy
-msgid "`ppd.init` initialize the SPU device system on the given cluster."
+#: ../../tutorials/quick_start.ipynb:227
+msgid "``ppd.init`` initialize the SPU device system on the given cluster."
 msgstr "``ppd.init`` 在给定的集群上初始化 SPU 设备系统。"
 
-#: ../../tutorials/quick_start.ipynb:80004
+#: ../../tutorials/quick_start.ipynb:229
 msgid ""
-"The cluster has three nodes, each node is a process that listens on a "
-"given port."
+"The cluster has three nodes, each node is a process that listens on a given "
+"port."
 msgstr "集群有三个节点，每个节点都是一个监听指定端口的进程。"
 
-#: ../../tutorials/quick_start.ipynb:80006
+#: ../../tutorials/quick_start.ipynb:231
 msgid "The 3 physical nodes construct 3 virtual devices."
 msgstr "这 3 个物理节点构建了 3 个虚拟设备。"
 
-#: ../../tutorials/quick_start.ipynb:80008
-#, fuzzy
+#: ../../tutorials/quick_start.ipynb:233
 msgid ""
-"`P1` and `P2` are so called `PYU Device`, which is just a simple Python "
-"device that can run a python program."
-msgstr "``P1`` 和 ``P2`` 被称为 ``PYU Device``，它们只是可以运行 Python 程序的简单 Python 设备。"
+"``P1`` and ``P2`` are so called ``PYU Device``, which is just a simple "
+"Python device that can run a python program."
+msgstr ""
+"``P1`` 和 ``P2`` 被称为 ``PYU Device``，它们只是可以运行 Python 程序的简单 "
+"Python 设备。"
 
-#: ../../tutorials/quick_start.ipynb:80009
-#, fuzzy
+#: ../../tutorials/quick_start.ipynb:234
 msgid ""
-"`SPU` is a virtual device hosted by all 3-nodes, which use MPC protocols "
+"``SPU`` is a virtual device hosted by all 3-nodes, which use MPC protocols "
 "to compute securely."
 msgstr "``SPU`` 是由所有 3 个节点托管的虚拟设备，它使用 MPC 协议进行安全计算。"
 
-#: ../../tutorials/quick_start.ipynb:80011
+#: ../../tutorials/quick_start.ipynb:236
 msgid "Virtually, it looks like below picture."
 msgstr "从虚拟的角度看，它看起来像下面的图片。"
 
-#: ../../tutorials/quick_start.ipynb:80013
-msgid "![alt text](../imgs/device/server_aided.svg)"
-msgstr ""
-
-#: ../../tutorials/quick_start.ipynb:80013
-#, fuzzy
-msgid "alt text"
+#: ../../tutorials/quick_start.ipynb:238
+msgid "|alt text|"
 msgstr "|替代文本|"
 
-#: ../../tutorials/quick_start.ipynb:80015
-#, fuzzy
+#: ../../tutorials/quick_start.ipynb:240
 msgid ""
-"On the left side, there are three physical nodes, a circle means the node"
-" runs a `PYU Device` and a triangle means the node runs a `SPU Device "
-"Slice`."
-msgstr "在左侧，有三个物理节点，圆圈表示该节点运行 ``PYU Device``，三角形表示该节点运行 ``SPU Device Slice``。"
+"On the left side, there are three physical nodes, a circle means the node "
+"runs a ``PYU Device`` and a triangle means the node runs a ``SPU Device "
+"Slice``."
+msgstr ""
+"在左侧，有三个物理节点，圆圈表示该节点运行 ``PYU Device``，三角形表示该节点运"
+"行 ``SPU Device Slice``。"
 
-#: ../../tutorials/quick_start.ipynb:80016
+#: ../../tutorials/quick_start.ipynb:241
 msgid ""
 "On the right side, its virtual device layout is constructed by the left "
 "physical node."
 msgstr "在右侧，其虚拟设备布局是由左侧物理节点构建的。"
 
-#: ../../tutorials/quick_start.ipynb:80018
-#, fuzzy
-msgid "We can also check the detail of `SPU device`."
+#: ../../tutorials/quick_start.ipynb:243
+msgid "We can also check the detail of ``SPU device``."
 msgstr "我们还可以查看 ``SPU device`` 的详细信息。"
 
-#: ../../tutorials/quick_start.ipynb:100002
-#, fuzzy
+#: ../../tutorials/quick_start.ipynb:314
 msgid ""
-"The `SPU` device uses `ABY3` as the its backend protocol and runs on "
-"`Ring128` field."
+"The ``SPU`` device uses ``ABY3`` as the its backend protocol and runs on "
+"``Ring128`` field."
 msgstr "``SPU`` 设备使用 ``ABY3`` 作为其后端协议，并在 ``Ring128`` 域上运行。"
 
-#: ../../tutorials/quick_start.ipynb:100004
+#: ../../tutorials/quick_start.ipynb:317
 msgid "Move JAX program to SPU"
 msgstr "将 JAX 程序迁移至 SPU"
 
-#: ../../tutorials/quick_start.ipynb:100006
+#: ../../tutorials/quick_start.ipynb:319
 msgid "Now, let's move the JAX program from CPU to SPU."
 msgstr "现在，我们将把 JAX 程序从 CPU 迁移到 SPU。"
 
-#: ../../tutorials/quick_start.ipynb:120002
-#, fuzzy
+#: ../../tutorials/quick_start.ipynb:347
 msgid ""
-"`ppd.device(\"P1\")(make_rand)` convert a python function to a "
-"`DeviceFunction` which will be called on `P1` device."
+"``ppd.device(\"P1\")(make_rand)`` convert a python function to a "
+"``DeviceFunction`` which will be called on ``P1`` device."
 msgstr ""
-"``ppd.device(\"P1\")(make_rand)`` 将 Python 函数转换为将在 ``P1`` 设备上调用的 "
-"``DeviceFunction``。"
+"``ppd.device(\"P1\")(make_rand)`` 将 Python 函数转换为将在 ``P1`` 设备上调用"
+"的 ``DeviceFunction``。"
 
-#: ../../tutorials/quick_start.ipynb:120004
-#, fuzzy
+#: ../../tutorials/quick_start.ipynb:349
 msgid ""
-"The terminal that starts the cluster will print log like this, which "
-"means the `make_rand` function is relocated to another node and executed "
-"there."
-msgstr "启动集群的终端将打印类似这样的日志，这表示 ``make_rand`` 函数被重定位到另一个节点并在那里执行。"
+"The terminal that starts the cluster will print log like this, which means "
+"the ``make_rand`` function is relocated to another node and executed there."
+msgstr ""
+"启动集群的终端将打印类似这样的日志，这表示 ``make_rand`` 函数被重定位到另一个"
+"节点并在那里执行。"
 
-#: ../../tutorials/quick_start.ipynb:130002
-#, fuzzy
+#: ../../tutorials/quick_start.ipynb:365
 msgid ""
-"The result of `make_rand` is also stored on `P1` and invisible for other "
+"The result of ``make_rand`` is also stored on ``P1`` and invisible for other "
 "device/node. For example, when printing them, all the above objects are "
-"`DeviceObject`, the plaintext object is invisible."
+"``DeviceObject``, the plaintext object is invisible."
 msgstr ""
-"``make_rand`` 的结果也存储在 ``P1`` 上，对其他设备/节点不可见。例如，当打印它们时，所有上述对象都是 "
-"``DeviceObject``，明文对象是不可见的。"
+"``make_rand`` 的结果也存储在 ``P1`` 上，对其他设备/节点不可见。例如，当打印它"
+"们时，所有上述对象都是 ``DeviceObject``，明文对象是不可见的。"
 
-#: ../../tutorials/quick_start.ipynb:150002
-#, fuzzy
+#: ../../tutorials/quick_start.ipynb:417
 msgid ""
-"And finally, we can reveal the result via `ppd.get`, which will fetch the"
-" plaintext from devices to this host(notebook)."
-msgstr "最后，我们可以通过 ``ppd.get`` 揭示结果，它会从设备获取明文到这个主机 （notebook）。"
-
-#: ../../tutorials/quick_start.ipynb:170002
-#, fuzzy
-msgid ""
-"The result shows that the random variable `x` from `P1` is greater than "
-"`y` from `P2`, we can check the result by revealing origin inputs."
-msgstr "结果显示来自 ``P1`` 的随机变量 ``x`` 大于来自 ``P2`` 的 ``y``，我们可以通过显示原始输入来验证结果。"
-
-#: ../../tutorials/quick_start.ipynb:190002
-#, fuzzy, python-format
-msgid ""
-"With above code, we implements the classic [Yao's millionares' "
-"problem](https://en.wikipedia.org/wiki/Yao%27s_Millionaires%27_problem) "
-"on SPU. Note:"
+"And finally, we can reveal the result via ``ppd.get``, which will fetch the "
+"plaintext from devices to this host(notebook)."
 msgstr ""
-"通过上述代码，我们在 SPU 上实现了经典的 `姚氏百万富翁问题 "
-"<https://en.wikipedia.org/wiki/Yao%27s_Millionaires%27_problem>`__。注意："
+"最后，我们可以通过 ``ppd.get`` 揭示结果，它会从设备获取明文到这个主机 "
+"（notebook）。"
 
-#: ../../tutorials/quick_start.ipynb:190004
-#, fuzzy
+#: ../../tutorials/quick_start.ipynb:463
 msgid ""
-"SPU re-uses `jax` api, and translates it to SPU executable, there is no "
-"`import spu.jax as jax` stuffs."
-msgstr "SPU 重用了 ``jax`` API，并将其转换为 SPU 可执行文件，不需要 ``import spu.jax as jax`` 之类的操作。"
+"The result shows that the random variable ``x`` from ``P1`` is greater than "
+"``y`` from ``P2``, we can check the result by revealing origin inputs."
+msgstr ""
+"结果显示来自 ``P1`` 的随机变量 ``x`` 大于来自 ``P2`` 的 ``y``，我们可以通过显"
+"示原始输入来验证结果。"
 
-#: ../../tutorials/quick_start.ipynb:190005
+#: ../../tutorials/quick_start.ipynb:511, python-format
+msgid ""
+"With above code, we implements the classic `Yao's millionares' problem "
+"<https://en.wikipedia.org/wiki/Yao%27s_Millionaires%27_problem>`__ on SPU. "
+"Note:"
+msgstr ""
+"通过上述代码，我们在 SPU 上实现了经典的 `姚氏百万富翁问题 <https://"
+"en.wikipedia.org/wiki/Yao%27s_Millionaires%27_problem>`__。注意："
+
+#: ../../tutorials/quick_start.ipynb:513
+msgid ""
+"SPU re-uses ``jax`` api, and translates it to SPU executable, there is no "
+"``import spu.jax as jax`` stuffs."
+msgstr ""
+"SPU 重用了 ``jax`` API，并将其转换为 SPU 可执行文件，不需要 ``import spu.jax "
+"as jax`` 之类的操作。"
+
+#: ../../tutorials/quick_start.ipynb:514
 msgid ""
 "SPU hides secure semantic, to compute a function *securely*, just simply "
 "mark it on SPU."
-msgstr "SPU 隐藏了安全语义，要安全地计算一个函数，只需简单地在 SPU 上标记它即可。"
+msgstr ""
+"SPU 隐藏了安全语义，要安全地计算一个函数，只需简单地在 SPU 上标记它即可。"
 
-#: ../../tutorials/quick_start.ipynb:200002
+#: ../../tutorials/quick_start.ipynb:526
 msgid "Logistic regression"
 msgstr "逻辑回归"
 
-#: ../../tutorials/quick_start.ipynb:200004
+#: ../../tutorials/quick_start.ipynb:528
 msgid ""
 "Now, let's check a more complicated example, privacy-preserving logistic "
 "regression."
 msgstr "现在，让我们看一个更复杂的例子：隐私保护的逻辑回归。"
 
-#: ../../tutorials/quick_start.ipynb:200006
+#: ../../tutorials/quick_start.ipynb:530
 msgid "First, write the raw JAX program."
 msgstr "首先，编写原始的 JAX 程序。"
 
-#: ../../tutorials/quick_start.ipynb:220002
+#: ../../tutorials/quick_start.ipynb:599
 msgid "Run the program on CPU, the result (AUC) works as expected."
 msgstr "在 CPU 上运行程序，结果（AUC）符合预期。"
 
-#: ../../tutorials/quick_start.ipynb:240002
-#, fuzzy
-msgid "Now, use `ppd.device` to make the above code run on SPU."
+#: ../../tutorials/quick_start.ipynb:647
+msgid "Now, use ``ppd.device`` to make the above code run on SPU."
 msgstr "现在，使用 ``ppd.device`` 让上述代码在 SPU 上运行。"
 
-#: ../../tutorials/quick_start.ipynb:260002
-#, fuzzy
+#: ../../tutorials/quick_start.ipynb:675
 msgid ""
-"`P1` loads the features(X) only, `P2` loads the labels(Y) only, and for "
+"``P1`` loads the features(X) only, ``P2`` loads the labels(Y) only, and for "
 "convenience, P1/P2 uses the same dataset, but only loads partial (either "
-"feature or label). Now `P1 and P2` want to train the model without "
-"telling each other the privacy data, so they use SPU to run the `train` "
-"function."
+"feature or label). Now ``P1 and P2`` want to train the model without telling "
+"each other the privacy data, so they use SPU to run the ``train`` function."
 msgstr ""
-"``P1`` 只加载特征 (X)，``P2`` 只加载标签 (Y)，为了方便，P1/P2 使用相同的数据集，但只加载部分数据（特征或标签）。现在 "
-"``P1 和 P2`` 想要在不互相透露隐私数据的情况下训练模型，所以他们使用 SPU 来运行 ``train`` 函数。"
+"``P1`` 只加载特征 (X)，``P2`` 只加载标签 (Y)，为了方便，P1/P2 使用相同的数据"
+"集，但只加载部分数据（特征或标签）。现在 ``P1 和 P2`` 想要在不互相透露隐私数"
+"据的情况下训练模型，所以他们使用 SPU 来运行 ``train`` 函数。"
 
-#: ../../tutorials/quick_start.ipynb:260004
+#: ../../tutorials/quick_start.ipynb:677
 msgid ""
-"It takes a little while to run the above program since privacy preserving"
-" program runs much slower than plaintext version."
+"It takes a little while to run the above program since privacy preserving "
+"program runs much slower than plaintext version."
 msgstr "运行上述程序需要一些时间，因为隐私保护程序比明文版本运行得慢得多。"
 
-#: ../../tutorials/quick_start.ipynb:260006
+#: ../../tutorials/quick_start.ipynb:679
 msgid ""
 "The parameters W and bias B are also located at SPU (no one knows the "
 "result). Finally, let's reveal the parameters to check correctness."
-msgstr "参数 W 和偏置 B 也存储在 SPU 中（无人知晓明文结果）。最后，我们揭示参数以验证正确性。"
+msgstr ""
+"参数 W 和偏置 B 也存储在 SPU 中（无人知晓明文结果）。最后，我们揭示参数以验证"
+"正确性。"
 
-#: ../../tutorials/quick_start.ipynb:280002
+#: ../../tutorials/quick_start.ipynb:727
 msgid ""
-"For this simple dataset, AUC metric shows exactly the same, but since SPU"
-" uses fixed point arithmetic, which is not as accurate as IEEE floating "
-"point arithmetic, the trained parameters are not exactly the same."
-msgstr "对于这个简单的数据集，AUC 指标完全相同，但由于 SPU 使用定点运算，其精度不如 IEEE 浮点运算，训练得到的参数并不完全相同。"
+"For this simple dataset, AUC metric shows exactly the same, but since SPU "
+"uses fixed point arithmetic, which is not as accurate as IEEE floating point "
+"arithmetic, the trained parameters are not exactly the same."
+msgstr ""
+"对于这个简单的数据集，AUC 指标完全相同，但由于 SPU 使用定点运算，其精度不如 "
+"IEEE 浮点运算，训练得到的参数并不完全相同。"
 
-#: ../../tutorials/quick_start.ipynb:310002
+#: ../../tutorials/quick_start.ipynb:849
 msgid "Visibility inference"
 msgstr "可见性推断"
 
-#: ../../tutorials/quick_start.ipynb:310004
+#: ../../tutorials/quick_start.ipynb:851
 msgid ""
-"SPU compiler/runtime pipeline works together to protect privacy "
-"information."
+"SPU compiler/runtime pipeline works together to protect privacy information."
 msgstr "SPU 编译器/运行时管道协同工作以保护隐私信息。"
 
-#: ../../tutorials/quick_start.ipynb:310006
+#: ../../tutorials/quick_start.ipynb:853
 msgid ""
 "When an object is transferred from PYU to SPU device, the data is first "
 "encrypted (secret shared) and then sent to SPU hosts."
-msgstr "当对象从 PYU 传输到 SPU 设备时，数据首先被加密（秘密共享），然后发送到 SPU 主机。"
-
-#: ../../tutorials/quick_start.ipynb:310008
-#, fuzzy
-msgid ""
-"The SPU compiler deduces the visibility of the entire program, including "
-"all nodes in the compute DAG, from the input's visibility with a very "
-"simple rule: for each SPU instruction, when any input is a secret, the "
-"output is a secret. In this way, the `secure semantic` is propagated "
-"through the entire DAG."
 msgstr ""
-"SPU 编译器通过一个简单的规则从输入的可见性推导出整个程序的可见性，包括计算 DAG 中的所有节点：对于每个 SPU "
-"指令，当任何输入是秘密时，输出也是秘密。通过这种方式，``安全语义`` 在整个 DAG 中传播。"
+"当对象从 PYU 传输到 SPU 设备时，数据首先被加密（秘密共享），然后发送到 SPU 主"
+"机。"
 
-#: ../../tutorials/quick_start.ipynb:310010
+#: ../../tutorials/quick_start.ipynb:855
+msgid ""
+"The SPU compiler deduces the visibility of the entire program, including all "
+"nodes in the compute DAG, from the input's visibility with a very simple "
+"rule: for each SPU instruction, when any input is a secret, the output is a "
+"secret. In this way, the ``secure semantic`` is propagated through the "
+"entire DAG."
+msgstr ""
+"SPU 编译器通过一个简单的规则从输入的可见性推导出整个程序的可见性，包括计算 "
+"DAG 中的所有节点：对于每个 SPU 指令，当任何输入是秘密时，输出也是秘密。通过这"
+"种方式，``安全语义`` 在整个 DAG 中传播。"
+
+#: ../../tutorials/quick_start.ipynb:857
 msgid "For example,"
 msgstr "例如，"
 
-#: ../../tutorials/quick_start.ipynb:330002
-#, fuzzy
+#: ../../tutorials/quick_start.ipynb:907
 msgid ""
-"It shows that `ppd.device` decorated `sigmoid` is a `DeviceFunction` "
+"It shows that ``ppd.device`` decorated ``sigmoid`` is a ``DeviceFunction`` "
 "which could be launched by SPU."
-msgstr "这表明被 ``ppd.device`` 装饰的 ``sigmoid`` 是一个可以由 SPU 启动的 ``DeviceFunction``。"
+msgstr ""
+"这表明被 ``ppd.device`` 装饰的 ``sigmoid`` 是一个可以由 SPU 启动的 "
+"``DeviceFunction``。"
 
-#: ../../tutorials/quick_start.ipynb:330004
+#: ../../tutorials/quick_start.ipynb:909
 msgid "We can print the SPU bytecode via"
 msgstr "我们可以通过以下方式打印 SPU 字节码"
 
-#: ../../tutorials/quick_start.ipynb:350002
+#: ../../tutorials/quick_start.ipynb:996
 msgid "It shows that the function type signature is:"
 msgstr "它显示函数类型签名是："
 
-#: ../../tutorials/quick_start.ipynb:350007
-#, fuzzy
+#: ../../tutorials/quick_start.ipynb:1002
 msgid ""
-"Note, since the input is random from the driver (this notebook), which is"
-" not privacy information by default, so the input is `tensor<3x3xf32>`, "
-"which means it accepts a `3x3 public f32 tensor`."
+"Note, since the input is random from the driver (this notebook), which is "
+"not privacy information by default, so the input is ``tensor<3x3xf32>``, "
+"which means it accepts a ``3x3 public f32 tensor``."
 msgstr ""
-"注意，由于输入来自驱动程序（本 notebook），默认不是隐私信息，所以输入是 ``tensor<3x3xf32>``，这意味着它接受一个 "
-"``3x3 公开的 f32 张量``。"
+"注意，由于输入来自驱动程序（本 notebook），默认不是隐私信息，所以输入是 "
+"``tensor<3x3xf32>``，这意味着它接受一个 ``3x3 公开的 f32 张量``。"
 
-#: ../../tutorials/quick_start.ipynb:350009
-#, fuzzy
+#: ../../tutorials/quick_start.ipynb:1004
 msgid ""
-"The compiler deduces the whole program's visibility type, and finds "
-"output should be `tensor<3x3xf32>`, which means a `3x3 public f32 "
-"tensor`."
-msgstr "编译器推导出整个程序的可见性类型，并发现输出应该是 ``tensor<3x3xf32>``，这意味着是一个 ``3x3 公开的 f32 张量``。"
+"The compiler deduces the whole program's visibility type, and finds output "
+"should be ``tensor<3x3xf32>``, which means a ``3x3 public f32 tensor``."
+msgstr ""
+"编译器推导出整个程序的可见性类型，并发现输出应该是 ``tensor<3x3xf32>``，这意"
+"味着是一个 ``3x3 公开的 f32 张量``。"
 
-#: ../../tutorials/quick_start.ipynb:350011
-#, fuzzy
-msgid "Now let's generate input from `P1` and run the program again."
+#: ../../tutorials/quick_start.ipynb:1006
+msgid "Now let's generate input from ``P1`` and run the program again."
 msgstr "现在，我们从 ``P1`` 生成输入数据并重新运行程序。"
 
-#: ../../tutorials/quick_start.ipynb:370002
-#, fuzzy
+#: ../../tutorials/quick_start.ipynb:1101
 msgid ""
-"Since the input comes from `P1`, which is private, so the function "
+"Since the input comes from ``P1``, which is private, so the function "
 "signature becomes:"
 msgstr "由于输入来自 ``P1``，是私有的，所以函数签名变为："
 
-#: ../../tutorials/quick_start.ipynb:370008
-#, fuzzy
+#: ../../tutorials/quick_start.ipynb:1107
 msgid ""
-"This means accepts `1 secret i32` data and outputs `1 secret f32` data, "
-"inside the compiled function, all internal instruction's visibility type "
-"is also correctly deduced."
-msgstr "这意味着接受 ``1 个秘密的 i32`` 数据并输出 ``1 个秘密的 f32`` 数据，编译后的函数内部所有指令的可见性类型均被正确推断。"
+"This means accepts ``1 secret i32`` data and outputs ``1 secret f32`` data, "
+"inside the compiled function, all internal instruction's visibility type is "
+"also correctly deduced."
+msgstr ""
+"这意味着接受 ``1 个秘密的 i32`` 数据并输出 ``1 个秘密的 f32`` 数据，编译后的"
+"函数内部所有指令的可见性类型均被正确推断。"
 
-#: ../../tutorials/quick_start.ipynb:370010
+#: ../../tutorials/quick_start.ipynb:1109
 msgid ""
-"With the JIT(just in time) type deduction, SPU protects the clients' "
-"privacy."
+"With the JIT(just in time) type deduction, SPU protects the clients' privacy."
 msgstr "通过即时（JIT）类型推断，SPU 保护了客户端的隐私数据。"
-

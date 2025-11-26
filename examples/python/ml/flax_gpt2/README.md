@@ -6,11 +6,11 @@ This example demonstrates how to use SPU to run private inference on a pre-train
 1. Launch SPU backend runtime
 
     ```sh
-    uv run examples/python/utils/nodectl.py --config `pwd`/examples/python/ml/flax_gpt2/3pc.json up
+    python examples/python/utils/nodectl.py --config `pwd`/examples/python/ml/flax_gpt2/3pc.json up
     ```
 
 2. Run `flax_gpt2` example
 
     ```sh
-    uv run examples/python/ml/flax_gpt2/flax_gpt2.py --config `pwd`/examples/python/ml/flax_gpt2/3pc.json
+    python examples/python/ml/flax_gpt2/flax_gpt2.py --config `pwd`/examples/python/ml/flax_gpt2/3pc.json
     ```

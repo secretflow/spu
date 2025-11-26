@@ -29,6 +29,11 @@ Note that SPU current only support Python 3.10 and 3.11.
 pip install spu
 ```
 
+
+
+
+
+
 ### From Source
 
 It is recommended to install in a virtual environment, e.g.,
@@ -48,9 +53,8 @@ pip install spu
 - At the root of repo, run
 
 ```bash
-uv venv --python 3.11
-uv sync --group dev
-uv pip install -e .
+bazelisk build //:spu_wheel -c opt
+pip install bazel-bin/spu-*.whl --force-reinstall
 ```
 
 - Note that:
@@ -68,17 +72,15 @@ bazelisk clean --expunge
 This requires CUDA Toolkit to be installed.
 
 ```bash
-bazelisk build //spu:libspu -c opt --config=gpu
-bazelisk build //spu:libpsi -c opt --config=gpu
-
-uv build
+bazelisk build //:spu_wheel -c opt --config=gpu
 ```
 
 ### Build with specified python version
 
 ```bash
-uv venv --python 3.10 # specify version
-uv sync --group dev
+# build with python 3.10
+bazelisk build //:spu_wheel -c opt --@rules_python//python/config_settings:python_version=3.10
 
-uv pip install -e .
+# build with python 3.11
+bazelisk build //:spu_wheel -c opt --@rules_python//python/config_settings:python_version=3.11
 ```

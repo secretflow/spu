@@ -7,7 +7,7 @@ These models are widely used for evaluation benchmarks in MPC-enabled literature
 1. Launch SPU backend runtime
 
     ```sh
-    uv run examples/python/utils/nodectl.py up
+    python examples/python/utils/nodectl.py up
     ```
 
 2. Run `stax_nn` example

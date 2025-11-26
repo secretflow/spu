@@ -2,11 +2,11 @@
 
 To run a certain example, we have to first specify the distributed environment with:
 
-> uv run examples/python/utils/nodectl.py up
+> bazel run -c opt //examples/python/utils:nodectl -- up
 
 To use a specific layout configuration (i.e. change MPC protocol, change outsourcing/colocated), change the configuration file accordingly.
 
-> uv run examples/python/utils/nodectl.py -c examples/python/conf/2pc.json up
+> bazel run -c opt //examples/python/utils:nodectl -- -c examples/python/conf/2pc.json up
 
 Then please check the comment of each example to run.
 

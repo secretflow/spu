@@ -8,11 +8,11 @@ Please refer to [spu.proto](../../../libspu/spu.proto) for more descriptions of 
 1. Launch SPU backend runtime
 
     ``` shell
-    uv run examples/python/utils/nodectl.py up
+    python examples/python/utils/nodectl.py up
     ```
 
 2. Run `ir_dump` example
 
     ``` shell
-    uv run examples/python/ir_dump/ir_dump.py
+    python examples/python/ir_dump/ir_dump.py
     ```

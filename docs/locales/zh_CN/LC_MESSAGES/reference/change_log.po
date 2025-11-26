@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: SPU \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-10-28 13:50+0800\n"
+"POT-Creation-Date: 2025-03-13 15:10+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -48,883 +48,846 @@ msgid "please add your unreleased change here."
 msgstr ""
 
 #: ../../../CHANGELOG.md:13
-msgid "20250917"
-msgstr ""
-
-#: ../../../CHANGELOG.md:15
-msgid "[SPU] 0.9.4 release"
-msgstr ""
-
-#: ../../../CHANGELOG.md:16
 msgid ""
 "[SPU] Migrating to Bazel Modules and update minimum Python version to "
 "3.10."
 msgstr ""
 
-#: ../../../CHANGELOG.md:17
+#: ../../../CHANGELOG.md:14
 msgid "[Feature] Add soPRF (LowMC cipher) for SEMI2K"
 msgstr ""
 
-#: ../../../CHANGELOG.md:18
+#: ../../../CHANGELOG.md:15
 msgid "[API] Add Permute/InvPermute support in HLO"
 msgstr ""
 
-#: ../../../CHANGELOG.md:19
+#: ../../../CHANGELOG.md:16
 msgid "[Feature] Add SSL configuration to the TTP server"
 msgstr ""
 
-#: ../../../CHANGELOG.md:20
+#: ../../../CHANGELOG.md:17
 msgid "[Feature] Support quick sort for semi2k and aby3"
 msgstr ""
 
-#: ../../../CHANGELOG.md:22
+#: ../../../CHANGELOG.md:19
 msgid "20241219"
 msgstr ""
 
-#: ../../../CHANGELOG.md:24
+#: ../../../CHANGELOG.md:21
 msgid "[SPU] 0.9.3b0 release"
 msgstr ""
 
-#: ../../../CHANGELOG.md:25
+#: ../../../CHANGELOG.md:22
 msgid ""
 "[Improvement] Optimize exponential computation for semi2k "
 "(**experimental**)"
 msgstr ""
 
-#: ../../../CHANGELOG.md:26
+#: ../../../CHANGELOG.md:23
 msgid "[Feature] Add more send/recv actions profiling"
 msgstr ""
 
-#: ../../../CHANGELOG.md:28
+#: ../../../CHANGELOG.md:25
 msgid "20240716"
 msgstr ""
 
-#: ../../../CHANGELOG.md:30
+#: ../../../CHANGELOG.md:27
 msgid "[SPU] 0.9.2b0 release"
 msgstr ""
 
-#: ../../../CHANGELOG.md:31
+#: ../../../CHANGELOG.md:28
 msgid "[Feature] Support jax.numpy.bitwise_count"
 msgstr ""
 
-#: ../../../CHANGELOG.md:32
+#: ../../../CHANGELOG.md:29
 msgid "[Bugfix] Fix jax.numpy.signbit wrong answer with very large input"
 msgstr ""
 
-#: ../../../CHANGELOG.md:34
+#: ../../../CHANGELOG.md:31
 msgid "20240621"
 msgstr ""
 
-#: ../../../CHANGELOG.md:36
+#: ../../../CHANGELOG.md:33
 msgid "[SPU] 0.9.1b0 release"
 msgstr ""
 
-#: ../../../CHANGELOG.md:37
+#: ../../../CHANGELOG.md:34
 msgid "[Feature] Add ORAM based dynamic_slice for ABY3"
 msgstr ""
 
-#: ../../../CHANGELOG.md:38
+#: ../../../CHANGELOG.md:35
 msgid "[Feature] Add Atan2Op support"
 msgstr ""
 
-#: ../../../CHANGELOG.md:39
+#: ../../../CHANGELOG.md:36
 msgid "[API] Add beaver cache support for semi2k (**experimental**)"
 msgstr ""
 
-#: ../../../CHANGELOG.md:41
+#: ../../../CHANGELOG.md:38
 msgid "20240415"
 msgstr ""
 
-#: ../../../CHANGELOG.md:43
+#: ../../../CHANGELOG.md:40
 msgid "[Feature] Add minimax approximation for log"
 msgstr ""
 
-#: ../../../CHANGELOG.md:44
+#: ../../../CHANGELOG.md:41
 msgid "[Feature] Support jax.lax.top_k"
 msgstr ""
 
-#: ../../../CHANGELOG.md:45
+#: ../../../CHANGELOG.md:42
 msgid "[Feature] Support round to nearest even"
 msgstr ""
 
-#: ../../../CHANGELOG.md:46
+#: ../../../CHANGELOG.md:43
 msgid "[Improvement] Default log approximation to minmax"
 msgstr ""
 
-#: ../../../CHANGELOG.md:47
+#: ../../../CHANGELOG.md:44
 msgid "[Improvement] Improve median performance"
 msgstr ""
 
-#: ../../../CHANGELOG.md:49
+#: ../../../CHANGELOG.md:46
 msgid "20240306"
 msgstr ""
 
-#: ../../../CHANGELOG.md:51
+#: ../../../CHANGELOG.md:48
 msgid "[Feature] Support more generic Torch model inference"
 msgstr ""
 
-#: ../../../CHANGELOG.md:52
+#: ../../../CHANGELOG.md:49
 msgid "[Improvement] Optimize one-time setup for yacl ot"
 msgstr ""
 
-#: ../../../CHANGELOG.md:53
+#: ../../../CHANGELOG.md:50
 msgid "[Improvement] Optimize sort performance"
 msgstr ""
 
-#: ../../../CHANGELOG.md:54
+#: ../../../CHANGELOG.md:51
 msgid "[Infra] Python 3.8 is no longer suppoted"
 msgstr ""
 
-#: ../../../CHANGELOG.md:55
+#: ../../../CHANGELOG.md:52
 msgid "[Infra] Bump jax minimum version to 0.4.16"
 msgstr ""
 
-#: ../../../CHANGELOG.md:57
+#: ../../../CHANGELOG.md:54
 msgid "20240105"
 msgstr ""
 
-#: ../../../CHANGELOG.md:59
+#: ../../../CHANGELOG.md:56
 msgid "[Feature] Add Odd-Even Merge Sort to replace the bitonic sort"
 msgstr ""
 
-#: ../../../CHANGELOG.md:60
+#: ../../../CHANGELOG.md:57
 msgid "[Feature] Add radix sort support for ABY3"
 msgstr ""
 
-#: ../../../CHANGELOG.md:61
+#: ../../../CHANGELOG.md:58
 msgid "[Feature] Integrate with secretflow/psi"
 msgstr ""
 
-#: ../../../CHANGELOG.md:62
+#: ../../../CHANGELOG.md:59
 msgid "[Feature] Add Linux aarch64 support"
 msgstr ""
 
-#: ../../../CHANGELOG.md:63
+#: ../../../CHANGELOG.md:60
 msgid "[Feature] Add equal support for SEMI2K and ABY3"
 msgstr ""
 
-#: ../../../CHANGELOG.md:64
+#: ../../../CHANGELOG.md:61
 msgid "[Improvement] Optimize sort memory usage"
 msgstr ""
 
-#: ../../../CHANGELOG.md:65
+#: ../../../CHANGELOG.md:62
 msgid "[Improvement] Improve compatibility with latest Jax"
 msgstr ""
 
-#: ../../../CHANGELOG.md:66
+#: ../../../CHANGELOG.md:63
 msgid "[Bugfix] Fix compilation cache collision under certain cases"
 msgstr ""
 
-#: ../../../CHANGELOG.md:67
+#: ../../../CHANGELOG.md:64
 msgid "[Deprecated] macOS 11.x is no longer supported"
 msgstr ""
 
-#: ../../../CHANGELOG.md:69
+#: ../../../CHANGELOG.md:66
 msgid "20231108"
 msgstr ""
 
-#: ../../../CHANGELOG.md:71
+#: ../../../CHANGELOG.md:68
 msgid "[Bugfix] Fix compatibility with latest Jax"
 msgstr ""
 
-#: ../../../CHANGELOG.md:72
+#: ../../../CHANGELOG.md:69
 msgid "[Feature] Improve memory efficiency during encode/decode data"
 msgstr ""
 
-#: ../../../CHANGELOG.md:73
+#: ../../../CHANGELOG.md:70
 msgid "[Feature] Add radix sort support for SEMI2K"
 msgstr ""
 
-#: ../../../CHANGELOG.md:74
+#: ../../../CHANGELOG.md:71
 msgid "[Feature] Experimental: ABY3 matmul CUDA support"
 msgstr ""
 
-#: ../../../CHANGELOG.md:75
+#: ../../../CHANGELOG.md:72
 msgid "[Feature] Experimental: Private support under colocated mode"
 msgstr ""
 
-#: ../../../CHANGELOG.md:76
+#: ../../../CHANGELOG.md:73
 msgid "[Feature] Add yacl ot support for Cheetah"
 msgstr ""
 
-#: ../../../CHANGELOG.md:78
+#: ../../../CHANGELOG.md:75
 msgid "20230906"
 msgstr ""
 
-#: ../../../CHANGELOG.md:80
+#: ../../../CHANGELOG.md:77
 msgid "[SPU] 0.5.0 release"
 msgstr ""
 
-#: ../../../CHANGELOG.md:81
+#: ../../../CHANGELOG.md:78
 msgid "[API] Update IO interface to support splitting large data into chunks"
 msgstr ""
 
-#: ../../../CHANGELOG.md:82
+#: ../../../CHANGELOG.md:79
 msgid "[API] Add intrinsic function support"
 msgstr ""
 
-#: ../../../CHANGELOG.md:83
+#: ../../../CHANGELOG.md:80
 msgid "[Feature] Add half type support"
 msgstr ""
 
-#: ../../../CHANGELOG.md:84
+#: ../../../CHANGELOG.md:81
 msgid "[Feature] Add PSI progress report"
 msgstr ""
 
-#: ../../../CHANGELOG.md:85
+#: ../../../CHANGELOG.md:82
 msgid "[Feature] Add SineOp/CosineOp support"
 msgstr ""
 
-#: ../../../CHANGELOG.md:86
+#: ../../../CHANGELOG.md:83
 msgid "[Feature] Add complex support"
 msgstr ""
 
-#: ../../../CHANGELOG.md:88
+#: ../../../CHANGELOG.md:85
 msgid "20230705"
 msgstr ""
 
-#: ../../../CHANGELOG.md:90
+#: ../../../CHANGELOG.md:87
 msgid "[SPU] 0.4.1 release"
 msgstr ""
 
-#: ../../../CHANGELOG.md:91
+#: ../../../CHANGELOG.md:88
 msgid "[Improvement] Improve tanh performance"
 msgstr ""
 
-#: ../../../CHANGELOG.md:93
+#: ../../../CHANGELOG.md:90
 msgid "20230614"
 msgstr ""
 
-#: ../../../CHANGELOG.md:95
+#: ../../../CHANGELOG.md:92
 msgid "[SPU] 0.4.0 release"
 msgstr ""
 
-#: ../../../CHANGELOG.md:96
+#: ../../../CHANGELOG.md:93
 msgid "[Feature] Improve secret dynamic slicing performance"
 msgstr ""
 
-#: ../../../CHANGELOG.md:97
+#: ../../../CHANGELOG.md:94
 msgid "[Feature] Improve accuracy of tanh approximation"
 msgstr ""
 
-#: ../../../CHANGELOG.md:98
+#: ../../../CHANGELOG.md:95
 msgid "[Example] Add flax GPT2"
 msgstr ""
 
-#: ../../../CHANGELOG.md:99
+#: ../../../CHANGELOG.md:96
 msgid "[Example] Add ResNet"
 msgstr ""
 
-#: ../../../CHANGELOG.md:100
+#: ../../../CHANGELOG.md:97
 msgid "[Bugfix] Fix gen cache in unbalanced psi"
 msgstr ""
 
-#: ../../../CHANGELOG.md:101
+#: ../../../CHANGELOG.md:98
 msgid "[Bugfix] Fix possible compilation cache collision"
 msgstr ""
 
-#: ../../../CHANGELOG.md:102
+#: ../../../CHANGELOG.md:99
 msgid "[Improvement] Improve accuracy of mean with large size input"
 msgstr ""
 
-#: ../../../CHANGELOG.md:103
+#: ../../../CHANGELOG.md:100
 msgid "[Improvement] Improve support of Jax 64bit mode"
 msgstr ""
 
-#: ../../../CHANGELOG.md:104
+#: ../../../CHANGELOG.md:101
 msgid "[API] Add compiler options"
 msgstr ""
 
-#: ../../../CHANGELOG.md:106
+#: ../../../CHANGELOG.md:103
 msgid "20230406"
 msgstr ""
 
-#: ../../../CHANGELOG.md:108
+#: ../../../CHANGELOG.md:105
 msgid "[SPU] 0.3.2 release"
 msgstr ""
 
-#: ../../../CHANGELOG.md:109
+#: ../../../CHANGELOG.md:106
 msgid "[Feature] Add TrustedThirdParty beaver provider for semi2k"
 msgstr ""
 
-#: ../../../CHANGELOG.md:110
+#: ../../../CHANGELOG.md:107
 msgid "[Feature] Expose ssl/tls options"
 msgstr ""
 
-#: ../../../CHANGELOG.md:111
+#: ../../../CHANGELOG.md:108
 msgid "[Feature] Add EpsilonOp"
 msgstr ""
 
-#: ../../../CHANGELOG.md:112
+#: ../../../CHANGELOG.md:109
 msgid "[Feature] Support CaseOp"
 msgstr ""
 
-#: ../../../CHANGELOG.md:113
+#: ../../../CHANGELOG.md:110
 msgid "[Feature] Improve sort performance"
 msgstr ""
 
-#: ../../../CHANGELOG.md:114
+#: ../../../CHANGELOG.md:111
 msgid "[Feature] Improve shift performance"
 msgstr ""
 
-#: ../../../CHANGELOG.md:115
+#: ../../../CHANGELOG.md:112
 msgid "[Feature] Support shift by secret number of bits"
 msgstr ""
 
-#: ../../../CHANGELOG.md:116
+#: ../../../CHANGELOG.md:113
 msgid "[Feature] Support secret indexing"
 msgstr ""
 
-#: ../../../CHANGELOG.md:117
+#: ../../../CHANGELOG.md:114
 msgid "[Feature] Add PIR python binding"
 msgstr ""
 
-#: ../../../CHANGELOG.md:118
+#: ../../../CHANGELOG.md:115
 msgid "[bugfix] Fix boolean ConstantOp"
 msgstr ""
 
-#: ../../../CHANGELOG.md:119
+#: ../../../CHANGELOG.md:116
 msgid "[bugfix] Fix jnp.median"
 msgstr ""
 
-#: ../../../CHANGELOG.md:120
+#: ../../../CHANGELOG.md:117
 msgid "[bugfix] Fix jnp.sort on floating point inputs"
 msgstr ""
 
-#: ../../../CHANGELOG.md:121
+#: ../../../CHANGELOG.md:118
 msgid "[bugfix] Fix secret sort with public payloads"
 msgstr ""
 
-#: ../../../CHANGELOG.md:122
+#: ../../../CHANGELOG.md:119
 msgid "[3p] Relax TensorFlow version in requirements.txt"
 msgstr ""
 
-#: ../../../CHANGELOG.md:123
+#: ../../../CHANGELOG.md:120
 msgid "[3p] Move to OpenXLA"
 msgstr ""
 
-#: ../../../CHANGELOG.md:124
+#: ../../../CHANGELOG.md:121
 msgid "[API] Move C++ API from spu to libspu"
 msgstr ""
 
-#: ../../../CHANGELOG.md:125
+#: ../../../CHANGELOG.md:122
 msgid "[PSI] Add ecdh-oprf 2-party two stage mode."
 msgstr ""
 
-#: ../../../CHANGELOG.md:127
+#: ../../../CHANGELOG.md:124
 msgid "20230104"
 msgstr ""
 
-#: ../../../CHANGELOG.md:129
+#: ../../../CHANGELOG.md:126
 msgid "[SPU] 0.3.1 release"
 msgstr ""
 
-#: ../../../CHANGELOG.md:130
+#: ../../../CHANGELOG.md:127
 msgid "[API] Add get_var_meta"
 msgstr ""
 
-#: ../../../CHANGELOG.md:131
+#: ../../../CHANGELOG.md:128
 msgid "[API] Change ValueProto to bytes in Runtime/IO binding API"
 msgstr ""
 
-#: ../../../CHANGELOG.md:132
+#: ../../../CHANGELOG.md:129
 msgid "[Feature] Add SPU logging"
 msgstr ""
 
-#: ../../../CHANGELOG.md:133
+#: ../../../CHANGELOG.md:130
 msgid "[Feature] ECDH-PSI supports white box interconnection mode"
 msgstr ""
 
-#: ../../../CHANGELOG.md:134
+#: ../../../CHANGELOG.md:131
 msgid "[Feature] Various performance improvements"
 msgstr ""
 
-#: ../../../CHANGELOG.md:135
+#: ../../../CHANGELOG.md:132
 msgid "[Feature] Lift IfOp condition limit"
 msgstr ""
 
-#: ../../../CHANGELOG.md:136
+#: ../../../CHANGELOG.md:133
 msgid "[bugfix] Fix various crashes"
 msgstr ""
 
-#: ../../../CHANGELOG.md:137
+#: ../../../CHANGELOG.md:134
 msgid "[3p] Build with Tensorflow 2.11.0"
 msgstr ""
 
-#: ../../../CHANGELOG.md:138
+#: ../../../CHANGELOG.md:135
 msgid "[3p] Update JAX to 0.4.1"
 msgstr ""
 
-#: ../../../CHANGELOG.md:140
+#: ../../../CHANGELOG.md:137
 msgid "20221116"
 msgstr ""
 
-#: ../../../CHANGELOG.md:142
+#: ../../../CHANGELOG.md:139
 msgid "[SPU] 0.3.0 release"
 msgstr ""
 
-#: ../../../CHANGELOG.md:143
+#: ../../../CHANGELOG.md:140
 msgid "[API] Add IR type for frontend compilation"
 msgstr ""
 
-#: ../../../CHANGELOG.md:144
+#: ../../../CHANGELOG.md:141
 msgid "[Feature] Support SignOp, Expm1Op, DotGeneralOp"
 msgstr ""
 
-#: ../../../CHANGELOG.md:145
+#: ../../../CHANGELOG.md:142
 msgid "[Feature] Improve convolution performance"
 msgstr ""
 
-#: ../../../CHANGELOG.md:146
+#: ../../../CHANGELOG.md:143
 msgid "[Feature] Link Send/Recv python binding"
 msgstr ""
 
-#: ../../../CHANGELOG.md:147
+#: ../../../CHANGELOG.md:144
 msgid "[bugfix] Relax iota type constraint"
 msgstr ""
 
-#: ../../../CHANGELOG.md:148
+#: ../../../CHANGELOG.md:145
 msgid "[bugfix] Fix type inference for whileOp/dynamicUpdateSliceOp"
 msgstr ""
 
-#: ../../../CHANGELOG.md:149
+#: ../../../CHANGELOG.md:146
 msgid "[bugfix] Relax clamp type constraint"
 msgstr ""
 
-#: ../../../CHANGELOG.md:150
+#: ../../../CHANGELOG.md:147
 msgid "[bugfix] Fix NotOp with non-pred integer types"
 msgstr ""
 
-#: ../../../CHANGELOG.md:152
+#: ../../../CHANGELOG.md:149
 msgid "20220905"
 msgstr ""
 
-#: ../../../CHANGELOG.md:154
+#: ../../../CHANGELOG.md:151
 msgid "[SPU] 0.2.4 release"
 msgstr ""
 
-#: ../../../CHANGELOG.md:155
+#: ../../../CHANGELOG.md:152
 msgid "[bugfix] Fix Tensorflow example"
 msgstr ""
 
-#: ../../../CHANGELOG.md:156
+#: ../../../CHANGELOG.md:153
 msgid "[miscs] Performance improvements"
 msgstr ""
 
-#: ../../../CHANGELOG.md:158
+#: ../../../CHANGELOG.md:155
 msgid "20220822"
 msgstr ""
 
-#: ../../../CHANGELOG.md:160
+#: ../../../CHANGELOG.md:157
 msgid "[SPU] 0.2.1 release"
 msgstr ""
 
-#: ../../../CHANGELOG.md:161
+#: ../../../CHANGELOG.md:158
 msgid "[Feature] Add compiler cache"
 msgstr ""
 
-#: ../../../CHANGELOG.md:162
+#: ../../../CHANGELOG.md:159
 msgid "[Feature] Support bc22-pcg psi"
 msgstr ""
 
-#: ../../../CHANGELOG.md:163
+#: ../../../CHANGELOG.md:160
 msgid "[API] Refactor psi api"
 msgstr ""
 
-#: ../../../CHANGELOG.md:164
+#: ../../../CHANGELOG.md:161
 msgid "[miscs] Various performance improvements"
 msgstr ""
 
-#: ../../../CHANGELOG.md:166
+#: ../../../CHANGELOG.md:163
 msgid "20220727"
 msgstr ""
 
-#: ../../../CHANGELOG.md:168
+#: ../../../CHANGELOG.md:165
 msgid "[SPU] 0.1.1 release"
 msgstr ""
 
-#: ../../../CHANGELOG.md:169
+#: ../../../CHANGELOG.md:166
 msgid "[API] Added rsqrt support"
 msgstr ""
 
-#: ../../../CHANGELOG.md:170
+#: ../../../CHANGELOG.md:167
 msgid "[bugfix] Fixed some crashes and wrong answers"
 msgstr ""
 
-#: ../../../CHANGELOG.md:172
+#: ../../../CHANGELOG.md:169
 msgid "20220527"
 msgstr ""
 
-#: ../../../CHANGELOG.md:174
+#: ../../../CHANGELOG.md:171
 msgid "[SPU] 0.1.0 release"
 msgstr ""
 
-#: ../../../CHANGELOG.md:175
+#: ../../../CHANGELOG.md:172
 msgid "[API] Add exp/log approximation configurations."
 msgstr ""
 
-#: ../../../CHANGELOG.md:176
+#: ../../../CHANGELOG.md:173
 msgid "[API] Change SigmoidMode enum value."
 msgstr ""
 
-#: ../../../CHANGELOG.md:178
+#: ../../../CHANGELOG.md:175
 msgid "20220513"
 msgstr ""
 
-#: ../../../CHANGELOG.md:180
+#: ../../../CHANGELOG.md:177
 msgid "[SPU] 0.0.10"
 msgstr ""
 
-#: ../../../CHANGELOG.md:181
+#: ../../../CHANGELOG.md:178
 msgid "[Infra] Set minimum macOS requirements to 11.0"
 msgstr ""
 
-#: ../../../CHANGELOG.md:182
+#: ../../../CHANGELOG.md:179
 msgid "[Feature] Performance improvements"
 msgstr ""
 
-#: ../../../CHANGELOG.md:183
+#: ../../../CHANGELOG.md:180
 msgid "[Feature] Support SelectAndScatter."
 msgstr ""
 
-#: ../../../CHANGELOG.md:185
+#: ../../../CHANGELOG.md:182
 msgid "20220511"
 msgstr ""
 
-#: ../../../CHANGELOG.md:187
+#: ../../../CHANGELOG.md:184
 msgid "[SPU] 0.0.9 release"
 msgstr ""
 
-#: ../../../CHANGELOG.md:188
+#: ../../../CHANGELOG.md:185
 msgid "[Feature] Add spu.binding.distributed."
 msgstr ""
 
-#: ../../../CHANGELOG.md:189
+#: ../../../CHANGELOG.md:186
 msgid "[API] Expose visibility to ValueProto."
 msgstr ""
 
-#: ../../../CHANGELOG.md:190
+#: ../../../CHANGELOG.md:187
 msgid "[bugfix] Fixed several vtype and dtype mismatches."
 msgstr ""
 
-#: ../../../CHANGELOG.md:191
+#: ../../../CHANGELOG.md:188
 msgid "[bugfix] Improve multiply accuracy under certain scenarios."
 msgstr ""
 
-#: ../../../CHANGELOG.md:192
+#: ../../../CHANGELOG.md:189
 msgid ""
 "[bugfix] Ensure dynamic-slice & dynamic-update-slice OOB behavior is "
 "aligned with XLA semantics."
 msgstr ""
 
-#: ../../../CHANGELOG.md:194
+#: ../../../CHANGELOG.md:191
 msgid "20220427"
 msgstr ""
 
-#: ../../../CHANGELOG.md:196
+#: ../../../CHANGELOG.md:193
 msgid "[SPU] 0.0.8.1 release"
 msgstr ""
 
-#: ../../../CHANGELOG.md:197
+#: ../../../CHANGELOG.md:194
 msgid "[bugfix] Fix iota type mismatch."
 msgstr ""
 
-#: ../../../CHANGELOG.md:199
+#: ../../../CHANGELOG.md:196
 msgid "20220425"
 msgstr ""
 
-#: ../../../CHANGELOG.md:201
+#: ../../../CHANGELOG.md:198
 msgid "[SPU] 0.0.8 release"
 msgstr ""
 
-#: ../../../CHANGELOG.md:202
+#: ../../../CHANGELOG.md:199
 msgid "[Feature] Add tanh support."
 msgstr ""
 
-#: ../../../CHANGELOG.md:203
+#: ../../../CHANGELOG.md:200
 msgid "[bugfix] Fix secret shift wrong answer."
 msgstr ""
 
-#: ../../../CHANGELOG.md:205
+#: ../../../CHANGELOG.md:202
 msgid "20220424"
 msgstr ""
 
-#: ../../../CHANGELOG.md:207
+#: ../../../CHANGELOG.md:204
 msgid "[SPU] 0.0.7.1 release"
 msgstr ""
 
-#: ../../../CHANGELOG.md:208
+#: ../../../CHANGELOG.md:205
 msgid "[bugfix] Fix secret shift."
 msgstr ""
 
-#: ../../../CHANGELOG.md:210
+#: ../../../CHANGELOG.md:207
 msgid "20220422"
 msgstr ""
 
-#: ../../../CHANGELOG.md:212
+#: ../../../CHANGELOG.md:209
 msgid "[SPU] 0.0.7 release"
 msgstr ""
 
-#: ../../../CHANGELOG.md:213
+#: ../../../CHANGELOG.md:210
 msgid "[Feature] Add python simulation module."
 msgstr ""
 
-#: ../../../CHANGELOG.md:214
+#: ../../../CHANGELOG.md:211
 msgid "[Feature] Support general sort comparator."
 msgstr ""
 
-#: ../../../CHANGELOG.md:215
+#: ../../../CHANGELOG.md:212
 msgid "[Feature] Support remainder operation."
 msgstr ""
 
-#: ../../../CHANGELOG.md:216
+#: ../../../CHANGELOG.md:213
 msgid "[Feature] Support arithmetic right shift operation."
 msgstr ""
 
-#: ../../../CHANGELOG.md:217
+#: ../../../CHANGELOG.md:214
 msgid "[API] Change DataType definition, support more accurate encoding."
 msgstr ""
 
-#: ../../../CHANGELOG.md:219
+#: ../../../CHANGELOG.md:216
 msgid "20220412.1"
 msgstr ""
 
-#: ../../../CHANGELOG.md:221
+#: ../../../CHANGELOG.md:218
 msgid "[SPU] 0.0.6.1 release"
 msgstr ""
 
-#: ../../../CHANGELOG.md:222
+#: ../../../CHANGELOG.md:219
 msgid "[bugfix] Fixed several macOS build issues."
 msgstr ""
 
-#: ../../../CHANGELOG.md:224
+#: ../../../CHANGELOG.md:221
 msgid "20220412"
 msgstr ""
 
-#: ../../../CHANGELOG.md:226
+#: ../../../CHANGELOG.md:223
 msgid "[SPU] 0.0.6 release"
 msgstr ""
 
-#: ../../../CHANGELOG.md:227
+#: ../../../CHANGELOG.md:224
 msgid "[API] Add storage_type/data_type, remove type_data."
 msgstr ""
 
-#: ../../../CHANGELOG.md:228
+#: ../../../CHANGELOG.md:225
 msgid ""
 "[Experimental] Log(natural logarithm) is calculated with Pade "
-"approximation instead of Householder's approximation."
+"approximation                instead of Householder's approximation."
 msgstr ""
 
-#: ../../../CHANGELOG.md:230
+#: ../../../CHANGELOG.md:227
 msgid "[API] Fix typo, goldschmdit."
 msgstr ""
 
-#: ../../../CHANGELOG.md:231
+#: ../../../CHANGELOG.md:228
 msgid ""
 "[Improvement] fxp div, improvement accuracy with normal distributed "
 "inputs."
 msgstr ""
 
-#: ../../../CHANGELOG.md:233
+#: ../../../CHANGELOG.md:230
 msgid "20220325"
 msgstr ""
 
-#: ../../../CHANGELOG.md:235
+#: ../../../CHANGELOG.md:232
 msgid "[SPU] 0.0.5.1 release"
 msgstr ""
 
-#: ../../../CHANGELOG.md:236
+#: ../../../CHANGELOG.md:233
 msgid "[Bugfix] Fix SEMI2K division wrong answer"
 msgstr ""
 
-#: ../../../CHANGELOG.md:238
+#: ../../../CHANGELOG.md:235
 msgid "20220324"
 msgstr ""
 
-#: ../../../CHANGELOG.md:240
+#: ../../../CHANGELOG.md:237
 msgid "[SPU] 0.0.5 release"
 msgstr ""
 
-#: ../../../CHANGELOG.md:241
+#: ../../../CHANGELOG.md:238
 msgid "[Improvement] Lift Convolution limitations."
 msgstr ""
 
-#: ../../../CHANGELOG.md:242
+#: ../../../CHANGELOG.md:239
 msgid ""
 "[Improvement] Optimize maximum/minimum speed, with MPC B2A single bit "
 "conversion."
 msgstr ""
 
-#: ../../../CHANGELOG.md:243
+#: ../../../CHANGELOG.md:240
 msgid ""
 "[Experimental] Div is calculated with direct goldschmdit method instead "
-"of multiplication of dividend and divisor reciprocal."
+"of                multiplication of dividend and divisor reciprocal."
 msgstr ""
 
-#: ../../../CHANGELOG.md:245
+#: ../../../CHANGELOG.md:242
 msgid "[API] change RuntimeConfig.enable_op_time_profile to enable_pphlo_profile."
 msgstr ""
 
-#: ../../../CHANGELOG.md:246
+#: ../../../CHANGELOG.md:243
 msgid ""
 "[API] change RuntimeConfig.fxp_reciprocal_goldschmdit_iters to "
 "fxp_div_goldschmdit_iters."
 msgstr ""
 
-#: ../../../CHANGELOG.md:248
+#: ../../../CHANGELOG.md:245
 msgid "20220308"
 msgstr ""
 
-#: ../../../CHANGELOG.md:250
+#: ../../../CHANGELOG.md:247
 msgid "[SPU] 0.0.4 release"
 msgstr ""
 
-#: ../../../CHANGELOG.md:251
+#: ../../../CHANGELOG.md:248
 msgid ""
 "[Feature] add silent ot support for various ot scenarios "
-"(chosen/correlated/random messages, chosen/correlated/random choices, "
-"1o2/1oN)"
+"(chosen/correlated/random           messages, chosen/correlated/random "
+"choices, 1o2/1oN)"
 msgstr ""
 
-#: ../../../CHANGELOG.md:253
+#: ../../../CHANGELOG.md:250
 msgid ""
 "[Feature] add non-linear computation protocols based on silent ot "
-"(comparison, truncation, b2a, triple, randbit, etc)"
+"(comparison,           truncation, b2a, triple, randbit, etc)"
 msgstr ""
 
-#: ../../../CHANGELOG.md:255
+#: ../../../CHANGELOG.md:252
 msgid "[Feature] add a 2PC protocol: Cheetah"
 msgstr ""
 
-#: ../../../CHANGELOG.md:256
+#: ../../../CHANGELOG.md:253
 msgid "[Improvement] concatenate is a lot faster"
 msgstr ""
 
-#: ../../../CHANGELOG.md:257
+#: ../../../CHANGELOG.md:254
 msgid ""
 "[API] add RuntimeConfig.enable_op_time_profile to ask SPU to collect "
 "timing profiling data"
 msgstr ""
 
-#: ../../../CHANGELOG.md:258
+#: ../../../CHANGELOG.md:255
 msgid "[Bugfix] fixed pphlo.ConstOp may lose signed bit after encoding"
 msgstr ""
 
-#: ../../../CHANGELOG.md:260
+#: ../../../CHANGELOG.md:257
 msgid "20220303"
 msgstr ""
 
-#: ../../../CHANGELOG.md:262
+#: ../../../CHANGELOG.md:259
 msgid "[spu] 0.0.3 release"
 msgstr ""
 
-#: ../../../CHANGELOG.md:263
+#: ../../../CHANGELOG.md:260
 msgid ""
 "[API] merge (config.proto, executable.proto, types.proto) into single "
 "spu.proto."
 msgstr ""
 
-#: ../../../CHANGELOG.md:264
+#: ../../../CHANGELOG.md:261
 msgid "[API] change RuntimeConfig.enable_protocol_trace to enable_action_trace."
 msgstr ""
 
-#: ../../../CHANGELOG.md:265
+#: ../../../CHANGELOG.md:262
 msgid ""
 "[API] change RuntimeConfig.fxp_recirptocal_goldschmdit_iters to "
 "fxp_reciprocal_goldschmdit_iters."
 msgstr ""
 
-#: ../../../CHANGELOG.md:266
+#: ../../../CHANGELOG.md:263
 msgid ""
 "[API] add RuntimeConfig.reveal_secret_condition to allow reveal secret "
 "control flow condition."
 msgstr ""
 
-#: ../../../CHANGELOG.md:267
+#: ../../../CHANGELOG.md:264
 msgid "[Bugfix] Fixed SEGV when reconstruct from an ABY3 scalar secret"
 msgstr ""
 
-#: ../../../CHANGELOG.md:268
+#: ../../../CHANGELOG.md:265
 msgid "[Feature] Left/right shift now properly supports non-scalar inputs"
 msgstr ""
 
-#: ../../../CHANGELOG.md:270
+#: ../../../CHANGELOG.md:267
 msgid "20220217"
 msgstr ""
 
-#: ../../../CHANGELOG.md:272
+#: ../../../CHANGELOG.md:269
 msgid "[spu] 0.0.2.3 release"
 msgstr ""
 
-#: ../../../CHANGELOG.md:274
+#: ../../../CHANGELOG.md:271
 msgid "20220211"
 msgstr ""
 
-#: ../../../CHANGELOG.md:276
+#: ../../../CHANGELOG.md:273
 msgid "[spu] 0.0.2.2 release"
 msgstr ""
 
-#: ../../../CHANGELOG.md:277
+#: ../../../CHANGELOG.md:274
 msgid "[Bugfix] Fix exception when kkrt psi input is too small"
 msgstr ""
 
-#: ../../../CHANGELOG.md:279
+#: ../../../CHANGELOG.md:276
 msgid "20220210"
 msgstr ""
 
-#: ../../../CHANGELOG.md:281
+#: ../../../CHANGELOG.md:278
 msgid "[spu] 0.0.2.1 release"
 msgstr ""
 
-#: ../../../CHANGELOG.md:282
+#: ../../../CHANGELOG.md:279
 msgid "[Bugfix] Fix exception when streaming psi output directory already exists"
 msgstr ""
 
-#: ../../../CHANGELOG.md:284
+#: ../../../CHANGELOG.md:281
 msgid "20220209"
 msgstr ""
 
-#: ../../../CHANGELOG.md:286
+#: ../../../CHANGELOG.md:283
 msgid "[spu] 0.0.2 release."
 msgstr ""
 
-#: ../../../CHANGELOG.md:287
+#: ../../../CHANGELOG.md:284
 msgid "[Feature] Support multi-parties psi"
 msgstr ""
 
-#: ../../../CHANGELOG.md:289
+#: ../../../CHANGELOG.md:286
 msgid "20210930"
 msgstr ""
 
-#: ../../../CHANGELOG.md:291
+#: ../../../CHANGELOG.md:288
 msgid "[spu] Init release."
 msgstr ""
-
-#~ msgid ""
-#~ "[Experimental] Log(natural logarithm) is "
-#~ "calculated with Pade approximation"
-#~ "                instead of Householder's "
-#~ "approximation."
-#~ msgstr ""
-
-#~ msgid ""
-#~ "[Experimental] Div is calculated with "
-#~ "direct goldschmdit method instead of"
-#~ "                multiplication of dividend and"
-#~ " divisor reciprocal."
-#~ msgstr ""
-
-#~ msgid ""
-#~ "[Feature] add silent ot support for "
-#~ "various ot scenarios (chosen/correlated/random"
-#~ "           messages, chosen/correlated/random choices,"
-#~ " 1o2/1oN)"
-#~ msgstr ""
-
-#~ msgid ""
-#~ "[Feature] add non-linear computation "
-#~ "protocols based on silent ot "
-#~ "(comparison,           truncation, b2a, triple, "
-#~ "randbit, etc)"
-#~ msgstr ""
-

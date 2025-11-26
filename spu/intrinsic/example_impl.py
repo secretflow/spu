@@ -16,9 +16,8 @@ __all__ = ["example"]
 
 from functools import partial
 
-from jax import dtypes
+from jax import core, dtypes
 from jax.core import ShapedArray
-from jax.extend import core
 from jax.interpreters import ad, batching, mlir, xla
 
 # from jax.lib import xla_client

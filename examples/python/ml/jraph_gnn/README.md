@@ -17,11 +17,11 @@ This example comes from Jraph official github repo:
 2. Launch SPU backend runtime
 
     ```sh
-    uv run examples/python/utils/nodectl.py up
+    python examples/python/utils/nodectl.py up
     ```
 
 3. Run `jraph_gnn` example
 
     ```sh
-    uv run examples/python/ml/jraph_gnn/jraph_gnn.py
+    python examples/python/ml/jraph_gnn/jraph_gnn.py
     ```

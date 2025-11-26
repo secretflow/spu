@@ -1,4 +1,6 @@
-# Copyright 2024 Ant Group Co., Ltd.
+#! /bin/bash
+#
+# Copyright 2022 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,5 +13,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
 
-SPU_VERSION = "0.9.5"
+
+# FIXME: add build option `--config=avx` if building on x86_64 platform
+bazel build //:spu_wheel -c opt
+
+# Ensure binary safety
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    UTIL_DIR="devtools"
+    git clone https://github.com/secretflow/devtools.git
+    sh $UTIL_DIR/check-binary.sh bazel-bin/spu/libspu.so
+    rm -rf $UTIL_DIR
+fi
