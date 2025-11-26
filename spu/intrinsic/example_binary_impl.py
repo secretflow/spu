@@ -17,6 +17,7 @@ __all__ = ["example_binary"]
 from functools import partial
 
 import numpy as np
+from jax import dtypes
 from jax._src.interpreters.mlir import custom_call
 from jax.core import ShapedArray
 from jax.extend import core
