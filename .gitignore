@@ -71,3 +71,4 @@ spu/lib*.dll
 BeaverCache.*
 *.jpg
 *.png
+_codeql_detected_source_root
