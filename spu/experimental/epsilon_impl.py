@@ -18,10 +18,11 @@ from functools import partial
 
 import jax.numpy as jnp
 import numpy as np
-from jax._src.core import ShapedArray
+from jax._src.interpreters.mlir import custom_call
+from jax.core import ShapedArray
 from jax.extend import core
-from jax.interpreters import ad, batching, mlir, xla
-from jaxlib.hlo_helpers import custom_call
+from jax.interpreters import ad, batching, xla
+from jax.interpreters.mlir import ir, register_lowering
 
 
 # Public facing interface
@@ -46,8 +47,8 @@ def _epsilon_lowering(ctx, *args, **kwargs):
 
     if platform == "interpreter":
         # Create proper MLIR type for scalar float32
-        f32_type = mlir.ir.F32Type.get()
-        dtype = mlir.ir.RankedTensorType.get([], f32_type)
+        f32_type = ir.F32Type.get()
+        dtype = ir.RankedTensorType.get([], f32_type)
         # For SPU, use custom_call
         call = custom_call(
             "spu.epsilon",
@@ -77,7 +78,7 @@ _epsilon_prim.def_impl(partial(xla.apply_primitive, _epsilon_prim))
 _epsilon_prim.def_abstract_eval(_epsilon_abstract)
 
 # Register MLIR lowering
-mlir.register_lowering(_epsilon_prim, _epsilon_lowering)
+register_lowering(_epsilon_prim, _epsilon_lowering)
 
 
 def _make_epsilon_transpose(ct):

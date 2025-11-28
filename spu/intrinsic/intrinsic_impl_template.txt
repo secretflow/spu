@@ -2,12 +2,12 @@ __all__ = ["{%NAME}"]
 
 from functools import partial
 
-from jax import core, dtypes
-from jax.abstract_arrays import ShapedArray
-from jax.interpreters import ad, batching, mlir, xla
-
-# from jax.lib import xla_client
-from jaxlib.hlo_helpers import custom_call
+from jax import dtypes
+from jax._src.interpreters.mlir import custom_call
+from jax.core import ShapedArray
+from jax.extend import core
+from jax.interpreters import ad, batching, xla
+from jax.interpreters.mlir import ir, register_lowering
 
 
 # Public facing interface
@@ -33,7 +33,7 @@ def _{%NAME}_abstract(input):
 def _{%NAME}_lowering(ctx, input):
     # The inputs and outputs all have the same shape and memory layout
     # so let's predefine this specification
-    dtype = mlir.ir.RankedTensorType(input.type)
+    dtype = ir.RankedTensorType(input.type)
 
     return custom_call(
         "{%NAME}",
@@ -74,7 +74,7 @@ _{%NAME}_prim.multiple_results = False
 _{%NAME}_prim.def_impl(partial(xla.apply_primitive, _{%NAME}_prim))
 _{%NAME}_prim.def_abstract_eval(_{%NAME}_abstract)
 
-mlir.register_lowering(_{%NAME}_prim, _{%NAME}_lowering)
+register_lowering(_{%NAME}_prim, _{%NAME}_lowering)
 
 # Connect the JVP and batching rules
 ad.primitive_jvps[_{%NAME}_prim] = _{%NAME}_jvp
