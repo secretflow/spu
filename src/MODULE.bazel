@@ -34,8 +34,8 @@ single_version_override(
 )
 
 bazel_dep(name = "protobuf", version = "32.1")
-bazel_dep(name = "bazel_skylib", version = "1.7.1")
-bazel_dep(name = "apple_support", version = "1.24.3")
+bazel_dep(name = "bazel_skylib", version = "1.8.2")
+bazel_dep(name = "apple_support", version = "1.24.5")
 bazel_dep(name = "rules_cc", version = "0.0.12")
 bazel_dep(name = "rules_cuda", version = "0.2.3")
 bazel_dep(name = "rules_foreign_cc", version = "0.15.0")
@@ -48,8 +48,8 @@ single_version_override(
     version = "0.15.0",
 )
 
-bazel_dep(name = "bazel_features", version = "1.20.0")
-bazel_dep(name = "platforms", version = "0.0.8")
+bazel_dep(name = "bazel_features", version = "1.38.0")
+bazel_dep(name = "platforms", version = "0.0.11")
 bazel_dep(name = "rules_proto", version = "6.0.0-rc1")
 bazel_dep(name = "spdlog", version = "1.15.2")
 bazel_dep(name = "fmt", version = "11.1.4")

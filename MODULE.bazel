@@ -29,7 +29,7 @@ module(
     compatibility_level = 1,
 )
 
-bazel_dep(name = "apple_support", version = "1.24.3")
+bazel_dep(name = "apple_support", version = "1.24.5")
 bazel_dep(name = "spulib")
 local_path_override(
     module_name = "spulib",
