@@ -467,7 +467,6 @@ void CustomCallOp::getEffects(
 // ConvertOp
 //===----------------------------------------------------------------------===//
 
-
 }  // namespace mlir::spu::pphlo
 
 #define GET_OP_CLASSES
