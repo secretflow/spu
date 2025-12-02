@@ -102,7 +102,7 @@ class HloToPPHloTypeConverter : public TypeConverter {
     // Keep all types unchanged.
     addConversion([](Type type) -> Type { return type; });
 
-    // NOTE: addArguementMaterialization is deleted in commit:
+    // NOTE: addArgumentMaterialization is deleted in commit:
     // https://github.com/llvm/llvm-project/commit/23e3cbb2e82b62586266116c8ab77ce68e412cf8
 
     // addArgumentMaterialization(materializeCastFromIllegal);

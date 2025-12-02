@@ -33,7 +33,7 @@ requires-python = ">=3.11,<3.13"
 dynamic = ["version"]
 
 dependencies = [
-    "numpy>=2.0.0",        # Updated for JAX 0.8.0 compatibility
+    "numpy>=2.0.0",        # Updated for JAX 0.8.0 compatibility. Note: NumPy 2.0 introduces several breaking changes that may affect downstream users. Please review your code for compatibility with NumPy 2.0 before upgrading.
     "cloudpickle>=2.0.0",
     "multiprocess>=0.70.12.2",
     "cachetools>=5.0.0",

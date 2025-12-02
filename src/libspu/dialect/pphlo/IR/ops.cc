@@ -467,16 +467,6 @@ void CustomCallOp::getEffects(
 // ConvertOp
 //===----------------------------------------------------------------------===//
 
-// // ported from:
-// //
-// https://github.com/openxla/xla/blob/9f150f6b75c08d6ea7b97697c4f393f1a0eb6121/xla/mlir_hlo/mhlo/IR/hlo_ops.cc#L2242-L2247
-// void ConvertOp::build(::mlir::OpBuilder& builder,
-//                       ::mlir::OperationState& result, Value operand,
-//                       Type resultElementTy) {
-//   auto rankedTy = cast<RankedTensorType>(operand.getType());
-//   auto resultTy = RankedTensorType::get(rankedTy.getShape(),
-//   resultElementTy); build(builder, result, resultTy, operand);
-// }
 
 }  // namespace mlir::spu::pphlo
 
