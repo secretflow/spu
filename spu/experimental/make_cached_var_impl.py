@@ -12,69 +12,48 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""make_cached_var intrinsic: marks a tensor for Beaver triple caching in MPC."""
+
 __all__ = ["make_cached_var"]
 
-from functools import partial
-
-from jax._src.core import ShapedArray
-from jax.extend import core
-
-# from jax.abstract_arrays import ShapedArray
-from jax.interpreters import ad, batching, mlir, xla
-
-# from jax.lib import xla_client
-from jaxlib.hlo_helpers import custom_call
+import jax
 
 
-# Public facing interface
 def make_cached_var(input):
-    return _make_cached_var_prim.bind(input)
+    """Mark tensor for Beaver triple caching. Identity op with caching side effect."""
+    return _make_cached_var_call(input)
 
 
-# For JIT compilation we need a function to evaluate the shape and dtype of the
-# outputs of our op for some given inputs
-def _make_cached_var_abstract(input):
-    return ShapedArray(input.shape, input.dtype)
+# Wrap with custom_jvp (outer) and custom_vjp (inner) for both AD modes
+@jax.custom_jvp
+@jax.custom_vjp
+def _make_cached_var_call(input):
+    return _make_cached_var_impl(input)
 
 
-# We also need a lowering rule to provide an MLIR "lowering" of out primitive.
-def _make_cached_var_lowering(ctx, input):
-    # The inputs and outputs all have the same shape and memory layout
-    # so let's predefine this specification
-    dtype = mlir.ir.RankedTensorType(input.type)
+@_make_cached_var_call.defjvp
+def _make_cached_var_jvp(primals, tangents):
+    (input,) = primals
+    (input_dot,) = tangents
+    # Linear: tangent passes through
+    return _make_cached_var_call(input), input_dot
 
-    return custom_call(
+
+def _make_cached_var_impl(input):
+    return jax.ffi.ffi_call(
         "spu.make_cached_var",
-        # Output types
-        result_types=[dtype],
-        # The inputs:
-        operands=[input],
+        jax.ShapeDtypeStruct(input.shape, input.dtype),
         has_side_effect=True,
-    ).results
+        vmap_method="broadcast_all",
+    )(input)
 
 
-# *********************************************
-# *  BOILERPLATE TO REGISTER THE OP WITH JAX  *
-# *********************************************
-_make_cached_var_prim = core.Primitive("make_cached_var")
-_make_cached_var_prim.def_impl(partial(xla.apply_primitive, _make_cached_var_prim))
-_make_cached_var_prim.def_abstract_eval(_make_cached_var_abstract)
-
-mlir.register_lowering(_make_cached_var_prim, _make_cached_var_lowering)
+def _make_cached_var_fwd(input):
+    return _make_cached_var_call(input), None  # No residuals needed
 
 
-def _make_cached_var_transpose(ct, input):
-    return [ct]
+def _make_cached_var_bwd(res, g):
+    return (g,)  # Identity: gradient passes through
 
 
-# Connect the JVP and batching rules
-ad.primitive_jvps[_make_cached_var_prim] = partial(ad.linear_jvp, _make_cached_var_prim)
-ad.primitive_transposes[_make_cached_var_prim] = _make_cached_var_transpose
-
-
-def _make_cached_var_batch(args, axes):
-    res = _make_cached_var_prim(*args)
-    return res, axes[0]
-
-
-batching.primitive_batchers[_make_cached_var_prim] = _make_cached_var_batch
+_make_cached_var_call.defvjp(_make_cached_var_fwd, _make_cached_var_bwd)
