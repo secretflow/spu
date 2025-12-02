@@ -68,7 +68,7 @@
 
 namespace xla {
 
-// we port gather simplifier from XLA, and handler the batched gather case by
+// we port gather simplifier from XLA, and handle the batched gather case by
 // ourself.
 class GeneralGatherSimplifier : public OpExpanderPass {
 public:
