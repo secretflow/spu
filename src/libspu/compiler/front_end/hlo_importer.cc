@@ -225,13 +225,13 @@ GeneralGatherSimplifier::ExpandInstruction(HloInstruction *inst) {
 
     // Prepend operand batching dims to start_index_map
     // Because we prepended the batch indices to the start_indices tensor.
-    std::vector<int64_t> new_start_index_map;
-    for (auto dim : dims.operand_batching_dims()) {
-      new_start_index_map.push_back(dim);
-    }
-    for (auto dim : dims.start_index_map()) {
-      new_start_index_map.push_back(dim);
-    }
+    std::vector<int64_t> new_start_index_map(
+        dims.operand_batching_dims().begin(),
+        dims.operand_batching_dims().end());
+    new_start_index_map.insert(new_start_index_map.end(),
+                               dims.start_index_map().begin(),
+                               dims.start_index_map().end());
+
     new_dims.clear_start_index_map();
     for (auto dim : new_start_index_map) {
       new_dims.add_start_index_map(dim);
@@ -239,13 +239,11 @@ GeneralGatherSimplifier::ExpandInstruction(HloInstruction *inst) {
 
     // Since we slice size=1 on batching dims, we must collapse them to avoid
     // having an explicit dimension of size 1 in the output data part.
-    std::vector<int64_t> new_collapsed_slice_dims;
-    for (auto dim : dims.collapsed_slice_dims()) {
-      new_collapsed_slice_dims.push_back(dim);
-    }
-    for (auto dim : dims.operand_batching_dims()) {
-      new_collapsed_slice_dims.push_back(dim);
-    }
+    std::vector<int64_t> new_collapsed_slice_dims(
+        dims.collapsed_slice_dims().begin(), dims.collapsed_slice_dims().end());
+    new_collapsed_slice_dims.insert(new_collapsed_slice_dims.end(),
+                                    dims.operand_batching_dims().begin(),
+                                    dims.operand_batching_dims().end());
     std::sort(new_collapsed_slice_dims.begin(), new_collapsed_slice_dims.end());
 
     new_dims.clear_collapsed_slice_dims();
@@ -327,7 +325,7 @@ GeneralGatherSimplifier::ExpandInstruction(HloInstruction *inst) {
   // Expand the start index dimensions.
   auto original_start_index_dims = gather->operands()[1]->shape().dimensions();
   std::vector<int64_t> start_indices_dims;
-  for (int i = 0; i < original_start_index_dims.size(); ++i) {
+  for (uint32_t i = 0; i < original_start_index_dims.size(); ++i) {
     if (i != dims.index_vector_dim()) {
       start_indices_dims.push_back(original_start_index_dims[i]);
     }
