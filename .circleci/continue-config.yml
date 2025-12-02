@@ -73,7 +73,7 @@ commands:
             uv venv --python 3.11
             uv sync << parameters.groups >>
             uv pip install -e .
-            uv run pytest -v --capture=no << parameters.targets >>
+            uv run pytest -v -x --capture=no << parameters.targets >>
 
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
