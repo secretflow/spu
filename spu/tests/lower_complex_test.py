@@ -25,9 +25,20 @@ import spu.utils.frontend as spu_fe
 class LowerComplexPassTest(unittest.TestCase):
     """Test cases to verify createLowerComplexPass functionality.
     
-    The createLowerComplexPass is called in the frontend pipeline and converts
-    complex number operations into separate operations on real and imaginary parts.
-    This test verifies that complex operations are properly lowered.
+    The createLowerComplexPass is an MHLO pass called in the frontend compilation
+    pipeline (see src/libspu/compiler/front_end/fe.cc). It converts complex number
+    operations into separate operations on real and imaginary parts, which is
+    necessary for SPU to handle complex computations.
+    
+    This test verifies that:
+    1. Complex number operations (add, multiply, divide, etc.) can be compiled
+    2. The compilation pipeline properly handles complex types
+    3. The lowering pass successfully converts complex ops to real/imag components
+    
+    Each test compiles a JAX function with complex inputs and verifies that:
+    - Compilation succeeds without errors
+    - The output shape and dtype are correct
+    - The generated IR is valid (printed for manual inspection)
     """
 
     def test_complex_add(self):
