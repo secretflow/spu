@@ -25,36 +25,47 @@ namespace mlir::spu::stablehlo {
 
 namespace {
 
-// Pattern to expand complex addition: (a+bi) + (c+di) = (a+c) + (b+d)i
-struct ExpandComplexAdd : public OpRewritePattern<mlir::stablehlo::AddOp> {
-  using OpRewritePattern<mlir::stablehlo::AddOp>::OpRewritePattern;
+// Base class for expanding complex binary operations
+template <typename OpTy>
+struct ExpandComplexBinaryOp : public OpRewritePattern<OpTy> {
+  using OpRewritePattern<OpTy>::OpRewritePattern;
 
-  LogicalResult matchAndRewrite(mlir::stablehlo::AddOp op,
-                                PatternRewriter &rewriter) const override {
+  LogicalResult matchAndRewrite(OpTy op,
+                                PatternRewriter &rewriter) const final {
     auto lhs = op.getLhs();
     auto rhs = op.getRhs();
 
-    // Check if operands are complex
+    // Check if operands are complex tensors
     auto lhsType = mlir::dyn_cast<RankedTensorType>(lhs.getType());
     auto rhsType = mlir::dyn_cast<RankedTensorType>(rhs.getType());
 
-    if (!lhsType || !rhsType) {
+    if (!lhsType || !rhsType ||
+        !mlir::isa<ComplexType>(lhsType.getElementType()) ||
+        !mlir::isa<ComplexType>(rhsType.getElementType())) {
       return failure();
     }
 
-    auto lhsElementType = mlir::dyn_cast<ComplexType>(lhsType.getElementType());
-    auto rhsElementType = mlir::dyn_cast<ComplexType>(rhsType.getElementType());
-
-    if (!lhsElementType || !rhsElementType) {
-      return failure();
-    }
-
-    // Get real and imaginary parts
+    // Extract real and imaginary parts
     auto realLhs = rewriter.create<mlir::stablehlo::RealOp>(op.getLoc(), lhs);
     auto imagLhs = rewriter.create<mlir::stablehlo::ImagOp>(op.getLoc(), lhs);
     auto realRhs = rewriter.create<mlir::stablehlo::RealOp>(op.getLoc(), rhs);
     auto imagRhs = rewriter.create<mlir::stablehlo::ImagOp>(op.getLoc(), rhs);
 
+    return rewriteComplex(op, rewriter, realLhs, imagLhs, realRhs, imagRhs);
+  }
+
+  virtual LogicalResult rewriteComplex(OpTy op, PatternRewriter &rewriter,
+                                       Value realLhs, Value imagLhs,
+                                       Value realRhs, Value imagRhs) const = 0;
+};
+
+// Pattern to expand complex addition: (a+bi) + (c+di) = (a+c) + (b+d)i
+struct ExpandComplexAdd : public ExpandComplexBinaryOp<mlir::stablehlo::AddOp> {
+  using ExpandComplexBinaryOp<mlir::stablehlo::AddOp>::ExpandComplexBinaryOp;
+
+  LogicalResult rewriteComplex(mlir::stablehlo::AddOp op, PatternRewriter &rewriter,
+                               Value realLhs, Value imagLhs,
+                               Value realRhs, Value imagRhs) const override {
     // Add real parts and imaginary parts separately
     auto realSum = rewriter.create<mlir::stablehlo::AddOp>(op.getLoc(), realLhs, realRhs);
     auto imagSum = rewriter.create<mlir::stablehlo::AddOp>(op.getLoc(), imagLhs, imagRhs);
@@ -68,35 +79,12 @@ struct ExpandComplexAdd : public OpRewritePattern<mlir::stablehlo::AddOp> {
 };
 
 // Pattern to expand complex subtraction: (a+bi) - (c+di) = (a-c) + (b-d)i
-struct ExpandComplexSub : public OpRewritePattern<mlir::stablehlo::SubtractOp> {
-  using OpRewritePattern<mlir::stablehlo::SubtractOp>::OpRewritePattern;
+struct ExpandComplexSub : public ExpandComplexBinaryOp<mlir::stablehlo::SubtractOp> {
+  using ExpandComplexBinaryOp<mlir::stablehlo::SubtractOp>::ExpandComplexBinaryOp;
 
-  LogicalResult matchAndRewrite(mlir::stablehlo::SubtractOp op,
-                                PatternRewriter &rewriter) const override {
-    auto lhs = op.getLhs();
-    auto rhs = op.getRhs();
-
-    // Check if operands are complex
-    auto lhsType = mlir::dyn_cast<RankedTensorType>(lhs.getType());
-    auto rhsType = mlir::dyn_cast<RankedTensorType>(rhs.getType());
-
-    if (!lhsType || !rhsType) {
-      return failure();
-    }
-
-    auto lhsElementType = mlir::dyn_cast<ComplexType>(lhsType.getElementType());
-    auto rhsElementType = mlir::dyn_cast<ComplexType>(rhsType.getElementType());
-
-    if (!lhsElementType || !rhsElementType) {
-      return failure();
-    }
-
-    // Get real and imaginary parts
-    auto realLhs = rewriter.create<mlir::stablehlo::RealOp>(op.getLoc(), lhs);
-    auto imagLhs = rewriter.create<mlir::stablehlo::ImagOp>(op.getLoc(), lhs);
-    auto realRhs = rewriter.create<mlir::stablehlo::RealOp>(op.getLoc(), rhs);
-    auto imagRhs = rewriter.create<mlir::stablehlo::ImagOp>(op.getLoc(), rhs);
-
+  LogicalResult rewriteComplex(mlir::stablehlo::SubtractOp op, PatternRewriter &rewriter,
+                               Value realLhs, Value imagLhs,
+                               Value realRhs, Value imagRhs) const override {
     // Subtract real parts and imaginary parts separately
     auto realDiff = rewriter.create<mlir::stablehlo::SubtractOp>(op.getLoc(), realLhs, realRhs);
     auto imagDiff = rewriter.create<mlir::stablehlo::SubtractOp>(op.getLoc(), imagLhs, imagRhs);
@@ -110,35 +98,12 @@ struct ExpandComplexSub : public OpRewritePattern<mlir::stablehlo::SubtractOp> {
 };
 
 // Pattern to expand complex multiplication: (a+bi) * (c+di) = (ac-bd) + (ad+bc)i
-struct ExpandComplexMul : public OpRewritePattern<mlir::stablehlo::MulOp> {
-  using OpRewritePattern<mlir::stablehlo::MulOp>::OpRewritePattern;
+struct ExpandComplexMul : public ExpandComplexBinaryOp<mlir::stablehlo::MulOp> {
+  using ExpandComplexBinaryOp<mlir::stablehlo::MulOp>::ExpandComplexBinaryOp;
 
-  LogicalResult matchAndRewrite(mlir::stablehlo::MulOp op,
-                                PatternRewriter &rewriter) const override {
-    auto lhs = op.getLhs();
-    auto rhs = op.getRhs();
-
-    // Check if operands are complex
-    auto lhsType = mlir::dyn_cast<RankedTensorType>(lhs.getType());
-    auto rhsType = mlir::dyn_cast<RankedTensorType>(rhs.getType());
-
-    if (!lhsType || !rhsType) {
-      return failure();
-    }
-
-    auto lhsElementType = mlir::dyn_cast<ComplexType>(lhsType.getElementType());
-    auto rhsElementType = mlir::dyn_cast<ComplexType>(rhsType.getElementType());
-
-    if (!lhsElementType || !rhsElementType) {
-      return failure();
-    }
-
-    // Get real and imaginary parts
-    auto realLhs = rewriter.create<mlir::stablehlo::RealOp>(op.getLoc(), lhs);
-    auto imagLhs = rewriter.create<mlir::stablehlo::ImagOp>(op.getLoc(), lhs);
-    auto realRhs = rewriter.create<mlir::stablehlo::RealOp>(op.getLoc(), rhs);
-    auto imagRhs = rewriter.create<mlir::stablehlo::ImagOp>(op.getLoc(), rhs);
-
+  LogicalResult rewriteComplex(mlir::stablehlo::MulOp op, PatternRewriter &rewriter,
+                               Value realLhs, Value imagLhs,
+                               Value realRhs, Value imagRhs) const override {
     // Compute real part: ac - bd
     auto ac = rewriter.create<mlir::stablehlo::MulOp>(op.getLoc(), realLhs, realRhs);
     auto bd = rewriter.create<mlir::stablehlo::MulOp>(op.getLoc(), imagLhs, imagRhs);
@@ -158,35 +123,12 @@ struct ExpandComplexMul : public OpRewritePattern<mlir::stablehlo::MulOp> {
 };
 
 // Pattern to expand complex division: (a+bi) / (c+di) = (ac+bd)/(c²+d²) + (bc-ad)/(c²+d²)i
-struct ExpandComplexDiv : public OpRewritePattern<mlir::stablehlo::DivOp> {
-  using OpRewritePattern<mlir::stablehlo::DivOp>::OpRewritePattern;
+struct ExpandComplexDiv : public ExpandComplexBinaryOp<mlir::stablehlo::DivOp> {
+  using ExpandComplexBinaryOp<mlir::stablehlo::DivOp>::ExpandComplexBinaryOp;
 
-  LogicalResult matchAndRewrite(mlir::stablehlo::DivOp op,
-                                PatternRewriter &rewriter) const override {
-    auto lhs = op.getLhs();
-    auto rhs = op.getRhs();
-
-    // Check if operands are complex
-    auto lhsType = mlir::dyn_cast<RankedTensorType>(lhs.getType());
-    auto rhsType = mlir::dyn_cast<RankedTensorType>(rhs.getType());
-
-    if (!lhsType || !rhsType) {
-      return failure();
-    }
-
-    auto lhsElementType = mlir::dyn_cast<ComplexType>(lhsType.getElementType());
-    auto rhsElementType = mlir::dyn_cast<ComplexType>(rhsType.getElementType());
-
-    if (!lhsElementType || !rhsElementType) {
-      return failure();
-    }
-
-    // Get real and imaginary parts
-    auto realLhs = rewriter.create<mlir::stablehlo::RealOp>(op.getLoc(), lhs);
-    auto imagLhs = rewriter.create<mlir::stablehlo::ImagOp>(op.getLoc(), lhs);
-    auto realRhs = rewriter.create<mlir::stablehlo::RealOp>(op.getLoc(), rhs);
-    auto imagRhs = rewriter.create<mlir::stablehlo::ImagOp>(op.getLoc(), rhs);
-
+  LogicalResult rewriteComplex(mlir::stablehlo::DivOp op, PatternRewriter &rewriter,
+                               Value realLhs, Value imagLhs,
+                               Value realRhs, Value imagRhs) const override {
     // Compute denominator: c² + d²
     auto cSquared = rewriter.create<mlir::stablehlo::MulOp>(op.getLoc(), realRhs, realRhs);
     auto dSquared = rewriter.create<mlir::stablehlo::MulOp>(op.getLoc(), imagRhs, imagRhs);
