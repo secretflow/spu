@@ -59,7 +59,7 @@ struct ExpandComplexAdd : public OpRewritePattern<mlir::stablehlo::AddOp> {
     auto realSum = rewriter.create<mlir::stablehlo::AddOp>(op.getLoc(), realLhs, realRhs);
     auto imagSum = rewriter.create<mlir::stablehlo::AddOp>(op.getLoc(), imagLhs, imagRhs);
 
-    // Create complex result - this will be handled by the StableHLO complex expander
+    // Create complex result as the final representation before dialect conversion
     auto complexResult = rewriter.create<mlir::stablehlo::ComplexOp>(op.getLoc(), op.getType(), realSum, imagSum);
 
     rewriter.replaceOp(op, complexResult);
