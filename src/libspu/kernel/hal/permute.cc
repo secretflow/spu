@@ -338,33 +338,31 @@ std::vector<spu::Value> odd_even_merge(SPUContext *ctx,
 
   // merge by per network layer for memory optimizations.
   const auto n = inputs.front().numel();
-  for (int64_t max_gap_in_stage = n / 2; max_gap_in_stage > 0;
-       max_gap_in_stage /= 2) {
-    for (int64_t step = max_gap_in_stage; step > 0; step /= 2) {
-      Index lhs_indices, rhs_indices;
+  int64_t max_gap_in_stage = n / 2;
+  for (int64_t step = max_gap_in_stage; step > 0; step /= 2) {
+    Index lhs_indices, rhs_indices;
 
-      for (int64_t j = step % max_gap_in_stage; j + step < n;
-           j += step + step) {
-        for (int64_t i = 0; i < step; ++i) {
-          auto lhs_idx = i + j;
-          auto rhs_idx = i + j + step;
-          if (rhs_idx >= n) break;
+    for (int64_t j = step % max_gap_in_stage; j + step < n; j += step + step) {
+      for (int64_t i = 0; i < step; ++i) {
+        auto lhs_idx = i + j;
+        auto rhs_idx = i + j + step;
+        if (rhs_idx >= n) break;
 
-          auto range = max_gap_in_stage * 2;
-          if (lhs_idx / range == rhs_idx / range) {
-            lhs_indices.emplace_back(lhs_idx);
-            rhs_indices.emplace_back(rhs_idx);
-          }
+        auto range = max_gap_in_stage * 2;
+        if (lhs_idx / range == rhs_idx / range) {
+          lhs_indices.emplace_back(lhs_idx);
+          rhs_indices.emplace_back(rhs_idx);
         }
       }
-
-      //   // 打印 lhs_indices 的大小
-      // std::cout << "Number of comparisons: " << lhs_indices.size() <<
-      // std::endl;
-
-      _cmp_swap(ctx, comparator_body, absl::MakeSpan(ret), lhs_indices,
-                rhs_indices);
     }
+
+    if (ctx->lctx()->Rank() == 0) {
+      // 打印 lhs_indices 的大小，所有参与方都会打印
+      std::cout << "Number of comparisons in each stage: " << lhs_indices.size()
+                << std::endl;
+    }
+    _cmp_swap(ctx, comparator_body, absl::MakeSpan(ret), lhs_indices,
+              rhs_indices);
   }
   return ret;
 }

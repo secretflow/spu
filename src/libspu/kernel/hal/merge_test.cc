@@ -23,9 +23,6 @@ std::ostream &operator<<(std::ostream &os,
 namespace spu::kernel::hal {
 
 TEST(SortTest, SimpleSimulatedWithMetrics) {
-  // 配置模拟参数
-  // 这里以 3 方计算 (Alice, Bob, Charlie) 和 ABY3 协议为例
-  // 你也可以改为 SEMI2K, CHEETAH 等
   const size_t npc = 2;
   const auto protocol = ProtocolKind::SEMI2K;
   const auto field = FieldType::FM64;
