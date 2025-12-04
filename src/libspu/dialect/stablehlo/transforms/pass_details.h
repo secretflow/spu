@@ -14,15 +14,15 @@
 
 #pragma once
 
-#include "mlir/Dialect/Func/IR/FuncOps.h"
-#include "mlir/Pass/Pass.h"
+#include <memory>
 
-#include "libspu/dialect/pphlo/IR/dialect.h"
-#include "libspu/dialect/pphlo/transforms/passes.h"
+namespace mlir {
+class Pass;
 
-namespace mlir::spu::pphlo {
+namespace spu::stablehlo {
 
-#define GEN_PASS_CLASSES
-#include "libspu/dialect/pphlo/transforms/passes.h.inc"
+// Create function for the pass
+std::unique_ptr<Pass> createExpandComplexOpsPass();
 
-}  // namespace mlir::spu::pphlo
+}  // namespace spu::stablehlo
+}  // namespace mlir

@@ -24,6 +24,7 @@
 #include "mlir/Pass/PassManager.h"
 #include "mlir/Transforms/Passes.h"
 #include "stablehlo/dialect/StablehloOps.h"
+#include "stablehlo/transforms/Passes.h"
 #include "xla/hlo/translate/mhlo_to_hlo/translate.h"
 #include "xla/mlir_hlo/mhlo/IR/hlo_ops.h"
 #include "xla/mlir_hlo/mhlo/transforms/passes.h"
@@ -34,6 +35,8 @@
 #include "libspu/core/prelude.h"
 #include "libspu/dialect/pphlo/IR/dialect.h"
 #include "libspu/dialect/pphlo/transforms/passes.h"
+#include "libspu/dialect/stablehlo/transforms/passes.h"
+
 namespace spu::compiler {
 
 FE::FE(CompilationContext *ctx) : ctx_(ctx) {
@@ -129,6 +132,16 @@ void FE::buildFrontEndPipeline(mlir::PassManager *pm, const std::string &args) {
   }
 
   // stablehlo now
+  // Expand complex arithmetic operations into real operations before dialect
+  // conversion This is necessary because most PPHLO operations reject complex
+  // inputs
+  pm->addNestedPass<mlir::func::FuncOp>(
+      mlir::stablehlo::createStablehloComplexMathExpanderPass());
+
+  // Add our custom complex expansion pass to handle complex operations that
+  // StableHLO doesn't expand
+  pm->addNestedPass<mlir::func::FuncOp>(mlir::spu::stablehlo::createExpandComplexOpsPass());
+
   // Dialect conversion
   {
     auto l = mlir::spu::pphlo::createLegalizeToPPHloPass();

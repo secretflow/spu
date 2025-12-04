@@ -74,6 +74,7 @@ spu_cc_library(
         "//libspu/compiler/common:compilation_context",
         "//libspu/compiler/utils",
         "//libspu/dialect/pphlo/transforms:all_passes",
+        "//libspu/dialect/stablehlo/transforms:all_passes",
         "@llvm-project//mlir:FuncExtensions",
         "@llvm-project//mlir:Parser",
         "@magic_enum",

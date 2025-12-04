@@ -14,15 +14,4 @@
 
 #pragma once
 
-#include "mlir/Dialect/Func/IR/FuncOps.h"
-#include "mlir/Pass/Pass.h"
-
-#include "libspu/dialect/pphlo/IR/dialect.h"
-#include "libspu/dialect/pphlo/transforms/passes.h"
-
-namespace mlir::spu::pphlo {
-
-#define GEN_PASS_CLASSES
-#include "libspu/dialect/pphlo/transforms/passes.h.inc"
-
-}  // namespace mlir::spu::pphlo
+#include "libspu/dialect/stablehlo/transforms/pass_details.h"
