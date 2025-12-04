@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import jax.numpy as jnp
-import numpy as np
+
 
 import spu.libspu as libspu
 import spu.utils.simulation as ppsim
