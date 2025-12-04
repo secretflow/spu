@@ -12,86 +12,208 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Example intrinsic implementation using JAX FFI API.
+
+This module demonstrates how to implement a custom SPU intrinsic using the
+modern JAX FFI (Foreign Function Interface) API. The FFI API replaces the
+deprecated `jaxlib.hlo_helpers.custom_call` with `jax.ffi.ffi_call`.
+
+Key concepts:
+- `jax.ffi.ffi_call`: Creates an FFI call that generates XLA custom_call ops
+- `jax.custom_jvp`: Defines custom forward-mode autodiff (JVP) rules
+- `jax.custom_vjp`: Defines custom reverse-mode autodiff (VJP) rules
+- `vmap_method`: Controls how the op behaves under `jax.vmap`
+
+For more complex intrinsics that need different behavior on CPU vs SPU,
+see `spu/experimental/epsilon_impl.py` which uses `jax.ffi.ffi_lowering`.
+"""
+
 __all__ = ["example"]
 
-from functools import partial
-
-from jax import dtypes
-from jax.core import ShapedArray
-from jax.extend import core
-from jax.interpreters import ad, batching, mlir, xla
-
-# from jax.lib import xla_client
-from jaxlib.hlo_helpers import custom_call
+import jax
 
 
-# Public facing interface
+# *********************************
+# *  PUBLIC FACING INTERFACE      *
+# *********************************
+
+
 def example(input):
-    return _example_prim.bind(input)
+    """
+    Example intrinsic that acts as an identity function.
+
+    This is a demonstration of how to create a custom SPU intrinsic.
+    In practice, the C++ backend (pphlo_intrinsic_executor.cc) would
+    implement the actual logic for this operation.
+
+    Args:
+        input: A JAX array of any shape and dtype.
+
+    Returns:
+        The input array unchanged (identity operation).
+    """
+    return _example_call(input)
 
 
 # *********************************
-# *  SUPPORT FOR JIT COMPILATION  *
+# *  CORE IMPLEMENTATION          *
 # *********************************
 
-
-# For JIT compilation we need a function to evaluate the shape and dtype of the
-# outputs of our op for some given inputs
-def _example_abstract(input):
-    shape = input.shape
-    dtype = dtypes.canonicalize_dtype(input.dtype)
-    return ShapedArray(shape, dtype)
+# We use @jax.custom_jvp and @jax.custom_vjp decorators to define custom
+# autodiff rules. The order matters: custom_jvp must be the outer decorator
+# for both JVP and VJP to work correctly.
 
 
-# We also need a lowering rule to provide an MLIR "lowering" of out primitive.
-def _example_lowering(ctx, input):
-    # The inputs and outputs all have the same shape and memory layout
-    # so let's predefine this specification
-    dtype = mlir.ir.RankedTensorType(input.type)
+@jax.custom_jvp
+@jax.custom_vjp
+def _example_call(input):
+    """
+    Internal implementation that calls the FFI.
 
-    call = custom_call(
-        "example",
-        # Output types
-        result_types=[dtype],
-        # The inputs:
-        operands=[input],
-    )
+    The decorators @jax.custom_jvp and @jax.custom_vjp allow us to define
+    custom differentiation rules for this operation.
+    """
+    return _example_impl(input)
 
-    return call.results
+
+def _example_impl(input):
+    """
+    Low-level FFI call implementation.
+
+    This function uses jax.ffi.ffi_call to generate an XLA custom_call op
+    with the target name "example". The SPU runtime will intercept this
+    custom_call and dispatch it to the appropriate handler in
+    pphlo_intrinsic_executor.cc.
+
+    Args:
+        input: A JAX array.
+
+    Returns:
+        Result of the FFI call (identity for this example).
+
+    Notes:
+        - `result_shape_dtypes`: Specifies the output shape and dtype.
+          For identity ops, this matches the input.
+        - `has_side_effect=True`: Prevents the compiler from optimizing
+          away this call even if the result is unused.
+        - `vmap_method="broadcast_all"`: When vmapped, batch dimensions
+          are passed through to the FFI call. This works because our
+          C++ implementation is shape-agnostic (just returns input).
+    """
+    return jax.ffi.ffi_call(
+        "example",  # Target name matching C++ handler
+        jax.ShapeDtypeStruct(input.shape, input.dtype),  # Output spec
+        has_side_effect=True,
+        vmap_method="broadcast_all",
+    )(input)
 
 
 # **********************************
 # *  SUPPORT FOR FORWARD AUTODIFF  *
 # **********************************
 
+# JVP (Jacobian-Vector Product) defines forward-mode autodiff.
+# For a function f(x), JVP computes: (f(x), df/dx @ tangent)
+#
+# For an identity function: f(x) = x, so df/dx = I (identity matrix)
+# Therefore: JVP(x, tangent) = (x, tangent)
 
-def _example_jvp(args, tangents):
-    raise NotImplementedError()
+
+@_example_call.defjvp
+def _example_jvp(primals, tangents):
+    """
+    Forward-mode autodiff (JVP) rule for the example op.
+
+    For identity-like operations, the tangent simply passes through
+    unchanged, just like the primal value.
+
+    Args:
+        primals: Tuple of primal (original) input values.
+        tangents: Tuple of tangent (derivative direction) values.
+
+    Returns:
+        Tuple of (primal_output, tangent_output).
+    """
+    (input,) = primals
+    (input_dot,) = tangents
+    # Primal computation
+    output = _example_call(input)
+    # Tangent computation: for identity, tangent passes through
+    output_dot = input_dot
+    return output, output_dot
+
+
+# **********************************
+# *  SUPPORT FOR REVERSE AUTODIFF  *
+# **********************************
+
+# VJP (Vector-Jacobian Product) defines reverse-mode autodiff.
+# This is what `jax.grad` uses internally.
+#
+# VJP requires two functions:
+# 1. fwd: Forward pass that returns (output, residuals_for_backward)
+# 2. bwd: Backward pass that uses residuals to compute gradients
+#
+# For an identity function: f(x) = x, so df/dx = I
+# The gradient just passes through: grad_x = grad_output
+
+
+def _example_fwd(input):
+    """
+    Forward pass for VJP.
+
+    Returns the primal output and any residuals needed for the backward pass.
+    For identity ops, no residuals are needed.
+
+    Args:
+        input: The input array.
+
+    Returns:
+        Tuple of (output, residuals). Residuals is None for identity ops.
+    """
+    return _example_call(input), None
+
+
+def _example_bwd(residuals, grad_output):
+    """
+    Backward pass for VJP.
+
+    Computes gradients with respect to inputs given the gradient of the output.
+    For identity ops, the gradient simply passes through unchanged.
+
+    Args:
+        residuals: Values saved from the forward pass (None for identity ops).
+        grad_output: Gradient of the loss with respect to the output.
+
+    Returns:
+        Tuple of gradients with respect to each input.
+    """
+    del residuals  # Unused for identity ops
+    # For identity: grad_input = grad_output
+    return (grad_output,)
+
+
+# Register the VJP rule
+_example_call.defvjp(_example_fwd, _example_bwd)
 
 
 # ************************************
-# *  SUPPORT FOR BATCHING WITH VMAP  *
+# *  NOTES ON VMAP (BATCHING)        *
 # ************************************
 
-
-# Our op already supports arbitrary dimensions so the batching rule is quite
-# simple. The jax.lax.linalg module includes some example of more complicated
-# batching rules if you need such a thing.
-def _example_batch(args, axes):
-    assert axes[0] == axes[1]
-    return example(*args), axes
-
-
-# *********************************************
-# *  BOILERPLATE TO REGISTER THE OP WITH JAX  *
-# *********************************************
-_example_prim = core.Primitive("example")
-_example_prim.multiple_results = False
-_example_prim.def_impl(partial(xla.apply_primitive, _example_prim))
-_example_prim.def_abstract_eval(_example_abstract)
-
-mlir.register_lowering(_example_prim, _example_lowering)
-
-# Connect the JVP and batching rules
-ad.primitive_jvps[_example_prim] = _example_jvp
-batching.primitive_batchers[_example_prim] = _example_batch
+# Batching (vmap) support is handled automatically by the `vmap_method`
+# parameter in `jax.ffi.ffi_call`. With `vmap_method="broadcast_all"`:
+#
+# - When the function is vmapped, inputs with batch dimensions are passed
+#   directly to the FFI call with the batch dimension intact.
+# - The output is expected to have the same batch dimension as the input.
+#
+# This is appropriate for identity-like operations where the C++ handler
+# is shape-agnostic. For operations that need special batching logic,
+# you may need to use `jax.custom_batching.custom_vmap`.
+#
+# Available vmap_method options:
+# - "broadcast_all": Pass batch dims through (for shape-agnostic ops)
+# - "sequential": Loop over batch dimension (slower but always works)
+# - "expand_dims": Add size-1 batch dims to unbatched inputs
