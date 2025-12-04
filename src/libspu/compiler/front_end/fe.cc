@@ -132,15 +132,10 @@ void FE::buildFrontEndPipeline(mlir::PassManager *pm, const std::string &args) {
   }
 
   // stablehlo now
-  // Expand complex arithmetic operations into real operations before dialect
-  // conversion. This is necessary because most PPHLO operations reject complex
-  // inputs
-  pm->addNestedPass<mlir::func::FuncOp>(
-      mlir::stablehlo::createStablehloComplexMathExpanderPass());
 
-  // Add our custom complex expansion pass to handle complex operations that
-  // StableHLO doesn't expand
-  pm->addNestedPass<mlir::func::FuncOp>(mlir::spu::stablehlo::createExpandComplexOpsPass());
+  // Expand complex ops to real/imag parts ops
+  pm->addNestedPass<mlir::func::FuncOp>(
+      mlir::spu::stablehlo::createExpandComplexOpsPass());
 
   // Dialect conversion
   {
