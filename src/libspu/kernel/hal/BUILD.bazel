@@ -314,3 +314,47 @@ spu_cc_library(
         ":ring",
     ],
 )
+
+spu_cc_library(
+    name = "brent_kung_network",
+    srcs = ["brent_kung_network.cc"],
+    hdrs = ["brent_kung_network.h"],
+    deps = [
+        ":polymorphic",
+        ":shape_ops",
+        ":utils",
+        "//libspu/core:context",
+    ],
+)
+
+spu_cc_test(
+    name = "brent_kung_network_test",
+    srcs = ["brent_kung_network_test.cc"],
+    deps = [
+        ":brent_kung_network",
+        "//libspu/kernel:test_util",
+        "//libspu/mpc/utils:simulate",
+    ],
+)
+
+
+spu_cc_library(
+    name = "merge",
+    srcs = ["merge.cc"],
+    hdrs = ["merge.h"],
+    deps = [
+        "//libspu/kernel/hal:permute",
+    ],
+)
+
+spu_cc_test(
+    name = "merge_test",
+    srcs = ["merge_test.cc"],
+    deps = [
+        ":merge",
+        "//libspu/kernel:test_util",
+        "//libspu/kernel/hal:polymorphic",
+        "//libspu/mpc/utils:simulate",
+        "@magic_enum",
+    ],
+)

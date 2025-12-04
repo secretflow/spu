@@ -315,6 +315,60 @@ std::vector<spu::Value> odd_even_merge_sort(
   return ret;
 }
 
+// Secure Odd-even merge
+// Ref:
+// https://hwlang.de/algorithmen/sortieren/networks/oemen.htm
+std::vector<spu::Value> odd_even_merge(SPUContext *ctx,
+                                       const CompFn &comparator_body,
+                                       absl::Span<spu::Value const> inputs) {
+  // make a copy for inplace merge
+  std::vector<spu::Value> ret;
+  for (auto const &input : inputs) {
+    spu::Value casted;
+    if (!input.isSecret()) {
+      // we can not linear_scatter a secret value to a public operand
+      casted = _2s(ctx, input.clone()).setDtype(input.dtype());
+    } else {
+      casted = input.clone();
+    }
+    // we can not linear_scatter an ashare value to a bshare operand
+    casted = _prefer_a(ctx, casted);
+    ret.emplace_back(std::move(casted));
+  }
+
+  // merge by per network layer for memory optimizations.
+  const auto n = inputs.front().numel();
+  for (int64_t max_gap_in_stage = n / 2; max_gap_in_stage > 0;
+       max_gap_in_stage /= 2) {
+    for (int64_t step = max_gap_in_stage; step > 0; step /= 2) {
+      Index lhs_indices, rhs_indices;
+
+      for (int64_t j = step % max_gap_in_stage; j + step < n;
+           j += step + step) {
+        for (int64_t i = 0; i < step; ++i) {
+          auto lhs_idx = i + j;
+          auto rhs_idx = i + j + step;
+          if (rhs_idx >= n) break;
+
+          auto range = max_gap_in_stage * 2;
+          if (lhs_idx / range == rhs_idx / range) {
+            lhs_indices.emplace_back(lhs_idx);
+            rhs_indices.emplace_back(rhs_idx);
+          }
+        }
+      }
+
+      //   // 打印 lhs_indices 的大小
+      // std::cout << "Number of comparisons: " << lhs_indices.size() <<
+      // std::endl;
+
+      _cmp_swap(ctx, comparator_body, absl::MakeSpan(ret), lhs_indices,
+                rhs_indices);
+    }
+  }
+  return ret;
+}
+
 void Swap(absl::Span<spu::Value> arr, const Index &lhs_indices,
           const Index &rhs_indices) {
   if (lhs_indices.empty() ||
@@ -1573,6 +1627,34 @@ std::vector<spu::Value> radix_sort(SPUContext *ctx,
 }
 
 }  // namespace internal
+
+std::vector<spu::Value> merge1d(SPUContext *ctx,
+                                absl::Span<spu::Value const> inputs,
+                                const CompFn &cmp,
+                                Visibility comparator_ret_vis, bool is_stable) {
+  // sanity check.
+  SPU_ENFORCE(!inputs.empty(), "Inputs should not be empty");
+  SPU_ENFORCE(inputs[0].shape().ndim() == 1,
+              "Inputs should be 1-d but actually have {} dimensions",
+              inputs[0].shape().ndim());
+  SPU_ENFORCE(std::all_of(inputs.begin(), inputs.end(),
+                          [&inputs](const spu::Value &v) {
+                            return v.shape() == inputs[0].shape();
+                          }),
+              "Inputs shape mismatched");
+
+  std::vector<spu::Value> ret;
+  if (comparator_ret_vis == VIS_SECRET) {
+    SPU_ENFORCE(!is_stable,
+                "Stable sort is unsupported if comparator return is secret.");
+
+    ret = internal::odd_even_merge(ctx, cmp, inputs);
+  } else {
+    SPU_THROW("Should not reach here");
+  }
+
+  return ret;
+}
 
 std::vector<spu::Value> sort1d(SPUContext *ctx,
                                absl::Span<spu::Value const> inputs,
