@@ -14,4 +14,4 @@
 
 #pragma once
 
-#include "libspu/dialect/stablehlo/transforms/pass_details.h"
+#include "libspu/compiler/transforms/stablehlo/pass_details.h"

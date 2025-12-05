@@ -19,7 +19,7 @@
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "stablehlo/dialect/StablehloOps.h"
 
-#include "libspu/dialect/stablehlo/transforms/pass_details.h"
+#include "libspu/compiler/transforms/stablehlo/pass_details.h"
 
 namespace mlir::spu::stablehlo {
 

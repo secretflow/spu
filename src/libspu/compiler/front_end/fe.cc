@@ -35,7 +35,7 @@
 #include "libspu/core/prelude.h"
 #include "libspu/dialect/pphlo/IR/dialect.h"
 #include "libspu/dialect/pphlo/transforms/passes.h"
-#include "libspu/dialect/stablehlo/transforms/passes.h"
+#include "libspu/compiler/transforms/stablehlo/passes.h"
 
 namespace spu::compiler {
 
