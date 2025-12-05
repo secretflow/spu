@@ -21,7 +21,7 @@
 
 module(
     name = "spulib",
-    version = "0.10.0.dev",
+    version = "0.10.0.dev20251205",
     compatibility_level = 1,
 )
 
