@@ -10,6 +10,14 @@
 
 > please add your unreleased change here.
 
+## 20251205
+
+- [SPU] Initialize development for version 0.10.x
+- [Infra] Bump jax version to 0.8.0, and update the minium python version to 3.11.
+- [Infra] Bump bazel version to 7.7.1.
+- [Infra] Use uv as package manager.
+- [Feature] Add GroupByAgg kernel in hlo.
+  
 ## 20250917
 
 - [SPU] 0.9.4 release
