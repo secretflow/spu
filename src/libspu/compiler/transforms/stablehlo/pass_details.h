@@ -24,5 +24,5 @@ namespace spu::stablehlo {
 // Create function for the pass
 std::unique_ptr<Pass> createExpandComplexOpsPass();
 
-}  // namespace spu::stablehlo
-}  // namespace mlir
+} // namespace spu::stablehlo
+} // namespace mlir

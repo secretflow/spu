@@ -191,7 +191,7 @@ struct ExpandComplexDiv : public ExpandComplexBinaryOp<mlir::stablehlo::DivOp> {
   }
 };
 
-}  // namespace
+} // namespace
 
 // Custom pass that applies complex expansion patterns
 struct ExpandComplexOpsPass : public Pass {
@@ -229,4 +229,4 @@ std::unique_ptr<Pass> createExpandComplexOpsPass() {
   return std::make_unique<ExpandComplexOpsPass>();
 }
 
-}  // namespace mlir::spu::stablehlo
+} // namespace mlir::spu::stablehlo

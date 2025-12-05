@@ -31,11 +31,11 @@
 
 #include "libspu/compiler/common/compilation_context.h"
 #include "libspu/compiler/front_end/hlo_importer.h"
+#include "libspu/compiler/transforms/stablehlo/passes.h"
 #include "libspu/compiler/utils/utils.h"
 #include "libspu/core/prelude.h"
 #include "libspu/dialect/pphlo/IR/dialect.h"
 #include "libspu/dialect/pphlo/transforms/passes.h"
-#include "libspu/compiler/transforms/stablehlo/passes.h"
 
 namespace spu::compiler {
 
