@@ -17,7 +17,7 @@
 - [Infra] Bump bazel version to 7.7.1.
 - [Infra] Use uv as package manager.
 - [Feature] Add GroupByAgg kernel in hlo.
-  
+
 ## 20250917
 
 - [SPU] 0.9.4 release
