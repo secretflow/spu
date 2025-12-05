@@ -37,7 +37,7 @@ local_path_override(
 )
 
 bazel_dep(name = "psi", version = "0.6.0.dev250507")
-bazel_dep(name = "yacl", version = "0.4.5b10-nightly-20250110")
+bazel_dep(name = "yacl", version = "0.4.5b12-nightly-20251024")
 
 # NOTE: override heu imported by psi, when psi updates heu version, this can be removed
 bazel_dep(name = "heu", version = "0.6.0b1")
