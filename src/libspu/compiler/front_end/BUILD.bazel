@@ -72,9 +72,9 @@ spu_cc_library(
     deps = [
         ":hlo_importer",
         "//libspu/compiler/common:compilation_context",
+        "//libspu/compiler/transforms/stablehlo:all_passes",
         "//libspu/compiler/utils",
         "//libspu/dialect/pphlo/transforms:all_passes",
-        "//libspu/compiler/transforms/stablehlo:all_passes",
         "@llvm-project//mlir:FuncExtensions",
         "@llvm-project//mlir:Parser",
         "@magic_enum",
