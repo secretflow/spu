@@ -93,7 +93,7 @@ def _example_impl(input):
         Result of the FFI call (identity for this example).
 
     Notes:
-        - `result_shape_dtypes`: Specifies the output shape and dtype.
+        - The first positional argument (`ShapeDtypeStruct`) specifies the output shape and dtype.
           For identity ops, this matches the input.
         - `has_side_effect=True`: Prevents the compiler from optimizing
           away this call even if the result is unused.
