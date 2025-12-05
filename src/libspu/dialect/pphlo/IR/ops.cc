@@ -462,7 +462,6 @@ void CustomCallOp::getEffects(
   effects.emplace_back(MemoryEffects::Write::get());
   effects.emplace_back(MemoryEffects::Read::get());
 }
-
 }  // namespace mlir::spu::pphlo
 
 #define GET_OP_CLASSES

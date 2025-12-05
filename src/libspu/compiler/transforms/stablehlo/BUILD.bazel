@@ -1,4 +1,4 @@
-# Copyright 2021 Ant Group Co., Ltd.
+# Copyright 2025 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,34 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@protobuf//bazel:cc_proto_library.bzl", "cc_proto_library")
-load("@rules_proto//proto:defs.bzl", "proto_library")
 load("//bazel:spu.bzl", "spu_cc_library")
 
-package(default_visibility = ["//visibility:public"])
-
-proto_library(
-    name = "spu_proto",
-    srcs = ["spu.proto"],
-)
-
-cc_proto_library(
-    name = "spu_cc_proto",
-    deps = [":spu_proto"],
-)
-
 spu_cc_library(
-    name = "spu",
-    srcs = ["spu.cc"],
-    hdrs = ["spu.h"],
-    deps = [
-        ":spu_cc_proto",
-        "@magic_enum",
-        "@protobuf",
+    name = "all_passes",
+    srcs = glob([
+        "*.cc",
+    ]),
+    hdrs = glob([
+        "*.h",
+    ]),
+    visibility = [
+        "//visibility:public",
     ],
-)
-
-spu_cc_library(
-    name = "version",
-    hdrs = ["version.h"],
+    deps = [
+        "//libspu/dialect/pphlo/IR:dialect",
+        "@llvm-project//mlir:IR",
+        "@llvm-project//mlir:Pass",
+        "@llvm-project//mlir:TransformUtils",
+        "@stablehlo//:stablehlo_ops",
+    ],
 )

@@ -38,34 +38,53 @@ local_path_override(
 
 bazel_dep(name = "psi", version = "0.6.0.dev250507")
 bazel_dep(name = "yacl", version = "0.4.5b10-nightly-20250110")
-bazel_dep(name = "grpc", version = "1.66.0.bcr.4")
 
-# pin grpc@1.66.0.bcr.4
+# NOTE: override heu imported by psi, when psi updates heu version, this can be removed
+bazel_dep(name = "heu", version = "0.6.0b1")
+bazel_dep(name = "grpc", version = "1.74.1")
 single_version_override(
     module_name = "grpc",
-    version = "1.66.0.bcr.4",
-)
-
-bazel_dep(name = "protobuf", version = "27.3")
-single_version_override(
-    module_name = "protobuf",
     patch_strip = 1,
-    patches = [
-        "//bazel/patches:protobuf-xla.patch",
-    ],
-    version = "27.3",
+    patches = ["//bazel/patches:grpc.patch"],
+    version = "1.74.1",
 )
 
+bazel_dep(name = "protobuf", version = "32.1")
 bazel_dep(name = "pybind11_bazel", version = "2.13.6")
 bazel_dep(name = "rules_cuda", version = "0.2.5")
 bazel_dep(name = "rules_python", version = "1.2.0")
+bazel_dep(name = "openssl", version = "3.3.2.bcr.1")
+single_version_override(
+    module_name = "openssl",
+    version = "3.3.2.bcr.1",
+)
+
+bazel_dep(name = "boringssl", version = "0.20250818.0")
+
+# override boringssl with openssl
+archive_override(
+    module_name = "boringssl",
+    integrity = "sha256-vtuxaVVVX5mxp7G6kPyXh560ECUIG+NZ7Nap/L3xyNI=",
+    patch_strip = 0,
+    patches = [
+        # Note: the openssl-build-file.patch copied from https://github.com/secretflow/bazel-registry/tree/main/modules/openssl/3.3.2.bcr.1/patches
+        "//bazel/patches:openssl-build-file.patch",
+        "//bazel/patches:openssl-module-file.patch",
+    ],
+    strip_prefix = "openssl-openssl-3.3.2",
+    urls = ["https://github.com/openssl/openssl/archive/refs/tags/openssl-3.3.2.tar.gz"],
+)
+
+# override orc and curl version
+bazel_dep(name = "orc", version = "2.2.1")
+bazel_dep(name = "curl", version = "8.11.0.bcr.2")
 
 # For experimental/squirrel and examples/cpp
 bazel_dep(name = "eigen", version = "3.4.90-20230801-66e8f3")
 bazel_dep(name = "seal", version = "4.1.1")
 bazel_dep(name = "spdlog", version = "1.14.1")
 bazel_dep(name = "abseil-cpp", version = "20240722.0")
-bazel_dep(name = "llvm-raw", version = "20240809.0-35f55f5")
+bazel_dep(name = "llvm-raw", version = "20251010.0-3a6b818")
 
 llvm = use_extension("@llvm-raw//utils/bazel:extension.bzl", "llvm")
 llvm.configure(
@@ -78,12 +97,13 @@ llvm.configure(
 use_repo(llvm, "llvm-project")
 # END for experimental/squirrel and examples/cpp
 
-DEFAULT_PYTHON_VERSION = "3.10"
+DEFAULT_PYTHON_VERSION = "3.11"
 
 SUPPORTED_PYTHON_VERSIONS = [
     # "3.9",
-    "3.10",
+    # "3.10",
     "3.11",
+    "3.12",
 ]
 
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")

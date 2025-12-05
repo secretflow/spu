@@ -64,13 +64,13 @@ commands:
           command: |
             set +e
 
-            bazelisk build //... -c opt --ui_event_filters=-info,-debug,-warning;
+            bazelisk build //... -c opt --@rules_python//python/config_settings:python_version=3.11 --ui_event_filters=-info,-debug,-warning;
             cp bazel-bin/spu/*.so spu/
       - run:
           name: "test"
           command: |
             set +e
-            uv venv --python 3.10
+            uv venv --python 3.11
             uv sync << parameters.groups >>
             uv pip install -e .
             uv run pytest -v -x --capture=no << parameters.targets >>

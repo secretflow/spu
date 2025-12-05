@@ -50,7 +50,7 @@ def groupby_agg_fun(agg):
         raise ValueError(f'Unknown agg {agg}')
 
 
-def test_fn(agg):
+def groupby_test_fn(agg):
     sim = spsim.Simulator.simple(3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM64)
 
     def proc(x1, x2, y):
@@ -138,19 +138,19 @@ def test_fn(agg):
 
 class UnitTests(unittest.TestCase):
     def test_sum(self):
-        test_fn('sum')
+        groupby_test_fn('sum')
 
     def test_max(self):
-        test_fn('max')
+        groupby_test_fn('max')
 
     def test_min(self):
-        test_fn('min')
+        groupby_test_fn('min')
 
     def test_mean(self):
-        test_fn('mean')
+        groupby_test_fn('mean')
 
     def test_var(self):
-        test_fn('var')
+        groupby_test_fn('var')
 
     def test_count(self):
         sim = spsim.Simulator.simple(3, libspu.ProtocolKind.ABY3, libspu.FieldType.FM64)

@@ -162,10 +162,6 @@ def PPHLO_ConvertOp
 
     Ref https://github.com/openxla/stablehlo/blob/main/docs/spec.md#convert
   }];
-  let builders = [
-    OpBuilder<(ins "Value": $operand,
-                   "Type": $result_element_ty)>
-  ];
   let hasFolder = 1;
 }
 
@@ -824,10 +820,6 @@ def PPHLO_ReduceOp : PPHLO_Op<"reduce", [
 
   let results = (outs Variadic<PPHLO_Tensor>);
 
-  let builders = [
-    OpBuilder<(ins "ValueRange":$inputs, "ValueRange":$init_values,
-      "DenseI64ArrayAttr":$dimensions)>];
-
   let regions = (region SizedRegion<1> : $body);
   let hasVerifier = 1;
   let hasCustomAssemblyFormat = 1;
@@ -982,10 +974,6 @@ def PPHLO_SortOp
 
   let regions = (region SizedRegion<1>:$comparator);
   let results = (outs Variadic<PPHLO_Tensor>);
-
-  let builders = [
-    OpBuilder<(ins "ValueRange":$operands, CArg<"int64_t", "-1">:$dimension,
-      CArg<"bool", "false">:$is_stable)>];
 }
 
 

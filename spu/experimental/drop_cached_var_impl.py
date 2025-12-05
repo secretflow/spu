@@ -16,14 +16,11 @@ __all__ = ["drop_cached_var"]
 
 from functools import partial
 
-from jax._src.core import ShapedArray
+from jax._src.interpreters.mlir import custom_call
+from jax.core import ShapedArray
 from jax.extend import core
-
-# from jax.abstract_arrays import ShapedArray
-from jax.interpreters import ad, batching, mlir, xla
-
-# from jax.lib import xla_client
-from jaxlib.hlo_helpers import custom_call
+from jax.interpreters import ad, batching, xla
+from jax.interpreters.mlir import ir, register_lowering
 
 
 # Public facing interface
@@ -47,7 +44,7 @@ def _drop_cached_var_abstract(input, *dependencies):
 def _drop_cached_var_lowering(ctx, input, *dependencies):
     # The inputs and outputs all have the same shape and memory layout
     # so let's predefine this specification
-    dtype = mlir.ir.RankedTensorType(input.type)
+    dtype = ir.RankedTensorType(input.type)
 
     return custom_call(
         "spu.drop_cached_var",
@@ -68,7 +65,7 @@ _drop_cached_var_prim.multiple_results = False
 _drop_cached_var_prim.def_impl(partial(xla.apply_primitive, _drop_cached_var_prim))
 _drop_cached_var_prim.def_abstract_eval(_drop_cached_var_abstract)
 
-mlir.register_lowering(_drop_cached_var_prim, _drop_cached_var_lowering)
+register_lowering(_drop_cached_var_prim, _drop_cached_var_lowering)
 
 
 def _drop_cached_var_transpose(ct, input, *dependencies):
