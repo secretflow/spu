@@ -21,4 +21,36 @@ std::vector<spu::Value> merge(SPUContext *ctx,
   return hal::permute(ctx, single_input_vec, sort_dim, sort_fn);
 }
 
+std::vector<spu::Value> merge_with_valids(
+    SPUContext *ctx, absl::Span<const spu::Value> inputs,
+    absl::Span<const spu::Value> inputs_valid, int64_t sort_dim, bool is_stable,
+    const hal::CompFn &comparator_body) {
+  SPU_ENFORCE_EQ(inputs.size(), inputs_valid.size(),
+                 "Number of input tensors and valid tensors must match");
+
+  // 1. 拼接 Values
+  std::vector<spu::Value> inputs_vec(inputs.begin(), inputs.end());
+  spu::Value combined_values = hal::concatenate(ctx, inputs_vec, sort_dim);
+
+  // 2. 拼接 Valids
+  std::vector<spu::Value> valids_vec(inputs_valid.begin(), inputs_valid.end());
+  spu::Value combined_valids = hal::concatenate(ctx, valids_vec, sort_dim);
+
+  // 3. 打包成对，准备降维
+  // packed_input 包含两个大 Tensor：[0]=Values, [1]=Valids
+  std::vector<spu::Value> packed_input = {combined_values, combined_valids};
+
+  // 4. 定义 1D 处理回调
+  auto sort_fn = [&](absl::Span<const spu::Value> sliced_inputs) {
+    // sliced_inputs[0] 是切片后的 Value
+    // sliced_inputs[1] 是切片后的 Valid
+    return merge1d_with_valids(ctx, sliced_inputs, comparator_body, is_stable);
+  };
+
+  // 5. 执行 Permute
+  // permute 会自动遍历除了 sort_dim 以外的维度，将 sort_dim 这一维切出来传给
+  // sort_fn
+  return hal::permute(ctx, packed_input, sort_dim, sort_fn);
+}
+
 }  // namespace spu::kernel::hal

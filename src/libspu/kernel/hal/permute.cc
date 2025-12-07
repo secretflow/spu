@@ -367,6 +367,72 @@ std::vector<spu::Value> odd_even_merge(SPUContext *ctx,
   return ret;
 }
 
+std::vector<spu::Value> odd_even_merge_with_valids(
+    SPUContext *ctx, absl::Span<spu::Value> inputs, const CompFn &cmp) {
+  // 预处理：确保所有输入（Value 和 Valid）都是 Secret 且 Share 偏好一致
+  // 这样才能进行 inplace 的 linear_scatter
+  std::vector<spu::Value> to_sort;
+  to_sort.reserve(inputs.size());
+
+  for (const auto &input : inputs) {
+    spu::Value casted;
+    if (!input.isSecret()) {
+      casted = _2s(ctx, input.clone()).setDtype(input.dtype());
+    } else {
+      casted = input.clone();
+    }
+    casted = _prefer_a(ctx, casted);
+    to_sort.emplace_back(std::move(casted));
+  }
+
+  // 定义 Wrapper 比较器
+  // _cmp_swap 会 gather 所有 operands。
+  // to_sort[0] 是 Values, to_sort[1] 是 Valids。
+  // gathered_inputs 结构为: [Val_L, Val_R, Valid_L, Valid_R]
+  // 我们只取前两个 (Val_L, Val_R) 传给原始比较器 cmp。
+  auto value_only_comparator =
+      [&](absl::Span<const spu::Value> gathered_inputs) {
+        return cmp(gathered_inputs.subspan(0, 2));
+      };
+
+  const auto n = to_sort.front().numel();
+  int64_t max_gap_in_stage = n / 2;
+
+  // Batcher's Merge Network
+  for (int64_t step = max_gap_in_stage; step > 0; step /= 2) {
+    Index lhs_indices, rhs_indices;
+
+    for (int64_t j = step % max_gap_in_stage; j + step < n; j += step + step) {
+      for (int64_t i = 0; i < step; ++i) {
+        auto lhs_idx = i + j;
+        auto rhs_idx = i + j + step;
+        if (rhs_idx >= n) break;
+
+        auto range = max_gap_in_stage * 2;
+        if (lhs_idx / range == rhs_idx / range) {
+          lhs_indices.emplace_back(lhs_idx);
+          rhs_indices.emplace_back(rhs_idx);
+        }
+      }
+    }
+
+    if (ctx->lctx()->Rank() == 0) {
+      // 打印 lhs_indices 的大小，所有参与方都会打印
+      std::cout << "Number of comparisons in each stage: " << lhs_indices.size()
+                << std::endl;
+    }
+
+    if (!lhs_indices.empty()) {
+      // 复用 _cmp_swap
+      // 传入包含 Value 和 Valid 的 span，它们会根据 value_only_comparator
+      // 的结果同步交换
+      _cmp_swap(ctx, value_only_comparator, absl::MakeSpan(to_sort),
+                lhs_indices, rhs_indices);
+    }
+  }
+  return to_sort;
+}
+
 void Swap(absl::Span<spu::Value> arr, const Index &lhs_indices,
           const Index &rhs_indices) {
   if (lhs_indices.empty() ||
@@ -1652,6 +1718,32 @@ std::vector<spu::Value> merge1d(SPUContext *ctx,
   }
 
   return ret;
+}
+
+std::vector<spu::Value> merge1d_with_valids(SPUContext *ctx,
+                                            absl::Span<spu::Value const> inputs,
+                                            const hal::CompFn &cmp,
+                                            bool is_stable) {
+  // Sanity check
+  SPU_ENFORCE(!inputs.empty(), "Inputs should not be empty");
+  SPU_ENFORCE(inputs.size() == 2,
+              "merge1d_with_valids expects exactly 2 inputs (Value tensor and "
+              "Valid tensor)");
+  SPU_ENFORCE(inputs[0].shape().ndim() == 1,
+              "Inputs should be 1-d but actually have {} dimensions",
+              inputs[0].shape().ndim());
+  SPU_ENFORCE(inputs[0].shape() == inputs[1].shape(),
+              "Value and Valid shape mismatch");
+
+  if (is_stable) {
+    SPU_THROW("Stable sort is unsupported in secret flow.");
+  }
+
+  // 拷贝输入以进行原地修改
+  std::vector<spu::Value> mutable_inputs(inputs.begin(), inputs.end());
+
+  return internal::odd_even_merge_with_valids(
+      ctx, absl::MakeSpan(mutable_inputs), cmp);
 }
 
 std::vector<spu::Value> sort1d(SPUContext *ctx,
