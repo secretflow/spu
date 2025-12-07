@@ -57,28 +57,237 @@ static Value VectorizedNoteFunc(SPUContext* ctx, const Value& p1,
 }
 
 // ==========================================
-// 2. 主函数实现
+// AggregateBrentKung without valid bits
 // ==========================================
-Value AggregateBrentKung(SPUContext* ctx, const Value& x_full,
-                         const Value& g_full) {
+// Value AggregateBrentKung(SPUContext* ctx, const Value& x_full,
+//                          const Value& g_full) {
+//   const int64_t n = x_full.shape()[0];
+//   const int64_t block_size = x_full.shape()[1];
+//   const int64_t logn = std::floor(std::log2(n));
+
+//   // 预处理：切分输入行，准备 Level 0
+//   std::vector<Value> x_rows(n);
+//   std::vector<Value> g_rows(n);
+
+//   for (int i = 0; i < n; ++i) {
+//     // Slice 出来是 [1, Block] 和 [1, 1]
+//     x_rows[i] = hal::slice(ctx, x_full, {i, 0}, {i + 1, block_size}, {});
+//     g_rows[i] = hal::slice(ctx, g_full, {i, 0}, {i + 1, 1}, {});
+//     // Reshape 成 [1, Block] 和 [1, 1] 以便后续 Batch 拼接
+//     // 注意：原代码 reshape 成了 [Block]，这里为了 batch concatenate 方便，保持
+//     // rank=2 更好， 即 [1, Block]。所有的 NoteFunc 输入都预期是 [Batch,
+//     // Block]。
+//     x_rows[i] = hal::reshape(ctx, x_rows[i], {1, block_size});
+//     g_rows[i] = hal::reshape(ctx, g_rows[i], {1, 1});
+//   }
+
+//   std::vector<std::vector<Value>> p_tree(n, std::vector<Value>(logn));
+//   std::vector<std::vector<Value>> g_tree(n, std::vector<Value>(logn));
+//   std::vector<Value> res(n);
+
+//   // --------------------------------------------------------
+//   // Up-Sweep (Parallelized)
+//   // --------------------------------------------------------
+
+//   // Level 0: 处理 x_rows
+//   {
+//     std::vector<Value> p1_batch, p2_batch, g1_batch, g2_batch;
+//     std::vector<int> target_indices;
+
+//     for (int i = 1; i < n; i += 2) {
+//       p1_batch.push_back(x_rows[i]);
+//       p2_batch.push_back(x_rows[i - 1]);
+//       g1_batch.push_back(g_rows[i]);
+//       g2_batch.push_back(g_rows[i - 1]);
+//       target_indices.push_back(i);
+//     }
+
+//     if (!target_indices.empty()) {
+//       auto p1_vec = hal::concatenate(ctx, p1_batch, 0);
+//       auto p2_vec = hal::concatenate(ctx, p2_batch, 0);
+//       auto g1_vec = hal::concatenate(ctx, g1_batch, 0);
+//       auto g2_vec = hal::concatenate(ctx, g2_batch, 0);
+
+//       // 并行计算
+//       auto [p3_vec, g3_vec] =
+//           VectorizedNoteFunc(ctx, p1_vec, p2_vec, g1_vec, g2_vec);
+
+//       // 拆分结果存回 Tree
+//       for (size_t k = 0; k < target_indices.size(); ++k) {
+//         int idx = target_indices[k];
+//         // Slice: [k, k+1]
+//         p_tree[idx][0] =
+//             hal::slice(ctx, p3_vec, {static_cast<int64_t>(k), 0},
+//                        {static_cast<int64_t>(k + 1), block_size}, {});
+//         g_tree[idx][0] = hal::slice(ctx, g3_vec, {static_cast<int64_t>(k), 0},
+//                                     {static_cast<int64_t>(k + 1), 1}, {});
+//       }
+//     }
+//   }
+
+//   // Levels 1 to logn-1
+//   for (int j = 1; j < logn; ++j) {
+//     int step = 1 << (j + 1);
+//     std::vector<Value> p1_batch, p2_batch, g1_batch, g2_batch;
+//     std::vector<int> target_indices;
+
+//     for (int i = step - 1; i < n; i += step) {
+//       int prev_idx = i - (1 << j);
+//       p1_batch.push_back(p_tree[i][j - 1]);
+//       p2_batch.push_back(p_tree[prev_idx][j - 1]);
+//       g1_batch.push_back(g_tree[i][j - 1]);
+//       g2_batch.push_back(g_tree[prev_idx][j - 1]);
+//       target_indices.push_back(i);
+//     }
+
+//     if (!target_indices.empty()) {
+//       auto p1_vec = hal::concatenate(ctx, p1_batch, 0);
+//       auto p2_vec = hal::concatenate(ctx, p2_batch, 0);
+//       auto g1_vec = hal::concatenate(ctx, g1_batch, 0);
+//       auto g2_vec = hal::concatenate(ctx, g2_batch, 0);
+
+//       auto [p3_vec, g3_vec] =
+//           VectorizedNoteFunc(ctx, p1_vec, p2_vec, g1_vec, g2_vec);
+
+//       for (size_t k = 0; k < target_indices.size(); ++k) {
+//         int idx = target_indices[k];
+//         p_tree[idx][j] =
+//             hal::slice(ctx, p3_vec, {static_cast<int64_t>(k), 0},
+//                        {static_cast<int64_t>(k + 1), block_size}, {});
+//         g_tree[idx][j] = hal::slice(ctx, g3_vec, {static_cast<int64_t>(k), 0},
+//                                     {static_cast<int64_t>(k + 1), 1}, {});
+//       }
+//     }
+//   }
+
+//   // --------------------------------------------------------
+//   // Down-Sweep (Parallelized)
+//   // --------------------------------------------------------
+
+//   // 初始化 res[0]
+//   res[0] = x_rows[0];
+
+//   // Copy computed roots
+//   for (int j = 0; j < logn; ++j) {
+//     int idx = (1 << (j + 1)) - 1;
+//     if (idx < n) {
+//       res[idx] = p_tree[idx][j];
+//     }
+//   }
+
+//   // Phase 1 of Down-Sweep (Internal Nodes)
+//   for (int j = logn - 3; j >= 0; --j) {
+//     int step = 1 << (j + 2);
+//     int half_step = 1 << (j + 1);
+
+//     std::vector<Value> p1_batch, p2_batch, g1_batch;
+//     std::vector<int> target_indices;
+
+//     for (int k = 1; k < n / step + 1; ++k) {
+//       int idx_curr = n - half_step * (2 * k - 1) - 1;
+//       int idx_prev = n - half_step * 2 * k - 1;
+
+//       if (idx_curr >= 0 && idx_prev >= 0 && idx_curr < n) {
+//         // NoteFunc: res[curr] = NoteFunc(tree[curr], res[prev], tree_g[curr])
+//         // 注意参数对应关系：p1=tree[curr], p2=res[prev], g1=tree_g[curr]
+//         p1_batch.push_back(p_tree[idx_curr][j]);
+//         p2_batch.push_back(res[idx_prev]);
+//         g1_batch.push_back(g_tree[idx_curr][j]);
+//         target_indices.push_back(idx_curr);
+//       }
+//     }
+
+//     if (!target_indices.empty()) {
+//       auto p1_vec = hal::concatenate(ctx, p1_batch, 0);
+//       auto p2_vec = hal::concatenate(ctx, p2_batch, 0);
+//       auto g1_vec = hal::concatenate(ctx, g1_batch, 0);
+
+//       // 调用 3参数版本的 VectorizedNoteFunc
+//       auto p3_vec = VectorizedNoteFunc(ctx, p1_vec, p2_vec, g1_vec);
+
+//       for (size_t k = 0; k < target_indices.size(); ++k) {
+//         res[target_indices[k]] =
+//             hal::slice(ctx, p3_vec, {static_cast<int64_t>(k), 0},
+//                        {static_cast<int64_t>(k + 1), block_size}, {});
+//       }
+//     }
+//   }
+
+//   // Phase 2 of Down-Sweep (Leaves)
+//   {
+//     std::vector<Value> p1_batch, p2_batch, g1_batch;
+//     std::vector<int> target_indices;
+
+//     for (int k = 1; k < n / 2 + 1; ++k) {
+//       int idx_curr = n - 2 * k;
+//       int idx_prev = n - 2 * k - 1;
+
+//       if (idx_curr >= 0 && idx_prev >= 0 && idx_curr < n) {
+//         p1_batch.push_back(x_rows[idx_curr]);
+//         p2_batch.push_back(res[idx_prev]);
+//         g1_batch.push_back(g_rows[idx_curr]);
+//         target_indices.push_back(idx_curr);
+//       }
+//     }
+
+//     if (!target_indices.empty()) {
+//       auto p1_vec = hal::concatenate(ctx, p1_batch, 0);
+//       auto p2_vec = hal::concatenate(ctx, p2_batch, 0);
+//       auto g1_vec = hal::concatenate(ctx, g1_batch, 0);
+
+//       auto p3_vec = VectorizedNoteFunc(ctx, p1_vec, p2_vec, g1_vec);
+
+//       for (size_t k = 0; k < target_indices.size(); ++k) {
+//         res[target_indices[k]] =
+//             hal::slice(ctx, p3_vec, {static_cast<int64_t>(k), 0},
+//                        {static_cast<int64_t>(k + 1), block_size}, {});
+//       }
+//     }
+//   }
+
+//   // --- Reshape & Concatenate Output ---
+//   // 此时 res 中的每个元素已经是 [1, BlockSize] 形状
+//   return hal::concatenate(ctx, res, 0);
+// }
+
+// ==========================================
+// AggregateBrentKung with valid bits
+// ==========================================
+std::pair<Value, Value> AggregateBrentKung(SPUContext* ctx, 
+  const Value& x_full,
+  const Value& valid_full, 
+  const Value& g_full) {
+
+  // 1. 获取维度信息
   const int64_t n = x_full.shape()[0];
-  const int64_t block_size = x_full.shape()[1];
+  const int64_t block_size = x_full.shape()[1]; // B
+
+  // 检查 valid 维度是否匹配 (Debug模式下很有用，Release可省略)
+  if (valid_full.shape()[0] != n || valid_full.shape()[1] != block_size) {
+  // 实际代码中建议加 SPUENFORCE 或类似检查
+  }
+
+  // 2. 数据拼接 (Pre-process)
+  // 将 x (N, B) 和 valid (N, B) 在列维度拼接 -> (N, 2*B)
+  Value payload_full = hal::concatenate(ctx, {x_full, valid_full}, 1);
+
+  // 更新后续逻辑使用的 block_size
+  const int64_t total_block_size = block_size * 2; 
   const int64_t logn = std::floor(std::log2(n));
 
-  // 预处理：切分输入行，准备 Level 0
-  std::vector<Value> x_rows(n);
+  // --- 下面的逻辑与原版完全一致，只是操作的是 payload_full ---
+
+  std::vector<Value> p_rows(n); 
   std::vector<Value> g_rows(n);
 
   for (int i = 0; i < n; ++i) {
-    // Slice 出来是 [1, Block] 和 [1, 1]
-    x_rows[i] = hal::slice(ctx, x_full, {i, 0}, {i + 1, block_size}, {});
-    g_rows[i] = hal::slice(ctx, g_full, {i, 0}, {i + 1, 1}, {});
-    // Reshape 成 [1, Block] 和 [1, 1] 以便后续 Batch 拼接
-    // 注意：原代码 reshape 成了 [Block]，这里为了 batch concatenate 方便，保持
-    // rank=2 更好， 即 [1, Block]。所有的 NoteFunc 输入都预期是 [Batch,
-    // Block]。
-    x_rows[i] = hal::reshape(ctx, x_rows[i], {1, block_size});
-    g_rows[i] = hal::reshape(ctx, g_rows[i], {1, 1});
+  // Slice 出一行: [1, 2B]
+  p_rows[i] = hal::slice(ctx, payload_full, {i, 0}, {i + 1, total_block_size}, {});
+  g_rows[i] = hal::slice(ctx, g_full, {i, 0}, {i + 1, 1}, {});
+
+  // 保持 Rank=2 以便拼接
+  p_rows[i] = hal::reshape(ctx, p_rows[i], {1, total_block_size});
+  g_rows[i] = hal::reshape(ctx, g_rows[i], {1, 1});
   }
 
   std::vector<std::vector<Value>> p_tree(n, std::vector<Value>(logn));
@@ -86,171 +295,159 @@ Value AggregateBrentKung(SPUContext* ctx, const Value& x_full,
   std::vector<Value> res(n);
 
   // --------------------------------------------------------
-  // Up-Sweep (Parallelized)
+  // Up-Sweep
   // --------------------------------------------------------
-
-  // Level 0: 处理 x_rows
   {
-    std::vector<Value> p1_batch, p2_batch, g1_batch, g2_batch;
-    std::vector<int> target_indices;
+  std::vector<Value> p1_batch, p2_batch, g1_batch, g2_batch;
+  std::vector<int> target_indices;
 
-    for (int i = 1; i < n; i += 2) {
-      p1_batch.push_back(x_rows[i]);
-      p2_batch.push_back(x_rows[i - 1]);
-      g1_batch.push_back(g_rows[i]);
-      g2_batch.push_back(g_rows[i - 1]);
-      target_indices.push_back(i);
-    }
-
-    if (!target_indices.empty()) {
-      auto p1_vec = hal::concatenate(ctx, p1_batch, 0);
-      auto p2_vec = hal::concatenate(ctx, p2_batch, 0);
-      auto g1_vec = hal::concatenate(ctx, g1_batch, 0);
-      auto g2_vec = hal::concatenate(ctx, g2_batch, 0);
-
-      // 并行计算
-      auto [p3_vec, g3_vec] =
-          VectorizedNoteFunc(ctx, p1_vec, p2_vec, g1_vec, g2_vec);
-
-      // 拆分结果存回 Tree
-      for (size_t k = 0; k < target_indices.size(); ++k) {
-        int idx = target_indices[k];
-        // Slice: [k, k+1]
-        p_tree[idx][0] =
-            hal::slice(ctx, p3_vec, {static_cast<int64_t>(k), 0},
-                       {static_cast<int64_t>(k + 1), block_size}, {});
-        g_tree[idx][0] = hal::slice(ctx, g3_vec, {static_cast<int64_t>(k), 0},
-                                    {static_cast<int64_t>(k + 1), 1}, {});
-      }
-    }
+  for (int i = 1; i < n; i += 2) {
+  p1_batch.push_back(p_rows[i]);
+  p2_batch.push_back(p_rows[i - 1]);
+  g1_batch.push_back(g_rows[i]);
+  g2_batch.push_back(g_rows[i - 1]);
+  target_indices.push_back(i);
   }
 
-  // Levels 1 to logn-1
+  if (!target_indices.empty()) {
+  auto p1_vec = hal::concatenate(ctx, p1_batch, 0);
+  auto p2_vec = hal::concatenate(ctx, p2_batch, 0);
+  auto g1_vec = hal::concatenate(ctx, g1_batch, 0);
+  auto g2_vec = hal::concatenate(ctx, g2_batch, 0);
+
+  // 这里的计算会自动带上 valid 部分
+  auto [p3_vec, g3_vec] = VectorizedNoteFunc(ctx, p1_vec, p2_vec, g1_vec, g2_vec);
+
+  for (size_t k = 0; k < target_indices.size(); ++k) {
+  int idx = target_indices[k];
+  p_tree[idx][0] = hal::slice(ctx, p3_vec, {static_cast<int64_t>(k), 0},
+  {static_cast<int64_t>(k + 1), total_block_size}, {});
+  g_tree[idx][0] = hal::slice(ctx, g3_vec, {static_cast<int64_t>(k), 0},
+  {static_cast<int64_t>(k + 1), 1}, {});
+  }
+  }
+  }
+
   for (int j = 1; j < logn; ++j) {
-    int step = 1 << (j + 1);
-    std::vector<Value> p1_batch, p2_batch, g1_batch, g2_batch;
-    std::vector<int> target_indices;
+  int step = 1 << (j + 1);
+  std::vector<Value> p1_batch, p2_batch, g1_batch, g2_batch;
+  std::vector<int> target_indices;
 
-    for (int i = step - 1; i < n; i += step) {
-      int prev_idx = i - (1 << j);
-      p1_batch.push_back(p_tree[i][j - 1]);
-      p2_batch.push_back(p_tree[prev_idx][j - 1]);
-      g1_batch.push_back(g_tree[i][j - 1]);
-      g2_batch.push_back(g_tree[prev_idx][j - 1]);
-      target_indices.push_back(i);
-    }
+  for (int i = step - 1; i < n; i += step) {
+  int prev_idx = i - (1 << j);
+  p1_batch.push_back(p_tree[i][j - 1]);
+  p2_batch.push_back(p_tree[prev_idx][j - 1]);
+  g1_batch.push_back(g_tree[i][j - 1]);
+  g2_batch.push_back(g_tree[prev_idx][j - 1]);
+  target_indices.push_back(i);
+  }
 
-    if (!target_indices.empty()) {
-      auto p1_vec = hal::concatenate(ctx, p1_batch, 0);
-      auto p2_vec = hal::concatenate(ctx, p2_batch, 0);
-      auto g1_vec = hal::concatenate(ctx, g1_batch, 0);
-      auto g2_vec = hal::concatenate(ctx, g2_batch, 0);
+  if (!target_indices.empty()) {
+  auto p1_vec = hal::concatenate(ctx, p1_batch, 0);
+  auto p2_vec = hal::concatenate(ctx, p2_batch, 0);
+  auto g1_vec = hal::concatenate(ctx, g1_batch, 0);
+  auto g2_vec = hal::concatenate(ctx, g2_batch, 0);
 
-      auto [p3_vec, g3_vec] =
-          VectorizedNoteFunc(ctx, p1_vec, p2_vec, g1_vec, g2_vec);
+  auto [p3_vec, g3_vec] = VectorizedNoteFunc(ctx, p1_vec, p2_vec, g1_vec, g2_vec);
 
-      for (size_t k = 0; k < target_indices.size(); ++k) {
-        int idx = target_indices[k];
-        p_tree[idx][j] =
-            hal::slice(ctx, p3_vec, {static_cast<int64_t>(k), 0},
-                       {static_cast<int64_t>(k + 1), block_size}, {});
-        g_tree[idx][j] = hal::slice(ctx, g3_vec, {static_cast<int64_t>(k), 0},
-                                    {static_cast<int64_t>(k + 1), 1}, {});
-      }
-    }
+  for (size_t k = 0; k < target_indices.size(); ++k) {
+  int idx = target_indices[k];
+  p_tree[idx][j] = hal::slice(ctx, p3_vec, {static_cast<int64_t>(k), 0},
+  {static_cast<int64_t>(k + 1), total_block_size}, {});
+  g_tree[idx][j] = hal::slice(ctx, g3_vec, {static_cast<int64_t>(k), 0},
+  {static_cast<int64_t>(k + 1), 1}, {});
+  }
+  }
   }
 
   // --------------------------------------------------------
-  // Down-Sweep (Parallelized)
+  // Down-Sweep
   // --------------------------------------------------------
+  res[0] = p_rows[0];
 
-  // 初始化 res[0]
-  res[0] = x_rows[0];
-
-  // Copy computed roots
   for (int j = 0; j < logn; ++j) {
-    int idx = (1 << (j + 1)) - 1;
-    if (idx < n) {
-      res[idx] = p_tree[idx][j];
-    }
+  int idx = (1 << (j + 1)) - 1;
+  if (idx < n) {
+  res[idx] = p_tree[idx][j];
+  }
   }
 
-  // Phase 1 of Down-Sweep (Internal Nodes)
   for (int j = logn - 3; j >= 0; --j) {
-    int step = 1 << (j + 2);
-    int half_step = 1 << (j + 1);
+  int step = 1 << (j + 2);
+  int half_step = 1 << (j + 1);
 
-    std::vector<Value> p1_batch, p2_batch, g1_batch;
-    std::vector<int> target_indices;
+  std::vector<Value> p1_batch, p2_batch, g1_batch;
+  std::vector<int> target_indices;
 
-    for (int k = 1; k < n / step + 1; ++k) {
-      int idx_curr = n - half_step * (2 * k - 1) - 1;
-      int idx_prev = n - half_step * 2 * k - 1;
+  for (int k = 1; k < n / step + 1; ++k) {
+  int idx_curr = n - half_step * (2 * k - 1) - 1;
+  int idx_prev = n - half_step * 2 * k - 1;
 
-      if (idx_curr >= 0 && idx_prev >= 0 && idx_curr < n) {
-        // NoteFunc: res[curr] = NoteFunc(tree[curr], res[prev], tree_g[curr])
-        // 注意参数对应关系：p1=tree[curr], p2=res[prev], g1=tree_g[curr]
-        p1_batch.push_back(p_tree[idx_curr][j]);
-        p2_batch.push_back(res[idx_prev]);
-        g1_batch.push_back(g_tree[idx_curr][j]);
-        target_indices.push_back(idx_curr);
-      }
-    }
-
-    if (!target_indices.empty()) {
-      auto p1_vec = hal::concatenate(ctx, p1_batch, 0);
-      auto p2_vec = hal::concatenate(ctx, p2_batch, 0);
-      auto g1_vec = hal::concatenate(ctx, g1_batch, 0);
-
-      // 调用 3参数版本的 VectorizedNoteFunc
-      auto p3_vec = VectorizedNoteFunc(ctx, p1_vec, p2_vec, g1_vec);
-
-      for (size_t k = 0; k < target_indices.size(); ++k) {
-        res[target_indices[k]] =
-            hal::slice(ctx, p3_vec, {static_cast<int64_t>(k), 0},
-                       {static_cast<int64_t>(k + 1), block_size}, {});
-      }
-    }
+  if (idx_curr >= 0 && idx_prev >= 0 && idx_curr < n) {
+  p1_batch.push_back(p_tree[idx_curr][j]);
+  p2_batch.push_back(res[idx_prev]);
+  g1_batch.push_back(g_tree[idx_curr][j]);
+  target_indices.push_back(idx_curr);
+  }
   }
 
-  // Phase 2 of Down-Sweep (Leaves)
-  // 原代码逻辑：res[curr] = NoteFunc(x_rows[curr], res[prev], g_rows[curr])
+  if (!target_indices.empty()) {
+  auto p1_vec = hal::concatenate(ctx, p1_batch, 0);
+  auto p2_vec = hal::concatenate(ctx, p2_batch, 0);
+  auto g1_vec = hal::concatenate(ctx, g1_batch, 0);
+
+  auto p3_vec = VectorizedNoteFunc(ctx, p1_vec, p2_vec, g1_vec);
+
+  for (size_t k = 0; k < target_indices.size(); ++k) {
+  res[target_indices[k]] = hal::slice(ctx, p3_vec, {static_cast<int64_t>(k), 0},
+    {static_cast<int64_t>(k + 1), total_block_size}, {});
+  }
+  }
+  }
+
   {
-    std::vector<Value> p1_batch, p2_batch, g1_batch;
-    std::vector<int> target_indices;
+  std::vector<Value> p1_batch, p2_batch, g1_batch;
+  std::vector<int> target_indices;
 
-    for (int k = 1; k < n / 2 + 1; ++k) {
-      int idx_curr = n - 2 * k;
-      int idx_prev = n - 2 * k - 1;
+  for (int k = 1; k < n / 2 + 1; ++k) {
+  int idx_curr = n - 2 * k;
+  int idx_prev = n - 2 * k - 1;
 
-      if (idx_curr >= 0 && idx_prev >= 0 && idx_curr < n) {
-        p1_batch.push_back(x_rows[idx_curr]);
-        p2_batch.push_back(res[idx_prev]);
-        g1_batch.push_back(g_rows[idx_curr]);
-        target_indices.push_back(idx_curr);
-      }
-    }
-
-    if (!target_indices.empty()) {
-      auto p1_vec = hal::concatenate(ctx, p1_batch, 0);
-      auto p2_vec = hal::concatenate(ctx, p2_batch, 0);
-      auto g1_vec = hal::concatenate(ctx, g1_batch, 0);
-
-      auto p3_vec = VectorizedNoteFunc(ctx, p1_vec, p2_vec, g1_vec);
-
-      for (size_t k = 0; k < target_indices.size(); ++k) {
-        res[target_indices[k]] =
-            hal::slice(ctx, p3_vec, {static_cast<int64_t>(k), 0},
-                       {static_cast<int64_t>(k + 1), block_size}, {});
-      }
-    }
+  if (idx_curr >= 0 && idx_prev >= 0 && idx_curr < n) {
+  p1_batch.push_back(p_rows[idx_curr]);
+  p2_batch.push_back(res[idx_prev]);
+  g1_batch.push_back(g_rows[idx_curr]);
+  target_indices.push_back(idx_curr);
+  }
   }
 
-  // --- Reshape & Concatenate Output ---
-  // 此时 res 中的每个元素已经是 [1, BlockSize] 形状
-  return hal::concatenate(ctx, res, 0);
-}
+  if (!target_indices.empty()) {
+  auto p1_vec = hal::concatenate(ctx, p1_batch, 0);
+  auto p2_vec = hal::concatenate(ctx, p2_batch, 0);
+  auto g1_vec = hal::concatenate(ctx, g1_batch, 0);
 
+  auto p3_vec = VectorizedNoteFunc(ctx, p1_vec, p2_vec, g1_vec);
+
+  for (size_t k = 0; k < target_indices.size(); ++k) {
+  res[target_indices[k]] = hal::slice(ctx, p3_vec, {static_cast<int64_t>(k), 0},
+    {static_cast<int64_t>(k + 1), total_block_size}, {});
+  }
+  }
+  }
+
+  // --- 3. 输出后处理 ---
+  // final_payload Shape: [N, 2*B]
+  auto final_payload = hal::concatenate(ctx, res, 0); 
+
+  // 切分回 x 和 valid
+  // x:     [0 .. B)
+  // valid: [B .. 2B)
+  auto y_out = hal::slice(ctx, final_payload, {0, 0}, {n, block_size}, {});
+  auto valid_out = hal::slice(ctx, final_payload, {0, block_size}, {n, 2 * block_size}, {});
+
+  return {y_out, valid_out};
+}
+ 
 // NoteFunc with input g2
 static std::pair<Value, Value> NoteFunc(SPUContext* ctx, const Value& p1,
                                         const Value& p2, const Value& g1,

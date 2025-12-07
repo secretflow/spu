@@ -4,10 +4,18 @@
 #include "libspu/core/value.h"
 
 namespace spu::kernel::hal {
-// 声明你的聚合函数
-Value AggregateBrentKung(SPUContext* ctx, const Value& x_full,
-                         const Value& g_full);
-Value AggregateBrentKung_NonVectorized(SPUContext* ctx, const Value& x_full,
+// AggregateBrentKung without valid bits
+// Value AggregateBrentKung(SPUContext* ctx, const Value& x_full,
+//                          const Value& g_full);
+
+
+// AggregateBrentKung with valid bits
+std::pair<Value, Value> AggregateBrentKung(SPUContext* ctx, 
+    const Value& x_full,
+    const Value& valid_full, 
+    const Value& g_full);
+
+   Value AggregateBrentKung_NonVectorized(SPUContext* ctx, const Value& x_full,
                                        const Value& g_full);
 
 }  // namespace spu::kernel::hal
