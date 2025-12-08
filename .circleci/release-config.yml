@@ -50,6 +50,13 @@ commands:
         type: string
     steps:
       - run:
+          name: Checkout devtools
+          command: git clone https://github.com/secretflow/devtools.git ../devtools
+      - run:
+          name: Setup BuildBuddy Cache
+          command: |
+            ../devtools/bazel_cache_setup.py
+      - run:
           name: "build package and publish"
           command: |
             set +e
