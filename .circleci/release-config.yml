@@ -75,7 +75,7 @@ jobs:
       - run:
           name: "Install homebrew dependencies"
           command: |
-            brew install bazelisk cmake ninja libomp wget
+            brew install bazelisk cmake ninja libomp wget uv
       - build_and_upload:
           python_ver: <<parameters.python_ver>>
   linux_publish:
