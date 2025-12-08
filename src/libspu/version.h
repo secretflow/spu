@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#define SPU_VERSION "0.10.0.dev"
+#define SPU_VERSION "0.10.0.dev20251208"
 
 #include <string_view>
 
