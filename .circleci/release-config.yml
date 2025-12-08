@@ -110,7 +110,7 @@ workflows:
       - linux_publish:
           matrix:
             parameters:
-              python_ver: ["3.10", "3.11"]
+              python_ver: ["3.11", "3.12"]
               executor: ["linux_x64_executor", "linux_aarch64_executor"]
           filters:
             tags:
@@ -118,7 +118,7 @@ workflows:
       - macOS_publish:
           matrix:
             parameters:
-              python_ver: ["3.10", "3.11"]
+              python_ver: ["3.11", "3.12"]
           filters:
             tags:
               only: /.*(?<!dev\d{8})$/
@@ -126,7 +126,7 @@ workflows:
           name: linux_dev_publish-<<matrix.executor>>
           matrix:
             parameters:
-              python_ver: ["3.10"]
+              python_ver: ["3.11"]
               executor: ["linux_x64_executor", "linux_aarch64_executor"]
           filters:
             tags:
@@ -135,7 +135,7 @@ workflows:
           name: macOS_dev_publish
           matrix:
             parameters:
-              python_ver: ["3.10"]
+              python_ver: ["3.11"]
           filters:
             tags:
               only: /.*(?<=dev\d{8})$/
