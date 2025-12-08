@@ -16,6 +16,10 @@
 # See: https://circleci.com/docs/2.0/configuration-reference
 version: 2.1
 
+# Python version definitions using YAML anchors for reusability
+x-publish-py-versions: &publish-py-versions ["3.11", "3.12"]
+x-dev-py-version: &dev-py-version ["3.11"]
+
 parameters:
   GHA_Action:
     type: string
@@ -110,7 +114,7 @@ workflows:
       - linux_publish:
           matrix:
             parameters:
-              python_ver: ["3.11", "3.12"]
+              python_ver: *publish-py-versions
               executor: ["linux_x64_executor", "linux_aarch64_executor"]
           filters:
             tags:
@@ -118,7 +122,7 @@ workflows:
       - macOS_publish:
           matrix:
             parameters:
-              python_ver: ["3.11", "3.12"]
+              python_ver: *publish-py-versions
           filters:
             tags:
               only: /.*(?<!dev\d{8})$/
@@ -126,7 +130,7 @@ workflows:
           name: linux_dev_publish-<<matrix.executor>>
           matrix:
             parameters:
-              python_ver: ["3.11"]
+              python_ver: *dev-py-version
               executor: ["linux_x64_executor", "linux_aarch64_executor"]
           filters:
             tags:
@@ -135,7 +139,7 @@ workflows:
           name: macOS_dev_publish
           matrix:
             parameters:
-              python_ver: ["3.11"]
+              python_ver: *dev-py-version
           filters:
             tags:
               only: /.*(?<=dev\d{8})$/
