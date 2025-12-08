@@ -52,12 +52,20 @@ def _build_lib(libname: str, force: bool = False) -> Path:
 
     ver_info = sys.version_info
     version = f"{ver_info.major}.{ver_info.minor}"
+
+    # Use -c opt by default to match manual builds
+    # Can be overridden via SPU_BUILD_MODE environment variable (opt/dbg/fastbuild)
+    build_mode = os.getenv("SPU_BUILD_MODE", "opt")
+
     args = [
         "bazelisk",
         "build",
         target,
+        "-c",
+        build_mode,
         f"--@rules_python//python/config_settings:python_version={version}",
     ]
+
     subprocess.run(args, check=True)
     dst_path.parent.mkdir(exist_ok=True)
     bzl_path = Path(f"bazel-bin/spu/{libname}.so")
