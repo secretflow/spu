@@ -6945,7 +6945,7 @@
     "@@spulib~//bazel:defs.bzl%non_module_dependencies": {
       "general": {
         "bzlTransitiveDigest": "neS2vXzWg56t66B94G6e5bX7UhKcaR4+fFADjAu+yFs=",
-        "usagesDigest": "YQrHEQwPatOhivOKW/KxOS9W5LPLOcFdqJRmZ2yAtho=",
+        "usagesDigest": "iWaT9OFjlRByQJj9KtfUJ7/VQyj3cmu8+D0CiXWKuD0=",
         "recordedFileInputs": {},
         "recordedDirentsInputs": {},
         "envVariables": {},
