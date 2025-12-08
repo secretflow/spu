@@ -76,6 +76,10 @@ jobs:
           name: "Install homebrew dependencies"
           command: |
             brew install bazelisk cmake ninja libomp wget
+      - run:
+          name: "Install uv"
+          command: |
+            wget -qO- https://astral.sh/uv/install.sh | sh
       - build_and_upload:
           python_ver: <<parameters.python_ver>>
   linux_publish:
