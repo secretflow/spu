@@ -25,17 +25,18 @@ from jax.interpreters.mlir import register_lowering
 
 
 def epsilon():
-    """Returns SPU epsilon (2^-fxp_fraction_bits). On CPU, returns 2^-18 as fallback."""
+    """Return SPU epsilon (2^-fxp_fraction_bits). On CPU, returns 2^-18."""
     return _epsilon_prim.bind()
 
 
 def _epsilon_abstract():
+    """Output shape/dtype: scalar float32."""
     return ShapedArray((), jnp.float32)
 
 
 def _epsilon_lowering(ctx, *args, **kwargs):
-    """SPU: FFI custom_call. CPU: constant 2^-18."""
-    # Detect platform
+    """MLIR lowering: SPU uses FFI custom_call, CPU returns constant."""
+    # Detect platform from MLIR context
     platform = (
         ctx.module_context.platforms[0]
         if hasattr(ctx, 'module_context') and hasattr(ctx.module_context, 'platforms')
@@ -43,7 +44,7 @@ def _epsilon_lowering(ctx, *args, **kwargs):
     )
 
     if platform == "interpreter":
-        # SPU: use FFI lowering
+        # SPU backend: generate FFI custom_call op
         return jax.ffi.ffi_lowering(
             "spu.epsilon",
             operand_layouts=[],
@@ -51,25 +52,26 @@ def _epsilon_lowering(ctx, *args, **kwargs):
             has_side_effect=True,
         )(ctx, *args, **kwargs)
     else:
-        # CPU: return constant
+        # CPU fallback: return compile-time constant
         import jax._src.interpreters.mlir as mlir_impl
 
         constant_val = mlir_impl.ir_constant(jnp.array(2**-18, dtype=jnp.float32))
         return [constant_val]
 
 
+# Register primitive
 _epsilon_prim = core.Primitive("epsilon")
 _epsilon_prim.multiple_results = False
 _epsilon_prim.def_abstract_eval(_epsilon_abstract)
-_epsilon_prim.def_impl(lambda: jnp.array(2**-18, dtype=jnp.float32))
+_epsilon_prim.def_impl(lambda: jnp.array(2**-18, dtype=jnp.float32))  # CPU impl
 register_lowering(_epsilon_prim, _epsilon_lowering)
 
-# Autodiff: epsilon is constant, no gradients
+# Autodiff: constant has zero gradient
 ad.primitive_transposes[_epsilon_prim] = lambda ct: []
 ad.primitive_jvps[_epsilon_prim] = lambda primals, tangents: (
     epsilon(),
-    jnp.zeros((), dtype=jnp.float32),
+    jnp.zeros((), dtype=jnp.float32),  # tangent is zero
 )
 
-# Batching: no inputs, return epsilon with no batch dim
+# Batching: scalar output, no batch dimension
 batching.primitive_batchers[_epsilon_prim] = lambda args, dims: (epsilon(), None)

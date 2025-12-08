@@ -40,20 +40,23 @@ def _make_cached_var_jvp(primals, tangents):
 
 
 def _make_cached_var_impl(input):
+    # FFI call: has_side_effect prevents DCE, broadcast_all for vmap
     return jax.ffi.ffi_call(
         "spu.make_cached_var",
-        jax.ShapeDtypeStruct(input.shape, input.dtype),
+        jax.ShapeDtypeStruct(input.shape, input.dtype),  # output spec
         has_side_effect=True,
-        vmap_method="broadcast_all",
+        vmap_method="broadcast_all",  # batch dims pass through
     )(input)
 
 
 def _make_cached_var_fwd(input):
-    return _make_cached_var_call(input), None  # No residuals needed
+    # VJP forward: no residuals needed for identity op
+    return _make_cached_var_call(input), None
 
 
 def _make_cached_var_bwd(res, g):
-    return (g,)  # Identity: gradient passes through
+    # VJP backward: identity gradient
+    return (g,)
 
 
 _make_cached_var_call.defvjp(_make_cached_var_fwd, _make_cached_var_bwd)

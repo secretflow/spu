@@ -24,16 +24,18 @@ from jax.interpreters.mlir import register_lowering
 
 
 def reveal(input):
-    """Reveal secret value to all parties. On CPU, this is identity."""
+    """Reveal secret value to all parties. WARNING: breaks MPC confidentiality."""
     return _reveal_prim.bind(input)
 
 
 def _reveal_abstract(input):
+    """Output shape/dtype same as input."""
     return ShapedArray(input.shape, input.dtype)
 
 
 def _reveal_lowering(ctx, input):
-    """SPU: FFI custom_call for reveal. CPU: identity."""
+    """MLIR lowering: SPU uses FFI custom_call, CPU returns identity."""
+    # Detect platform from MLIR context
     platform = (
         ctx.module_context.platforms[0]
         if hasattr(ctx, 'module_context') and hasattr(ctx.module_context, 'platforms')
@@ -41,6 +43,7 @@ def _reveal_lowering(ctx, input):
     )
 
     if platform == "interpreter":
+        # SPU backend: generate FFI custom_call op
         return jax.ffi.ffi_lowering(
             "spu.reveal",
             operand_layouts=None,
@@ -48,13 +51,15 @@ def _reveal_lowering(ctx, input):
             has_side_effect=True,
         )(ctx, input)
     else:
-        return [input]  # CPU: identity
+        # CPU fallback: identity (no secret values on CPU)
+        return [input]
 
 
+# Register primitive
 _reveal_prim = core.Primitive("reveal")
 _reveal_prim.multiple_results = False
 _reveal_prim.def_abstract_eval(_reveal_abstract)
-_reveal_prim.def_impl(lambda input: input)
+_reveal_prim.def_impl(lambda input: input)  # CPU impl: identity
 register_lowering(_reveal_prim, _reveal_lowering)
 
 
