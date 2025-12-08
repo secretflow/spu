@@ -50,21 +50,13 @@ TEST(JoinTest, Work) {
       2, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
         SPUContext sctx = test::makeSPUContext(prot, field, lctx);
 
-        // auto table_1 = spu::kernel::hlo::Seal(
-        //     &sctx, spu::kernel::hlo::Constant(&sctx, data_1, shape_1));
-        // auto table_2 = spu::kernel::hlo::Seal(
-        //     &sctx, spu::kernel::hlo::Constant(&sctx, data_2, shape_2));
-
-        // 创建表格1的多个列（这里假设 data_1 的每一行是一个列）
         std::vector<Value> table1_columns;
-        for (int64_t i = 0; i < shape_1[0]; ++i) {  // 遍历行数 = 列数
-          // 提取第i列数据
+        for (int64_t i = 0; i < shape_1[0]; ++i) {
           xt::xarray<uint64_t> col_data = xt::row(data_1, i);
           Value col = test::makeValue(&sctx, col_data, VIS_SECRET);
           table1_columns.push_back(col);
         }
 
-        // 创建表格2的多个列
         std::vector<Value> table2_columns;
         for (int64_t i = 0; i < shape_2[0]; ++i) {
           xt::xarray<uint64_t> col_data = xt::row(data_2, i);
@@ -72,17 +64,24 @@ TEST(JoinTest, Work) {
           table2_columns.push_back(col);
         }
 
-        // 转换为 Span
         absl::Span<const Value> table1_span =
             absl::MakeConstSpan(table1_columns);
         absl::Span<const Value> table2_span =
             absl::MakeConstSpan(table2_columns);
 
-        // 调用 join_uu
+        size_t b0 = lctx->GetStats()->sent_bytes;
+        size_t r0 = lctx->GetStats()->sent_actions;
+
         auto ret = join_uu(&sctx, table1_span, table2_span, num_join_keys,
                            num_hash, scale_factor);
+        size_t b1 = lctx->GetStats()->sent_bytes;
+        size_t r1 = lctx->GetStats()->sent_actions;
 
-        // 遍历ret的每一列并输出
+        if (lctx->Rank() == 0) {
+          std::cout << "Join communication sent bytes: " << (b1 - b0)
+                    << ", sent actions: " << (r1 - r0) << std::endl;
+        }
+
         for (size_t i = 0; i < ret.size(); ++i) {
           auto ret_hat =
               hal::dump_public_as<uint64_t>(&sctx, hal::reveal(&sctx, ret[i]));
@@ -92,13 +91,6 @@ TEST(JoinTest, Work) {
                       << std::endl;
           }
         }
-
-        // auto ret_hat =
-        //     hal::dump_public_as<uint64_t>(&sctx, hal::reveal(&sctx, ret));
-
-        // if (lctx->Rank() == 0) {
-        //   std::cout << "Join output: " << ret_hat << std::endl;
-        // }
       });
 }
 
