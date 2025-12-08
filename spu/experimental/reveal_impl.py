@@ -17,9 +17,10 @@
 __all__ = ["reveal"]
 
 import jax
-from jax._src.core import ShapedArray
+from jax.core import ShapedArray
 from jax.extend import core
-from jax.interpreters import ad, batching, mlir
+from jax.interpreters import ad, batching
+from jax.interpreters.mlir import register_lowering
 
 
 def reveal(input):
@@ -54,7 +55,7 @@ _reveal_prim = core.Primitive("reveal")
 _reveal_prim.multiple_results = False
 _reveal_prim.def_abstract_eval(_reveal_abstract)
 _reveal_prim.def_impl(lambda input: input)
-mlir.register_lowering(_reveal_prim, _reveal_lowering)
+register_lowering(_reveal_prim, _reveal_lowering)
 
 
 # Autodiff: identity-like, gradients pass through

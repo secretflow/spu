@@ -85,18 +85,14 @@ class HloToPPHloTypeConverter : public TypeConverter {
  private:
   TypeTools typetools_;
 
-  static std::optional<Value> materializeCastFromIllegal(OpBuilder &builder,
-                                                         Type type,
-                                                         ValueRange inputs,
-                                                         Location loc) {
+  static Value materializeCastFromIllegal(OpBuilder &builder, Type type,
+                                          ValueRange inputs, Location loc) {
     return builder.create<UnrealizedConversionCastOp>(loc, type, inputs[0])
         ->getResult(0);
   }
 
-  static std::optional<Value> materializeCastToIllegal(OpBuilder &builder,
-                                                       Type type,
-                                                       ValueRange inputs,
-                                                       Location loc) {
+  static Value materializeCastToIllegal(OpBuilder &builder, Type type,
+                                        ValueRange inputs, Location loc) {
     return builder.create<UnrealizedConversionCastOp>(loc, type, inputs[0])
         ->getResult(0);
   }
@@ -106,7 +102,10 @@ class HloToPPHloTypeConverter : public TypeConverter {
     // Keep all types unchanged.
     addConversion([](Type type) -> Type { return type; });
 
-    addArgumentMaterialization(materializeCastFromIllegal);
+    // NOTE: addArgumentMaterialization is deleted in commit:
+    // https://github.com/llvm/llvm-project/commit/23e3cbb2e82b62586266116c8ab77ce68e412cf8
+
+    // addArgumentMaterialization(materializeCastFromIllegal);
     addSourceMaterialization(materializeCastToIllegal);
     addTargetMaterialization(materializeCastFromIllegal);
   }

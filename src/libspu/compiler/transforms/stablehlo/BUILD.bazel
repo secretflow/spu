@@ -1,4 +1,4 @@
-# Copyright 2024 Ant Group Co., Ltd.
+# Copyright 2025 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,4 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-SPU_VERSION = "0.10.0.dev20251208"
+load("//bazel:spu.bzl", "spu_cc_library")
+
+spu_cc_library(
+    name = "all_passes",
+    srcs = glob([
+        "*.cc",
+    ]),
+    hdrs = glob([
+        "*.h",
+    ]),
+    visibility = [
+        "//visibility:public",
+    ],
+    deps = [
+        "//libspu/dialect/pphlo/IR:dialect",
+        "@llvm-project//mlir:IR",
+        "@llvm-project//mlir:Pass",
+        "@llvm-project//mlir:TransformUtils",
+        "@stablehlo//:stablehlo_ops",
+    ],
+)

@@ -1,4 +1,4 @@
-// Copyright 2024 Ant Group Co., Ltd.
+// Copyright 2025 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,12 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#define SPU_VERSION "0.10.0.dev20251208"
+#pragma once
 
-#include <string_view>
+#include <memory>
 
-namespace spu {
+namespace mlir {
+class Pass;
 
-inline std::string_view getVersionStr() { return SPU_VERSION; }
+namespace spu::stablehlo {
 
-}  // namespace spu
+// Create function for the pass
+std::unique_ptr<Pass> createExpandComplexOpsPass();
+
+} // namespace spu::stablehlo
+} // namespace mlir

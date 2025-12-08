@@ -106,30 +106,22 @@ class TransposeReshapeGenericDotGeneral
       return failure();
     }
 
-    SmallVector<int64_t> lhsTargetOrder;
-    SmallVector<int64_t> rhsTargetOrder;
     pphlo::DotDimensionNumbersAttr dimNumbers = op.getDotDimensionNumbers();
     auto lhsBatchingDims = dimNumbers.getLhsBatchingDimensions();
     auto lhsContractingDims = dimNumbers.getLhsContractingDimensions();
     auto rhsBatchingDims = dimNumbers.getRhsBatchingDimensions();
     auto rhsContractingDims = dimNumbers.getRhsContractingDimensions();
 
-    // No contraction dims means this can be represented as a mul.
-    if (lhsContractingDims.empty()) {
-      return failure();
-    }
-    if (rhsContractingDims.empty()) {
+    // 1. if elementwise mul (no reduction), do not process
+    if (lhsContractingDims.empty() || rhsContractingDims.empty()) {
       return failure();
     }
 
-    // No batching dimensions means this can be represented a dot.
-    if (lhsBatchingDims.empty()) {
-      return failure();
-    }
-    if (rhsBatchingDims.empty()) {
-      return failure();
-    }
-
+    // 2. Calculate target order for LHS: [Batch..., Parallel...,
+    // Contracting...]
+    // Note: If there is no Batch, it naturally becomes [Parallel(M)...,
+    // Contracting(K)...]
+    SmallVector<int64_t> lhsTargetOrder;
     SmallVector<bool> isLhsParallel(lhsShapeType.getRank(), true);
     for (auto i : lhsBatchingDims) {
       lhsTargetOrder.push_back(i);
@@ -147,8 +139,12 @@ class TransposeReshapeGenericDotGeneral
       lhsTargetOrder.push_back(i);
     }
 
+    // 3. Calculate target order for RHS: [Batch..., Contracting...,
+    // Parallel...]
+    // Note: DotGeneral standard order is [B, K, N].
+    // But for DotOp, usually expect [K, N]. This order works for both.
+    SmallVector<int64_t> rhsTargetOrder;
     SmallVector<bool> isRhsParallel(rhsShapeType.getRank(), true);
-
     for (auto i : rhsBatchingDims) {
       rhsTargetOrder.push_back(i);
       isRhsParallel[i] = false;
@@ -157,53 +153,130 @@ class TransposeReshapeGenericDotGeneral
       rhsTargetOrder.push_back(i);
       isRhsParallel[i] = false;
     }
+    // First push Contracting (K) - the order here is very important, DotOp
+    // requires K first
     for (int64_t i = 0, e = rhsShapeType.getRank(); i < e; ++i) {
       if (isRhsParallel[i]) {
         rhsTargetOrder.push_back(i);
       }
     }
 
+    // 4. Perform transpose
+    // Transform LHS to [B, M, K] (or [M, K])
+    // Transform RHS to [B, K, N] (or [K, N])
     Value lhs = TransposeIfNonConsecutive(rewriter, op.getLoc(), op.getLhs(),
                                           lhsTargetOrder);
     Value rhs = TransposeIfNonConsecutive(rewriter, op.getLoc(), op.getRhs(),
                                           rhsTargetOrder);
 
-    // The dimensions of this will always be transposed into {batch_dims,
-    // parallel_dims, contraction_dims}, and the
-    // following logic is based on this assumption.
-    // TODO(#7443): If we consider transpose performance, the above assumptions
-    // may not be true.
-    int64_t numLhsContractionDims = lhsContractingDims.size();
-    int64_t lhsContractionBase = lhsShapeType.getRank() - numLhsContractionDims;
+    if (lhsBatchingDims.empty()) {
+      // === Case A: No Batch -> use DotOp ===
+      // LHS: [M..., K...]
+      // RHS: [K..., N...]
+
+      // 1. Reshape LHS to standard 2D [M, K]
+      // M = product of all Parallel dimensions
+      // K = product of all Contracting dimensions
+      int64_t numLhsContracting = lhsContractingDims.size();
+      int64_t lhsKBase = lhsShapeType.getRank() -
+                         numLhsContracting;  // Boundary between M and K
+
+      auto lhsType = mlir::cast<RankedTensorType>(lhs.getType());
+      ArrayRef<int64_t> lhsShape = lhsType.getShape();
+
+      int64_t M = 1;
+      for (int64_t i = 0; i < lhsKBase; ++i) {
+        M *= lhsShape[i];
+      }
+
+      int64_t K = 1;
+      for (int64_t i = lhsKBase; i < lhsShapeType.getRank(); ++i) {
+        K *= lhsShape[i];
+      }
+
+      lhs = rewriter.create<pphlo::ReshapeOp>(
+          op.getLoc(), RankedTensorType::get({M, K}, lhsType.getElementType()),
+          lhs);
+
+      // 2. Reshape RHS to standard 2D [K, N]
+      // RHS layout: [K..., N...]
+      // K = product of all Contracting dimensions
+      int64_t numRhsContracting =
+          rhsContractingDims.size();  // Boundary between K and N
+
+      auto rhsType = mlir::cast<RankedTensorType>(rhs.getType());
+      ArrayRef<int64_t> rhsShape = rhsType.getShape();
+
+      int64_t K_rhs = 1;
+      for (int64_t i = 0; i < numRhsContracting; ++i) {
+        K_rhs *= rhsShape[i];
+      }
+
+      int64_t N = 1;
+      for (int64_t i = numRhsContracting; i < rhsShapeType.getRank(); ++i) {
+        N *= rhsShape[i];
+      }
+
+      if (K != K_rhs) {
+        return failure();
+      }
+
+      rhs = rewriter.create<pphlo::ReshapeOp>(
+          op.getLoc(), RankedTensorType::get({K, N}, rhsType.getElementType()),
+          rhs);
+
+      // 3. Create DotOp
+      // DotOp performs [M, K] * [K, N] -> [M, N]
+      auto newOp = rewriter.create<pphlo::DotOp>(op.getLoc(), lhs, rhs);
+
+      // 4. Reshape the result back to the original shape
+      // The original Result may be multi-dimensional, while DotOp produces [M,
+      // N]. ReshapeOp will be responsible for decomposing [M, N] back to [Dim1,
+      // Dim2, ...]
+      rewriter.replaceOpWithNewOp<pphlo::ReshapeOp>(op, resultType,
+                                                    newOp.getResult());
+
+      return success();
+    }
+
+    // === Case B: With Batch -> Use the original DotGeneralOp logic ===
+    // The goal is to generate standard [B, M, K] * [B, K, N]
+
+    int64_t numLhsContractingDims = lhsContractingDims.size();
+    int64_t lhsContractionBase = lhsShapeType.getRank() - numLhsContractingDims;
     int64_t rhsContractionBase = rhsBatchingDims.size();
-    int64_t numRhsContractionDims =
+    int64_t numRhsContractingDims =
         rhsContractionBase + rhsContractingDims.size();
 
+    // Merge multi-dimensional Batch into 1D, merge multi-dimensional M into
+    // 1D...
     lhs = ReshapeIfNonStandard(rewriter, op.getLoc(), lhs,
                                rhsBatchingDims.size(), lhsContractionBase);
     rhs = ReshapeIfNonStandard(rewriter, op.getLoc(), rhs,
-                               rhsBatchingDims.size(), numRhsContractionDims);
+                               rhsBatchingDims.size(), numRhsContractingDims);
 
     if (lhs == op.getLhs() && rhs == op.getRhs()) {
       return failure();
     }
 
+    // Create new Dimension Numbers, hardcoded to standard format
     auto dimensionNumbers = pphlo::DotDimensionNumbersAttr::get(
-        rewriter.getContext(), /*lhsBatchingDimensions=*/0,
-        /*rhsBatchingDimensions=*/0,
+        rewriter.getContext(),
+        /*lhsBatchingDimensions=*/0,  // Batch at dimension 0
+        /*rhsBatchingDimensions=*/0,  // Batch at dimension 0
         /*lhsContractingDimensions=*/
-        mlir::dyn_cast<ShapedType>(lhs.getType()).getRank() - 1,
-        /*rhsContractingDimensions=*/1);
+        mlir::dyn_cast<ShapedType>(lhs.getType()).getRank() - 1,  // K at last
+        /*rhsContractingDimensions=*/1);  // RHS: [B, K, N], K at dimension 1
+
     auto lhsNewType = mlir::dyn_cast<RankedTensorType>(lhs.getType());
     auto rhsNewType = mlir::dyn_cast<RankedTensorType>(rhs.getType());
 
-    // if lhs's shape or rhs's shape has collapsed, we need reshape the result
     bool needReshapeResult = lhsNewType.getRank() < lhsShapeType.getRank() ||
                              rhsNewType.getRank() < rhsShapeType.getRank();
-    // batching、lhs parallel、rhs parallel this order is a convention
-    SmallVector<int64_t, 4> newShape = {lhsNewType.getShape()[0],
-                                        lhsNewType.getShape()[1],
-                                        rhsNewType.getShape()[2]};
+
+    SmallVector<int64_t, 4> newShape = {lhsNewType.getShape()[0],   // Batch
+                                        lhsNewType.getShape()[1],   // M
+                                        rhsNewType.getShape()[2]};  // N
     auto newResultType =
         needReshapeResult
             ? RankedTensorType::get(newShape, resultType.getElementType())

@@ -18,9 +18,10 @@ __all__ = ["epsilon"]
 
 import jax
 import jax.numpy as jnp
-from jax._src.core import ShapedArray
+from jax.core import ShapedArray
 from jax.extend import core
-from jax.interpreters import ad, batching, mlir
+from jax.interpreters import ad, batching
+from jax.interpreters.mlir import register_lowering
 
 
 def epsilon():
@@ -61,7 +62,7 @@ _epsilon_prim = core.Primitive("epsilon")
 _epsilon_prim.multiple_results = False
 _epsilon_prim.def_abstract_eval(_epsilon_abstract)
 _epsilon_prim.def_impl(lambda: jnp.array(2**-18, dtype=jnp.float32))
-mlir.register_lowering(_epsilon_prim, _epsilon_lowering)
+register_lowering(_epsilon_prim, _epsilon_lowering)
 
 # Autodiff: epsilon is constant, no gradients
 ad.primitive_transposes[_epsilon_prim] = lambda ct: []
