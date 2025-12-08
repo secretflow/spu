@@ -56,9 +56,9 @@ commands:
             uv venv --python << parameters.python_ver >>
             uv sync --group dev
 
-            uv build
+            uv build --wheel
             ls dist/spu*.whl
-            uv publish --index pypi -u __token__ -p ${PYPI_TWINE_TOKEN}
+            uv publish dist/spu*.whl --index pypi -u __token__ -p ${PYPI_TWINE_TOKEN}
 
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
