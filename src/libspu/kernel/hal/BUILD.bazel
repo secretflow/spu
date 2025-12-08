@@ -314,3 +314,37 @@ spu_cc_library(
         ":ring",
     ],
 )
+
+
+spu_cc_library(
+    name = "join",
+    srcs = ["join.cc"],
+    hdrs = ["join.h"],
+    deps = [
+        "//libspu/kernel/hlo:soprf",
+        ":type_cast",
+        "//libspu/core:context",
+        "//libspu/core:value",
+        ":polymorphic",
+        ":public_helper",
+        ":ring",
+        ":shape_ops",
+        ":utils",
+        "@yacl//yacl/utils:cuckoo_index",
+        "//libspu/kernel:test_util",
+        "//libspu/kernel/hlo:permute",
+    ],
+)
+
+spu_cc_test(
+    name = "join_test",
+    srcs = ["join_test.cc"],
+    deps = [
+        "//libspu/kernel:test_util",
+        "//libspu/mpc/utils:simulate",
+        "//libspu/kernel/hal:join",
+        "//libspu/kernel/hlo:casting",
+        "//libspu/kernel/hlo:geometrical",
+        "//libspu/kernel/hlo:const",
+    ],
+)
