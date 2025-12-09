@@ -1,4 +1,4 @@
-#include "libspu/kernel/hal/brent_kung_network.h"
+#include "libspu/kernel/hlo/Logstar.h"
 
 #include "gtest/gtest.h"
 
@@ -7,11 +7,15 @@
 #include "libspu/kernel/test_util.h"
 #include "libspu/mpc/utils/simulate.h"
 
-namespace spu::kernel::hal {
+namespace spu::kernel::hlo {
 
 class BrentKungTest : public ::testing::Test {};
+class ExtractOrderedTest : public ::testing::Test {};
 
-// TEST the AggregateBrentKung without valid bits for BasicCorrectness
+//-----------------------------------------------------------------------------------
+//                            AggregateBrentKung Tests
+//-----------------------------------------------------------------------------------
+// // TEST the AggregateBrentKung without valid bits for BasicCorrectness
 // TEST_F(BrentKungTest, BasicCorrectness) {
 //   const size_t npc = 2;
 //   const auto protocol = ProtocolKind::SEMI2K;
@@ -43,7 +47,7 @@ class BrentKungTest : public ::testing::Test {};
 //     size_t start_bytes = stats->sent_bytes;
 //     size_t start_actions = stats->sent_actions;
 
-//     auto y_out = AggregateBrentKung(&ctx, x_in, g_in);
+//     auto y_out = AggregateBrentKung_without_valids(&ctx, x_in, g_in);
 
 //     size_t end_bytes = stats->sent_bytes;
 //     size_t end_actions = stats->sent_actions;
@@ -189,7 +193,7 @@ TEST_F(BrentKungTest, BasicCorrectness) {
   });
 }
 
-// TEST the AggregateBrentKung without valid bits for LargeScaleBenchmark
+// // TEST the AggregateBrentKung without valid bits for LargeScaleBenchmark
 // TEST_F(BrentKungTest, LargeScaleBenchmark) {
 //   const size_t npc = 2;
 //   const auto protocol = ProtocolKind::SEMI2K;
@@ -279,7 +283,7 @@ TEST_F(BrentKungTest, BasicCorrectness) {
 //     // ------------------------------------
 //     // 执行核心算法
 //     // ------------------------------------
-//     auto y_out = AggregateBrentKung(&ctx, x_in, g_in);
+//     auto y_out = AggregateBrentKung_without_valids(&ctx, x_in, g_in);
 //     // ------------------------------------
 
 //     // 记录结束状态
@@ -314,4 +318,117 @@ TEST_F(BrentKungTest, BasicCorrectness) {
 //   });
 // }
 
-}  // namespace spu::kernel::hal
+// //-----------------------------------------------------------------------------------
+// //                            ExtractOrder Tests
+// //-----------------------------------------------------------------------------------
+// TEST_F(ExtractOrderedTest, BasicCorrectness) {
+//   // 设置 MPC 环境参数：2方计算，SEMI2K 协议，64位环
+//   const size_t npc = 2;
+//   const auto protocol = ProtocolKind::SEMI2K;
+//   const auto field = FieldType::FM64;
+
+//   mpc::utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+//     SPUContext ctx = test::makeSPUContext(protocol, field, lctx);
+
+//     // -------------------------------------------------------
+//     // 1. 准备输入数据
+//     // -------------------------------------------------------
+//     int64_t n = 8;
+//     std::vector<int64_t> x_data;
+//     for(int64_t i = 0; i < n; ++i) {
+//         x_data.push_back(i);
+//     }
+//     std::vector<int64_t> f_data = {1, 0, 1, 0, 1, 1, 0, 1};
+//     std::vector<int64_t> y_expected_vec = {0, 2, 4, 5, 7};
+    
+//     // 构造 xtensor 方便对比
+//     xt::xarray<int64_t> y_expected = xt::adapt(y_expected_vec);
+
+//     // -------------------------------------------------------
+//     // 2. 构造 SPU 秘密分享输入
+//     // -------------------------------------------------------
+//     xt::xarray<int64_t> x_arr = xt::adapt(x_data);
+//     x_arr.reshape({1, static_cast<size_t>(n)}); 
+//     auto x_in = test::makeValue(&ctx, x_arr, VIS_SECRET);
+
+//     xt::xarray<int64_t> f_arr = xt::adapt(f_data);
+//     f_arr.reshape({1, static_cast<size_t>(n)}); 
+//     auto f_in = test::makeValue(&ctx, f_arr, VIS_SECRET);
+
+//     // // -------------------------------------------------------
+//     // // 3. 执行协议并记录性能指标
+//     // // -------------------------------------------------------
+    
+//     // // 记录开始状态
+//     // auto stats = lctx->GetStats();
+//     // size_t start_bytes = stats->sent_bytes;
+//     // size_t start_actions = stats->sent_actions;
+//     // auto start_time = std::chrono::high_resolution_clock::now();
+
+//     // === 调用核心函数 ===
+//     extract_ordered(&ctx, x_in, f_in);
+//     // ===================
+
+//     // // 记录结束时间
+//     // auto end_time = std::chrono::high_resolution_clock::now();
+
+//   //   // -------------------------------------------------------
+//   //   // 4. 打印统计信息 (仅 Rank 0)
+//   //   // -------------------------------------------------------
+//   //   stats = lctx->GetStats();  // 刷新统计
+//   //   size_t end_bytes = stats->sent_bytes;
+//   //   size_t end_actions = stats->sent_actions;
+
+//   //   if (lctx->Rank() == 0) {
+//   //     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+//   //                         end_time - start_time)
+//   //                         .count();
+//   //     auto comm_bytes = end_bytes - start_bytes;
+//   //     auto comm_rounds = end_actions - start_actions;
+//   //     double comm_mb = static_cast<double>(comm_bytes) / 1024.0 / 1024.0;
+
+//   //     std::cout << "\n========================================"
+//   //               << std::endl;
+//   //     std::cout << "ExtractOrdered Protocol Execution Stats:" << std::endl;
+//   //     std::cout << "  - Input Shape : " << n << " x " << dim << std::endl;
+//   //     std::cout << "  - Protocol    : " << protocol << std::endl;
+//   //     std::cout << "  - Time Cost   : " << duration << " ms" << std::endl;
+//   //     std::cout << "  - Comm Bytes  : " << comm_bytes << " bytes ("
+//   //               << comm_mb << " MB)" << std::endl;
+//   //     std::cout << "  - Comm Rounds : " << comm_rounds << " actions"
+//   //               << std::endl;
+//   //     std::cout << "========================================\n"
+//   //               << std::endl;
+//   //   }
+
+//   //   // -------------------------------------------------------
+//   //   // 5. 结果验证
+//   //   // -------------------------------------------------------
+    
+//     // // 将秘密结果 Reveal 为明文
+//     // auto y_revealed0 = hal::reveal(&ctx, y_out[0]);
+//     // auto y_revealed1 = hal::reveal(&ctx, y_out[1]);
+//     // auto y_revealed2 = hal::reveal(&ctx, y_out[2]);
+//     // auto y_vec0 = hal::dump_public_as<int64_t>(&ctx, y_revealed0);
+//     // auto y_vec1 = hal::dump_public_as<int64_t>(&ctx, y_revealed1);
+//     // auto y_vec2 = hal::dump_public_as<int64_t>(&ctx, y_revealed2);
+
+//     // // 打印对比详情
+//     // if (lctx->Rank() == 0) {
+//     //     // std::cout << ">> Expected Shape: (" << y_expected.shape()[0] << ", " << y_expected.shape()[1] << ")" << std::endl;
+//     //     // std::cout << ">> Actual Shape:   (" << y_vec.shape()[0] << ", " << y_vec.shape()[1] << ")" << std::endl;
+
+//     //     // std::cout << ">> y_expected:\n" << y_expected << std::endl;
+//     //     std::cout << ">> y_vec0 (Actual):\n" << y_vec0 << std::endl;
+//     //     std::cout << ">> y_vec1 (Actual):\n" << y_vec1 << std::endl;
+//     //     std::cout << ">> y_vec2 (Actual):\n" << y_vec2 << std::endl;
+        
+//     //     // // 额外的通信检查
+//     //     // auto stats = lctx->GetStats();
+//     //     // std::cout << ">> Total Traffic (Sent Bytes): " << stats->sent_bytes << std::endl;
+//     // }
+
+//   });
+// }
+
+}  // namespace spu::kernel::hlo
