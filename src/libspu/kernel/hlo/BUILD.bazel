@@ -397,3 +397,25 @@ spu_cc_test(
         "//libspu/mpc/utils:simulate",
     ],
 )
+
+spu_cc_library(
+    name = "group_by_agg",
+    srcs = ["group_by_agg.cc"],
+    hdrs = ["group_by_agg.h"],
+    deps = [
+        "//libspu/kernel/hal:group_by_agg",
+        "@magic_enum",
+    ],
+)
+
+spu_cc_test(
+    name = "group_by_agg_test",
+    srcs = ["group_by_agg_test.cc"],
+    deps = [
+        ":const",
+        ":group_by_agg",
+        "//libspu/kernel:test_util",
+        "//libspu/kernel/hal:type_cast",
+        "//libspu/mpc/utils:simulate",
+    ],
+)

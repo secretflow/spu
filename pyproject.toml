@@ -6,6 +6,7 @@ build-backend = "pdm.backend"
 name = "pypi"
 url = "https://pypi.org/simple/"
 publish-url = "https://upload.pypi.org/legacy/"
+explicit = true
 
 [[tool.uv.index]]
 name = "aliyun"
@@ -25,18 +26,18 @@ authors = [
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
-requires-python = ">=3.10,<3.12"
+requires-python = ">=3.11,<3.13"
 dynamic = ["version"]
 
 dependencies = [
-    "numpy<2,>=1.22.0",        # FIXME: for SF compatibility
+    "numpy>=2.0.0",        # Updated for JAX 0.8.0 compatibility. Note: NumPy 2.0 introduces several breaking changes that may affect downstream users. Please review your code for compatibility with NumPy 2.0 before upgrading.
     "cloudpickle>=2.0.0",
     "multiprocess>=0.70.12.2",
     "cachetools>=5.0.0",
-    "jax[cpu]==0.6.2",
+    "jax[cpu]==0.8.0",
     "termcolor>=2.0.0",
 ]
 
@@ -45,7 +46,7 @@ dev = [
     "pytest",
     "build",
     "protobuf==4.25.8",
-    "grpcio==1.56.2",
+    "grpcio>=1.60.0",
     "pandas>=1.4.2",
     "flax==0.10.7",
     "scikit-learn<1.8.0",
@@ -86,7 +87,7 @@ build_libs = { call = "pdm_build:build_libs" }
 [tool.black]
 skip-string-normalization = true
 line-length = 88
-target-version = ['py310']
+target-version = ['py311', 'py312']
 include = '\.pyi?$'
 extend-exclude = '''.*_pb2.py|.*_pb2_grpc.py'''
 
@@ -106,5 +107,5 @@ include = ["spu", "examples"]
 reportMissingImports = true
 reportMissingTypeStubs = false
 
-pythonVersion = "3.9"
+pythonVersion = "3.11"
 pythonPlatform = "Linux"

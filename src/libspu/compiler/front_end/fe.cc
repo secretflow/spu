@@ -24,16 +24,19 @@
 #include "mlir/Pass/PassManager.h"
 #include "mlir/Transforms/Passes.h"
 #include "stablehlo/dialect/StablehloOps.h"
+#include "stablehlo/transforms/Passes.h"
+#include "xla/hlo/translate/mhlo_to_hlo/translate.h"
 #include "xla/mlir_hlo/mhlo/IR/hlo_ops.h"
 #include "xla/mlir_hlo/mhlo/transforms/passes.h"
-#include "xla/translate/mhlo_to_hlo/translate.h"
 
 #include "libspu/compiler/common/compilation_context.h"
 #include "libspu/compiler/front_end/hlo_importer.h"
+#include "libspu/compiler/transforms/stablehlo/passes.h"
 #include "libspu/compiler/utils/utils.h"
 #include "libspu/core/prelude.h"
 #include "libspu/dialect/pphlo/IR/dialect.h"
 #include "libspu/dialect/pphlo/transforms/passes.h"
+
 namespace spu::compiler {
 
 FE::FE(CompilationContext *ctx) : ctx_(ctx) {
@@ -89,6 +92,7 @@ mlir::OwningOpRef<mlir::ModuleOp> FE::doit(const CompilationSource &source) {
 
   // Run pipeline
   mlir::PassManager pm(ctx_->getMLIRContext());
+
   buildFrontEndPipeline(&pm, input_vis_str);
 
   ctx_->setupPrettyPrintConfigurations(&pm);
@@ -110,19 +114,29 @@ void FE::buildFrontEndPipeline(mlir::PassManager *pm, const std::string &args) {
     pm->addPass(mlir::mhlo::createExpandHloTuplesPass());
 
     auto &optPM = pm->nest<mlir::func::FuncOp>();
-    optPM.addPass(mlir::mhlo::createLowerComplexPass());
+    // NOTE: createLowerComplexPass and createLegalizeGeneralDotPass are removed
+    // in commit:
+    // https://github.com/openxla/xla/commit/8aca0790454bf0467eb6d11c4b32ddb8e6be70de
+    // optPM.addPass(mlir::mhlo::createLowerComplexPass());
     optPM.addPass(mlir::mhlo::createLegalizeEinsumToDotGeneralPass());
-    optPM.addPass(mlir::mhlo::createLegalizeGeneralDotPass());
+    // optPM.addPass(mlir::mhlo::createLegalizeGeneralDotPass());
     optPM.addPass(mlir::mhlo::createSinkConstantsToControlFlowPass());
-    optPM.addPass(mlir::mhlo::createLowerComplexPass());
+    // optPM.addPass(mlir::mhlo::createLowerComplexPass());
     optPM.addPass(mlir::mhlo::createFlattenTuplePass());
-    optPM.addPass(mlir::mhlo::createBroadcastPropagationPass());
+    // NOTE: BroadcastPropagationPass is removed in commit:
+    // https://github.com/openxla/xla/commit/e1c7b98e4cb800fb296c51855133dc429a4adcb3
+    // optPM.addPass(mlir::mhlo::createBroadcastPropagationPass());
 
     // Convert to stablehlo
     pm->addPass(mlir::mhlo::createHloLegalizeToStablehloPass());
   }
 
   // stablehlo now
+
+  // Expand complex ops to real/imag parts ops
+  pm->addNestedPass<mlir::func::FuncOp>(
+      mlir::spu::stablehlo::createExpandComplexOpsPass());
+
   // Dialect conversion
   {
     auto l = mlir::spu::pphlo::createLegalizeToPPHloPass();

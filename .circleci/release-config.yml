@@ -16,6 +16,10 @@
 # See: https://circleci.com/docs/2.0/configuration-reference
 version: 2.1
 
+# Python version definitions using YAML anchors for reusability
+x-publish-py-versions: &publish-py-versions ["3.11", "3.12"]
+x-dev-py-version: &dev-py-version ["3.11"]
+
 parameters:
   GHA_Action:
     type: string
@@ -46,23 +50,30 @@ commands:
         type: string
     steps:
       - run:
+          name: Checkout devtools
+          command: git clone https://github.com/secretflow/devtools.git ../devtools
+      - run:
+          name: Setup BuildBuddy Cache
+          command: |
+            ../devtools/bazel_cache_setup.py
+      - run:
           name: "build package and publish"
           command: |
             set +e
             uv venv --python << parameters.python_ver >>
             uv sync --group dev
 
-            uv build
+            uv build --wheel
             ls dist/spu*.whl
-            uv publish --index pypi -u __token__ -p ${PYPI_TWINE_TOKEN}
+            uv publish dist/spu*.whl --index pypi -u __token__ -p ${PYPI_TWINE_TOKEN}
 
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
 jobs:
   macOS_publish:
     macos:
-      xcode: 16.0.0
-    resource_class: macos.m1.large.gen1
+      xcode: 16.2.0
+    resource_class: m4pro.medium
     parameters:
       python_ver:
         type: string
@@ -71,7 +82,7 @@ jobs:
       - run:
           name: "Install homebrew dependencies"
           command: |
-            brew install bazelisk cmake ninja libomp wget
+            brew install bazelisk cmake ninja libomp wget uv
       - build_and_upload:
           python_ver: <<parameters.python_ver>>
   linux_publish:
@@ -110,7 +121,7 @@ workflows:
       - linux_publish:
           matrix:
             parameters:
-              python_ver: ["3.10", "3.11"]
+              python_ver: *publish-py-versions
               executor: ["linux_x64_executor", "linux_aarch64_executor"]
           filters:
             tags:
@@ -118,7 +129,7 @@ workflows:
       - macOS_publish:
           matrix:
             parameters:
-              python_ver: ["3.10", "3.11"]
+              python_ver: *publish-py-versions
           filters:
             tags:
               only: /.*(?<!dev\d{8})$/
@@ -126,7 +137,7 @@ workflows:
           name: linux_dev_publish-<<matrix.executor>>
           matrix:
             parameters:
-              python_ver: ["3.10"]
+              python_ver: *dev-py-version
               executor: ["linux_x64_executor", "linux_aarch64_executor"]
           filters:
             tags:
@@ -135,7 +146,7 @@ workflows:
           name: macOS_dev_publish
           matrix:
             parameters:
-              python_ver: ["3.10"]
+              python_ver: *dev-py-version
           filters:
             tags:
               only: /.*(?<=dev\d{8})$/

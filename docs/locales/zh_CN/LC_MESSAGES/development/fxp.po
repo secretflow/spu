@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: SPU \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-05-22 21:30+0800\n"
+"POT-Creation-Date: 2025-10-28 13:50+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -19,368 +19,357 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.17.0\n"
 
-#: ../../development/fxp.ipynb:9
+#: ../../development/fxp.ipynb:10002
 msgid "Pitfalls - Fxp Arithmetic"
 msgstr "潜在问题 - 定点数运算"
 
-#: ../../development/fxp.ipynb:11
+#: ../../development/fxp.ipynb:10004
 msgid ""
 "We have confirmed the precision issues or input limitations with the "
 "following ops."
 msgstr "我们已经确认了以下操作存在精度问题或输入限制。"
 
-#: ../../development/fxp.ipynb:13
+#: ../../development/fxp.ipynb:10006
 msgid "We will update this part promptly."
 msgstr "我们将及时更新这部分内容。"
 
-#: ../../development/fxp.ipynb:25
+#: ../../development/fxp.ipynb:20002
 msgid "Simulation"
 msgstr "模拟"
 
-#: ../../development/fxp.ipynb:27
+#: ../../development/fxp.ipynb:20004
 msgid ""
 "We will use SPU **simulation** tool to simulate multi-parties with "
 "threads."
-msgstr ""
-"我们将使用 SPU **模拟** 工具通过线程来模拟多方。"
+msgstr "我们将使用 SPU **模拟** 工具通过线程来模拟多方。"
 
-#: ../../development/fxp.ipynb:57
+#: ../../development/fxp.ipynb:40002
 msgid "Default Runtime Config Parameters"
 msgstr "默认的运行时配置参数"
 
-#: ../../development/fxp.ipynb:59
+#: ../../development/fxp.ipynb:40004
 msgid ""
 "We will use the following common settings in SPU Runtime config. Other "
 "parameters may be modified however."
-msgstr ""
-"我们将使用以下通用的 SPU 运行时配置设置。然而，其他参数也可能会被修改。"
+msgstr "我们将使用以下通用的 SPU 运行时配置设置。然而，其他参数也可能会被修改。"
 
-#: ../../development/fxp.ipynb:83
+#: ../../development/fxp.ipynb:60002
 msgid "Unary Operator"
 msgstr "一元算子"
 
-#: ../../development/fxp.ipynb:95
+#: ../../development/fxp.ipynb:70002
 msgid "Reciprocal"
 msgstr "倒数"
 
-#: ../../development/fxp.ipynb:97
+#: ../../development/fxp.ipynb:70004
+#, fuzzy
 msgid ""
 "SPU uses Goldschmidt's method to calculate Reciprocal. Please refer to "
-"`Secure Computation With Fixed-Point Numbers "
-"<http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.221.1305&rep=rep1&type=pdf>`__"
+"[Secure Computation With Fixed-Point "
+"Numbers](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.221.1305&rep=rep1&type=pdf)"
 " for details."
 msgstr ""
 "SPU 使用戈德施密特方法来计算倒数。详情请参考论文 `Secure Computation With Fixed-Point Numbers "
 "<http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.221.1305&rep=rep1&type=pdf>`__。"
 
-#: ../../development/fxp.ipynb:99
+#: ../../development/fxp.ipynb:70006
+#, fuzzy
 msgid ""
-"Reciprocal is only correct if input belongs to **(-2**fxp_fraction_bits, "
-"2**fxp_fraction_bits)**."
-msgstr ""
-"仅当输入值属于 **(-2**fxp_fraction_bits, 2**fxp_fraction_bits)** 区间时，"
-"倒数计算才是正确的。"
+"Reciprocal is only correct if input belongs to "
+"**(-2\\*\\*fxp_fraction_bits, 2\\*\\*fxp_fraction_bits)**."
+msgstr "仅当输入值属于 **(-2**fxp_fraction_bits, 2**fxp_fraction_bits)** 区间时，倒数计算才是正确的。"
 
-#: ../../development/fxp.ipynb:101
+#: ../../development/fxp.ipynb:70008
 msgid "First, let's have a look at the figure."
 msgstr "首先，我们来看一下图表。"
 
-#: ../../development/fxp.ipynb:191
+#: ../../development/fxp.ipynb:90002
 msgid "Actually the precision is quite high."
 msgstr "实际上，精度相当高。"
 
-#: ../../development/fxp.ipynb:220
+#: ../../development/fxp.ipynb:110002
 msgid ""
 "Let's have an idea about what happens if input is not within the valid "
 "range."
-msgstr ""
-"让我们了解一下如果输入超出了有效范围会发生什么。"
+msgstr "让我们了解一下如果输入超出了有效范围会发生什么。"
 
-#: ../../development/fxp.ipynb:282
+#: ../../development/fxp.ipynb:130002
 msgid "Natural Logarithm"
 msgstr "自然对数"
 
-#: ../../development/fxp.ipynb:284
+#: ../../development/fxp.ipynb:130004
+#, fuzzy
 msgid ""
-"SPU uses Pade approximation by default. Please check `Benchmarking "
-"Privacy Preserving Scientific Operations "
-"<https://www.esat.kuleuven.be/cosic/publications/article-3013.pdf>`__ for"
-" details."
+"SPU uses Pade approximation by default. Please check [Benchmarking "
+"Privacy Preserving Scientific "
+"Operations](https://www.esat.kuleuven.be/cosic/publications/article-3013.pdf)"
+" for details."
 msgstr ""
-"SPU 默认使用帕德近似法。详情请查阅论文 `Benchmarking Privacy Preserving "
-"Scientific Operations "
+"SPU 默认使用帕德近似法。详情请查阅论文 `Benchmarking Privacy Preserving Scientific "
+"Operations "
 "<https://www.esat.kuleuven.be/cosic/publications/article-3013.pdf>`__。"
 
-#: ../../development/fxp.ipynb:286
+#: ../../development/fxp.ipynb:130006
+#, fuzzy
 msgid ""
 "Logarithm is only correct if input belongs to **(0, "
-"2**fxp_fraction_bits)**."
-msgstr ""
-"仅当输入值属于 **(0, 2**fxp_fraction_bits)** 区间时，对数计算才是正确的。"
+"2\\*\\*fxp_fraction_bits)**."
+msgstr "仅当输入值属于 **(0, 2**fxp_fraction_bits)** 区间时，对数计算才是正确的。"
 
-#: ../../development/fxp.ipynb:288
-msgid "**NOTE:** Similar conclusion also applies to **log1p**, **log2**."
+#: ../../development/fxp.ipynb:130008
+#, fuzzy
+msgid "**_NOTE:_**  Similar conclusion also applies to **log1p**, **log2**."
 msgstr "**注意**：类似的结论也适用于 **log1p** 和 **log2** 函数。"
 
-#: ../../development/fxp.ipynb:344
+#: ../../development/fxp.ipynb:160002
 msgid "Again, let's see what happens if input is out of valid range."
 msgstr "再一次，我们来看看如果输入超出了有效范围会发生什么。"
 
-#: ../../development/fxp.ipynb:387
+#: ../../development/fxp.ipynb:180002
 msgid "Another Choice: Newton Approximation"
 msgstr "另一个选择：牛顿近似法"
 
-#: ../../development/fxp.ipynb:389
+#: ../../development/fxp.ipynb:180004
 msgid ""
 "If you would like to compute faster, you may switch to Newton "
 "Approximation. But the precision is lower and valid input range is around"
 " **(0, 250)**."
-msgstr ""
-"如果你希望计算得更快，可以使用牛顿近似法。但其精度更低，且有效输入范围"
-"大约在 **(0, 250)** 之间。"
+msgstr "如果你希望计算得更快，可以使用牛顿近似法。但其精度更低，且有效输入范围大约在 **(0, 250)** 之间。"
 
-#: ../../development/fxp.ipynb:436
+#: ../../development/fxp.ipynb:200002
 msgid "While, if out of valid input..."
 msgstr "然而，如果超出了有效输入范围..."
 
-#: ../../development/fxp.ipynb:475
+#: ../../development/fxp.ipynb:220002
 msgid "Natural Exponential"
 msgstr "自然指数"
 
-#: ../../development/fxp.ipynb:477
+#: ../../development/fxp.ipynb:220004
 msgid ""
 "The current implementation is based on Taylor approximation. The valid "
 "input range is around **(0, 10)**."
-msgstr ""
-"当前的实现是基于泰勒近似法。其有效输入范围大约在 **(0, 10)** 之间。"
+msgstr "当前的实现是基于泰勒近似法。其有效输入范围大约在 **(0, 10)** 之间。"
 
-#: ../../development/fxp.ipynb:479
-msgid "**NOTE:** Similar conclusion also applies to **exp2**."
+#: ../../development/fxp.ipynb:220006
+#, fuzzy
+msgid "**_NOTE:_**  Similar conclusion also applies to **exp2**."
 msgstr "**注意**：类似的结论也适用于 **exp2** 函数。"
 
-#: ../../development/fxp.ipynb:525
+#: ../../development/fxp.ipynb:240002
 msgid "If input not in valid range, then..."
 msgstr "如果输入不在有效范围内，那么..."
 
-#: ../../development/fxp.ipynb:564
+#: ../../development/fxp.ipynb:260002
 msgid "Another Choice: Pade Approximation"
 msgstr "另一个选择：帕德近似法"
 
-#: ../../development/fxp.ipynb:566
+#: ../../development/fxp.ipynb:260004
 msgid ""
 "SPU also implements Pade Approximation which has a larger valid input "
 "range - **(0, 20)** but with slower computation speed."
-msgstr ""
-"SPU 也实现了帕德近似法，它拥有一个更大的有效输入范围——**(0, 20)**，但计算速度较慢。"
+msgstr "SPU 也实现了帕德近似法，它拥有一个更大的有效输入范围——**(0, 20)**，但计算速度较慢。"
 
-#: ../../development/fxp.ipynb:613
+#: ../../development/fxp.ipynb:280002
 msgid "Let's check if input is larger than 20:"
 msgstr "让我们检查一下当输入大于 20 时的情况："
 
-#: ../../development/fxp.ipynb:652
+#: ../../development/fxp.ipynb:300002
 msgid "Hyperbolic Tangent"
 msgstr "双曲正切"
 
-#: ../../development/fxp.ipynb:654
-#, python-format
+#: ../../development/fxp.ipynb:300004
+#, fuzzy, python-format
 msgid ""
 "SPU uses Pade Approximation for implementation. The parameters refer to "
-"`Wolfram "
-"<https://www.wolframalpha.com/input?i=Pade+approximation+tanh%28x%29+order+5%2C5>`__."
+"[Wolfram](https://www.wolframalpha.com/input?i=Pade+approximation+tanh%28x%29+order+5%2C5)."
 " The valid input range is about **(-5,5)**."
 msgstr ""
 "SPU 使用帕德近似法来实现该函数。其参数参考自 `Wolfram "
-"<https://www.wolframalpha.com/input?i=Pade+approximation+tanh%28x%29+order+5%2C5>`__。"
-"有效输入范围大约在 **(-5, 5)** 之间。"
+"<https://www.wolframalpha.com/input?i=Pade+approximation+tanh%28x%29+order+5%2C5>`__。有效输入范围大约在"
+" **(-5, 5)** 之间。"
 
-#: ../../development/fxp.ipynb:701
+#: ../../development/fxp.ipynb:320002
 msgid "Binary Operator"
 msgstr "二元算子"
 
-#: ../../development/fxp.ipynb:704
+#: ../../development/fxp.ipynb:320004
 msgid "Div"
 msgstr "除法"
 
-#: ../../development/fxp.ipynb:706
+#: ../../development/fxp.ipynb:320006
+#, fuzzy
 msgid ""
 "SPU uses Goldschmidt's method to calculate division. Please refer to "
-"`Secure Computation With Fixed-Point Numbers "
-"<http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.221.1305&rep=rep1&type=pdf>`__"
+"[Secure Computation With Fixed-Point "
+"Numbers](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.221.1305&rep=rep1&type=pdf)"
 " for details."
 msgstr ""
 "SPU 使用戈德施密特方法来计算除法。详情请参考论文 `Secure Computation With Fixed-Point Numbers "
 "<http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.221.1305&rep=rep1&type=pdf>`__。"
 
-#: ../../development/fxp.ipynb:708
+#: ../../development/fxp.ipynb:320008
+#, fuzzy
 msgid ""
 "So we have a similar valid input range to **b**, which is "
-"**(-2**fxp_fraction_bits, 2**fxp_fraction_bits)**. Please check details "
-"at **reciprocal** part."
+"**(-2\\*\\*fxp_fraction_bits, 2\\*\\*fxp_fraction_bits)**. Please check "
+"details at **reciprocal** part."
 msgstr ""
-"因此，我们对除数 **b** 有一个与倒数运算相似的有效输入范围，即 "
-"**(-2**fxp_fraction_bits, 2**fxp_fraction_bits)**。详情请查阅 **倒数** 部分。"
+"因此，我们对除数 **b** 有一个与倒数运算相似的有效输入范围，即 **(-2**fxp_fraction_bits, "
+"2**fxp_fraction_bits)**。详情请查阅 **倒数** 部分。"
 
-#: ../../development/fxp.ipynb:719
+#: ../../development/fxp.ipynb:330002
 msgid "Besides, We do find some subtle pitfalls in real applications:"
 msgstr "此外，我们在实际应用中确实发现了一些微妙的潜在问题："
 
-#: ../../development/fxp.ipynb:721
+#: ../../development/fxp.ipynb:330004
 msgid "Overflow when numerator is large."
 msgstr "当分子很大时发生溢出。"
 
-#: ../../development/fxp.ipynb:723
+#: ../../development/fxp.ipynb:330006
 msgid "Some gap between numpy output."
 msgstr "与 numpy 的输出存在一些差距。"
 
-#: ../../development/fxp.ipynb:725
+#: ../../development/fxp.ipynb:330008
 msgid "**Rule of thumb**"
 msgstr "**经验法则**"
 
-#: ../../development/fxp.ipynb:727
+#: ../../development/fxp.ipynb:330010
 msgid ""
 "We recommend users to try some actions if you come across \"strange\" "
 "outputs:"
-msgstr ""
-"如果你遇到 \"奇怪的"\ 输出，我们建议用户尝试以下操作："
+msgstr "如果你遇到 \"奇怪的\"\\ 输出，我们建议用户尝试以下操作："
 
-#: ../../development/fxp.ipynb:729
+#: ../../development/fxp.ipynb:330012
 msgid "If **huge error** occurs(maybe even **opposite sign**):"
 msgstr "如果出现 **巨大误差** （甚至可能  **符号相反**）："
 
-#: ../../development/fxp.ipynb:731
+#: ../../development/fxp.ipynb:330013
 msgid "It's common that numerator is **too large**, which leads to overflow."
 msgstr "通常是由于分子 **过大**，导致了溢出。"
 
-#: ../../development/fxp.ipynb:732
+#: ../../development/fxp.ipynb:330014
+#, fuzzy
 msgid ""
-"Try **Larger** field(``FM128``) first. Larger field can accommodate "
-"larger number when fxp is fixed, so overflow can be avoided. But it will "
-"drag down the efficiency of **nearly all op** dramatically."
+"Try **Larger** field(`FM128`) first. Larger field can accommodate larger "
+"number when fxp is fixed, so overflow can be avoided. But it will drag "
+"down the efficiency of **nearly all op** dramatically."
 msgstr ""
-"首先尝试 **更大** 的域 (``FM128``)。在定点数位数固定的情况下，"
-"更大的域可以容纳更大的数值，从而可以避免溢出。但这会极大地拖慢几乎 **所有操作** 的效率。"
+"首先尝试 **更大** 的域 (``FM128``)。在定点数位数固定的情况下，更大的域可以容纳更大的数值，从而可以避免溢出。但这会极大地拖慢几乎"
+" **所有操作** 的效率。"
 
-#: ../../development/fxp.ipynb:734
+#: ../../development/fxp.ipynb:330016
 msgid ""
 "Else, if the gap is not very significant, you can try to modify another "
 "two parameters:"
-msgstr ""
-"否则，如果差距不是非常显著，你可以尝试修改另外两个参数："
+msgstr "否则，如果差距不是非常显著，你可以尝试修改另外两个参数："
 
-#: ../../development/fxp.ipynb:736
+#: ../../development/fxp.ipynb:330018
+#, fuzzy
 msgid ""
-"Enlarging ``fxp_fraction_bits``: it is an essential parameters for fixed-"
-"point arithmetic and will influence all the op associated with float-"
-"point. For fixed field, larger fxp can support more bits for fraction "
-"part which may give more precision. However, larger fxp will occupy the "
-"bits for integer part, and makes **overflow** easier."
+"a. Enlarging `fxp_fraction_bits`: it is an essential parameters for "
+"fixed-point arithmetic and will influence all the op associated with "
+"float-point. For fixed field, larger fxp can support more bits for "
+"fraction part which may give more precision. However, larger fxp will "
+"occupy the bits for integer part, and makes **overflow** easier."
 msgstr ""
-"增大 ``fxp_fraction_bits``：这是定点数运算的一个关键参数，它会影响所有与"
-"浮点数相关的操作。对于固定的域，更大的定点数小数位数可以为小数部分提供更多比特位，"
-"这可能会带来更高的精度。然而，更大的定点数小数位数会占用整数部分的比特位，从而使得"
+"增大 "
+"``fxp_fraction_bits``：这是定点数运算的一个关键参数，它会影响所有与浮点数相关的操作。对于固定的域，更大的定点数小数位数可以为小数部分提供更多比特位，这可能会带来更高的精度。然而，更大的定点数小数位数会占用整数部分的比特位，从而使得"
 " **溢出** 更容易发生。"
 
-#: ../../development/fxp.ipynb:738
+#: ../../development/fxp.ipynb:330020
+#, fuzzy
 msgid ""
-"Enlarging ``fxp_div_goldschmidt_iters``: the precision of Goldschmidt's "
+"b. Enlarging `fxp_div_goldschmidt_iters`: the precision of Goldschmidt's "
 "method depends on iter numbers. So if you eager to more precise output, "
 "you can enlarge this parameter. But it's worthy to note that:"
 msgstr ""
-"增大 ``fxp_div_goldschmidt_iters``：戈德施密特方法的精度依赖于迭代次数。"
-"因此，如果您渴望更精确的输出，可以增大此参数。但值得注意的是："
+"增大 "
+"``fxp_div_goldschmidt_iters``：戈德施密特方法的精度依赖于迭代次数。因此，如果您渴望更精确的输出，可以增大此参数。但值得注意的是："
 
-#: ../../development/fxp.ipynb:740
+#: ../../development/fxp.ipynb:330021
+#, fuzzy
 msgid ""
-"Larger this parameter, larger the cost of ``Div`` and all op containing "
-"it(like ``Log`` and ``Tanh``)."
-msgstr ""
-"这个参数越大，``Div`` 以及所有包含它的操作（如 ``Log`` 和 ``Tanh``）"
-"的计算成本就越高。"
+"Larger this parameter, larger the cost of `Div` and all op containing "
+"it(like `Log` and `Tanh`)."
+msgstr "这个参数越大，``Div`` 以及所有包含它的操作（如 ``Log`` 和 ``Tanh``）的计算成本就越高。"
 
-#: ../../development/fxp.ipynb:741
+#: ../../development/fxp.ipynb:330022
+#, fuzzy
 msgid ""
 "The final precision is also influenced by field, fxp and even method for "
 "truncation. We only recommend to adjust this when you really care about "
-"the **high precision**\\ (low absolute error) and other methods not work."
-msgstr ""
-"最终的精度也受到域、定点数位数甚至截断方法的影响。我们只在你真正关心 **高精度**\\"
-"（低绝对误差）且其他方法无效时，才推荐调整此参数。"
+"the **high precision**(low absolute error) and other methods not work."
+msgstr "最终的精度也受到域、定点数位数甚至截断方法的影响。我们只在你真正关心 **高精度**\\（低绝对误差）且其他方法无效时，才推荐调整此参数。"
 
-#: ../../development/fxp.ipynb:803
-#, python-brace-format
+#: ../../development/fxp.ipynb:360002
+#, fuzzy, python-brace-format
 msgid ""
-"When numerator is very large(:math:`>2^{28}` for ``FM64`` and "
-"``fxp=18``), then the integer part may overflow under large probability, "
-"and this brings huge error."
+"When numerator is very large($>2^{28}$ for `FM64` and `fxp=18`), then the"
+" integer part may overflow under large probability, and this brings huge "
+"error."
 msgstr ""
-"当分子非常大时（例如，对于 ``FM64`` 和 ``fxp=18``，大于 :math:`>2^{28}`），"
-"整数部分可能会有很大概率发生溢出，这会带来巨大的误差。"
+"当分子非常大时（例如，对于 ``FM64`` 和 ``fxp=18``，大于 "
+":math:`>2^{28}`），整数部分可能会有很大概率发生溢出，这会带来巨大的误差。"
 
-#: ../../development/fxp.ipynb:873
-msgid ""
-"In this situation, **enlarging** field to ``FM128`` may be the only "
-"remedy."
-msgstr ""
-"在这种情况下，将域 **增大** 到 ``FM128`` 可能是唯一的补救措施。"
+#: ../../development/fxp.ipynb:390002
+#, fuzzy
+msgid "In this situation, **enlarging** field to `FM128` may be the only remedy."
+msgstr "在这种情况下，将域 **增大** 到 ``FM128`` 可能是唯一的补救措施。"
 
-#: ../../development/fxp.ipynb:943
+#: ../../development/fxp.ipynb:420002
 msgid "Now, we try larger fxp."
 msgstr "现在，我们尝试更大的定点数小数位数。"
 
-#: ../../development/fxp.ipynb:1012
+#: ../../development/fxp.ipynb:450002
 msgid ""
 "As we have mentioned at **reciprocal** part, SPU implements reciprocal "
 "with Goldschmidt's method, so the final precision depends heavily on the "
 "**iter numbers**."
-msgstr ""
-"正如我们在 **倒数** 部分所提到的，SPU 使用戈德施密特方法来实现倒数，"
-因此最终的精度在很大程度上依赖于 **迭代次数**。"
+msgstr "正如我们在 **倒数** 部分所提到的，SPU 使用戈德施密特方法来实现倒数，"
 
-#: ../../development/fxp.ipynb:1014
+#: ../../development/fxp.ipynb:450004
+#, fuzzy, python-brace-format
 msgid ""
-"We first go through the algorithm quickly. let :math:`r_i` denote the "
-"approximation of reciprocal, :math:`e_i` be the relative error, then in "
-"one iter:"
-msgstr ""
-"我们首先快速过一遍算法。令 :math:`r_i` 表示倒数的近似值，:math:`e_i` 表示相对误差，"
-"那么在一次迭代中："
+"We first go through the algorithm quickly. let $r_i$ denote the "
+"approximation of reciprocal, $e_i$ be the relative error, then in one "
+"iter: $$ r_i = r_{i-1}(1+e_i) \\\\     e_{i+1} = e_i^2 $$"
+msgstr "我们首先快速过一遍算法。令 :math:`r_i` 表示倒数的近似值，:math:`e_i` 表示相对误差，那么在一次迭代中："
 
-#: ../../development/fxp.ipynb:1016
-#, python-brace-format
-msgid ""
-"r_i = r_{i-1}(1+e_i) \\\\\n"
-"   e_{i+1} = e_i^2"
-msgstr ""
-
-#: ../../development/fxp.ipynb:1021
+#: ../../development/fxp.ipynb:450009
 msgid "It's easy to prove that:"
 msgstr "很容易证明："
 
-#: ../../development/fxp.ipynb:1023
+#: ../../development/fxp.ipynb:450011
+#, fuzzy
 msgid ""
-"To compute ``Div(a, b)``, if we need :math:`|\\frac{a}{b} - r_i| \\le "
-"2^{-l}`, then :math:`\\lceil {log(\\frac{l +log(a)}{\\tau})} \\rceil` "
-"iterations should be done(we assume :math:`|\\frac{1}{b} - r_0| \\le "
-"2^{-\\tau}`).In current implementation, we choose polynomial of degree 1 "
-"as the initial guess of reciprocal, which leads to :math:`\\tau \\approx "
-"3.5`."
+"To compute `Div(a, b)`, if we need $|\\frac{a}{b} - r_i| \\le 2^{-l}$, "
+"then $\\lceil {log(\\frac{l +log(a)}{\\tau})} \\rceil$ iterations should "
+"be done(we assume $|\\frac{1}{b} - r_0| \\le 2^{-\\tau}$).In current "
+"implementation, we choose polynomial of degree 1 as the initial guess of "
+"reciprocal, which leads to $\\tau \\approx 3.5$."
 msgstr ""
 "为了计算 ``Div(a, b)``，如果我们需要满足 :math:`|\\frac{a}{b} - r_i| \\le "
-"2^{-l}`，那么需要进行 :math:`\\lceil {log(\\frac{l +log(a)}{\\tau})} \\rceil`"
-" 次迭代（这里我们假设 :math:`|\\frac{1}{b} - r_0| \\le 2^{-\\tau}`）。"
-"在当前的实现中，我们选择一次多项式作为倒数的初始猜测值，这导致了 :math:`\\tau \\approx "
-"3.5`。"
+"2^{-l}`，那么需要进行 :math:`\\lceil {log(\\frac{l +log(a)}{\\tau})} \\rceil` "
+"次迭代（这里我们假设 :math:`|\\frac{1}{b} - r_0| \\le "
+"2^{-\\tau}`）。在当前的实现中，我们选择一次多项式作为倒数的初始猜测值，这导致了 :math:`\\tau \\approx 3.5`。"
 
-#: ../../development/fxp.ipynb:1025
-#, python-brace-format
-msgid "The relative error :math:`e_i = e_0^{2^i}`\\ (same as ``Div(a,b)``)."
+#: ../../development/fxp.ipynb:450013
+#, fuzzy, python-brace-format
+msgid "The relative error $e_i = e_0^{2^i}$(same as `Div(a,b)`)."
 msgstr "相对误差 :math:`e_i = e_0^{2^i}`\\（与 ``Div(a,b)`` 的相同）。"
 
-#: ../../development/fxp.ipynb:1027
+#: ../../development/fxp.ipynb:450015
+#, fuzzy
 msgid ""
 "Although some other factors like fxp and truncation will also bring into "
 "some errors, the above error analysis can still give readers some "
-"recommendations when deciding ``fxp_div_goldschmidt_iters``."
+"recommendations when deciding `fxp_div_goldschmidt_iters`."
 msgstr ""
-"尽管其他一些因素，如定点数位数和截断，也会引入一些误差，但以上的误差分析仍然能为"
-"读者在决定 ``fxp_div_goldschmidt_iters`` 的值时提供一些建议。"
+"尽管其他一些因素，如定点数位数和截断，也会引入一些误差，但以上的误差分析仍然能为读者在决定 "
+"``fxp_div_goldschmidt_iters`` 的值时提供一些建议。"
+
+#~ msgid ""
+#~ "r_i = r_{i-1}(1+e_i) \\\\\n"
+#~ "   e_{i+1} = e_i^2"
+#~ msgstr ""
+
