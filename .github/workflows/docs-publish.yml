@@ -19,6 +19,13 @@ on:
       - main
     tags:
       - "*"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Run in dry-run mode"
+        required: false
+        default: "true"
+        type: boolean
 
 jobs:
   check-docs:
@@ -31,12 +38,11 @@ jobs:
           node-version: "22"
       - name: Install uv
         uses: astral-sh/setup-uv@v7
-      - uses: actions/setup-python@v6
         with:
-          python-version: "3.10"
+          python-version: "3.11"
       - name: publish docs
         run: |
-          uv venv
+          uv venv --python=3.11
           source .venv/bin/activate
           uv pip install spu --prerelease=allow
           uv pip install -r docs/requirements.txt
@@ -45,5 +51,5 @@ jobs:
             --name @secretflow/x-spu \
             --index-js docs/_build/esm/index.js
         env:
-          DRY_RUN: "0" # omit in test runs
+          DRY_RUN: ${{ github.event_name == 'push' && '0' || (github.event.inputs.dry_run == 'false' && '0' || '1') }}
           DOCTOOLS_PUBLISH_NPM_TOKEN: ${{secrets.DOCTOOLS_PUBLISH_NPM_TOKEN}}
