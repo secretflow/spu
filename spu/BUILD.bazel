@@ -37,8 +37,8 @@ pybind_extension(
     }),
     deps = [
         ":exported_symbols.lds",
-        ":pychannel",
         ":pybind_caster",
+        ":pychannel",
         ":version_script.lds",
         "@spulib//libspu:version",
         "@spulib//libspu/compiler:compile",
