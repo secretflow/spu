@@ -16,9 +16,6 @@ import spu.libspu.link as link
 import spu.libspu as spu
 from typing import Dict
 
-print(dir(link))
-print(spu.__file__)
-
 
 class SimpleChannel(link.IChannel):
     """Simple point-to-point channel implementation"""
