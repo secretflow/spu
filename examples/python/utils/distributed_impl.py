@@ -547,7 +547,30 @@ def builtin_spu_init(
     desc.http_max_payload_size = 32 * 1024 * 1024  # Default set link payload to 32M
     for rank, addr in enumerate(addrs):
         desc.add_party(f"r{rank}", addr)
-    link = libspu.link.create_brpc(desc, my_rank)
+
+    # create link context
+    # Check environment variable to determine which method to use
+    link_method = os.environ.get("SPU_LINK_METHOD", "brpc").lower()
+
+    if link_method == "brpc":
+        logger.info(f"Creating link context using create_brpc method")
+        # Use the original brpc method
+        link = libspu.link.create_brpc(desc, my_rank)
+    else:
+        logger.info(f"Creating link context using HttpChannel method")
+        # Use HttpChannel method (current default)
+        from examples.python.advanced.http_channel import HttpChannel
+
+        channels = []
+        for rank in range(len(addrs)):
+            if rank == my_rank:
+                channels.append(None)
+            else:
+                channel = HttpChannel(my_rank, rank, 11450)
+                channels.append(channel)
+
+        link = libspu.link.create_with_channels(desc, my_rank, channels)
+
     spu_config = libspu.RuntimeConfig()
     spu_config.ParseFromString(spu_config_str)
     if my_rank != 0:
