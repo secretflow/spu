@@ -47,16 +47,18 @@
 #include "libspu/spu.h"
 #include "libspu/version.h"
 
-// Add missing includes for brpc and fmt
-#include "butil/macros.h"
-#include "fmt/format.h"
-#include "gflags/gflags.h"
-
 #ifdef CHECK_AVX
 #include "cpu_features/cpuinfo_x86.h"
 #endif
 
 namespace py = pybind11;
+
+namespace brpc {
+
+DECLARE_uint64(max_body_size);
+DECLARE_int64(socket_max_unwritten_bytes);
+
+}  // namespace brpc
 
 namespace spu {
 
@@ -343,6 +345,10 @@ void BindLink(py::module& m) {
       [](const ContextDesc& desc, size_t self_rank,
          bool log_details) -> std::shared_ptr<Context> {
         py::gil_scoped_release release;
+
+        brpc::FLAGS_max_body_size = std::numeric_limits<uint64_t>::max();
+        brpc::FLAGS_socket_max_unwritten_bytes =
+            std::numeric_limits<int64_t>::max() / 2;
 
         auto ctx = yacl::link::FactoryBrpc().CreateContext(desc, self_rank);
         ctx->ConnectToMesh(log_details ? spdlog::level::info
