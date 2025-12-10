@@ -39,6 +39,7 @@ from typing import List, Optional
 
 class Colors:
     """ANSI color codes for terminal output"""
+
     RED = '\033[0;31m'
     GREEN = '\033[0;32m'
     YELLOW = '\033[1;33m'
@@ -74,7 +75,7 @@ class HttpChannelTestRunner:
         http_port: int = 11450,
         config_file: str = "examples/python/conf/3pc.json",
         example_program: str = "examples/python/millionaire.py",
-        cleanup_on_exit: bool = True
+        cleanup_on_exit: bool = True,
     ):
         self.http_port = http_port
         self.config_file = config_file
@@ -109,6 +110,7 @@ class HttpChannelTestRunner:
     def _is_port_available(self, port: int) -> bool:
         """Check if a port is available"""
         import socket
+
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             try:
                 s.bind(('localhost', port))
@@ -121,7 +123,9 @@ class HttpChannelTestRunner:
         for i in range(timeout):
             if self._is_port_available(port):
                 return True
-            self.printer.print_info(f"Waiting for port {port} to be available... ({i}/{timeout})")
+            self.printer.print_info(
+                f"Waiting for port {port} to be available... ({i}/{timeout})"
+            )
             time.sleep(1)
         return False
 
@@ -157,7 +161,9 @@ class HttpChannelTestRunner:
 
         # Kill HTTP server
         if self.http_server_process:
-            self.printer.print_info(f"Stopping HTTP server (PID: {self.http_server_process.pid})")
+            self.printer.print_info(
+                f"Stopping HTTP server (PID: {self.http_server_process.pid})"
+            )
             self.http_server_process.terminate()
             try:
                 self.http_server_process.wait(timeout=5)
@@ -185,8 +191,11 @@ class HttpChannelTestRunner:
         # Additional cleanup: find and kill any remaining related processes
         try:
             # Find any remaining python processes that might be related to our test
-            result = subprocess.run(['pgrep', '-f', 'http_server.py|nodectl.py'],
-                                  capture_output=True, text=True)
+            result = subprocess.run(
+                ['pgrep', '-f', 'http_server.py|nodectl.py'],
+                capture_output=True,
+                text=True,
+            )
             if result.stdout.strip():
                 pids = result.stdout.strip().split('\n')
                 for pid in pids:
@@ -204,7 +213,9 @@ class HttpChannelTestRunner:
 
     def start_http_server(self) -> bool:
         """Start the HTTP server for HttpChannel"""
-        self.printer.print_info(f"Step 1: Starting HTTP server on port {self.http_port}")
+        self.printer.print_info(
+            f"Step 1: Starting HTTP server on port {self.http_port}"
+        )
 
         if not self._check_file_exists("examples/python/advanced/http_server.py"):
             return False
@@ -216,13 +227,19 @@ class HttpChannelTestRunner:
 
         # Start HTTP server
         try:
-            self.http_server_process = subprocess.Popen([
-                sys.executable,
-                "examples/python/advanced/http_server.py",
-                "--port", str(self.http_port)
-            ], preexec_fn=os.setsid)  # Create new session/process group
+            self.http_server_process = subprocess.Popen(
+                [
+                    sys.executable,
+                    "examples/python/advanced/http_server.py",
+                    "--port",
+                    str(self.http_port),
+                ],
+                preexec_fn=os.setsid,
+            )  # Create new session/process group
             self.process_group_pids.append(os.getpgid(self.http_server_process.pid))
-            self.printer.print_info(f"HTTP server started (PID: {self.http_server_process.pid}, PGID: {os.getpgid(self.http_server_process.pid)})")
+            self.printer.print_info(
+                f"HTTP server started (PID: {self.http_server_process.pid}, PGID: {os.getpgid(self.http_server_process.pid)})"
+            )
         except Exception as e:
             self.printer.print_error(f"Failed to start HTTP server: {e}")
             return False
@@ -245,15 +262,16 @@ class HttpChannelTestRunner:
             return False
 
         try:
-            process = subprocess.Popen([
-                sys.executable,
-                "examples/python/utils/nodectl.py",
-                "up"
-            ], preexec_fn=os.setsid)  # Create new session/process group
+            process = subprocess.Popen(
+                [sys.executable, "examples/python/utils/nodectl.py", "up"],
+                preexec_fn=os.setsid,
+            )  # Create new session/process group
             self.node_processes.append(process)
             pgid = os.getpgid(process.pid)
             self.process_group_pids.append(pgid)
-            self.printer.print_info(f"Node services started (PID: {process.pid}, PGID: {pgid})")
+            self.printer.print_info(
+                f"Node services started (PID: {process.pid}, PGID: {pgid})"
+            )
         except Exception as e:
             self.printer.print_error(f"Failed to start node services: {e}")
             return False
@@ -278,10 +296,9 @@ class HttpChannelTestRunner:
             self.printer.print_info(f"Running: python {self.example_program}")
             print("=" * 40)
 
-            result = subprocess.run([
-                sys.executable,
-                self.example_program
-            ], env=env, cwd=os.getcwd())
+            result = subprocess.run(
+                [sys.executable, self.example_program], env=env, cwd=os.getcwd()
+            )
 
             print("=" * 40)
 
@@ -289,7 +306,9 @@ class HttpChannelTestRunner:
                 self.printer.print_success("Example program completed successfully")
                 return True
             else:
-                self.printer.print_error(f"Example program failed with return code: {result.returncode}")
+                self.printer.print_error(
+                    f"Example program failed with return code: {result.returncode}"
+                )
                 return False
 
         except Exception as e:
@@ -321,9 +340,13 @@ class HttpChannelTestRunner:
             # Cleanup will be called automatically by atexit
             time.sleep(2)  # Give user time to see the success message
         else:
-            self.printer.print_warning("Cleanup disabled. Processes will continue running.")
+            self.printer.print_warning(
+                "Cleanup disabled. Processes will continue running."
+            )
             self.printer.print_info("Manually clean up processes using:")
-            self.printer.print_info(f"  pkill -f 'http_server.py --port {self.http_port}'")
+            self.printer.print_info(
+                f"  pkill -f 'http_server.py --port {self.http_port}'"
+            )
             self.printer.print_info("  pkill -f 'nodectl.py up'")
 
         return True
@@ -346,29 +369,27 @@ Environment variables:
   CONFIG_FILE        Config file for nodes (default: examples/python/conf/3pc.json)
   EXAMPLE_PROGRAM    Example program to run (default: examples/python/millionaire.py)
   CLEANUP_ON_EXIT    Cleanup processes on exit (default: true)
-        """
+        """,
     )
 
     parser.add_argument(
         "--port",
         type=int,
         default=int(os.environ.get("HTTP_PORT", 11450)),
-        help="HTTP server port (default: 11450)"
+        help="HTTP server port (default: 11450)",
     )
     parser.add_argument(
         "--config",
         default=os.environ.get("CONFIG_FILE", "examples/python/conf/3pc.json"),
-        help="Config file for nodes (default: examples/python/conf/3pc.json)"
+        help="Config file for nodes (default: examples/python/conf/3pc.json)",
     )
     parser.add_argument(
         "--example",
         default=os.environ.get("EXAMPLE_PROGRAM", "examples/python/millionaire.py"),
-        help="Example program to run (default: examples/python/millionaire.py)"
+        help="Example program to run (default: examples/python/millionaire.py)",
     )
     parser.add_argument(
-        "--no-cleanup",
-        action="store_true",
-        help="Don't cleanup processes on exit"
+        "--no-cleanup", action="store_true", help="Don't cleanup processes on exit"
     )
 
     args = parser.parse_args()
@@ -378,7 +399,7 @@ Environment variables:
         http_port=args.port,
         config_file=args.config,
         example_program=args.example,
-        cleanup_on_exit=not args.no_cleanup
+        cleanup_on_exit=not args.no_cleanup,
     )
 
     success = runner.run()

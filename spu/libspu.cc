@@ -110,13 +110,6 @@ py::array_t<T> BufferToTypedArray(yacl::Buffer buffer) {
       capsule);  // capsule to manage lifetime
 }
 
-// Specialization for uint8_t (most common case)
-template <>
-py::array_t<uint8_t> BufferToTypedArray<uint8_t>(yacl::Buffer buffer) {
-  return BufferToArray(
-      std::move(buffer));  // Use the existing zero-copy implementation
-}
-
 #define NO_GIL py::call_guard<py::gil_scoped_release>()
 
 void BindLink(py::module& m) {
@@ -350,19 +343,6 @@ void BindLink(py::module& m) {
       [](const ContextDesc& desc, size_t self_rank,
          bool log_details) -> std::shared_ptr<Context> {
         py::gil_scoped_release release;
-        // Use gflags to set the flags properly
-        if (google::CommandLineFlagInfo info;
-            google::GetCommandLineFlagInfo("max_body_size", &info)) {
-          google::SetCommandLineOption(
-              "max_body_size",
-              std::to_string(std::numeric_limits<uint64_t>::max()).c_str());
-        }
-        if (google::CommandLineFlagInfo info; google::GetCommandLineFlagInfo(
-                "socket_max_unwritten_bytes", &info)) {
-          google::SetCommandLineOption(
-              "socket_max_unwritten_bytes",
-              std::to_string(std::numeric_limits<int64_t>::max() / 2).c_str());
-        }
 
         auto ctx = yacl::link::FactoryBrpc().CreateContext(desc, self_rank);
         ctx->ConnectToMesh(log_details ? spdlog::level::info
