@@ -12,74 +12,53 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""drop_cached_var intrinsic: releases cached Beaver triples for a variable."""
+
 __all__ = ["drop_cached_var"]
 
-from functools import partial
-
-from jax._src.interpreters.mlir import custom_call
-from jax.core import ShapedArray
-from jax.extend import core
-from jax.interpreters import ad, batching, xla
-from jax.interpreters.mlir import ir, register_lowering
+import jax
+import jax.numpy as jnp
 
 
-# Public facing interface
 def drop_cached_var(input, *dependencies):
-    # Add necessary preprocessing code
-    return _drop_cached_var_prim.bind(input, *dependencies)
+    """Release cached Beaver triples. Dependencies ensure execution order."""
+    return _drop_cached_var_call(input, *dependencies)
 
 
-# *********************************
-# *  SUPPORT FOR JIT COMPILATION  *
-# *********************************
+# Use custom_jvp (outer) + custom_vjp (inner) to support both AD modes
+@jax.custom_jvp
+@jax.custom_vjp
+def _drop_cached_var_call(input, *dependencies):
+    """Wrapped call with custom autodiff rules."""
+    return _drop_cached_var_impl(input, *dependencies)
 
 
-# For JIT compilation we need a function to evaluate the shape and dtype of the
-# outputs of our op for some given inputs
-def _drop_cached_var_abstract(input, *dependencies):
-    return ShapedArray(input.shape, input.dtype)
+@_drop_cached_var_call.defjvp
+def _drop_cached_var_jvp(primals, tangents):
+    """Forward-mode AD: only input tangent matters, deps are for ordering."""
+    input, *deps = primals
+    input_dot, *_ = tangents
+    return _drop_cached_var_call(input, *deps), input_dot
 
 
-# We also need a lowering rule to provide an MLIR "lowering" of out primitive.
-def _drop_cached_var_lowering(ctx, input, *dependencies):
-    # The inputs and outputs all have the same shape and memory layout
-    # so let's predefine this specification
-    dtype = ir.RankedTensorType(input.type)
-
-    return custom_call(
+def _drop_cached_var_impl(input, *dependencies):
+    """FFI call to SPU runtime."""
+    return jax.ffi.ffi_call(
         "spu.drop_cached_var",
-        # Output types
-        result_types=[dtype],
-        # The inputs:
-        operands=[input, *dependencies],
+        jax.ShapeDtypeStruct(input.shape, input.dtype),  # output spec
         has_side_effect=True,
-    ).results
+        vmap_method="broadcast_all",  # batch dims pass through
+    )(input, *dependencies)
 
 
-# *********************************************
-# *  BOILERPLATE TO REGISTER THE OP WITH JAX  *
-# *********************************************
-_drop_cached_var_prim = core.Primitive("drop_cached_var")
-# Change this to True if there are more than 1 output
-_drop_cached_var_prim.multiple_results = False
-_drop_cached_var_prim.def_impl(partial(xla.apply_primitive, _drop_cached_var_prim))
-_drop_cached_var_prim.def_abstract_eval(_drop_cached_var_abstract)
-
-register_lowering(_drop_cached_var_prim, _drop_cached_var_lowering)
+def _drop_cached_var_fwd(input, *dependencies):
+    """VJP forward: save dependencies for backward shape info."""
+    return _drop_cached_var_call(input, *dependencies), dependencies
 
 
-def _drop_cached_var_transpose(ct, input, *dependencies):
-    return [ct] * (len(dependencies) + 1)
+def _drop_cached_var_bwd(dependencies, g):
+    """VJP backward: gradient to input, zeros to dependencies."""
+    return (g,) + tuple(jnp.zeros_like(d) for d in dependencies)
 
 
-# Connect the JVP and batching rules
-ad.primitive_jvps[_drop_cached_var_prim] = partial(ad.linear_jvp, _drop_cached_var_prim)
-ad.primitive_transposes[_drop_cached_var_prim] = _drop_cached_var_transpose
-
-
-def _drop_cached_var_batch(args, axes):
-    res = _drop_cached_var_prim(*args)
-    return res, axes[0]
-
-
-batching.primitive_batchers[_drop_cached_var_prim] = _drop_cached_var_batch
+_drop_cached_var_call.defvjp(_drop_cached_var_fwd, _drop_cached_var_bwd)

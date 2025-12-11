@@ -12,32 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""reveal intrinsic: converts secret MPC values to public (all parties see plaintext)."""
+
 __all__ = ["reveal"]
 
-from functools import partial
-
-import numpy as np
-from jax._src.interpreters.mlir import custom_call
+import jax
 from jax.core import ShapedArray
 from jax.extend import core
-from jax.interpreters import ad, batching, xla
-from jax.interpreters.mlir import ir, register_lowering
+from jax.interpreters import ad, batching
+from jax.interpreters.mlir import register_lowering
 
 
-# Public facing interface
-def reveal(input: np.ndarray) -> np.ndarray:
+def reveal(input):
+    """Reveal secret value to all parties. WARNING: breaks MPC confidentiality."""
     return _reveal_prim.bind(input)
 
 
-# For JIT compilation we need a function to evaluate the shape and dtype of the
-# outputs of our op for some given inputs
 def _reveal_abstract(input):
+    """Output shape/dtype same as input."""
     return ShapedArray(input.shape, input.dtype)
 
 
-# We also need a lowering rule to provide an MLIR "lowering" of out primitive.
 def _reveal_lowering(ctx, input):
-    # Check current platform
+    """MLIR lowering: SPU uses FFI custom_call, CPU returns identity."""
+    # Detect platform from MLIR context
     platform = (
         ctx.module_context.platforms[0]
         if hasattr(ctx, 'module_context') and hasattr(ctx.module_context, 'platforms')
@@ -45,48 +43,41 @@ def _reveal_lowering(ctx, input):
     )
 
     if platform == "interpreter":
-        # For SPU, use custom_call
-        dtype = ir.RankedTensorType(input.type)
-
-        call = custom_call(
+        # SPU backend: generate FFI custom_call op
+        return jax.ffi.ffi_lowering(
             "spu.reveal",
-            # Output types
-            result_types=[dtype],
-            # The inputs:
-            operands=[input],
+            operand_layouts=None,
+            result_layouts=None,
             has_side_effect=True,
-        )
-
-        return call.results
+        )(ctx, input)
     else:
+        # CPU fallback: identity (no secret values on CPU)
         return [input]
 
 
-# *********************************************
-# *  BOILERPLATE TO REGISTER THE OP WITH JAX  *
-# *********************************************
+# Register primitive
 _reveal_prim = core.Primitive("reveal")
 _reveal_prim.multiple_results = False
-_reveal_prim.def_impl(partial(xla.apply_primitive, _reveal_prim))
 _reveal_prim.def_abstract_eval(_reveal_abstract)
-
-# Register MLIR lowering
+_reveal_prim.def_impl(lambda input: input)  # CPU impl: identity
 register_lowering(_reveal_prim, _reveal_lowering)
 
 
-def _make_reveal_transpose(ct, input):
-    return [ct]
+# Autodiff: identity-like, gradients pass through
+def _reveal_jvp(primals, tangents):
+    (input,) = primals
+    (tangent,) = tangents
+    out = reveal(input)
+    if type(tangent) is ad.Zero:
+        return out, ad.Zero.from_primal_value(out)
+    return out, reveal(tangent)
 
 
-# Connect the JVP and batching rules
-ad.primitive_jvps[_reveal_prim] = partial(ad.linear_jvp, _reveal_prim)
-ad.primitive_transposes[_reveal_prim] = _make_reveal_transpose
+ad.primitive_jvps[_reveal_prim] = _reveal_jvp
+ad.primitive_transposes[_reveal_prim] = lambda ct, input: [ct]
 
-
-def _reveal_batch(batched_args, batch_dims):
-    (x,) = batched_args
-    (bd,) = batch_dims
-    return reveal(x), bd
-
-
-batching.primitive_batchers[_reveal_prim] = _reveal_batch
+# Batching: apply reveal to batched input
+batching.primitive_batchers[_reveal_prim] = lambda args, dims: (
+    reveal(args[0]),
+    dims[0],
+)

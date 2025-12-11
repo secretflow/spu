@@ -1,81 +1,159 @@
+"""
+SPU Custom Intrinsic Template using JAX FFI API.
+
+This template provides the boilerplate code for implementing a custom SPU
+intrinsic. Replace {%NAME} with your intrinsic name and customize the
+implementation as needed.
+
+Usage:
+    1. Copy this template and replace {%NAME} with your intrinsic name
+    2. Implement the C++ handler in pphlo_intrinsic_executor.cc
+    3. Customize the JVP/VJP rules based on your operation's semantics
+
+See example_impl.py for a detailed example with extensive comments.
+"""
+
 __all__ = ["{%NAME}"]
 
-from functools import partial
-
-from jax import dtypes
-from jax._src.interpreters.mlir import custom_call
-from jax.core import ShapedArray
-from jax.extend import core
-from jax.interpreters import ad, batching, xla
-from jax.interpreters.mlir import ir, register_lowering
+import jax
+import jax.numpy as jnp
 
 
-# Public facing interface
+# *********************************
+# *  PUBLIC FACING INTERFACE      *
+# *********************************
+
+
 def {%NAME}(input):
-    # Add necessary preprocessing code
-    return _{%NAME}_prim.bind(input)
+    """
+    Public interface for the {%NAME} intrinsic.
+
+    Args:
+        input: Input array.
+
+    Returns:
+        Result of the intrinsic operation.
+    """
+    return _{%NAME}_call(input)
 
 
 # *********************************
-# *  SUPPORT FOR JIT COMPILATION  *
+# *  CORE IMPLEMENTATION          *
 # *********************************
 
 
-# For JIT compilation we need a function to evaluate the shape and dtype of the
-# outputs of our op for some given inputs
-def _{%NAME}_abstract(input):
-    shape = input.shape
-    dtype = dtypes.canonicalize_dtype(input.dtype)
-    return ShapedArray(shape, dtype)
+@jax.custom_jvp
+@jax.custom_vjp
+def _{%NAME}_call(input):
+    """
+    Internal implementation with custom differentiation support.
+
+    The @jax.custom_jvp and @jax.custom_vjp decorators enable custom
+    autodiff rules. Order matters: custom_jvp must be outermost.
+    """
+    return _{%NAME}_impl(input)
 
 
-# We also need a lowering rule to provide an MLIR "lowering" of out primitive.
-def _{%NAME}_lowering(ctx, input):
-    # The inputs and outputs all have the same shape and memory layout
-    # so let's predefine this specification
-    dtype = ir.RankedTensorType(input.type)
+def _{%NAME}_impl(input):
+    """
+    Low-level FFI call implementation.
 
-    return custom_call(
-        "{%NAME}",
-        # Output types
-        out_types=[dtype],
-        # The inputs:
-        operands=[input],
-    )
+    Uses jax.ffi.ffi_call to generate an XLA custom_call operation
+    that will be intercepted by SPU runtime.
+
+    Args:
+        input: Input array.
+
+    Returns:
+        Result from FFI call.
+
+    Notes:
+        - vmap_method options:
+          * "broadcast_all": Pass batch dims through (for shape-agnostic ops)
+          * "sequential": Loop over batch dimension (safer but slower)
+    """
+    return jax.ffi.ffi_call(
+        "{%NAME}",  # Target name - must match C++ handler
+        jax.ShapeDtypeStruct(input.shape, input.dtype),
+        has_side_effect=True,
+        # Use "broadcast_all" for shape-agnostic ops,
+        # "sequential" for operations with complex shape dependencies
+        vmap_method="broadcast_all",
+    )(input)
 
 
 # **********************************
 # *  SUPPORT FOR FORWARD AUTODIFF  *
 # **********************************
 
-
-def _{%NAME}_jvp(args, tangents):
-    raise NotImplementedError()
-
-
-# ************************************
-# *  SUPPORT FOR BATCHING WITH VMAP  *
-# ************************************
+# Customize this based on your operation's mathematical definition.
+# The JVP rule defines: d(f(x))/dx * dx_dot
 
 
-# Our op already supports arbitrary dimensions so the batching rule is quite
-# simple. The jax.lax.linalg module includes some example of more complicated
-# batching rules if you need such a thing.
-def _{%NAME}_batch(args, axes):
-    raise NotImplementedError()
+@_{%NAME}_call.defjvp
+def _{%NAME}_jvp(primals, tangents):
+    """
+    Forward-mode autodiff (JVP) rule.
+
+    Args:
+        primals: Tuple of primal input values.
+        tangents: Tuple of tangent values.
+
+    Returns:
+        Tuple of (primal_output, tangent_output).
+    """
+    (input,) = primals
+    (input_dot,) = tangents
+    output = _{%NAME}_call(input)
+    # TODO: Customize this based on your operation's derivative
+    # Example for identity: output_dot = input_dot
+    # Example for constant: output_dot = zeros_like(output)
+    output_dot = input_dot  # Placeholder - customize as needed
+    return output, output_dot
 
 
-# *********************************************
-# *  BOILERPLATE TO REGISTER THE OP WITH JAX  *
-# *********************************************
-_{%NAME}_prim = core.Primitive("{%NAME}")
-# Change this to True if there are more than 1 output
-_{%NAME}_prim.multiple_results = False
-_{%NAME}_prim.def_impl(partial(xla.apply_primitive, _{%NAME}_prim))
-_{%NAME}_prim.def_abstract_eval(_{%NAME}_abstract)
+# **********************************
+# *  SUPPORT FOR REVERSE AUTODIFF  *
+# **********************************
 
-register_lowering(_{%NAME}_prim, _{%NAME}_lowering)
+# Customize this based on your operation's mathematical definition.
+# The VJP rule propagates gradients backward.
 
-# Connect the JVP and batching rules
-ad.primitive_jvps[_{%NAME}_prim] = _{%NAME}_jvp
-batching.primitive_batchers[_{%NAME}_prim] = _{%NAME}_batch
+
+def _{%NAME}_fwd(input):
+    """
+    Forward pass for VJP - computes output and saves residuals.
+
+    Args:
+        input: Input array.
+
+    Returns:
+        Tuple of (output, residuals).
+    """
+    output = _{%NAME}_call(input)
+    # Save values needed for backward pass
+    residuals = (input,)  # Customize based on what backward needs
+    return output, residuals
+
+
+def _{%NAME}_bwd(residuals, grad_output):
+    """
+    Backward pass for VJP - computes input gradients.
+
+    Args:
+        residuals: Values saved from forward pass.
+        grad_output: Gradient of loss with respect to output.
+
+    Returns:
+        Tuple of gradients with respect to inputs.
+    """
+    (input,) = residuals
+    # TODO: Customize this based on your operation's derivative
+    # Example for identity: grad_input = grad_output
+    # Example for constant: grad_input = zeros_like(input)
+    grad_input = grad_output  # Placeholder - customize as needed
+    return (grad_input,)
+
+
+# Register VJP rule
+_{%NAME}_call.defvjp(_{%NAME}_fwd, _{%NAME}_bwd)
