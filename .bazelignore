@@ -1,2 +1,5 @@
 # ignore spulib module
 src/
+
+# ignore Python virtual environment
+.venv/
