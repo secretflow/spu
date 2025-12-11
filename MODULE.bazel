@@ -25,7 +25,7 @@ Secure Processing Unit
 
 module(
     name = "spu",
-    version = "0.10.0.dev20251208",
+    version = "0.10.0.dev20251211",
     compatibility_level = 1,
 )
 
