@@ -461,6 +461,78 @@ TEST_P(SimpleSortTest, MixVisibilityKey) {
       });
 }
 
+TEST_P(SimpleSortTest, SingleOperands) {
+  size_t npc = std::get<0>(GetParam());
+  FieldType field = std::get<1>(GetParam());
+  ProtocolKind prot = std::get<2>(GetParam());
+  RuntimeConfig::SortMethod method = std::get<3>(GetParam());
+
+  mpc::utils::simulate(
+      npc, [&](const std::shared_ptr<yacl::link::Context> &lctx) {
+        RuntimeConfig cfg;
+        cfg.protocol = prot;
+        cfg.field = field;
+        cfg.enable_action_trace = false;
+        cfg.sort_method = method;
+
+        SPUContext ctx = test::makeSPUContext(cfg, lctx);
+
+        xt::xarray<bool> k1 = {true, false, true};
+
+        xt::xarray<bool> sorted_k1 = {false, true, true};
+
+        Value k1_v = test::makeValue(&ctx, k1, VIS_SECRET);
+
+        std::vector<spu::Value> rets =
+            SimpleSort(&ctx, {k1_v}, 0, hal::SortDirection::Ascending, 1);
+
+        EXPECT_EQ(rets.size(), 1);
+
+        auto sorted_k1_hat =
+            hal::dump_public_as<bool>(&ctx, hal::reveal(&ctx, rets[0]));
+
+        EXPECT_TRUE(xt::allclose(sorted_k1, sorted_k1_hat, 0.01, 0.001))
+            << sorted_k1 << std::endl
+            << sorted_k1_hat << std::endl;
+      });
+}
+
+TEST_P(SimpleSortTest, SingleOperandsDescending) {
+  size_t npc = std::get<0>(GetParam());
+  FieldType field = std::get<1>(GetParam());
+  ProtocolKind prot = std::get<2>(GetParam());
+  RuntimeConfig::SortMethod method = std::get<3>(GetParam());
+
+  mpc::utils::simulate(
+      npc, [&](const std::shared_ptr<yacl::link::Context> &lctx) {
+        RuntimeConfig cfg;
+        cfg.protocol = prot;
+        cfg.field = field;
+        cfg.enable_action_trace = false;
+        cfg.sort_method = method;
+
+        SPUContext ctx = test::makeSPUContext(cfg, lctx);
+
+        xt::xarray<bool> k1 = {true, false, true};
+
+        xt::xarray<bool> sorted_k1 = {true, true, false};
+
+        Value k1_v = test::makeValue(&ctx, k1, VIS_SECRET);
+
+        std::vector<spu::Value> rets =
+            SimpleSort(&ctx, {k1_v}, 0, hal::SortDirection::Descending, 1);
+
+        EXPECT_EQ(rets.size(), 1);
+
+        auto sorted_k1_hat =
+            hal::dump_public_as<bool>(&ctx, hal::reveal(&ctx, rets[0]));
+
+        EXPECT_TRUE(xt::allclose(sorted_k1, sorted_k1_hat, 0.01, 0.001))
+            << sorted_k1 << std::endl
+            << sorted_k1_hat << std::endl;
+      });
+}
+
 INSTANTIATE_TEST_SUITE_P(
     SimpleSort2PCTestInstances, SimpleSortTest,
     testing::Combine(testing::Values(2),
