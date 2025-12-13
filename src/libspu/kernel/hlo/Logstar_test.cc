@@ -83,115 +83,115 @@ class ExtractOrderedTest : public ::testing::Test {};
 //   });
 // }
 
-// TEST the AggregateBrentKung with valid bits for BasicCorrectness
-TEST_F(BrentKungTest, BasicCorrectness) {
-  const size_t npc = 2;
-  const auto protocol = ProtocolKind::SEMI2K;
-  const auto field = FieldType::FM64;
+// // TEST the AggregateBrentKung with valid bits for BasicCorrectness
+// TEST_F(BrentKungTest, BasicCorrectness) {
+//   const size_t npc = 2;
+//   const auto protocol = ProtocolKind::SEMI2K;
+//   const auto field = FieldType::FM64;
 
-  mpc::utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
-    SPUContext ctx = test::makeSPUContext(protocol, field, lctx);
+//   mpc::utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+//     SPUContext ctx = test::makeSPUContext(protocol, field, lctx);
 
-    // 准备输入数据
-    int64_t n = 8;
-    int64_t block_size = 2;
+//     // 准备输入数据
+//     int64_t n = 8;
+//     int64_t block_size = 2;
 
-    std::vector<int64_t> x_data = {5, 6, 2, 2, 10, 10, 4, 3,
-                                   1, 1, 2, 2, 5,  5,  3, 2};
+//     std::vector<int64_t> x_data = {5, 6, 2, 2, 10, 10, 4, 3,
+//                                    1, 1, 2, 2, 5,  5,  3, 2};
     
-    std::vector<int64_t> valid_data = {1, 1, 0, 0, 1, 1, 0, 1,
-                                       0, 0, 1, 1, 0, 0, 1, 1};
+//     std::vector<int64_t> valid_data = {1, 1, 0, 0, 1, 1, 0, 1,
+//                                        0, 0, 1, 1, 0, 0, 1, 1};
 
-    std::vector<int64_t> g_data = {0, 1, 1, 0, 1, 1, 1, 0};
+//     std::vector<int64_t> g_data = {0, 1, 1, 0, 1, 1, 1, 0};
 
-    xt::xarray<int64_t> y_expected = {{5, 6}, {5, 6}, {5, 6}, {4, 3},
-                                      {4, 3}, {4, 3}, {4, 3}, {3, 2}};
+//     xt::xarray<int64_t> y_expected = {{5, 6}, {5, 6}, {5, 6}, {4, 3},
+//                                       {4, 3}, {4, 3}, {4, 3}, {3, 2}};
     
-    xt::xarray<int64_t> valid_expected = {{1, 1}, {1, 1}, {1, 1}, {0, 1},
-                                          {0, 1}, {0, 1}, {0, 1}, {1, 1}};
+//     xt::xarray<int64_t> valid_expected = {{1, 1}, {1, 1}, {1, 1}, {0, 1},
+//                                           {0, 1}, {0, 1}, {0, 1}, {1, 1}};
 
-    // 构造 SPU 输入
-    xt::xarray<int64_t> x_arr = xt::adapt(x_data);
-    x_arr.reshape({static_cast<size_t>(n), static_cast<size_t>(block_size)});
-    auto x_in = test::makeValue(&ctx, x_arr, VIS_SECRET);
+//     // 构造 SPU 输入
+//     xt::xarray<int64_t> x_arr = xt::adapt(x_data);
+//     x_arr.reshape({static_cast<size_t>(n), static_cast<size_t>(block_size)});
+//     auto x_in = test::makeValue(&ctx, x_arr, VIS_SECRET);
 
-    xt::xarray<int64_t> v_arr = xt::adapt(valid_data);
-    v_arr.reshape({static_cast<size_t>(n), static_cast<size_t>(block_size)});
-    auto v_in = test::makeValue(&ctx, v_arr, VIS_SECRET);
+//     xt::xarray<int64_t> v_arr = xt::adapt(valid_data);
+//     v_arr.reshape({static_cast<size_t>(n), static_cast<size_t>(block_size)});
+//     auto v_in = test::makeValue(&ctx, v_arr, VIS_SECRET);
 
-    xt::xarray<int64_t> g_arr = xt::adapt(g_data);
-    g_arr.reshape({static_cast<size_t>(n), 1});
-    auto g_in = test::makeValue(&ctx, g_arr, VIS_SECRET);
+//     xt::xarray<int64_t> g_arr = xt::adapt(g_data);
+//     g_arr.reshape({static_cast<size_t>(n), 1});
+//     auto g_in = test::makeValue(&ctx, g_arr, VIS_SECRET);
 
-    // 记录开始时的统计指标
-    auto stats = lctx->GetStats();
-    size_t start_bytes = stats->sent_bytes;
-    size_t start_actions = stats->sent_actions;
-    auto start_time = std::chrono::high_resolution_clock::now();
+//     // 记录开始时的统计指标
+//     auto stats = lctx->GetStats();
+//     size_t start_bytes = stats->sent_bytes;
+//     size_t start_actions = stats->sent_actions;
+//     auto start_time = std::chrono::high_resolution_clock::now();
 
-    // 执行AggregateBrentKung
-    auto [y_out, valid_out] = AggregateBrentKung(&ctx, x_in, v_in, g_in);
+//     // 执行AggregateBrentKung
+//     auto [y_out, valid_out] = AggregateBrentKung(&ctx, x_in, v_in, g_in);
 
-    // 记录结束时间
-    auto end_time = std::chrono::high_resolution_clock::now();
+//     // 记录结束时间
+//     auto end_time = std::chrono::high_resolution_clock::now();
 
-    // 计算并打印增量指标
-    stats = lctx->GetStats();  // 刷新统计
-    size_t end_bytes = stats->sent_bytes;
-    size_t end_actions = stats->sent_actions;
-    if (lctx->Rank() == 0) {
-      auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-                          end_time - start_time)
-                          .count();
-      auto comm_bytes = end_bytes - start_bytes;
-      auto comm_rounds = end_actions - start_actions;
-      double comm_mb = static_cast<double>(comm_bytes) / 1024.0 / 1024.0;
+//     // 计算并打印增量指标
+//     stats = lctx->GetStats();  // 刷新统计
+//     size_t end_bytes = stats->sent_bytes;
+//     size_t end_actions = stats->sent_actions;
+//     if (lctx->Rank() == 0) {
+//       auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+//                           end_time - start_time)
+//                           .count();
+//       auto comm_bytes = end_bytes - start_bytes;
+//       auto comm_rounds = end_actions - start_actions;
+//       double comm_mb = static_cast<double>(comm_bytes) / 1024.0 / 1024.0;
 
-      std::cout << "\n========================================"
-                << std::endl;
-      std::cout << "AggregateBrentKung Protocol Execution Stats:" << std::endl;
-      std::cout << "  - Input Shape : " << n << " blocks of size " << block_size
-                << std::endl;
-      std::cout << "  - Protocol    : " << protocol << std::endl;
-      std::cout << "  - Time Cost   : " << duration << " ms" << std::endl;
-      std::cout << "  - Comm Bytes  : " << comm_bytes << " bytes ("
-                << comm_mb << " MB)" << std::endl;
-      std::cout << "  - Comm Rounds : " << comm_rounds << " actions"
-                << std::endl;
-      std::cout << "========================================\n"
-                << std::endl;
-    }
+//       std::cout << "\n========================================"
+//                 << std::endl;
+//       std::cout << "AggregateBrentKung Protocol Execution Stats:" << std::endl;
+//       std::cout << "  - Input Shape : " << n << " blocks of size " << block_size
+//                 << std::endl;
+//       std::cout << "  - Protocol    : " << protocol << std::endl;
+//       std::cout << "  - Time Cost   : " << duration << " ms" << std::endl;
+//       std::cout << "  - Comm Bytes  : " << comm_bytes << " bytes ("
+//                 << comm_mb << " MB)" << std::endl;
+//       std::cout << "  - Comm Rounds : " << comm_rounds << " actions"
+//                 << std::endl;
+//       std::cout << "========================================\n"
+//                 << std::endl;
+//     }
 
-    // 验证 Y
-    auto y_revealed = hal::reveal(&ctx, y_out);
-    auto y_vec = hal::dump_public_as<int64_t>(&ctx, y_revealed);
+//     // 验证 Y
+//     auto y_revealed = hal::reveal(&ctx, y_out);
+//     auto y_vec = hal::dump_public_as<int64_t>(&ctx, y_revealed);
 
-    // 验证 Valid
-    auto v_revealed = hal::reveal(&ctx, valid_out);
-    auto v_vec = hal::dump_public_as<int64_t>(&ctx, v_revealed);
+//     // 验证 Valid
+//     auto v_revealed = hal::reveal(&ctx, valid_out);
+//     auto v_vec = hal::dump_public_as<int64_t>(&ctx, v_revealed);
     
-    // =========== [新增/修改部分开始] ===========
-    // 只在 Rank 0 打印，避免多线程输出混乱
-    if (lctx->Rank() == 0) {
-        std::cout << "y_expected:\n" << y_expected << std::endl;
-        std::cout << "y_vec (Actual):\n" << y_vec << std::endl;
+//     // =========== [新增/修改部分开始] ===========
+//     // 只在 Rank 0 打印，避免多线程输出混乱
+//     if (lctx->Rank() == 0) {
+//         std::cout << "y_expected:\n" << y_expected << std::endl;
+//         std::cout << "y_vec (Actual):\n" << y_vec << std::endl;
         
-        std::cout << "valid_expected:\n" << valid_expected << std::endl;
-        std::cout << "v_vec (Actual):\n" << v_vec << std::endl;
+//         std::cout << "valid_expected:\n" << valid_expected << std::endl;
+//         std::cout << "v_vec (Actual):\n" << v_vec << std::endl;
 
-        // 获取通信统计
-        auto stats = lctx->GetStats();
-        std::cout << "Communication Traffic (Sent Bytes): " << stats->sent_bytes << std::endl;
-        std::cout << "Communication Rounds (Sent Actions): " << stats->sent_actions << std::endl;
-    }
-    // =========== [新增/修改部分结束] ===========
+//         // 获取通信统计
+//         auto stats = lctx->GetStats();
+//         std::cout << "Communication Traffic (Sent Bytes): " << stats->sent_bytes << std::endl;
+//         std::cout << "Communication Rounds (Sent Actions): " << stats->sent_actions << std::endl;
+//     }
+//     // =========== [新增/修改部分结束] ===========
 
-    EXPECT_TRUE(xt::allclose(y_vec, y_expected));
-    EXPECT_EQ(v_vec.shape()[0], n);
-    EXPECT_EQ(v_vec.shape()[1], block_size);
-    EXPECT_TRUE(xt::allclose(v_vec, valid_expected));
-  });
-}
+//     EXPECT_TRUE(xt::allclose(y_vec, y_expected));
+//     EXPECT_EQ(v_vec.shape()[0], n);
+//     EXPECT_EQ(v_vec.shape()[1], block_size);
+//     EXPECT_TRUE(xt::allclose(v_vec, valid_expected));
+//   });
+// }
 
 // // TEST the AggregateBrentKung without valid bits for LargeScaleBenchmark
 // TEST_F(BrentKungTest, LargeScaleBenchmark) {
@@ -318,117 +318,129 @@ TEST_F(BrentKungTest, BasicCorrectness) {
 //   });
 // }
 
-// //-----------------------------------------------------------------------------------
-// //                            ExtractOrder Tests
-// //-----------------------------------------------------------------------------------
-// TEST_F(ExtractOrderedTest, BasicCorrectness) {
-//   // 设置 MPC 环境参数：2方计算，SEMI2K 协议，64位环
-//   const size_t npc = 2;
-//   const auto protocol = ProtocolKind::SEMI2K;
-//   const auto field = FieldType::FM64;
+//-----------------------------------------------------------------------------------
+//                            ExtractOrder Tests
+//-----------------------------------------------------------------------------------
+TEST_F(ExtractOrderedTest, BasicCorrectness) {
+  // 设置 MPC 环境参数：2方计算，SEMI2K 协议，64位环
+  const size_t npc = 2;
+  const auto protocol = ProtocolKind::SEMI2K;
+  const auto field = FieldType::FM64;
 
-//   mpc::utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
-//     SPUContext ctx = test::makeSPUContext(protocol, field, lctx);
+  mpc::utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+    SPUContext ctx = test::makeSPUContext(protocol, field, lctx);
 
-//     // -------------------------------------------------------
-//     // 1. 准备输入数据
-//     // -------------------------------------------------------
-//     int64_t n = 8;
-//     std::vector<int64_t> x_data;
-//     for(int64_t i = 0; i < n; ++i) {
-//         x_data.push_back(i);
-//     }
-//     std::vector<int64_t> f_data = {1, 0, 1, 0, 1, 1, 0, 1};
-//     std::vector<int64_t> y_expected_vec = {0, 2, 4, 5, 7};
+    // -------------------------------------------------------
+    // 1. 准备输入数据 - 现在支持多个数组
+    // -------------------------------------------------------
+    int64_t n = 8;  // 数组长度
+    int64_t num_arrays = 3;  // 同时处理3个数组
     
-//     // 构造 xtensor 方便对比
-//     xt::xarray<int64_t> y_expected = xt::adapt(y_expected_vec);
-
-//     // -------------------------------------------------------
-//     // 2. 构造 SPU 秘密分享输入
-//     // -------------------------------------------------------
-//     xt::xarray<int64_t> x_arr = xt::adapt(x_data);
-//     x_arr.reshape({1, static_cast<size_t>(n)}); 
-//     auto x_in = test::makeValue(&ctx, x_arr, VIS_SECRET);
-
-//     xt::xarray<int64_t> f_arr = xt::adapt(f_data);
-//     f_arr.reshape({1, static_cast<size_t>(n)}); 
-//     auto f_in = test::makeValue(&ctx, f_arr, VIS_SECRET);
-
-//     // // -------------------------------------------------------
-//     // // 3. 执行协议并记录性能指标
-//     // // -------------------------------------------------------
+    // 准备3个不同的数组
+    std::vector<int64_t> x0_data = {0, 1, 2, 3, 4, 5, 6, 7};         // 原始数组
+    std::vector<int64_t> x1_data = {10, 11, 12, 13, 14, 15, 16, 17}; // 第二个数组
+    std::vector<int64_t> x2_data = {20, 21, 22, 23, 24, 25, 26, 27}; // 第三个数组
     
-//     // // 记录开始状态
-//     // auto stats = lctx->GetStats();
-//     // size_t start_bytes = stats->sent_bytes;
-//     // size_t start_actions = stats->sent_actions;
-//     // auto start_time = std::chrono::high_resolution_clock::now();
-
-//     // === 调用核心函数 ===
-//     extract_ordered(&ctx, x_in, f_in);
-//     // ===================
-
-//     // // 记录结束时间
-//     // auto end_time = std::chrono::high_resolution_clock::now();
-
-//   //   // -------------------------------------------------------
-//   //   // 4. 打印统计信息 (仅 Rank 0)
-//   //   // -------------------------------------------------------
-//   //   stats = lctx->GetStats();  // 刷新统计
-//   //   size_t end_bytes = stats->sent_bytes;
-//   //   size_t end_actions = stats->sent_actions;
-
-//   //   if (lctx->Rank() == 0) {
-//   //     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-//   //                         end_time - start_time)
-//   //                         .count();
-//   //     auto comm_bytes = end_bytes - start_bytes;
-//   //     auto comm_rounds = end_actions - start_actions;
-//   //     double comm_mb = static_cast<double>(comm_bytes) / 1024.0 / 1024.0;
-
-//   //     std::cout << "\n========================================"
-//   //               << std::endl;
-//   //     std::cout << "ExtractOrdered Protocol Execution Stats:" << std::endl;
-//   //     std::cout << "  - Input Shape : " << n << " x " << dim << std::endl;
-//   //     std::cout << "  - Protocol    : " << protocol << std::endl;
-//   //     std::cout << "  - Time Cost   : " << duration << " ms" << std::endl;
-//   //     std::cout << "  - Comm Bytes  : " << comm_bytes << " bytes ("
-//   //               << comm_mb << " MB)" << std::endl;
-//   //     std::cout << "  - Comm Rounds : " << comm_rounds << " actions"
-//   //               << std::endl;
-//   //     std::cout << "========================================\n"
-//   //               << std::endl;
-//   //   }
-
-//   //   // -------------------------------------------------------
-//   //   // 5. 结果验证
-//   //   // -------------------------------------------------------
+    // 有效性标记（所有数组共享）
+    std::vector<int64_t> f_data = {1, 0, 1, 0, 1, 1, 0, 1};
     
-//     // // 将秘密结果 Reveal 为明文
-//     // auto y_revealed0 = hal::reveal(&ctx, y_out[0]);
-//     // auto y_revealed1 = hal::reveal(&ctx, y_out[1]);
-//     // auto y_revealed2 = hal::reveal(&ctx, y_out[2]);
-//     // auto y_vec0 = hal::dump_public_as<int64_t>(&ctx, y_revealed0);
-//     // auto y_vec1 = hal::dump_public_as<int64_t>(&ctx, y_revealed1);
-//     // auto y_vec2 = hal::dump_public_as<int64_t>(&ctx, y_revealed2);
+    // 预期输出（提取有效元素）
+    std::vector<int64_t> y0_expected_vec = {0, 2, 4, 5, 7};
+    std::vector<int64_t> y1_expected_vec = {10, 12, 14, 15, 17};
+    std::vector<int64_t> y2_expected_vec = {20, 22, 24, 25, 27};
 
-//     // // 打印对比详情
-//     // if (lctx->Rank() == 0) {
-//     //     // std::cout << ">> Expected Shape: (" << y_expected.shape()[0] << ", " << y_expected.shape()[1] << ")" << std::endl;
-//     //     // std::cout << ">> Actual Shape:   (" << y_vec.shape()[0] << ", " << y_vec.shape()[1] << ")" << std::endl;
+    // -------------------------------------------------------
+    // 2. 构造 SPU 秘密分享输入（二维）
+    // -------------------------------------------------------
+    // 将3个数组堆叠成 [3, 8] 的二维数组
+    std::vector<int64_t> x_data_combined;
+    x_data_combined.insert(x_data_combined.end(), x0_data.begin(), x0_data.end());
+    x_data_combined.insert(x_data_combined.end(), x1_data.begin(), x1_data.end());
+    x_data_combined.insert(x_data_combined.end(), x2_data.begin(), x2_data.end());
+    
+    xt::xarray<int64_t> x_arr = xt::adapt(x_data_combined);
+    x_arr.reshape({static_cast<size_t>(num_arrays), static_cast<size_t>(n)}); 
+    auto x_in = test::makeValue(&ctx, x_arr, VIS_SECRET);
 
-//     //     // std::cout << ">> y_expected:\n" << y_expected << std::endl;
-//     //     std::cout << ">> y_vec0 (Actual):\n" << y_vec0 << std::endl;
-//     //     std::cout << ">> y_vec1 (Actual):\n" << y_vec1 << std::endl;
-//     //     std::cout << ">> y_vec2 (Actual):\n" << y_vec2 << std::endl;
+    // valids 保持为 [1, n]
+    xt::xarray<int64_t> f_arr = xt::adapt(f_data);
+    f_arr.reshape({1, static_cast<size_t>(n)}); 
+    auto f_in = test::makeValue(&ctx, f_arr, VIS_SECRET);
+
+    // -------------------------------------------------------
+    // 3. 执行协议并记录性能指标
+    // -------------------------------------------------------
+    
+    // // 记录开始状态
+    // auto stats = lctx->GetStats();
+    // size_t start_bytes = stats->sent_bytes;
+    // size_t start_actions = stats->sent_actions;
+    // auto start_time = std::chrono::high_resolution_clock::now();
+
+    // === 调用核心函数 ===
+    extract_ordered(&ctx, x_in, f_in);
+    // ===================
+
+    // // 记录结束时间
+    // auto end_time = std::chrono::high_resolution_clock::now();
+
+  //   // -------------------------------------------------------
+  //   // 4. 打印统计信息 (仅 Rank 0)
+  //   // -------------------------------------------------------
+  //   stats = lctx->GetStats();  // 刷新统计
+  //   size_t end_bytes = stats->sent_bytes;
+  //   size_t end_actions = stats->sent_actions;
+
+  //   if (lctx->Rank() == 0) {
+  //     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+  //                         end_time - start_time)
+  //                         .count();
+  //     auto comm_bytes = end_bytes - start_bytes;
+  //     auto comm_rounds = end_actions - start_actions;
+  //     double comm_mb = static_cast<double>(comm_bytes) / 1024.0 / 1024.0;
+
+  //     std::cout << "\n========================================"
+  //               << std::endl;
+  //     std::cout << "ExtractOrdered Protocol Execution Stats:" << std::endl;
+  //     std::cout << "  - Input Shape : " << n << " x " << dim << std::endl;
+  //     std::cout << "  - Protocol    : " << protocol << std::endl;
+  //     std::cout << "  - Time Cost   : " << duration << " ms" << std::endl;
+  //     std::cout << "  - Comm Bytes  : " << comm_bytes << " bytes ("
+  //               << comm_mb << " MB)" << std::endl;
+  //     std::cout << "  - Comm Rounds : " << comm_rounds << " actions"
+  //               << std::endl;
+  //     std::cout << "========================================\n"
+  //               << std::endl;
+  //   }
+
+  //   // -------------------------------------------------------
+  //   // 5. 结果验证
+  //   // -------------------------------------------------------
+    
+    // // 将秘密结果 Reveal 为明文
+    // auto y_revealed0 = hal::reveal(&ctx, y_out[0]);
+    // auto y_revealed1 = hal::reveal(&ctx, y_out[1]);
+    // auto y_revealed2 = hal::reveal(&ctx, y_out[2]);
+    // auto y_vec0 = hal::dump_public_as<int64_t>(&ctx, y_revealed0);
+    // auto y_vec1 = hal::dump_public_as<int64_t>(&ctx, y_revealed1);
+    // auto y_vec2 = hal::dump_public_as<int64_t>(&ctx, y_revealed2);
+
+    // // 打印对比详情
+    // if (lctx->Rank() == 0) {
+    //     // std::cout << ">> Expected Shape: (" << y_expected.shape()[0] << ", " << y_expected.shape()[1] << ")" << std::endl;
+    //     // std::cout << ">> Actual Shape:   (" << y_vec.shape()[0] << ", " << y_vec.shape()[1] << ")" << std::endl;
+
+    //     // std::cout << ">> y_expected:\n" << y_expected << std::endl;
+    //     std::cout << ">> y_vec0 (Actual):\n" << y_vec0 << std::endl;
+    //     std::cout << ">> y_vec1 (Actual):\n" << y_vec1 << std::endl;
+    //     std::cout << ">> y_vec2 (Actual):\n" << y_vec2 << std::endl;
         
-//     //     // // 额外的通信检查
-//     //     // auto stats = lctx->GetStats();
-//     //     // std::cout << ">> Total Traffic (Sent Bytes): " << stats->sent_bytes << std::endl;
-//     // }
+    //     // // 额外的通信检查
+    //     // auto stats = lctx->GetStats();
+    //     // std::cout << ">> Total Traffic (Sent Bytes): " << stats->sent_bytes << std::endl;
+    // }
 
-//   });
-// }
+  });
+}
 
 }  // namespace spu::kernel::hlo

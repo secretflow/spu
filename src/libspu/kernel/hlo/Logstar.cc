@@ -625,7 +625,7 @@ Value prefix_sum(SPUContext *ctx, const Value &x) {
   return hal::concatenate(ctx, parts, 1);
 }
 
-void extract_ordered(SPUContext* ctx, const spu::Value& x, const spu::Value& valids) {
+void extract_ordered_(SPUContext* ctx, const spu::Value& x, const spu::Value& valids) {
   // 1.计算valids前缀和rho
   auto rho = prefix_sum(ctx, valids);
   // 2.洗牌x、valids、rho
@@ -694,15 +694,15 @@ void extract_ordered(SPUContext* ctx, const spu::Value& x, const spu::Value& val
   std::vector<spu::Value> compacted_results = hlo::Permute(ctx, inputs_to_permute, p_hat, 1);
 
   auto y_compacted = compacted_results[0];
-  auto rho_compacted = compacted_results[1];
+  auto rho_prime = compacted_results[1];
   auto rho_compose_pi = compacted_results[2];
 
       auto y_compacted_open = hal::dump_public_as<int64_t>(ctx, hal::reveal(ctx, y_compacted));
-      auto rho_compacted_open = hal::dump_public_as<int64_t>(ctx, hal::reveal(ctx, rho_compacted));
+      auto rho_prime_open = hal::dump_public_as<int64_t>(ctx, hal::reveal(ctx, rho_prime));
       auto rho_compose_pi_open = hal::dump_public_as<int64_t>(ctx, hal::reveal(ctx, rho_compose_pi));
       if (ctx->lctx()->Rank() == 0) {
         std::cout << "y_compacted: " << y_compacted_open << std::endl;
-        std::cout << "rho_compacted: " << rho_compacted_open << std::endl;
+        std::cout << "rho_prime: " << rho_prime_open << std::endl;
         std::cout << "rho_compose_pi: " << rho_compose_pi_open << std::endl;
       }
 
@@ -729,8 +729,142 @@ void extract_ordered(SPUContext* ctx, const spu::Value& x, const spu::Value& val
   
   // // 返回结果
   // // 如果是 Extract Unordered，到这里就结束了，返回 y_final
-  // // 如果是 Extract Ordered，你需要利用 rho_compacted 继续进行后续的 Unshuffle 操作
-  // return std::vector<spu::Value>{y_final, rho_compacted};
+  // // 如果是 Extract Ordered，你需要利用 rho_prime 继续进行后续的 Unshuffle 操作
+  // return std::vector<spu::Value>{y_final, rho_prime};
+}
+
+
+void extract_ordered(SPUContext* ctx, const spu::Value& x, const spu::Value& valids) {
+  // x: shape [num_arrays, n] - 多个一维数组堆叠成二维
+  // valids: shape [1, n] - 一维有效性标记
+  
+  SPU_ENFORCE(x.shape().ndim() == 2, "x should be 2D array");
+  SPU_ENFORCE(valids.shape().ndim() == 2 && valids.shape()[0] == 1, 
+              "valids should be 1-row matrix");
+  
+  const int64_t num_arrays = x.shape()[0];  // 行数（有多少个一维数组）
+  const int64_t n = x.shape()[1];           // 每个数组的长度
+  
+  SPU_ENFORCE(valids.shape()[1] == n, 
+              "valids length must match x's second dimension");
+
+  // 1. 计算valids前缀和rho（保持一维）
+  auto rho = prefix_sum(ctx, valids);
+  
+  // 2. 将所有 x 的行分离出来，与 valids 一起洗牌
+  std::vector<spu::Value> inputs_to_shuffle;
+  
+  for (int64_t i = 0; i < num_arrays; ++i) {
+    auto x_row = hal::slice(ctx, x, {i, 0}, {i + 1, n}, {});
+    inputs_to_shuffle.push_back(x_row);
+  }
+  inputs_to_shuffle.push_back(valids);
+  inputs_to_shuffle.push_back(rho);
+
+  // 执行洗牌（所有数据使用相同的置换）
+  auto shuffled_results = hlo::Shuffle(ctx, inputs_to_shuffle, 1);
+  
+  // 分离洗牌后的结果
+  std::vector<spu::Value> sx_rows(num_arrays);
+  for (int64_t i = 0; i < num_arrays; ++i) {
+    sx_rows[i] = shuffled_results[i];
+  }
+  auto svalids = shuffled_results[num_arrays];
+  auto srho = shuffled_results[num_arrays + 1];
+  
+  if (ctx->lctx()->Rank() == 0) {
+    std::cout << ">> [Debug] Processing " << num_arrays << " arrays of length " << n << std::endl;
+  }
+
+  // 3. 打开svalids
+  auto svalids_open = hal::dump_public_as<int64_t>(ctx, hal::reveal(ctx, svalids));
+  
+  if (ctx->lctx()->Rank() == 0) {
+    std::cout << "svalids_open: " << svalids_open << std::endl;
+  }
+  
+  // 4. 计算公开置换p_hat
+  int64_t numel = svalids_open.size();
+  std::vector<int64_t> p_hat_indices(numel);
+  
+  int64_t left = 0;
+  int64_t right = numel - 1;
+  for (int64_t i = 0; i < numel; ++i) {
+    if (svalids_open[i]) {
+      p_hat_indices[left++] = i;  // 有效的放前面
+    } else {
+      p_hat_indices[right--] = i; // 无效的放后面
+    }
+  }
+  int64_t valid_count = left;
+
+  if (ctx->lctx()->Rank() == 0) {
+    std::cout << "p_hat_indices: " << xt::adapt(p_hat_indices) << std::endl;
+    std::cout << "valid_count: " << valid_count << std::endl;
+  }
+
+  // 5. 用公开的p_hat置换所有 sx_rows 和 srho
+  auto p_hat_xt = xt::adapt(p_hat_indices);
+  spu::Value p_hat = hal::constant(ctx, p_hat_xt, spu::DT_I64, 
+    {static_cast<int64_t>(p_hat_indices.size())});
+  
+  std::vector<spu::Value> inputs_to_permute;
+  for (auto& sx_row : sx_rows) {
+    inputs_to_permute.push_back(sx_row);
+  }
+  inputs_to_permute.push_back(srho);
+  
+  std::vector<spu::Value> compacted_results = hlo::Permute(ctx, inputs_to_permute, p_hat, 1);
+  
+  // 分离紧凑化后的结果
+  std::vector<spu::Value> x_prime_rows(num_arrays);
+  for (int64_t i = 0; i < num_arrays; ++i) {
+    x_prime_rows[i] = compacted_results[i];
+  }
+  auto rho_prime = compacted_results[num_arrays];
+
+  // Debug输出
+  for (int64_t i = 0; i < num_arrays; ++i) {
+    auto y_open = hal::dump_public_as<int64_t>(ctx, hal::reveal(ctx, x_prime_rows[i]));
+    if (ctx->lctx()->Rank() == 0){    
+      std::cout << "y_compacted[" << i << "]: " << y_open << std::endl;
+    }  
+  }
+  auto rho_open = hal::dump_public_as<int64_t>(ctx, hal::reveal(ctx, rho_prime));
+  if (ctx->lctx()->Rank() == 0){    
+    std::cout << "rho_prime: " << rho_open << std::endl;
+  }  
+
+  // 可选: 将所有 x_prime_rows 重新拼接成二维数组
+  auto x_prime_2d = hal::concatenate(ctx, x_prime_rows, 0);
+  
+  // TODO: 后续的 Slice 和 Unshuffle 操作
+
+
+  // // -----------------------------------------------------------------------
+  // // Step 6: 截取前 c 个元素 (Slice)
+  // // -----------------------------------------------------------------------
+  
+  // // 构造切片范围: [0, valid_count)
+  // // 假设数据形状是 (1, N)，我们在第 1 维切片
+  // std::vector<int64_t> start_indices(sx.shape().ndim(), 0);
+  // std::vector<int64_t> end_indices = sx.shape();
+  
+  // // 设置切片的结束位置
+  // if (sx.shape().ndim() == 1) {
+  //     end_indices[0] = valid_count;
+  // } else {
+  //     // 假设第 0 维是 Batch(1)，第 1 维是数据
+  //     end_indices[1] = valid_count; 
+  // }
+
+  // // 执行切片，得到最终紧凑的 Secret Shared 结果
+  // spu::Value y_final = hal::slice(ctx, y_compacted, start_indices, end_indices, {});
+  
+  // // 返回结果
+  // // 如果是 Extract Unordered，到这里就结束了，返回 y_final
+  // // 如果是 Extract Ordered，你需要利用 rho_prime 继续进行后续的 Unshuffle 操作
+  // return std::vector<spu::Value>{y_final, rho_prime};
 }
 
 
