@@ -18,5 +18,5 @@ namespace spu::kernel::hlo {
                                        const Value& g_full);
 
 
-    void extract_ordered(SPUContext* ctx, const spu::Value& arr, const spu::Value& condition);
+    std::pair<std::vector<spu::Value>, int64_t> extract_ordered(SPUContext* ctx, const spu::Value& arr, const spu::Value& condition);
 }  // namespace spu::kernel::hlo
