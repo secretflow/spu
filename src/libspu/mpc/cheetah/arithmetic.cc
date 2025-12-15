@@ -483,4 +483,71 @@ NdArrayRef MatMulAV::proc(KernelEvalContext* ctx, const NdArrayRef& x,
   return out.as(x.eltype());
 }
 
+// the temporay kernel evaluation for BatchMatMul
+void BatchMatMulAV::evaluate(KernelEvalContext* ctx) const {
+  const auto& lhs = ctx->getParam<Value>(0);
+  const auto& rhs = ctx->getParam<Value>(1);
+  auto xs = lhs.shape();
+  auto ys = rhs.shape();
+  SPU_ENFORCE(xs.ndim() == ys.ndim(), "ndim mismatch: lhs={}, rhs={}", xs, ys);
+  SPU_ENFORCE(xs.ndim() == 3, "ndim mismatch: lhs={}, expected=3", xs);
+  SPU_ENFORCE(xs[0] == ys[0], "batch mismatch: lhs={}, rhs={}", xs, ys);
+  SPU_ENFORCE(xs[2] == ys[1], "shape mismatch: lhs={}, rhs={}", xs, ys);
+  ctx->pushOutput(WrapValue(proc(ctx, lhs.data(), rhs.data())));
+}
+
+// A is (B, M, K); B is (B, K, N)
+NdArrayRef BatchMatMulAV::proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                               const NdArrayRef& y) const {
+  if (0 == x.numel() || 0 == y.numel()) {
+    return NdArrayRef(x.eltype(), {x.shape()[0], y.shape()[1]});
+  }
+  SPU_ENFORCE(ctx->sctx()->config().experimental_enable_cheetah_bmm,
+              "cheetah bmm protocol is disabled");
+
+  auto* comm = ctx->getState<Communicator>();
+  auto* bmm_prot = ctx->getState<CheetahBatchMatMulState>()->get();
+  bmm_prot->LazyInitKeys(x.eltype().as<Ring2k>()->field());
+  const int rank = comm->getRank();
+  const auto* ptype = y.eltype().as<Priv2kTy>();
+  SPU_ENFORCE(ptype != nullptr, "rhs should be a private type");
+  const int owner = ptype->owner();
+
+  // (x0 + x1)*y = <x0 * y>_0 + <x0 * y>_1 + x1 * y
+  const Shape4D dim4 = {x.shape()[0], x.shape()[1], x.shape()[2], y.shape()[2]};
+
+  NdArrayRef out;
+  if (rank != owner) {
+    // TODO: refactor bmm_prot api to support both av and aa cases.
+    // out = bmm_prot->BatchDotOLE(x, comm->lctx().get(), dim4, true);
+  } else {
+    // TODO: refactor bmm_prot api to support both av and aa cases.
+    // out = bmm_prot->BatchDotOLE(y, comm->lctx().get(), dim4, false);
+
+    const Strides strides(x.shape().size(), 1);
+    Index lhs_slice_end(x.shape().begin(), x.shape().end());
+    Index rhs_slice_end(y.shape().begin(), y.shape().end());
+    Index lhs_slice_begin(3, 0);
+    Index rhs_slice_begin(3, 0);
+
+    for (int64_t b = 0; b < dim4[0]; ++b) {
+      lhs_slice_begin[0] = b;
+      lhs_slice_end[0] = b + 1;
+      rhs_slice_begin[0] = b;
+      rhs_slice_end[0] = b + 1;
+      auto lhs = x.slice(lhs_slice_begin, lhs_slice_end, strides)
+                     .reshape({dim4[1], dim4[2]});
+      auto rhs = y.slice(rhs_slice_begin, rhs_slice_end, strides)
+                     .reshape({dim4[2], dim4[3]});
+      auto local = ring_mmul(lhs, rhs);
+
+      auto out_slice = out.slice({b, 0, 0}, {b + 1, dim4[1], dim4[3]}, strides);
+      out_slice = out_slice.reshape({dim4[1], dim4[3]});
+      ring_add_(out_slice, local);
+    }
+  }
+
+  return out.as(x.eltype());
+}
+
 }  // namespace spu::mpc::cheetah

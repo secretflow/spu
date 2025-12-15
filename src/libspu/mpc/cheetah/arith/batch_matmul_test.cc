@@ -15,12 +15,11 @@
 #include "libspu/mpc/cheetah/arith/batch_matmul.h"
 
 #include "gtest/gtest.h"
+#include "yacl/utils/elapsed_timer.h"
 
 #include "libspu/core/type_util.h"
 #include "libspu/mpc/utils/ring_ops.h"
 #include "libspu/mpc/utils/simulate.h"
-#include "yacl/utils/elapsed_timer.h"
-
 
 namespace spu::mpc::cheetah {
 
@@ -29,20 +28,17 @@ class BatchMatMulTest
 
 INSTANTIATE_TEST_SUITE_P(
     Cheetah, BatchMatMulTest,
-    // testing::Combine(testing::Values(FieldType::FM32),
-    testing::Combine(testing::Values(FieldType::FM64),
-                     testing::Values(
-                                    Shape4D{4, 1, 2048, 768},
-                                    Shape4D{4, 18, 768, 78},
-                                    Shape4D{4, 1024, 16, 16}
-                                    ), testing::Values(false)),
+    testing::Combine(
+        testing::Values(FieldType::FM32, FieldType::FM64, FieldType::FM128),
+        testing::Values(Shape4D{4, 1, 2048, 768}, Shape4D{4, 18, 768, 78},
+                        Shape4D{4, 1024, 16, 16}),
+        testing::Values(false)),
     [](const testing::TestParamInfo<BatchMatMulTest::ParamType>& p) {
-      return fmt::format("{}_{}x{}x{}x{}_{}", std::get<0>(p.param),
-                         std::get<0>(std::get<1>(p.param)),
-                         std::get<1>(std::get<1>(p.param)),
-                         std::get<2>(std::get<1>(p.param)),
-                         std::get<3>(std::get<1>(p.param)), 
-                         std::get<2>(p.param) ? "Approx" : "Exact");
+      return fmt::format(
+          "{}_{}x{}x{}x{}_{}", std::get<0>(p.param),
+          std::get<0>(std::get<1>(p.param)), std::get<1>(std::get<1>(p.param)),
+          std::get<2>(std::get<1>(p.param)), std::get<3>(std::get<1>(p.param)),
+          std::get<2>(p.param) ? "Approx" : "Exact");
     });
 
 TEST_P(BatchMatMulTest, Basic) {
@@ -54,9 +50,10 @@ TEST_P(BatchMatMulTest, Basic) {
   std::vector<NdArrayRef> input(kWorldSize);
   NdArrayRef weight;
 
-  input[0] = ring_rand(field, {dim4[0] * dim4[1] * dim4[2]});
-  input[1] = ring_rand(field, {dim4[0] * dim4[1] * dim4[2]});
-  weight = ring_rand(field, {dim4[0] * dim4[2] * dim4[3]});
+  // TODO: inputs should be multi-dim tensors.
+  input[0] = ring_rand(field, {dim4[0], dim4[1], dim4[2]});
+  input[1] = ring_rand(field, {dim4[0], dim4[1], dim4[2]});
+  weight = ring_rand(field, {dim4[0], dim4[2], dim4[3]});
 
   std::vector<NdArrayRef> result(kWorldSize);
   utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> lctx) {
@@ -77,43 +74,32 @@ TEST_P(BatchMatMulTest, Basic) {
 
   // compute expected result
   NdArrayRef expected;
-  expected = ring_zeros(field, {dim4[0]* dim4[1]* dim4[3]});
+  expected = ring_zeros(field, {dim4[0], dim4[1], dim4[3]});
   NdArrayRef released_input;
   released_input = ring_add(input[0], input[1]);
-  
+
   for (int64_t b = 0; b < dim4[0]; b++) {
-    auto lhs = released_input.slice({b * dim4[1] * dim4[2]},
-                                   {(b + 1) * dim4[1] * dim4[2]}, {1})
-                   .reshape({dim4[1], dim4[2]});
-    auto rhs = weight.slice({b * dim4[2] * dim4[3]},
-                            {(b + 1) * dim4[2] * dim4[3]}, {1})
+    auto lhs =
+        released_input.slice({b, 0, 0}, {b + 1, dim4[1], dim4[2]}, {1, 1, 1})
+            .reshape({dim4[1], dim4[2]});
+    auto rhs = weight.slice({b, 0, 0}, {b + 1, dim4[2], dim4[3]}, {1, 1, 1})
                    .reshape({dim4[2], dim4[3]});
-    auto slice = expected.slice({b * dim4[1] * dim4[3]},
-                                {(b + 1) * dim4[1] * dim4[3]}, {1})
+    auto slice = expected.slice({b, 0, 0}, {b + 1, dim4[1], dim4[3]}, {1, 1, 1})
                      .reshape({dim4[1], dim4[3]});
     ring_mmul_(slice, lhs, rhs);
   }
 
   EXPECT_EQ(expected.numel(), computed.numel());
-  const int64_t kMaxDiff = allow_approx ? 1 : 0;
-  int64_t max_diff = 0;
   DISPATCH_ALL_FIELDS(field, [&]() {
     auto e = NdArrayView<ring2k_t>(expected);
     auto c = NdArrayView<ring2k_t>(computed);
 
     for (auto idx = 0; idx < expected.numel(); idx++) {
-      if (e[idx] != c[idx]) {
-        std::cout << fmt::format("expected {} got {} at {}\n", e[idx], c[idx], idx);
-      }
-      int64_t diff = e[idx] < c[idx] ? c[idx] - e[idx] : e[idx] - c[idx];
-      max_diff = std::max(max_diff, diff);
-      ASSERT_LE(diff, kMaxDiff);
+      // only exact version supported now.
+      SPU_ENFORCE(e[idx] == c[idx], "expected {}, got {}, at {}", e[idx],
+                  c[idx], idx);
     }
   });
-  std::cout << "Max diff: " << max_diff << std::endl;
-
-
 }
-
 
 }  // namespace spu::mpc::cheetah

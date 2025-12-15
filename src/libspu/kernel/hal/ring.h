@@ -56,6 +56,8 @@ Value _mmul(SPUContext* ctx, const Value& x, const Value& y);
 Value _conv2d(SPUContext* ctx, const Value& x, const Value& y,
               const Strides& strides);
 
+Value _batch_mmul(SPUContext* ctx, const Value& x, const Value& y);
+
 Value _and(SPUContext* ctx, const Value& x, const Value& y);
 
 Value _xor(SPUContext* ctx, const Value& x, const Value& y);

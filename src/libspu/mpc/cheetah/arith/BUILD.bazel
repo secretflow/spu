@@ -19,6 +19,7 @@ package(default_visibility = ["//visibility:public"])
 spu_cc_library(
     name = "cheetah_arith",
     deps = [
+        ":batch_matmul",
         ":cheetah_dot",
         ":cheetah_mul",
     ],
@@ -53,7 +54,6 @@ spu_cc_library(
     ],
 )
 
-
 spu_cc_library(
     name = "simd_batchmm_prot",
     srcs = ["simd_batchmm_prot.cc"],
@@ -66,10 +66,10 @@ spu_cc_library(
     srcs = ["batch_matmul.cc"],
     hdrs = ["batch_matmul.h"],
     deps = [
-        ":arith_comm",
         "simd_batchmm_prot",
-        "@yacl//yacl/utils:elapsed_timer",
+        ":arith_comm",
         "//libspu/mpc/cheetah/rlwe:packlwes",
+        "@yacl//yacl/utils:elapsed_timer",
     ],
 )
 
@@ -139,8 +139,6 @@ spu_cc_test(
         "//libspu/mpc/utils:simulate",
     ],
 )
-
-
 
 spu_cc_test(
     name = "simd_batchmm_test",
