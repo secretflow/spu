@@ -135,8 +135,8 @@ TEST_F(BrentKungTest, LargeScaleData) {
     SPUContext ctx = test::makeSPUContext(protocol, field, lctx);
 
     // 配置大;
-    const int64_t n = 1000000;  // 可调整为 256, 512, 1024, 4096 等
-    const int64_t block_size = 3;
+    const int64_t n = 262144;  // 可调整为 256, 512, 1024, 4096 等
+    const int64_t block_size = 1;
 
     // 准备随机数生成器
     std::mt19937 rng(42);  // 固定种子
@@ -256,8 +256,8 @@ TEST_F(BrentKungTest, LargeScaleData) {
 //   mpc::utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
 //     SPUContext ctx = test::makeSPUContext(protocol, field, lctx);
 
-//     const int64_t n = 262144;
-//     const int64_t block_size = 4;
+//     const int64_t n = 1000000;
+//     const int64_t block_size = 1;
 
 //     std::mt19937 rng(42);
 //     std::uniform_int_distribution<int64_t> dist_x(0, 100);

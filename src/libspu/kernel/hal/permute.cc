@@ -356,21 +356,51 @@ std::vector<spu::Value> odd_even_merge(SPUContext *ctx,
       }
     }
 
-    if (ctx->lctx()->Rank() == 0) {
-      // 打印 lhs_indices 的大小，所有参与方都会打印
-      std::cout << "Number of comparisons in each stage: " << lhs_indices.size()
-                << std::endl;
-    }
+    // if (ctx->lctx()->Rank() == 0) {
+    //   // 打印 lhs_indices 的大小，所有参与方都会打印
+    //   std::cout << "Number of comparisons in each stage: " << lhs_indices.size()
+    //             << std::endl;
+    // }
     _cmp_swap(ctx, comparator_body, absl::MakeSpan(ret), lhs_indices,
               rhs_indices);
   }
   return ret;
 }
 
+// Secure Odd-even merge with valid bits tracking
+//
+// This function performs a secure merge operation using the Odd-even merge
+// network algorithm while simultaneously tracking valid bits for each element.
+// 
+// The Odd-even merge network is a data-oblivious comparison network that merges
+// two sorted sequences into a single sorted sequence. It requires O(n log²n)
+// comparisons and has O(log²n) depth.
+//
+// Inputs:
+//   - ctx: SPU context for MPC operations
+//   - inputs: A span containing exactly 2 Value tensors:
+//     * inputs[0]: Values tensor (sorted 1-D array to be merged)
+//     * inputs[1]: Valid bits tensor (corresponding valid bit flags, same shape)
+//   - cmp: Comparison function that takes two Values and returns comparison result
+//
+// Behavior:
+//   - Merges two pre-sorted arrays while preserving the association between
+//     each value and its corresponding valid bit
+//   - Uses Batcher's odd-even merge network to ensure data-oblivious execution
+//   - When two values are swapped during comparison, their valid bits are also swapped
+//   - The merge is performed in-place for memory efficiency
+//
+// Returns:
+//   A vector containing 2 Value tensors:
+//   - [0]: Merged and sorted values
+//   - [1]: Corresponding valid bits (tracked and moved with values)
+//
+// Reference:
+//   Batcher's odd-even merge: https://hwlang.de/algorithmen/sortieren/networks/oemen.htm
 std::vector<spu::Value> odd_even_merge_with_valids(
     SPUContext *ctx, absl::Span<spu::Value> inputs, const CompFn &cmp) {
-  // 预处理：确保所有输入（Value 和 Valid）都是 Secret 且 Share 偏好一致
-  // 这样才能进行 inplace 的 linear_scatter
+  
+  // 为原地归并操作创建输入副本
   std::vector<spu::Value> to_sort;
   to_sort.reserve(inputs.size());
 
@@ -385,27 +415,32 @@ std::vector<spu::Value> odd_even_merge_with_valids(
     to_sort.emplace_back(std::move(casted));
   }
 
-  // 定义 Wrapper 比较器
-  // _cmp_swap 会 gather 所有 operands。
-  // to_sort[0] 是 Values, to_sort[1] 是 Valids。
-  // gathered_inputs 结构为: [Val_L, Val_R, Valid_L, Valid_R]
-  // 我们只取前两个 (Val_L, Val_R) 传给原始比较器 cmp。
+  // 定义比较器包装函数：
+  //   
+  // _cmp_swap 会 gather 出：
+  //   gathered_inputs = [Val_L, Val_R, Valid_L, Valid_R]
+  //   
+  // 根据 Values 进行比较，取前两个元素传给原始比较器
   auto value_only_comparator =
       [&](absl::Span<const spu::Value> gathered_inputs) {
         return cmp(gathered_inputs.subspan(0, 2));
       };
-
+  
   const auto n = to_sort.front().numel();
   int64_t max_gap_in_stage = n / 2;
 
-  // Batcher's Merge Network
+  // Main body of Odd-Even Merge Network
+  // 外层循环：遍历每个归并阶段，步长从 n/2 递减到 1
   for (int64_t step = max_gap_in_stage; step > 0; step /= 2) {
+    // 收集当前阶段需要比较的索引对
     Index lhs_indices, rhs_indices;
 
+    // 内层循环：在当前步长下，找出所有需要比较的元素对
     for (int64_t j = step % max_gap_in_stage; j + step < n; j += step + step) {
       for (int64_t i = 0; i < step; ++i) {
         auto lhs_idx = i + j;
         auto rhs_idx = i + j + step;
+        // 边界检查：确保右侧索引不越界
         if (rhs_idx >= n) break;
 
         auto range = max_gap_in_stage * 2;
@@ -415,17 +450,8 @@ std::vector<spu::Value> odd_even_merge_with_valids(
         }
       }
     }
-
-    if (ctx->lctx()->Rank() == 0) {
-      // 打印 lhs_indices 的大小，所有参与方都会打印
-      std::cout << "Number of comparisons in each stage: " << lhs_indices.size()
-                << std::endl;
-    }
-
+    // 批量 compare-and-swap
     if (!lhs_indices.empty()) {
-      // 复用 _cmp_swap
-      // 传入包含 Value 和 Valid 的 span，它们会根据 value_only_comparator
-      // 的结果同步交换
       _cmp_swap(ctx, value_only_comparator, absl::MakeSpan(to_sort),
                 lhs_indices, rhs_indices);
     }
