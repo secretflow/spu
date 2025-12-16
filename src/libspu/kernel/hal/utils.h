@@ -14,8 +14,6 @@
 
 #pragma once
 
-#include <stack>
-
 #include "libspu/core/context.h"
 #include "libspu/core/value.h"
 #include "libspu/core/vectorize.h"
@@ -167,7 +165,7 @@ spu::Value associative_reduce(Fn&& fn, SPUContext* ctx, const Value& in) {
 
   // Edge case: if the last dimension has <= 1 element or tensor is empty
   if (N < 2 || shape.numel() == 0) {
-    return hal::reshape(ctx, in, out_shape);
+    return in;
   }
 
   // Reshape to 2D {M, N} tensor for easier processing

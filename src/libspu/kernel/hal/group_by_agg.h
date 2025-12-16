@@ -36,7 +36,7 @@ namespace spu::kernel::hal {
 // 2. Compute v_g = [2,3,1,4,5] (need one `inv_perm_xv`, x relying on the
 // visibility of payloads)
 // 3. Compute w_g = prefix_sum(v_g) = [2,5,6,10,15] (locally)
-// 4. Sort e descending (locally) and permute x accordingly (need one
+// 4. Sort e descending (locally) and permute w_g accordingly (need one
 // `inv_perm_xv`), i.e. y = [5,6,15,x,x]
 // 5. Compute s =  y - right_shift(y)  = y - [0,5,6,15,x] = [5,1,9,x,x]
 //

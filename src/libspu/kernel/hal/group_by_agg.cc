@@ -160,6 +160,9 @@ std::vector<Value> private_groupby_avg_1d(SPUContext *ctx,
 
     // INFO LEAKAGE HERE: reveal the unique key count to all parties
     key_count = getScalarValue<int64_t>(ctx, unique_key_value_count);
+    SPU_ENFORCE(
+        key_count > 0,
+        "key_count must be greater than 0 when unsafe_drop_rest is true");
 
     // update the shapes
     count = hal::slice(ctx, count, {0}, {key_count});
@@ -185,9 +188,6 @@ std::vector<Value> private_groupby_avg_1d(SPUContext *ctx,
     auto s = hal::_sub(ctx, y, _circular_right_shift_1d(ctx, y))
                  .setDtype(payloads[i].dtype());
     if (unsafe_drop_rest) {
-      SPU_ENFORCE(
-          key_count > 0,
-          "key_count must be greater than 0 when unsafe_drop_rest is true");
       s = hal::slice(ctx, s, {0}, {key_count});
     }
 
