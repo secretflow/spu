@@ -54,6 +54,10 @@ void regCheetahProtocol(SPUContext* ctx,
       ctx->getClusterLevelMaxConcurrency(),
       ctx->config().cheetah_2pc_config.ot_kind);
 
+  if (ctx->config().experimental_enable_bmm) {
+    ctx->prot()->addState<cheetah::CheetahBatchMatMulState>(lctx);
+  }
+
   // register public kernels.
   regPV2kKernels(ctx->prot());
 

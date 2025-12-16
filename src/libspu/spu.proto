@@ -30,18 +30,18 @@ option java_package = "org.secretflow.spu";
 enum DataType {
   DT_INVALID = 0;
 
-  DT_I1 = 1;    // 1bit integer (bool).
-  DT_I8 = 2;    // int8
-  DT_U8 = 3;    // uint8
-  DT_I16 = 4;   // int16
-  DT_U16 = 5;   // uint16
-  DT_I32 = 6;   // int32
-  DT_U32 = 7;   // uint32
-  DT_I64 = 8;   // int64
-  DT_U64 = 9;   // uint64
-  DT_F16 = 10;  // half
-  DT_F32 = 11;  // float
-  DT_F64 = 12;  // double
+  DT_I1 = 1; // 1bit integer (bool).
+  DT_I8 = 2; // int8
+  DT_U8 = 3; // uint8
+  DT_I16 = 4; // int16
+  DT_U16 = 5; // uint16
+  DT_I32 = 6; // int32
+  DT_U32 = 7; // uint32
+  DT_I64 = 8; // int64
+  DT_U64 = 9; // uint64
+  DT_F16 = 10; // half
+  DT_F32 = 11; // float
+  DT_F64 = 12; // double
 }
 
 // The visibility type.
@@ -51,9 +51,9 @@ enum DataType {
 // performance significantly.
 enum Visibility {
   VIS_INVALID = 0;
-  VIS_SECRET = 1;   // Invisible(unknown) for all or some of the parties.
-  VIS_PUBLIC = 2;   // Visible(public) for all parties.
-  VIS_PRIVATE = 3;  // Visible for only one party
+  VIS_SECRET = 1; // Invisible(unknown) for all or some of the parties.
+  VIS_PUBLIC = 2; // Visible(public) for all parties.
+  VIS_PRIVATE = 3; // Visible for only one party
 }
 
 // @exclude
@@ -68,25 +68,25 @@ message ShapeProto {
 // mainly used for IO purposes, when converting a plaintext buffer to an SPU
 // buffer, we have to let spu know which type the plaintext buffer is.
 enum PtType {
-  PT_INVALID = 0;  //
-  PT_I8 = 1;       // int8_t
-  PT_U8 = 2;       // uint8_t
-  PT_I16 = 3;      // int16_t
-  PT_U16 = 4;      // uint16_t
-  PT_I32 = 5;      // int32_t
-  PT_U32 = 6;      // uint32_t
-  PT_I64 = 7;      // int64_t
-  PT_U64 = 8;      // uint64_t
-  PT_I128 = 9;     // int128_t
-  PT_U128 = 10;    // uint128_t
-  PT_I1 = 11;      // bool
+  PT_INVALID = 0; //
+  PT_I8 = 1; // int8_t
+  PT_U8 = 2; // uint8_t
+  PT_I16 = 3; // int16_t
+  PT_U16 = 4; // uint16_t
+  PT_I32 = 5; // int32_t
+  PT_U32 = 6; // uint32_t
+  PT_I64 = 7; // int64_t
+  PT_U64 = 8; // uint64_t
+  PT_I128 = 9; // int128_t
+  PT_U128 = 10; // uint128_t
+  PT_I1 = 11; // bool
 
-  PT_F16 = 30;  // half
-  PT_F32 = 31;  // float
-  PT_F64 = 32;  // double
+  PT_F16 = 30; // half
+  PT_F32 = 31; // float
+  PT_F64 = 32; // double
 
-  PT_CF32 = 50;  // complex float
-  PT_CF64 = 51;  // complex double
+  PT_CF32 = 50; // complex float
+  PT_CF64 = 51; // complex double
 }
 
 // A security parameter type.
@@ -94,9 +94,9 @@ enum PtType {
 // The secure evaluation is based on some algebraic structure (ring or field),
 enum FieldType {
   FT_INVALID = 0;
-  FM32 = 1;   // Ring 2^32
-  FM64 = 2;   // Ring 2^64
-  FM128 = 3;  // Ring 2^128
+  FM32 = 1; // Ring 2^32
+  FM64 = 2; // Ring 2^64
+  FM128 = 3; // Ring 2^128
 }
 
 // The protocol kind.
@@ -234,10 +234,10 @@ message RuntimeConfig {
   uint64 share_max_chunk_size = 20;
 
   enum SortMethod {
-    SORT_DEFAULT = 0;  // Implementation defined.
-    SORT_RADIX = 1;    // The radix sort (stable sort, need efficient shuffle).
-    SORT_QUICK = 2;    // The quick sort (unstable, need efficient shuffle).
-    SORT_NETWORK = 3;  // The odd-even sorting network (unstable, most general).
+    SORT_DEFAULT = 0; // Implementation defined.
+    SORT_RADIX = 1; // The radix sort (stable sort, need efficient shuffle).
+    SORT_QUICK = 2; // The quick sort (unstable, need efficient shuffle).
+    SORT_NETWORK = 3; // The odd-even sorting network (unstable, most general).
   }
 
   // SPU supports multiple sorting algorithms.
@@ -259,10 +259,10 @@ message RuntimeConfig {
 
   // The exponential approximation method.
   enum ExpMode {
-    EXP_DEFAULT = 0;  // Implementation defined.
-    EXP_PADE = 1;     // The pade approximation.
-    EXP_TAYLOR = 2;   // Taylor series approximation.
-    EXP_PRIME = 3;    // exp prime only available for some implementations
+    EXP_DEFAULT = 0; // Implementation defined.
+    EXP_PADE = 1; // The pade approximation.
+    EXP_TAYLOR = 2; // Taylor series approximation.
+    EXP_PRIME = 3; // exp prime only available for some implementations
   }
 
   // The exponent approximation method.
@@ -274,10 +274,10 @@ message RuntimeConfig {
 
   // The logarithm approximation method.
   enum LogMode {
-    LOG_DEFAULT = 0;  // Implementation defined.
-    LOG_PADE = 1;     // The pade approximation.
-    LOG_NEWTON = 2;   // The newton approximation.
-    LOG_MINMAX = 3;   // The minmax approximation.
+    LOG_DEFAULT = 0; // Implementation defined.
+    LOG_PADE = 1; // The pade approximation.
+    LOG_NEWTON = 2; // The newton approximation.
+    LOG_MINMAX = 3; // The minmax approximation.
   }
 
   // The logarithm approximation method.
@@ -373,6 +373,9 @@ message RuntimeConfig {
   // whether to apply the clamping upper bound
   // default to disable it
   bool experimental_exp_prime_enable_upper_bound = 109;
+
+  // enable bmm protocol
+  bool experimental_enable_bmm = 110;
 }
 
 message ClientSSLConfig {

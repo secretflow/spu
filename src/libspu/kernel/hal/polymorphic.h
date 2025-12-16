@@ -55,6 +55,11 @@ Value bitwise_not(SPUContext* ctx, const Value& in);
 // @param y, the second parameter
 Value matmul(SPUContext* ctx, const Value& x, const Value& y);
 
+/// batch matrix production operator
+// @param x, the first parameter
+// @param y, the second parameter
+Value batch_matmul(SPUContext* ctx, const Value& x, const Value& y);
+
 /// matrix production operator
 // @param x, the first parameter
 // @param y, the second parameter

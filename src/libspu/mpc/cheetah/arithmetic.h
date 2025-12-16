@@ -221,6 +221,34 @@ class MatMulAA : public MatmulKernel {
                   const NdArrayRef& y) const override;
 };
 
+class BatchMatMulAV : public MatmulKernel {
+ public:
+  static constexpr char kBindName[] = "batch_mmul_av";
+
+  Kind kind() const override { return Kind::Dynamic; }
+
+  // override the shape checking
+  void evaluate(KernelEvalContext* ctx) const override;
+  // LHS: b x m x k
+  // RHS: b x k x n
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                  const NdArrayRef& y) const override;
+};
+
+class BatchMatMulAA : public MatmulKernel {
+ public:
+  static constexpr char kBindName[] = "batch_mmul_aa";
+
+  Kind kind() const override { return Kind::Dynamic; }
+
+  // override the shape checking
+  void evaluate(KernelEvalContext* ctx) const override;
+  // LHS: b x m x k
+  // RHS: b x k x n
+  NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                  const NdArrayRef& y) const override;
+};
+
 class Conv2DAA : public Conv2DKernel {
  public:
   static constexpr const char* kBindName() { return "conv2d_aa"; }

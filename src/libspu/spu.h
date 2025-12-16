@@ -421,6 +421,9 @@ struct RuntimeConfig {
   // default to disable it
   bool experimental_exp_prime_enable_upper_bound = false;
 
+  // enable bmm protocol
+  bool experimental_enable_bmm = false;
+
   // static RuntimeConfig makeFromJson(const std::string& json_str);
 
   RuntimeConfig() = default;
@@ -428,7 +431,7 @@ struct RuntimeConfig {
                 int64_t fxp_fraction_bits = 0)
       : protocol(protocol),
         field(field),
-        fxp_fraction_bits(fxp_fraction_bits) {};
+        fxp_fraction_bits(fxp_fraction_bits){};
   RuntimeConfig(const RuntimeConfig& other) = default;
   explicit RuntimeConfig(const pb::RuntimeConfig& pb_conf);
 

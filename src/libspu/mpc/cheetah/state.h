@@ -20,6 +20,7 @@
 #include "libspu/core/context.h"
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/core/object.h"
+#include "libspu/mpc/cheetah/arith/batch_matmul.h"
 #include "libspu/mpc/cheetah/arith/cheetah_dot.h"
 #include "libspu/mpc/cheetah/arith/cheetah_mul.h"
 #include "libspu/mpc/cheetah/ot/basic_ot_prot.h"
@@ -109,6 +110,26 @@ class CheetahDotState : public State {
   ~CheetahDotState() override = default;
 
   CheetahDot* get() { return dot_prot_.get(); }
+};
+
+class CheetahBatchMatMulState : public State {
+ private:
+  std::unique_ptr<BatchMatMul> bmm_prot_;
+
+  explicit CheetahBatchMatMulState(std::unique_ptr<BatchMatMul> bmm_prot)
+      : bmm_prot_(std::move(bmm_prot)) {}
+
+ public:
+  static constexpr const char* kBindName() { return "CheetahBatchMatMul"; }
+
+  explicit CheetahBatchMatMulState(
+      const std::shared_ptr<yacl::link::Context>& lctx) {
+    bmm_prot_ = std::make_unique<BatchMatMul>(lctx);
+  }
+
+  ~CheetahBatchMatMulState() override = default;
+
+  BatchMatMul* get() { return bmm_prot_.get(); }
 };
 
 class CheetahOTState : public State {
