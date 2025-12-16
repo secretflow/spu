@@ -154,9 +154,12 @@ std::vector<Value> private_groupby_avg_1d(SPUContext *ctx,
     unique_key_value_count = hal::associative_reduce(
         hal::add, ctx, group_marks.setDtype(group_dtype));
 
+    if (!unique_key_value_count.isPublic()) {
+      unique_key_value_count = hal::reveal(ctx, unique_key_value_count);
+    }
+
     // INFO LEAKAGE HERE: reveal the unique key count to all parties
-    key_count =
-        getScalarValue<int64_t>(ctx, reveal(ctx, unique_key_value_count));
+    key_count = getScalarValue<int64_t>(ctx, unique_key_value_count);
 
     // update the shapes
     count = hal::slice(ctx, count, {0}, {key_count});
@@ -189,7 +192,7 @@ std::vector<Value> private_groupby_avg_1d(SPUContext *ctx,
     }
 
     auto dtype = std::max(count.dtype(), s.dtype());
-    // count is always positive and private
+    // count is always positive; private or public
     count = dtype_cast(ctx, count, dtype);
     s = dtype_cast(ctx, s, dtype);
 
