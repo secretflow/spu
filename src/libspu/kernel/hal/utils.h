@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <stack>
+
 #include "libspu/core/context.h"
 #include "libspu/core/value.h"
 #include "libspu/core/vectorize.h"
@@ -124,6 +126,80 @@ spu::Value associative_scan(Fn&& fn, SPUContext* ctx, const Value& in) {
 
   auto ret = hal::_add(ctx, pad_even, pad_odd).setDtype(in.dtype());
   return hal::reshape(ctx, ret, in.shape());
+}
+
+// Reduce the last axis of the input tensor using the given associative binary
+// function. Uses a binary tree reduction algorithm with O(N) complexity.
+//
+// fn: an associative binary Function
+// in: a tensor, reduce the last axis
+//
+// Output shape:
+//   - If input shape is (N,), output shape is (1,)
+//   - If input shape is (..., N), output shape is (...)
+template <typename Fn>
+spu::Value associative_reduce(Fn&& fn, SPUContext* ctx, const Value& in) {
+  SPU_ENFORCE(in.shape().ndim() >= 1U, "input should not be scalar");
+
+  const Shape& shape = in.shape();
+  const auto N = shape.back();
+
+  // Compute output shape: remove the last dimension
+  // For 1D input (N,) -> (1,), for higher dims (..., N) -> (...)
+  Shape out_shape;
+  if (shape.ndim() == 1) {
+    out_shape = {1};
+  } else {
+    out_shape = Shape(shape.begin(), shape.end() - 1);
+  }
+
+  // Edge case: if the last dimension has <= 1 element or tensor is empty
+  if (N < 2 || shape.numel() == 0) {
+    return in;
+  }
+
+  // Reshape to 2D {M, N} tensor for easier processing
+  const auto M = shape.numel() / N;
+  spu::Value current = hal::reshape(ctx, in, {M, N});
+
+  // Use a stack to store tails (odd elements) for later processing
+  std::stack<spu::Value> tails;
+
+  // Binary tree reduction using TreeReduce strategy:
+  // Split into [0, half) and [half, 2*half), save tail if odd
+  int64_t len = N;
+  while (len > 1) {
+    const int64_t half = len / 2;
+
+    // lhs = [0, half), rhs = [half, 2*half)
+    auto lhs = hal::slice(ctx, current, {0, 0}, {M, half}, {});
+    auto rhs = hal::slice(ctx, current, {0, half}, {M, 2 * half}, {});
+
+    // Save tail if len is odd
+    if (len % 2 == 1) {
+      tails.push(hal::slice(ctx, current, {0, 2 * half}, {M, len}, {}));
+    }
+
+    current = fn(ctx, lhs, rhs);
+    len = half;
+  }
+
+  // TODO: this may cause at worst 2*lg(n) time of reducer call, compare the
+  // best case log(n) times.
+  //
+  // consider len = 63, will iterate 5 (31, 15, 7, 3, 1), and generate
+  // len(tails) = 5, the total number is 5 + 5 = 10 times.
+  //
+  // However, the exact log(n) implementation requires more complex logic and
+  // has worse cache performance, so we use this simpler method.
+  //
+  // Process all tails
+  while (!tails.empty()) {
+    current = fn(ctx, current, tails.top());
+    tails.pop();
+  }
+
+  return hal::reshape(ctx, current, out_shape);
 }
 
 }  // namespace spu::kernel::hal
