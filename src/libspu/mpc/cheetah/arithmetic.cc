@@ -550,4 +550,16 @@ NdArrayRef BatchMatMulAV::proc(KernelEvalContext* ctx, const NdArrayRef& x,
   return out.as(x.eltype());
 }
 
+void BatchMatMulAA::evaluate(KernelEvalContext* ctx) const {
+  const auto& lhs = ctx->getParam<Value>(0);
+  const auto& rhs = ctx->getParam<Value>(1);
+  auto xs = lhs.shape();
+  auto ys = rhs.shape();
+  SPU_ENFORCE(xs.ndim() == ys.ndim(), "ndim mismatch: lhs={}, rhs={}", xs, ys);
+  SPU_ENFORCE(xs.ndim() == 3, "ndim mismatch: lhs={}, expected=3", xs);
+  SPU_ENFORCE(xs[0] == ys[0], "batch mismatch: lhs={}, rhs={}", xs, ys);
+  SPU_ENFORCE(xs[2] == ys[1], "shape mismatch: lhs={}, rhs={}", xs, ys);
+  ctx->pushOutput(WrapValue(proc(ctx, lhs.data(), rhs.data())));
+}
+
 }  // namespace spu::mpc::cheetah
