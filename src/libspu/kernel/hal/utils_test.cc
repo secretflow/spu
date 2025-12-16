@@ -138,6 +138,148 @@ TEST(UtilsTest, associative_scan_2d) {
   }
 }
 
+TEST(UtilsTest, associative_reduce_1d) {
+  SPUContext ctx = test::makeSPUContext();
+
+  {
+    // Test sum: 1+1+1+1+1 = 5
+    const xt::xarray<int32_t> x = {1, 1, 1, 1, 1, 1};
+    const xt::xarray<int32_t> expected = {6};
+    Value a = test::makeValue(&ctx, x, VIS_SECRET);
+    Value b = associative_reduce(hal::add, &ctx, a);
+    auto ret = dump_public_as<int32_t>(&ctx, hal::reveal(&ctx, b));
+    EXPECT_TRUE(expected == ret) << x << std::endl
+                                 << expected << std::endl
+                                 << ret;
+  }
+
+  {
+    // Test sum with different values: 1+2+3+4+5 = 15
+    const xt::xarray<int32_t> x = {1, 2, 3, 4, 5};
+    const xt::xarray<int32_t> expected = {15};
+    Value a = test::makeValue(&ctx, x, VIS_SECRET);
+    Value b = associative_reduce(hal::add, &ctx, a);
+    auto ret = dump_public_as<int32_t>(&ctx, hal::reveal(&ctx, b));
+    EXPECT_TRUE(expected == ret) << x << std::endl
+                                 << expected << std::endl
+                                 << ret;
+  }
+
+  {
+    // Test product: 1*2*3*4*5 = 120
+    const xt::xarray<int32_t> x = {1, 2, 3, 4, 5};
+    const xt::xarray<int32_t> expected = {120};
+    Value a = test::makeValue(&ctx, x, VIS_SECRET);
+    Value b = associative_reduce(hal::mul, &ctx, a);
+    auto ret = dump_public_as<int32_t>(&ctx, hal::reveal(&ctx, b));
+    EXPECT_TRUE(expected == ret) << x << std::endl
+                                 << expected << std::endl
+                                 << ret;
+  }
+
+  {
+    // Test bitwise_and
+    const xt::xarray<bool> x = {true, true, true, false, true, false};
+    const xt::xarray<bool> expected = {false};
+    Value a = test::makeValue(&ctx, x, VIS_SECRET);
+    Value b = associative_reduce(hal::bitwise_and, &ctx, a);
+    auto ret = dump_public_as<bool>(&ctx, hal::reveal(&ctx, b));
+    EXPECT_TRUE(expected == ret) << x << std::endl
+                                 << expected << std::endl
+                                 << ret;
+  }
+
+  {
+    // Test bitwise_or
+    const xt::xarray<bool> x = {false, false, true, false};
+    const xt::xarray<bool> expected = {true};
+    Value a = test::makeValue(&ctx, x, VIS_SECRET);
+    Value b = associative_reduce(hal::bitwise_or, &ctx, a);
+    auto ret = dump_public_as<bool>(&ctx, hal::reveal(&ctx, b));
+    EXPECT_TRUE(expected == ret) << x << std::endl
+                                 << expected << std::endl
+                                 << ret;
+  }
+
+  {
+    // Test edge case: single element
+    const xt::xarray<int32_t> x = {42};
+    const xt::xarray<int32_t> expected = {42};
+    Value a = test::makeValue(&ctx, x, VIS_SECRET);
+    Value b = associative_reduce(hal::add, &ctx, a);
+    auto ret = dump_public_as<int32_t>(&ctx, hal::reveal(&ctx, b));
+    EXPECT_TRUE(expected == ret) << x << std::endl
+                                 << expected << std::endl
+                                 << ret;
+  }
+}
+
+TEST(UtilsTest, associative_reduce_2d) {
+  SPUContext ctx = test::makeSPUContext();
+
+  {
+    // Test sum: each row sums to 5
+    const xt::xarray<int32_t> x = {{1, 1, 1, 1, 1}, {1, 1, 1, 1, 1}};
+    const xt::xarray<int32_t> expected = {5, 5};
+    Value a = test::makeValue(&ctx, x, VIS_SECRET);
+    Value b = associative_reduce(hal::add, &ctx, a);
+    auto ret = dump_public_as<int32_t>(&ctx, hal::reveal(&ctx, b));
+    EXPECT_TRUE(expected == ret) << x << std::endl
+                                 << expected << std::endl
+                                 << ret;
+  }
+
+  {
+    // Test sum with different values: each row sums to 15
+    const xt::xarray<int32_t> x = {{1, 2, 3, 4, 5}, {5, 4, 3, 2, 1}};
+    const xt::xarray<int32_t> expected = {15, 15};
+    Value a = test::makeValue(&ctx, x, VIS_SECRET);
+    Value b = associative_reduce(hal::add, &ctx, a);
+    auto ret = dump_public_as<int32_t>(&ctx, hal::reveal(&ctx, b));
+    EXPECT_TRUE(expected == ret) << x << std::endl
+                                 << expected << std::endl
+                                 << ret;
+  }
+
+  {
+    // Test product: each row product is 120
+    const xt::xarray<int32_t> x = {{1, 2, 3, 4, 5}, {1, 2, 3, 4, 5}};
+    const xt::xarray<int32_t> expected = {120, 120};
+    Value a = test::makeValue(&ctx, x, VIS_SECRET);
+    Value b = associative_reduce(hal::mul, &ctx, a);
+    auto ret = dump_public_as<int32_t>(&ctx, hal::reveal(&ctx, b));
+    EXPECT_TRUE(expected == ret) << x << std::endl
+                                 << expected << std::endl
+                                 << ret;
+  }
+
+  {
+    // Test bitwise_and
+    const xt::xarray<bool> x = {{true, true, true, false, true, false},
+                                {true, true, true, true, true, true}};
+    const xt::xarray<bool> expected = {false, true};
+    Value a = test::makeValue(&ctx, x, VIS_SECRET);
+    Value b = associative_reduce(hal::bitwise_and, &ctx, a);
+    auto ret = dump_public_as<bool>(&ctx, hal::reveal(&ctx, b));
+    EXPECT_TRUE(expected == ret) << x << std::endl
+                                 << expected << std::endl
+                                 << ret;
+  }
+
+  {
+    // Test bitwise_or
+    const xt::xarray<bool> x = {{false, false, false, false},
+                                {false, false, true, false}};
+    const xt::xarray<bool> expected = {false, true};
+    Value a = test::makeValue(&ctx, x, VIS_SECRET);
+    Value b = associative_reduce(hal::bitwise_or, &ctx, a);
+    auto ret = dump_public_as<bool>(&ctx, hal::reveal(&ctx, b));
+    EXPECT_TRUE(expected == ret) << x << std::endl
+                                 << expected << std::endl
+                                 << ret;
+  }
+}
+
 TEST(UtilsTest, Squeeze) {
   // GIVEN
   xt::xarray<int32_t> x = xt::ones<int32_t>({2, 1, 2, 1, 2});
