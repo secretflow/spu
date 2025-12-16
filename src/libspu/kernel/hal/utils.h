@@ -128,15 +128,28 @@ spu::Value associative_scan(Fn&& fn, SPUContext* ctx, const Value& in) {
   return hal::reshape(ctx, ret, in.shape());
 }
 
-// Reduce the last axis of the input tensor using the given associative binary
-// function. Uses a binary tree reduction algorithm with O(N) complexity.
+// Optimized version of associative_reduce with guaranteed max lg(n) + 1
+// reducer calls.
+//
+// Algorithm:
+// 1. Find the largest power of 2 (lower_exp) that is <= n
+// 2. If n > lower_exp, pre-reduce the "extra" elements to make length =
+//    lower_exp
+//    - c = n - lower_exp extra elements at the end
+//    - b = c elements from the middle to pair with c
+//    - a = 2*lower_exp - n elements at the beginning (untouched)
+//    - Result: [a, b⊕c] has exactly lower_exp elements
+// 3. Standard halving reduction on power-of-2 length
+//
+// Example for n = 7, lower_exp = 4:
+//   Original: [a0, a1, a2, a3, a4, a5, a6]
+//             |---|---|---|---|---|---|
+//              a        b        c
+//   Step 1:   [a0, a4⊕a1, a5⊕a2, a6⊕a3]  (length = 4)
+//   Step 2-4: Standard halving reduction
 //
 // fn: an associative binary Function
 // in: a tensor, reduce the last axis
-//
-// Output shape:
-//   - If input shape is (N,), output shape is (1,)
-//   - If input shape is (..., N), output shape is (...)
 template <typename Fn>
 spu::Value associative_reduce(Fn&& fn, SPUContext* ctx, const Value& in) {
   SPU_ENFORCE(in.shape().ndim() >= 1U, "input should not be scalar");
@@ -145,7 +158,6 @@ spu::Value associative_reduce(Fn&& fn, SPUContext* ctx, const Value& in) {
   const auto N = shape.back();
 
   // Compute output shape: remove the last dimension
-  // For 1D input (N,) -> (1,), for higher dims (..., N) -> (...)
   Shape out_shape;
   if (shape.ndim() == 1) {
     out_shape = {1};
@@ -155,48 +167,43 @@ spu::Value associative_reduce(Fn&& fn, SPUContext* ctx, const Value& in) {
 
   // Edge case: if the last dimension has <= 1 element or tensor is empty
   if (N < 2 || shape.numel() == 0) {
-    return in;
+    return hal::reshape(ctx, in, out_shape);
   }
 
   // Reshape to 2D {M, N} tensor for easier processing
   const auto M = shape.numel() / N;
   spu::Value current = hal::reshape(ctx, in, {M, N});
 
-  // Use a stack to store tails (odd elements) for later processing
-  std::stack<spu::Value> tails;
-
-  // Binary tree reduction using TreeReduce strategy:
-  // Split into [0, half) and [half, 2*half), save tail if odd
   int64_t len = N;
-  while (len > 1) {
-    const int64_t half = len / 2;
 
-    // lhs = [0, half), rhs = [half, 2*half)
-    auto lhs = hal::slice(ctx, current, {0, 0}, {M, half}, {});
-    auto rhs = hal::slice(ctx, current, {0, half}, {M, 2 * half}, {});
-
-    // Save tail if len is odd
-    if (len % 2 == 1) {
-      tails.push(hal::slice(ctx, current, {0, 2 * half}, {M, len}, {}));
-    }
-
-    current = fn(ctx, lhs, rhs);
-    len = half;
+  // Find the largest power of 2 that is <= len
+  int64_t lower_exp = 1;
+  while ((lower_exp << 1) <= len) {
+    lower_exp <<= 1;
   }
 
-  // TODO: this may cause at worst 2*lg(n) time of reducer call, compare the
-  // best case log(n) times.
-  //
-  // consider len = 63, will iterate 5 (31, 15, 7, 3, 1), and generate
-  // len(tails) = 5, the total number is 5 + 5 = 10 times.
-  //
-  // However, the exact log(n) implementation requires more complex logic and
-  // has worse cache performance, so we use this simpler method.
-  //
-  // Process all tails
-  while (!tails.empty()) {
-    current = fn(ctx, current, tails.top());
-    tails.pop();
+  // If len > lower_exp, pre-reduce the extra part to make len = lower_exp
+  if (len != lower_exp) {
+    // c = [lower_exp, len): the extra elements
+    // b = [2*lower_exp - len, lower_exp): elements to pair with c
+    // a = [0, 2*lower_exp - len): untouched elements
+    auto c = hal::slice(ctx, current, {0, lower_exp}, {M, len}, {});
+    auto b =
+        hal::slice(ctx, current, {0, 2 * lower_exp - len}, {M, lower_exp}, {});
+    auto t = fn(ctx, c, b);  // t = c ⊕ b
+
+    auto a = hal::slice(ctx, current, {0, 0}, {M, 2 * lower_exp - len}, {});
+    current = hal::concatenate(ctx, {a, t}, 1);
+    len = lower_exp;
+  }
+
+  // Now len is a power of 2, do standard halving reduction
+  while (len > 1) {
+    const int64_t half = len / 2;
+    auto lhs = hal::slice(ctx, current, {0, 0}, {M, half}, {});
+    auto rhs = hal::slice(ctx, current, {0, half}, {M, 2 * half}, {});
+    current = fn(ctx, lhs, rhs);
+    len = half;
   }
 
   return hal::reshape(ctx, current, out_shape);
