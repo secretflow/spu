@@ -15,9 +15,12 @@
 #include "libspu/kernel/hal/group_by_agg.h"
 
 #include "libspu/core/trace.h"
+#include "libspu/kernel/hal/fxp_base.h"
 #include "libspu/kernel/hal/permute.h"
 #include "libspu/kernel/hal/polymorphic.h"
 #include "libspu/kernel/hal/prot_wrapper.h"
+#include "libspu/kernel/hal/public_helper.h"
+#include "libspu/kernel/hal/type_cast.h"
 #include "libspu/kernel/hal/utils.h"
 
 namespace spu::kernel::hal {
@@ -125,6 +128,7 @@ std::vector<Value> private_groupby_avg_1d(SPUContext *ctx,
   auto sorted_keys = apply_inv_permute_1d(ctx, keys, private_perm);
   auto group_marks =
       _group_mark(ctx, absl::MakeSpan(sorted_keys), /*end_group_mark=*/true);
+  SPU_ENFORCE(group_marks.shape().ndim() == 1, "group marks should be 1d");
 
   // the permutation that makes valid key appear first
   auto group_mark_perm =
@@ -139,7 +143,27 @@ std::vector<Value> private_groupby_avg_1d(SPUContext *ctx,
   one_prefix_sum =
       apply_inv_permute_1d(ctx, {one_prefix_sum}, group_mark_perm)[0];
   auto count = hal::_sub(ctx, one_prefix_sum,
-                         _circular_right_shift_1d(ctx, one_prefix_sum));
+                         _circular_right_shift_1d(ctx, one_prefix_sum))
+                   .setDtype(DT_F32);
+
+  // drop the rest count for better performance
+  Value unique_key_value_count;
+  int64_t key_count = 0;
+  if (unsafe_drop_rest) {
+    auto group_dtype = ctx->getField() == FieldType::FM32 ? DT_I32 : DT_I64;
+    unique_key_value_count = hal::associative_reduce(
+        hal::add, ctx, group_marks.setDtype(group_dtype));
+
+    // INFO LEAKAGE HERE: reveal the unique key count to all parties
+    key_count =
+        getScalarValue<int64_t>(ctx, reveal(ctx, unique_key_value_count));
+
+    // update the shapes
+    count = hal::slice(ctx, count, {0}, {key_count});
+    for (auto &k : output_order_keys) {
+      k = hal::slice(ctx, k, {0}, {key_count});
+    }
+  }
 
   // inv_perm_xv called here, x relies on the visibility of payloads
   auto permuted_payloads = apply_inv_permute_1d(ctx, payloads, private_perm);
@@ -155,8 +179,22 @@ std::vector<Value> private_groupby_avg_1d(SPUContext *ctx,
     // multiple calls of inv_perm_sv(value) = single call of
     // inv_perm_sv(vector[value]), so we just do it in the loop
     auto y = apply_inv_permute_1d(ctx, {w}, group_mark_perm)[0];
-    auto s = hal::_sub(ctx, y, _circular_right_shift_1d(ctx, y));
-    prefix_sum_payloads.push_back(s.setDtype(payloads[i].dtype()));
+    auto s = hal::_sub(ctx, y, _circular_right_shift_1d(ctx, y))
+                 .setDtype(payloads[i].dtype());
+    if (unsafe_drop_rest) {
+      SPU_ENFORCE(
+          key_count > 0,
+          "key_count must be greater than 0 when unsafe_drop_rest is true");
+      s = hal::slice(ctx, s, {0}, {key_count});
+    }
+
+    auto dtype = std::max(count.dtype(), s.dtype());
+    // count is always positive and private
+    count = dtype_cast(ctx, count, dtype);
+    s = dtype_cast(ctx, s, dtype);
+
+    prefix_sum_payloads.push_back(detail::div_goldschmidt_general(
+        ctx, s, count, SignType::Unknown, SignType::Positive));
   }
 
   // now, we always return both keys and payloads
