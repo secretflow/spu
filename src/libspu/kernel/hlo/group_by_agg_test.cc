@@ -16,6 +16,7 @@
 
 #include "gtest/gtest.h"
 #include "xtensor/xio.hpp"
+#include "xtensor/xview.hpp"
 
 #include "libspu/kernel/hal/type_cast.h"
 #include "libspu/kernel/hlo/const.h"
@@ -81,25 +82,26 @@ Value makeValue(SPUContext *ctx, PtBufferView init, VisType vis_type,
 
 }  // namespace
 
-class SingleKeyGroupBySumTest
+class SingleKeyGroupBySumOrAvgTest
     : public ::testing::TestWithParam<
           std::tuple<size_t, FieldType, ProtocolKind, VisType, VisType>> {};
 
 INSTANTIATE_TEST_SUITE_P(
-    PrivateGroupBySum3PCTestInstances, SingleKeyGroupBySumTest,
+    PrivateGroupBySumOrAvg3PCTestInstances, SingleKeyGroupBySumOrAvgTest,
     testing::Combine(testing::Values(3),
                      testing::Values(FieldType::FM32, FieldType::FM64),
                      testing::Values(ProtocolKind::SEMI2K, ProtocolKind::ABY3),
                      testing::ValuesIn(kVisTypes),
                      testing::ValuesIn(kVisTypes)),
-    [](const testing::TestParamInfo<SingleKeyGroupBySumTest::ParamType> &p) {
+    [](const testing::TestParamInfo<SingleKeyGroupBySumOrAvgTest::ParamType>
+           &p) {
       return fmt::format("{}x{}x{}x{}x{}", std::get<0>(p.param),
                          std::get<1>(p.param), std::get<2>(p.param),
                          get_vis_str(std::get<3>(p.param)),
                          get_vis_str(std::get<4>(p.param)));
     });
 
-TEST_P(SingleKeyGroupBySumTest, Basic) {
+TEST_P(SingleKeyGroupBySumOrAvgTest, SumBasic) {
   const size_t npc = std::get<0>(GetParam());
   const FieldType field = std::get<1>(GetParam());
   const ProtocolKind protocol = std::get<2>(GetParam());
@@ -164,7 +166,7 @@ TEST_P(SingleKeyGroupBySumTest, Basic) {
   });
 }
 
-TEST_P(SingleKeyGroupBySumTest, Empty) {
+TEST_P(SingleKeyGroupBySumOrAvgTest, SumEmpty) {
   const size_t npc = std::get<0>(GetParam());
   const FieldType field = std::get<1>(GetParam());
   const ProtocolKind protocol = std::get<2>(GetParam());
@@ -192,6 +194,177 @@ TEST_P(SingleKeyGroupBySumTest, Empty) {
         EXPECT_EQ(rets[1].shape().size(), 1);
         EXPECT_EQ(rets[0].shape()[0], 0);
         EXPECT_EQ(rets[1].shape()[0], 0);
+      });
+}
+
+// ============================================================================
+// Tests for GroupByAgg with AggFunc::Avg
+// ============================================================================
+
+TEST_P(SingleKeyGroupBySumOrAvgTest, AvgBasic) {
+  const size_t npc = std::get<0>(GetParam());
+  const FieldType field = std::get<1>(GetParam());
+  const ProtocolKind protocol = std::get<2>(GetParam());
+  const VisType key_vis = std::get<3>(GetParam());
+  const VisType payload_vis = std::get<4>(GetParam());
+
+  const AggFunc agg_func = AggFunc::Avg;
+
+  // Skip test if key is secret now.
+  if (key_vis == VisType::VisSec) {
+    return;
+  }
+
+  mpc::utils::simulate(
+      npc, [&](const std::shared_ptr<yacl::link::Context> &lctx) {
+        SPUContext ctx = makeSPUContextWithProfile(protocol, field, lctx);
+
+        // GIVEN
+        xt::xarray<int32_t> keys = {1, 2, 3, 1, 2, 1};
+        xt::xarray<float> payloads = {10.0, 20.0, 30.0, 100.0, 200.0, 1000.0};
+        // key 1: (10 + 100 + 1000) / 3 = 370
+        // key 2: (20 + 200) / 2 = 110
+        // key 3: 30 / 1 = 30
+        int64_t valid_key_count = 3;
+
+        xt::xarray<int32_t> expected_keys = {1, 2, 3};
+        xt::xarray<float> expected_payloads = {370.0, 110.0, 30.0};
+
+        auto keys_v = makeValue(&ctx, keys, key_vis);
+        auto payloads_v = makeValue(&ctx, payloads, payload_vis);
+
+        // WHEN
+        std::vector<spu::Value> rets = GroupByAgg(&ctx, {keys_v}, {payloads_v},
+                                                  agg_func, /*valid_bits*/ {});
+
+        // THEN
+        EXPECT_EQ(rets.size(), 2);
+
+        Value groupby_key = rets[0];
+        Value groupby_payload = rets[1];
+        if (!groupby_key.isPublic()) {
+          groupby_key = hal::reveal(&ctx, groupby_key);
+        }
+        if (!groupby_payload.isPublic()) {
+          groupby_payload = hal::reveal(&ctx, groupby_payload);
+        }
+
+        auto keys_hat = hal::dump_public_as<int32_t>(&ctx, groupby_key);
+        auto avg_payloads_hat =
+            hal::dump_public_as<float>(&ctx, groupby_payload);
+
+        // only the first valid_key_count are valid
+        auto keys_valid = xt::view(keys_hat, xt::range(0, valid_key_count));
+        auto payloads_valid =
+            xt::view(avg_payloads_hat, xt::range(0, valid_key_count));
+
+        EXPECT_TRUE(xt::allclose(expected_keys, keys_valid, 0.001, 0.001))
+            << expected_keys << std::endl
+            << keys_valid << std::endl;
+        // Use larger tolerance for avg due to division precision
+        EXPECT_TRUE(xt::allclose(expected_payloads, payloads_valid, 0.1, 0.1))
+            << expected_payloads << std::endl
+            << payloads_valid << std::endl;
+      });
+}
+
+TEST_P(SingleKeyGroupBySumOrAvgTest, AvgEmpty) {
+  const size_t npc = std::get<0>(GetParam());
+  const FieldType field = std::get<1>(GetParam());
+  const ProtocolKind protocol = std::get<2>(GetParam());
+  const VisType key_vis = std::get<3>(GetParam());
+  const VisType payload_vis = std::get<4>(GetParam());
+
+  const AggFunc agg_func = AggFunc::Avg;
+
+  mpc::utils::simulate(
+      npc, [&](const std::shared_ptr<yacl::link::Context> &lctx) {
+        SPUContext ctx = makeSPUContextWithProfile(protocol, field, lctx);
+
+        auto keys_v = makeValue(&ctx, 1, key_vis, DT_I32, {0});
+        auto payloads_v = makeValue(&ctx, 1.0F, payload_vis, DT_F32, {0});
+
+        // WHEN
+        std::vector<spu::Value> rets = GroupByAgg(&ctx, {keys_v}, {payloads_v},
+                                                  agg_func, /*valid_bits*/ {});
+
+        // THEN
+        EXPECT_EQ(rets.size(), 2);
+        EXPECT_EQ(rets[0].numel(), 0);
+        EXPECT_EQ(rets[1].numel(), 0);
+        EXPECT_EQ(rets[0].shape().size(), 1);
+        EXPECT_EQ(rets[1].shape().size(), 1);
+        EXPECT_EQ(rets[0].shape()[0], 0);
+        EXPECT_EQ(rets[1].shape()[0], 0);
+      });
+}
+
+TEST_P(SingleKeyGroupBySumOrAvgTest, AvgWithDropRest) {
+  const size_t npc = std::get<0>(GetParam());
+  const FieldType field = std::get<1>(GetParam());
+  const ProtocolKind protocol = std::get<2>(GetParam());
+  const VisType key_vis = std::get<3>(GetParam());
+  const VisType payload_vis = std::get<4>(GetParam());
+
+  const AggFunc agg_func = AggFunc::Avg;
+
+  // Skip test if key is secret now.
+  if (key_vis == VisType::VisSec) {
+    return;
+  }
+
+  mpc::utils::simulate(
+      npc, [&](const std::shared_ptr<yacl::link::Context> &lctx) {
+        SPUContext ctx = makeSPUContextWithProfile(protocol, field, lctx);
+
+        // GIVEN
+        xt::xarray<int32_t> keys = {1, 2, 3, 1, 2, 1};
+        xt::xarray<float> payloads = {10.0, 20.0, 30.0, 100.0, 200.0, 1000.0};
+        // key 1: (10 + 100 + 1000) / 3 = 370
+        // key 2: (20 + 200) / 2 = 110
+        // key 3: 30 / 1 = 30
+        int64_t valid_key_count = 3;
+
+        xt::xarray<int32_t> expected_keys = {1, 2, 3};
+        xt::xarray<float> expected_payloads = {370.0, 110.0, 30.0};
+
+        auto keys_v = makeValue(&ctx, keys, key_vis);
+        auto payloads_v = makeValue(&ctx, payloads, payload_vis);
+
+        // WHEN - with unsafe_output_order_drop_rest=true
+        GroupByAggOptions options;
+        options.unsafe_output_order_drop_rest = true;
+        std::vector<spu::Value> rets = GroupByAgg(
+            &ctx, {keys_v}, {payloads_v}, agg_func, /*valid_bits*/ {}, options);
+
+        // THEN
+        EXPECT_EQ(rets.size(), 2);
+
+        // With drop_rest=true, the output should have exactly valid_key_count
+        // elements
+        EXPECT_EQ(rets[0].shape()[0], valid_key_count);
+        EXPECT_EQ(rets[1].shape()[0], valid_key_count);
+
+        Value groupby_key = rets[0];
+        Value groupby_payload = rets[1];
+        if (!groupby_key.isPublic()) {
+          groupby_key = hal::reveal(&ctx, groupby_key);
+        }
+        if (!groupby_payload.isPublic()) {
+          groupby_payload = hal::reveal(&ctx, groupby_payload);
+        }
+
+        auto keys_hat = hal::dump_public_as<int32_t>(&ctx, groupby_key);
+        auto avg_payloads_hat =
+            hal::dump_public_as<float>(&ctx, groupby_payload);
+
+        EXPECT_TRUE(xt::allclose(expected_keys, keys_hat, 0.001, 0.001))
+            << expected_keys << std::endl
+            << keys_hat << std::endl;
+        // Use larger tolerance for avg due to division precision
+        EXPECT_TRUE(xt::allclose(expected_payloads, avg_payloads_hat, 0.1, 0.1))
+            << expected_payloads << std::endl
+            << avg_payloads_hat << std::endl;
       });
 }
 
