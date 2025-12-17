@@ -142,7 +142,7 @@ TEST(UtilsTest, associative_reduce_1d) {
   SPUContext ctx = test::makeSPUContext();
 
   {
-    // Test sum: 1+1+1+1+1 = 5
+    // Test sum: 1+1+1+1+1+1 = 6
     const xt::xarray<int32_t> x = {1, 1, 1, 1, 1, 1};
     const xt::xarray<int32_t> expected = {6};
     Value a = test::makeValue(&ctx, x, VIS_SECRET);
