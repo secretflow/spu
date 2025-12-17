@@ -196,8 +196,11 @@ std::vector<Value> private_groupby_avg_1d(SPUContext *ctx,
     count = dtype_cast(ctx, count, dtype);
     s = dtype_cast(ctx, s, dtype);
 
-    prefix_sum_payloads.push_back(detail::div_goldschmidt_general(
-        ctx, s, count, SignType::Unknown, SignType::Positive));
+    // we use mul (will do dtype dispatch inside) + internal reciprocal to do
+    // division to increase performance at the cost of slight precision loss
+    // when the count and sums are both large.
+    prefix_sum_payloads.push_back(
+        hal::mul(ctx, s, detail::reciprocal_goldschmidt_positive(ctx, count)));
   }
 
   // now, we always return both keys and payloads
