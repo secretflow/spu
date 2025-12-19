@@ -94,7 +94,8 @@ void hintNumberOfBits(const Value& a, size_t nbits) {
 }
 
 Value maskNumberOfBits(SPUContext* ctx, const Value& in, size_t nbits) {
-  auto k1 = constant(ctx, static_cast<int64_t>(1), spu::DT_I64, in.shape());
+  auto dtype = ctx->getField() == FieldType::FM32 ? spu::DT_I32 : spu::DT_I64;
+  auto k1 = constant(ctx, static_cast<int32_t>(1), dtype, in.shape());
   auto mask = _sub(ctx, _lshift(ctx, k1, {static_cast<int64_t>(nbits)}), k1);
   auto out = _and(ctx, in, mask).setDtype(in.dtype());
   return out;

@@ -114,6 +114,23 @@ std::vector<Value> GroupByAgg(SPUContext* ctx,
             magic_enum::enum_name(options.mode),
             magic_enum::enum_name(options.output_format));
       }
+      break;
+    case AggFunc::Avg:
+      if ((options.mode != GroupByAggMode::PrefixSumMode) &&
+          (options.output_format == OutputFormat::OutputOrder)) {
+        SPU_ENFORCE(_all_pub_or_pri_with_same_owner(keys),
+                    "keys should be all public or private with the same owner");
+        return hal::private_groupby_avg_1d(
+            ctx, keys, payloads,
+            options.unsafe_output_order_drop_rest /*unsafe_drop_rest*/);
+      } else {
+        SPU_THROW(
+            "groupby avg with mode {} and output format {} is not "
+            "supported now",
+            magic_enum::enum_name(options.mode),
+            magic_enum::enum_name(options.output_format));
+      }
+      break;
     default:
       SPU_THROW("groupby agg func {} is not supported now",
                 magic_enum::enum_name(agg_func));
