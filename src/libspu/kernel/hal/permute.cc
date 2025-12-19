@@ -986,18 +986,7 @@ std::vector<spu::Value> _gen_bv_vector(SPUContext *ctx,
   const auto k1 = _constant(ctx, 1U, keys[0].shape());
   // keys[0] is the most significant key
   for (size_t i = keys.size(); i > 0; --i) {
-    if (keys[i - 1].dtype() == DT_I1) {
-      auto ascending_key = keys[i - 1];
-      if (direction == SortDirection::Descending) {
-        ascending_key = _not(ctx, ascending_key);
-      }
-      const auto t = _bit_decompose(ctx, ascending_key, valid_bits);
-      for (const auto &v : t) {
-        ret.emplace_back(v);
-      }
-      continue;
-    }
-    const auto t = _bit_decompose(ctx, keys[i - 1], valid_bits);
+    const auto t = _bit_decompose(ctx, _prefer_a(ctx, keys[i - 1]), valid_bits);
 
     SPU_ENFORCE(t.size() > 0);
     for (size_t j = 0; j < t.size() - 1; j++) {
