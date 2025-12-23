@@ -58,6 +58,10 @@ std::vector<spu::Value> sort1d(SPUContext *ctx,
 //  - direction: sorting order
 //  - num_keys: the number of operands to treat as keys (count from index 0)
 //  - valid_bits: indicates the numeric range of keys for performance hint
+//
+// Important notes:
+//   - for radix sort, the user should ensure that the data has the correct
+//     signed or unsigned type.
 std::vector<spu::Value> simple_sort1d(SPUContext *ctx,
                                       absl::Span<spu::Value const> inputs,
                                       SortDirection direction, int64_t num_keys,

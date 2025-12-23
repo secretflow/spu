@@ -15,6 +15,7 @@
 #include "libspu/kernel/hlo/sort.h"
 
 #include <algorithm>
+#include <limits>
 #include <random>
 #include <xtensor/xadapt.hpp>
 #include <xtensor/xsort.hpp>
@@ -512,6 +513,80 @@ TEST_P(SimpleSortTest, UnsignedTypeSort) {
                            RunUnsignedSortTest<uint64_t>(&ctx);
                          }
                        });
+}
+
+// Helper template to test signed interpretation of unsigned-range values
+// When values like 255 (for int8_t) are interpreted as signed, they become -1
+// So sorting should treat them as negative numbers
+template <typename SignedT, typename UnsignedT>
+void RunSignedInterpretationSortTest(SPUContext *ctx) {
+  // Use max value of unsigned type which becomes -1 when interpreted as signed
+  constexpr UnsignedT max_val = std::numeric_limits<UnsignedT>::max();
+  // Key: {0, max_val} where max_val is interpreted as -1 in signed
+  // For ascending sort with signed interpretation: -1 < 0, so max_val comes
+  // first
+  xt::xarray<SignedT> k1 = {0, static_cast<SignedT>(max_val)};
+  // Expected: max_val (-1) < 0, so sorted order is {max_val, 0}
+  xt::xarray<SignedT> sorted_k1 = {static_cast<SignedT>(max_val), 0};
+  xt::xarray<float> payload = {1.0, 2.0};
+  xt::xarray<float> sorted_payload = {2.0, 1.0};
+
+  Value k1_v = test::makeValue(ctx, k1, VIS_SECRET);
+  Value payload_v = test::makeValue(ctx, payload, VIS_SECRET);
+
+  std::vector<spu::Value> rets =
+      SimpleSort(ctx, {k1_v, payload_v}, 0, hal::SortDirection::Ascending, 1);
+
+  EXPECT_EQ(rets.size(), 2);
+
+  auto sorted_k1_hat =
+      hal::dump_public_as<SignedT>(ctx, hal::reveal(ctx, rets[0]));
+  auto sorted_payload_hat =
+      hal::dump_public_as<float>(ctx, hal::reveal(ctx, rets[1]));
+
+  EXPECT_TRUE(xt::allclose(sorted_k1, sorted_k1_hat, 0.01, 0.001))
+      << "sort failed: expected " << sorted_k1 << ", got " << sorted_k1_hat
+      << std::endl;
+
+  EXPECT_TRUE(xt::allclose(sorted_payload, sorted_payload_hat, 0.01, 0.001))
+      << "payload failed: expected " << sorted_payload << ", got "
+      << sorted_payload_hat << std::endl;
+}
+
+// IMPORTANT: the user should ensure that the data has the correct signed or
+// unsigned type.
+TEST_P(SimpleSortTest, SignedInterpretationSort) {
+  size_t npc = std::get<0>(GetParam());
+  FieldType field = std::get<1>(GetParam());
+  ProtocolKind prot = std::get<2>(GetParam());
+  RuntimeConfig::SortMethod method = std::get<3>(GetParam());
+
+  mpc::utils::simulate(
+      npc, [&](const std::shared_ptr<yacl::link::Context> &lctx) {
+        RuntimeConfig cfg;
+        cfg.protocol = prot;
+        cfg.field = field;
+        cfg.enable_action_trace = false;
+        cfg.sort_method = method;
+        SPUContext ctx = test::makeSPUContext(cfg, lctx);
+
+        // Test: data is uint8_t range but treated as int8_t
+        // 255 (uint8_t) -> -1 (int8_t), so -1 < 0
+        RunSignedInterpretationSortTest<int8_t, uint8_t>(&ctx);
+
+        // Test: data is uint16_t range but treated as int16_t
+        // 65535 (uint16_t) -> -1 (int16_t), so -1 < 0
+        RunSignedInterpretationSortTest<int16_t, uint16_t>(&ctx);
+
+        // Test: data is uint32_t range but treated as int32_t
+        // 4294967295 (uint32_t) -> -1 (int32_t), so -1 < 0
+        RunSignedInterpretationSortTest<int32_t, uint32_t>(&ctx);
+
+        if (field >= FieldType::FM64) {
+          // Test: data is uint64_t range but treated as int64_t
+          RunSignedInterpretationSortTest<int64_t, uint64_t>(&ctx);
+        }
+      });
 }
 
 TEST_P(SimpleSortTest, BoolKeyWithPayloads) {
