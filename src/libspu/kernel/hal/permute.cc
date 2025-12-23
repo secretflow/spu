@@ -984,25 +984,27 @@ std::vector<spu::Value> _gen_bv_vector(SPUContext *ctx,
                                        int64_t valid_bits) {
   std::vector<spu::Value> ret;
   const auto k1 = _constant(ctx, 1U, keys[0].shape());
+  const bool is_descending = (direction == SortDirection::Descending);
+
   // keys[0] is the most significant key
   for (size_t i = keys.size(); i > 0; --i) {
     const auto t = _bit_decompose(ctx, keys[i - 1], valid_bits);
+    const bool is_unsigned = keys[i - 1].isUInt();
 
     SPU_ENFORCE(t.size() > 0);
+
+    // Process non-sign bits (same logic for both signed and unsigned types)
+    // Radix sort is a stable sorting algorithm for the ascending order, if
+    // we flip the bit, then we can get the descending order for stable sort
     for (size_t j = 0; j < t.size() - 1; j++) {
-      // Radix sort is a stable sorting algorithm for the ascending order, if
-      // we flip the bit, then we can get the descending order for stable sort
-      if (direction == SortDirection::Descending) {
-        ret.emplace_back(_sub(ctx, k1, t[j]));
-      } else {
-        ret.emplace_back(t[j]);
-      }
+      ret.emplace_back(is_descending ? _sub(ctx, k1, t[j]) : t[j]);
     }
-    // The sign bit is opposite
-    if (direction == SortDirection::Descending) {
-      ret.emplace_back(t.back());
+
+    // For signed types, handle the sign bit (opposite logic)
+    if (!is_unsigned) {
+      ret.emplace_back(is_descending ? t.back() : _sub(ctx, k1, t.back()));
     } else {
-      ret.emplace_back(_sub(ctx, k1, t.back()));
+      ret.emplace_back(is_descending ? _sub(ctx, k1, t.back()) : t.back());
     }
   }
   return ret;

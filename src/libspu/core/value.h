@@ -80,6 +80,7 @@ class Value final {
   // Get dtype.
   DataType dtype() const { return dtype_; }
   bool isInt() const { return isInteger(dtype()); }
+  bool isUInt() const { return isUInteger(dtype()); }
   bool isFxp() const { return isFixedPoint(dtype()); }
   bool isComplex() const { return imag_.has_value(); }
 
