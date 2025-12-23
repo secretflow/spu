@@ -36,10 +36,9 @@ namespace spu::kernel::hal {
 // 2. Compute v_g = [2,3,1,4,5] (need one `inv_perm_xv`, x relying on the
 // visibility of payloads)
 // 3. Compute w_g = prefix_sum(v_g) = [2,5,6,10,15] (locally)
-// 4. Compute x = mul(group_marks, w_g) = [0,5,6,0,15] (mul_ss here)
-// 5. Sort e descending (locally) and permute x accordingly (need one
-// `inv_perm_xv`), i.e. y = [5,6,15,0,0]
-// 6. Compute s =  y - right_shift(y)  = y - [0,5,6,15,0] = [5,1,9,x,x]
+// 4. Sort e descending (locally) and permute w_g accordingly (need one
+// `inv_perm_xv`), i.e. y = [5,6,15,x,x]
+// 5. Compute s =  y - right_shift(y)  = y - [0,5,6,15,x] = [5,1,9,x,x]
 //
 // Note: As the keys are private, the caller can extract the output keys and
 // valid groupby payloads by itself
@@ -49,4 +48,23 @@ namespace spu::kernel::hal {
 std::vector<Value> private_groupby_sum_1d(
     SPUContext *ctx, absl::Span<spu::Value const> keys,
     absl::Span<spu::Value const> payloads);
+
+// A quick path for groupby avg, nearly the same as groupby sum, except the last
+// step:
+//   instead of directly returning the sum results, we need to divide the sum
+//   results with the group sizes (which can be computed with group marks)
+
+// Note: As the keys are private, the caller can extract the output keys and
+// valid groupby payloads by itself
+//
+// Warning:
+// 1. we skip the sanity checks here, which should be done by the caller
+// if the visibility requirements are not met, the performance may be degraded.
+// 2. if unsafe_drop_rest is set to true, then THE UNIQUE COUNT OF KEYS must be
+// revealed to all parties, but the performance may be much better if there are
+// many duplicated keys.
+std::vector<Value> private_groupby_avg_1d(SPUContext *ctx,
+                                          absl::Span<spu::Value const> keys,
+                                          absl::Span<spu::Value const> payloads,
+                                          bool unsafe_drop_rest = false);
 }  // namespace spu::kernel::hal

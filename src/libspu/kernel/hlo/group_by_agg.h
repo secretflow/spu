@@ -55,6 +55,12 @@ struct GroupByAggOptions {
   bool drop_keys = false;
   GroupByAggMode mode = GroupByAggMode::AutoMode;
   OutputFormat output_format = OutputFormat::OutputOrder;
+
+  // only valid when output_format == OutputFormat::OutputOrder
+  // if true, then only keep the unique key in the output
+  // so, THE UNIQUE COUNT OF KEYS must be revealed to all parties
+  // but in some cases, this may lead to better performance
+  bool unsafe_output_order_drop_rest = false;
 };
 
 enum class AggFunc {
