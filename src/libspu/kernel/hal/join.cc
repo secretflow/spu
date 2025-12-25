@@ -14,6 +14,8 @@
 
 #include "libspu/kernel/hal/join.h"
 
+#include "yacl/crypto/hash/blake3.h"
+#include "yacl/crypto/hash/hash_utils.h"
 #include "yacl/utils/cuckoo_index.h"
 
 #include "libspu/core/bit_utils.h"
@@ -44,7 +46,7 @@ std::vector<spu::Value> join_uu(SPUContext* ctx,
                                 absl::Span<const spu::Value> table_1,
                                 absl::Span<const spu::Value> table_2,
                                 size_t num_join_keys, size_t num_hash,
-                                double scale_factor) {
+                                double scale_factor, FieldType field) {
   // Input: two tables, the number of join keys, the number of hashes for Cuckoo
   // Hash, scale factor for calculating the number of bins of Cuckoo Hash. The
   // join keys are placed in front of the table by default. Input with blank
@@ -76,12 +78,56 @@ std::vector<spu::Value> join_uu(SPUContext* ctx,
   spu::Value ret = spu::kernel::hlo::SoPrf(ctx, absl::MakeSpan(join_keys));
 
   // Give the first n_1 line of ret reveal to P_0 and the last n_2 line reveal
-  // to P_1. 需要使用reveal_to，但是有问题
-  auto e_1 = hal::dump_public_as<uint128_t>(
-      ctx, hal::reveal(ctx, hal::slice(ctx, ret, {0, 0}, {1, n_1})));
+  spu::Value e_1 =
+      hal::reveal_to(ctx, hal::slice(ctx, ret, {0, 0}, {1, n_1}), 0);
+  spu::Value e_2 =
+      hal::reveal_to(ctx, hal::slice(ctx, ret, {0, n_1}, {1, n_1 + n_2}), 1);
 
-  auto e_2 = hal::dump_public_as<uint128_t>(
-      ctx, hal::reveal(ctx, hal::slice(ctx, ret, {0, n_1}, {1, n_1 + n_2})));
+  yacl::crypto::Blake3Hash blake3;
+  std::vector<uint8_t> hash_output;
+  uint128_t element;
+  uint128_t result_tmp;
+  std::vector<uint128_t> result;
+
+  FieldType field_2 = FieldType::FM128;
+  if (field == FieldType::FM64 && num_join_keys == 1) {
+    field_2 = FieldType::FM64;
+  }
+
+  if (ctx->lctx()->Rank() == 0) {
+    auto e_1_arr = e_1.data();
+    DISPATCH_ALL_FIELDS(field_2, [&]() {
+      NdArrayView<ring2k_t> e_1_view(e_1_arr);
+      for (int64_t i = 0; i < n_1; ++i) {
+        blake3.Reset();
+        element = e_1_view[i];
+        blake3.Update(yacl::ByteContainerView(
+            reinterpret_cast<const char*>(&element), sizeof(element)));
+        hash_output = blake3.CumulativeHash();
+        result_tmp = 0;
+        memcpy(&result_tmp, hash_output.data(),
+               std::min(hash_output.size(), sizeof(uint128_t)));
+        result.push_back(result_tmp);
+      }
+    });
+
+  } else if (ctx->lctx()->Rank() == 1) {
+    auto e_2_arr = e_2.data();
+    DISPATCH_ALL_FIELDS(field_2, [&]() {
+      NdArrayView<ring2k_t> e_2_view(e_2_arr);
+      for (int64_t i = 0; i < n_2; ++i) {
+        blake3.Reset();
+        element = e_2_view[i];
+        blake3.Update(yacl::ByteContainerView(
+            reinterpret_cast<const char*>(&element), sizeof(element)));
+        hash_output = blake3.CumulativeHash();
+        result_tmp = 0;
+        memcpy(&result_tmp, hash_output.data(),
+               std::min(hash_output.size(), sizeof(uint128_t)));
+        result.push_back(result_tmp);
+      }
+    });
+  }
 
   // Cuckoo hash initialization
   // The four parameters inputed are: num_input, num_stash,
@@ -105,9 +151,9 @@ std::vector<spu::Value> join_uu(SPUContext* ctx,
     }
 
     // Execute num_hash hash functions on e_1, and output permutation pi_0.
-    for (size_t i = 0; i < num_hash; ++i) {
-      for (int64_t j = 0; j < n_1; ++j) {
-        yacl::CuckooIndex::HashRoom e_1_hash(e_1[j]);
+    for (int64_t j = 0; j < n_1; ++j) {
+      yacl::CuckooIndex::HashRoom e_1_hash(result[j]);
+      for (size_t i = 0; i < num_hash; ++i) {
         pi_0[i][j] = e_1_hash.GetHash(i) % num_perm_0;
       }
     }
@@ -120,7 +166,8 @@ std::vector<spu::Value> join_uu(SPUContext* ctx,
     }
 
     // Perform cuckoo hash on e_2 and output permutation pi_1.
-    cuckoo_index.Insert(e_2);
+    absl::Span<uint128_t> span_e_2_view(result);
+    cuckoo_index.Insert(span_e_2_view);
 
     // The definition of permutation pi_1 satisfies pi_1(j)=i, where e_2[i]=t[j]
     int64_t tmp = n_2;
@@ -159,7 +206,6 @@ std::vector<spu::Value> join_uu(SPUContext* ctx,
   table_2_vec.push_back(indicator_v);
 
   // Perform permutation pi_1 on table_2_vec.
-  // 这里在论文里面是用的普通的[n] to [n]的置换
   auto table_t_2 =
       hlo::GeneralPermute(ctx, absl::MakeSpan(table_2_vec), pi_1_v);
 

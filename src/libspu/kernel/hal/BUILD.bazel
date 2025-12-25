@@ -333,6 +333,8 @@ spu_cc_library(
         "@yacl//yacl/utils:cuckoo_index",
         "//libspu/kernel:test_util",
         "//libspu/kernel/hlo:permute",
+        "@yacl//yacl/crypto/hash:blake3",
+        "@yacl//yacl/crypto/hash:hash_utils",
     ],
 )
 
