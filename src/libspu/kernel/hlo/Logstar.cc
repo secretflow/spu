@@ -9,6 +9,7 @@
 #include "libspu/core/trace.h"
 #include "libspu/core/vectorize.h"
 #include "libspu/kernel/hal/constants.h"
+#include "libspu/kernel/hal/permute.h"
 #include "libspu/kernel/hal/polymorphic.h"
 #include "libspu/kernel/hal/prot_wrapper.h"
 #include "libspu/kernel/hal/public_helper.h"
@@ -17,14 +18,12 @@
 #include "libspu/kernel/hal/shape_ops.h"
 #include "libspu/kernel/hal/type_cast.h"
 #include "libspu/kernel/hal/utils.h"
+#include "libspu/kernel/hlo/permute.h"
 #include "libspu/kernel/hlo/shuffle.h"
 #include "libspu/mpc/common/pv2k.h"
 #include "libspu/spu.h"
-#include "libspu/kernel/hal/permute.h"
-#include "libspu/kernel/hlo/permute.h"
 
 namespace spu::kernel::hlo {
-
 
 // ====================================================================================
 //                Vectorized AggregateBrentKung with valid bits
@@ -39,244 +38,250 @@ static std::pair<Value, Value> VectorizedNoteFunc(SPUContext* ctx,
                                                   const Value& g2) {
   // 1. g3 = g1 * g2 (Element-wise mul)
   auto g3 = hal::mul(ctx, g1, g2);
-
   // 2. diff = p2 - p1
   auto diff = hal::sub(ctx, p2, p1);
-
-  // 3. 处理广播: g1 是 [Batch, 1], diff 是 [Batch, BlockSize]
-  // SPU 的 mul 通常支持自动广播，但显式广播更安全
+  // 3. 广播: g1 是 [Batch, 1], diff 是 [Batch, BlockSize]
   Value g1_broadcasted = g1;
   if (diff.shape().size() > 0 && g1.shape() != diff.shape()) {
     g1_broadcasted = hal::broadcast_to(ctx, g1, diff.shape());
   }
-
   // 4. term = diff * g1
   auto term = hal::mul(ctx, diff, g1_broadcasted);
-
   // 5. p3 = p1 + term
   auto p3 = hal::add(ctx, p1, term);
-
   return {p3, g3};
 }
 // 重载版本：不需要输入的 g2 (用于 Down-Sweep 的最后阶段)
 static Value VectorizedNoteFunc(SPUContext* ctx, const Value& p1,
                                 const Value& p2, const Value& g1) {
   auto diff = hal::sub(ctx, p2, p1);
-
   Value g1_broadcasted = g1;
   if (diff.shape().size() > 0 && g1.shape() != diff.shape()) {
     g1_broadcasted = hal::broadcast_to(ctx, g1, diff.shape());
   }
-
   auto term = hal::mul(ctx, diff, g1_broadcasted);
   auto p3 = hal::add(ctx, p1, term);
   return p3;
 }
 // 辅助函数：计算下一个2的幂
 int64_t NextPowerOfTwo(int64_t n) {
-    if (n <= 0) return 1;
-    n--;
-    n |= n >> 1;
-    n |= n >> 2;
-    n |= n >> 4;
-    n |= n >> 8;
-    n |= n >> 16;
-    n |= n >> 32;
-    return n + 1;
+  if (n <= 0) return 1;
+  n--;
+  n |= n >> 1;
+  n |= n >> 2;
+  n |= n >> 4;
+  n |= n >> 8;
+  n |= n >> 16;
+  n |= n >> 32;
+  return n + 1;
 }
-// // padding 方案，一维数组 In-place 迭代
-std::pair<Value, Value> AggregateBrentKung(SPUContext* ctx, 
-  const Value& x_full,
-  const Value& valid_full, 
-  const Value& g_full) {
+// // // padding 方案，一维数组 In-place 迭代
+// std::pair<Value, Value> AggregateBrentKung(SPUContext* ctx, const Value&
+// x_full,
+//                                            const Value& valid_full,
+//                                            const Value& g_full) {
+//   const int64_t n = x_full.shape()[0];
+//   const int64_t block_size = x_full.shape()[1];
 
-  const int64_t n = x_full.shape()[0];
-  const int64_t block_size = x_full.shape()[1];
-  
-  // 1. Padding 处理 (保持不变)
-  int64_t n_padded = NextPowerOfTwo(n);
-  
-  Value x_use = x_full;
-  Value valid_use = valid_full;
-  Value g_use = g_full;
+//   // 1. Padding 处理 (保持不变)
+//   int64_t n_padded = NextPowerOfTwo(n);
 
-  if (n_padded > n) {
-      int64_t pad_rows = n_padded - n;
+//   Value x_use = x_full;
+//   Value valid_use = valid_full;
+//   Value g_use = g_full;
 
-      auto padding_zeros_x = hal::constant(ctx, static_cast<int64_t>(0), DT_I64, {pad_rows, block_size});
-      std::vector<Value> vec_x; vec_x.reserve(2);
-      vec_x.push_back(x_full); vec_x.push_back(padding_zeros_x);
-      x_use = hal::concatenate(ctx, vec_x, 0);
-      
-      auto padding_zeros_v = hal::constant(ctx, static_cast<int64_t>(0), DT_I64, {pad_rows, block_size});
-      std::vector<Value> vec_v; vec_v.reserve(2);
-      vec_v.push_back(valid_full); vec_v.push_back(padding_zeros_v);
-      valid_use = hal::concatenate(ctx, vec_v, 0);
-      
-      auto padding_zeros_g = hal::constant(ctx, static_cast<int64_t>(0), DT_I64, {pad_rows, 1});
-      std::vector<Value> vec_g; vec_g.reserve(2);
-      vec_g.push_back(g_full); vec_g.push_back(padding_zeros_g);
-      g_use = hal::concatenate(ctx, vec_g, 0);
-  }
+//   if (n_padded > n) {
+//     int64_t pad_rows = n_padded - n;
 
-  const int64_t current_n = n_padded; 
-  const int64_t total_block_size = block_size * 2; 
-  const int64_t logn = std::floor(std::log2(current_n));
+//     auto padding_zeros_x = hal::constant(ctx, static_cast<int64_t>(0),
+//     DT_I64,
+//                                          {pad_rows, block_size});
+//     std::vector<Value> vec_x;
+//     vec_x.reserve(2);
+//     vec_x.push_back(x_full);
+//     vec_x.push_back(padding_zeros_x);
+//     x_use = hal::concatenate(ctx, vec_x, 0);
 
-  // 拼接 payload
-  std::vector<Value> vec_payload; vec_payload.reserve(2);
-  vec_payload.push_back(x_use); vec_payload.push_back(valid_use);
-  Value payload_full = hal::concatenate(ctx, vec_payload, 1);
+//     auto padding_zeros_v = hal::constant(ctx, static_cast<int64_t>(0),
+//     DT_I64,
+//                                          {pad_rows, block_size});
+//     std::vector<Value> vec_v;
+//     vec_v.reserve(2);
+//     vec_v.push_back(valid_full);
+//     vec_v.push_back(padding_zeros_v);
+//     valid_use = hal::concatenate(ctx, vec_v, 0);
 
-  // 维护一维数组
-  std::vector<Value> p_rows(current_n); 
-  std::vector<Value> g_rows(current_n);
+//     auto padding_zeros_g =
+//         hal::constant(ctx, static_cast<int64_t>(0), DT_I64, {pad_rows, 1});
+//     std::vector<Value> vec_g;
+//     vec_g.reserve(2);
+//     vec_g.push_back(g_full);
+//     vec_g.push_back(padding_zeros_g);
+//     g_use = hal::concatenate(ctx, vec_g, 0);
+//   }
 
-  for (int i = 0; i < current_n; ++i) {
-      p_rows[i] = hal::slice(ctx, payload_full, {i, 0}, {i + 1, total_block_size}, {});
-      g_rows[i] = hal::slice(ctx, g_use, {i, 0}, {i + 1, 1}, {});
-      p_rows[i] = hal::reshape(ctx, p_rows[i], {1, total_block_size});
-      g_rows[i] = hal::reshape(ctx, g_rows[i], {1, 1});
-  }
+//   const int64_t current_n = n_padded;
+//   const int64_t total_block_size = block_size * 2;
+//   const int64_t logn = std::floor(std::log2(current_n));
 
-  // ========================================================
-  // 1. Up-Sweep (原地更新)
-  // ========================================================
-  for (int j = 0; j < logn; ++j) {
-      int64_t step = 1LL << (j + 1);      
-      int64_t left_off = 1LL << j;        
+//   // 拼接 payload
+//   std::vector<Value> vec_payload;
+//   vec_payload.reserve(2);
+//   vec_payload.push_back(x_use);
+//   vec_payload.push_back(valid_use);
+//   Value payload_full = hal::concatenate(ctx, vec_payload, 1);
 
-      std::vector<Value> right_p, left_p, right_g, left_g;
-      std::vector<int> target_indices;
-      
-      size_t est_size = (current_n / step) + 1;
-      right_p.reserve(est_size); left_p.reserve(est_size);
-      right_g.reserve(est_size); left_g.reserve(est_size);
-      target_indices.reserve(est_size);
+//   // 维护一维数组
+//   std::vector<Value> p_rows(current_n);
+//   std::vector<Value> g_rows(current_n);
 
-      for (int64_t i = step - 1; i < current_n; i += step) {
-          int64_t left_idx = i - left_off;
-          
-          // i 是当前节点(Right), left_idx 是左侧节点(Left)
-          right_p.push_back(p_rows[i]);
-          left_p.push_back(p_rows[left_idx]);
-          right_g.push_back(g_rows[i]);
-          left_g.push_back(g_rows[left_idx]);
-          target_indices.push_back(i);
-      }
+//   for (int i = 0; i < current_n; ++i) {
+//     p_rows[i] =
+//         hal::slice(ctx, payload_full, {i, 0}, {i + 1, total_block_size}, {});
+//     g_rows[i] = hal::slice(ctx, g_use, {i, 0}, {i + 1, 1}, {});
+//     p_rows[i] = hal::reshape(ctx, p_rows[i], {1, total_block_size});
+//     g_rows[i] = hal::reshape(ctx, g_rows[i], {1, 1});
+//   }
 
-      if (!target_indices.empty()) {
-          auto v_right_p = hal::concatenate(ctx, right_p, 0);
-          auto v_left_p = hal::concatenate(ctx, left_p, 0);
-          auto v_right_g = hal::concatenate(ctx, right_g, 0);
-          auto v_left_g = hal::concatenate(ctx, left_g, 0);
+//   // ========================================================
+//   // 1. Up-Sweep
+//   // ========================================================
+//   for (int j = 0; j < logn; ++j) {
+//     int64_t step = 1LL << (j + 1);
+//     int64_t left_off = 1LL << j;
 
-          // [FIX 1] 参数顺序修正：(Right, Left, Right_G, Left_G)
-          auto [new_p, new_g] = VectorizedNoteFunc(ctx, v_right_p, v_left_p, v_right_g, v_left_g);
+//     std::vector<Value> right_p, left_p, right_g, left_g;
+//     std::vector<int> target_indices;
 
-          for (size_t k = 0; k < target_indices.size(); ++k) {
-              int idx = target_indices[k];
-              p_rows[idx] = hal::slice(ctx, new_p, {static_cast<int64_t>(k), 0}, 
-                                           {static_cast<int64_t>(k+1), total_block_size}, {});
-              g_rows[idx] = hal::slice(ctx, new_g, {static_cast<int64_t>(k), 0}, 
-                                           {static_cast<int64_t>(k+1), 1}, {});
-          }
-      }
-  }
+//     size_t est_size = (current_n / step) + 1;
+//     right_p.reserve(est_size);
+//     left_p.reserve(est_size);
+//     right_g.reserve(est_size);
+//     left_g.reserve(est_size);
+//     target_indices.reserve(est_size);
 
-  // ========================================================
-  // 2. Down-Sweep (原地更新，优化：不计算 G)
-  // ========================================================
-  for (int j = logn - 2; j >= 0; --j) {
-      int64_t step = 1LL << (j + 1);
-      int64_t right_off = 1LL << j; 
+//     for (int64_t i = step - 1; i < current_n; i += step) {
+//       int64_t left_idx = i - left_off;
 
-      std::vector<Value> root_p, child_p, child_g; // 不需要 root_g
-      std::vector<int> target_indices;
-      
-      size_t est_size = (current_n / step) + 1;
-      root_p.reserve(est_size); child_p.reserve(est_size);
-      child_g.reserve(est_size);
-      target_indices.reserve(est_size);
+//       // i 是当前节点(Right), left_idx 是左侧节点(Left)
+//       right_p.push_back(p_rows[i]);
+//       left_p.push_back(p_rows[left_idx]);
+//       right_g.push_back(g_rows[i]);
+//       left_g.push_back(g_rows[left_idx]);
+//       target_indices.push_back(i);
+//     }
 
-      for (int64_t i = step - 1; i < current_n; i += step) {
-          int64_t target = i + right_off; 
+//     if (!target_indices.empty()) {
+//       auto v_right_p = hal::concatenate(ctx, right_p, 0);
+//       auto v_left_p = hal::concatenate(ctx, left_p, 0);
+//       auto v_right_g = hal::concatenate(ctx, right_g, 0);
+//       auto v_left_g = hal::concatenate(ctx, left_g, 0);
 
-          if (target < current_n) {
-              // i 是 Root (Left), target 是 Child (Right)
-              root_p.push_back(p_rows[i]);
-              child_p.push_back(p_rows[target]);
-              child_g.push_back(g_rows[target]); // 只需要 Child 的 G
-              target_indices.push_back(target);
-          }
-      }
+//       // [FIX 1] 参数顺序修正：(Right, Left, Right_G, Left_G)
+//       auto [new_p, new_g] =
+//           VectorizedNoteFunc(ctx, v_right_p, v_left_p, v_right_g, v_left_g);
 
-      if (!target_indices.empty()) {
-          auto v_root_p = hal::concatenate(ctx, root_p, 0);
-          auto v_child_p = hal::concatenate(ctx, child_p, 0);
-          auto v_child_g = hal::concatenate(ctx, child_g, 0);
+//       for (size_t k = 0; k < target_indices.size(); ++k) {
+//         int idx = target_indices[k];
+//         p_rows[idx] =
+//             hal::slice(ctx, new_p, {static_cast<int64_t>(k), 0},
+//                        {static_cast<int64_t>(k + 1), total_block_size}, {});
+//         g_rows[idx] = hal::slice(ctx, new_g, {static_cast<int64_t>(k), 0},
+//                                  {static_cast<int64_t>(k + 1), 1}, {});
+//       }
+//     }
+//   }
 
-          // [FIX 2] 优化通信：只传3个参数，只返回 P
-          // 逻辑: child_new = child + root * child_g
-          // 参数顺序: (Child, Root, Child_G)
-          auto new_p = VectorizedNoteFunc(ctx, v_child_p, v_root_p, v_child_g);
+//   // ========================================================
+//   // 2. Down-Sweep
+//   // ========================================================
+//   for (int j = logn - 2; j >= 0; --j) {
+//     int64_t step = 1LL << (j + 1);
+//     int64_t right_off = 1LL << j;
 
-          // 只更新 P，不更新 G
-          for (size_t k = 0; k < target_indices.size(); ++k) {
-              int idx = target_indices[k];
-              p_rows[idx] = hal::slice(ctx, new_p, {static_cast<int64_t>(k), 0}, 
-                                           {static_cast<int64_t>(k+1), total_block_size}, {});
-          }
-      }
-  }
+//     std::vector<Value> root_p, child_p, child_g;  // 不需要 root_g
+//     std::vector<int> target_indices;
 
-  // --- 3. 输出后处理 ---
-  auto final_payload = hal::concatenate(ctx, p_rows, 0); 
+//     size_t est_size = (current_n / step) + 1;
+//     root_p.reserve(est_size);
+//     child_p.reserve(est_size);
+//     child_g.reserve(est_size);
+//     target_indices.reserve(est_size);
 
-  auto y_out_padded = hal::slice(ctx, final_payload, {0, 0}, {current_n, block_size}, {});
-  auto valid_out_padded = hal::slice(ctx, final_payload, {0, block_size}, {current_n, total_block_size}, {});
+//     for (int64_t i = step - 1; i < current_n; i += step) {
+//       int64_t target = i + right_off;
 
-  // 4. 去除 Padding
-  if (n_padded > n) {
-      y_out_padded = hal::slice(ctx, y_out_padded, {0, 0}, {n, block_size}, {});
-      valid_out_padded = hal::slice(ctx, valid_out_padded, {0, 0}, {n, block_size}, {});
-  }
+//       if (target < current_n) {
+//         // i 是 Root (Left), target 是 Child (Right)
+//         root_p.push_back(p_rows[i]);
+//         child_p.push_back(p_rows[target]);
+//         child_g.push_back(g_rows[target]);
+//         target_indices.push_back(target);
+//       }
+//     }
 
-  return {y_out_padded, valid_out_padded};
-}
+//     if (!target_indices.empty()) {
+//       auto v_root_p = hal::concatenate(ctx, root_p, 0);
+//       auto v_child_p = hal::concatenate(ctx, child_p, 0);
+//       auto v_child_g = hal::concatenate(ctx, child_g, 0);
 
+//       // child_new = child + root * child_g
+//       auto new_p = VectorizedNoteFunc(ctx, v_child_p, v_root_p, v_child_g);
 
+//       for (size_t k = 0; k < target_indices.size(); ++k) {
+//         int idx = target_indices[k];
+//         p_rows[idx] =
+//             hal::slice(ctx, new_p, {static_cast<int64_t>(k), 0},
+//                        {static_cast<int64_t>(k + 1), total_block_size}, {});
+//       }
+//     }
+//   }
 
+//   // --- 3. 输出后处理 ---
+//   auto final_payload = hal::concatenate(ctx, p_rows, 0);
 
+//   auto y_out_padded =
+//       hal::slice(ctx, final_payload, {0, 0}, {current_n, block_size}, {});
+//   auto valid_out_padded = hal::slice(ctx, final_payload, {0, block_size},
+//                                      {current_n, total_block_size}, {});
 
+//   // 4. 去除 Padding
+//   if (n_padded > n) {
+//     y_out_padded = hal::slice(ctx, y_out_padded, {0, 0}, {n, block_size},
+//     {}); valid_out_padded =
+//         hal::slice(ctx, valid_out_padded, {0, 0}, {n, block_size}, {});
+//   }
+
+//   return {y_out_padded, valid_out_padded};
+// }
 
 // ====================================================================================
 //                    ExtraxtOrdered
 // ====================================================================================
-Value prefix_sum(SPUContext *ctx, const Value &x) {
+Value prefix_sum(SPUContext* ctx, const Value& x) {
   if (x.shape().ndim() == 1) {
     // reshape 1D -> [1, n]
     const int64_t n = x.numel();
     auto xr = hal::reshape(ctx, x, {1, n});
     return prefix_sum(ctx, xr);
-  }  
+  }
 
   SPU_ENFORCE(x.shape().ndim() == 2U && x.shape()[0] == 1,
               "x should be 1-row matrix");
-  
+
   const int64_t n = x.numel();
   if (n == 0) {
     return x;
   }
-  
+
   // 使用扫描算法手动实现前缀和
   std::vector<Value> parts;
   parts.reserve(n);
-  
+
   // 获取第一个元素
   auto first = hal::slice(ctx, x, {0, 0}, {1, 1});
   parts.push_back(first);
-  
+
   // 逐步累加
   for (int64_t i = 1; i < n; ++i) {
     auto current = hal::slice(ctx, x, {0, i}, {1, i + 1});
@@ -284,46 +289,50 @@ Value prefix_sum(SPUContext *ctx, const Value &x) {
     auto sum = hal::add(ctx, prev_sum, current);
     parts.push_back(sum);
   }
-  
+
   // 水平拼接结果
   return hal::concatenate(ctx, parts, 1);
 }
 
-void extract_ordered_(SPUContext* ctx, const spu::Value& x, const spu::Value& valids) {
+void extract_ordered_(SPUContext* ctx, const spu::Value& x,
+                      const spu::Value& valids) {
   // 1.计算valids前缀和rho
   auto rho = prefix_sum(ctx, valids);
   // 2.洗牌x、valids、rho
   std::vector<spu::Value> inputs_to_shuffle = {x, valids, rho};
-  // std::vector<spu::Value> shuffled_results = hlo::Shuffle(ctx, inputs_to_shuffle, 1);
-  auto [shuffled_results, pi] = hlo::shuffle_with_perm(ctx, inputs_to_shuffle, 1);
-  auto sx   = shuffled_results[0];
-  auto svalids   = shuffled_results[1];
+  // std::vector<spu::Value> shuffled_results = hlo::Shuffle(ctx,
+  // inputs_to_shuffle, 1);
+  auto [shuffled_results, pi] =
+      hlo::shuffle_with_perm(ctx, inputs_to_shuffle, 1);
+  auto sx = shuffled_results[0];
+  auto svalids = shuffled_results[1];
   auto srho = shuffled_results[2];
   // ！！！问题：shuffle返回的置换pi是PShr的
-    if (ctx->lctx()->Rank() == 0) {
-      std::cout << ">> [Debug pi]" << std::endl;
-      std::cout << "   Storage Type: " << pi.storage_type() << std::endl;
-      std::cout << "   Data Type:    " << pi.dtype() << std::endl;
-      std::cout << "   Visibility:   " << pi.vtype() << std::endl;
-    }
+  if (ctx->lctx()->Rank() == 0) {
+    std::cout << ">> [Debug pi]" << std::endl;
+    std::cout << "   Storage Type: " << pi.storage_type() << std::endl;
+    std::cout << "   Data Type:    " << pi.dtype() << std::endl;
+    std::cout << "   Visibility:   " << pi.vtype() << std::endl;
+  }
 
-    if (ctx->lctx()->Rank() == 0) {
-      std::cout << ">> [Debug sx]" << std::endl;
-      std::cout << "   Storage Type: " << sx.storage_type() << std::endl;
-      std::cout << "   Data Type:    " << sx.dtype() << std::endl;
-      std::cout << "   Visibility:   " << sx.vtype() << std::endl;
-    }
+  if (ctx->lctx()->Rank() == 0) {
+    std::cout << ">> [Debug sx]" << std::endl;
+    std::cout << "   Storage Type: " << sx.storage_type() << std::endl;
+    std::cout << "   Data Type:    " << sx.dtype() << std::endl;
+    std::cout << "   Visibility:   " << sx.vtype() << std::endl;
+  }
 
   // 3.打开svalids
-  auto svalids_open = hal::dump_public_as<int64_t>(ctx, hal::reveal(ctx, svalids));
+  auto svalids_open =
+      hal::dump_public_as<int64_t>(ctx, hal::reveal(ctx, svalids));
   auto sx_open = hal::dump_public_as<int64_t>(ctx, hal::reveal(ctx, sx));
   auto srho_open = hal::dump_public_as<int64_t>(ctx, hal::reveal(ctx, srho));
-      if (ctx->lctx()->Rank() == 0) {
-        std::cout << "svalids_open: " << svalids_open << std::endl;
-        std::cout << "sx: " << sx_open << std::endl;
-        std::cout << "srho: " << srho_open << std::endl;
-      }
-  
+  if (ctx->lctx()->Rank() == 0) {
+    std::cout << "svalids_open: " << svalids_open << std::endl;
+    std::cout << "sx: " << sx_open << std::endl;
+    std::cout << "srho: " << srho_open << std::endl;
+  }
+
   // 4.计算公开置换p_hat
   int64_t numel = svalids_open.size();
   std::vector<int64_t> p_hat_indices(numel);
@@ -331,13 +340,13 @@ void extract_ordered_(SPUContext* ctx, const spu::Value& x, const spu::Value& va
   int64_t left = 0;
   int64_t right = numel - 1;
   for (int64_t i = 0; i < numel; ++i) {
-      if (svalids_open[i]) {
-          p_hat_indices[left++] = i;  // 有效的放前面
-      } else {
-          p_hat_indices[right--] = i; // 无效的放后面 (倒序填充)
-      }
+    if (svalids_open[i]) {
+      p_hat_indices[left++] = i;  // 有效的放前面
+    } else {
+      p_hat_indices[right--] = i;  // 无效的放后面 (倒序填充)
+    }
   }
-  int64_t valid_count = left; 
+  int64_t valid_count = left;
 
   if (ctx->lctx()->Rank() == 0) {
     std::cout << "p_hat_indices: " << xt::adapt(p_hat_indices) << std::endl;
@@ -352,202 +361,188 @@ void extract_ordered_(SPUContext* ctx, const spu::Value& x, const spu::Value& va
   //          （2）用1比特radix_sort替换extract_ordered（开销貌似大一些）
   //          （3）不计算置换，把x改成多维的
   auto p_hat_xt = xt::adapt(p_hat_indices);
-  spu::Value compact = hal::constant(ctx, p_hat_xt, spu::DT_I64, 
-    {static_cast<int64_t>(p_hat_indices.size())});
+  spu::Value compact = hal::constant(
+      ctx, p_hat_xt, spu::DT_I64, {static_cast<int64_t>(p_hat_indices.size())});
   std::vector<spu::Value> inputs_to_permute = {sx, srho, pi};
-  std::vector<spu::Value> compacted_results = hlo::Permute(ctx, inputs_to_permute, compact, 1);
+  std::vector<spu::Value> compacted_results =
+      hlo::Permute(ctx, inputs_to_permute, compact, 1);
 
   auto y_compacted = compacted_results[0];
   auto rho_prime = compacted_results[1];
   auto rho_compose_pi = compacted_results[2];
 
-      auto y_compacted_open = hal::dump_public_as<int64_t>(ctx, hal::reveal(ctx, y_compacted));
-      auto rho_prime_open = hal::dump_public_as<int64_t>(ctx, hal::reveal(ctx, rho_prime));
-      auto rho_compose_pi_open = hal::dump_public_as<int64_t>(ctx, hal::reveal(ctx, rho_compose_pi));
-      if (ctx->lctx()->Rank() == 0) {
-        std::cout << "y_compacted: " << y_compacted_open << std::endl;
-        std::cout << "rho_prime: " << rho_prime_open << std::endl;
-        std::cout << "rho_compose_pi: " << rho_compose_pi_open << std::endl;
-      }
-
+  auto y_compacted_open =
+      hal::dump_public_as<int64_t>(ctx, hal::reveal(ctx, y_compacted));
+  auto rho_prime_open =
+      hal::dump_public_as<int64_t>(ctx, hal::reveal(ctx, rho_prime));
+  auto rho_compose_pi_open =
+      hal::dump_public_as<int64_t>(ctx, hal::reveal(ctx, rho_compose_pi));
+  if (ctx->lctx()->Rank() == 0) {
+    std::cout << "y_compacted: " << y_compacted_open << std::endl;
+    std::cout << "rho_prime: " << rho_prime_open << std::endl;
+    std::cout << "rho_compose_pi: " << rho_compose_pi_open << std::endl;
+  }
 
   // // -----------------------------------------------------------------------
   // // Step 6: 截取前 c 个元素 (Slice)
   // // -----------------------------------------------------------------------
-  
+
   // // 构造切片范围: [0, valid_count)
   // // 假设数据形状是 (1, N)，我们在第 1 维切片
   // std::vector<int64_t> start_indices(sx.shape().ndim(), 0);
   // std::vector<int64_t> end_indices = sx.shape();
-  
+
   // // 设置切片的结束位置
   // if (sx.shape().ndim() == 1) {
   //     end_indices[0] = valid_count;
   // } else {
   //     // 假设第 0 维是 Batch(1)，第 1 维是数据
-  //     end_indices[1] = valid_count; 
+  //     end_indices[1] = valid_count;
   // }
 
   // // 执行切片，得到最终紧凑的 Secret Shared 结果
-  // spu::Value y_final = hal::slice(ctx, y_compacted, start_indices, end_indices, {});
-  
+  // spu::Value y_final = hal::slice(ctx, y_compacted, start_indices,
+  // end_indices, {});
+
   // // 返回结果
   // // 如果是 Extract Unordered，到这里就结束了，返回 y_final
-  // // 如果是 Extract Ordered，你需要利用 rho_prime 继续进行后续的 Unshuffle 操作
-  // return std::vector<spu::Value>{y_final, rho_prime};
+  // // 如果是 Extract Ordered，你需要利用 rho_prime 继续进行后续的 Unshuffle
+  // 操作 return std::vector<spu::Value>{y_final, rho_prime};
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 // ====================================================================================
 //                备选方案
 // ====================================================================================
 
 // ====================================================================================
-// // Vectorized AggregateBrentKung without valid bits 备选
-// // // 最优：非 padding 方案，额外开销低
-// std::pair<Value, Value> AggregateBrentKung(SPUContext* ctx, 
-//   const Value& x_full,
-//   const Value& valid_full, 
-//   const Value& g_full) {
+// Vectorized AggregateBrentKung without valid bits 备选
+// // 最优：非 padding 方案，额外开销低
+std::pair<Value, Value> AggregateBrentKung(SPUContext* ctx, const Value& x_full,
+                                           const Value& valid_full,
+                                           const Value& g_full) {
+  const int64_t n = x_full.shape()[0];
+  const int64_t block_size = x_full.shape()[1];
+  const int64_t total_block_size = block_size * 2;
 
-//   const int64_t n = x_full.shape()[0];
-//   const int64_t block_size = x_full.shape()[1];
-//   const int64_t total_block_size = block_size * 2; 
+  // 1. 预处理
+  Value payload_full = hal::concatenate(ctx, {x_full, valid_full}, 1);
 
-//   // 1. 预处理
-//   Value payload_full = hal::concatenate(ctx, {x_full, valid_full}, 1);
-  
-//   std::vector<Value> p_curr(n);
-//   std::vector<Value> g_curr(n);
+  std::vector<Value> p_curr(n);
+  std::vector<Value> g_curr(n);
 
-//   for (int i = 0; i < n; ++i) {
-//     p_curr[i] = hal::slice(ctx, payload_full, {i, 0}, {i + 1, total_block_size}, {});
-//     g_curr[i] = hal::slice(ctx, g_full, {i, 0}, {i + 1, 1}, {});
-//     p_curr[i] = hal::reshape(ctx, p_curr[i], {1, total_block_size});
-//     g_curr[i] = hal::reshape(ctx, g_curr[i], {1, 1});
-//   }
+  for (int i = 0; i < n; ++i) {
+    p_curr[i] =
+        hal::slice(ctx, payload_full, {i, 0}, {i + 1, total_block_size}, {});
+    g_curr[i] = hal::slice(ctx, g_full, {i, 0}, {i + 1, 1}, {});
+    p_curr[i] = hal::reshape(ctx, p_curr[i], {1, total_block_size});
+    g_curr[i] = hal::reshape(ctx, g_curr[i], {1, 1});
+  }
 
-//   int depth = 0;
-//   if (n > 1) {
-//       depth = std::ceil(std::log2(n));
-//   }
+  int depth = 0;
+  if (n > 1) {
+    depth = std::ceil(std::log2(n));
+  }
 
-//   // ========================================================
-//   // 1. Up-Sweep (修正参数顺序)
-//   // ========================================================
-//   for (int j = 0; j < depth; ++j) {
-//     int64_t step = 1LL << (j + 1);      
-//     int64_t left_child_off = 1LL << j;  
+  // ========================================================
+  // 1. Up-Sweep
+  // ========================================================
+  for (int j = 0; j < depth; ++j) {
+    int64_t step = 1LL << (j + 1);
+    int64_t left_child_off = 1LL << j;
 
-//     std::vector<Value> left_p, right_p, left_g, right_g;
-//     std::vector<int> target_indices; 
-    
-//     size_t estimated_size = (n / step) + 1;
-//     left_p.reserve(estimated_size); right_p.reserve(estimated_size);
-//     left_g.reserve(estimated_size); right_g.reserve(estimated_size);
-//     target_indices.reserve(estimated_size);
+    std::vector<Value> left_p, right_p, left_g, right_g;
+    std::vector<int> target_indices;
 
-//     for (int64_t i = step - 1; i < n; i += step) {
-//       int64_t left_idx = i - left_child_off;
-      
-//       right_p.push_back(p_curr[i]);       // Right
-//       left_p.push_back(p_curr[left_idx]); // Left
-//       right_g.push_back(g_curr[i]);
-//       left_g.push_back(g_curr[left_idx]);
-//       target_indices.push_back(i);
-//     }
+    size_t estimated_size = (n / step) + 1;
+    left_p.reserve(estimated_size);
+    right_p.reserve(estimated_size);
+    left_g.reserve(estimated_size);
+    right_g.reserve(estimated_size);
+    target_indices.reserve(estimated_size);
 
-//     if (!target_indices.empty()) {
-//       auto v_left_p = hal::concatenate(ctx, left_p, 0);
-//       auto v_right_p = hal::concatenate(ctx, right_p, 0);
-//       auto v_left_g = hal::concatenate(ctx, left_g, 0);
-//       auto v_right_g = hal::concatenate(ctx, right_g, 0);
+    for (int64_t i = step - 1; i < n; i += step) {
+      int64_t left_idx = i - left_child_off;
 
-//       // [FIX] 参数顺序调整为 (Right, Left, Right_G, Left_G)
-//       // 以匹配你的原始 Tree 方案逻辑
-//       auto [new_p, new_g] = VectorizedNoteFunc(ctx, v_right_p, v_left_p, v_right_g, v_left_g);
+      right_p.push_back(p_curr[i]);        // Right
+      left_p.push_back(p_curr[left_idx]);  // Left
+      right_g.push_back(g_curr[i]);
+      left_g.push_back(g_curr[left_idx]);
+      target_indices.push_back(i);
+    }
 
-//       for (size_t k = 0; k < target_indices.size(); ++k) {
-//         int idx = target_indices[k];
-//         p_curr[idx] = hal::slice(ctx, new_p, {static_cast<int64_t>(k), 0}, 
-//                                              {static_cast<int64_t>(k+1), total_block_size}, {});
-//         g_curr[idx] = hal::slice(ctx, new_g, {static_cast<int64_t>(k), 0}, 
-//                                              {static_cast<int64_t>(k+1), 1}, {});
-//       }
-//     }
-//   }
+    if (!target_indices.empty()) {
+      auto v_left_p = hal::concatenate(ctx, left_p, 0);
+      auto v_right_p = hal::concatenate(ctx, right_p, 0);
+      auto v_left_g = hal::concatenate(ctx, left_g, 0);
+      auto v_right_g = hal::concatenate(ctx, right_g, 0);
+      auto [new_p, new_g] =
+          VectorizedNoteFunc(ctx, v_right_p, v_left_p, v_right_g, v_left_g);
 
-//   // ========================================================
-//   // 2. Down-Sweep (只更新 P, 不算 G)
-//   // ========================================================
-//   for (int j = depth - 2; j >= 0; --j) {
-//     int64_t step = 1LL << (j + 1);
-//     int64_t dist = 1LL << j;
+      for (size_t k = 0; k < target_indices.size(); ++k) {
+        int idx = target_indices[k];
+        p_curr[idx] =
+            hal::slice(ctx, new_p, {static_cast<int64_t>(k), 0},
+                       {static_cast<int64_t>(k + 1), total_block_size}, {});
+        g_curr[idx] = hal::slice(ctx, new_g, {static_cast<int64_t>(k), 0},
+                                 {static_cast<int64_t>(k + 1), 1}, {});
+      }
+    }
+  }
 
-//     std::vector<Value> root_p, child_p, child_g;
-//     std::vector<int> target_indices;
+  // ========================================================
+  // 2. Down-Sweep
+  // ========================================================
+  for (int j = depth - 2; j >= 0; --j) {
+    int64_t step = 1LL << (j + 1);
+    int64_t dist = 1LL << j;
 
-//     size_t estimated_size = (n / step) + 1;
-//     root_p.reserve(estimated_size); child_p.reserve(estimated_size);
-//     child_g.reserve(estimated_size);
-//     target_indices.reserve(estimated_size);
+    std::vector<Value> root_p, child_p, child_g;
+    std::vector<int> target_indices;
 
-//     for (int64_t i = step - 1; i < n; i += step) {
-//       int64_t target = i + dist; 
+    size_t estimated_size = (n / step) + 1;
+    root_p.reserve(estimated_size);
+    child_p.reserve(estimated_size);
+    child_g.reserve(estimated_size);
+    target_indices.reserve(estimated_size);
 
-//       if (target < n) {
-//         root_p.push_back(p_curr[i]);       // Root (Left)
-//         child_p.push_back(p_curr[target]); // Child (Right)
-//         child_g.push_back(g_curr[target]); // Child_G
-//         target_indices.push_back(target);
-//       }
-//     }
+    for (int64_t i = step - 1; i < n; i += step) {
+      int64_t target = i + dist;
 
-//     if (!target_indices.empty()) {
-//       auto v_root_p = hal::concatenate(ctx, root_p, 0);
-//       auto v_child_p = hal::concatenate(ctx, child_p, 0);
-//       auto v_child_g = hal::concatenate(ctx, child_g, 0);
+      if (target < n) {
+        root_p.push_back(p_curr[i]);        // Root (Left)
+        child_p.push_back(p_curr[target]);  // Child (Right)
+        child_g.push_back(g_curr[target]);  // Child_G
+        target_indices.push_back(target);
+      }
+    }
 
-//       // Down-Sweep 参数顺序 (Child, Root, Child_G) 
-//       // 这与 Tree 方案是一致的，不需要改
-//       auto new_p = VectorizedNoteFunc(ctx, v_child_p, v_root_p, v_child_g);
+    if (!target_indices.empty()) {
+      auto v_root_p = hal::concatenate(ctx, root_p, 0);
+      auto v_child_p = hal::concatenate(ctx, child_p, 0);
+      auto v_child_g = hal::concatenate(ctx, child_g, 0);
+      auto new_p = VectorizedNoteFunc(ctx, v_child_p, v_root_p, v_child_g);
 
-//       for (size_t k = 0; k < target_indices.size(); ++k) {
-//         int idx = target_indices[k];
-//         p_curr[idx] = hal::slice(ctx, new_p, {static_cast<int64_t>(k), 0}, 
-//                                              {static_cast<int64_t>(k+1), total_block_size}, {});
-//       }
-//     }
-//   }
+      for (size_t k = 0; k < target_indices.size(); ++k) {
+        int idx = target_indices[k];
+        p_curr[idx] =
+            hal::slice(ctx, new_p, {static_cast<int64_t>(k), 0},
+                       {static_cast<int64_t>(k + 1), total_block_size}, {});
+      }
+    }
+  }
 
-//   // 3. 输出
-//   auto final_payload = hal::concatenate(ctx, p_curr, 0); 
-//   auto y_out = hal::slice(ctx, final_payload, {0, 0}, {n, block_size}, {});
-//   auto valid_out = hal::slice(ctx, final_payload, {0, block_size}, {n, 2 * block_size}, {});
+  // 3. 输出
+  auto final_payload = hal::concatenate(ctx, p_curr, 0);
+  auto y_out = hal::slice(ctx, final_payload, {0, 0}, {n, block_size}, {});
+  auto valid_out =
+      hal::slice(ctx, final_payload, {0, block_size}, {n, 2 * block_size}, {});
 
-//   return {y_out, valid_out};
-// }
+  return {y_out, valid_out};
+}
 // // 最差：无法处理非2的幂的情况
-// std::pair<Value, Value> AggregateBrentKung(SPUContext* ctx, 
+// std::pair<Value, Value> AggregateBrentKung(SPUContext* ctx,
 //   const Value& x_full,
-//   const Value& valid_full, 
+//   const Value& valid_full,
 //   const Value& g_full) {
 
 //   // 1. 获取维度信息
@@ -564,18 +559,19 @@ void extract_ordered_(SPUContext* ctx, const spu::Value& x, const spu::Value& va
 //   Value payload_full = hal::concatenate(ctx, {x_full, valid_full}, 1);
 
 //   // 更新后续逻辑使用的 block_size
-//   const int64_t total_block_size = block_size * 2; 
+//   const int64_t total_block_size = block_size * 2;
 //   const int64_t logn = std::floor(std::log2(n));
 
 //   // --- 下面的逻辑与原版完全一致，只是操作的是 payload_full ---
 
-//   std::vector<Value> p_rows(n); 
+//   std::vector<Value> p_rows(n);
 //   std::vector<Value> g_rows(n);
 
 //   for (int i = 0; i < n; ++i) {
 //   // Slice 出一行: [1, 2B]
-//   p_rows[i] = hal::slice(ctx, payload_full, {i, 0}, {i + 1, total_block_size}, {});
-//   g_rows[i] = hal::slice(ctx, g_full, {i, 0}, {i + 1, 1}, {});
+//   p_rows[i] = hal::slice(ctx, payload_full, {i, 0}, {i + 1,
+//   total_block_size}, {}); g_rows[i] = hal::slice(ctx, g_full, {i, 0}, {i + 1,
+//   1}, {});
 
 //   // 保持 Rank=2 以便拼接
 //   p_rows[i] = hal::reshape(ctx, p_rows[i], {1, total_block_size});
@@ -608,7 +604,8 @@ void extract_ordered_(SPUContext* ctx, const spu::Value& x, const spu::Value& va
 //   auto g2_vec = hal::concatenate(ctx, g2_batch, 0);
 
 //   // 这里的计算会自动带上 valid 部分
-//   auto [p3_vec, g3_vec] = VectorizedNoteFunc(ctx, p1_vec, p2_vec, g1_vec, g2_vec);
+//   auto [p3_vec, g3_vec] = VectorizedNoteFunc(ctx, p1_vec, p2_vec, g1_vec,
+//   g2_vec);
 
 //   for (size_t k = 0; k < target_indices.size(); ++k) {
 //   int idx = target_indices[k];
@@ -640,7 +637,8 @@ void extract_ordered_(SPUContext* ctx, const spu::Value& x, const spu::Value& va
 //   auto g1_vec = hal::concatenate(ctx, g1_batch, 0);
 //   auto g2_vec = hal::concatenate(ctx, g2_batch, 0);
 
-//   auto [p3_vec, g3_vec] = VectorizedNoteFunc(ctx, p1_vec, p2_vec, g1_vec, g2_vec);
+//   auto [p3_vec, g3_vec] = VectorizedNoteFunc(ctx, p1_vec, p2_vec, g1_vec,
+//   g2_vec);
 
 //   for (size_t k = 0; k < target_indices.size(); ++k) {
 //   int idx = target_indices[k];
@@ -691,7 +689,8 @@ void extract_ordered_(SPUContext* ctx, const spu::Value& x, const spu::Value& va
 //   auto p3_vec = VectorizedNoteFunc(ctx, p1_vec, p2_vec, g1_vec);
 
 //   for (size_t k = 0; k < target_indices.size(); ++k) {
-//   res[target_indices[k]] = hal::slice(ctx, p3_vec, {static_cast<int64_t>(k), 0},
+//   res[target_indices[k]] = hal::slice(ctx, p3_vec, {static_cast<int64_t>(k),
+//   0},
 //     {static_cast<int64_t>(k + 1), total_block_size}, {});
 //   }
 //   }
@@ -721,7 +720,8 @@ void extract_ordered_(SPUContext* ctx, const spu::Value& x, const spu::Value& va
 //   auto p3_vec = VectorizedNoteFunc(ctx, p1_vec, p2_vec, g1_vec);
 
 //   for (size_t k = 0; k < target_indices.size(); ++k) {
-//   res[target_indices[k]] = hal::slice(ctx, p3_vec, {static_cast<int64_t>(k), 0},
+//   res[target_indices[k]] = hal::slice(ctx, p3_vec, {static_cast<int64_t>(k),
+//   0},
 //     {static_cast<int64_t>(k + 1), total_block_size}, {});
 //   }
 //   }
@@ -729,28 +729,29 @@ void extract_ordered_(SPUContext* ctx, const spu::Value& x, const spu::Value& va
 
 //   // --- 3. 输出后处理 ---
 //   // final_payload Shape: [N, 2*B]
-//   auto final_payload = hal::concatenate(ctx, res, 0); 
+//   auto final_payload = hal::concatenate(ctx, res, 0);
 
 //   // 切分回 x 和 valid
 //   // x:     [0 .. B)
 //   // valid: [B .. 2B)
 //   auto y_out = hal::slice(ctx, final_payload, {0, 0}, {n, block_size}, {});
-//   auto valid_out = hal::slice(ctx, final_payload, {0, block_size}, {n, 2 * block_size}, {});
+//   auto valid_out = hal::slice(ctx, final_payload, {0, block_size}, {n, 2 *
+//   block_size}, {});
 
 //   return {y_out, valid_out};
 // }
 
 // // 第二差：padding 方案，2D数组存储树（空间复杂度太高，数据量大可能崩溃）
-// std::pair<Value, Value> AggregateBrentKung(SPUContext* ctx, 
+// std::pair<Value, Value> AggregateBrentKung(SPUContext* ctx,
 //   const Value& x_full,
-//   const Value& valid_full, 
+//   const Value& valid_full,
 //   const Value& g_full) {
 
 //   const int64_t n = x_full.shape()[0];
 //   const int64_t block_size = x_full.shape()[1];
-  
+
 //   int64_t n_padded = NextPowerOfTwo(n);
-  
+
 //   Value x_use = x_full;
 //   Value valid_use = valid_full;
 //   Value g_use = g_full;
@@ -760,33 +761,33 @@ void extract_ordered_(SPUContext* ctx, const spu::Value& x, const spu::Value& va
 //       int64_t pad_rows = n_padded - n;
 
 //       // [Fix 1] 使用 DT_I64，并确保 0 是 int64_t 类型
-//       auto padding_zeros_x = hal::constant(ctx, static_cast<int64_t>(0), DT_I64, {pad_rows, block_size});
-      
-//       // [Fix 2] 使用 push_back 代替 {initializer_list}，避免编译器的隐式推导错误
-//       std::vector<Value> vec_x;
+//       auto padding_zeros_x = hal::constant(ctx, static_cast<int64_t>(0),
+//       DT_I64, {pad_rows, block_size});
+
+//       // [Fix 2] 使用 push_back 代替
+//       {initializer_list}，避免编译器的隐式推导错误 std::vector<Value> vec_x;
 //       vec_x.reserve(2);
 //       vec_x.push_back(x_full);
 //       vec_x.push_back(padding_zeros_x);
 //       x_use = hal::concatenate(ctx, vec_x, 0);
-      
-//       auto padding_zeros_v = hal::constant(ctx, static_cast<int64_t>(0), DT_I64, {pad_rows, block_size});
-//       std::vector<Value> vec_v;
+
+//       auto padding_zeros_v = hal::constant(ctx, static_cast<int64_t>(0),
+//       DT_I64, {pad_rows, block_size}); std::vector<Value> vec_v;
 //       vec_v.reserve(2);
 //       vec_v.push_back(valid_full);
 //       vec_v.push_back(padding_zeros_v);
 //       valid_use = hal::concatenate(ctx, vec_v, 0);
-      
-//       auto padding_zeros_g = hal::constant(ctx, static_cast<int64_t>(0), DT_I64, {pad_rows, 1});
-//       std::vector<Value> vec_g;
-//       vec_g.reserve(2);
+
+//       auto padding_zeros_g = hal::constant(ctx, static_cast<int64_t>(0),
+//       DT_I64, {pad_rows, 1}); std::vector<Value> vec_g; vec_g.reserve(2);
 //       vec_g.push_back(g_full);
 //       vec_g.push_back(padding_zeros_g);
 //       g_use = hal::concatenate(ctx, vec_g, 0);
 //   }
 
 //   // --- 主逻辑使用 n_padded (current_n) ---
-//   const int64_t current_n = n_padded; 
-//   const int64_t total_block_size = block_size * 2; 
+//   const int64_t current_n = n_padded;
+//   const int64_t total_block_size = block_size * 2;
 //   const int64_t logn = std::floor(std::log2(current_n));
 
 //   // 拼接 x 和 valid
@@ -796,20 +797,22 @@ void extract_ordered_(SPUContext* ctx, const spu::Value& x, const spu::Value& va
 //   vec_payload.push_back(valid_use);
 //   Value payload_full = hal::concatenate(ctx, vec_payload, 1);
 
-//   std::vector<Value> p_rows(current_n); 
+//   std::vector<Value> p_rows(current_n);
 //   std::vector<Value> g_rows(current_n);
 
 //   for (int i = 0; i < current_n; ++i) {
-//       p_rows[i] = hal::slice(ctx, payload_full, {i, 0}, {i + 1, total_block_size}, {});
-//       g_rows[i] = hal::slice(ctx, g_use, {i, 0}, {i + 1, 1}, {});
+//       p_rows[i] = hal::slice(ctx, payload_full, {i, 0}, {i + 1,
+//       total_block_size}, {}); g_rows[i] = hal::slice(ctx, g_use, {i, 0}, {i +
+//       1, 1}, {});
 
 //       p_rows[i] = hal::reshape(ctx, p_rows[i], {1, total_block_size});
 //       g_rows[i] = hal::reshape(ctx, g_rows[i], {1, 1});
 //   }
 
-//   std::vector<std::vector<Value>> p_tree(current_n, std::vector<Value>(logn));
-//   std::vector<std::vector<Value>> g_tree(current_n, std::vector<Value>(logn));
-//   std::vector<Value> res(current_n);
+//   std::vector<std::vector<Value>> p_tree(current_n,
+//   std::vector<Value>(logn)); std::vector<std::vector<Value>>
+//   g_tree(current_n, std::vector<Value>(logn)); std::vector<Value>
+//   res(current_n);
 
 //   // --------------------------------------------------------
 //   // Up-Sweep
@@ -832,14 +835,19 @@ void extract_ordered_(SPUContext* ctx, const spu::Value& x, const spu::Value& va
 //           auto g1_vec = hal::concatenate(ctx, g1_batch, 0);
 //           auto g2_vec = hal::concatenate(ctx, g2_batch, 0);
 
-//           auto [p3_vec, g3_vec] = VectorizedNoteFunc(ctx, p1_vec, p2_vec, g1_vec, g2_vec);
+//           auto [p3_vec, g3_vec] = VectorizedNoteFunc(ctx, p1_vec, p2_vec,
+//           g1_vec, g2_vec);
 
 //           for (size_t k = 0; k < target_indices.size(); ++k) {
 //               int idx = target_indices[k];
-//               p_tree[idx][0] = hal::slice(ctx, p3_vec, {static_cast<int64_t>(k), 0},
-//                                           {static_cast<int64_t>(k + 1), total_block_size}, {});
-//               g_tree[idx][0] = hal::slice(ctx, g3_vec, {static_cast<int64_t>(k), 0},
-//                                           {static_cast<int64_t>(k + 1), 1}, {});
+//               p_tree[idx][0] = hal::slice(ctx, p3_vec,
+//               {static_cast<int64_t>(k), 0},
+//                                           {static_cast<int64_t>(k + 1),
+//                                           total_block_size}, {});
+//               g_tree[idx][0] = hal::slice(ctx, g3_vec,
+//               {static_cast<int64_t>(k), 0},
+//                                           {static_cast<int64_t>(k + 1), 1},
+//                                           {});
 //           }
 //       }
 //   }
@@ -864,14 +872,19 @@ void extract_ordered_(SPUContext* ctx, const spu::Value& x, const spu::Value& va
 //           auto g1_vec = hal::concatenate(ctx, g1_batch, 0);
 //           auto g2_vec = hal::concatenate(ctx, g2_batch, 0);
 
-//           auto [p3_vec, g3_vec] = VectorizedNoteFunc(ctx, p1_vec, p2_vec, g1_vec, g2_vec);
+//           auto [p3_vec, g3_vec] = VectorizedNoteFunc(ctx, p1_vec, p2_vec,
+//           g1_vec, g2_vec);
 
 //           for (size_t k = 0; k < target_indices.size(); ++k) {
 //               int idx = target_indices[k];
-//               p_tree[idx][j] = hal::slice(ctx, p3_vec, {static_cast<int64_t>(k), 0},
-//                                           {static_cast<int64_t>(k + 1), total_block_size}, {});
-//               g_tree[idx][j] = hal::slice(ctx, g3_vec, {static_cast<int64_t>(k), 0},
-//                                           {static_cast<int64_t>(k + 1), 1}, {});
+//               p_tree[idx][j] = hal::slice(ctx, p3_vec,
+//               {static_cast<int64_t>(k), 0},
+//                                           {static_cast<int64_t>(k + 1),
+//                                           total_block_size}, {});
+//               g_tree[idx][j] = hal::slice(ctx, g3_vec,
+//               {static_cast<int64_t>(k), 0},
+//                                           {static_cast<int64_t>(k + 1), 1},
+//                                           {});
 //           }
 //       }
 //   }
@@ -915,7 +928,8 @@ void extract_ordered_(SPUContext* ctx, const spu::Value& x, const spu::Value& va
 //           auto p3_vec = VectorizedNoteFunc(ctx, p1_vec, p2_vec, g1_vec);
 
 //           for (size_t k = 0; k < target_indices.size(); ++k) {
-//               res[target_indices[k]] = hal::slice(ctx, p3_vec, {static_cast<int64_t>(k), 0},
+//               res[target_indices[k]] = hal::slice(ctx, p3_vec,
+//               {static_cast<int64_t>(k), 0},
 //                   {static_cast<int64_t>(k + 1), total_block_size}, {});
 //           }
 //       }
@@ -945,35 +959,36 @@ void extract_ordered_(SPUContext* ctx, const spu::Value& x, const spu::Value& va
 //           auto p3_vec = VectorizedNoteFunc(ctx, p1_vec, p2_vec, g1_vec);
 
 //           for (size_t k = 0; k < target_indices.size(); ++k) {
-//               res[target_indices[k]] = hal::slice(ctx, p3_vec, {static_cast<int64_t>(k), 0},
+//               res[target_indices[k]] = hal::slice(ctx, p3_vec,
+//               {static_cast<int64_t>(k), 0},
 //                   {static_cast<int64_t>(k + 1), total_block_size}, {});
 //           }
 //       }
 //   }
 
 //   // --- 3. 输出后处理 ---
-//   auto final_payload = hal::concatenate(ctx, res, 0); 
+//   auto final_payload = hal::concatenate(ctx, res, 0);
 
 //   // 切分回 x 和 valid
-//   auto y_out_padded = hal::slice(ctx, final_payload, {0, 0}, {current_n, block_size}, {});
-//   auto valid_out_padded = hal::slice(ctx, final_payload, {0, block_size}, {current_n, total_block_size}, {});
+//   auto y_out_padded = hal::slice(ctx, final_payload, {0, 0}, {current_n,
+//   block_size}, {}); auto valid_out_padded = hal::slice(ctx, final_payload,
+//   {0, block_size}, {current_n, total_block_size}, {});
 
 //   // 4. 去除 Padding
 //   if (n_padded > n) {
-//       y_out_padded = hal::slice(ctx, y_out_padded, {0, 0}, {n, block_size}, {});
-//       valid_out_padded = hal::slice(ctx, valid_out_padded, {0, 0}, {n, block_size}, {});
+//       y_out_padded = hal::slice(ctx, y_out_padded, {0, 0}, {n, block_size},
+//       {}); valid_out_padded = hal::slice(ctx, valid_out_padded, {0, 0}, {n,
+//       block_size}, {});
 //   }
 
 //   return {y_out_padded, valid_out_padded};
 // }
 // ------------------------------------------------------------------------------------
 
-
-
 // ====================================================================================
 // Vectorized AggregateBrentKung without valid bits
 Value AggregateBrentKung_without_valids(SPUContext* ctx, const Value& x_full,
-                         const Value& g_full) {
+                                        const Value& g_full) {
   const int64_t n = x_full.shape()[0];
   const int64_t block_size = x_full.shape()[1];
   const int64_t logn = std::floor(std::log2(n));
@@ -1285,10 +1300,10 @@ Value AggregateBrentKung_NonVectorized(SPUContext* ctx, const Value& x_full,
 }
 // ------------------------------------------------------------------------------------
 
-
 // ------------------------------------------------------------------------------------
 // // 支持多行 x 的 extract_ordered
-// std::pair<std::vector<spu::Value>, int64_t> extract_ordered(SPUContext* ctx, const spu::Value& x_in, const spu::Value& valids) {
+// std::pair<std::vector<spu::Value>, int64_t> extract_ordered(SPUContext* ctx,
+// const spu::Value& x_in, const spu::Value& valids) {
 //   // 兼容性处理：如果 x 不是 2D，就把它 reshape 成 2D（1 行）
 //   spu::Value x = x_in;
 //   if (x.shape().ndim() == 1) {
@@ -1297,20 +1312,20 @@ Value AggregateBrentKung_NonVectorized(SPUContext* ctx, const Value& x_full,
 //   } else if (x.shape().ndim() == 0) {
 //     // scalar -> 1x1
 //     x = hal::reshape(ctx, x, {1, 1});
-//   }  
+//   }
 //   SPU_ENFORCE(x.shape().ndim() == 2, "x should be 2D array");
-//   SPU_ENFORCE(valids.shape().ndim() == 2 && valids.shape()[0] == 1, 
+//   SPU_ENFORCE(valids.shape().ndim() == 2 && valids.shape()[0] == 1,
 //               "valids should be 1-row matrix");
-  
+
 //   const int64_t num_arrays = x.shape()[0];  // x行数
 //   const int64_t n = x.shape()[1];           // x长度
-  
-//   SPU_ENFORCE(valids.shape()[1] == n, 
+
+//   SPU_ENFORCE(valids.shape()[1] == n,
 //               "valids length must match x's second dimension");
 
 //   // 1. 计算valids前缀和rho（保持一维）
 //   auto rho = prefix_sum(ctx, valids);
-  
+
 //   // 2. 将所有 x 的行分离出来，与 valids 一起洗牌
 //   std::vector<spu::Value> inputs_to_shuffle;
 //   for (int64_t i = 0; i < num_arrays; ++i) {
@@ -1321,7 +1336,7 @@ Value AggregateBrentKung_NonVectorized(SPUContext* ctx, const Value& x_full,
 //   inputs_to_shuffle.push_back(rho);
 
 //   auto shuffled_results = hlo::Shuffle(ctx, inputs_to_shuffle, 1);
-  
+
 //   // 分离洗牌后的结果
 //   std::vector<spu::Value> sx_rows(num_arrays);
 //   for (int64_t i = 0; i < num_arrays; ++i) {
@@ -1331,12 +1346,13 @@ Value AggregateBrentKung_NonVectorized(SPUContext* ctx, const Value& x_full,
 //   auto srho = shuffled_results[num_arrays + 1];
 
 //   // 3. 打开 svalids
-//   auto svalids_open = hal::dump_public_as<int64_t>(ctx, hal::reveal(ctx, svalids));
-  
+//   auto svalids_open = hal::dump_public_as<int64_t>(ctx, hal::reveal(ctx,
+//   svalids));
+
 //   // 4. 计算公开置换 compact，使得 compact(svalids) = [1, 1, ..., 0, 0]
 //   int64_t numel = svalids_open.size();
 //   std::vector<int64_t> p_hat_indices(numel);
-  
+
 //   int64_t left = 0;
 //   int64_t right = numel - 1;
 //   for (int64_t i = 0; i < numel; ++i) {
@@ -1350,17 +1366,18 @@ Value AggregateBrentKung_NonVectorized(SPUContext* ctx, const Value& x_full,
 
 //   // 5. 用公开的 compact 置换 sx_rows 和 srho
 //   auto p_hat_xt = xt::adapt(p_hat_indices);
-//   spu::Value compact = hal::constant(ctx, p_hat_xt, spu::DT_I64, 
+//   spu::Value compact = hal::constant(ctx, p_hat_xt, spu::DT_I64,
 //     {static_cast<int64_t>(p_hat_indices.size())});
-  
+
 //   std::vector<spu::Value> inputs_to_permute;
 //   for (auto& sx_row : sx_rows) {
 //     inputs_to_permute.push_back(sx_row);
 //   }
 //   inputs_to_permute.push_back(srho);
-  
-//   std::vector<spu::Value> compacted_results = hlo::Permute(ctx, inputs_to_permute, compact, 1);
-  
+
+//   std::vector<spu::Value> compacted_results = hlo::Permute(ctx,
+//   inputs_to_permute, compact, 1);
+
 //   // 分离结果
 //   std::vector<spu::Value> x_prime_rows(num_arrays);
 //   for (int64_t i = 0; i < num_arrays; ++i) {
@@ -1369,12 +1386,14 @@ Value AggregateBrentKung_NonVectorized(SPUContext* ctx, const Value& x_full,
 //   auto rho_prime = compacted_results[num_arrays];
 
 //   // 6.
-//   // rho_prime_processed = Open( rho_prime[0，valid_count] ) || [valid_count, n]
+//   // rho_prime_processed = Open( rho_prime[0，valid_count] ) || [valid_count,
+//   n]
 //   // rho_prime_processed 逆置换 x_prime_rows
 //   xt::xarray<int64_t> rho_prime_processed;
 //   if (valid_count > 0) {
-//     auto rho_prime_slice = hal::slice(ctx, rho_prime, {0, 0}, {1, valid_count}, {});
-//     auto rho_prime_slice_open = hal::dump_public_as<int64_t>(ctx, hal::reveal(ctx, rho_prime_slice));
+//     auto rho_prime_slice = hal::slice(ctx, rho_prime, {0, 0}, {1,
+//     valid_count}, {}); auto rho_prime_slice_open =
+//     hal::dump_public_as<int64_t>(ctx, hal::reveal(ctx, rho_prime_slice));
 
 //     rho_prime_slice_open = rho_prime_slice_open - 1;
 //     auto flatted = xt::ravel(rho_prime_slice_open);
@@ -1383,12 +1402,12 @@ Value AggregateBrentKung_NonVectorized(SPUContext* ctx, const Value& x_full,
 //   } else {
 //     rho_prime_processed = xt::arange<int64_t>(n);
 //   }
-//   spu::Value rho_prime_constant = hal::constant(ctx, rho_prime_processed, spu::DT_I64, {n});
-//   std::vector<spu::Value> y = hlo::InvPermute(ctx, x_prime_rows, rho_prime_constant, 1);
+//   spu::Value rho_prime_constant = hal::constant(ctx, rho_prime_processed,
+//   spu::DT_I64, {n}); std::vector<spu::Value> y = hlo::InvPermute(ctx,
+//   x_prime_rows, rho_prime_constant, 1);
 
 //   return {y, valid_count};
 // }
 // ------------------------------------------------------------------------------------
-
 
 }  // namespace spu::kernel::hlo

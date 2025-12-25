@@ -21,7 +21,8 @@ class ExtractOrderedTest : public ::testing::Test {};
 //   const auto protocol = ProtocolKind::SEMI2K;
 //   const auto field = FieldType::FM64;
 
-//   mpc::utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+//   mpc::utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>&
+//   lctx) {
 //     SPUContext ctx = test::makeSPUContext(protocol, field, lctx);
 
 //     // 准备输入数据
@@ -30,7 +31,7 @@ class ExtractOrderedTest : public ::testing::Test {};
 
 //     std::vector<int64_t> x_data = {5, 6, 2, 2, 10, 10, 4, 3,
 //                                    1, 1, 2, 2, 5,  5,  3, 2};
-    
+
 //     std::vector<int64_t> valid_data = {1, 1, 0, 0, 1, 1, 0, 1,
 //                                        0, 0, 1, 1, 0, 0, 1, 1};
 
@@ -38,7 +39,7 @@ class ExtractOrderedTest : public ::testing::Test {};
 
 //     xt::xarray<int64_t> y_expected = {{5, 6}, {5, 6}, {5, 6}, {4, 3},
 //                                       {4, 3}, {4, 3}, {4, 3}, {3, 2}};
-    
+
 //     xt::xarray<int64_t> valid_expected = {{1, 1}, {1, 1}, {1, 1}, {0, 1},
 //                                           {0, 1}, {0, 1}, {0, 1}, {1, 1}};
 
@@ -81,8 +82,9 @@ class ExtractOrderedTest : public ::testing::Test {};
 
 //       std::cout << "\n========================================"
 //                 << std::endl;
-//       std::cout << "AggregateBrentKung Protocol Execution Stats:" << std::endl;
-//       std::cout << "  - Input Shape : " << n << " blocks of size " << block_size
+//       std::cout << "AggregateBrentKung Protocol Execution Stats:" <<
+//       std::endl; std::cout << "  - Input Shape : " << n << " blocks of size "
+//       << block_size
 //                 << std::endl;
 //       std::cout << "  - Protocol    : " << protocol << std::endl;
 //       std::cout << "  - Time Cost   : " << duration << " ms" << std::endl;
@@ -101,20 +103,21 @@ class ExtractOrderedTest : public ::testing::Test {};
 //     // 验证 Valid
 //     auto v_revealed = hal::reveal(&ctx, valid_out);
 //     auto v_vec = hal::dump_public_as<int64_t>(&ctx, v_revealed);
-    
+
 //     // =========== [新增/修改部分开始] ===========
 //     // 只在 Rank 0 打印，避免多线程输出混乱
 //     if (lctx->Rank() == 0) {
 //         std::cout << "y_expected:\n" << y_expected << std::endl;
 //         std::cout << "y_vec (Actual):\n" << y_vec << std::endl;
-        
+
 //         std::cout << "valid_expected:\n" << valid_expected << std::endl;
 //         std::cout << "v_vec (Actual):\n" << v_vec << std::endl;
 
 //         // 获取通信统计
 //         auto stats = lctx->GetStats();
-//         std::cout << "Communication Traffic (Sent Bytes): " << stats->sent_bytes << std::endl;
-//         std::cout << "Communication Rounds (Sent Actions): " << stats->sent_actions << std::endl;
+//         std::cout << "Communication Traffic (Sent Bytes): " <<
+//         stats->sent_bytes << std::endl; std::cout << "Communication Rounds
+//         (Sent Actions): " << stats->sent_actions << std::endl;
 //     }
 //     // =========== [新增/修改部分结束] ===========
 
@@ -131,19 +134,17 @@ TEST_F(BrentKungTest, LargeScaleData) {
   const auto protocol = ProtocolKind::SEMI2K;
   const auto field = FieldType::FM64;
 
-  mpc::utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+  mpc::utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>&
+                                    lctx) {
     SPUContext ctx = test::makeSPUContext(protocol, field, lctx);
 
-    // 配置大;
-    const int64_t n = 262144;  // 可调整为 256, 512, 1024, 4096 等
+    const int64_t n = 1048576;
     const int64_t block_size = 1;
 
-    // 准备随机数生成器
-    std::mt19937 rng(42);  // 固定种子
+    // 生成随机输入数据
+    std::mt19937 rng(42);
     std::uniform_int_distribution<int64_t> dist_x(0, 100);
     std::uniform_int_distribution<int64_t> dist_g(0, 1);
-
-    // 生成随机输入数据
     std::vector<int64_t> x_data(n * block_size);
     std::vector<int64_t> valid_data(n * block_size);
     std::vector<int64_t> g_data(n);
@@ -152,7 +153,6 @@ TEST_F(BrentKungTest, LargeScaleData) {
     for (auto& v : valid_data) v = dist_g(rng);
     for (int64_t i = 0; i < n; ++i) {
       g_data[i] = dist_g(rng);
-      // 强制第 g 为 0，确保初始状态明确
       if (i == 0) g_data[i] = 0;
     }
 
@@ -185,27 +185,26 @@ TEST_F(BrentKungTest, LargeScaleData) {
     stats = lctx->GetStats();
     size_t end_bytes = stats->sent_bytes;
     size_t end_actions = stats->sent_actions;
-    
+
     if (lctx->Rank() == 0) {
       auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-                          end_time - start_time).count();
+                          end_time - start_time)
+                          .count();
       auto comm_bytes = end_bytes - start_bytes;
       auto comm_rounds = end_actions - start_actions;
       double comm_mb = static_cast<double>(comm_bytes) / 1024.0 / 1024.0;
 
-      std::cout << "\n========================================"
-                << std::endl;
+      std::cout << "\n========================================" << std::endl;
       std::cout << "AggregateBrentKung Large Scale Test:" << std::endl;
       std::cout << "  - Input Shape : " << n << " blocks of size " << block_size
                 << std::endl;
       std::cout << "  - Protocol    : " << protocol << std::endl;
       std::cout << "  - Time Cost   : " << duration << " ms" << std::endl;
-      std::cout << "  - Comm Bytes  : " << comm_bytes << " bytes ("
-                << comm_mb << " MB)" << std::endl;
+      std::cout << "  - Comm Bytes  : " << comm_bytes << " bytes (" << comm_mb
+                << " MB)" << std::endl;
       std::cout << "  - Comm Rounds : " << comm_rounds << " actions"
                 << std::endl;
-      std::cout << "========================================\n"
-                << std::endl;
+      std::cout << "========================================\n" << std::endl;
     }
 
     // 验证结果
@@ -227,15 +226,13 @@ TEST_F(BrentKungTest, LargeScaleData) {
       EXPECT_EQ(v_vec(0, b), v_arr(0, b));
     }
 
-    // g=1，值 验证传
     for (int64_t i = 1; i < n; ++i) {
-      if (g_data[i] == 1 && g_data[i-1] == 1) {
-        // 如果连续两个都是 1，那么 y[i] 应该等于 y[i-1]
+      if (g_data[i] == 1 && g_data[i - 1] == 1) {
         for (int64_t b = 0; b < block_size; ++b) {
-          EXPECT_EQ(y_vec(i, b), y_vec(i-1, b)) 
-            << "Propagation failed at i=" << i << ", b=" << b;
-          EXPECT_EQ(v_vec(i, b), v_vec(i-1, b))
-            << "Valid propagation failed at i=" << i << ", b=" << b;
+          EXPECT_EQ(y_vec(i, b), y_vec(i - 1, b))
+              << "Propagation failed at i=" << i << ", b=" << b;
+          EXPECT_EQ(v_vec(i, b), v_vec(i - 1, b))
+              << "Valid propagation failed at i=" << i << ", b=" << b;
         }
       }
     }
@@ -246,14 +243,14 @@ TEST_F(BrentKungTest, LargeScaleData) {
   });
 }
 
-
 // // // TEST the AggregateBrentKung without valid bits for BasicCorrectness
 // TEST_F(BrentKungTest, Debug1024) {
 //   const size_t npc = 2;
 //   const auto protocol = ProtocolKind::SEMI2K;
 //   const auto field = FieldType::FM64;
 
-//   mpc::utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+//   mpc::utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>&
+//   lctx) {
 //     SPUContext ctx = test::makeSPUContext(protocol, field, lctx);
 
 //     const int64_t n = 1000000;
@@ -275,8 +272,9 @@ TEST_F(BrentKungTest, LargeScaleData) {
 //     }
 
 //     // 计算 ground truth
-//     xt::xarray<int64_t> y_expected = xt::zeros<int64_t>({(size_t)n, (size_t)block_size});
-//     xt::xarray<int64_t> valid_expected = xt::zeros<int64_t>({(size_t)n, (size_t)block_size});
+//     xt::xarray<int64_t> y_expected = xt::zeros<int64_t>({(size_t)n,
+//     (size_t)block_size}); xt::xarray<int64_t> valid_expected =
+//     xt::zeros<int64_t>({(size_t)n, (size_t)block_size});
 
 //     const int64_t* x_ptr = x_data.data();
 //     const int64_t* v_ptr = valid_data.data();
@@ -323,33 +321,38 @@ TEST_F(BrentKungTest, LargeScaleData) {
 //     if (lctx->Rank() == 0) {
 //       bool y_match = xt::allclose(y_vec, y_expected);
 //       bool v_match = xt::allclose(v_vec, valid_expected);
-      
+
 //       std::cout << "\nn=1024, block_size=4 Test:" << std::endl;
 //       std::cout << "Y matches ground truth: " << y_match << std::endl;
 //       std::cout << "V matches ground truth: " << v_match << std::endl;
-      
+
 //       if (!y_match || !v_match) {
 //         int mismatch_count_y = 0, mismatch_count_v = 0;
 //         for (int64_t i = 0; i < n; ++i) {
 //           for (int64_t b = 0; b < block_size; ++b) {
 //             if (y_vec(i, b) != y_expected(i, b)) {
 //               if (mismatch_count_y < 5) {  // 只打印前5个不匹配
-//                 std::cout << "Y mismatch at [" << i << "," << b << "]: expected " 
-//                           << y_expected(i, b) << ", got " << y_vec(i, b) << std::endl;
+//                 std::cout << "Y mismatch at [" << i << "," << b << "]:
+//                 expected "
+//                           << y_expected(i, b) << ", got " << y_vec(i, b) <<
+//                           std::endl;
 //               }
 //               mismatch_count_y++;
 //             }
 //             if (v_vec(i, b) != valid_expected(i, b)) {
 //               if (mismatch_count_v < 5) {
-//                 std::cout << "V mismatch at [" << i << "," << b << "]: expected " 
-//                           << valid_expected(i, b) << ", got " << v_vec(i, b) << std::endl;
+//                 std::cout << "V mismatch at [" << i << "," << b << "]:
+//                 expected "
+//                           << valid_expected(i, b) << ", got " << v_vec(i, b)
+//                           << std::endl;
 //               }
 //               mismatch_count_v++;
 //             }
 //           }
 //         }
-//         std::cout << "Total Y mismatches: " << mismatch_count_y << " / " << (n * block_size) << std::endl;
-//         std::cout << "Total V mismatches: " << mismatch_count_v << " / " << (n * block_size) << std::endl;
+//         std::cout << "Total Y mismatches: " << mismatch_count_y << " / " <<
+//         (n * block_size) << std::endl; std::cout << "Total V mismatches: " <<
+//         mismatch_count_v << " / " << (n * block_size) << std::endl;
 //       }
 //     }
 
@@ -400,8 +403,9 @@ TEST_F(BrentKungTest, LargeScaleData) {
 //       auto comm_rounds = end_actions - start_actions;
 //       std::cout << "\n========================================" << std::endl;
 //       std::cout << "Benchmark Stats (N=" << n << "):" << std::endl;
-//       std::cout << "  - Comm Volume: " << comm_bytes << " bytes" << std::endl;
-//       std::cout << "  - Comm Rounds: " << comm_rounds << " actions"
+//       std::cout << "  - Comm Volume: " << comm_bytes << " bytes" <<
+//       std::endl; std::cout << "  - Comm Rounds: " << comm_rounds << "
+//       actions"
 //                 << std::endl;
 //       std::cout << "========================================\n" << std::endl;
 //     }
@@ -560,7 +564,8 @@ TEST_F(BrentKungTest, LargeScaleData) {
 //   const auto protocol = ProtocolKind::SEMI2K;
 //   const auto field = FieldType::FM64;
 
-//   mpc::utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+//   mpc::utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>&
+//   lctx) {
 //     SPUContext ctx = test::makeSPUContext(protocol, field, lctx);
 
 //     // -------------------------------------------------------
@@ -568,21 +573,21 @@ TEST_F(BrentKungTest, LargeScaleData) {
 //     // -------------------------------------------------------
 //     int64_t num_arrays = 2;
 //     int64_t n = 6;
-//     xt::xarray<int64_t> x = {{0, 1, 2, 3, 4, 5}, {10, 11, 12, 13, 14, 15}};    // valid bits
-//     xt::xarray<int64_t> valids = {0, 1, 0, 1, 1, 0};
-    
+//     xt::xarray<int64_t> x = {{0, 1, 2, 3, 4, 5}, {10, 11, 12, 13, 14, 15}};
+//     // valid bits xt::xarray<int64_t> valids = {0, 1, 0, 1, 1, 0};
+
 //     // 预期输出（提取有效元素）
 //     xt::xarray<int64_t> y_expected = {{1, 3, 4},
 //                                       {11, 13, 14}};
 
 //     auto x_in = test::makeValue(&ctx, x, VIS_SECRET);
-//     valids.reshape({1, static_cast<size_t>(n)}); 
+//     valids.reshape({1, static_cast<size_t>(n)});
 //     auto valids_in = test::makeValue(&ctx, valids, VIS_SECRET);
 
 //     // -------------------------------------------------------
 //     // 2. 执行协议并记录性能指标
 //     // -------------------------------------------------------
-    
+
 //     // 记录开始状态
 //     auto stats = lctx->GetStats();
 //     size_t start_bytes = stats->sent_bytes;
@@ -616,10 +621,11 @@ TEST_F(BrentKungTest, LargeScaleData) {
 //       std::cout << "\n========================================"
 //                 << std::endl;
 //       std::cout << "ExtractOrdered Protocol Execution Stats:" << std::endl;
-//       std::cout << "  - Input Shape : " << " num_arrays = " << num_arrays << ", n = " << n << std::endl;
-//       std::cout << "  - Protocol    : " << protocol << std::endl;
-//       std::cout << "  - Time Cost   : " << duration << " ms" << std::endl;
-//       std::cout << "  - Comm Bytes  : " << comm_bytes << " bytes ("
+//       std::cout << "  - Input Shape : " << " num_arrays = " << num_arrays <<
+//       ", n = " << n << std::endl; std::cout << "  - Protocol    : " <<
+//       protocol << std::endl; std::cout << "  - Time Cost   : " << duration <<
+//       " ms" << std::endl; std::cout << "  - Comm Bytes  : " << comm_bytes <<
+//       " bytes ("
 //                 << comm_mb << " MB)" << std::endl;
 //       std::cout << "  - Comm Rounds : " << comm_rounds << " actions"
 //                 << std::endl;
@@ -664,7 +670,8 @@ TEST_F(BrentKungTest, LargeScaleData) {
 //   const auto protocol = ProtocolKind::SEMI2K;
 //   const auto field = FieldType::FM64;
 
-//   mpc::utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+//   mpc::utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>&
+//   lctx) {
 //     SPUContext ctx = test::makeSPUContext(protocol, field, lctx);
 
 //     // -------------------------------------------------------
@@ -672,8 +679,8 @@ TEST_F(BrentKungTest, LargeScaleData) {
 //     // -------------------------------------------------------
 //     const int64_t num_arrays = 1;
 //     const int64_t n = 1000000;
-//     std::vector<std::vector<int64_t>> xs(num_arrays, std::vector<int64_t>(n));
-//     for (int64_t r = 0; r < num_arrays; ++r) {
+//     std::vector<std::vector<int64_t>> xs(num_arrays,
+//     std::vector<int64_t>(n)); for (int64_t r = 0; r < num_arrays; ++r) {
 //       int64_t base = r * 100000;  // 不同行不同基数
 //       for (int64_t i = 0; i < n; ++i) {
 //         xs[r][i] = base + i;
@@ -751,10 +758,11 @@ TEST_F(BrentKungTest, LargeScaleData) {
 
 //       std::cout << "\n========================================" << std::endl;
 //       std::cout << "ExtractOrdered Protocol Execution Stats:" << std::endl;
-//       std::cout << "  - Input Shape : " << " num_arrays = " << num_arrays << ", n = " << n << std::endl;
-//       std::cout << "  - Protocol    : " << protocol << std::endl;
-//       std::cout << "  - Time Cost   : " << duration << " ms" << std::endl;
-//       std::cout << "  - Comm Bytes  : " << comm_bytes << " bytes ("
+//       std::cout << "  - Input Shape : " << " num_arrays = " << num_arrays <<
+//       ", n = " << n << std::endl; std::cout << "  - Protocol    : " <<
+//       protocol << std::endl; std::cout << "  - Time Cost   : " << duration <<
+//       " ms" << std::endl; std::cout << "  - Comm Bytes  : " << comm_bytes <<
+//       " bytes ("
 //                 << comm_mb << " MB)" << std::endl;
 //       std::cout << "  - Comm Rounds : " << comm_rounds << " actions"
 //                 << std::endl;
@@ -777,7 +785,8 @@ TEST_F(BrentKungTest, LargeScaleData) {
 //       auto y_expected_row = xt::row(y_expected, i);
 
 //       if (lctx->Rank() == 0) {
-//         std::cout << "LargeScale Array " << i << " valid_count=" << valid_count << std::endl;
+//         std::cout << "LargeScale Array " << i << " valid_count=" <<
+//         valid_count << std::endl;
 //       }
 
 //       EXPECT_TRUE(xt::allclose(y_valid_part, y_expected_row));
