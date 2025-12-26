@@ -33,8 +33,8 @@ TEST(OddEvenMergeTest, WithoutValidBits) {
   // xt::xarray<float> sorted_x = {{1, 2, 3, 4, 5, 6, 10, 20},
   //                               {1, 2, 3, 4, 5, 6, 15, 25}};
   xt::xarray<float> x1 = {{1, 3, 20}, {1, 3, 4}};
-  xt::xarray<float> x2 = {{2, 5}, {2, 5}};
-  xt::xarray<float> sorted_x = {{1, 2, 3, 5, 20}, {1, 2, 3, 4, 5}};
+  xt::xarray<float> x2 = {{2, 50, 60}, {2, 5, 60}};
+  xt::xarray<float> sorted_x = {{1, 2, 3, 20, 50, 60}, {1, 2, 3, 4, 5, 60}};
 
   // 启动 MPC 模拟环境
   mpc::utils::simulate(
@@ -429,11 +429,11 @@ TEST(OddEvenMergeTest, WithValidBitsLargeScale) {
           std::cout << "Total Elements: " << num_rows * total_size << std::endl;
           std::cout << "Execution Time: " << duration << " ms" << std::endl;
           std::cout << "Communication: " << comm_bytes << " bytes ("
-                    << (double)comm_bytes / 1024.0 / 1024.0 << " MB)"
-                    << std::endl;
+                    << static_cast<double>(comm_bytes) / 1024.0 / 1024.0
+                    << " MB)" << std::endl;
           std::cout << "Actions: " << comm_actions << std::endl;
           std::cout << "Avg bytes/element: "
-                    << (double)comm_bytes / (num_rows * total_size)
+                    << static_cast<double>(comm_bytes) / (num_rows * total_size)
                     << std::endl;
           std::cout << "========================================\n"
                     << std::endl;
@@ -450,8 +450,8 @@ TEST(OddEvenMergeTest, WithValidBitsLargeScale) {
           }
 
           // 检查每行的有效位总数是否正确
-          float expected_valid_count = 0.0f;
-          float actual_valid_count = 0.0f;
+          float expected_valid_count = 0.0F;
+          float actual_valid_count = 0.0F;
           for (int col = 0; col < input1_size; ++col) {
             expected_valid_count += v1(row, col);
           }
@@ -461,7 +461,7 @@ TEST(OddEvenMergeTest, WithValidBitsLargeScale) {
           for (int col = 0; col < total_size; ++col) {
             actual_valid_count += res_valids_pub(row, col);
           }
-          EXPECT_NEAR(actual_valid_count, expected_valid_count, 0.1f)
+          EXPECT_NEAR(actual_valid_count, expected_valid_count, 0.1F)
               << "Row " << row << " valid bits count mismatch! Expected: "
               << expected_valid_count << ", Got: " << actual_valid_count;
 

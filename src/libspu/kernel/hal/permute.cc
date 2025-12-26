@@ -339,7 +339,7 @@ std::vector<spu::Value> odd_even_merge_sort(
 
 //   // merge by per network layer for memory optimizations.
 //   const auto n = inputs.front().numel();
-//   int64_t max_gap_in_stage = n / 2;
+//   int64_t max_gap_in_stage = split_idx - 1;
 //   for (int64_t step = max_gap_in_stage; step > 0; step /= 2) {
 //     Index lhs_indices;
 //     Index rhs_indices;

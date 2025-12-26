@@ -138,7 +138,7 @@ TEST_F(BrentKungTest, LargeScaleData) {
                                     lctx) {
     SPUContext ctx = test::makeSPUContext(protocol, field, lctx);
 
-    const int64_t n = 1048576;
+    const int64_t n = 2097152;
     const int64_t block_size = 1;
 
     // 生成随机输入数据
