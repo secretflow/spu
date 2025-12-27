@@ -39,8 +39,9 @@ namespace {
 spu::Value _cuckoo_hash_to_perm(SPUContext* ctx, const Value& e_1,
                                 const Value& e_2, size_t num_hash,
                                 size_t scale_factor, FieldType field) {
-  // 输入两个私有值e_1,e_2，分别属于P0和P1，输出基于Cuckoo
-  // Hash的两个排列pi_0和pi_1的拼接结果
+  // Input two private values e_1 and e_2, belonging to P0 and P1 respectively,
+  // output the concatenated result of two permutations pi_0 and pi_1 based on
+  // Cuckoo Hash.
   if (e_1.isPrivate() && e_2.isPrivate()) {
     SPU_ENFORCE(e_1.storage_type().as<Private>()->owner() == 0,
                 "e_1 must be owned by P0");
@@ -114,7 +115,6 @@ std::vector<spu::Value> join_uu(SPUContext* ctx,
   //_cuckoo_hash_to_perm
   spu::Value perm_all =
       _cuckoo_hash_to_perm(ctx, e_1, e_2, num_hash, scale_factor, field_2);
-  
 
   // Get permutation pi_1.
   auto pi_1_p = hal::reshape(
