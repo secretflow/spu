@@ -29,8 +29,6 @@ namespace spu::kernel::hlo {
 //                Vectorized AggregateBrentKung with valid bits
 // ====================================================================================
 
-// 【优化2】更高效的索引扩展
-// 避免反复 push_back，使用 resize + 直接内存访问
 static spu::Index ExpandIndices(const spu::Index& rows, int64_t width) {
   if (width == 1) {
     return rows;
@@ -43,7 +41,6 @@ static spu::Index ExpandIndices(const spu::Index& rows, int64_t width) {
   const int64_t* in_ptr = rows.data();
   size_t n_rows = rows.size();
 
-  // 外层循环并行化收益不高，因为只是简单的整数加法，单线程顺序写反而缓存更友好
   for (size_t i = 0; i < n_rows; ++i) {
     int64_t base = in_ptr[i] * width;
     for (int64_t k = 0; k < width; ++k) {
@@ -53,13 +50,13 @@ static spu::Index ExpandIndices(const spu::Index& rows, int64_t width) {
   return expanded;
 }
 
-spu::Value _2s(SPUContext* ctx, const Value& x) {
-  if (x.isPublic()) {
-    return kernel::hal::_p2s(ctx, x);
-  } else if (x.isPrivate()) {
-    return kernel::hal::_v2s(ctx, x);
+spu::Value _2s(SPUContext* ctx, const Value& data) {
+  if (data.isPublic()) {
+    return kernel::hal::_p2s(ctx, data);
+  } else if (data.isPrivate()) {
+    return kernel::hal::_v2s(ctx, data);
   }
-  return x;
+  return data;
 }
 
 static Value PrepareMutableCopy(SPUContext* ctx, const Value& input) {
@@ -72,7 +69,7 @@ static Value PrepareMutableCopy(SPUContext* ctx, const Value& input) {
   return kernel::hal::_prefer_a(ctx, copy);
 }
 
-// 【优化3】移除冗余检查，假定调用方保证 P:[K, B], G:[K, 1]
+// NoteFunc for Up-Sweep
 static std::pair<Value, Value> VectorizedNoteFunc(SPUContext* ctx,
                                                   const Value& p1,
                                                   const Value& p2,
@@ -80,24 +77,18 @@ static std::pair<Value, Value> VectorizedNoteFunc(SPUContext* ctx,
                                                   const Value& g2) {
   // 1. g3 = g1 * g2
   auto g3 = kernel::hal::mul(ctx, g1, g2);
-
   // 2. diff = p2 - p1
   auto diff = kernel::hal::sub(ctx, p2, p1);
-
-  // 3. 强制广播 g1: [K, 1] -> [K, BlockSize]
-  // 注意：p1/p2 形状是 [K, BlockSize]，如果 BlockSize=1，broadcast_to
-  // 开销极低（仅改元数据）
+  // 3. 广播 g1: [K, 1] -> [K, BlockSize]
   Value g1_broadcasted = kernel::hal::broadcast_to(ctx, g1, diff.shape());
-
   // 4. term = diff * g1
   auto term = kernel::hal::mul(ctx, diff, g1_broadcasted);
-
   // 5. p3 = p1 + term
   auto p3 = kernel::hal::add(ctx, p1, term);
   return {p3, g3};
 }
 
-// Down-Sweep 版本
+// NoteFunc for Down-Sweep
 static Value VectorizedNoteFunc(SPUContext* ctx, const Value& p1,
                                 const Value& p2, const Value& g1) {
   auto diff = kernel::hal::sub(ctx, p2, p1);
@@ -107,28 +98,27 @@ static Value VectorizedNoteFunc(SPUContext* ctx, const Value& p1,
   return p3;
 }
 
-std::pair<Value, Value> AggregateBrentKung(SPUContext* ctx, const Value& x_full,
-                                           const Value& valid_full,
-                                           const Value& g_full_in) {
-  const int64_t n = x_full.shape()[0];
-  const int64_t block_size = x_full.shape()[1];
+std::pair<Value, Value> AggregateBrentKung(SPUContext* ctx, const Value& x,
+                                           const Value& valids,
+                                           const Value& g_in) {
+  const int64_t n = x.shape()[0];
+  const int64_t block_size = x.shape()[1];
   const int64_t total_block_size = block_size * 2;
 
   // 1. 数据准备
-  Value p_full = kernel::hal::concatenate(ctx, {x_full, valid_full}, 1);
-  p_full = kernel::hal::_prefer_a(ctx, p_full);
-  Value g_full = PrepareMutableCopy(ctx, g_full_in);
+  Value p = kernel::hal::concatenate(ctx, {x, valids}, 1);
+  p = kernel::hal::_prefer_a(ctx, p);
+  Value g = PrepareMutableCopy(ctx, g_in);
 
-  auto p_flat_ref = p_full.data().reshape({p_full.numel()});
-  auto g_flat_ref = g_full.data().reshape({g_full.numel()});
+  auto p_flat_ref = p.data().reshape({p.numel()});
+  auto g_flat_ref = g.data().reshape({g.numel()});
 
   int depth = 0;
   if (n > 1) {
     depth = std::ceil(std::log2(n));
   }
 
-  // 【优化1】预分配内存，循环外声明
-  // 预估最大所需的 vector 大小约为 N/2
+  // 最多包含 n/2 行索引
   size_t max_rows = (n / 2) + 1;
   spu::Index idx_right_rows;
   idx_right_rows.reserve(max_rows);
@@ -148,7 +138,6 @@ std::pair<Value, Value> AggregateBrentKung(SPUContext* ctx, const Value& x_full,
     int64_t step = 1LL << (j + 1);
     int64_t left_child_off = 1LL << j;
 
-    // 清空而不释放内存
     idx_right_rows.clear();
     idx_left_rows.clear();
 
@@ -159,9 +148,6 @@ std::pair<Value, Value> AggregateBrentKung(SPUContext* ctx, const Value& x_full,
 
     if (idx_right_rows.empty()) continue;
 
-    // ExpandIndices 内部会分配新内存，但由于是临时变量且有 RVO，开销可控。
-    // 如果极度追求性能，可以将 expanded
-    // 向量也在循环外复用，但会增加代码复杂度(需改Expand接口)
     spu::Index idx_right_elems =
         ExpandIndices(idx_right_rows, total_block_size);
     spu::Index idx_left_elems = ExpandIndices(idx_left_rows, total_block_size);
@@ -169,10 +155,10 @@ std::pair<Value, Value> AggregateBrentKung(SPUContext* ctx, const Value& x_full,
     const spu::Index& idx_left_g = idx_left_rows;
 
     // Gather
-    Value v_right_p(p_flat_ref.linear_gather(idx_right_elems), p_full.dtype());
-    Value v_left_p(p_flat_ref.linear_gather(idx_left_elems), p_full.dtype());
-    Value v_right_g(g_flat_ref.linear_gather(idx_right_g), g_full.dtype());
-    Value v_left_g(g_flat_ref.linear_gather(idx_left_g), g_full.dtype());
+    Value v_right_p(p_flat_ref.linear_gather(idx_right_elems), p.dtype());
+    Value v_left_p(p_flat_ref.linear_gather(idx_left_elems), p.dtype());
+    Value v_right_g(g_flat_ref.linear_gather(idx_right_g), g.dtype());
+    Value v_left_g(g_flat_ref.linear_gather(idx_left_g), g.dtype());
 
     // Reshape
     int64_t k = idx_right_rows.size();
@@ -219,9 +205,9 @@ std::pair<Value, Value> AggregateBrentKung(SPUContext* ctx, const Value& x_full,
     const spu::Index& idx_child_g = idx_child_rows;
 
     // Gather
-    Value v_root_p(p_flat_ref.linear_gather(idx_root_elems), p_full.dtype());
-    Value v_child_p(p_flat_ref.linear_gather(idx_child_elems), p_full.dtype());
-    Value v_child_g(g_flat_ref.linear_gather(idx_child_g), g_full.dtype());
+    Value v_root_p(p_flat_ref.linear_gather(idx_root_elems), p.dtype());
+    Value v_child_p(p_flat_ref.linear_gather(idx_child_elems), p.dtype());
+    Value v_child_g(g_flat_ref.linear_gather(idx_child_g), g.dtype());
 
     // Reshape
     int64_t k = idx_child_rows.size();
@@ -237,12 +223,13 @@ std::pair<Value, Value> AggregateBrentKung(SPUContext* ctx, const Value& x_full,
     p_flat_ref.linear_scatter(new_p_data, idx_child_elems);
   }
 
-  auto y_out = kernel::hal::slice(ctx, p_full, {0, 0}, {n, block_size}, {});
+  auto y_out = kernel::hal::slice(ctx, p, {0, 0}, {n, block_size}, {});
   auto valid_out =
-      kernel::hal::slice(ctx, p_full, {0, block_size}, {n, 2 * block_size}, {});
+      kernel::hal::slice(ctx, p, {0, block_size}, {n, 2 * block_size}, {});
 
   return {y_out, valid_out};
 }
+
 // ====================================================================================
 //                    ExtraxtOrdered
 // ====================================================================================
@@ -406,17 +393,17 @@ void extract_ordered_(SPUContext* ctx, const spu::Value& x,
 // Vectorized AggregateBrentKung without valid bits 备选
 // // padding 方案，一维数组 In-place 迭代
 // std::pair<Value, Value> AggregateBrentKung(SPUContext* ctx, const Value&
-// x_full,
-//                                            const Value& valid_full,
+// x,
+//                                            const Value& valids,
 //                                            const Value& g_full) {
-//   const int64_t n = x_full.shape()[0];
-//   const int64_t block_size = x_full.shape()[1];
+//   const int64_t n = x.shape()[0];
+//   const int64_t block_size = x.shape()[1];
 
 //   // 1. Padding 处理 (保持不变)
 //   int64_t n_padded = NextPowerOfTwo(n);
 
-//   Value x_use = x_full;
-//   Value valid_use = valid_full;
+//   Value x_use = x;
+//   Value valid_use = valids;
 //   Value g_use = g_full;
 
 //   if (n_padded > n) {
@@ -427,7 +414,7 @@ void extract_ordered_(SPUContext* ctx, const spu::Value& x,
 //                                          {pad_rows, block_size});
 //     std::vector<Value> vec_x;
 //     vec_x.reserve(2);
-//     vec_x.push_back(x_full);
+//     vec_x.push_back(x);
 //     vec_x.push_back(padding_zeros_x);
 //     x_use = hal::concatenate(ctx, vec_x, 0);
 
@@ -436,7 +423,7 @@ void extract_ordered_(SPUContext* ctx, const spu::Value& x,
 //                                          {pad_rows, block_size});
 //     std::vector<Value> vec_v;
 //     vec_v.reserve(2);
-//     vec_v.push_back(valid_full);
+//     vec_v.push_back(valids);
 //     vec_v.push_back(padding_zeros_v);
 //     valid_use = hal::concatenate(ctx, vec_v, 0);
 
@@ -586,22 +573,22 @@ void extract_ordered_(SPUContext* ctx, const spu::Value& x,
 
 // // 最差：无法处理非2的幂的情况
 // std::pair<Value, Value> AggregateBrentKung(SPUContext* ctx,
-//   const Value& x_full,
-//   const Value& valid_full,
+//   const Value& x,
+//   const Value& valids,
 //   const Value& g_full) {
 
 //   // 1. 获取维度信息
-//   const int64_t n = x_full.shape()[0];
-//   const int64_t block_size = x_full.shape()[1]; // B
+//   const int64_t n = x.shape()[0];
+//   const int64_t block_size = x.shape()[1]; // B
 
 //   // 检查 valid 维度是否匹配 (Debug模式下很有用，Release可省略)
-//   if (valid_full.shape()[0] != n || valid_full.shape()[1] != block_size) {
+//   if (valids.shape()[0] != n || valids.shape()[1] != block_size) {
 //   // 实际代码中建议加 SPUENFORCE 或类似检查
 //   }
 
 //   // 2. 数据拼接 (Pre-process)
 //   // 将 x (N, B) 和 valid (N, B) 在列维度拼接 -> (N, 2*B)
-//   Value payload_full = hal::concatenate(ctx, {x_full, valid_full}, 1);
+//   Value payload_full = hal::concatenate(ctx, {x, valids}, 1);
 
 //   // 更新后续逻辑使用的 block_size
 //   const int64_t total_block_size = block_size * 2;
