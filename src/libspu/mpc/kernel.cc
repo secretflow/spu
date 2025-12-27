@@ -192,6 +192,18 @@ void MergeKeysKernel::evaluate(KernelEvalContext* ctx) const {
   ctx->pushOutput(WrapValue(y));
 }
 
+void CuckooHashToPermKernel::evaluate(KernelEvalContext* ctx) const {
+  const auto& e_1 = ctx->getParam<Value>(0);
+  const auto& e_2 = ctx->getParam<Value>(1);
+  size_t num_hash = ctx->getParam<size_t>(2);
+  size_t scale_factor = ctx->getParam<size_t>(3);
+  FieldType field = ctx->getParam<FieldType>(4);
+
+  auto y = proc(ctx, UnwrapValue(e_1), UnwrapValue(e_2), num_hash, scale_factor,
+                field);
+  ctx->pushOutput(WrapValue(y));
+}
+
 void BroadcastKernel::evaluate(KernelEvalContext* ctx) const {
   const auto& in = ctx->getParam<Value>(0);
   const auto& to_shape = ctx->getParam<Shape>(1);
