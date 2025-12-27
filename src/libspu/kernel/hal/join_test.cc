@@ -44,7 +44,7 @@ TEST_P(JoinTest, Work) {
   ProtocolKind prot = std::get<1>(GetParam());
   size_t num_join_keys = 1;
   const size_t num_hash = 3;
-  const double scale_factor = 1.5;
+  const size_t scale_factor = 15;
 
   const Shape shape_1 = {2, 8};
   const Shape shape_2 = {2, 7};
@@ -122,7 +122,7 @@ TEST_P(MultiKeyJoinTest, Work) {
   ProtocolKind prot = std::get<1>(GetParam());
   size_t num_join_keys = std::get<2>(GetParam());
   size_t num_hash = std::get<3>(GetParam());
-  double scale_factor = 1.5;
+  size_t scale_factor = 15;
 
   const Shape shape_1 = {4, 9};
   const Shape shape_2 = {5, 12};
@@ -191,7 +191,7 @@ TEST_P(MultiKeyJoinTest, Work) {
 //   ProtocolKind prot = ProtocolKind::SEMI2K;
 //   size_t num_join_keys = 1;
 //   const size_t num_hash = 3;
-//   const double scale_factor = 1.5;
+//   const size_t scale_factor = 15;
 
 //   const Shape shape_1 = {2, 1000};
 //   const Shape shape_2 = {2, 1000};

@@ -145,6 +145,9 @@ Value _merge_keys_p(SPUContext* ctx, absl::Span<Value const> inputs,
                     bool is_ascending);
 Value _merge_keys_v(SPUContext* ctx, absl::Span<Value const> inputs,
                     bool is_ascending);
+Value _cuckoo_hash_to_perm_v(SPUContext* ctx, const Value& e_1,
+                             const Value& e_2, size_t num_hash,
+                             size_t scale_factor, FieldType field);
 
 // Shape ops
 Value _broadcast(SPUContext* ctx, const Value& in, const Shape& to_shape,
