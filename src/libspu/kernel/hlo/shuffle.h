@@ -26,10 +26,4 @@ std::vector<spu::Value> Shuffle(SPUContext* ctx,
                                 absl::Span<const spu::Value> inputs,
                                 int64_t axis = 0);
 
-// 功能：执行 Shuffle，并返回打乱后的数据以及所使用的置换 π (Secret)。
-// 返回值: pair.first = 打乱后的数据列表
-//        pair.second = 置换索引 π (Secret Value)
-std::pair<std::vector<spu::Value>, spu::Value> shuffle_with_perm(
-    SPUContext* ctx, absl::Span<const spu::Value> inputs, int64_t axis = 0);
-
 }  // namespace spu::kernel::hlo
