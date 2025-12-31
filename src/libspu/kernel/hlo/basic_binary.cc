@@ -81,6 +81,9 @@ spu::Value Dot(SPUContext *ctx, const spu::Value &lhs, const spu::Value &rhs) {
 spu::Value DotGeneral(SPUContext *ctx, const spu::Value &lhs,
                       const spu::Value &rhs) {
   int64_t num_batch = lhs.shape()[0];
+  if (ctx->config().experimental_enable_bmm) {
+    return hal::batch_matmul(ctx, lhs, rhs);
+  }
 
   std::vector<spu::Value> results(num_batch);
   Index lhs_slice_begin(3, 0);

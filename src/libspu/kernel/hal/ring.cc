@@ -414,6 +414,18 @@ Value _mmul(SPUContext* ctx, const Value& x, const Value& y) {
   return ret;
 }
 
+Value _batch_mmul(SPUContext* ctx, const Value& x, const Value& y) {
+  if (x.isSecret() && y.isSecret()) {  // SS
+    return dynDispatch(ctx, "batch_mmul_aa", x, y);
+  } else if (x.isSecret() && y.isPrivate()) {  // SV
+    return dynDispatch(ctx, "batch_mmul_av", x, y);
+  } else if (x.isPrivate() && y.isSecret()) {  // VS
+    return dynDispatch(ctx, "batch_mmul_av", y, x);
+  }
+
+  SPU_THROW("should not be here");
+}
+
 Value _or(SPUContext* ctx, const Value& x, const Value& y) {
   // X or Y = X xor Y xor (X and Y)
   return _xor(ctx, x, _xor(ctx, y, _and(ctx, x, y)));

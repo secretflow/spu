@@ -19,6 +19,7 @@ package(default_visibility = ["//visibility:public"])
 spu_cc_library(
     name = "cheetah_arith",
     deps = [
+        ":batch_matmul",
         ":cheetah_dot",
         ":cheetah_mul",
     ],
@@ -50,6 +51,25 @@ spu_cc_library(
     deps = [
         ":arith_comm",
         "//libspu/mpc/cheetah/rlwe:lwe",
+    ],
+)
+
+spu_cc_library(
+    name = "simd_batchmm_prot",
+    srcs = ["simd_batchmm_prot.cc"],
+    hdrs = ["simd_batchmm_prot.h"],
+    deps = [":arith_comm"],
+)
+
+spu_cc_library(
+    name = "batch_matmul",
+    srcs = ["batch_matmul.cc"],
+    hdrs = ["batch_matmul.h"],
+    deps = [
+        "simd_batchmm_prot",
+        ":arith_comm",
+        "//libspu/mpc/cheetah/rlwe:packlwes",
+        "@yacl//yacl/utils:elapsed_timer",
     ],
 )
 
@@ -117,6 +137,28 @@ spu_cc_test(
         ":simd_mul_prot",
         "//libspu/mpc/utils:ring_ops",
         "//libspu/mpc/utils:simulate",
+    ],
+)
+
+spu_cc_test(
+    name = "simd_batchmm_test",
+    srcs = ["simd_batchmm_prot_test.cc"],
+    deps = [
+        ":simd_batchmm_prot",
+        "//libspu/mpc/utils:ring_ops",
+        "//libspu/mpc/utils:simulate",
+        "@yacl//yacl/utils:elapsed_timer",
+    ],
+)
+
+spu_cc_test(
+    name = "batch_matmul_test",
+    srcs = ["batch_matmul_test.cc"],
+    deps = [
+        ":batch_matmul",
+        "//libspu/mpc/utils:ring_ops",
+        "//libspu/mpc/utils:simulate",
+        "@yacl//yacl/utils:elapsed_timer",
     ],
 )
 
