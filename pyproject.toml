@@ -63,7 +63,7 @@ examples = [
     "tensorflow-datasets",
     "keras",
     # https://github.com/pypa/setuptools/issues/4487
-    "setuptools<71.0.0",
+    "setuptools<80.9.1",
     "transformers",
     "datasets",
     "async-timeout",
