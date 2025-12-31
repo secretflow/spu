@@ -26,6 +26,10 @@ TEST(OddEvenMergeTest, BasicCorrectness) {
         SPUContext ctx = test::makeSPUContext(protocol, field, lctx);
         xt::xarray<float> x1 = {{1, 3, 20}, {1, 3, 4}};
         xt::xarray<float> x2 = {{2, 50, 60}, {2, 5, 60}};
+        if (lctx->Rank() == 0) {
+          std::cout << "x1 = \n" << x1 << std::endl;
+          std::cout << "x2 = \n" << x2 << std::endl;
+        }
         xt::xarray<float> res_expected = {{1, 2, 3, 20, 50, 60},
                                           {1, 2, 3, 4, 5, 60}};
         Value x1_s = test::makeValue(&ctx, x1, VIS_SECRET);
@@ -64,6 +68,8 @@ TEST(OddEvenMergeTest, LargeScaleRealNumbers) {
   std::uniform_int_distribution<int> size_dist(1, 524288);
   int input1_size = size_dist(rng);
   int input2_size = size_dist(rng);
+  // int input1_size = 500000;
+  // int input2_size = 500000;
   int total_size = input1_size + input2_size;
 
   std::uniform_real_distribution<float> value_dist(0.0, 1000.0);
@@ -232,6 +238,13 @@ TEST(OddEvenMerge_WithPayload_Test, BasicCorrectness) {
 
     // verefiy correctness
     ASSERT_EQ(res_s.size(), 2);
+
+    if (lctx->Rank() == 0) {
+      std::cout << "x1 = \n" << x1 << std::endl;
+      std::cout << "x2 = \n" << x2 << std::endl;
+      std::cout << "p1 = \n" << p1 << std::endl;
+      std::cout << "p2 = \n" << p2 << std::endl;
+    }
 
     auto res_x = hal::dump_public_as<float>(&ctx, hal::reveal(&ctx, res_s[0]));
     auto res_payload =

@@ -419,7 +419,7 @@ inline int64_t log2_ceil(int64_t n) {
   return k;
 }
 
-// 迭代版本：生成 Odd-Even Merge 的拓扑结构
+// 迭代生成 Odd-Even Merge 拓扑结构
 std::vector<MergeLayer> gen_odd_even_merge_layers(
     const spu::Index &left_indices, const spu::Index &right_indices) {
   if (left_indices.empty() || right_indices.empty()) {
@@ -503,7 +503,7 @@ std::vector<MergeLayer> gen_odd_even_merge_layers(
         continue;
       }
 
-      // 拆分 Odd/Even - 预分配空间
+      // 拆分 Odd/Even
       const size_t left_size = frame.left.size();
       const size_t right_size = frame.right.size();
 
@@ -649,65 +649,23 @@ std::vector<spu::Value> odd_even_merge(SPUContext *ctx,
     ret.emplace_back(std::move(casted));
   }
 
-  // 使用 spu::Index 定义索引向量
   const auto n = inputs.front().numel();
-
   spu::Index left_indices(split_idx);
   std::iota(left_indices.begin(), left_indices.end(), 0);
-
   spu::Index right_indices(n - split_idx);
   std::iota(right_indices.begin(), right_indices.end(), split_idx);
 
-  // 生成层级结构
   auto layers = gen_odd_even_merge_layers(left_indices, right_indices);
 
-  // 执行并打印
-  // int layer_count = 0;
   for (const auto &layer : layers) {
     _cmp_swap(ctx, comparator_body, absl::MakeSpan(ret), layer.lhs, layer.rhs);
   }
-
   return ret;
 }
 
-// Secure Odd-even merge with valid bits tracking
-//
-// This function performs a secure merge operation using the Odd-even merge
-// network algorithm while simultaneously tracking valid bits for each element.
-//
-// The Odd-even merge network is a data-oblivious comparison network that merges
-// two sorted sequences into a single sorted sequence. It requires O(n log²n)
-// comparisons and has O(log²n) depth.
-//
-// Inputs:
-//   - ctx: SPU context for MPC operations
-//   - inputs: A span containing exactly 2 Value tensors:
-//     * inputs[0]: Values tensor (sorted 1-D array to be merged)
-//     * inputs[1]: Valid bits tensor (corresponding valid bit flags, same
-//     shape)
-//   - cmp: Comparison function that takes two Values and returns comparison
-//   result
-//
-// Behavior:
-//   - Merges two pre-sorted arrays while preserving the association between
-//     each value and its corresponding valid bit
-//   - Uses Batcher's odd-even merge network to ensure data-oblivious execution
-//   - When two values are swapped during comparison, their valid bits are also
-//   swapped
-//   - The merge is performed in-place for memory efficiency
-//
-// Returns:
-//   A vector containing 2 Value tensors:
-//   - [0]: Merged and sorted values
-//   - [1]: Corresponding valid bits (tracked and moved with values)
-//
-// Reference:
-//   Batcher's odd-even merge:
-//   https://hwlang.de/algorithmen/sortieren/networks/oemen.htm
 std::vector<spu::Value> odd_even_merge_with_payloads(
     SPUContext *ctx, const CompFn &cmp, absl::Span<spu::Value> inputs,
     int64_t split_idx) {
-  // 为原地归并操作创建输入副本
   std::vector<spu::Value> ret;
   ret.reserve(inputs.size());
 
@@ -725,7 +683,7 @@ std::vector<spu::Value> odd_even_merge_with_payloads(
   // 定义比较器包装函数：
   //
   // _cmp_swap 会 gather 出：
-  //   gathered_inputs = [Val_L, Val_R, Valid_L, Valid_R]
+  //   gathered_inputs = [Value_L, Value_R, Payload_L, Payload_R]
   //
   // 根据 Values 进行比较，取前两个元素传给原始比较器
   auto value_only_comparator =
@@ -733,57 +691,18 @@ std::vector<spu::Value> odd_even_merge_with_payloads(
         return cmp(gathered_inputs.subspan(0, 2));
       };
 
-  // 使用 spu::Index 定义索引向量
   const auto n = inputs.front().numel();
-
   spu::Index left_indices(split_idx);
   std::iota(left_indices.begin(), left_indices.end(), 0);
-
   spu::Index right_indices(n - split_idx);
   std::iota(right_indices.begin(), right_indices.end(), split_idx);
 
-  // 生成层级结构
   auto layers = gen_odd_even_merge_layers(left_indices, right_indices);
 
-  // 执行并打印
-  // int layer_count = 0;
   for (const auto &layer : layers) {
     _cmp_swap(ctx, value_only_comparator, absl::MakeSpan(ret), layer.lhs,
               layer.rhs);
   }
-
-  // const auto n = ret.front().numel();
-  // int64_t max_gap_in_stage = n / 2;
-
-  // // Main body of Odd-Even Merge Network
-  // // 外层循环：遍历每个归并阶段，步长从 n/2 递减到 1
-  // for (int64_t step = max_gap_in_stage; step > 0; step /= 2) {
-  //   // 收集当前阶段需要比较的索引对
-  //   Index lhs_indices;
-  //   Index rhs_indices;
-
-  //   // 内层循环：在当前步长下，找出所有需要比较的元素对
-  //   for (int64_t j = step % max_gap_in_stage; j + step < n; j += step + step)
-  //   {
-  //     for (int64_t i = 0; i < step; ++i) {
-  //       auto lhs_idx = i + j;
-  //       auto rhs_idx = i + j + step;
-  //       // 边界检查：确保右侧索引不越界
-  //       if (rhs_idx >= n) break;
-
-  //       auto range = max_gap_in_stage * 2;
-  //       if (lhs_idx / range == rhs_idx / range) {
-  //         lhs_indices.emplace_back(lhs_idx);
-  //         rhs_indices.emplace_back(rhs_idx);
-  //       }
-  //     }
-  //   }
-  //   // 批量 compare-and-swap
-  //   if (!lhs_indices.empty()) {
-  //     _cmp_swap(ctx, value_only_comparator, absl::MakeSpan(ret), lhs_indices,
-  //               rhs_indices);
-  //   }
-  // }
   return ret;
 }
 
