@@ -314,84 +314,7 @@ std::vector<spu::Value> odd_even_merge_sort(
 
   return ret;
 }
-
-// Secure Odd-even merge
-// Ref:
-// https://hwlang.de/algorithmen/sortieren/networks/oemen.htm
-// std::vector<spu::Value> odd_even_merge(SPUContext *ctx,
-//                                        const CompFn &comparator_body,
-//                                        absl::Span<spu::Value const> inputs,
-//                                        int64_t split_idx) {
-//   // make a copy for inplace merge
-//   std::vector<spu::Value> ret;
-//   for (auto const &input : inputs) {
-//     spu::Value casted;
-//     if (!input.isSecret()) {
-//       // we can not linear_scatter a secret value to a public operand
-//       casted = _2s(ctx, input.clone()).setDtype(input.dtype());
-//     } else {
-//       casted = input.clone();
-//     }
-//     // we can not linear_scatter an ashare value to a bshare operand
-//     casted = _prefer_a(ctx, casted);
-//     ret.emplace_back(std::move(casted));
-//   }
-
-//   // merge by per network layer for memory optimizations.
-//   const auto n = inputs.front().numel();
-//   int64_t max_gap_in_stage = split_idx - 1;
-//   for (int64_t step = max_gap_in_stage; step > 0; step /= 2) {
-//     Index lhs_indices;
-//     Index rhs_indices;
-
-//     for (int64_t j = step % max_gap_in_stage; j + step < n; j += step + step)
-//     {
-//       for (int64_t i = 0; i < step; ++i) {
-//         auto lhs_idx = i + j;
-//         auto rhs_idx = i + j + step;
-//         if (rhs_idx >= n) break;
-
-//         auto range = max_gap_in_stage * 2;
-//         if (lhs_idx / range == rhs_idx / range) {
-//           lhs_indices.emplace_back(lhs_idx);
-//           rhs_indices.emplace_back(rhs_idx);
-//         }
-//       }
-//     }
-
-//     // // 打印 lhs_indices 和 rhs_indices
-//     // if (ctx->lctx()->Rank() == 0) {
-//     //   std::cout << "step=" << step
-//     //             << ", lhs_indices.size()=" << lhs_indices.size() <<
-//     //             std::endl;
-//     //   std::cout << "lhs_indices: ";
-//     //   for (const auto &idx : lhs_indices) {
-//     //     std::cout << idx << " ";
-//     //   }
-//     //   std::cout << std::endl;
-//     //   std::cout << "rhs_indices: ";
-//     //   for (const auto &idx : rhs_indices) {
-//     //     std::cout << idx << " ";
-//     //   }
-//     //   std::cout << std::endl;
-//     // }
-
-//     // if (ctx->lctx()->Rank() == 0) {
-//     //   // 打印 lhs_indices 的大小，所有参与方都会打印
-//     //   std::cout << "Number of comparisons in each stage: " <<
-//     //   lhs_indices.size()
-//     //             << std::endl;
-//     // }
-//     _cmp_swap(ctx, comparator_body, absl::MakeSpan(ret), lhs_indices,
-//               rhs_indices);
-//   }
-//   return ret;
-// }
-
-//
 namespace {
-
-// 使用 spu::Index 替代 std::vector<int64_t> 以匹配 _cmp_swap 的签名
 struct MergeLayer {
   spu::Index lhs;
   spu::Index rhs;
@@ -407,7 +330,7 @@ struct MergeLayer {
   }
 };
 
-// 计算 ceil(log2(n))，用于预估层数
+// compute ceil(log2(n))
 inline int64_t log2_ceil(int64_t n) {
   if (n <= 1) return 0;
   int64_t k = 0;
@@ -419,7 +342,6 @@ inline int64_t log2_ceil(int64_t n) {
   return k;
 }
 
-// 迭代生成 Odd-Even Merge 拓扑结构
 std::vector<MergeLayer> gen_odd_even_merge_layers(
     const spu::Index &left_indices, const spu::Index &right_indices) {
   if (left_indices.empty() || right_indices.empty()) {
@@ -428,7 +350,7 @@ std::vector<MergeLayer> gen_odd_even_merge_layers(
 
   const size_t total_size = left_indices.size() + right_indices.size();
 
-  // 1 vs 1: 直接生成比较
+  // 1 vs 1:
   if (left_indices.size() == 1 && right_indices.size() == 1) {
     MergeLayer layer;
     layer.lhs.push_back(left_indices[0]);
@@ -436,15 +358,16 @@ std::vector<MergeLayer> gen_odd_even_merge_layers(
     return {layer};
   }
 
-  // 预估最大层数: O(log n)
+  // Estimate the maximum number of layers: O(log n)
   const int64_t estimated_depth =
       log2_ceil(static_cast<int64_t>(total_size)) + 1;
 
-  // 定义栈帧结构
+  // Define the stack frame structure
   struct StackFrame {
     spu::Index left;
     spu::Index right;
-    int phase;  // 0: 初始, 1: 等待 odd 结果, 2: 等待 even 结果, 3: 合并完成
+    int phase;  // 0: initial, 1: wait for odd result, 2: wait for even result,
+                // 3: merge complete
     std::vector<MergeLayer> odd_result;
     std::vector<MergeLayer> even_result;
     spu::Index odd_left;
@@ -456,7 +379,7 @@ std::vector<MergeLayer> gen_odd_even_merge_layers(
   std::vector<StackFrame> stack;
   stack.reserve(estimated_depth);
 
-  // 初始帧
+  // Initial frame
   StackFrame initial;
   initial.left = left_indices;
   initial.right = right_indices;
@@ -469,7 +392,7 @@ std::vector<MergeLayer> gen_odd_even_merge_layers(
     StackFrame &frame = stack.back();
 
     if (frame.phase == 0) {
-      // 基础情况检
+      // Basic situation
       if (frame.left.empty() || frame.right.empty()) {
         result.clear();
         stack.pop_back();
@@ -503,7 +426,7 @@ std::vector<MergeLayer> gen_odd_even_merge_layers(
         continue;
       }
 
-      // 拆分 Odd/Even
+      // Split Odd/Even
       const size_t left_size = frame.left.size();
       const size_t right_size = frame.right.size();
 
@@ -528,7 +451,7 @@ std::vector<MergeLayer> gen_odd_even_merge_layers(
         }
       }
 
-      // 准备递归调用 odd
+      // Prepare to call odd
       frame.phase = 1;
       StackFrame odd_frame;
       odd_frame.left = frame.odd_left;
@@ -537,7 +460,7 @@ std::vector<MergeLayer> gen_odd_even_merge_layers(
       stack.push_back(std::move(odd_frame));
 
     } else if (frame.phase == 2) {
-      // odd 完成，开始 even
+      // odd finish, start even
       StackFrame even_frame;
       even_frame.left = frame.even_left;
       even_frame.right = frame.even_right;
@@ -545,7 +468,7 @@ std::vector<MergeLayer> gen_odd_even_merge_layers(
       stack.push_back(std::move(even_frame));
 
     } else if (frame.phase == 3) {
-      // odd 和 even 都完成，合并结果
+      // Both odd and even are done, merging the results
       std::vector<MergeLayer> layers;
       const size_t max_depth =
           std::max(frame.odd_result.size(), frame.even_result.size());
@@ -570,7 +493,7 @@ std::vector<MergeLayer> gen_odd_even_merge_layers(
         }
       }
 
-      // 缝合 (Stitch): 比较 Even[i] 和 Odd[i+1]
+      // Stitch: Compare Even[i] and Odd[i+1]
       const size_t odd_total = frame.odd_left.size() + frame.odd_right.size();
       const size_t even_total =
           frame.even_left.size() + frame.even_right.size();
@@ -680,12 +603,8 @@ std::vector<spu::Value> odd_even_merge_with_payloads(
     ret.emplace_back(std::move(casted));
   }
 
-  // 定义比较器包装函数：
-  //
-  // _cmp_swap 会 gather 出：
-  //   gathered_inputs = [Value_L, Value_R, Payload_L, Payload_R]
-  //
-  // 根据 Values 进行比较，取前两个元素传给原始比较器
+  // Define the comparator wrapper function:
+  // gathered_inputs = [Value_L, Value_R, Payload_L, Payload_R]
   auto value_only_comparator =
       [&](absl::Span<const spu::Value> gathered_inputs) {
         return cmp(gathered_inputs.subspan(0, 2));
@@ -2001,12 +1920,12 @@ std::vector<spu::Value> merge1d_with_payloads(
   SPU_ENFORCE(
       inputs.size() == 2,
       "merge1d_with_payloads expects exactly 2 inputs (Value tensor and "
-      "Valid tensor)");
+      "Payload tensor)");
   SPU_ENFORCE(inputs[0].shape().ndim() == 1,
               "Inputs should be 1-d but actually have {} dimensions",
               inputs[0].shape().ndim());
   SPU_ENFORCE(inputs[0].shape() == inputs[1].shape(),
-              "Value and Valid shape mismatch");
+              "Value and Payload shape mismatch");
 
   if (is_stable) {
     SPU_THROW("Stable sort is unsupported in secret flow.");

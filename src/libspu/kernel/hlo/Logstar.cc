@@ -25,30 +25,21 @@
 
 namespace spu::kernel::hlo {
 
-//  Vectorized NoteFunc
-// 输入的 p1, p2 维度为 [Batch, BlockSize]
-// 输入的 g1, g2 维度为 [Batch, 1]
 static std::pair<Value, Value> VectorizedNoteFunc(SPUContext* ctx,
                                                   const Value& p1,
                                                   const Value& p2,
                                                   const Value& g1,
                                                   const Value& g2) {
-  // 1. g3 = g1 * g2 (Element-wise mul)
   auto g3 = hal::mul(ctx, g1, g2);
-  // 2. diff = p2 - p1
   auto diff = hal::sub(ctx, p2, p1);
-  // 3. 广播: g1 是 [Batch, 1], diff 是 [Batch, BlockSize]
   Value g1_broadcasted = g1;
   if (diff.shape().size() > 0 && g1.shape() != diff.shape()) {
     g1_broadcasted = hal::broadcast_to(ctx, g1, diff.shape());
   }
-  // 4. term = diff * g1
   auto term = hal::mul(ctx, diff, g1_broadcasted);
-  // 5. p3 = p1 + term
   auto p3 = hal::add(ctx, p1, term);
   return {p3, g3};
 }
-// 重载版本：不需要输入的 g2 (用于 Down-Sweep 的最后阶段)
 static Value VectorizedNoteFunc(SPUContext* ctx, const Value& p1,
                                 const Value& p2, const Value& g1) {
   auto diff = hal::sub(ctx, p2, p1);
@@ -60,7 +51,6 @@ static Value VectorizedNoteFunc(SPUContext* ctx, const Value& p1,
   auto p3 = hal::add(ctx, p1, term);
   return p3;
 }
-// 辅助函数：计算下一个2的幂
 int64_t NextPowerOfTwo(int64_t n) {
   if (n <= 0) return 1;
   n--;
@@ -72,7 +62,6 @@ int64_t NextPowerOfTwo(int64_t n) {
   n |= n >> 32;
   return n + 1;
 }
-// // 最优：非 padding 方案，额外开销低
 std::pair<Value, Value> AggregateBrentKung(SPUContext* ctx, const Value& x_full,
                                            const Value& valid_full,
                                            const Value& g_full) {
@@ -80,7 +69,6 @@ std::pair<Value, Value> AggregateBrentKung(SPUContext* ctx, const Value& x_full,
   const int64_t block_size = x_full.shape()[1];
   const int64_t total_block_size = block_size * 2;
 
-  // 1. 预处理
   Value payload_full = hal::concatenate(ctx, {x_full, valid_full}, 1);
 
   std::vector<Value> p_curr(n);
@@ -99,9 +87,7 @@ std::pair<Value, Value> AggregateBrentKung(SPUContext* ctx, const Value& x_full,
     depth = std::ceil(std::log2(n));
   }
 
-  // ========================================================
   // 1. Up-Sweep
-  // ========================================================
   for (int j = 0; j < depth; ++j) {
     int64_t step = 1LL << (j + 1);
     int64_t left_child_off = 1LL << j;
@@ -148,9 +134,7 @@ std::pair<Value, Value> AggregateBrentKung(SPUContext* ctx, const Value& x_full,
     }
   }
 
-  // ========================================================
   // 2. Down-Sweep
-  // ========================================================
   for (int j = depth - 2; j >= 0; --j) {
     int64_t step = 1LL << (j + 1);
     int64_t dist = 1LL << j;
@@ -192,7 +176,6 @@ std::pair<Value, Value> AggregateBrentKung(SPUContext* ctx, const Value& x_full,
     }
   }
 
-  // 3. 输出
   auto final_payload = hal::concatenate(ctx, p_curr, 0);
   auto y_out = hal::slice(ctx, final_payload, {0, 0}, {n, block_size}, {});
   auto valid_out =
