@@ -397,3 +397,32 @@ spu_cc_test(
         "//libspu/mpc/utils:simulate",
     ],
 )
+
+
+spu_cc_library(
+    name = "Logstar",
+    srcs = ["Logstar.cc"],
+    hdrs = ["Logstar.h"],
+    deps = [
+        "//libspu/kernel/hal:polymorphic",
+        "//libspu/kernel/hal:shape_ops",
+        "//libspu/kernel/hal:utils",
+        "//libspu/kernel/hal:constants",
+        "//libspu/kernel/hal:random",
+        "//libspu/kernel/hal:permute",
+        "//libspu/kernel/hal:type_cast",
+        "//libspu/core:context",
+        ":shuffle",
+        ":permute",
+    ],
+)
+
+spu_cc_test(
+    name = "Logstar_test",
+    srcs = ["Logstar_test.cc"],
+    deps = [
+        ":Logstar",
+        "//libspu/kernel:test_util",
+        "//libspu/mpc/utils:simulate",
+    ],
+)

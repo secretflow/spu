@@ -314,6 +314,316 @@ std::vector<spu::Value> odd_even_merge_sort(
 
   return ret;
 }
+namespace {
+struct MergeLayer {
+  spu::Index lhs;
+  spu::Index rhs;
+
+  void reserve(size_t capacity) {
+    lhs.reserve(capacity);
+    rhs.reserve(capacity);
+  }
+
+  void append(const MergeLayer &other) {
+    lhs.insert(lhs.end(), other.lhs.begin(), other.lhs.end());
+    rhs.insert(rhs.end(), other.rhs.begin(), other.rhs.end());
+  }
+};
+
+// compute ceil(log2(n))
+inline int64_t log2_ceil(int64_t n) {
+  if (n <= 1) return 0;
+  int64_t k = 0;
+  int64_t val = 1;
+  while (val < n) {
+    val <<= 1;
+    ++k;
+  }
+  return k;
+}
+
+std::vector<MergeLayer> gen_odd_even_merge_layers(
+    const spu::Index &left_indices, const spu::Index &right_indices) {
+  if (left_indices.empty() || right_indices.empty()) {
+    return {};
+  }
+
+  const size_t total_size = left_indices.size() + right_indices.size();
+
+  // 1 vs 1:
+  if (left_indices.size() == 1 && right_indices.size() == 1) {
+    MergeLayer layer;
+    layer.lhs.push_back(left_indices[0]);
+    layer.rhs.push_back(right_indices[0]);
+    return {layer};
+  }
+
+  // Estimate the maximum number of layers: O(log n)
+  const int64_t estimated_depth =
+      log2_ceil(static_cast<int64_t>(total_size)) + 1;
+
+  // Define the stack frame structure
+  struct StackFrame {
+    spu::Index left;
+    spu::Index right;
+    int phase;  // 0: initial, 1: wait for odd result, 2: wait for even result,
+                // 3: merge complete
+    std::vector<MergeLayer> odd_result;
+    std::vector<MergeLayer> even_result;
+    spu::Index odd_left;
+    spu::Index even_left;
+    spu::Index odd_right;
+    spu::Index even_right;
+  };
+
+  std::vector<StackFrame> stack;
+  stack.reserve(estimated_depth);
+
+  // Initial frame
+  StackFrame initial;
+  initial.left = left_indices;
+  initial.right = right_indices;
+  initial.phase = 0;
+  stack.push_back(std::move(initial));
+
+  std::vector<MergeLayer> result;
+
+  while (!stack.empty()) {
+    StackFrame &frame = stack.back();
+
+    if (frame.phase == 0) {
+      // Basic situation
+      if (frame.left.empty() || frame.right.empty()) {
+        result.clear();
+        stack.pop_back();
+        if (!stack.empty()) {
+          if (stack.back().phase == 1) {
+            stack.back().odd_result = std::move(result);
+            stack.back().phase = 2;
+          } else {
+            stack.back().even_result = std::move(result);
+            stack.back().phase = 3;
+          }
+        }
+        continue;
+      }
+
+      if (frame.left.size() == 1 && frame.right.size() == 1) {
+        MergeLayer layer;
+        layer.lhs.push_back(frame.left[0]);
+        layer.rhs.push_back(frame.right[0]);
+        result = {std::move(layer)};
+        stack.pop_back();
+        if (!stack.empty()) {
+          if (stack.back().phase == 1) {
+            stack.back().odd_result = std::move(result);
+            stack.back().phase = 2;
+          } else {
+            stack.back().even_result = std::move(result);
+            stack.back().phase = 3;
+          }
+        }
+        continue;
+      }
+
+      // Split Odd/Even
+      const size_t left_size = frame.left.size();
+      const size_t right_size = frame.right.size();
+
+      frame.odd_left.reserve((left_size + 1) / 2);
+      frame.even_left.reserve(left_size / 2);
+      frame.odd_right.reserve((right_size + 1) / 2);
+      frame.even_right.reserve(right_size / 2);
+
+      for (size_t i = 0; i < left_size; ++i) {
+        if (i % 2 == 0) {
+          frame.odd_left.push_back(frame.left[i]);
+        } else {
+          frame.even_left.push_back(frame.left[i]);
+        }
+      }
+
+      for (size_t i = 0; i < right_size; ++i) {
+        if (i % 2 == 0) {
+          frame.odd_right.push_back(frame.right[i]);
+        } else {
+          frame.even_right.push_back(frame.right[i]);
+        }
+      }
+
+      // Prepare to call odd
+      frame.phase = 1;
+      StackFrame odd_frame;
+      odd_frame.left = frame.odd_left;
+      odd_frame.right = frame.odd_right;
+      odd_frame.phase = 0;
+      stack.push_back(std::move(odd_frame));
+
+    } else if (frame.phase == 2) {
+      // odd finish, start even
+      StackFrame even_frame;
+      even_frame.left = frame.even_left;
+      even_frame.right = frame.even_right;
+      even_frame.phase = 0;
+      stack.push_back(std::move(even_frame));
+
+    } else if (frame.phase == 3) {
+      // Both odd and even are done, merging the results
+      std::vector<MergeLayer> layers;
+      const size_t max_depth =
+          std::max(frame.odd_result.size(), frame.even_result.size());
+      layers.reserve(max_depth + 1);
+
+      for (size_t i = 0; i < max_depth; ++i) {
+        MergeLayer combined_layer;
+        size_t cap = 0;
+        if (i < frame.odd_result.size()) cap += frame.odd_result[i].lhs.size();
+        if (i < frame.even_result.size())
+          cap += frame.even_result[i].lhs.size();
+        combined_layer.reserve(cap);
+
+        if (i < frame.odd_result.size()) {
+          combined_layer.append(frame.odd_result[i]);
+        }
+        if (i < frame.even_result.size()) {
+          combined_layer.append(frame.even_result[i]);
+        }
+        if (!combined_layer.lhs.empty()) {
+          layers.push_back(std::move(combined_layer));
+        }
+      }
+
+      // Stitch: Compare Even[i] and Odd[i+1]
+      const size_t odd_total = frame.odd_left.size() + frame.odd_right.size();
+      const size_t even_total =
+          frame.even_left.size() + frame.even_right.size();
+
+      spu::Index lines_odd;
+      lines_odd.reserve(odd_total);
+      lines_odd.insert(lines_odd.end(), frame.odd_left.begin(),
+                       frame.odd_left.end());
+      lines_odd.insert(lines_odd.end(), frame.odd_right.begin(),
+                       frame.odd_right.end());
+
+      spu::Index lines_even;
+      lines_even.reserve(even_total);
+      lines_even.insert(lines_even.end(), frame.even_left.begin(),
+                        frame.even_left.end());
+      lines_even.insert(lines_even.end(), frame.even_right.begin(),
+                        frame.even_right.end());
+
+      MergeLayer stitch_layer;
+      const size_t stitch_size = std::min(
+          lines_even.size(), lines_odd.size() > 0 ? lines_odd.size() - 1 : 0);
+      stitch_layer.reserve(stitch_size);
+
+      for (size_t i = 0; i < lines_even.size(); ++i) {
+        if (i + 1 < lines_odd.size()) {
+          auto l = lines_even[i];
+          auto r = lines_odd[i + 1];
+          if (l > r) {
+            std::swap(l, r);
+          }
+          stitch_layer.lhs.push_back(l);
+          stitch_layer.rhs.push_back(r);
+        }
+      }
+
+      if (!stitch_layer.lhs.empty()) {
+        layers.push_back(std::move(stitch_layer));
+      }
+
+      result = std::move(layers);
+      stack.pop_back();
+
+      if (!stack.empty()) {
+        if (stack.back().phase == 1) {
+          stack.back().odd_result = std::move(result);
+          stack.back().phase = 2;
+        } else {
+          stack.back().even_result = std::move(result);
+          stack.back().phase = 3;
+        }
+      }
+    }
+  }
+
+  return result;
+}
+
+}  // namespace
+
+std::vector<spu::Value> odd_even_merge(SPUContext *ctx,
+                                       const CompFn &comparator_body,
+                                       absl::Span<spu::Value const> inputs,
+                                       int64_t split_idx) {
+  // make a copy for inplace merge
+  std::vector<spu::Value> ret;
+  for (auto const &input : inputs) {
+    spu::Value casted;
+    if (!input.isSecret()) {
+      // we can not linear_scatter a secret value to a public operand
+      casted = _2s(ctx, input.clone()).setDtype(input.dtype());
+    } else {
+      casted = input.clone();
+    }
+    // we can not linear_scatter an ashare value to a bshare operand
+    casted = _prefer_a(ctx, casted);
+    ret.emplace_back(std::move(casted));
+  }
+
+  const auto n = inputs.front().numel();
+  spu::Index left_indices(split_idx);
+  std::iota(left_indices.begin(), left_indices.end(), 0);
+  spu::Index right_indices(n - split_idx);
+  std::iota(right_indices.begin(), right_indices.end(), split_idx);
+
+  auto layers = gen_odd_even_merge_layers(left_indices, right_indices);
+
+  for (const auto &layer : layers) {
+    _cmp_swap(ctx, comparator_body, absl::MakeSpan(ret), layer.lhs, layer.rhs);
+  }
+  return ret;
+}
+
+std::vector<spu::Value> odd_even_merge_with_payloads(
+    SPUContext *ctx, const CompFn &cmp, absl::Span<spu::Value> inputs,
+    int64_t split_idx) {
+  std::vector<spu::Value> ret;
+  ret.reserve(inputs.size());
+
+  for (const auto &input : inputs) {
+    spu::Value casted;
+    if (!input.isSecret()) {
+      casted = _2s(ctx, input.clone()).setDtype(input.dtype());
+    } else {
+      casted = input.clone();
+    }
+    casted = _prefer_a(ctx, casted);
+    ret.emplace_back(std::move(casted));
+  }
+
+  // Define the comparator wrapper function:
+  // gathered_inputs = [Value_L, Value_R, Payload_L, Payload_R]
+  auto value_only_comparator =
+      [&](absl::Span<const spu::Value> gathered_inputs) {
+        return cmp(gathered_inputs.subspan(0, 2));
+      };
+
+  const auto n = inputs.front().numel();
+  spu::Index left_indices(split_idx);
+  std::iota(left_indices.begin(), left_indices.end(), 0);
+  spu::Index right_indices(n - split_idx);
+  std::iota(right_indices.begin(), right_indices.end(), split_idx);
+
+  auto layers = gen_odd_even_merge_layers(left_indices, right_indices);
+
+  for (const auto &layer : layers) {
+    _cmp_swap(ctx, value_only_comparator, absl::MakeSpan(ret), layer.lhs,
+              layer.rhs);
+  }
+  return ret;
+}
 
 void Swap(absl::Span<spu::Value> arr, const Index &lhs_indices,
           const Index &rhs_indices) {
@@ -1573,6 +1883,60 @@ std::vector<spu::Value> radix_sort(SPUContext *ctx,
 }
 
 }  // namespace internal
+
+std::vector<spu::Value> merge1d(SPUContext *ctx,
+                                absl::Span<spu::Value const> inputs,
+                                int64_t split_idx, const CompFn &cmp,
+                                Visibility comparator_ret_vis, bool is_stable) {
+  // sanity check.
+  SPU_ENFORCE(!inputs.empty(), "Inputs should not be empty");
+  SPU_ENFORCE(inputs[0].shape().ndim() == 1,
+              "Inputs should be 1-d but actually have {} dimensions",
+              inputs[0].shape().ndim());
+  SPU_ENFORCE(std::all_of(inputs.begin(), inputs.end(),
+                          [&inputs](const spu::Value &v) {
+                            return v.shape() == inputs[0].shape();
+                          }),
+              "Inputs shape mismatched");
+
+  std::vector<spu::Value> ret;
+  if (comparator_ret_vis == VIS_SECRET) {
+    SPU_ENFORCE(!is_stable,
+                "Stable sort is unsupported if comparator return is secret.");
+
+    ret = internal::odd_even_merge(ctx, cmp, inputs, split_idx);
+  } else {
+    SPU_THROW("Should not reach here");
+  }
+
+  return ret;
+}
+
+std::vector<spu::Value> merge1d_with_payloads(
+    SPUContext *ctx, absl::Span<spu::Value const> inputs, int64_t split_idx,
+    const hal::CompFn &cmp, bool is_stable) {
+  // Sanity check
+  SPU_ENFORCE(!inputs.empty(), "Inputs should not be empty");
+  SPU_ENFORCE(
+      inputs.size() == 2,
+      "merge1d_with_payloads expects exactly 2 inputs (Value tensor and "
+      "Payload tensor)");
+  SPU_ENFORCE(inputs[0].shape().ndim() == 1,
+              "Inputs should be 1-d but actually have {} dimensions",
+              inputs[0].shape().ndim());
+  SPU_ENFORCE(inputs[0].shape() == inputs[1].shape(),
+              "Value and Payload shape mismatch");
+
+  if (is_stable) {
+    SPU_THROW("Stable sort is unsupported in secret flow.");
+  }
+
+  // 拷贝输入以进行原地修改
+  std::vector<spu::Value> mutable_inputs(inputs.begin(), inputs.end());
+
+  return internal::odd_even_merge_with_payloads(
+      ctx, cmp, absl::MakeSpan(mutable_inputs), split_idx);
+}
 
 std::vector<spu::Value> sort1d(SPUContext *ctx,
                                absl::Span<spu::Value const> inputs,

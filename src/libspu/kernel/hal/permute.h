@@ -45,6 +45,16 @@ enum class SortDirection {
   Descending,
 };
 
+// general merge1d with comparator
+std::vector<spu::Value> merge1d(SPUContext *ctx,
+                                absl::Span<spu::Value const> inputs,
+                                int64_t split_idx, const CompFn &cmp,
+                                Visibility comparator_ret_vis, bool is_stable);
+
+std::vector<spu::Value> merge1d_with_payloads(
+    SPUContext *ctx, absl::Span<spu::Value const> inputs, int64_t split_idx,
+    const hal::CompFn &cmp, bool is_stable);
+
 // general sort1d with comparator
 std::vector<spu::Value> sort1d(SPUContext *ctx,
                                absl::Span<spu::Value const> inputs,

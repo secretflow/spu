@@ -314,3 +314,24 @@ spu_cc_library(
         ":ring",
     ],
 )
+
+spu_cc_library(
+    name = "merge",
+    srcs = ["merge.cc"],
+    hdrs = ["merge.h"],
+    deps = [
+        "//libspu/kernel/hal:permute",
+    ],
+)
+
+spu_cc_test(
+    name = "merge_test",
+    srcs = ["merge_test.cc"],
+    deps = [
+        ":merge",
+        "//libspu/kernel:test_util",
+        "//libspu/kernel/hal:polymorphic",
+        "//libspu/mpc/utils:simulate",
+        "@magic_enum",
+    ],
+)
