@@ -23,7 +23,7 @@
 namespace spu::kernel::test {
 
 SPUContext makeSPUContext(RuntimeConfig config,
-                          const std::shared_ptr<yacl::link::Context>& lctx) {
+                          const std::shared_ptr<yacl::link::Context> &lctx) {
   populateRuntimeConfig(config);
 
   SPUContext ctx(config, lctx);
@@ -33,7 +33,7 @@ SPUContext makeSPUContext(RuntimeConfig config,
 }
 
 SPUContext makeSPUContext(ProtocolKind prot_kind, FieldType field,
-                          const std::shared_ptr<yacl::link::Context>& lctx) {
+                          const std::shared_ptr<yacl::link::Context> &lctx) {
   RuntimeConfig cfg;
   cfg.protocol = prot_kind;
   cfg.field = field;
@@ -42,8 +42,8 @@ SPUContext makeSPUContext(ProtocolKind prot_kind, FieldType field,
   return makeSPUContext(cfg, lctx);
 }
 
-Value makeValue(SPUContext* ctx, PtBufferView init, Visibility vtype,
-                DataType dtype, const Shape& shape) {
+Value makeValue(SPUContext *ctx, PtBufferView init, Visibility vtype,
+                DataType dtype, const Shape &shape) {
   if (dtype == DT_INVALID) {
     dtype = getEncodeType(init.pt_type);
   }
@@ -62,7 +62,7 @@ namespace {
 struct ActionKey {
   std::string_view name;
   int64_t flag;
-  bool operator<(const ActionKey& other) const {
+  bool operator<(const ActionKey &other) const {
     return std::tie(name, flag) < std::tie(other.name, other.flag);
   }
 };
@@ -88,14 +88,14 @@ struct ActionStats {
 };
 }  // namespace
 
-void printProfileData(SPUContext* sctx) {
+void printProfileData(SPUContext *sctx) {
   std::map<ActionKey, ActionStats> stats;
 
-  const auto& tracer = GET_TRACER(sctx);
-  const auto& records = tracer->getProfState()->getRecords();
+  const auto &tracer = GET_TRACER(sctx);
+  const auto &records = tracer->getProfState()->getRecords();
 
-  for (const auto& rec : records) {
-    auto& stat = stats[{rec.name, rec.flag}];
+  for (const auto &rec : records) {
+    auto &stat = stats[{rec.name, rec.flag}];
     stat.count++;
     stat.total_time +=
         std::chrono::duration_cast<Duration>(rec.end - rec.start);
@@ -108,13 +108,13 @@ void printProfileData(SPUContext* sctx) {
   static std::map<int64_t, std::string> kModules = {
       {TR_HLO, "HLO"}, {TR_HAL, "HAL"}, {TR_MPC, "MPC"}};
 
-  for (const auto& [mod_flag, mod_name] : kModules) {
+  for (const auto &[mod_flag, mod_name] : kModules) {
     if ((tracer->getFlag() & mod_flag) == 0) {
       continue;
     }
     double total_time = 0.0;
     std::vector<ActionKey> sorted_by_time;
-    for (const auto& [key, stat] : stats) {
+    for (const auto &[key, stat] : stats) {
       if ((key.flag & mod_flag) != 0) {
         total_time += stat.getTotalTimeInSecond();
         sorted_by_time.emplace_back(key);
@@ -122,14 +122,14 @@ void printProfileData(SPUContext* sctx) {
     }
 
     std::sort(sorted_by_time.begin(), sorted_by_time.end(),
-              [&](const auto& k0, const auto& k1) {
+              [&](const auto &k0, const auto &k1) {
                 return stats.find(k0)->second.getTotalTimeInSecond() >
                        stats.find(k1)->second.getTotalTimeInSecond();
               });
 
     SPDLOG_INFO("{} profiling: total time {}", mod_name, total_time);
-    for (const auto& key : sorted_by_time) {
-      const auto& stat = stats.find(key)->second;
+    for (const auto &key : sorted_by_time) {
+      const auto &stat = stats.find(key)->second;
       SPDLOG_INFO(
           "- {}, executed {} times, duration {}s, send bytes {} recv "
           "bytes {}, send actions {}, recv actions {}",
