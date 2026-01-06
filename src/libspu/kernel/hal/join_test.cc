@@ -21,12 +21,27 @@
 #include "libspu/kernel/hlo/casting.h"
 #include "libspu/kernel/hlo/const.h"
 #include "libspu/kernel/hlo/geometrical.h"
-#include "libspu/kernel/hlo/soprf.h"
 #include "libspu/kernel/test_util.h"
-#include "libspu/mpc/utils/ring_ops.h"
 #include "libspu/mpc/utils/simulate.h"
 
 namespace spu::kernel::hal {
+
+namespace {
+SPUContext makeSPUContextWithProfile(
+    ProtocolKind prot_kind, FieldType field,
+    const std::shared_ptr<yacl::link::Context>& lctx) {
+  RuntimeConfig cfg;
+  cfg.protocol = prot_kind;
+  cfg.field = field;
+  cfg.enable_action_trace = false;
+
+  if (lctx->Rank() == 0) {
+    cfg.enable_hal_profile = true;
+    cfg.enable_pphlo_profile = true;
+  }
+  return test::makeSPUContext(cfg, lctx);
+}
+}  // namespace
 
 class JoinTest
     : public ::testing::TestWithParam<std::tuple<FieldType, ProtocolKind>> {};
@@ -44,7 +59,7 @@ TEST_P(JoinTest, Work) {
   ProtocolKind prot = std::get<1>(GetParam());
   size_t num_join_keys = 1;
   const size_t num_hash = 3;
-  const size_t scale_factor = 15;
+  const double scale_factor = 1.5;
 
   const Shape shape_1 = {2, 8};
   const Shape shape_2 = {2, 7};
@@ -56,7 +71,7 @@ TEST_P(JoinTest, Work) {
 
   mpc::utils::simulate(
       2, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
-        SPUContext sctx = test::makeSPUContext(prot, field, lctx);
+        SPUContext sctx = makeSPUContextWithProfile(prot, field, lctx);
 
         std::vector<Value> table1_columns;
         for (int64_t i = 0; i < shape_1[0]; ++i) {
@@ -77,18 +92,12 @@ TEST_P(JoinTest, Work) {
         absl::Span<const Value> table2_span =
             absl::MakeConstSpan(table2_columns);
 
-        size_t b0 = lctx->GetStats()->sent_bytes;
-        size_t r0 = lctx->GetStats()->sent_actions;
+        setupTrace(&sctx, sctx.config());
 
         auto ret = join_uu(&sctx, table1_span, table2_span, num_join_keys,
-                           num_hash, scale_factor, field);
-        size_t b1 = lctx->GetStats()->sent_bytes;
-        size_t r1 = lctx->GetStats()->sent_actions;
+                           num_hash, scale_factor);
 
-        if (lctx->Rank() == 0) {
-          std::cout << "Join communication sent bytes: " << (b1 - b0)
-                    << ", sent actions: " << (r1 - r0) << std::endl;
-        }
+        test::printProfileData(&sctx);
 
         for (size_t i = 0; i < ret.size(); ++i) {
           auto ret_hat =
@@ -122,7 +131,7 @@ TEST_P(MultiKeyJoinTest, Work) {
   ProtocolKind prot = std::get<1>(GetParam());
   size_t num_join_keys = std::get<2>(GetParam());
   size_t num_hash = std::get<3>(GetParam());
-  size_t scale_factor = 15;
+  double scale_factor = 1.5;
 
   const Shape shape_1 = {4, 9};
   const Shape shape_2 = {5, 12};
@@ -140,7 +149,7 @@ TEST_P(MultiKeyJoinTest, Work) {
 
   mpc::utils::simulate(
       2, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
-        SPUContext sctx = test::makeSPUContext(prot, field, lctx);
+        SPUContext sctx = makeSPUContextWithProfile(prot, field, lctx);
 
         std::vector<Value> table1_columns;
         for (int64_t i = 0; i < shape_1[0]; ++i) {
@@ -161,18 +170,12 @@ TEST_P(MultiKeyJoinTest, Work) {
         absl::Span<const Value> table2_span =
             absl::MakeConstSpan(table2_columns);
 
-        size_t b0 = lctx->GetStats()->sent_bytes;
-        size_t r0 = lctx->GetStats()->sent_actions;
+        setupTrace(&sctx, sctx.config());
 
         auto ret = join_uu(&sctx, table1_span, table2_span, num_join_keys,
-                           num_hash, scale_factor, field);
-        size_t b1 = lctx->GetStats()->sent_bytes;
-        size_t r1 = lctx->GetStats()->sent_actions;
+                           num_hash, scale_factor);
 
-        if (lctx->Rank() == 0) {
-          std::cout << "Join communication sent bytes: " << (b1 - b0)
-                    << ", sent actions: " << (r1 - r0) << std::endl;
-        }
+        test::printProfileData(&sctx);
 
         for (size_t i = 0; i < ret.size(); ++i) {
           auto ret_hat =
@@ -186,62 +189,56 @@ TEST_P(MultiKeyJoinTest, Work) {
       });
 }
 
-// TEST(BigDataJoinTest, Work) {
-//   FieldType field = FieldType::FM64;
-//   ProtocolKind prot = ProtocolKind::SEMI2K;
-//   size_t num_join_keys = 1;
-//   const size_t num_hash = 3;
-//   const size_t scale_factor = 15;
+TEST(BigDataJoinTest, Work) {
+  FieldType field = FieldType::FM64;
+  ProtocolKind prot = ProtocolKind::SEMI2K;
+  size_t num_join_keys = 1;
+  const size_t num_hash = 3;
+  const double scale_factor = 1.5;
 
-//   const Shape shape_1 = {2, 1000};
-//   const Shape shape_2 = {2, 1000};
-//   xt::xarray<uint64_t> data_1 = xt::random::randint<uint64_t>(shape_1, 0);
-//   xt::xarray<uint64_t> data_2 = xt::random::randint<uint64_t>(shape_2, 0);
-//   for (auto i = 0; i < shape_1[1]; ++i) {
-//     data_1(0, i) = i;
-//     data_1(1, i) = i + 100;
-//   }
-//   for (auto i = shape_2[1] - 1; i >= 0; --i) {
-//     data_2(0, i) = i;
-//     data_2(1, i) = i + 200;
-//   }
+  const Shape shape_1 = {2, 10000};
+  const Shape shape_2 = {2, 100000};
+  xt::xarray<uint64_t> data_1 = xt::random::randint<uint64_t>(shape_1, 0);
+  xt::xarray<uint64_t> data_2 = xt::random::randint<uint64_t>(shape_2, 0);
+  for (auto i = 0; i < shape_1[1]; ++i) {
+    data_1(0, i) = i;
+    data_1(1, i) = i + 100;
+  }
+  for (auto i = shape_2[1] - 1; i >= 0; --i) {
+    data_2(0, i) = i;
+    data_2(1, i) = i + 200;
+  }
 
-//   mpc::utils::simulate(
-//       2, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
-//         SPUContext sctx = test::makeSPUContext(prot, field, lctx);
+  mpc::utils::simulate(
+      2, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+        SPUContext sctx = makeSPUContextWithProfile(prot, field, lctx);
 
-//         std::vector<Value> table1_columns;
-//         for (int64_t i = 0; i < shape_1[0]; ++i) {
-//           xt::xarray<uint64_t> col_data = xt::row(data_1, i);
-//           Value col = test::makeValue(&sctx, col_data, VIS_SECRET);
-//           table1_columns.push_back(col);
-//         }
+        std::vector<Value> table1_columns;
+        for (int64_t i = 0; i < shape_1[0]; ++i) {
+          xt::xarray<uint64_t> col_data = xt::row(data_1, i);
+          Value col = test::makeValue(&sctx, col_data, VIS_SECRET);
+          table1_columns.push_back(col);
+        }
 
-//         std::vector<Value> table2_columns;
-//         for (int64_t i = 0; i < shape_2[0]; ++i) {
-//           xt::xarray<uint64_t> col_data = xt::row(data_2, i);
-//           Value col = test::makeValue(&sctx, col_data, VIS_SECRET);
-//           table2_columns.push_back(col);
-//         }
+        std::vector<Value> table2_columns;
+        for (int64_t i = 0; i < shape_2[0]; ++i) {
+          xt::xarray<uint64_t> col_data = xt::row(data_2, i);
+          Value col = test::makeValue(&sctx, col_data, VIS_SECRET);
+          table2_columns.push_back(col);
+        }
 
-//         absl::Span<const Value> table1_span =
-//             absl::MakeConstSpan(table1_columns);
-//         absl::Span<const Value> table2_span =
-//             absl::MakeConstSpan(table2_columns);
+        absl::Span<const Value> table1_span =
+            absl::MakeConstSpan(table1_columns);
+        absl::Span<const Value> table2_span =
+            absl::MakeConstSpan(table2_columns);
 
-//         size_t b0 = lctx->GetStats()->sent_bytes;
-//         size_t r0 = lctx->GetStats()->sent_actions;
+        setupTrace(&sctx, sctx.config());
 
-//         auto ret = join_uu(&sctx, table1_span, table2_span, num_join_keys,
-//                            num_hash, scale_factor, field);
-//         size_t b1 = lctx->GetStats()->sent_bytes;
-//         size_t r1 = lctx->GetStats()->sent_actions;
+        auto ret = join_uu(&sctx, table1_span, table2_span, num_join_keys,
+                           num_hash, scale_factor);
 
-//         if (lctx->Rank() == 0) {
-//           std::cout << "Join communication sent bytes: " << (b1 - b0)
-//                     << ", sent actions: " << (r1 - r0) << std::endl;
-//         }
-//       });
-// }
+        test::printProfileData(&sctx);
+      });
+}
 
 }  // namespace spu::kernel::hal

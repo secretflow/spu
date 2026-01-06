@@ -196,12 +196,17 @@ void CuckooHashToPermKernel::evaluate(KernelEvalContext* ctx) const {
   const auto& e_1 = ctx->getParam<Value>(0);
   const auto& e_2 = ctx->getParam<Value>(1);
   size_t num_hash = ctx->getParam<size_t>(2);
-  size_t scale_factor = ctx->getParam<size_t>(3);
-  FieldType field = ctx->getParam<FieldType>(4);
+  double scale_factor = ctx->getParam<double>(3);
+  size_t num_join_keys = ctx->getParam<size_t>(4);
 
   auto y = proc(ctx, UnwrapValue(e_1), UnwrapValue(e_2), num_hash, scale_factor,
-                field);
-  ctx->pushOutput(WrapValue(y));
+                num_join_keys);
+
+  std::vector<Value> wrapped(y.size());
+  for (size_t idx = 0; idx < y.size(); ++idx) {
+    wrapped[idx] = WrapValue(y[idx]);
+  }
+  ctx->pushOutput(wrapped);
 }
 
 void BroadcastKernel::evaluate(KernelEvalContext* ctx) const {

@@ -28,6 +28,6 @@ std::vector<spu::Value> join_uu(SPUContext* ctx,
                                 absl::Span<const spu::Value> table_1,
                                 absl::Span<const spu::Value> table_2,
                                 size_t num_join_keys, size_t num_hash,
-                                size_t scale_factor, FieldType field);
+                                double scale_factor);
 
 }  // namespace spu::kernel::hal

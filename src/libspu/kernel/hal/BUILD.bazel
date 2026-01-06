@@ -329,9 +329,7 @@ spu_cc_library(
         ":public_helper",
         ":ring",
         ":shape_ops",
-        ":utils",
         "@yacl//yacl/utils:cuckoo_index",
-        "//libspu/kernel:test_util",
         "//libspu/kernel/hlo:permute",
     ],
 )

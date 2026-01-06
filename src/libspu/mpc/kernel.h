@@ -193,9 +193,11 @@ class CuckooHashToPermKernel : public Kernel {
  public:
   void evaluate(KernelEvalContext* ctx) const override;
 
-  virtual NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& e_1,
-                          const NdArrayRef& e_2, size_t num_hash,
-                          size_t scale_factor, FieldType field) const = 0;
+  virtual std::vector<NdArrayRef> proc(KernelEvalContext* ctx,
+                                       const NdArrayRef& e_1,
+                                       const NdArrayRef& e_2, size_t num_hash,
+                                       double scale_factor,
+                                       size_t num_join_keys) const = 0;
 };
 
 class BroadcastKernel : public Kernel {
