@@ -554,7 +554,9 @@ void RunSignedInterpretationSortTest(SPUContext *ctx) {
 }
 
 // IMPORTANT: the user should ensure that the data has the correct signed or
-// unsigned type.
+// unsigned type. Incorrect type interpretation will result in incorrect sort
+// order (for example, treating signed values as unsigned may place negative
+// numbers at the end instead of the beginning).
 TEST_P(SimpleSortTest, SignedInterpretationSort) {
   size_t npc = std::get<0>(GetParam());
   FieldType field = std::get<1>(GetParam());
