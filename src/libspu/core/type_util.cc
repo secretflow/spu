@@ -52,6 +52,14 @@ bool isInteger(DataType dtype) {
   }
 }
 
+bool isUInteger(DataType dtype) {
+  switch (dtype) {
+    FOREACH_UINT_DTYPES(CASE)
+    default:
+      return false;
+  }
+}
+
 bool isFixedPoint(DataType dtype) {
   switch (dtype) {
     FOREACH_FXP_DTYPES(CASE)

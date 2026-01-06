@@ -50,6 +50,13 @@ std::ostream& operator<<(std::ostream& os, const Visibility& vtype);
   FN(DT_I64, I64, 64)          \
   FN(DT_U64, U64, 64)
 
+#define FOREACH_UINT_DTYPES(FN) \
+  FN(DT_I1, I1, 1)              \
+  FN(DT_U8, U8, 8)              \
+  FN(DT_U16, U16, 16)           \
+  FN(DT_U32, U32, 32)           \
+  FN(DT_U64, U64, 64)
+
 #define FOREACH_FXP_DTYPES(FN) \
   FN(DT_F16, F16, 16)          \
   FN(DT_F32, F32, 32)          \
@@ -60,6 +67,7 @@ std::ostream& operator<<(std::ostream& os, const Visibility& vtype);
   FOREACH_FXP_DTYPES(FN)
 
 bool isInteger(DataType dtype);
+bool isUInteger(DataType dtype);
 bool isFixedPoint(DataType dtype);
 size_t getWidth(DataType dtype);
 

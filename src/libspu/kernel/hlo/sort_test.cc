@@ -15,6 +15,7 @@
 #include "libspu/kernel/hlo/sort.h"
 
 #include <algorithm>
+#include <limits>
 #include <random>
 #include <xtensor/xadapt.hpp>
 #include <xtensor/xsort.hpp>
@@ -457,6 +458,244 @@ TEST_P(SimpleSortTest, MixVisibilityKey) {
           EXPECT_TRUE(xt::allclose(sorted_k4, sorted_k4_hat, 0.01, 0.001))
               << sorted_k4 << std::endl
               << sorted_k4_hat << std::endl;
+        }
+      });
+}
+
+// Helper template to run unsigned type sort test
+template <typename T>
+void RunUnsignedSortTest(SPUContext *ctx) {
+  xt::xarray<T> k1 = {7, 6, 5, 4, 1, 3, 2};
+  xt::xarray<T> sorted_k1 = {1, 2, 3, 4, 5, 6, 7};
+  xt::xarray<float> payload = {1, 2, 3, 6, 7, 6, 5};
+  xt::xarray<float> sorted_payload = {7, 5, 6, 6, 3, 2, 1};
+
+  Value k1_v = test::makeValue(ctx, k1, VIS_SECRET);
+  Value payload_v = test::makeValue(ctx, payload, VIS_SECRET);
+
+  std::vector<spu::Value> rets =
+      SimpleSort(ctx, {k1_v, payload_v}, 0, hal::SortDirection::Ascending, 1);
+
+  EXPECT_EQ(rets.size(), 2);
+
+  auto sorted_k1_hat = hal::dump_public_as<T>(ctx, hal::reveal(ctx, rets[0]));
+  auto sorted_payload_hat =
+      hal::dump_public_as<float>(ctx, hal::reveal(ctx, rets[1]));
+
+  EXPECT_TRUE(xt::allclose(sorted_k1, sorted_k1_hat, 0.01, 0.001))
+      << "sort failed: " << sorted_k1 << std::endl
+      << sorted_k1_hat << std::endl;
+
+  EXPECT_TRUE(xt::allclose(sorted_payload, sorted_payload_hat, 0.01, 0.001))
+      << "payload failed: " << sorted_payload << std::endl
+      << sorted_payload_hat << std::endl;
+}
+
+TEST_P(SimpleSortTest, UnsignedTypeSort) {
+  size_t npc = std::get<0>(GetParam());
+  FieldType field = std::get<1>(GetParam());
+  ProtocolKind prot = std::get<2>(GetParam());
+  RuntimeConfig::SortMethod method = std::get<3>(GetParam());
+
+  mpc::utils::simulate(npc,
+                       [&](const std::shared_ptr<yacl::link::Context> &lctx) {
+                         RuntimeConfig cfg;
+                         cfg.protocol = prot;
+                         cfg.field = field;
+                         cfg.enable_action_trace = false;
+                         cfg.sort_method = method;
+                         SPUContext ctx = test::makeSPUContext(cfg, lctx);
+
+                         RunUnsignedSortTest<uint8_t>(&ctx);
+                         RunUnsignedSortTest<uint16_t>(&ctx);
+                         RunUnsignedSortTest<uint32_t>(&ctx);
+                         if (field >= FieldType::FM64) {
+                           RunUnsignedSortTest<uint64_t>(&ctx);
+                         }
+                       });
+}
+
+// Helper template to test signed interpretation of unsigned-range values
+// When values like 255 (for int8_t) are interpreted as signed, they become -1
+// So sorting should treat them as negative numbers
+template <typename SignedT, typename UnsignedT>
+void RunSignedInterpretationSortTest(SPUContext *ctx) {
+  // Use max value of unsigned type which becomes -1 when interpreted as signed
+  constexpr UnsignedT max_val = std::numeric_limits<UnsignedT>::max();
+  // Key: {0, max_val} where max_val is interpreted as -1 in signed
+  // For ascending sort with signed interpretation: -1 < 0, so max_val comes
+  // first
+  xt::xarray<SignedT> k1 = {0, static_cast<SignedT>(max_val)};
+  // Expected: max_val (-1) < 0, so sorted order is {max_val, 0}
+  xt::xarray<SignedT> sorted_k1 = {static_cast<SignedT>(max_val), 0};
+  xt::xarray<float> payload = {1.0, 2.0};
+  xt::xarray<float> sorted_payload = {2.0, 1.0};
+
+  Value k1_v = test::makeValue(ctx, k1, VIS_SECRET);
+  Value payload_v = test::makeValue(ctx, payload, VIS_SECRET);
+
+  std::vector<spu::Value> rets =
+      SimpleSort(ctx, {k1_v, payload_v}, 0, hal::SortDirection::Ascending, 1);
+
+  EXPECT_EQ(rets.size(), 2);
+
+  auto sorted_k1_hat =
+      hal::dump_public_as<SignedT>(ctx, hal::reveal(ctx, rets[0]));
+  auto sorted_payload_hat =
+      hal::dump_public_as<float>(ctx, hal::reveal(ctx, rets[1]));
+
+  EXPECT_TRUE(xt::allclose(sorted_k1, sorted_k1_hat, 0.01, 0.001))
+      << "sort failed: expected " << sorted_k1 << ", got " << sorted_k1_hat
+      << std::endl;
+
+  EXPECT_TRUE(xt::allclose(sorted_payload, sorted_payload_hat, 0.01, 0.001))
+      << "payload failed: expected " << sorted_payload << ", got "
+      << sorted_payload_hat << std::endl;
+}
+
+// IMPORTANT: the user should ensure that the data has the correct signed or
+// unsigned type. Incorrect type interpretation will result in incorrect sort
+// order (for example, treating signed values as unsigned may place negative
+// numbers at the end instead of the beginning).
+TEST_P(SimpleSortTest, SignedInterpretationSort) {
+  size_t npc = std::get<0>(GetParam());
+  FieldType field = std::get<1>(GetParam());
+  ProtocolKind prot = std::get<2>(GetParam());
+  RuntimeConfig::SortMethod method = std::get<3>(GetParam());
+
+  mpc::utils::simulate(
+      npc, [&](const std::shared_ptr<yacl::link::Context> &lctx) {
+        RuntimeConfig cfg;
+        cfg.protocol = prot;
+        cfg.field = field;
+        cfg.enable_action_trace = false;
+        cfg.sort_method = method;
+        SPUContext ctx = test::makeSPUContext(cfg, lctx);
+
+        // Test: data is uint8_t range but treated as int8_t
+        // 255 (uint8_t) -> -1 (int8_t), so -1 < 0
+        RunSignedInterpretationSortTest<int8_t, uint8_t>(&ctx);
+
+        // Test: data is uint16_t range but treated as int16_t
+        // 65535 (uint16_t) -> -1 (int16_t), so -1 < 0
+        RunSignedInterpretationSortTest<int16_t, uint16_t>(&ctx);
+
+        // Test: data is uint32_t range but treated as int32_t
+        // 4294967295 (uint32_t) -> -1 (int32_t), so -1 < 0
+        RunSignedInterpretationSortTest<int32_t, uint32_t>(&ctx);
+
+        if (field >= FieldType::FM64) {
+          // Test: data is uint64_t range but treated as int64_t
+          RunSignedInterpretationSortTest<int64_t, uint64_t>(&ctx);
+        }
+      });
+}
+
+TEST_P(SimpleSortTest, BoolKeyWithPayloads) {
+  size_t npc = std::get<0>(GetParam());
+  FieldType field = std::get<1>(GetParam());
+  ProtocolKind prot = std::get<2>(GetParam());
+  RuntimeConfig::SortMethod method = std::get<3>(GetParam());
+
+  mpc::utils::simulate(
+      npc, [&](const std::shared_ptr<yacl::link::Context> &lctx) {
+        RuntimeConfig cfg;
+        cfg.protocol = prot;
+        cfg.field = field;
+        cfg.enable_action_trace = false;
+        cfg.sort_method = method;
+
+        SPUContext ctx = test::makeSPUContext(cfg, lctx);
+
+        // Bool key with two payloads
+        xt::xarray<bool> k1 = {true, false, true, false, true};
+        xt::xarray<float> p1 = {1.0, 2.0, 3.0, 4.0, 5.0};
+        xt::xarray<int32_t> p2 = {10, 20, 30, 40, 50};
+
+        // Expected sorted keys
+        xt::xarray<bool> sorted_k1_desc = {true, true, true, false, false};
+        xt::xarray<bool> sorted_k1_asc = {false, false, true, true, true};
+
+        // Expected payloads (sorted within each group since sort is unstable)
+        // Descending: true keys first {1,3,5}, then false keys {2,4}
+        xt::xarray<float> sorted_p1_desc = {1.0, 3.0, 5.0, 2.0, 4.0};
+        xt::xarray<int32_t> sorted_p2_desc = {10, 30, 50, 20, 40};
+        // Ascending: false keys first {2,4}, then true keys {1,3,5}
+        xt::xarray<float> sorted_p1_asc = {2.0, 4.0, 1.0, 3.0, 5.0};
+        xt::xarray<int32_t> sorted_p2_asc = {20, 40, 10, 30, 50};
+
+        Value k1_v = test::makeValue(&ctx, k1, VIS_SECRET);
+        Value p1_v = test::makeValue(&ctx, p1, VIS_SECRET);
+        Value p2_v = test::makeValue(&ctx, p2, VIS_SECRET);
+
+        // Test descending sort (true before false)
+        {
+          std::vector<spu::Value> rets = SimpleSort(
+              &ctx, {k1_v, p1_v, p2_v}, 0, hal::SortDirection::Descending, 1);
+
+          EXPECT_EQ(rets.size(), 3);
+
+          auto sorted_k1_hat =
+              hal::dump_public_as<bool>(&ctx, hal::reveal(&ctx, rets[0]));
+          auto sorted_p1_hat =
+              hal::dump_public_as<float>(&ctx, hal::reveal(&ctx, rets[1]));
+          auto sorted_p2_hat =
+              hal::dump_public_as<int32_t>(&ctx, hal::reveal(&ctx, rets[2]));
+
+          // Check bool key is sorted correctly
+          EXPECT_TRUE(xt::allclose(sorted_k1_desc, sorted_k1_hat, 0.01, 0.001))
+              << "Bool descending sort failed: " << sorted_k1_desc << std::endl
+              << sorted_k1_hat << std::endl;
+
+          // Sort each part and compare (since sort is unstable within same key)
+          auto p1_hat_sorted = xt::concatenate(
+              xt::xtuple(xt::sort(xt::view(sorted_p1_hat, xt::range(0, 3))),
+                         xt::sort(xt::view(sorted_p1_hat, xt::range(3, 5)))));
+          auto p2_hat_sorted = xt::concatenate(
+              xt::xtuple(xt::sort(xt::view(sorted_p2_hat, xt::range(0, 3))),
+                         xt::sort(xt::view(sorted_p2_hat, xt::range(3, 5)))));
+
+          EXPECT_TRUE(xt::allclose(sorted_p1_desc, p1_hat_sorted, 0.01, 0.001))
+              << "Descending p1 failed: " << sorted_p1_desc << std::endl
+              << p1_hat_sorted << std::endl;
+          EXPECT_TRUE(xt::allclose(sorted_p2_desc, p2_hat_sorted, 0.01, 0.001))
+              << "Descending p2 failed: " << sorted_p2_desc << std::endl
+              << p2_hat_sorted << std::endl;
+        }
+
+        // Test ascending sort (false before true)
+        {
+          std::vector<spu::Value> rets = SimpleSort(
+              &ctx, {k1_v, p1_v, p2_v}, 0, hal::SortDirection::Ascending, 1);
+
+          EXPECT_EQ(rets.size(), 3);
+
+          auto sorted_k1_hat =
+              hal::dump_public_as<bool>(&ctx, hal::reveal(&ctx, rets[0]));
+          auto sorted_p1_hat =
+              hal::dump_public_as<float>(&ctx, hal::reveal(&ctx, rets[1]));
+          auto sorted_p2_hat =
+              hal::dump_public_as<int32_t>(&ctx, hal::reveal(&ctx, rets[2]));
+
+          // Check bool key is sorted correctly
+          EXPECT_TRUE(xt::allclose(sorted_k1_asc, sorted_k1_hat, 0.01, 0.001))
+              << "Bool ascending sort failed: " << sorted_k1_asc << std::endl
+              << sorted_k1_hat << std::endl;
+
+          // Sort each part and compare (since sort is unstable within same key)
+          auto p1_hat_sorted = xt::concatenate(
+              xt::xtuple(xt::sort(xt::view(sorted_p1_hat, xt::range(0, 2))),
+                         xt::sort(xt::view(sorted_p1_hat, xt::range(2, 5)))));
+          auto p2_hat_sorted = xt::concatenate(
+              xt::xtuple(xt::sort(xt::view(sorted_p2_hat, xt::range(0, 2))),
+                         xt::sort(xt::view(sorted_p2_hat, xt::range(2, 5)))));
+
+          EXPECT_TRUE(xt::allclose(sorted_p1_asc, p1_hat_sorted, 0.01, 0.001))
+              << "Ascending p1 failed: " << sorted_p1_asc << std::endl
+              << p1_hat_sorted << std::endl;
+          EXPECT_TRUE(xt::allclose(sorted_p2_asc, p2_hat_sorted, 0.01, 0.001))
+              << "Ascending p2 failed: " << sorted_p2_asc << std::endl
+              << p2_hat_sorted << std::endl;
         }
       });
 }
