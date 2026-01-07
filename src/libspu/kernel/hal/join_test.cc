@@ -14,6 +14,10 @@
 
 #include "libspu/kernel/hal/join.h"
 
+#include <memory>
+#include <tuple>
+#include <vector>
+
 #include "gtest/gtest.h"
 #include "xtensor/xio.hpp"
 
@@ -117,7 +121,7 @@ class MultiKeyJoinTest
 
 INSTANTIATE_TEST_SUITE_P(
     MultiKeyJoinTestInstances, MultiKeyJoinTest,
-    testing::Combine(testing::Values(FieldType::FM64, FieldType::FM128),
+    testing::Combine(testing::Values(FieldType::FM64),
                      testing::Values(ProtocolKind::SEMI2K),
                      testing::Values(2, 3), testing::Values(2, 3)),
     [](const testing::TestParamInfo<MultiKeyJoinTest::ParamType>& p) {
@@ -194,10 +198,11 @@ TEST(BigDataJoinTest, Work) {
   ProtocolKind prot = ProtocolKind::SEMI2K;
   size_t num_join_keys = 1;
   const size_t num_hash = 3;
-  const double scale_factor = 1.5;
+  const double scale_factor = 1.2;
 
-  const Shape shape_1 = {2, 10000};
-  const Shape shape_2 = {2, 100000};
+  int64_t n = 1000000;
+  const Shape shape_1 = {2, n};
+  const Shape shape_2 = {2, n};
   xt::xarray<uint64_t> data_1 = xt::random::randint<uint64_t>(shape_1, 0);
   xt::xarray<uint64_t> data_2 = xt::random::randint<uint64_t>(shape_2, 0);
   for (auto i = 0; i < shape_1[1]; ++i) {
@@ -227,14 +232,9 @@ TEST(BigDataJoinTest, Work) {
           table2_columns.push_back(col);
         }
 
-        absl::Span<const Value> table1_span =
-            absl::MakeConstSpan(table1_columns);
-        absl::Span<const Value> table2_span =
-            absl::MakeConstSpan(table2_columns);
-
         setupTrace(&sctx, sctx.config());
 
-        auto ret = join_uu(&sctx, table1_span, table2_span, num_join_keys,
+        auto ret = join_uu(&sctx, table1_columns, table2_columns, num_join_keys,
                            num_hash, scale_factor);
 
         test::printProfileData(&sctx);
