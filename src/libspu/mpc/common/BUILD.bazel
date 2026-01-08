@@ -26,6 +26,9 @@ spu_cc_library(
         "//libspu/mpc/common:prg_state",
         "//libspu/mpc/utils:ring_ops",
         "@magic_enum",
+        "@yacl//yacl/crypto/hash:blake3",
+        "@yacl//yacl/crypto/hash:hash_utils",
+        "@yacl//yacl/utils:cuckoo_index",
     ],
 )
 

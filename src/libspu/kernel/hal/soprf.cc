@@ -14,6 +14,8 @@
 
 #include "libspu/kernel/hal/soprf.h"
 
+#include <vector>
+
 #include "libspu/core/trace.h"
 #include "libspu/kernel/hal/prot_wrapper.h"
 #include "libspu/kernel/hal/ring.h"
@@ -54,6 +56,7 @@ spu::Value _2s(SPUContext* ctx, const Value& x) {
 }  // namespace
 
 Value soprf(SPUContext* ctx, absl::Span<const spu::Value> inputs) {
+  SPU_TRACE_HAL_LEAF(ctx, inputs.size());
   // currently, wo only support LowMC block cipher
   SPU_ENFORCE(ctx->hasKernel("multi_key_lowmc_b"));
   SPU_ENFORCE(!inputs.empty(), "inputs should not be empty");

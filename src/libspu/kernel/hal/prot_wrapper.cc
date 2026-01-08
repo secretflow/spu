@@ -344,6 +344,16 @@ Value _merge_keys_v(SPUContext* ctx, absl::Span<Value const> inputs,
   return dynDispatch(ctx, "merge_keys_v", in, is_ascending);
 }
 
+std::vector<Value> _cuckoo_hash_to_perm_v(SPUContext* ctx, const Value& e_1,
+                                          const Value& e_2, size_t num_hash,
+                                          double scale_factor,
+                                          size_t num_join_keys) {
+  SPU_TRACE_HAL_LEAF(ctx, e_1.shape(), e_2.shape(), num_hash, scale_factor,
+                     num_join_keys);
+  return dynDispatch<std::vector<Value>>(ctx, "cuckoo_hash_to_perm_v", e_1, e_2,
+                                         num_hash, scale_factor, num_join_keys);
+}
+
 #define MAP_PERM_OP(NAME)                                             \
   Value _##NAME(SPUContext* ctx, const Value& x, const Value& y) {    \
     SPU_TRACE_HAL_LEAF(ctx, x, y);                                    \

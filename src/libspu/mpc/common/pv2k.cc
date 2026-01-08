@@ -18,6 +18,9 @@
 #include <mutex>
 
 #include "magic_enum.hpp"
+#include "yacl/crypto/hash/blake3.h"
+#include "yacl/crypto/hash/hash_utils.h"
+#include "yacl/utils/cuckoo_index.h"
 
 #include "libspu/core/ndarray_ref.h"
 #include "libspu/mpc/common/communicator.h"
@@ -1039,6 +1042,137 @@ class MergeKeysV : public MergeKeysKernel {
   }
 };
 
+class CuckooHashToPermV : public CuckooHashToPermKernel {
+ public:
+  static constexpr const char* kBindName() { return "cuckoo_hash_to_perm_v"; }
+
+  ce::CExpr latency() const override { return ce::Const(0); }
+  ce::CExpr comm() const override { return ce::Const(0); }
+
+  std::vector<NdArrayRef> proc(KernelEvalContext* ctx, const NdArrayRef& e_1,
+                               const NdArrayRef& e_2, size_t num_hash,
+                               double scale_factor,
+                               size_t num_join_keys) const override {
+    SPU_ENFORCE(e_1.eltype().isa<Priv2kTy>());
+    SPU_ENFORCE(e_2.eltype().isa<Priv2kTy>());
+    SPU_ENFORCE(getOwner(e_1) == 0);
+    SPU_ENFORCE(getOwner(e_2) == 1);
+
+    yacl::crypto::Blake3Hash blake3;
+    std::vector<uint8_t> hash_output;
+    uint128_t element;
+    uint128_t result_tmp;
+    std::vector<uint128_t> result;
+    const int64_t n_1 = e_1.numel();
+    const int64_t n_2 = e_2.numel();
+
+    // if field == FieldType::FM64 && num_join_keys ==
+    // 1, need to use FM64, otherwise the result is incorrect
+    FieldType field = FieldType::FM128;
+    if (ctx->sctx()->getField() == FieldType::FM64 && num_join_keys == 1) {
+      field = FieldType::FM64;
+    }
+
+    // Use blake3 to hash the input and process different inputs according to
+    // different rank.
+    auto hash_elements = [&](const NdArrayRef& e) {
+      DISPATCH_ALL_FIELDS(field, [&]() {
+        NdArrayView<ring2k_t> e_view(e);
+        for (int64_t i = 0; i < e.numel(); ++i) {
+          blake3.Reset();
+          element = e_view[i];
+          blake3.Update(yacl::ByteContainerView(
+              reinterpret_cast<const char*>(&element), sizeof(element)));
+          hash_output = blake3.CumulativeHash();
+          result_tmp = 0;
+          memcpy(&result_tmp, hash_output.data(),
+                 std::min(hash_output.size(), sizeof(uint128_t)));
+          result.push_back(result_tmp);
+        }
+      });
+    };
+
+    if (isOwner(ctx, e_1.eltype())) {
+      hash_elements(e_1);
+    } else if (isOwner(ctx, e_2.eltype())) {
+      hash_elements(e_2);
+    }
+
+    // Cuckoo hash initialization
+    // The four parameters inputed are: num_input, num_stash,
+    // num_hash,scale_factor.
+    yacl::CuckooIndex::Options opts = {static_cast<uint64_t>(n_2), 0, num_hash,
+                                       scale_factor};
+    yacl::CuckooIndex cuckoo_index(opts);
+    const int64_t cuckoo_hash_size = cuckoo_index.bins().size();
+
+    // Define out as a vector with num_hash + 1 elements, where the first
+    // num_hash elements are of type private, belonging to the owner of e_1, and
+    // the last element is of type private, belonging to the owner of e_2, each
+    // element having a shape of Shape{n}, where n is the larger value between
+    // n_1 and cuckoo_hash_size.
+    std::vector<NdArrayRef> out;
+    out.reserve(num_hash + 1);
+
+    if (isOwner(ctx, e_1.eltype())) {
+      // Execute num_hash hash functions on e_1, and output permutation pi_1.
+      for (size_t i = 0; i < num_hash; ++i) {
+        NdArrayRef out_i(makeType<Priv2kTy>(FieldType::FM64, getOwner(e_1)),
+                         Shape{static_cast<int64_t>(n_1)});
+        NdArrayView<uint64_t> _out_i(out_i);
+        for (int64_t j = 0; j < n_1; ++j) {
+          yacl::CuckooIndex::HashRoom e_1_hash(result[j]);
+          _out_i[j] = e_1_hash.GetHash(i) % cuckoo_hash_size;
+        }
+        out.push_back(out_i);
+      }
+
+      // Add empty placeholder for P2's part
+      NdArrayRef empty_for_p2(
+          makeType<Priv2kTy>(FieldType::FM64, getOwner(e_2)),
+          Shape{static_cast<int64_t>(cuckoo_hash_size)});
+      out.push_back(empty_for_p2);
+
+    } else if (isOwner(ctx, e_2.eltype())) {
+      // Add num_hash empty placeholders for P1's part
+      for (size_t i = 0; i < num_hash; ++i) {
+        NdArrayRef empty_for_p1(
+            makeType<Priv2kTy>(FieldType::FM64, getOwner(e_1)),
+            Shape{static_cast<int64_t>(n_1)});
+        out.push_back(empty_for_p1);
+      }
+
+      NdArrayRef out_j(makeType<Priv2kTy>(FieldType::FM64, getOwner(e_2)),
+                       Shape{static_cast<int64_t>(cuckoo_hash_size)});
+      NdArrayView<uint64_t> _out_j(out_j);
+      // Perform cuckoo hash on e_2 and output permutation pi_1.
+      absl::Span<uint128_t> span_e_2_view(result);
+      cuckoo_index.Insert(span_e_2_view);
+
+      // The definition of permutation pi_1 satisfies pi_2(j)=i, where
+      // e_2[i]=t[j]
+      int64_t tmp = n_2;
+      for (int64_t i = 0; i < cuckoo_hash_size; ++i) {
+        const auto& bin = cuckoo_index.bins()[i];
+        if (!bin.IsEmpty()) {
+          _out_j[i] = bin.InputIdx();
+        } else {
+          _out_j[i] = tmp;
+          tmp = tmp + 1;
+        }
+      }
+      out.push_back(out_j);
+    }
+
+    // Ensure the correct number of results are returned
+    SPU_ENFORCE(out.size() == num_hash + 1,
+                "Output size mismatch: expected {}, got {}", num_hash + 1,
+                out.size());
+
+    return out;
+  }
+};
+
 class RingCastDownP : public RingCastDownKernel {
  public:
   static constexpr const char* kBindName() { return "ring_cast_down_p"; }
@@ -1162,6 +1296,7 @@ void regPV2kKernels(Object* obj) {
                  GenInvPermV, GenInvPermP,                //
                  InvPermPP, InvPermVV,                    //
                  PermPP, PermVV, MergeKeysP, MergeKeysV,  //
+                 CuckooHashToPermV,                       //
                  RingCastDownP, RingCastDownV             //
                  >();
 }
