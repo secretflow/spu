@@ -234,10 +234,31 @@ TEST(BigDataJoinTest, Work) {
 
         setupTrace(&sctx, sctx.config());
 
+        auto send_bytes_start_ = lctx->GetStats()->sent_bytes.load();
+        auto recv_bytes_start_ = lctx->GetStats()->recv_bytes.load();
+        auto send_actions_start_ = lctx->GetStats()->sent_actions.load();
+        auto recv_actions_start_ = lctx->GetStats()->recv_actions.load();
+
         auto ret = join_uu(&sctx, table1_columns, table2_columns, num_join_keys,
                            num_hash, scale_factor);
 
+        auto send_bytes_end_ = lctx->GetStats()->sent_bytes.load();
+        auto recv_bytes_end_ = lctx->GetStats()->recv_bytes.load();
+        auto send_actions_end_ = lctx->GetStats()->sent_actions.load();
+        auto recv_actions_end_ = lctx->GetStats()->recv_actions.load();
+
         test::printProfileData(&sctx);
+
+        if (lctx->Rank() == 0) {
+          std::cout << "Join send bytes: "
+                    << send_bytes_end_ - send_bytes_start_ << std::endl;
+          std::cout << "Join recv bytes: "
+                    << recv_bytes_end_ - recv_bytes_start_ << std::endl;
+          std::cout << "Join send actions: "
+                    << send_actions_end_ - send_actions_start_ << std::endl;
+          std::cout << "Join recv actions: "
+                    << recv_actions_end_ - recv_actions_start_ << std::endl;
+        }
       });
 }
 
