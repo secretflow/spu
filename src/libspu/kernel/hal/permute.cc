@@ -553,9 +553,9 @@ std::vector<MergeLayer> gen_odd_even_merge_layers(
 
 }  // namespace
 
-std::vector<spu::Value> odd_even_merge(SPUContext *ctx,
-                                       const CompFn &comparator_body,
+std::vector<spu::Value> odd_even_merge(SPUContext *ctx, const CompFn &cmp,
                                        absl::Span<spu::Value const> inputs,
+                                       const bool with_payloads,
                                        int64_t split_idx) {
   // make a copy for inplace merge
   std::vector<spu::Value> ret;
@@ -580,47 +580,19 @@ std::vector<spu::Value> odd_even_merge(SPUContext *ctx,
 
   auto layers = gen_odd_even_merge_layers(left_indices, right_indices);
 
-  for (const auto &layer : layers) {
-    _cmp_swap(ctx, comparator_body, absl::MakeSpan(ret), layer.lhs, layer.rhs);
-  }
-  return ret;
-}
-
-std::vector<spu::Value> odd_even_merge_with_payloads(
-    SPUContext *ctx, const CompFn &cmp, absl::Span<spu::Value> inputs,
-    int64_t split_idx) {
-  std::vector<spu::Value> ret;
-  ret.reserve(inputs.size());
-
-  for (const auto &input : inputs) {
-    spu::Value casted;
-    if (!input.isSecret()) {
-      casted = _2s(ctx, input.clone()).setDtype(input.dtype());
-    } else {
-      casted = input.clone();
+  if (!with_payloads) {
+    for (const auto &layer : layers) {
+      _cmp_swap(ctx, cmp, absl::MakeSpan(ret), layer.lhs, layer.rhs);
     }
-    casted = _prefer_a(ctx, casted);
-    ret.emplace_back(std::move(casted));
-  }
-
-  // Define the comparator wrapper function:
-  // gathered_inputs = [Value_L, Value_R, Payload_L, Payload_R]
-  auto value_only_comparator =
-      [&](absl::Span<const spu::Value> gathered_inputs) {
-        return cmp(gathered_inputs.subspan(0, 2));
-      };
-
-  const auto n = inputs.front().numel();
-  spu::Index left_indices(split_idx);
-  std::iota(left_indices.begin(), left_indices.end(), 0);
-  spu::Index right_indices(n - split_idx);
-  std::iota(right_indices.begin(), right_indices.end(), split_idx);
-
-  auto layers = gen_odd_even_merge_layers(left_indices, right_indices);
-
-  for (const auto &layer : layers) {
-    _cmp_swap(ctx, value_only_comparator, absl::MakeSpan(ret), layer.lhs,
-              layer.rhs);
+  } else {
+    // Define the comparator wrapper function:
+    // gathered_inputs = [Value_L, Value_R, Payload_L, Payload_R]
+    auto comparator = [&](absl::Span<const spu::Value> gathered_inputs) {
+      return cmp(gathered_inputs.subspan(0, 2));
+    };
+    for (const auto &layer : layers) {
+      _cmp_swap(ctx, comparator, absl::MakeSpan(ret), layer.lhs, layer.rhs);
+    }
   }
   return ret;
 }
@@ -1886,7 +1858,8 @@ std::vector<spu::Value> radix_sort(SPUContext *ctx,
 
 std::vector<spu::Value> merge1d(SPUContext *ctx,
                                 absl::Span<spu::Value const> inputs,
-                                int64_t split_idx, const CompFn &cmp,
+                                const bool with_payloads, int64_t split_idx,
+                                const CompFn &cmp,
                                 Visibility comparator_ret_vis, bool is_stable) {
   // sanity check.
   SPU_ENFORCE(!inputs.empty(), "Inputs should not be empty");
@@ -1904,7 +1877,7 @@ std::vector<spu::Value> merge1d(SPUContext *ctx,
     SPU_ENFORCE(!is_stable,
                 "Stable sort is unsupported if comparator return is secret.");
 
-    ret = internal::odd_even_merge(ctx, cmp, inputs, split_idx);
+    ret = internal::odd_even_merge(ctx, cmp, inputs, with_payloads, split_idx);
   } else {
     SPU_THROW("Should not reach here");
   }
@@ -1912,31 +1885,31 @@ std::vector<spu::Value> merge1d(SPUContext *ctx,
   return ret;
 }
 
-std::vector<spu::Value> merge1d_with_payloads(
-    SPUContext *ctx, absl::Span<spu::Value const> inputs, int64_t split_idx,
-    const hal::CompFn &cmp, bool is_stable) {
-  // Sanity check
-  SPU_ENFORCE(!inputs.empty(), "Inputs should not be empty");
-  SPU_ENFORCE(
-      inputs.size() == 2,
-      "merge1d_with_payloads expects exactly 2 inputs (Value tensor and "
-      "Payload tensor)");
-  SPU_ENFORCE(inputs[0].shape().ndim() == 1,
-              "Inputs should be 1-d but actually have {} dimensions",
-              inputs[0].shape().ndim());
-  SPU_ENFORCE(inputs[0].shape() == inputs[1].shape(),
-              "Value and Payload shape mismatch");
+// std::vector<spu::Value> merge1d_with_payloads(
+//     SPUContext *ctx, absl::Span<spu::Value const> inputs, int64_t split_idx,
+//     const hal::CompFn &cmp, bool is_stable) {
+//   // Sanity check
+//   SPU_ENFORCE(!inputs.empty(), "Inputs should not be empty");
+//   SPU_ENFORCE(
+//       inputs.size() == 2,
+//       "merge1d_with_payloads expects exactly 2 inputs (Value tensor and "
+//       "Payload tensor)");
+//   SPU_ENFORCE(inputs[0].shape().ndim() == 1,
+//               "Inputs should be 1-d but actually have {} dimensions",
+//               inputs[0].shape().ndim());
+//   SPU_ENFORCE(inputs[0].shape() == inputs[1].shape(),
+//               "Value and Payload shape mismatch");
 
-  if (is_stable) {
-    SPU_THROW("Stable sort is unsupported in secret flow.");
-  }
+//   if (is_stable) {
+//     SPU_THROW("Stable sort is unsupported in secret flow.");
+//   }
 
-  // 拷贝输入以进行原地修改
-  std::vector<spu::Value> mutable_inputs(inputs.begin(), inputs.end());
+//   // 拷贝输入以进行原地修改
+//   std::vector<spu::Value> mutable_inputs(inputs.begin(), inputs.end());
 
-  return internal::odd_even_merge_with_payloads(
-      ctx, cmp, absl::MakeSpan(mutable_inputs), split_idx);
-}
+//   return internal::odd_even_merge_with_payloads(
+//       ctx, cmp, absl::MakeSpan(mutable_inputs), split_idx);
+// }
 
 std::vector<spu::Value> sort1d(SPUContext *ctx,
                                absl::Span<spu::Value const> inputs,

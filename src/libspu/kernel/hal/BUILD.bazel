@@ -321,6 +321,7 @@ spu_cc_library(
     hdrs = ["merge.h"],
     deps = [
         "//libspu/kernel/hal:permute",
+        "//libspu/kernel:test_util",
     ],
 )
 
