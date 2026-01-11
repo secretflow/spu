@@ -245,7 +245,7 @@ void _cmp_swap(SPUContext *ctx, const CompFn &comparator_body,
   }
 
   spu::Value predicate = comparator_body(values);
-  predicate = hal::_prefer_a(ctx, predicate);
+  // predicate = hal::_prefer_a(ctx, predicate);
 
   for (size_t i = 0; i < num_operands; ++i) {
     const auto &fst = values[2 * i];
