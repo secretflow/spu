@@ -33,12 +33,9 @@ TEST(OddEvenMergeTest, BasicCorrectness) {
     Value keys_s = test::makeValue(&ctx, keys, VIS_SECRET);
 
     // Merge
-    std::vector<spu::Value> res_s = merge(
-        &ctx, {keys_s}, {}, 1, false,
-        [&](absl::Span<const spu::Value> inputs) {
-          return hal::less(&ctx, inputs[0], inputs[1]);
-        },
-        Visibility::VIS_SECRET);
+    std::vector<spu::Value> res_s =
+        merge(&ctx, {keys_s}, {}, 1, false, hal::SortDirection::Ascending,
+              Visibility::VIS_SECRET);
 
     EXPECT_EQ(res_s.size(), 1);
     auto res = hal::dump_public_as<float>(&ctx, hal::reveal(&ctx, res_s[0]));
@@ -99,12 +96,9 @@ TEST(OddEvenMergeTest, LargeScaleRealNumbers) {
         auto start_time = std::chrono::high_resolution_clock::now();
 
         // Merge
-        std::vector<spu::Value> res_s = merge(
-            &ctx, {keys_s}, {}, 1, false,
-            [&](absl::Span<const spu::Value> inputs) {
-              return hal::less(&ctx, inputs[0], inputs[1]);
-            },
-            Visibility::VIS_SECRET);
+        std::vector<spu::Value> res_s =
+            merge(&ctx, {keys_s}, {}, 1, false, hal::SortDirection::Ascending,
+                  Visibility::VIS_SECRET);
 
         auto end_time = std::chrono::high_resolution_clock::now();
         stats = lctx->GetStats();
@@ -179,14 +173,11 @@ TEST(OddEvenMerge_WithPayload_Test, BasicCorrectness) {
     auto start_time = std::chrono::high_resolution_clock::now();
 
     // 6. 执行 Merge
-    std::vector<spu::Value> res_s = merge(
-        &ctx, {keys_s}, {payloads_s},
-        1,      // sort_dim
-        false,  // is_stable
-        [&](absl::Span<const spu::Value> vals) {
-          return hal::less(&ctx, vals[0], vals[1]);
-        },
-        Visibility::VIS_SECRET);
+    std::vector<spu::Value> res_s =
+        merge(&ctx, {keys_s}, {payloads_s},
+              1,      // sort_dim
+              false,  // is_stable
+              hal::SortDirection::Ascending, Visibility::VIS_SECRET);
 
     // 记录结束时间
     auto end_time = std::chrono::high_resolution_clock::now();
@@ -305,14 +296,11 @@ TEST(OddEvenMerge_WithPayload_Test, LargeScaleRealNumbers) {
     auto start_time = std::chrono::high_resolution_clock::now();
 
     // Merge
-    std::vector<spu::Value> res_s = merge(
-        &ctx, {keys_s}, {payloads_s},
-        1,      // sort_dim
-        false,  // is_stable
-        [&](absl::Span<const spu::Value> vals) {
-          return hal::less(&ctx, vals[0], vals[1]);
-        },
-        Visibility::VIS_SECRET);
+    std::vector<spu::Value> res_s =
+        merge(&ctx, {keys_s}, {payloads_s},
+              1,      // sort_dim
+              false,  // is_stable
+              hal::SortDirection::Ascending, Visibility::VIS_SECRET);
 
     auto end_time = std::chrono::high_resolution_clock::now();
     size_t end_bytes = stats->sent_bytes;

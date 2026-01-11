@@ -315,6 +315,8 @@ std::vector<spu::Value> odd_even_merge_sort(
   return ret;
 }
 namespace {
+// Describes a layer of a odd-even merge network that contains a set of index
+// pairs (lhs[i], rhs[i]) that need to be compared and swapped.
 struct MergeLayer {
   spu::Index lhs;
   spu::Index rhs;
@@ -330,25 +332,14 @@ struct MergeLayer {
   }
 };
 
-// compute ceil(log2(n))
-inline int64_t log2_ceil(int64_t n) {
-  if (n <= 1) return 0;
-  int64_t k = 0;
-  int64_t val = 1;
-  while (val < n) {
-    val <<= 1;
-    ++k;
-  }
-  return k;
-}
-
+// Iterative implemention of indices generation of odd-even merge network
 std::vector<MergeLayer> gen_odd_even_merge_layers(
     const spu::Index &left_indices, const spu::Index &right_indices) {
   if (left_indices.empty() || right_indices.empty()) {
     return {};
   }
 
-  const size_t total_size = left_indices.size() + right_indices.size();
+  const uint64_t total_size = left_indices.size() + right_indices.size();
 
   // 1 vs 1:
   if (left_indices.size() == 1 && right_indices.size() == 1) {
@@ -359,8 +350,7 @@ std::vector<MergeLayer> gen_odd_even_merge_layers(
   }
 
   // Estimate the maximum number of layers: O(log n)
-  const int64_t estimated_depth =
-      log2_ceil(static_cast<int64_t>(total_size)) + 1;
+  const auto estimated_depth = Log2Ceil(total_size) + 1;
 
   // Define the stack frame structure
   struct StackFrame {
@@ -392,6 +382,7 @@ std::vector<MergeLayer> gen_odd_even_merge_layers(
     StackFrame &frame = stack.back();
 
     if (frame.phase == 0) {
+      // --- Phase 0: Split ---
       // Basic situation
       if (frame.left.empty() || frame.right.empty()) {
         result.clear();
@@ -407,7 +398,7 @@ std::vector<MergeLayer> gen_odd_even_merge_layers(
         }
         continue;
       }
-
+      // 1 vs 1 Optimization
       if (frame.left.size() == 1 && frame.right.size() == 1) {
         MergeLayer layer;
         layer.lhs.push_back(frame.left[0]);
@@ -426,7 +417,7 @@ std::vector<MergeLayer> gen_odd_even_merge_layers(
         continue;
       }
 
-      // Split Odd/Even
+      // Split the sequence into odd-indexed and even-indexed parts.
       const size_t left_size = frame.left.size();
       const size_t right_size = frame.right.size();
 
@@ -451,7 +442,7 @@ std::vector<MergeLayer> gen_odd_even_merge_layers(
         }
       }
 
-      // Prepare to call odd
+      // Prepare to odd part
       frame.phase = 1;
       StackFrame odd_frame;
       odd_frame.left = frame.odd_left;
@@ -460,7 +451,7 @@ std::vector<MergeLayer> gen_odd_even_merge_layers(
       stack.push_back(std::move(odd_frame));
 
     } else if (frame.phase == 2) {
-      // odd finish, start even
+      // Prepare to even part
       StackFrame even_frame;
       even_frame.left = frame.even_left;
       even_frame.right = frame.even_right;
@@ -517,6 +508,7 @@ std::vector<MergeLayer> gen_odd_even_merge_layers(
           lines_even.size(), lines_odd.size() > 0 ? lines_odd.size() - 1 : 0);
       stitch_layer.reserve(stitch_size);
 
+      // make sure lhs < rhs
       for (size_t i = 0; i < lines_even.size(); ++i) {
         if (i + 1 < lines_odd.size()) {
           auto l = lines_even[i];
@@ -553,13 +545,14 @@ std::vector<MergeLayer> gen_odd_even_merge_layers(
 
 }  // namespace
 
-std::vector<spu::Value> odd_even_merge(SPUContext *ctx, const CompFn &cmp,
-                                       absl::Span<spu::Value const> inputs,
+std::vector<spu::Value> odd_even_merge(SPUContext *ctx,
+                                       absl::Span<spu::Value const> keys,
+                                       int64_t split_idx,
                                        const bool with_payloads,
-                                       int64_t split_idx) {
+                                       SortDirection direction) {
   // make a copy for inplace merge
   std::vector<spu::Value> ret;
-  for (auto const &input : inputs) {
+  for (auto const &input : keys) {
     spu::Value casted;
     if (!input.isSecret()) {
       // we can not linear_scatter a secret value to a public operand
@@ -572,23 +565,24 @@ std::vector<spu::Value> odd_even_merge(SPUContext *ctx, const CompFn &cmp,
     ret.emplace_back(std::move(casted));
   }
 
-  const auto n = inputs.front().numel();
+  // Generate the indices of all key pairs used to comparison-swap in each layer
+  const auto n = keys.front().numel();
   spu::Index left_indices(split_idx);
   std::iota(left_indices.begin(), left_indices.end(), 0);
   spu::Index right_indices(n - split_idx);
   std::iota(right_indices.begin(), right_indices.end(), split_idx);
-
   auto layers = gen_odd_even_merge_layers(left_indices, right_indices);
 
+  auto comp_fn = _get_cmp_func(ctx, 1, direction);
   if (!with_payloads) {
     for (const auto &layer : layers) {
-      _cmp_swap(ctx, cmp, absl::MakeSpan(ret), layer.lhs, layer.rhs);
+      _cmp_swap(ctx, comp_fn, absl::MakeSpan(ret), layer.lhs, layer.rhs);
     }
   } else {
     // Define the comparator wrapper function:
-    // gathered_inputs = [Value_L, Value_R, Payload_L, Payload_R]
+    // gathered_inputs = [key_L, key_R, payload_L, payload_R]
     auto comparator = [&](absl::Span<const spu::Value> gathered_inputs) {
-      return cmp(gathered_inputs.subspan(0, 2));
+      return comp_fn(gathered_inputs.subspan(0, 2));
     };
     for (const auto &layer : layers) {
       _cmp_swap(ctx, comparator, absl::MakeSpan(ret), layer.lhs, layer.rhs);
@@ -1857,59 +1851,34 @@ std::vector<spu::Value> radix_sort(SPUContext *ctx,
 }  // namespace internal
 
 std::vector<spu::Value> merge1d(SPUContext *ctx,
-                                absl::Span<spu::Value const> inputs,
+                                absl::Span<spu::Value const> keys,
                                 const bool with_payloads, int64_t split_idx,
-                                const CompFn &cmp,
+                                SortDirection direction,
                                 Visibility comparator_ret_vis, bool is_stable) {
   // sanity check.
-  SPU_ENFORCE(!inputs.empty(), "Inputs should not be empty");
-  SPU_ENFORCE(inputs[0].shape().ndim() == 1,
-              "Inputs should be 1-d but actually have {} dimensions",
-              inputs[0].shape().ndim());
-  SPU_ENFORCE(std::all_of(inputs.begin(), inputs.end(),
-                          [&inputs](const spu::Value &v) {
-                            return v.shape() == inputs[0].shape();
+  SPU_ENFORCE(!keys.empty(), "Keys should not be empty");
+  SPU_ENFORCE(keys[0].shape().ndim() == 1,
+              "Keys should be 1-d but actually have {} dimensions",
+              keys[0].shape().ndim());
+  SPU_ENFORCE(std::all_of(keys.begin(), keys.end(),
+                          [&keys](const spu::Value &v) {
+                            return v.shape() == keys[0].shape();
                           }),
-              "Inputs shape mismatched");
+              "Keys shape mismatched");
 
   std::vector<spu::Value> ret;
   if (comparator_ret_vis == VIS_SECRET) {
     SPU_ENFORCE(!is_stable,
                 "Stable sort is unsupported if comparator return is secret.");
 
-    ret = internal::odd_even_merge(ctx, cmp, inputs, with_payloads, split_idx);
+    ret = internal::odd_even_merge(ctx, keys, split_idx, with_payloads,
+                                   direction);
   } else {
     SPU_THROW("Should not reach here");
   }
 
   return ret;
 }
-
-// std::vector<spu::Value> merge1d_with_payloads(
-//     SPUContext *ctx, absl::Span<spu::Value const> inputs, int64_t split_idx,
-//     const hal::CompFn &cmp, bool is_stable) {
-//   // Sanity check
-//   SPU_ENFORCE(!inputs.empty(), "Inputs should not be empty");
-//   SPU_ENFORCE(
-//       inputs.size() == 2,
-//       "merge1d_with_payloads expects exactly 2 inputs (Value tensor and "
-//       "Payload tensor)");
-//   SPU_ENFORCE(inputs[0].shape().ndim() == 1,
-//               "Inputs should be 1-d but actually have {} dimensions",
-//               inputs[0].shape().ndim());
-//   SPU_ENFORCE(inputs[0].shape() == inputs[1].shape(),
-//               "Value and Payload shape mismatch");
-
-//   if (is_stable) {
-//     SPU_THROW("Stable sort is unsupported in secret flow.");
-//   }
-
-//   // 拷贝输入以进行原地修改
-//   std::vector<spu::Value> mutable_inputs(inputs.begin(), inputs.end());
-
-//   return internal::odd_even_merge_with_payloads(
-//       ctx, cmp, absl::MakeSpan(mutable_inputs), split_idx);
-// }
 
 std::vector<spu::Value> sort1d(SPUContext *ctx,
                                absl::Span<spu::Value const> inputs,
