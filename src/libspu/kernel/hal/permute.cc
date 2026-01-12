@@ -332,16 +332,29 @@ struct MergeLayer {
   }
 };
 
-// Iterative implemention of indices generation of odd-even merge network
+/**
+ * @brief Generates layers for Batcher's odd-even merge using an iterative
+ * approach with an explicit stack.
+ *
+ * This function merges two sorted sequences of indices (left_indices and
+ * right_indices) by generating a odd-even merge network. It returns a vector of
+ * MergeLayer, where each layer consists of the indices of compare-swap operands
+ * that can be performed in parallel.
+ *
+ * @param left_indices The first sorted sequence of wire indices.
+ * @param right_indices The second sorted sequence of wire indices.
+ * @return std::vector<MergeLayer> The sequence of compare-swap layers.
+ */
 std::vector<MergeLayer> gen_odd_even_merge_layers(
     const spu::Index &left_indices, const spu::Index &right_indices) {
+  // --- 1. Handling Edge Cases ---
   if (left_indices.empty() || right_indices.empty()) {
     return {};
   }
 
   const uint64_t total_size = left_indices.size() + right_indices.size();
 
-  // 1 vs 1:
+  // Simple 1 vs 1 case
   if (left_indices.size() == 1 && right_indices.size() == 1) {
     MergeLayer layer;
     layer.lhs.push_back(left_indices[0]);
@@ -349,44 +362,52 @@ std::vector<MergeLayer> gen_odd_even_merge_layers(
     return {layer};
   }
 
-  // Estimate the maximum number of layers: O(log n)
-  const auto estimated_depth = Log2Ceil(total_size) + 1;
-
-  // Define the stack frame structure
+  // --- 2. Stack Initialization ---
+  // Define the state for the iterative recursion simulation
   struct StackFrame {
-    spu::Index left;
-    spu::Index right;
-    int phase;  // 0: initial, 1: wait for odd result, 2: wait for even result,
-                // 3: merge complete
+    spu::Index left;   // Input: Left sorted sequence
+    spu::Index right;  // Input: Right sorted sequence
+    int phase;         // State machine:
+                       // 0: Initial/Split
+                       // 1: Waiting for Odd result (Implicit transition)
+                       // 2: Trigger Even calculation
+                       // 3: Merge results (Odd + Even + Stitch)
+
+    // Temporary storage for sub-problem results
     std::vector<MergeLayer> odd_result;
     std::vector<MergeLayer> even_result;
+
+    // Split buffers
     spu::Index odd_left;
     spu::Index even_left;
     spu::Index odd_right;
     spu::Index even_right;
   };
-
   std::vector<StackFrame> stack;
+  const auto estimated_depth = Log2Ceil(total_size) + 1;
   stack.reserve(estimated_depth);
 
-  // Initial frame
+  // Push the root problem onto the stack
   StackFrame initial;
   initial.left = left_indices;
   initial.right = right_indices;
   initial.phase = 0;
   stack.push_back(std::move(initial));
 
+  // Variable to hold the result of the mostly recently popped frame
   std::vector<MergeLayer> result;
 
+  // --- 3. Main Iterative Loop ---
   while (!stack.empty()) {
     StackFrame &frame = stack.back();
 
+    // === Phase 0: Split and Recurse Odd ===
     if (frame.phase == 0) {
-      // --- Phase 0: Split ---
-      // Basic situation
+      // Handle Base Cases for the current recursion level
       if (frame.left.empty() || frame.right.empty()) {
         result.clear();
         stack.pop_back();
+        // Propagate result to parent
         if (!stack.empty()) {
           if (stack.back().phase == 1) {
             stack.back().odd_result = std::move(result);
@@ -398,13 +419,15 @@ std::vector<MergeLayer> gen_odd_even_merge_layers(
         }
         continue;
       }
-      // 1 vs 1 Optimization
+
+      // Leaf node 1 vs 1 inside the recursion tree
       if (frame.left.size() == 1 && frame.right.size() == 1) {
         MergeLayer layer;
         layer.lhs.push_back(frame.left[0]);
         layer.rhs.push_back(frame.right[0]);
         result = {std::move(layer)};
         stack.pop_back();
+        // Propagate result to parent
         if (!stack.empty()) {
           if (stack.back().phase == 1) {
             stack.back().odd_result = std::move(result);
@@ -417,7 +440,10 @@ std::vector<MergeLayer> gen_odd_even_merge_layers(
         continue;
       }
 
-      // Split the sequence into odd-indexed and even-indexed parts.
+      // Split Logic: Divide indices into Odd-position and Even-position vectors
+      // Note: "Odd" here refers to index 0, 2, 4... (0-based implementation
+      // often treats 0 as 'odd' part in Batcher logic or vice versa,
+      // essentially "Take every other")
       const size_t left_size = frame.left.size();
       const size_t right_size = frame.right.size();
 
@@ -426,6 +452,7 @@ std::vector<MergeLayer> gen_odd_even_merge_layers(
       frame.odd_right.reserve((right_size + 1) / 2);
       frame.even_right.reserve(right_size / 2);
 
+      // Distribute left inputs
       for (size_t i = 0; i < left_size; ++i) {
         if (i % 2 == 0) {
           frame.odd_left.push_back(frame.left[i]);
@@ -434,6 +461,7 @@ std::vector<MergeLayer> gen_odd_even_merge_layers(
         }
       }
 
+      // Distribute right inputs
       for (size_t i = 0; i < right_size; ++i) {
         if (i % 2 == 0) {
           frame.odd_right.push_back(frame.right[i]);
@@ -442,29 +470,39 @@ std::vector<MergeLayer> gen_odd_even_merge_layers(
         }
       }
 
-      // Prepare to odd part
-      frame.phase = 1;
+      // Push "Odd" Sub-problem
+      frame.phase = 1;  // When we return to this frame, we will be in Phase 1
+                        // (effectively moved to 2 by child return)
       StackFrame odd_frame;
       odd_frame.left = frame.odd_left;
       odd_frame.right = frame.odd_right;
       odd_frame.phase = 0;
       stack.push_back(std::move(odd_frame));
+    }
 
-    } else if (frame.phase == 2) {
-      // Prepare to even part
+    // === Phase 2: Recurse Even ===
+    // Note: Phase 1 is skipped in the main loop check because the child popping
+    // explicitly sets the parent's phase to 2.
+    else if (frame.phase == 2) {
+      // Push "Even" Sub-problem
       StackFrame even_frame;
       even_frame.left = frame.even_left;
       even_frame.right = frame.even_right;
       even_frame.phase = 0;
       stack.push_back(std::move(even_frame));
+      // When the 'even_frame' returns, it will update this frame's phase to 3.
+    }
 
-    } else if (frame.phase == 3) {
-      // Both odd and even are done, merging the results
+    // === Phase 3: Combine and Stitch ===
+    else if (frame.phase == 3) {
+      // Both sub-problems (Odd and Even) are solved. Now merge the network
+      // layers.
       std::vector<MergeLayer> layers;
       const size_t max_depth =
           std::max(frame.odd_result.size(), frame.even_result.size());
       layers.reserve(max_depth + 1);
 
+      // Combine: Concatenate layers from Odd and Even results.
       for (size_t i = 0; i < max_depth; ++i) {
         MergeLayer combined_layer;
         size_t cap = 0;
@@ -484,7 +522,7 @@ std::vector<MergeLayer> gen_odd_even_merge_layers(
         }
       }
 
-      // Stitch: Compare Even[i] and Odd[i+1]
+      // Stitch: Generate the last set of comparators.
       const size_t odd_total = frame.odd_left.size() + frame.odd_right.size();
       const size_t even_total =
           frame.even_left.size() + frame.even_right.size();
@@ -504,15 +542,18 @@ std::vector<MergeLayer> gen_odd_even_merge_layers(
                         frame.even_right.end());
 
       MergeLayer stitch_layer;
+      // Compare Even[i] with Odd[i+1]
       const size_t stitch_size = std::min(
           lines_even.size(), lines_odd.size() > 0 ? lines_odd.size() - 1 : 0);
       stitch_layer.reserve(stitch_size);
 
-      // make sure lhs < rhs
       for (size_t i = 0; i < lines_even.size(); ++i) {
+        // Ensure bounds check for Odd[i+1]
         if (i + 1 < lines_odd.size()) {
           auto l = lines_even[i];
           auto r = lines_odd[i + 1];
+
+          // Ensure strictly increasing order for the comparator (min, max)
           if (l > r) {
             std::swap(l, r);
           }
@@ -525,21 +566,25 @@ std::vector<MergeLayer> gen_odd_even_merge_layers(
         layers.push_back(std::move(stitch_layer));
       }
 
+      // Return result to parent
       result = std::move(layers);
       stack.pop_back();
 
       if (!stack.empty()) {
+        // Logic to update the parent frame's state based on where it was
+        // waiting
         if (stack.back().phase == 1) {
+          // Parent was waiting for Odd result (Phase 1)
           stack.back().odd_result = std::move(result);
-          stack.back().phase = 2;
+          stack.back().phase = 2;  // Advance parent to process Even
         } else {
+          // Parent was waiting for Even result (Phase 2 -> transitions to 3)
           stack.back().even_result = std::move(result);
-          stack.back().phase = 3;
+          stack.back().phase = 3;  // Advance parent to Merge/Stitch
         }
       }
     }
   }
-
   return result;
 }
 
