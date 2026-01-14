@@ -314,3 +314,53 @@ spu_cc_library(
         ":ring",
     ],
 )
+
+spu_cc_library(
+    name = "merge",
+    srcs = ["merge.cc"],
+    hdrs = ["merge.h"],
+    deps = [
+        "//libspu/kernel/hal:permute",
+        "//libspu/kernel:test_util",
+    ],
+)
+
+spu_cc_test(
+    name = "merge_test",
+    srcs = ["merge_test.cc"],
+    deps = [
+        ":merge",
+        "//libspu/kernel:test_util",
+        "//libspu/kernel/hal:polymorphic",
+        "//libspu/mpc/utils:simulate",
+        "@magic_enum",
+    ],
+)
+
+spu_cc_library(
+    name = "logstar",
+    srcs = ["logstar.cc"],
+    hdrs = ["logstar.h"],
+    deps = [
+        "//libspu/kernel/hal:polymorphic",
+        "//libspu/kernel/hal:shape_ops",
+        "//libspu/kernel/hal:utils",
+        "//libspu/kernel/hal:constants",
+        "//libspu/kernel/hal:random",
+        "//libspu/kernel/hal:permute",
+        "//libspu/kernel/hal:type_cast",
+        "//libspu/core:context",
+        "//libspu/kernel/hlo:shuffle",
+        "//libspu/kernel/hlo:permute",
+    ],
+)
+
+spu_cc_test(
+    name = "logstar_test",
+    srcs = ["logstar_test.cc"],
+    deps = [
+        ":logstar",
+        "//libspu/kernel:test_util",
+        "//libspu/mpc/utils:simulate",
+    ],
+)
