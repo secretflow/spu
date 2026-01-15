@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <vector>
+
 #include "absl/types/span.h"
 
 #include "libspu/core/value.h"
@@ -58,6 +60,7 @@ std::vector<spu::Value> sort1d(SPUContext *ctx,
 //  - direction: sorting order
 //  - num_keys: the number of operands to treat as keys (count from index 0)
 //  - valid_bits: indicates the numeric range of keys for performance hint
+//  - is_stable: indicates whether the sorting is stable
 //
 // Important notes:
 //   - for radix sort, the user should ensure that the data has the correct
@@ -65,7 +68,7 @@ std::vector<spu::Value> sort1d(SPUContext *ctx,
 std::vector<spu::Value> simple_sort1d(SPUContext *ctx,
                                       absl::Span<spu::Value const> inputs,
                                       SortDirection direction, int64_t num_keys,
-                                      int64_t valid_bits);
+                                      int64_t valid_bits, bool is_stable);
 
 // transform n-d permute to 1-d permute and applying permute function to each
 // 1-d array
