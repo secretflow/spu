@@ -161,7 +161,8 @@ RuntimeConfig::SortMethod select_sort_method(
 std::vector<spu::Value> fallback_sort1d(SPUContext *ctx,
                                         absl::Span<spu::Value const> inputs,
                                         int64_t num_keys,
-                                        SortDirection direction) {
+                                        SortDirection direction,
+                                        bool is_stable = false) {
   auto comp_fn = _get_cmp_func(ctx, num_keys, direction);
   Visibility vis = std::all_of(inputs.begin(), inputs.begin() + num_keys,
                                [](const spu::Value &v) { return v.isPublic(); })
@@ -169,7 +170,7 @@ std::vector<spu::Value> fallback_sort1d(SPUContext *ctx,
                        : VIS_SECRET;
   // currently, general sort1d only supports odd-even sorting network which is
   // an unstable sort method.
-  auto ret = sort1d(ctx, inputs, comp_fn, vis, false);
+  auto ret = sort1d(ctx, inputs, comp_fn, vis, is_stable);
   return ret;
 }
 
@@ -1567,7 +1568,7 @@ std::vector<spu::Value> sort1d(SPUContext *ctx,
 std::vector<spu::Value> simple_sort1d(SPUContext *ctx,
                                       absl::Span<spu::Value const> inputs,
                                       SortDirection direction, int64_t num_keys,
-                                      int64_t valid_bits) {
+                                      int64_t valid_bits, bool is_stable) {
   // sanity check.
   SPU_ENFORCE(!inputs.empty(), "Inputs should not be empty");
   SPU_ENFORCE(inputs[0].shape().ndim() == 1,
@@ -1621,7 +1622,12 @@ std::vector<spu::Value> simple_sort1d(SPUContext *ctx,
   // if all keys are public, fallback to plaintext sort.
   if (std::all_of(inputs.begin(), inputs.begin() + num_keys,
                   [](const spu::Value &v) { return v.isPublic(); })) {
-    return internal::fallback_sort1d(ctx, inputs, num_keys, direction);
+    return internal::fallback_sort1d(ctx, inputs, num_keys, direction,
+                                     is_stable);
+  }
+
+  if (is_stable) {
+    return internal::radix_sort(ctx, inputs, direction, num_keys, valid_bits);
   }
 
   // if use default sort method, trying to find the most best method

@@ -16,7 +16,9 @@
 
 #include <algorithm>
 #include <limits>
-#include <random>
+#include <memory>
+#include <tuple>
+#include <vector>
 #include <xtensor/xadapt.hpp>
 #include <xtensor/xsort.hpp>
 
@@ -699,6 +701,195 @@ TEST_P(SimpleSortTest, BoolKeyWithPayloads) {
         }
       });
 }
+
+// Test stable sort with Cheetah protocol
+// Stable sort guarantees that elements with equal keys maintain their original
+// relative order after sorting.
+class CheetahStableSortTest
+    : public ::testing::TestWithParam<std::tuple<FieldType>> {};
+
+TEST_P(CheetahStableSortTest, StableSortPreservesOrder) {
+  FieldType field = std::get<0>(GetParam());
+
+  // Cheetah is a 2PC protocol
+  mpc::utils::simulate(
+      2, [&](const std::shared_ptr<yacl::link::Context> &lctx) {
+        RuntimeConfig cfg;
+        cfg.protocol = ProtocolKind::CHEETAH;
+        cfg.field = field;
+        cfg.enable_action_trace = false;
+        SPUContext ctx = test::makeSPUContext(cfg, lctx);
+
+        // Test data: keys have duplicates, payloads are unique identifiers
+        // Key:     {3, 1, 2, 1, 3, 2}
+        // Payload: {0, 1, 2, 3, 4, 5} (original indices)
+        //
+        // After stable ascending sort by key:
+        // Key:     {1, 1, 2, 2, 3, 3}
+        // Payload: {1, 3, 2, 5, 0, 4}
+        //
+        // For equal keys, the original relative order is preserved:
+        // - Two 1s: indices 1 and 3, should remain in order (1, 3)
+        // - Two 2s: indices 2 and 5, should remain in order (2, 5)
+        // - Two 3s: indices 0 and 4, should remain in order (0, 4)
+        xt::xarray<float> keys = {3, 1, 2, 1, 3, 2};
+        xt::xarray<float> payloads = {0, 1, 2, 3, 4, 5};
+
+        // Expected results for stable sort
+        xt::xarray<float> stable_sorted_keys = {1, 1, 2, 2, 3, 3};
+        xt::xarray<float> stable_sorted_payloads = {1, 3, 2, 5, 0, 4};
+
+        Value keys_v = test::makeValue(&ctx, keys, VIS_SECRET);
+        Value payloads_v = test::makeValue(&ctx, payloads, VIS_SECRET);
+
+        // Test with is_stable = true
+        std::vector<spu::Value> stable_rets =
+            SimpleSort(&ctx, {keys_v, payloads_v}, 0,
+                       hal::SortDirection::Ascending, 1, -1, true);
+
+        EXPECT_EQ(stable_rets.size(), 2);
+
+        auto sorted_keys_hat =
+            hal::dump_public_as<float>(&ctx, hal::reveal(&ctx, stable_rets[0]));
+        auto sorted_payloads_hat =
+            hal::dump_public_as<float>(&ctx, hal::reveal(&ctx, stable_rets[1]));
+
+        // Keys should be correctly sorted
+        EXPECT_TRUE(
+            xt::allclose(stable_sorted_keys, sorted_keys_hat, 0.01, 0.001))
+            << "Keys mismatch: expected " << stable_sorted_keys << ", got "
+            << sorted_keys_hat << std::endl;
+
+        // Payloads should maintain stable order for equal keys
+        EXPECT_TRUE(xt::allclose(stable_sorted_payloads, sorted_payloads_hat,
+                                 0.01, 0.001))
+            << "Stable sort failed: expected " << stable_sorted_payloads
+            << ", got " << sorted_payloads_hat << std::endl;
+      });
+}
+
+TEST_P(CheetahStableSortTest, StableSortDescending) {
+  FieldType field = std::get<0>(GetParam());
+
+  mpc::utils::simulate(2, [&](const std::shared_ptr<yacl::link::Context>
+                                  &lctx) {
+    RuntimeConfig cfg;
+    cfg.protocol = ProtocolKind::CHEETAH;
+    cfg.field = field;
+    cfg.enable_action_trace = false;
+    SPUContext ctx = test::makeSPUContext(cfg, lctx);
+
+    // Test descending stable sort
+    // Key:     {3, 1, 2, 1, 3, 2}
+    // Payload: {0, 1, 2, 3, 4, 5}
+    //
+    // After stable descending sort:
+    // Key:     {3, 3, 2, 2, 1, 1}
+    // Payload: {0, 4, 2, 5, 1, 3}
+    xt::xarray<float> keys = {3, 1, 2, 1, 3, 2};
+    xt::xarray<float> payloads = {0, 1, 2, 3, 4, 5};
+
+    xt::xarray<float> stable_sorted_keys = {3, 3, 2, 2, 1, 1};
+    xt::xarray<float> stable_sorted_payloads = {0, 4, 2, 5, 1, 3};
+
+    Value keys_v = test::makeValue(&ctx, keys, VIS_SECRET);
+    Value payloads_v = test::makeValue(&ctx, payloads, VIS_SECRET);
+
+    std::vector<spu::Value> stable_rets =
+        SimpleSort(&ctx, {keys_v, payloads_v}, 0,
+                   hal::SortDirection::Descending, 1, -1, true);
+
+    EXPECT_EQ(stable_rets.size(), 2);
+
+    auto sorted_keys_hat =
+        hal::dump_public_as<float>(&ctx, hal::reveal(&ctx, stable_rets[0]));
+    auto sorted_payloads_hat =
+        hal::dump_public_as<float>(&ctx, hal::reveal(&ctx, stable_rets[1]));
+
+    EXPECT_TRUE(xt::allclose(stable_sorted_keys, sorted_keys_hat, 0.01, 0.001))
+        << "Keys mismatch: expected " << stable_sorted_keys << ", got "
+        << sorted_keys_hat << std::endl;
+
+    EXPECT_TRUE(
+        xt::allclose(stable_sorted_payloads, sorted_payloads_hat, 0.01, 0.001))
+        << "Stable descending sort failed: expected " << stable_sorted_payloads
+        << ", got " << sorted_payloads_hat << std::endl;
+  });
+}
+
+TEST_P(CheetahStableSortTest, UnstableSortMayNotPreserveOrder) {
+  FieldType field = std::get<0>(GetParam());
+
+  mpc::utils::simulate(
+      2, [&](const std::shared_ptr<yacl::link::Context> &lctx) {
+        RuntimeConfig cfg;
+        cfg.protocol = ProtocolKind::CHEETAH;
+        cfg.field = field;
+        cfg.enable_action_trace = false;
+        SPUContext ctx = test::makeSPUContext(cfg, lctx);
+
+        xt::xarray<float> keys = {3, 1, 2, 1, 3, 2};
+        xt::xarray<float> payloads = {0, 1, 2, 3, 4, 5};
+
+        // Expected sorted keys (same for both stable and unstable)
+        xt::xarray<float> sorted_keys = {1, 1, 2, 2, 3, 3};
+
+        Value keys_v = test::makeValue(&ctx, keys, VIS_SECRET);
+        Value payloads_v = test::makeValue(&ctx, payloads, VIS_SECRET);
+
+        // Test with is_stable = false (default)
+        std::vector<spu::Value> unstable_rets =
+            SimpleSort(&ctx, {keys_v, payloads_v}, 0,
+                       hal::SortDirection::Ascending, 1, -1, false);
+
+        EXPECT_EQ(unstable_rets.size(), 2);
+
+        auto sorted_keys_hat = hal::dump_public_as<float>(
+            &ctx, hal::reveal(&ctx, unstable_rets[0]));
+        auto sorted_payloads_hat = hal::dump_public_as<float>(
+            &ctx, hal::reveal(&ctx, unstable_rets[1]));
+
+        // Keys should still be correctly sorted
+        EXPECT_TRUE(xt::allclose(sorted_keys, sorted_keys_hat, 0.01, 0.001))
+            << "Keys mismatch: expected " << sorted_keys << ", got "
+            << sorted_keys_hat << std::endl;
+
+        // For unstable sort, we only verify that:
+        // 1. Payloads are permuted consistently with keys
+        // 2. Payloads for equal keys form the correct set
+        // We check that payloads {1,3} appear for keys=1, {2,5} for keys=2,
+        // {0,4} for keys=3
+        auto p1 = xt::view(sorted_payloads_hat, xt::range(0, 2));
+        auto p2 = xt::view(sorted_payloads_hat, xt::range(2, 4));
+        auto p3 = xt::view(sorted_payloads_hat, xt::range(4, 6));
+
+        auto p1_sorted = xt::sort(p1);
+        auto p2_sorted = xt::sort(p2);
+        auto p3_sorted = xt::sort(p3);
+
+        xt::xarray<float> expected_p1 = {1, 3};
+        xt::xarray<float> expected_p2 = {2, 5};
+        xt::xarray<float> expected_p3 = {0, 4};
+
+        EXPECT_TRUE(xt::allclose(expected_p1, p1_sorted, 0.01, 0.001))
+            << "Payloads for key=1: expected {1,3}, got " << p1_sorted
+            << std::endl;
+        EXPECT_TRUE(xt::allclose(expected_p2, p2_sorted, 0.01, 0.001))
+            << "Payloads for key=2: expected {2,5}, got " << p2_sorted
+            << std::endl;
+        EXPECT_TRUE(xt::allclose(expected_p3, p3_sorted, 0.01, 0.001))
+            << "Payloads for key=3: expected {0,4}, got " << p3_sorted
+            << std::endl;
+      });
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    CheetahStableSortTestInstances, CheetahStableSortTest,
+    // Note: Stable sort is only supported by radix sort method
+    testing::Combine(testing::Values(FieldType::FM64, FieldType::FM128)),
+    [](const testing::TestParamInfo<CheetahStableSortTest::ParamType> &p) {
+      return fmt::format("{}", std::get<0>(p.param));
+    });
 
 INSTANTIATE_TEST_SUITE_P(
     SimpleSort2PCTestInstances, SimpleSortTest,
