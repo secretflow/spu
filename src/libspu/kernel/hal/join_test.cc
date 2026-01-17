@@ -94,12 +94,12 @@ TEST_P(JoinTest, Work) {
           table2_columns.push_back(col);
         }
 
-        // setupTrace(&sctx, sctx.config());
+        setupTrace(&sctx, sctx.config());
 
         auto ret = join_uu(&sctx, table1_columns, table2_columns, num_join_keys,
                            num_hash, scale_factor);
 
-        // test::printProfileData(&sctx);
+        test::printProfileData(&sctx);
 
         EXPECT_EQ(ret.size(), 1 + shape_1[0] + shape_2[0] - num_join_keys);
 
@@ -182,12 +182,12 @@ TEST_P(MultiKeyJoinTest, Work) {
           table2_columns.push_back(col);
         }
 
-        // setupTrace(&sctx, sctx.config());
+        setupTrace(&sctx, sctx.config());
 
         auto ret = join_uu(&sctx, table1_columns, table2_columns, num_join_keys,
                            num_hash, scale_factor);
 
-        // test::printProfileData(&sctx);
+        test::printProfileData(&sctx);
 
         EXPECT_EQ(ret.size(), 1 + shape_1[0] + shape_2[0] - num_join_keys);
 
@@ -214,7 +214,7 @@ TEST(BigDataJoinTest, Work) {
   const size_t num_hash = 3;
   const double scale_factor = 1.2;
 
-  int64_t n = 100;
+  int64_t n = 1000000;
   const Shape shape_1 = {2, n};
   const Shape shape_2 = {2, n};
   xt::xarray<uint64_t> data_1 = xt::random::randint<uint64_t>(shape_1, 0);
@@ -246,12 +246,33 @@ TEST(BigDataJoinTest, Work) {
           table2_columns.push_back(col);
         }
 
-        // setupTrace(&sctx, sctx.config());
+        setupTrace(&sctx, sctx.config());
+
+        auto send_bytes_start_ = lctx->GetStats()->sent_bytes.load();
+        auto recv_bytes_start_ = lctx->GetStats()->recv_bytes.load();
+        auto send_actions_start_ = lctx->GetStats()->sent_actions.load();
+        auto recv_actions_start_ = lctx->GetStats()->recv_actions.load();
 
         auto ret = join_uu(&sctx, table1_columns, table2_columns, num_join_keys,
                            num_hash, scale_factor);
 
-        // test::printProfileData(&sctx);
+        auto send_bytes_end_ = lctx->GetStats()->sent_bytes.load();
+        auto recv_bytes_end_ = lctx->GetStats()->recv_bytes.load();
+        auto send_actions_end_ = lctx->GetStats()->sent_actions.load();
+        auto recv_actions_end_ = lctx->GetStats()->recv_actions.load();
+
+        test::printProfileData(&sctx);
+
+        if (lctx->Rank() == 0) {
+          std::cout << "Join send bytes: "
+                    << send_bytes_end_ - send_bytes_start_ << std::endl;
+          std::cout << "Join recv bytes: "
+                    << recv_bytes_end_ - recv_bytes_start_ << std::endl;
+          std::cout << "Join send actions: "
+                    << send_actions_end_ - send_actions_start_ << std::endl;
+          std::cout << "Join recv actions: "
+                    << recv_actions_end_ - recv_actions_start_ << std::endl;
+        }
       });
 }
 
