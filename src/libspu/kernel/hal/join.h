@@ -29,5 +29,9 @@ std::vector<spu::Value> join_uu(SPUContext* ctx,
                                 absl::Span<const spu::Value> table_2,
                                 size_t num_join_keys, size_t num_hash,
                                 double scale_factor);
+std::vector<spu::Value> join_un(SPUContext* ctx,
+                                absl::Span<const spu::Value> table_1,
+                                absl::Span<const spu::Value> table_2,
+                                size_t num_join_keys);
 
 }  // namespace spu::kernel::hal

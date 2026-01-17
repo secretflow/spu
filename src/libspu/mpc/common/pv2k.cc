@@ -1060,8 +1060,8 @@ class CuckooHashToPermV : public CuckooHashToPermKernel {
 
     yacl::crypto::Blake3Hash blake3;
     std::vector<uint8_t> hash_output;
-    uint128_t element;
-    uint128_t result_tmp;
+    // uint128_t element;
+    // uint128_t result_tmp;
     std::vector<uint128_t> result;
     const int64_t n_1 = e_1.numel();
     const int64_t n_2 = e_2.numel();
@@ -1078,17 +1078,21 @@ class CuckooHashToPermV : public CuckooHashToPermKernel {
     auto hash_elements = [&](const NdArrayRef& e) {
       DISPATCH_ALL_FIELDS(field, [&]() {
         NdArrayView<ring2k_t> e_view(e);
-        for (int64_t i = 0; i < e.numel(); ++i) {
-          blake3.Reset();
-          element = e_view[i];
-          blake3.Update(yacl::ByteContainerView(
-              reinterpret_cast<const char*>(&element), sizeof(element)));
-          hash_output = blake3.CumulativeHash();
-          result_tmp = 0;
-          memcpy(&result_tmp, hash_output.data(),
-                 std::min(hash_output.size(), sizeof(uint128_t)));
-          result.push_back(result_tmp);
-        }
+        const int64_t n = e.numel();
+
+        result.resize(n);
+
+        yacl::parallel_for(0, n, [&](int64_t start, int64_t end) {
+          for (int64_t i = start; i < end; ++i) {
+            ring2k_t element = e_view[i];
+
+            uint128_t hash_result =
+                yacl::crypto::Blake3_128(yacl::ByteContainerView(
+                    reinterpret_cast<const char*>(&element), sizeof(element)));
+
+            result[i] = static_cast<uint128_t>(hash_result);
+          }
+        });
       });
     };
 
@@ -1114,54 +1118,68 @@ class CuckooHashToPermV : public CuckooHashToPermKernel {
     std::vector<NdArrayRef> out;
     out.reserve(num_hash + 1);
 
+    // according to the size of cuckoo_hash_size, determine whether to use FM32
+    // or FM64
+    FieldType out_field;
+    if (cuckoo_hash_size > std::numeric_limits<uint32_t>::max()) {
+      out_field = FieldType::FM64;
+    } else {
+      out_field = FieldType::FM32;
+    }
+
     if (isOwner(ctx, e_1.eltype())) {
       // Execute num_hash hash functions on e_1, and output permutation pi_1.
-      for (size_t i = 0; i < num_hash; ++i) {
-        NdArrayRef out_i(makeType<Priv2kTy>(FieldType::FM64, getOwner(e_1)),
-                         Shape{static_cast<int64_t>(n_1)});
-        NdArrayView<uint64_t> _out_i(out_i);
-        for (int64_t j = 0; j < n_1; ++j) {
-          yacl::CuckooIndex::HashRoom e_1_hash(result[j]);
-          _out_i[j] = e_1_hash.GetHash(i) % cuckoo_hash_size;
+      DISPATCH_ALL_FIELDS(out_field, [&]() {
+        for (size_t i = 0; i < num_hash; ++i) {
+          NdArrayRef out_i(makeType<Priv2kTy>(out_field, getOwner(e_1)),
+                           Shape{static_cast<int64_t>(n_1)});
+          NdArrayView<ring2k_t> _out_i(out_i);
+          pforeach(0, n_1, [&](int64_t j) {
+            yacl::CuckooIndex::HashRoom e_1_hash(result[j]);
+            _out_i[j] =
+                static_cast<ring2k_t>(e_1_hash.GetHash(i) % cuckoo_hash_size);
+          });
+          out.push_back(out_i);
         }
-        out.push_back(out_i);
-      }
 
-      // Add empty placeholder for P2's part
-      NdArrayRef empty_for_p2(
-          makeType<Priv2kTy>(FieldType::FM64, getOwner(e_2)),
-          Shape{static_cast<int64_t>(cuckoo_hash_size)});
-      out.push_back(empty_for_p2);
+        // Add empty placeholder for P2's part
+        NdArrayRef empty_for_p2 =
+            makeConstantArrayRef(makeType<Priv2kTy>(out_field, getOwner(e_2)),
+                                 Shape{static_cast<int64_t>(cuckoo_hash_size)});
+        out.push_back(empty_for_p2);
+      });
 
     } else if (isOwner(ctx, e_2.eltype())) {
       // Add num_hash empty placeholders for P1's part
-      for (size_t i = 0; i < num_hash; ++i) {
-        NdArrayRef empty_for_p1(
-            makeType<Priv2kTy>(FieldType::FM64, getOwner(e_1)),
-            Shape{static_cast<int64_t>(n_1)});
-        out.push_back(empty_for_p1);
-      }
-
-      NdArrayRef out_j(makeType<Priv2kTy>(FieldType::FM64, getOwner(e_2)),
-                       Shape{static_cast<int64_t>(cuckoo_hash_size)});
-      NdArrayView<uint64_t> _out_j(out_j);
-      // Perform cuckoo hash on e_2 and output permutation pi_1.
-      absl::Span<uint128_t> span_e_2_view(result);
-      cuckoo_index.Insert(span_e_2_view);
-
-      // The definition of permutation pi_1 satisfies pi_2(j)=i, where
-      // e_2[i]=t[j]
-      int64_t tmp = n_2;
-      for (int64_t i = 0; i < cuckoo_hash_size; ++i) {
-        const auto& bin = cuckoo_index.bins()[i];
-        if (!bin.IsEmpty()) {
-          _out_j[i] = bin.InputIdx();
-        } else {
-          _out_j[i] = tmp;
-          tmp = tmp + 1;
+      DISPATCH_ALL_FIELDS(out_field, [&]() {
+        for (size_t i = 0; i < num_hash; ++i) {
+          NdArrayRef empty_for_p1 =
+              makeConstantArrayRef(makeType<Priv2kTy>(out_field, getOwner(e_1)),
+                                   Shape{static_cast<int64_t>(n_1)});
+          out.push_back(empty_for_p1);
         }
-      }
-      out.push_back(out_j);
+
+        NdArrayRef out_j(makeType<Priv2kTy>(out_field, getOwner(e_2)),
+                         Shape{static_cast<int64_t>(cuckoo_hash_size)});
+        NdArrayView<ring2k_t> _out_j(out_j);
+        // Perform cuckoo hash on e_2 and output permutation pi_1.
+        absl::Span<uint128_t> span_e_2_view(result);
+        cuckoo_index.Insert(span_e_2_view);
+
+        // The definition of permutation pi_1 satisfies pi_2(j)=i, where
+        // e_2[i]=t[j]
+        int64_t tmp = n_2;
+        for (int64_t i = 0; i < cuckoo_hash_size; ++i) {
+          const auto& bin = cuckoo_index.bins()[i];
+          if (!bin.IsEmpty()) {
+            _out_j[i] = static_cast<ring2k_t>(bin.InputIdx());
+          } else {
+            _out_j[i] = static_cast<ring2k_t>(tmp);
+            tmp = tmp + 1;
+          }
+        }
+        out.push_back(out_j);
+      });
     }
 
     // Ensure the correct number of results are returned

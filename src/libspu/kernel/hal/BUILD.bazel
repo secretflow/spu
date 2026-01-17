@@ -321,7 +321,6 @@ spu_cc_library(
     srcs = ["join.cc"],
     hdrs = ["join.h"],
     deps = [
-        "//libspu/kernel/hlo:soprf",
         ":type_cast",
         "//libspu/core:context",
         "//libspu/core:value",
@@ -330,7 +329,9 @@ spu_cc_library(
         ":ring",
         ":shape_ops",
         "@yacl//yacl/utils:cuckoo_index",
-        "//libspu/kernel/hlo:permute",
+        "//libspu/kernel/hal:permute",
+        "//libspu/kernel/hal:utils",
+        "//libspu/kernel/hal:soprf",
     ],
 )
 

@@ -31,8 +31,8 @@ struct TopKConfig {
   int64_t k_hi;     // returning the largest `k_hi` values (or with indices)
 };
 
-using SimpleCompFn = std::function<spu::Value(SPUContext *, const spu::Value &,
-                                              const spu::Value &)>;
+using SimpleCompFn = std::function<spu::Value(SPUContext*, const spu::Value&,
+                                              const spu::Value&)>;
 
 using CompFn = std::function<spu::Value(absl::Span<const spu::Value>)>;
 
@@ -46,9 +46,9 @@ enum class SortDirection {
 };
 
 // general sort1d with comparator
-std::vector<spu::Value> sort1d(SPUContext *ctx,
+std::vector<spu::Value> sort1d(SPUContext* ctx,
                                absl::Span<spu::Value const> inputs,
-                               const CompFn &cmp, Visibility comparator_ret_vis,
+                               const CompFn& cmp, Visibility comparator_ret_vis,
                                bool is_stable);
 
 // simple sort1d.
@@ -58,40 +58,44 @@ std::vector<spu::Value> sort1d(SPUContext *ctx,
 //  - direction: sorting order
 //  - num_keys: the number of operands to treat as keys (count from index 0)
 //  - valid_bits: indicates the numeric range of keys for performance hint
-std::vector<spu::Value> simple_sort1d(SPUContext *ctx,
+std::vector<spu::Value> simple_sort1d(SPUContext* ctx,
                                       absl::Span<spu::Value const> inputs,
                                       SortDirection direction, int64_t num_keys,
                                       int64_t valid_bits);
 
 // transform n-d permute to 1-d permute and applying permute function to each
 // 1-d array
-std::vector<spu::Value> permute(SPUContext *ctx,
+std::vector<spu::Value> permute(SPUContext* ctx,
                                 absl::Span<const spu::Value> inputs,
                                 int64_t permute_dim,
-                                const Permute1dFn &permute_fn);
+                                const Permute1dFn& permute_fn);
 
 // general topk1d
 // Inputs:
 //  -inputs: an 1-D operand to search top k elements
 //  -scalar_cmp: comparison function for single value
 //  -config: topk config
-std::vector<Value> topk_1d(SPUContext *ctx, const spu::Value &input,
-                           const SimpleCompFn &scalar_cmp,
-                           const TopKConfig &config);
+std::vector<Value> topk_1d(SPUContext* ctx, const spu::Value& input,
+                           const SimpleCompFn& scalar_cmp,
+                           const TopKConfig& config);
 
 // For each input x, we get y = perm^{-1} (x), i.e. y[i] = x[perm^{-1}(i)]
 std::vector<spu::Value> apply_inv_permute_1d(
-    SPUContext *ctx, absl::Span<const spu::Value> inputs,
-    const spu::Value &perm);
+    SPUContext* ctx, absl::Span<const spu::Value> inputs,
+    const spu::Value& perm);
 
 // For each input x, we get y = perm(x), i.e. y[i] = x[perm(i)]
-std::vector<spu::Value> apply_permute_1d(SPUContext *ctx,
+std::vector<spu::Value> apply_permute_1d(SPUContext* ctx,
                                          absl::Span<const spu::Value> inputs,
-                                         const spu::Value &perm);
+                                         const spu::Value& perm);
+
+spu::Value gen_inv_perm_1d(SPUContext* ctx, absl::Span<spu::Value const> inputs,
+                           SortDirection direction, int64_t num_keys,
+                           int64_t valid_bits);
 
 // For each input x, we get y = perm(x), i.e. y[i] = x[perm(i)]
 // len(x) can not be len(perm) and perm can not be a bijection.
-spu::Value apply_general_permute_1d(SPUContext *ctx, const spu::Value &input,
-                                    const spu::Value &perm);
+spu::Value apply_general_permute_1d(SPUContext* ctx, const spu::Value& input,
+                                    const spu::Value& perm);
 
 }  // namespace spu::kernel::hal
