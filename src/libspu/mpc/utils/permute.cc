@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <random>
+#include <vector>
 
 #include "yacl/crypto/rand/rand.h"
 
@@ -124,14 +125,22 @@ NdArrayRef generalApplyPerm(const NdArrayRef& x, const NdArrayRef& pv) {
 NdArrayRef solvePerm(const NdArrayRef& perm, absl::Span<const int64_t> po) {
   SPU_ENFORCE_EQ(perm.shape().ndim(), 1U, "perm should be 1-d tensor");
 
+  // Build inverse permutation using direct array indexing for O(1) lookup.
+  // Since po is a bijective permutation with values in [0, m).
+  const size_t m = po.size();
+  std::vector<int64_t> po_inv(m);
+  for (size_t i = 0; i < m; ++i) {
+    po_inv[po[i]] = static_cast<int64_t>(i);
+  }
+
   NdArrayRef pr(perm.eltype(), perm.shape());
   const auto field = perm.eltype().as<Ring2k>()->field();
   DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> _perm(perm);
     NdArrayView<ring2k_t> _pr(pr);
     pforeach(0, perm.numel(), [&](int64_t i) {
-      _pr[i] = static_cast<ring2k_t>(std::distance(
-          po.begin(), std::find(po.begin(), po.end(), int64_t(_perm[i]))));
+      // perm values should be in [0, m), direct index lookup
+      _pr[i] = static_cast<ring2k_t>(po_inv[_perm[i]]);
     });
   });
   return pr;
