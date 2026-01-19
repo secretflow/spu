@@ -41,24 +41,10 @@ class BatchMatMul {
 
   void LazyInitKeys(FieldType field, uint32_t msg_width_hint = 0);
 
-  // [x], w => [x*w] for share input and plaintext weight
-  // Client does not need to know the weight
-  NdArrayRef MatMulClient(const NdArrayRef& x, yacl::link::Context* conn, const Shape4D& dim4,
-                          uint32_t msg_width_hint = 0);
-
-  NdArrayRef MatMulClient(const NdArrayRef& x, const Shape4D& dim4,
-                          uint32_t msg_width_hint = 0);
-
-
-  // [x], w => [x*w] for private input and plaintext weight
-  NdArrayRef MatMulServer(const NdArrayRef& x, const NdArrayRef& w,
-                          yacl::link::Context* conn, const Shape4D& dim4,
-                          uint32_t msg_width_hint = 0);
-
-
-  NdArrayRef MatMulServer(const NdArrayRef& x, const NdArrayRef& w, const Shape4D& dim4,
-                          uint32_t msg_width_hint = 0);
-
+  // LHS.shape BxMxK, RHS.shape BxKxL => BxMxL
+  // make sure to call InitKeys first
+  NdArrayRef BatchDotOLE(const NdArrayRef& inp, yacl::link::Context* conn,
+                         const Shape4D& dim4, bool is_self_lhs);
 
   int Rank() const;
 

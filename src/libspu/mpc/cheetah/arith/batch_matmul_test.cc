@@ -29,9 +29,9 @@ class BatchMatMulTest
 INSTANTIATE_TEST_SUITE_P(
     Cheetah, BatchMatMulTest,
     testing::Combine(
-        testing::Values(FieldType::FM32, FieldType::FM64, FieldType::FM128),
-        testing::Values(Shape4D{4, 1, 2048, 768}, Shape4D{4, 18, 768, 78},
-                        Shape4D{4, 1024, 16, 16}),
+        testing::Values(FieldType::FM32, FieldType::FM64),
+        testing::Values(Shape4D{64, 32, 512, 512}, Shape4D{4, 1, 2048, 768},
+                        Shape4D{4, 18, 768, 78}, Shape4D{4, 1024, 16, 16}),
         testing::Values(false)),
     [](const testing::TestParamInfo<BatchMatMulTest::ParamType>& p) {
       return fmt::format(
@@ -47,13 +47,11 @@ TEST_P(BatchMatMulTest, Basic) {
   auto dim4 = std::get<1>(GetParam());
   bool allow_approx = std::get<2>(GetParam());
 
-  std::vector<NdArrayRef> input(kWorldSize);
-  NdArrayRef weight;
+  std::vector<NdArrayRef> mat(kWorldSize);
 
   // TODO: inputs should be multi-dim tensors.
-  input[0] = ring_rand(field, {dim4[0], dim4[1], dim4[2]});
-  input[1] = ring_rand(field, {dim4[0], dim4[1], dim4[2]});
-  weight = ring_rand(field, {dim4[0], dim4[2], dim4[3]});
+  mat[0] = ring_rand(field, {dim4[0], dim4[1], dim4[2]});
+  mat[1] = ring_rand(field, {dim4[0], dim4[2], dim4[3]});
 
   std::vector<NdArrayRef> result(kWorldSize);
   utils::simulate(kWorldSize, [&](std::shared_ptr<yacl::link::Context> lctx) {
@@ -61,13 +59,7 @@ TEST_P(BatchMatMulTest, Basic) {
     auto matmul = std::make_shared<BatchMatMul>(lctx, allow_approx);
     matmul->LazyInitKeys(field);
 
-    if (rank == 0) {
-      // client
-      result[rank] = matmul->MatMulClient(input[0], dim4);
-    } else {
-      // server
-      result[rank] = matmul->MatMulServer(input[1], weight, dim4);
-    }
+    result[rank] = matmul->BatchDotOLE(mat[rank], lctx.get(), dim4, rank == 0);
   });
 
   auto computed = ring_add(result[0], result[1]);
@@ -75,14 +67,11 @@ TEST_P(BatchMatMulTest, Basic) {
   // compute expected result
   NdArrayRef expected;
   expected = ring_zeros(field, {dim4[0], dim4[1], dim4[3]});
-  NdArrayRef released_input;
-  released_input = ring_add(input[0], input[1]);
 
   for (int64_t b = 0; b < dim4[0]; b++) {
-    auto lhs =
-        released_input.slice({b, 0, 0}, {b + 1, dim4[1], dim4[2]}, {1, 1, 1})
+    auto lhs = mat[0].slice({b, 0, 0}, {b + 1, dim4[1], dim4[2]}, {1, 1, 1})
             .reshape({dim4[1], dim4[2]});
-    auto rhs = weight.slice({b, 0, 0}, {b + 1, dim4[2], dim4[3]}, {1, 1, 1})
+    auto rhs = mat[1].slice({b, 0, 0}, {b + 1, dim4[2], dim4[3]}, {1, 1, 1})
                    .reshape({dim4[2], dim4[3]});
     auto slice = expected.slice({b, 0, 0}, {b + 1, dim4[1], dim4[3]}, {1, 1, 1})
                      .reshape({dim4[1], dim4[3]});

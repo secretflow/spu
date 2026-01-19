@@ -519,10 +519,10 @@ NdArrayRef BatchMatMulAV::proc(KernelEvalContext* ctx, const NdArrayRef& x,
   NdArrayRef out;
   if (rank != owner) {
     // TODO: refactor bmm_prot api to support both av and aa cases.
-    // out = bmm_prot->BatchDotOLE(x, comm->lctx().get(), dim4, true);
+    out = bmm_prot->BatchDotOLE(x, comm->lctx().get(), dim4, true);
   } else {
     // TODO: refactor bmm_prot api to support both av and aa cases.
-    // out = bmm_prot->BatchDotOLE(y, comm->lctx().get(), dim4, false);
+    out = bmm_prot->BatchDotOLE(y, comm->lctx().get(), dim4, false);
 
     const Strides strides(x.shape().size(), 1);
     Index lhs_slice_end(x.shape().begin(), x.shape().end());

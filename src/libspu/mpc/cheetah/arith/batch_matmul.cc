@@ -72,7 +72,7 @@ struct BatchMatMul::Impl : public EnableCPRNG {
 
   explicit Impl(std::shared_ptr<yacl::link::Context> lctx,
                 bool allow_high_prob_one_bit_error)
-      : small_crt_prime_len_(allow_high_prob_one_bit_error ? 47 : 44),
+      : small_crt_prime_len_(allow_high_prob_one_bit_error ? 47 : 45),
         lctx_(std::move(lctx)),
         allow_high_prob_one_bit_error_(allow_high_prob_one_bit_error) {
     parms_ = DecideSEALParameters();
@@ -93,8 +93,8 @@ struct BatchMatMul::Impl : public EnableCPRNG {
       // modulus_bits = {60, 32, 56};
       modulus_bits = {59, 45, 45, 59};
     } else {
-      // modulus_bits = {60, 32, 52};
-      modulus_bits = {59, 45, 45, 59};
+      modulus_bits = {59, 46, 46, 52};
+      // modulus_bits = {59, 45, 45, 59};
     }
     parms.set_use_special_prime(true);
     parms.set_poly_modulus_degree(poly_deg);
@@ -124,7 +124,7 @@ struct BatchMatMul::Impl : public EnableCPRNG {
   NdArrayRef MatMulClient(const NdArrayRef &x, yacl::link::Context *conn,
                           const Shape4D &dim4, uint32_t msg_width_hint);
 
-  NdArrayRef MatMulServer(const NdArrayRef &x, const NdArrayRef &w,
+  NdArrayRef MatMulServer(const NdArrayRef &w,
                           yacl::link::Context *conn, const Shape4D &dim4,
                           uint32_t msg_width_hint);
 
@@ -136,9 +136,9 @@ struct BatchMatMul::Impl : public EnableCPRNG {
                 (allow_high_prob_one_bit_error_ ? 4UL : 32UL);
     // std::cout << "TotalCRTBitLen bits: " << bits << std::endl;
     auto nprimes = CeilDiv<size_t>(bits, small_crt_prime_len_);
-    if (options.ring_bitlen == 128) {
-      nprimes = std::max(8UL, nprimes);
-    }
+    // if (options.ring_bitlen == 128) {
+    //   nprimes = std::max(7UL, nprimes);
+    // }
     // nprimes = std::min(7UL, nprimes);  // Slightly reduce the margin for
     // FM128
     return nprimes * small_crt_prime_len_;
@@ -286,9 +286,9 @@ void BatchMatMul::Impl::LazyExpandSEALContexts(const Options &options,
     if (nxt_rank == 0) {  // server
       // receive sk for debug
       // TODO: remove the debug codes?
-      auto sk_buf_recv = conn->Recv(nxt_rank, "rank0 recv sk");
-      secret_key_.push_back(std::make_shared<seal::SecretKey>());
-      DecodeSEALObject(sk_buf_recv, seal_cntxts_[idx], secret_key_[idx].get());
+      // auto sk_buf_recv = conn->Recv(nxt_rank, "rank0 recv sk");
+      // secret_key_.push_back(std::make_shared<seal::SecretKey>());
+      // DecodeSEALObject(sk_buf_recv, seal_cntxts_[idx], secret_key_[idx].get());
 
       // receive pk
       auto pk_buf_recv = conn->Recv(nxt_rank, "rank0 recv pk");
@@ -296,6 +296,7 @@ void BatchMatMul::Impl::LazyExpandSEALContexts(const Options &options,
       DecodeSEALObject(pk_buf_recv, seal_cntxts_[idx],
                        peer_pub_key_[idx].get());
 
+      decryptors_.push_back(nullptr);
     } else {  // client
 
       seal::KeyGenerator keygen(seal_cntxts_[idx]);
@@ -304,8 +305,8 @@ void BatchMatMul::Impl::LazyExpandSEALContexts(const Options &options,
 
       // send sk for debug
       // TODO: remove the debug codes?
-      auto sk_buf_send = EncodeSEALObject(*secret_key_[idx]);
-      conn->Send(nxt_rank, sk_buf_send, "rank1 send sk");
+      // auto sk_buf_send = EncodeSEALObject(*secret_key_[idx]);
+      // conn->Send(nxt_rank, sk_buf_send, "rank1 send sk");
 
       // generate and send pk
       seal::PublicKey public_key;
@@ -313,11 +314,13 @@ void BatchMatMul::Impl::LazyExpandSEALContexts(const Options &options,
       auto pk_buf_send = EncodeSEALObject(public_key);
       conn->Send(nxt_rank, pk_buf_send, "rank1 send pk");
       peer_pub_key_.push_back(std::make_shared<seal::PublicKey>(public_key));
+
+      decryptors_.push_back(std::make_shared<seal::Decryptor>(
+        seal_cntxts_[idx], *(secret_key_[idx])));
     }
 
     // create the functors
-    decryptors_.push_back(std::make_shared<seal::Decryptor>(
-        seal_cntxts_[idx], *(secret_key_[idx])));
+
     simd_batchmm_instances_.push_back(std::make_shared<SIMDBatchMMProt>(
         kPolyDegree, crt_modulus[idx].value()));
   }
@@ -430,7 +433,8 @@ NdArrayRef BatchMatMul::Impl::MatMulClient(const NdArrayRef &x,
   return simd_batchmm_instances_[0]->ParseResult(meta, in_shape, rec_mat);
 }
 
-NdArrayRef BatchMatMul::Impl::MatMulServer(const NdArrayRef &x,
+NdArrayRef BatchMatMul::Impl::MatMulServer(
+                                          //  const NdArrayRef &x,
                                            const NdArrayRef &w,
                                            yacl::link::Context *conn,
                                            const Shape4D &dim4,
@@ -440,9 +444,9 @@ NdArrayRef BatchMatMul::Impl::MatMulServer(const NdArrayRef &x,
   }
   InitGaloisKey(dim4);
 
-  auto eltype = x.eltype();
+  auto eltype = w.eltype();
   SPU_ENFORCE(eltype.isa<Ring2k>(), "must be ring_type, got={}", eltype);
-  SPU_ENFORCE(x.numel() > 0);
+  // SPU_ENFORCE(x.numel() > 0);
 
   auto field = eltype.as<Ring2k>()->field();
   Options options;
@@ -482,12 +486,6 @@ NdArrayRef BatchMatMul::Impl::MatMulServer(const NdArrayRef &x,
   std::vector<RLWEPt> encoded_w;
   EncodeArray(w_vec, /*need_encrypt*/ false, options, &encoded_w);
 
-  // prepare input vector into the order we want
-  NdArrayRef x_vec;
-  x_vec = simd_batchmm_instances_[0]->PrepareInputVector(meta, in_shape, x);
-  std::vector<RLWEPt> encoded_x;
-  EncodeArray(x_vec, /*need_encrypt*/ true, options, &encoded_x);
-
   // prepare random mask
   std::vector<uint64_t> rnd_mask;
   size_t out_num =
@@ -504,15 +502,6 @@ NdArrayRef BatchMatMul::Impl::MatMulServer(const NdArrayRef &x,
                            &input_ct[job_id]);
         }
       });
-
-  // Add input_ct with plaintext input x
-  for (size_t i = 0; i < static_cast<size_t>(num_seal_ctx); ++i) {
-    seal::Evaluator evaluator(seal_cntxts_[i]);
-    for (size_t j = 0; j < num_input; ++j) {
-      evaluator.add_plain_inplace(input_ct[i * num_input + j],
-                                  encoded_x[i * num_input + j]);
-    }
-  }
 
   // do the batch matmul and response
   BatchMatMulThenResponse(field, dim4, options, absl::MakeSpan(input_ct),
@@ -781,36 +770,19 @@ size_t BatchMatMul::OLEBatchSize() const {
   return impl_->OLEBatchSize();
 }
 
-NdArrayRef BatchMatMul::MatMulClient(const NdArrayRef &x,
-                                     yacl::link::Context *conn,
-                                     const Shape4D &dim4,
-                                     uint32_t msg_width_hint) {
+NdArrayRef BatchMatMul::BatchDotOLE(const NdArrayRef& inp, 
+                                    yacl::link::Context* conn,
+                                    const Shape4D& dim4, 
+                                    bool is_self_lhs) {
   SPU_ENFORCE(conn != nullptr);
   SPU_ENFORCE(impl_ != nullptr);
-  return impl_->MatMulClient(x, conn, dim4, msg_width_hint);
+  if (is_self_lhs) {
+    return impl_->MatMulClient(inp, conn, dim4, 0);
+  } else {
+    return impl_->MatMulServer(inp, conn, dim4, 0);
+  }
 }
 
-NdArrayRef BatchMatMul::MatMulClient(const NdArrayRef &x, const Shape4D &dim4,
-                                     uint32_t msg_width_hint) {
-  SPU_ENFORCE(impl_ != nullptr);
-  return impl_->MatMulClient(x, nullptr, dim4, 0);
-}
-
-NdArrayRef BatchMatMul::MatMulServer(const NdArrayRef &x, const NdArrayRef &w,
-                                     yacl::link::Context *conn,
-                                     const Shape4D &dim4,
-                                     uint32_t msg_width_hint) {
-  SPU_ENFORCE(conn != nullptr);
-  SPU_ENFORCE(impl_ != nullptr);
-  return impl_->MatMulServer(x, w, conn, dim4, msg_width_hint);
-}
-
-NdArrayRef BatchMatMul::MatMulServer(const NdArrayRef &x, const NdArrayRef &w,
-                                     const Shape4D &dim4,
-                                     uint32_t msg_width_hint) {
-  SPU_ENFORCE(impl_ != nullptr);
-  return impl_->MatMulServer(x, w, nullptr, dim4, msg_width_hint);
-}
 
 void BatchMatMul::LazyInitKeys(FieldType field, uint32_t msg_width_hint) {
   SPU_ENFORCE(impl_ != nullptr);
