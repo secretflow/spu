@@ -83,7 +83,7 @@ bazel_dep(name = "curl", version = "8.11.0.bcr.2")
 bazel_dep(name = "eigen", version = "3.4.90-20230801-66e8f3")
 bazel_dep(name = "seal", version = "4.1.1")
 bazel_dep(name = "spdlog", version = "1.14.1")
-bazel_dep(name = "abseil-cpp", version = "20240722.0")
+bazel_dep(name = "abseil-cpp", version = "20240722.1")
 bazel_dep(name = "llvm-raw", version = "20251010.0-3a6b818")
 
 llvm = use_extension("@llvm-raw//utils/bazel:extension.bzl", "llvm")
