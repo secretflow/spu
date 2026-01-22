@@ -168,8 +168,10 @@ std::vector<spu::Value> fallback_sort1d(SPUContext *ctx,
                                [](const spu::Value &v) { return v.isPublic(); })
                        ? VIS_PUBLIC
                        : VIS_SECRET;
-  // currently, general sort1d only supports odd-even sorting network which is
-  // an unstable sort method.
+  // sort1d supports stable sorting when comparator visibility is PUBLIC
+  // (e.g., when all keys are public). When comparator visibility is SECRET,
+  // it falls back to an odd-even sorting network, which is an unstable
+  // sorting method.
   auto ret = sort1d(ctx, inputs, comp_fn, vis, is_stable);
   return ret;
 }
@@ -1627,6 +1629,9 @@ std::vector<spu::Value> simple_sort1d(SPUContext *ctx,
   }
 
   if (is_stable) {
+    SPU_ENFORCE(internal::_check_method_require(ctx, RuntimeConfig::SORT_RADIX),
+                "Stable sort is requested, but radix sort is not supported by "
+                "the current protocol.");
     return internal::radix_sort(ctx, inputs, direction, num_keys, valid_bits);
   }
 
