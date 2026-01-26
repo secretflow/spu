@@ -30,11 +30,9 @@ std::vector<spu::Value> Sort(SPUContext* ctx,
 // operands to treat as sort keys. The valid_bits parameter indicates the
 // numeric range of keys for performance hint. Currently, for SPU lowering path
 // of SimpleSort, the num_keys is always 1.
-std::vector<spu::Value> SimpleSort(SPUContext* ctx,
-                                   absl::Span<const spu::Value> inputs,
-                                   int64_t sort_dim,
-                                   hal::SortDirection direction,
-                                   int64_t num_keys = 1,
-                                   int64_t valid_bits = -1);
+std::vector<spu::Value> SimpleSort(
+    SPUContext* ctx, absl::Span<const spu::Value> inputs, int64_t sort_dim,
+    hal::SortDirection direction, int64_t num_keys = 1, int64_t valid_bits = -1,
+    bool is_stable = false);
 
 }  // namespace spu::kernel::hlo
