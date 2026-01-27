@@ -62,11 +62,11 @@ TEST_F(BrentKungTest, BasicCorrectness) {
     auto valid_out_opened =
         hal::dump_public_as<float>(&ctx, hal::reveal(&ctx, valid_out_s));
     if (lctx->Rank() == 0) {
-      std::cout << "x_out_expected:\n" << x_out_expected << std::endl;
-      std::cout << "x_out_opened (Actual):\n" << x_out_opened << std::endl;
-      std::cout << "valid_out_expected:\n" << valid_out_expected << std::endl;
-      std::cout << "valid_out_opened (Actual):\n"
-                << valid_out_opened << std::endl;
+      std::cout << "x:\n" << x << std::endl;
+      std::cout << "valid:\n" << valids << std::endl;
+      std::cout << "g:\n" << g << std::endl;
+      std::cout << "x_out:\n" << x_out_opened << std::endl;
+      std::cout << "valid_out:\n" << valid_out_opened << std::endl;
     }
     EXPECT_TRUE(xt::allclose(x_out_opened, x_out_expected));
     EXPECT_EQ(valid_out_opened.shape()[0], n);
