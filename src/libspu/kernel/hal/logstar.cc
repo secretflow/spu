@@ -237,4 +237,122 @@ std::pair<Value, Value> duplicate_brent_kung(SPUContext* ctx, const Value& x,
   return {x_out, valids_out};
 }
 
+/**
+ * @brief Extract the values with conditions = 1 to the front of the vector
+ * while keeping the order of the values. The number of values that satisfy
+ * condition = 1 will be revealed.
+ *
+ * @param x Input values.
+ * @param conditions Extracting conditions.
+ * @return Output values.
+ */
+std::pair<std::vector<spu::Value>, int64_t> extract_ordered(
+    SPUContext* ctx, const spu::Value& x_in, const spu::Value& conditions) {
+  // Compatibility handling: if x is not 2D, reshape it to 2D (1 line)
+  spu::Value x = x_in;
+  if (x.shape().ndim() == 1) {
+    const int64_t n1 = x.numel();
+    x = hal::reshape(ctx, x, {1, n1});
+  } else if (x.shape().ndim() == 0) {
+    // scalar -> 1x1
+    x = hal::reshape(ctx, x, {1, 1});
+  }
+  SPU_ENFORCE(x.shape().ndim() == 2, "x should be 2D array");
+  SPU_ENFORCE(conditions.shape().ndim() == 2 && conditions.shape()[0] == 1,
+              "conditions should be 1-row matrix");
+
+  const int64_t num_arrays = x.shape()[0];
+  const int64_t n = x.shape()[1];
+
+  SPU_ENFORCE(conditions.shape()[1] == n,
+              "conditions length must match x's second dimension");
+
+  // Prefix sum of conditions
+  auto rho = hal::associative_scan(hal::add, ctx, conditions);
+  // Shuffle x, conditions, and rho
+  std::vector<spu::Value> inputs_to_shuffle;
+  inputs_to_shuffle.reserve(num_arrays + 2);
+  for (int64_t i = 0; i < num_arrays; ++i) {
+    auto x_row = hal::slice(ctx, x, {i, 0}, {i + 1, n}, {});
+    inputs_to_shuffle.push_back(x_row);
+  }
+  inputs_to_shuffle.push_back(conditions);
+  inputs_to_shuffle.push_back(rho);
+
+  auto shuffled_results = hlo::Shuffle(ctx, inputs_to_shuffle, 1);
+
+  // Separate the shuffling results
+  std::vector<spu::Value> sx_rows(num_arrays);
+  for (int64_t i = 0; i < num_arrays; ++i) {
+    sx_rows[i] = shuffled_results[i];
+  }
+  auto scondition = shuffled_results[num_arrays];
+  auto srho = shuffled_results[num_arrays + 1];
+
+  // Open scondition
+  auto scondition_open =
+      hal::dump_public_as<int64_t>(ctx, hal::reveal(ctx, scondition));
+
+  // Compute the public permutation 'compact', such that compact(scondition) =
+  // [1, 1, ..., 0, 0]
+  int64_t numel = scondition_open.size();
+  std::vector<int64_t> p_hat_indices(numel);
+
+  int64_t left = 0;
+  int64_t right = numel - 1;
+  for (int64_t i = 0; i < numel; ++i) {
+    if (scondition_open[i] != 0) {
+      p_hat_indices[left++] = i;
+    } else {
+      p_hat_indices[right--] = i;
+    }
+  }
+  int64_t valid_count = left;
+
+  // Permute sx_rows and srho using 'compact'
+  auto p_hat_xt = xt::adapt(p_hat_indices);
+  spu::Value compact = hal::constant(
+      ctx, p_hat_xt, spu::DT_I64, {static_cast<int64_t>(p_hat_indices.size())});
+
+  std::vector<spu::Value> inputs_to_permute;
+  inputs_to_permute.reserve(sx_rows.size() + 1);
+  for (auto& sx_row : sx_rows) {
+    inputs_to_permute.push_back(sx_row);
+  }
+  inputs_to_permute.push_back(srho);
+
+  std::vector<spu::Value> compacted_results =
+      hlo::Permute(ctx, inputs_to_permute, compact, 1);
+
+  // Seperate the permuting results
+  std::vector<spu::Value> x_prime_rows(num_arrays);
+  for (int64_t i = 0; i < num_arrays; ++i) {
+    x_prime_rows[i] = compacted_results[i];
+  }
+  auto rho_prime = compacted_results[num_arrays];
+
+  // rho_prime_processed = Open( rho_prime[0，valid_count] ) || [valid_count,n]
+  // Inversely permute x_prime_rows using rho_prime_processed
+  xt::xarray<int64_t> rho_prime_processed;
+  if (valid_count > 0) {
+    auto rho_prime_slice =
+        hal::slice(ctx, rho_prime, {0, 0}, {1, valid_count}, {});
+    auto rho_prime_slice_open =
+        hal::dump_public_as<int64_t>(ctx, hal::reveal(ctx, rho_prime_slice));
+
+    rho_prime_slice_open = rho_prime_slice_open - 1;
+    auto flatted = xt::ravel(rho_prime_slice_open);
+    auto tail = xt::arange<int64_t>(valid_count, n);
+    rho_prime_processed = xt::concatenate(xt::xtuple(flatted, tail));
+  } else {
+    rho_prime_processed = xt::arange<int64_t>(n);
+  }
+  spu::Value rho_prime_constant =
+      hal::constant(ctx, rho_prime_processed, spu::DT_I64, {n});
+  std::vector<spu::Value> y =
+      hlo::InvPermute(ctx, x_prime_rows, rho_prime_constant, 1);
+
+  return {y, valid_count};
+}
+
 }  // namespace spu::kernel::hal

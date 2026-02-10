@@ -8,4 +8,7 @@ std::pair<Value, Value> duplicate_brent_kung(SPUContext* ctx, const Value& x,
                                              const Value& valids,
                                              const Value& g_in);
 
+std::pair<std::vector<spu::Value>, int64_t> extract_ordered(
+    SPUContext* ctx, const spu::Value& x_in, const spu::Value& conditions);
+
 }  // namespace spu::kernel::hal

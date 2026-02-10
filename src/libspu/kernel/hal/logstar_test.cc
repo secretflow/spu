@@ -233,4 +233,135 @@ TEST_F(BrentKungTest, LargeScaleIntergers) {
   });
 }
 
+TEST_F(ExtractOrderedTest, BasicCorrectness) {
+  const size_t npc = 2;
+  const auto protocol = ProtocolKind::SEMI2K;
+  const auto field = FieldType::FM64;
+
+  mpc::utils::simulate(
+      npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+        SPUContext ctx = test::makeSPUContext(protocol, field, lctx);
+
+        int64_t num_arrays = 2;
+        int64_t n = 6;
+        xt::xarray<int64_t> x = {{0, 1, 2, 3, 4, 5}, {10, 11, 12, 13, 14, 15}};
+        xt::xarray<int64_t> valids = {0, 1, 0, 1, 1, 0};
+        xt::xarray<int64_t> x_out_expected = {{1, 3, 4}, {11, 13, 14}};
+
+        auto x_in = test::makeValue(&ctx, x, VIS_SECRET);
+        valids.reshape({1, static_cast<size_t>(n)});
+        auto valids_in = test::makeValue(&ctx, valids, VIS_SECRET);
+
+        auto res = extract_ordered(&ctx, x_in, valids_in);
+        auto& y = res.first;
+        auto valid_count = res.second;
+
+        EXPECT_EQ(valid_count, x_out_expected.shape()[1]);
+        if (lctx->Rank() == 0) {
+          std::cout << "x: " << x << std::endl;
+          std::cout << "valids: " << valids << std::endl;
+        }
+
+        for (int64_t i = 0; i < num_arrays; ++i) {
+          auto y_revealed = hal::reveal(&ctx, y[i]);
+          auto y_row = hal::dump_public_as<int64_t>(&ctx, y_revealed);
+
+          xt::xarray<int64_t> y_valid_part;
+          if (y_row.dimension() == 2) {
+            y_valid_part = xt::view(y_row, 0, xt::range(0, valid_count));
+          } else {
+            y_valid_part = xt::view(y_row, xt::range(0, valid_count));
+          }
+          auto y_expected_row = xt::row(x_out_expected, i);
+          EXPECT_TRUE(xt::allclose(y_valid_part, y_expected_row));
+
+          if (lctx->Rank() == 0) {
+            std::cout << "y[" << i << "]: " << y_valid_part << std::endl;
+          }
+        }
+      });
+}
+
+TEST_F(ExtractOrderedTest, LargeScale) {
+  const size_t npc = 2;
+  const auto protocol = ProtocolKind::SEMI2K;
+  const auto field = FieldType::FM64;
+
+  mpc::utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>&
+                                    lctx) {
+    SPUContext ctx = makeSPUContextWithProfile(protocol, field, lctx);
+    const int64_t num_arrays = 2;
+    const int64_t n = 1000000;
+    std::vector<std::vector<int64_t>> xs(num_arrays, std::vector<int64_t>(n));
+    for (int64_t r = 0; r < num_arrays; ++r) {
+      int64_t base = r * 100000;
+      for (int64_t i = 0; i < n; ++i) {
+        xs[r][i] = base + i;
+      }
+    }
+
+    // valid bits
+    std::vector<int64_t> valids(n);
+    for (int64_t i = 0; i < n; ++i) {
+      valids[i] = (i % 5 == 0) ? 1 : 0;
+    }
+
+    std::vector<int64_t> x_combined;
+    x_combined.reserve(num_arrays * n);
+    for (int64_t r = 0; r < num_arrays; ++r) {
+      x_combined.insert(x_combined.end(), xs[r].begin(), xs[r].end());
+    }
+    xt::xarray<int64_t> x_arr = xt::adapt(x_combined);
+    x_arr.reshape({static_cast<size_t>(num_arrays), static_cast<size_t>(n)});
+    auto x_in = test::makeValue(&ctx, x_arr, VIS_SECRET);
+
+    xt::xarray<int64_t> f_arr = xt::adapt(valids);
+    f_arr.reshape({1, static_cast<size_t>(n)});
+    auto f_in = test::makeValue(&ctx, f_arr, VIS_SECRET);
+
+    // Ground Truth
+    std::vector<std::vector<int64_t>> exps(num_arrays);
+    for (int64_t i = 0; i < n; ++i) {
+      if (valids[i]) {
+        for (int64_t r = 0; r < num_arrays; ++r) {
+          exps[r].push_back(xs[r][i]);
+        }
+      }
+    }
+    size_t valid_count_expected = exps.empty() ? 0 : exps[0].size();
+
+    std::vector<int64_t> y_combined;
+    y_combined.reserve(num_arrays * valid_count_expected);
+    for (int64_t r = 0; r < num_arrays; ++r) {
+      y_combined.insert(y_combined.end(), exps[r].begin(), exps[r].end());
+    }
+    xt::xarray<int64_t> x_out_expected = xt::adapt(y_combined);
+    x_out_expected.reshape({static_cast<size_t>(num_arrays),
+                            static_cast<size_t>(valid_count_expected)});
+
+    setupTrace(&ctx, ctx.config());
+    auto res = extract_ordered(&ctx, x_in, f_in);
+    test::printProfileData(&ctx);
+
+    auto& y = res.first;
+    auto valid_count = res.second;
+    EXPECT_EQ(valid_count, static_cast<int64_t>(valid_count_expected));
+
+    for (int64_t i = 0; i < num_arrays; ++i) {
+      auto y_revealed = hal::reveal(&ctx, y[i]);
+      auto y_vec = hal::dump_public_as<int64_t>(&ctx, y_revealed);
+
+      xt::xarray<int64_t> y_valid_part;
+      if (y_vec.dimension() == 2) {
+        y_valid_part = xt::view(y_vec, 0, xt::range(0, valid_count));
+      } else {
+        y_valid_part = xt::view(y_vec, xt::range(0, valid_count));
+      }
+
+      auto y_expected_row = xt::row(x_out_expected, i);
+      EXPECT_TRUE(xt::allclose(y_valid_part, y_expected_row));
+    }
+  });
+}
+
 }  // namespace spu::kernel::hal
