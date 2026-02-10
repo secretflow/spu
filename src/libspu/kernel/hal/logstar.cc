@@ -90,6 +90,7 @@ static std::pair<Value, Value> node_func(SPUContext* ctx, const Value& p1,
  * Logic:
  *   p3 = p1 + (p2 - p1) * g1  (Multiplexer)
  */
+// TODO: 乘法有待优化
 static Value node_func(SPUContext* ctx, const Value& p1, const Value& p2,
                        const Value& g1) {
   auto diff = kernel::hal::sub(ctx, p2, p1);
