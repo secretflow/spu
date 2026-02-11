@@ -244,7 +244,7 @@ std::pair<Value, Value> duplicate_brent_kung(SPUContext* ctx, const Value& x,
  *
  * @param x Input values.
  * @param conditions Extracting conditions.
- * @return Output values.
+ * @return Output values and the number of values that satisfy condition = 1.
  */
 std::pair<std::vector<spu::Value>, int64_t> extract_ordered(
     SPUContext* ctx, const spu::Value& x_in, const spu::Value& conditions) {
