@@ -355,4 +355,404 @@ std::pair<std::vector<spu::Value>, int64_t> extract_ordered(
   return {y, valid_count};
 }
 
+// spu::Value ComputeMedians(SPUContext* ctx, const spu::Value& arr, const int
+// k,
+//                           const int m) {
+//   // a. b := im (隐含在 reshape 中)
+//   auto reshaped = hal::reshape(ctx, arr, {k, m, arr.shape()[1]});
+
+//   // 分离 key 和 valid (假设最后一列是 valid bit)
+//   auto key = hal::slice(ctx, reshaped, {0, 0, 0}, {k, m, 1}, {});
+//   auto valid = hal::slice(ctx, reshaped, {0, 0, 1}, {k, m, 2}, {});
+
+//   // 计算 f[i, j]
+//   // f[i, 0] = valid[i, 0]
+//   // f[i, j] = valid[i, j] && !valid[i, j-1]
+//   // 我们可以通过在 m 维度上将 valid 向右移位来实现
+
+//   // shift right: [0, v0, v1, ..., vm-2]
+//   auto v_prev_slice =
+//       hal::slice(ctx, valid, {0, 0, 0}, {k, m - 1, 1}, {});  // 前 m-1 个
+//   auto zeros = hal::constant(ctx, 0, valid.dtype(), {k, 1, 1});
+//   zeros = hal::seal(ctx, zeros);
+//   auto valid_prev = hal::concatenate(ctx, {zeros, v_prev_slice}, 1);
+
+//   // !valid_prev = 1 - valid_prev
+//   auto ones = hal::constant(ctx, 1.0, valid.dtype(), valid.shape());
+//   ones = hal::seal(ctx, ones);
+//   auto not_valid_prev = hal::sub(ctx, ones, valid_prev);
+
+//   // f = valid * (1 - valid_prev)
+//   auto f = hal::mul(ctx, valid, not_valid_prev);
+
+//   // e. Z[i] = sum(X[b+j] * f[i, j])
+//   // 广播 f 到数据维度
+//   // auto f_bcast = hal::broadcast_to(ctx, f, {k, m, width});
+//   auto term = hal::mul(ctx, key, f);
+
+//   // 在维度 1 (m) 上求和。由于 m 通常较小 (logN)，直接用循环累加即可，
+//   // 或者使用 reduce_sum 如果 HAL 支持。这里使用切片累加确保兼容性。
+//   auto z = hal::slice(ctx, term, {0, 0, 0}, {k, 1, 1}, {});
+//   z = hal::reshape(ctx, z, {k});
+
+//   for (int64_t j = 1; j < m; ++j) {
+//     auto slice_j = hal::slice(ctx, term, {0, j, 0}, {k, j + 1, 1}, {});
+//     slice_j = hal::reshape(ctx, slice_j, {k});
+//     z = hal::add(ctx, z, slice_j);
+//   }
+//   return z;
+// }
+
+// spu::Value LogstarRecursive(SPUContext* ctx, const spu::Value& x,
+//                             const spu::Value& y) {
+//   const int64_t nx = x.shape()[0];
+//   const int64_t ny = y.shape()[0];
+//   auto list_id_x = hal::seal(ctx, hal::constant(ctx, 0, DT_I1, {nx, 1}));
+//   auto list_id_y = hal::seal(ctx, hal::constant(ctx, 1, DT_I1, {ny, 1}));
+
+//   // block parameters
+//   int64_t basic_size = 1;
+//   auto m = Log2Floor(std::max(nx, ny));
+//   if (m == 0) m = 1;
+//   // k_x = ceil(nx / m)
+//   const int k_x = (nx + m - 1) / m;
+//   const int k_y = (ny + m - 1) / m;
+
+//   // pad x and y to make its length a multiple of m
+//   spu::Value x_pad = x;
+//   spu::Value y_pad = y;
+//   if (nx % m != 0) {
+//     int64_t padding_len = k_x * m - nx;
+//     spu::Value padding =
+//         hal::constant(ctx, 0, x.dtype(), {padding_len, x.shape()[1]});
+//     padding = hal::seal(ctx, padding);
+//     x_pad = hal::concatenate(ctx, {x, padding}, 0);
+//   }
+//   if (ny % m != 0) {
+//     int64_t padding_len = k_y * m - ny;
+//     spu::Value padding =
+//         hal::constant(ctx, 0, y.dtype(), {padding_len, y.shape()[1]});
+//     padding = hal::seal(ctx, padding);
+//     y_pad = hal::concatenate(ctx, {y, padding}, 0);
+//   }
+
+//   auto revealed1 = hal::dump_public_as<float>(ctx, hal::reveal(ctx, x_pad));
+//   auto revealed2 = hal::dump_public_as<float>(ctx, hal::reveal(ctx, y_pad));
+//   if (ctx->lctx()->Rank() == 0) {
+//     std::cout << "x_pad: " << revealed1 << std::endl;
+//     std::cout << "y_pad: " << revealed2 << std::endl;
+//   }
+
+//   if (nx <= basic_size) {
+//     // TODO
+//   } else {
+//     auto median_x = ComputeMedians(ctx, x_pad, k_x, m);
+//     auto median_y = ComputeMedians(ctx, y_pad, k_y, m);
+//     auto revealed1 =
+//         hal::dump_public_as<float>(ctx, hal::reveal(ctx, median_x));
+//     auto revealed2 =
+//         hal::dump_public_as<float>(ctx, hal::reveal(ctx, median_y));
+//     if (ctx->lctx()->Rank() == 0) {
+//       std::cout << "median_x: " << revealed1 << std::endl;
+//       std::cout << "median_y: " << revealed2 << std::endl;
+//     }
+
+//     //
+//     TODO：对每个块并行调用LogstarRecursive。解法1：直接串行，解法2：把块拼起来做向量计算。
+//   }
+
+//   return x;
+// }
+
+// spu::Value logstar(SPUContext* ctx, const spu::Value& key_x,
+//                    const spu::Value& key_y) {
+//   const int64_t nx = key_x.shape()[0];
+//   const int64_t ny = key_y.shape()[0];
+//   auto dtayp = key_x.dtype();
+//   auto valid_x = hal::seal(ctx, hal::constant(ctx, 1.0, dtayp, {nx, 1}));
+//   auto valid_y = hal::seal(ctx, hal::constant(ctx, 1.0, dtayp, {ny, 1}));
+//   // xt::xarray<int64_t> x_iota = xt::arange<int64_t>(nx);
+//   // auto idx_x = hal::seal(ctx, hal::constant(ctx, x_iota, dtayp, {nx, 1}));
+//   // xt::xarray<int64_t> y_iota = xt::arange<int64_t>(nx, nx + ny);
+//   // auto idx_y = hal::seal(ctx, hal::constant(ctx, y_iota, dtayp, {ny, 1}));
+
+//   auto x = hal::concatenate(ctx, {reshape(ctx, key_x, {nx, 1}), valid_x}, 1);
+//   auto y = hal::concatenate(ctx, {reshape(ctx, key_y, {ny, 1}), valid_y}, 1);
+
+//   if (ctx->lctx()->Rank() == 0) {
+//     std::cout << "x.shape(): " << x.shape() << std::endl;
+//   }
+
+//   return LogstarRecursive(ctx, x, y);
+
+//   // hal::dump_public_as<float>(ctx, hal::reveal(ctx, list_id_x));
+//   // auto c_idx_x = hal::dump_public_as<float>(ctx, hal::reveal(ctx, idx_y));
+//   // if (ctx->lctx()->Rank() == 0) {
+//   //   std::cout << "c_idx_x: " << c_idx_x << std::endl;
+//   // }
+// }
+
+spu::Value ComputeMedians(SPUContext* ctx, const spu::Value& arr, const int k,
+                          const int m) {
+  const int64_t batch_size = arr.shape()[0];
+  const int64_t n_attr = arr.shape()[2];
+
+  // a. b := im (隐含在 reshape 中)
+  auto reshaped = hal::reshape(ctx, arr, {batch_size, k, m, n_attr});
+
+  // 分离 key 和 valid (假设最后一列是 valid bit)
+  auto key = hal::slice(ctx, reshaped, {0, 0, 0, 0}, {batch_size, k, m, 1}, {});
+  auto valid =
+      hal::slice(ctx, reshaped, {0, 0, 0, 1}, {batch_size, k, m, 2}, {});
+
+  // 计算 f[i, j]
+  // f[i, 0] = valid[i, 0]
+  // f[i, j] = valid[i, j] && !valid[i, j-1]
+  // 我们可以通过在 m 维度上将 valid 向右移位来实现
+
+  // shift right: [0, v0, v1, ..., vm-2]
+  auto v_prev_slice = hal::slice(ctx, valid, {0, 0, 0, 0},
+                                 {batch_size, k, m - 1, 1}, {});  // 前 m-1 个
+  auto zeros = hal::constant(ctx, 0, valid.dtype(), {batch_size, k, 1, 1});
+  zeros = hal::seal(ctx, zeros);
+  auto valid_prev = hal::concatenate(ctx, {zeros, v_prev_slice}, 2);
+
+  // !valid_prev = 1 - valid_prev
+  auto ones = hal::constant(ctx, 1.0, valid.dtype(), valid.shape());
+  ones = hal::seal(ctx, ones);
+  auto not_valid_prev = hal::sub(ctx, ones, valid_prev);
+
+  // f = valid * (1 - valid_prev)
+  auto f = hal::mul(ctx, valid, not_valid_prev);
+
+  // e. Z[i] = sum(X[b+j] * f[i, j])
+  // 广播 f 到数据维度
+  // auto f_bcast = hal::broadcast_to(ctx, f, {batch_size, k, m, width});
+  auto term = hal::mul(ctx, key, f);
+
+  // 在维度 2 (m) 上求和。由于 m 通常较小 (logN)，直接用循环累加即可，
+  // 或者使用 reduce_sum 如果 HAL 支持。这里使用切片累加确保兼容性。
+  auto z = hal::slice(ctx, term, {0, 0, 0, 0}, {batch_size, k, 1, 1}, {});
+  z = hal::reshape(ctx, z, {batch_size, k});
+
+  for (int64_t j = 1; j < m; ++j) {
+    auto slice_j =
+        hal::slice(ctx, term, {0, 0, j, 0}, {batch_size, k, j + 1, 1}, {});
+    slice_j = hal::reshape(ctx, slice_j, {batch_size, k});
+    z = hal::add(ctx, z, slice_j);
+  }
+  return z;
+}
+
+spu::Value LogstarRecursive(SPUContext* ctx, const spu::Value& x,
+                            const spu::Value& y) {
+  const int64_t batch_size = x.shape()[0];
+  const int64_t nx = x.shape()[1];
+  const int64_t ny = y.shape()[1];
+  const int64_t n_attr = x.shape()[2];
+
+  // auto list_id_x = hal::seal(ctx, hal::constant(ctx, 0, DT_I1, {batch_size,
+  // nx, 1})); auto list_id_y = hal::seal(ctx, hal::constant(ctx, 1, DT_I1,
+  // {batch_size, ny, 1}));
+
+  // block parameters
+  int64_t basic_size = 1;
+  auto m = Log2Floor(std::max(nx, ny));
+  if (m == 0) m = 1;
+  // k_x = ceil(nx / m)
+  const int k_x = (nx + m - 1) / m;
+  const int k_y = (ny + m - 1) / m;
+
+  // pad x and y to make its length a multiple of m
+  spu::Value x_pad = x;
+  spu::Value y_pad = y;
+  if (nx % m != 0) {
+    int64_t padding_len = k_x * m - nx;
+    spu::Value padding_key =
+        hal::constant(ctx, 1000000000, x.dtype(), {batch_size, padding_len, 1});
+    spu::Value padding_valid =
+        hal::constant(ctx, 0, x.dtype(), {batch_size, padding_len, 1});
+    auto padding =
+        hal::seal(ctx, hal::concatenate(ctx, {padding_key, padding_valid}, 2));
+    x_pad = hal::concatenate(ctx, {x, padding}, 1);
+  }
+  if (ny % m != 0) {
+    int64_t padding_len = k_y * m - ny;
+    spu::Value padding_key =
+        hal::constant(ctx, 1000000000, x.dtype(), {batch_size, padding_len, 1});
+    spu::Value padding_valid =
+        hal::constant(ctx, 0, x.dtype(), {batch_size, padding_len, 1});
+    auto padding =
+        hal::seal(ctx, hal::concatenate(ctx, {padding_key, padding_valid}, 2));
+    y_pad = hal::concatenate(ctx, {y, padding}, 1);
+  }
+
+  auto revealed1 = hal::dump_public_as<float>(ctx, hal::reveal(ctx, x_pad));
+  auto revealed2 = hal::dump_public_as<float>(ctx, hal::reveal(ctx, y_pad));
+  if (ctx->lctx()->Rank() == 0) {
+    std::cout << "x_pad: " << revealed1 << std::endl;
+    std::cout << "y_pad: " << revealed2 << std::endl;
+  }
+
+  if (nx <= basic_size) {
+    // TODO
+  } else {
+    // 2.a.
+    auto median_x = ComputeMedians(ctx, x_pad, k_x, m);
+    auto median_y = ComputeMedians(ctx, y_pad, k_y, m);
+
+    // 打印2.a.结果
+    auto revealed1 =
+        hal::dump_public_as<float>(ctx, hal::reveal(ctx, median_x));
+    auto revealed2 =
+        hal::dump_public_as<float>(ctx, hal::reveal(ctx, median_y));
+    if (ctx->lctx()->Rank() == 0) {
+      std::cout << "median_x: " << revealed1 << std::endl;
+      std::cout << "median_y: " << revealed2 << std::endl;
+    }
+
+    // 2.cd. 将每块的第一个 x 和 y 值赋值为对应的 median 值
+    // 更新 x_pad
+    auto reshaped_x = hal::reshape(ctx, x_pad, {batch_size, k_x, m, n_attr});
+    auto median_x_reshaped =
+        hal::reshape(ctx, median_x, {batch_size, k_x, 1, 1});
+    auto first_rest_attr_x = hal::slice(ctx, reshaped_x, {0, 0, 0, 1},
+                                        {batch_size, k_x, 1, n_attr}, {});
+    auto new_first_x =
+        hal::concatenate(ctx, {median_x_reshaped, first_rest_attr_x}, 3);
+
+    if (m > 1) {
+      auto rest_m_x = hal::slice(ctx, reshaped_x, {0, 0, 1, 0},
+                                 {batch_size, k_x, m, n_attr}, {});
+      reshaped_x = hal::concatenate(ctx, {new_first_x, rest_m_x}, 2);
+    } else {
+      reshaped_x = new_first_x;
+    }
+    x_pad = hal::reshape(ctx, reshaped_x, {batch_size, k_x * m, n_attr});
+
+    // 更新 y_pad
+    auto reshaped_y = hal::reshape(ctx, y_pad, {batch_size, k_y, m, n_attr});
+    auto median_y_reshaped =
+        hal::reshape(ctx, median_y, {batch_size, k_y, 1, 1});
+    auto first_rest_attr_y = hal::slice(ctx, reshaped_y, {0, 0, 0, 1},
+                                        {batch_size, k_y, 1, n_attr}, {});
+    auto new_first_y =
+        hal::concatenate(ctx, {median_y_reshaped, first_rest_attr_y}, 3);
+
+    if (m > 1) {
+      auto rest_m_y = hal::slice(ctx, reshaped_y, {0, 0, 1, 0},
+                                 {batch_size, k_y, m, n_attr}, {});
+      reshaped_y = hal::concatenate(ctx, {new_first_y, rest_m_y}, 2);
+    } else {
+      reshaped_y = new_first_y;
+    }
+    y_pad = hal::reshape(ctx, reshaped_y, {batch_size, k_y * m, n_attr});
+
+    // 打印2.cd.结果
+    auto revealed3 = hal::dump_public_as<float>(ctx, hal::reveal(ctx, x_pad));
+    auto revealed4 = hal::dump_public_as<float>(ctx, hal::reveal(ctx, y_pad));
+    if (ctx->lctx()->Rank() == 0) {
+      std::cout << "x_pad: " << revealed3 << std::endl;
+      std::cout << "y_pad: " << revealed4 << std::endl;
+    }
+
+    // 2.be. Merge by medians
+    // 构造 keys: [batch_size, k_x + k_y]
+    auto keys = hal::concatenate(ctx, {median_x, median_y}, 1);
+
+    // // ****************  使用不支持多维payload的odd_evev_merge时：
+    // 构造 payloads: 将每个块内的 m * n_attr 个元素拆分成独立的 payload
+    // std::vector<spu::Value> merge_inputs;
+    // merge_inputs.reserve(1 + m * n_attr);
+    // merge_inputs.push_back(keys);
+
+    // for (int64_t j = 0; j < m; ++j) {
+    //   for (int64_t l = 0; l < n_attr; ++l) {
+    //     // 提取 x 的 payload
+    //     auto px = hal::slice(ctx, reshaped_x, {0, 0, j, l},
+    //                          {batch_size, k_x, j + 1, l + 1}, {});
+    //     px = hal::reshape(ctx, px, {batch_size, k_x});
+
+    //     // 提取 y 的 payload
+    //     auto py = hal::slice(ctx, reshaped_y, {0, 0, j, l},
+    //                          {batch_size, k_y, j + 1, l + 1}, {});
+    //     py = hal::reshape(ctx, py, {batch_size, k_y});
+
+    //     // 拼接成完整的 payload: [batch_size, k_x + k_y]
+    //     auto p_concat = hal::concatenate(ctx, {px, py}, 1);
+    //     merge_inputs.push_back(p_concat);
+    //   }
+    // }
+
+    // // ****************  使用支持多维payload的odd_evev_merge时：
+    // 构造单一的巨型 Payload: [batch_size, k_x + k_y, m, n_attr]
+    auto payloads = hal::concatenate(ctx, {reshaped_x, reshaped_y}, 1);
+    std::vector<spu::Value> merge_inputs = {keys, payloads};
+
+    // 调用 merge1d (内部会执行 odd_even_merge)
+    // 注意：如果 SPU 的 merge1d 严格校验 1D，对于 batch_size > 1 的情况可能需要
+    // vmap
+    auto merged_results =
+        hal::merge1d(ctx, merge_inputs, true, k_x, SortDirection::Ascending,
+                     Visibility::VIS_SECRET, false);
+
+    // // ****************  使用不支持多维payload的odd_evev_merge时：
+    // // 重组 merged_blocks
+    // std::vector<spu::Value> merged_payloads;
+    // merged_payloads.reserve(m * n_attr);
+    // for (size_t i = 1; i < merged_results.size(); ++i) {
+    //   // 将每个 payload 扩展一个维度以便拼接: [batch_size, k_x + k_y, 1]
+    //   auto reshaped_p =
+    //       hal::reshape(ctx, merged_results[i], {batch_size, k_x + k_y, 1});
+    //   merged_payloads.push_back(reshaped_p);
+    // }
+
+    // // 拼接所有 payload: [batch_size, k_x + k_y, m * n_attr]
+    // auto flat_payloads = hal::concatenate(ctx, merged_payloads, 2);
+
+    // // 恢复成块的形状: [batch_size, k_x + k_y, m, n_attr]
+    // auto merged_blocks =
+    //     hal::reshape(ctx, flat_payloads, {batch_size, k_x + k_y, m, n_attr});
+
+    // 打印2.be.结果
+    auto revealed5 =
+        hal::dump_public_as<float>(ctx, hal::reveal(ctx, merged_results[1]));
+    if (ctx->lctx()->Rank() == 0) {
+      std::cout << "merged_results: " << revealed5 << std::endl;
+    }
+
+    // TODO：对每个块并行调用LogstarRecursive。解法1：直接串行，解法2：把块拼起来做向量计算。
+  }
+
+  return x;
+}
+
+spu::Value logstar(SPUContext* ctx, const spu::Value& key_x,
+                   const spu::Value& key_y) {
+  const int64_t nx = key_x.shape()[0];
+  const int64_t ny = key_y.shape()[0];
+  auto dtayp = key_x.dtype();
+  auto valid_x = hal::seal(ctx, hal::constant(ctx, 1.0, dtayp, {1, nx, 1}));
+  auto valid_y = hal::seal(ctx, hal::constant(ctx, 1.0, dtayp, {1, ny, 1}));
+  // xt::xarray<int64_t> x_iota = xt::arange<int64_t>(nx);
+  // auto idx_x = hal::seal(ctx, hal::constant(ctx, x_iota, dtayp, {nx, 1}));
+  // xt::xarray<int64_t> y_iota = xt::arange<int64_t>(nx, nx + ny);
+  // auto idx_y = hal::seal(ctx, hal::constant(ctx, y_iota, dtayp, {ny, 1}));
+
+  auto x = hal::concatenate(ctx, {reshape(ctx, key_x, {1, nx, 1}), valid_x}, 2);
+  auto y = hal::concatenate(ctx, {reshape(ctx, key_y, {1, ny, 1}), valid_y}, 2);
+
+  if (ctx->lctx()->Rank() == 0) {
+    std::cout << "x.shape(): " << x.shape() << std::endl;
+  }
+
+  return LogstarRecursive(ctx, x, y);
+
+  // hal::dump_public_as<float>(ctx, hal::reveal(ctx, list_id_x));
+  // auto c_idx_x = hal::dump_public_as<float>(ctx, hal::reveal(ctx, idx_y));
+  // if (ctx->lctx()->Rank() == 0) {
+  //   std::cout << "c_idx_x: " << c_idx_x << std::endl;
+  // }
+}
+
 }  // namespace spu::kernel::hal

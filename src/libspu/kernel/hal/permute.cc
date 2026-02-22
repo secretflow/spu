@@ -590,49 +590,239 @@ std::vector<MergeLayer> gen_odd_even_merge_layers(
 
 }  // namespace
 
+// std::vector<spu::Value> odd_even_merge(SPUContext *ctx,
+//                                        absl::Span<spu::Value const> keys,
+//                                        int64_t split_idx,
+//                                        const bool with_payloads,
+//                                        SortDirection direction) {
+//   // make a copy for inplace merge
+//   std::vector<spu::Value> ret;
+//   for (auto const &input : keys) {
+//     spu::Value casted;
+//     if (!input.isSecret()) {
+//       // we can not linear_scatter a secret value to a public operand
+//       casted = _2s(ctx, input.clone()).setDtype(input.dtype());
+//     } else {
+//       casted = input.clone();
+//     }
+//     // we can not linear_scatter an ashare value to a bshare operand
+//     casted = _prefer_a(ctx, casted);
+//     ret.emplace_back(std::move(casted));
+//   }
+
+//   // Generate the indices of all key pairs used to comparison-swap in each
+//   layer const auto n = keys.front().numel(); spu::Index
+//   left_indices(split_idx); std::iota(left_indices.begin(),
+//   left_indices.end(), 0); spu::Index right_indices(n - split_idx);
+//   std::iota(right_indices.begin(), right_indices.end(), split_idx);
+//   auto layers = gen_odd_even_merge_layers(left_indices, right_indices);
+
+//   auto comp_fn = _get_cmp_func(ctx, 1, direction);
+//   if (!with_payloads) {
+//     for (const auto &layer : layers) {
+//       _cmp_swap(ctx, comp_fn, absl::MakeSpan(ret), layer.lhs, layer.rhs);
+//     }
+//   } else {
+//     // Define the comparator wrapper function:
+//     // gathered_inputs = [key_L, key_R, payload_L, payload_R]
+//     auto comparator = [&](absl::Span<const spu::Value> gathered_inputs) {
+//       return comp_fn(gathered_inputs.subspan(0, 2));
+//     };
+//     for (const auto &layer : layers) {
+//       _cmp_swap(ctx, comparator, absl::MakeSpan(ret), layer.lhs, layer.rhs);
+//     }
+//   }
+//   return ret;
+// }
+
+// std::vector<spu::Value> odd_even_merge(SPUContext *ctx,
+//                                        absl::Span<spu::Value const> keys,
+//                                        int64_t split_idx,
+//                                        const bool with_payloads,
+//                                        SortDirection direction) {
+//   // make a copy for inplace merge
+//   std::vector<spu::Value> ret;
+//   for (auto const &input : keys) {
+//     spu::Value casted;
+//     if (!input.isSecret()) {
+//       // we can not linear_scatter a secret value to a public operand
+//       casted = _2s(ctx, input.clone()).setDtype(input.dtype());
+//     } else {
+//       casted = input.clone();
+//     }
+//     // we can not linear_scatter an ashare value to a bshare operand
+//     casted = _prefer_a(ctx, casted);
+//     ret.emplace_back(std::move(casted));
+//   }
+
+//   const int64_t ndim = keys.front().shape().ndim();
+//   const int64_t B = ndim == 2 ? keys.front().shape()[0] : 1;
+//   const int64_t N =
+//       ndim == 2 ? keys.front().shape()[1] : keys.front().shape()[0];
+
+//   // 核心修复：如果输入是 2D，先将它们全部展平为 1D，以满足 linear_gather
+//   // 的严格校验
+//   if (ndim == 2) {
+//     for (auto &v : ret) {
+//       v = hal::reshape(ctx, v, {B * N});
+//     }
+//   }
+
+//   // Generate the indices of all key pairs used to comparison-swap in each
+//   layer spu::Index left_indices(split_idx); std::iota(left_indices.begin(),
+//   left_indices.end(), 0); spu::Index right_indices(N - split_idx);
+//   std::iota(right_indices.begin(), right_indices.end(), split_idx);
+//   auto layers = gen_odd_even_merge_layers(left_indices, right_indices);
+
+//   auto comp_fn = _get_cmp_func(ctx, 1, direction);
+
+//   for (const auto &layer : layers) {
+//     spu::Index batched_lhs;
+//     spu::Index batched_rhs;
+//     batched_lhs.reserve(layer.lhs.size() * B);
+//     batched_rhs.reserve(layer.rhs.size() * B);
+
+//     // 将 1D 的比较索引广播到所有的 Batch 上
+//     for (int64_t b = 0; b < B; ++b) {
+//       int64_t offset = b * N;
+//       for (size_t i = 0; i < layer.lhs.size(); ++i) {
+//         batched_lhs.push_back(layer.lhs[i] + offset);
+//         batched_rhs.push_back(layer.rhs[i] + offset);
+//       }
+//     }
+
+//     if (!with_payloads) {
+//       _cmp_swap(ctx, comp_fn, absl::MakeSpan(ret), batched_lhs, batched_rhs);
+//     } else {
+//       // Define the comparator wrapper function:
+//       // gathered_inputs = [key_L, key_R, payload_L, payload_R]
+//       auto comparator = [&](absl::Span<const spu::Value> gathered_inputs) {
+//         return comp_fn(gathered_inputs.subspan(0, 2));
+//       };
+//       _cmp_swap(ctx, comparator, absl::MakeSpan(ret), batched_lhs,
+//       batched_rhs);
+//     }
+//   }
+
+//   // 核心修复：处理完成后，将 1D 张量恢复为原始的 2D 形状
+//   if (ndim == 2) {
+//     for (auto &v : ret) {
+//       v = hal::reshape(ctx, v, {B, N});
+//     }
+//   }
+
+//   return ret;
+// }
+
+// 支持多维pyload
 std::vector<spu::Value> odd_even_merge(SPUContext *ctx,
                                        absl::Span<spu::Value const> keys,
                                        int64_t split_idx,
                                        const bool with_payloads,
                                        SortDirection direction) {
-  // make a copy for inplace merge
-  std::vector<spu::Value> ret;
-  for (auto const &input : keys) {
+  const int64_t key_ndim = keys.front().shape().ndim();
+  const int64_t B = key_ndim == 2 ? keys.front().shape()[0] : 1;
+  const int64_t N =
+      key_ndim == 2 ? keys.front().shape()[1] : keys.front().shape()[0];
+
+  std::vector<spu::Value> flat_ret;
+  std::vector<int64_t> payload_E;  // 记录每个输入在额外维度上的元素总数
+
+  // 1. 自动展开 (Auto-Unstack): 将所有多维 Payload 展平并切片为 1D 张量
+  for (size_t i = 0; i < keys.size(); ++i) {
+    auto input = keys[i];
     spu::Value casted;
     if (!input.isSecret()) {
-      // we can not linear_scatter a secret value to a public operand
       casted = _2s(ctx, input.clone()).setDtype(input.dtype());
     } else {
       casted = input.clone();
     }
-    // we can not linear_scatter an ashare value to a bshare operand
     casted = _prefer_a(ctx, casted);
-    ret.emplace_back(std::move(casted));
+
+    if (i == 0) {
+      // Key 必须是 1D [N] 或 2D [B, N]
+      casted = hal::reshape(ctx, casted, {B * N});
+      flat_ret.push_back(casted);
+      payload_E.push_back(1);
+    } else {
+      // Payload 可以是 [B, N, d1, d2, ...]
+      int64_t E = 1;
+      for (int64_t d = key_ndim; d < input.shape().ndim(); ++d) {
+        E *= input.shape()[d];
+      }
+      payload_E.push_back(E);
+
+      if (E == 1) {
+        casted = hal::reshape(ctx, casted, {B * N});
+        flat_ret.push_back(casted);
+      } else {
+        // 将 Payload 展平为 [B * N, E]，然后切片成 E 个 [B * N] 的 1D 张量
+        casted = hal::reshape(ctx, casted, {B * N, E});
+        for (int64_t e = 0; e < E; ++e) {
+          auto slice_e = hal::slice(ctx, casted, {0, e}, {B * N, e + 1}, {});
+          slice_e = hal::reshape(ctx, slice_e, {B * N});
+          flat_ret.push_back(slice_e);
+        }
+      }
+    }
   }
 
-  // Generate the indices of all key pairs used to comparison-swap in each layer
-  const auto n = keys.front().numel();
+  // 2. 生成比较网络并执行 _cmp_swap
   spu::Index left_indices(split_idx);
   std::iota(left_indices.begin(), left_indices.end(), 0);
-  spu::Index right_indices(n - split_idx);
+  spu::Index right_indices(N - split_idx);
   std::iota(right_indices.begin(), right_indices.end(), split_idx);
   auto layers = gen_odd_even_merge_layers(left_indices, right_indices);
 
   auto comp_fn = _get_cmp_func(ctx, 1, direction);
-  if (!with_payloads) {
-    for (const auto &layer : layers) {
-      _cmp_swap(ctx, comp_fn, absl::MakeSpan(ret), layer.lhs, layer.rhs);
+
+  for (const auto &layer : layers) {
+    spu::Index batched_lhs;
+    spu::Index batched_rhs;
+    batched_lhs.reserve(layer.lhs.size() * B);
+    batched_rhs.reserve(layer.rhs.size() * B);
+
+    for (int64_t b = 0; b < B; ++b) {
+      int64_t offset = b * N;
+      for (size_t i = 0; i < layer.lhs.size(); ++i) {
+        batched_lhs.push_back(layer.lhs[i] + offset);
+        batched_rhs.push_back(layer.rhs[i] + offset);
+      }
     }
-  } else {
-    // Define the comparator wrapper function:
-    // gathered_inputs = [key_L, key_R, payload_L, payload_R]
-    auto comparator = [&](absl::Span<const spu::Value> gathered_inputs) {
-      return comp_fn(gathered_inputs.subspan(0, 2));
-    };
-    for (const auto &layer : layers) {
-      _cmp_swap(ctx, comparator, absl::MakeSpan(ret), layer.lhs, layer.rhs);
+
+    if (!with_payloads) {
+      _cmp_swap(ctx, comp_fn, absl::MakeSpan(flat_ret), batched_lhs,
+                batched_rhs);
+    } else {
+      auto comparator = [&](absl::Span<const spu::Value> gathered_inputs) {
+        return comp_fn(gathered_inputs.subspan(0, 2));
+      };
+      _cmp_swap(ctx, comparator, absl::MakeSpan(flat_ret), batched_lhs,
+                batched_rhs);
     }
   }
+
+  // 3. 自动重组 (Auto-Stack): 将 1D 张量恢复为原始的多维形状
+  std::vector<spu::Value> ret;
+  size_t flat_idx = 0;
+  for (size_t i = 0; i < keys.size(); ++i) {
+    int64_t E = payload_E[i];
+    if (E == 1) {
+      auto reshaped = hal::reshape(ctx, flat_ret[flat_idx], keys[i].shape());
+      ret.push_back(reshaped);
+      flat_idx += 1;
+    } else {
+      std::vector<spu::Value> slices;
+      for (int64_t e = 0; e < E; ++e) {
+        slices.push_back(hal::reshape(ctx, flat_ret[flat_idx + e], {B * N, 1}));
+      }
+      auto concat = hal::concatenate(ctx, slices, 1);
+      auto reshaped = hal::reshape(ctx, concat, keys[i].shape());
+      ret.push_back(reshaped);
+      flat_idx += E;
+    }
+  }
+
   return ret;
 }
 
@@ -1895,6 +2085,72 @@ std::vector<spu::Value> radix_sort(SPUContext *ctx,
 
 }  // namespace internal
 
+// std::vector<spu::Value> merge1d(SPUContext *ctx,
+//                                 absl::Span<spu::Value const> keys,
+//                                 const bool with_payloads, int64_t split_idx,
+//                                 SortDirection direction,
+//                                 Visibility comparator_ret_vis, bool
+//                                 is_stable) {
+//   // sanity check.
+//   SPU_ENFORCE(!keys.empty(), "Keys should not be empty");
+//   SPU_ENFORCE(keys[0].shape().ndim() == 1,
+//               "Keys should be 1-d but actually have {} dimensions",
+//               keys[0].shape().ndim());
+//   SPU_ENFORCE(std::all_of(keys.begin(), keys.end(),
+//                           [&keys](const spu::Value &v) {
+//                             return v.shape() == keys[0].shape();
+//                           }),
+//               "Keys shape mismatched");
+
+//   std::vector<spu::Value> ret;
+//   if (comparator_ret_vis == VIS_SECRET) {
+//     SPU_ENFORCE(!is_stable,
+//                 "Stable sort is unsupported if comparator return is
+//                 secret.");
+
+//     ret = internal::odd_even_merge(ctx, keys, split_idx, with_payloads,
+//                                    direction);
+//   } else {
+//     SPU_THROW("Should not reach here");
+//   }
+
+//   return ret;
+// }
+
+// std::vector<spu::Value> merge1d(SPUContext *ctx,
+//                                 absl::Span<spu::Value const> keys,
+//                                 const bool with_payloads, int64_t split_idx,
+//                                 SortDirection direction,
+//                                 Visibility comparator_ret_vis, bool
+//                                 is_stable) {
+//   // sanity check.
+//   SPU_ENFORCE(!keys.empty(), "Keys should not be empty");
+//   // 放宽维度检查，允许 1D 或 2D
+//   SPU_ENFORCE(keys[0].shape().ndim() == 1 || keys[0].shape().ndim() == 2,
+//               "Keys should be 1-d or 2-d but actually have {} dimensions",
+//               keys[0].shape().ndim());
+//   SPU_ENFORCE(std::all_of(keys.begin(), keys.end(),
+//                           [&keys](const spu::Value &v) {
+//                             return v.shape() == keys[0].shape();
+//                           }),
+//               "Keys shape mismatched");
+
+//   std::vector<spu::Value> ret;
+//   if (comparator_ret_vis == VIS_SECRET) {
+//     SPU_ENFORCE(!is_stable,
+//                 "Stable sort is unsupported if comparator return is
+//                 secret.");
+
+//     ret = internal::odd_even_merge(ctx, keys, split_idx, with_payloads,
+//                                    direction);
+//   } else {
+//     SPU_THROW("Should not reach here");
+//   }
+
+//   return ret;
+// }
+
+// 支持多维payload
 std::vector<spu::Value> merge1d(SPUContext *ctx,
                                 absl::Span<spu::Value const> keys,
                                 const bool with_payloads, int64_t split_idx,
@@ -1902,14 +2158,23 @@ std::vector<spu::Value> merge1d(SPUContext *ctx,
                                 Visibility comparator_ret_vis, bool is_stable) {
   // sanity check.
   SPU_ENFORCE(!keys.empty(), "Keys should not be empty");
-  SPU_ENFORCE(keys[0].shape().ndim() == 1,
-              "Keys should be 1-d but actually have {} dimensions",
-              keys[0].shape().ndim());
+
+  const int64_t key_ndim = keys[0].shape().ndim();
+  SPU_ENFORCE(key_ndim == 1 || key_ndim == 2,
+              "Keys should be 1-d or 2-d but actually have {} dimensions",
+              key_ndim);
+
+  // 放宽校验：Payload 的前缀维度必须与 Key 匹配，但允许有额外的维度
   SPU_ENFORCE(std::all_of(keys.begin(), keys.end(),
-                          [&keys](const spu::Value &v) {
-                            return v.shape() == keys[0].shape();
+                          [&](const spu::Value &v) {
+                            if (v.shape().ndim() < key_ndim) return false;
+                            for (int i = 0; i < key_ndim; ++i) {
+                              if (v.shape()[i] != keys[0].shape()[i])
+                                return false;
+                            }
+                            return true;
                           }),
-              "Keys shape mismatched");
+              "Payloads must have the same prefix shape as the key");
 
   std::vector<spu::Value> ret;
   if (comparator_ret_vis == VIS_SECRET) {

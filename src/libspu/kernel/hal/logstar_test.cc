@@ -364,4 +364,56 @@ TEST_F(ExtractOrderedTest, LargeScale) {
   });
 }
 
+TEST(LogstarTest, BasicCorrectness) {
+  const size_t npc = 2;
+  const auto protocol = ProtocolKind::SEMI2K;
+  const auto field = FieldType::FM64;
+
+  mpc::utils::simulate(
+      npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+        SPUContext ctx = makeSPUContextWithProfile(protocol, field, lctx);
+        xt::xarray<float> x = {1, 3, 20, 40, 55};
+        xt::xarray<float> y = {2, 50, 60, 70, 80};
+        if (lctx->Rank() == 0) {
+          std::cout << "x = \n" << x << std::endl;
+          std::cout << "y = \n" << y << std::endl;
+        }
+        auto x_s = test::makeValue(&ctx, x, VIS_SECRET);
+        auto y_s = test::makeValue(&ctx, y, VIS_SECRET);
+        setupTrace(&ctx, ctx.config());
+
+        // Merge
+        logstar(&ctx, x_s, y_s);
+
+        // test::printProfileData(&ctx);
+      });
+}
+
+TEST(LogstarRecursiveTest, BasicCorrectness) {
+  const size_t npc = 2;
+  const auto protocol = ProtocolKind::SEMI2K;
+  const auto field = FieldType::FM64;
+
+  mpc::utils::simulate(
+      npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+        SPUContext ctx = makeSPUContextWithProfile(protocol, field, lctx);
+        xt::xarray<float> x = {{{1, 0}, {3, 1}, {20, 1}, {40, 1}, {55, 1}},
+                               {{2, 1}, {3, 1}, {4, 1}, {5, 1}, {55, 1}}};
+        xt::xarray<float> y = {{{2, 1}, {50, 1}, {60, 1}, {70, 1}, {80, 1}},
+                               {{3, 1}, {4, 1}, {5, 1}, {6, 1}, {88, 1}}};
+        if (lctx->Rank() == 0) {
+          std::cout << "x = \n" << x << std::endl;
+          std::cout << "y = \n" << y << std::endl;
+        }
+        auto x_s = test::makeValue(&ctx, x, VIS_SECRET);
+        auto y_s = test::makeValue(&ctx, y, VIS_SECRET);
+        setupTrace(&ctx, ctx.config());
+
+        // Merge
+        LogstarRecursive(&ctx, x_s, y_s);
+
+        // test::printProfileData(&ctx);
+      });
+}
+
 }  // namespace spu::kernel::hal
