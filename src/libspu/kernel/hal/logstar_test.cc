@@ -397,10 +397,12 @@ TEST(LogstarRecursiveTest, BasicCorrectness) {
   mpc::utils::simulate(
       npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
         SPUContext ctx = makeSPUContextWithProfile(protocol, field, lctx);
-        xt::xarray<float> x = {{{1, 0}, {3, 1}, {20, 1}, {40, 1}, {55, 1}},
-                               {{2, 1}, {3, 1}, {4, 1}, {5, 1}, {55, 1}}};
-        xt::xarray<float> y = {{{2, 1}, {50, 1}, {60, 1}, {70, 1}, {80, 1}},
-                               {{3, 1}, {4, 1}, {5, 1}, {6, 1}, {88, 1}}};
+        xt::xarray<float> x = {
+            {{1, 0, 0}, {3, 1, 0}, {20, 1, 0}, {40, 1, 0}, {55, 1, 0}},
+            {{2, 1, 0}, {3, 1, 0}, {4, 1, 0}, {5, 1, 0}, {55, 1, 0}}};
+        xt::xarray<float> y = {
+            {{2, 1, 1}, {50, 1, 1}, {60, 1, 1}, {70, 1, 1}, {80, 1, 1}},
+            {{3, 1, 1}, {4, 1, 1}, {5, 1, 1}, {6, 1, 1}, {88, 1, 1}}};
         if (lctx->Rank() == 0) {
           std::cout << "x = \n" << x << std::endl;
           std::cout << "y = \n" << y << std::endl;

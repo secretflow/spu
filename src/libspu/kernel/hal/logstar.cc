@@ -551,10 +551,6 @@ spu::Value LogstarRecursive(SPUContext* ctx, const spu::Value& x,
   const int64_t ny = y.shape()[1];
   const int64_t n_attr = x.shape()[2];
 
-  // auto list_id_x = hal::seal(ctx, hal::constant(ctx, 0, DT_I1, {batch_size,
-  // nx, 1})); auto list_id_y = hal::seal(ctx, hal::constant(ctx, 1, DT_I1,
-  // {batch_size, ny, 1}));
-
   // block parameters
   int64_t basic_size = 1;
   auto m = Log2Floor(std::max(nx, ny));
@@ -568,22 +564,42 @@ spu::Value LogstarRecursive(SPUContext* ctx, const spu::Value& x,
   spu::Value y_pad = y;
   if (nx % m != 0) {
     int64_t padding_len = k_x * m - nx;
+    auto max_key = hal::slice(ctx, x, {0, nx - 1, 0}, {batch_size, nx, 1}, {});
     spu::Value padding_key =
-        hal::constant(ctx, 1000000000, x.dtype(), {batch_size, padding_len, 1});
-    spu::Value padding_valid =
-        hal::constant(ctx, 0, x.dtype(), {batch_size, padding_len, 1});
+        hal::broadcast_to(ctx, max_key, {batch_size, padding_len, 1});
+    spu::Value padding_valid = seal(
+        ctx, hal::constant(ctx, 0, x.dtype(), {batch_size, padding_len, 1}));
+    // spu::Value padding_list_id =
+    //     hal::constant(ctx, 0, x.dtype(), {batch_size, padding_len, 1});
+
+    auto orig_list_id = hal::slice(ctx, x, {0, 0, 2}, {batch_size, 1, 3}, {});
+    spu::Value padding_list_id =
+        hal::broadcast_to(ctx, orig_list_id, {batch_size, padding_len, 1});
+
     auto padding =
-        hal::seal(ctx, hal::concatenate(ctx, {padding_key, padding_valid}, 2));
+        hal::concatenate(ctx, {padding_key, padding_valid, padding_list_id}, 2);
     x_pad = hal::concatenate(ctx, {x, padding}, 1);
   }
   if (ny % m != 0) {
     int64_t padding_len = k_y * m - ny;
+    // spu::Value padding_key =
+    //     seal(ctx, hal::constant(ctx, 1000000000, x.dtype(),
+    //                             {batch_size, padding_len, 1}));
+    auto max_key = hal::slice(ctx, y, {0, ny - 1, 0}, {batch_size, ny, 1}, {});
     spu::Value padding_key =
-        hal::constant(ctx, 1000000000, x.dtype(), {batch_size, padding_len, 1});
-    spu::Value padding_valid =
-        hal::constant(ctx, 0, x.dtype(), {batch_size, padding_len, 1});
+        hal::broadcast_to(ctx, max_key, {batch_size, padding_len, 1});
+
+    spu::Value padding_valid = seal(
+        ctx, hal::constant(ctx, 0, x.dtype(), {batch_size, padding_len, 1}));
+    // spu::Value padding_list_id =
+    //     hal::constant(ctx, 0, x.dtype(), {batch_size, padding_len, 1});
+
+    auto orig_list_id = hal::slice(ctx, y, {0, 0, 2}, {batch_size, 1, 3}, {});
+    spu::Value padding_list_id =
+        hal::broadcast_to(ctx, orig_list_id, {batch_size, padding_len, 1});
+
     auto padding =
-        hal::seal(ctx, hal::concatenate(ctx, {padding_key, padding_valid}, 2));
+        hal::concatenate(ctx, {padding_key, padding_valid, padding_list_id}, 2);
     y_pad = hal::concatenate(ctx, {y, padding}, 1);
   }
 
@@ -738,9 +754,13 @@ spu::Value logstar(SPUContext* ctx, const spu::Value& key_x,
   // auto idx_x = hal::seal(ctx, hal::constant(ctx, x_iota, dtayp, {nx, 1}));
   // xt::xarray<int64_t> y_iota = xt::arange<int64_t>(nx, nx + ny);
   // auto idx_y = hal::seal(ctx, hal::constant(ctx, y_iota, dtayp, {ny, 1}));
+  auto list_id_x = hal::seal(ctx, hal::constant(ctx, 0, dtayp, {1, nx, 1}));
+  auto list_id_y = hal::seal(ctx, hal::constant(ctx, 1, dtayp, {1, nx, 1}));
 
-  auto x = hal::concatenate(ctx, {reshape(ctx, key_x, {1, nx, 1}), valid_x}, 2);
-  auto y = hal::concatenate(ctx, {reshape(ctx, key_y, {1, ny, 1}), valid_y}, 2);
+  auto x = hal::concatenate(
+      ctx, {reshape(ctx, key_x, {1, nx, 1}), valid_x, list_id_x}, 2);
+  auto y = hal::concatenate(
+      ctx, {reshape(ctx, key_y, {1, ny, 1}), valid_y, list_id_y}, 2);
 
   if (ctx->lctx()->Rank() == 0) {
     std::cout << "x.shape(): " << x.shape() << std::endl;
