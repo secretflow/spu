@@ -4,9 +4,8 @@
 #include "libspu/core/value.h"
 
 namespace spu::kernel::hal {
-std::pair<Value, Value> duplicate_brent_kung(SPUContext* ctx, const Value& x,
-                                             const Value& valids,
-                                             const Value& g_in);
+spu::Value duplicate_brent_kung(SPUContext* ctx, const spu::Value& x,
+                                const spu::Value& c);
 
 std::pair<std::vector<spu::Value>, int64_t> extract_ordered(
     SPUContext* ctx, const spu::Value& x_in, const spu::Value& conditions);

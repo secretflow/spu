@@ -100,38 +100,179 @@ static Value node_func(SPUContext* ctx, const Value& p1, const Value& p2,
   return p3;
 }
 
+// /**
+//  * @brief The Duplication step of Logstar based on Brent-Kung network.
+//  Duplicate
+//  * the inputs according to group signals.
+//  *
+//  * Logic:
+//  *   For i = 1, ..., n-1:
+//  *      x_out[i] = x[i], valids_out[i] = valids[i],                if g[i] ==
+//  0;
+//  *      x_out[i] = x_out[i-1], valids_out[i] = valids_out[i-1],    if g[i]
+//  == 1.
+//  *
+//  * @param x Input data blocks [n, block_size].
+//  * @param valids Valid bits of each data [n, block_size].
+//  * @param g_in Group signals of each block [n, 1].
+//  * @return std::pair<Value, Value> Duplicated inputs {x_out, valids_out}.
+//  */
+// std::pair<Value, Value> duplicate_brent_kung(SPUContext* ctx, const Value& x,
+//                                              const Value& valids,
+//                                              const Value& g_in) {
+//   const int64_t n = x.shape()[0];
+//   const int64_t block_size = x.shape()[1];
+//   const int64_t total_block_size = block_size * 2;
+
+//   // p: [n, 2 * block_size]
+//   Value p = kernel::hal::concatenate(ctx, {x, valids}, 1);
+//   p = kernel::hal::_prefer_a(ctx, p);
+//   Value g = mutable_copy(ctx, g_in);
+
+//   // Get flattened views of the data for scatter/gather operations
+//   auto p_flat_ref = p.data().reshape({p.numel()});
+//   auto g_flat_ref = g.data().reshape({g.numel()});
+
+//   int depth = Log2Ceil(n);
+//   size_t max_blocks = (n / 2) + 1;
+//   spu::Index idx_right_blocks;
+//   idx_right_blocks.reserve(max_blocks);
+//   spu::Index idx_left_blocks;
+//   idx_left_blocks.reserve(max_blocks);
+//   spu::Index idx_root_blocks;
+//   idx_root_blocks.reserve(max_blocks);
+//   spu::Index idx_child_blocks;
+//   idx_child_blocks.reserve(max_blocks);
+
+//   // --- 1. Up-Sweep (Reduce Phase) ---
+//   // This phase builds a tree from leaves to root.
+//   for (int j = 0; j < depth; ++j) {
+//     int64_t step = 1LL << (j + 1);      // Distance between nodes to update
+//     int64_t left_child_off = 1LL << j;  // Distance to the left child
+
+//     idx_right_blocks.clear();
+//     idx_left_blocks.clear();
+
+//     // Identify which blocks (nodes) participate in this level
+//     for (int64_t i = step - 1; i < n; i += step) {
+//       idx_right_blocks.push_back(i);
+//       idx_left_blocks.push_back(i - left_child_off);
+//     }
+
+//     if (idx_right_blocks.empty()) continue;
+
+//     // Flatting block indices
+//     spu::Index idx_right_elems =
+//         flat_indices(idx_right_blocks, total_block_size);
+//     spu::Index idx_left_elems = flat_indices(idx_left_blocks,
+//     total_block_size); const spu::Index& idx_right_g = idx_right_blocks;
+//     const spu::Index& idx_left_g = idx_left_blocks;
+
+//     // Gather values for participating nodes into temporary compact tensors
+//     Value v_right_p(p_flat_ref.linear_gather(idx_right_elems), p.dtype());
+//     Value v_left_p(p_flat_ref.linear_gather(idx_left_elems), p.dtype());
+//     Value v_right_g(g_flat_ref.linear_gather(idx_right_g), g.dtype());
+//     Value v_left_g(g_flat_ref.linear_gather(idx_left_g), g.dtype());
+
+//     // Restore shapes for vectorized computation
+//     int64_t k = idx_right_blocks.size();
+//     v_right_p = kernel::hal::reshape(ctx, v_right_p, {k, total_block_size});
+//     v_left_p = kernel::hal::reshape(ctx, v_left_p, {k, total_block_size});
+//     v_right_g = kernel::hal::reshape(ctx, v_right_g, {k, 1});
+//     v_left_g = kernel::hal::reshape(ctx, v_left_g, {k, 1});
+
+//     // Apply node function in batch
+//     auto [new_p, new_g] =
+//         node_func(ctx, v_right_p, v_left_p, v_right_g, v_left_g);
+
+//     // Write results back to the main memory buffer
+//     auto new_p_data = new_p.data().reshape({new_p.numel()});
+//     auto new_g_data = new_g.data().reshape({new_g.numel()});
+//     p_flat_ref.linear_scatter(new_p_data, idx_right_elems);
+//     g_flat_ref.linear_scatter(new_g_data, idx_right_g);
+//   }
+
+//   // --- 2. Down-Sweep (Distribute Phase) ---
+//   // Traverse back down the tree.
+//   for (int j = depth - 2; j >= 0; --j) {
+//     int64_t step = 1LL << (j + 1);
+//     int64_t dist = 1LL << j;
+
+//     idx_root_blocks.clear();
+//     idx_child_blocks.clear();
+
+//     // Identify nodes: 'Root' pushes its value to 'Child'
+//     for (int64_t i = step - 1; i < n; i += step) {
+//       int64_t target = i + dist;
+//       if (target < n) {
+//         idx_root_blocks.push_back(i);
+//         idx_child_blocks.push_back(target);
+//       }
+//     }
+
+//     if (idx_child_blocks.empty()) continue;
+
+//     spu::Index idx_root_elems = flat_indices(idx_root_blocks,
+//     total_block_size); spu::Index idx_child_elems =
+//         flat_indices(idx_child_blocks, total_block_size);
+//     const spu::Index& idx_child_g = idx_child_blocks;
+
+//     Value v_root_p(p_flat_ref.linear_gather(idx_root_elems), p.dtype());
+//     Value v_child_p(p_flat_ref.linear_gather(idx_child_elems), p.dtype());
+//     Value v_child_g(g_flat_ref.linear_gather(idx_child_g), g.dtype());
+
+//     int64_t k = idx_child_blocks.size();
+//     v_root_p = kernel::hal::reshape(ctx, v_root_p, {k, total_block_size});
+//     v_child_p = kernel::hal::reshape(ctx, v_child_p, {k, total_block_size});
+//     v_child_g = kernel::hal::reshape(ctx, v_child_g, {k, 1});
+
+//     auto new_p_child = node_func(ctx, v_child_p, v_root_p, v_child_g);
+
+//     auto new_p_data = new_p_child.data().reshape({new_p_child.numel()});
+//     p_flat_ref.linear_scatter(new_p_data, idx_child_elems);
+//   }
+
+//   // Slice the concatenated 'p' back into outputs
+//   auto x_out = kernel::hal::slice(ctx, p, {0, 0}, {n, block_size}, {});
+//   auto valids_out =
+//       kernel::hal::slice(ctx, p, {0, block_size}, {n, 2 * block_size}, {});
+
+//   return {x_out, valids_out};
+// }
+
 /**
  * @brief The Duplication step of Logstar based on Brent-Kung network. Duplicate
  * the inputs according to group signals.
  *
  * Logic:
  *   For i = 1, ..., n-1:
- *      x_out[i] = x[i], valids_out[i] = valids[i],                if g[i] == 0;
- *      x_out[i] = x_out[i-1], valids_out[i] = valids_out[i-1],    if g[i] == 1.
+ *      x_out[i] = x[i],                if g[i] == 0;
+ *      x_out[i] = x_out[i-1],          if g[i] == 1.
  *
- * @param x Input data blocks [n, block_size].
- * @param valids Valid bits of each data [n, block_size].
- * @param g_in Group signals of each block [n, 1].
- * @return std::pair<Value, Value> Duplicated inputs {x_out, valids_out}.
+ * @param x Input data blocks [batch_size, K, m, n_attr].
+ * @param c Group signals (transition flags) [batch_size, K].
+ * @return spu::Value Duplicated inputs with the same shape as x.
  */
-std::pair<Value, Value> duplicate_brent_kung(SPUContext* ctx, const Value& x,
-                                             const Value& valids,
-                                             const Value& g_in) {
-  const int64_t n = x.shape()[0];
-  const int64_t block_size = x.shape()[1];
-  const int64_t total_block_size = block_size * 2;
+spu::Value duplicate_brent_kung(SPUContext* ctx, const spu::Value& x,
+                                const spu::Value& c) {
+  const int64_t batch_size = x.shape()[0];
+  const int64_t K = x.shape()[1];
+  const int64_t m = x.shape()[2];
+  const int64_t n_attr = x.shape()[3];
+  const int64_t block_size = m * n_attr;
 
-  // p: [n, 2 * block_size]
-  Value p = kernel::hal::concatenate(ctx, {x, valids}, 1);
-  p = kernel::hal::_prefer_a(ctx, p);
-  Value g = mutable_copy(ctx, g_in);
+  // 展平为 [batch_size * K, block_size] 和 [batch_size * K, 1]
+  Value p = kernel::hal::reshape(ctx, x, {batch_size * K, block_size});
+  p = mutable_copy(ctx, p);
+  Value g = kernel::hal::reshape(ctx, c, {batch_size * K, 1});
+  g = mutable_copy(ctx, g);
 
-  // Get flattened views of the data for scatter/gather operations
+  // 获取底层一维内存视图
   auto p_flat_ref = p.data().reshape({p.numel()});
   auto g_flat_ref = g.data().reshape({g.numel()});
 
-  int depth = Log2Ceil(n);
-  size_t max_blocks = (n / 2) + 1;
+  int depth = Log2Ceil(K);
+  size_t max_blocks = (K / 2) + 1;
   spu::Index idx_right_blocks;
   idx_right_blocks.reserve(max_blocks);
   spu::Index idx_left_blocks;
@@ -141,56 +282,62 @@ std::pair<Value, Value> duplicate_brent_kung(SPUContext* ctx, const Value& x,
   spu::Index idx_child_blocks;
   idx_child_blocks.reserve(max_blocks);
 
+  // 辅助函数：将单条序列的索引广播到所有 Batch
+  auto get_batched_indices = [&](const spu::Index& blocks) {
+    spu::Index batched;
+    batched.reserve(blocks.size() * batch_size);
+    for (int64_t b = 0; b < batch_size; ++b) {
+      int64_t offset = b * K;
+      for (int64_t idx : blocks) {
+        batched.push_back(offset + idx);
+      }
+    }
+    return batched;
+  };
+
   // --- 1. Up-Sweep (Reduce Phase) ---
-  // This phase builds a tree from leaves to root.
   for (int j = 0; j < depth; ++j) {
-    int64_t step = 1LL << (j + 1);      // Distance between nodes to update
-    int64_t left_child_off = 1LL << j;  // Distance to the left child
+    int64_t step = 1LL << (j + 1);
+    int64_t left_child_off = 1LL << j;
 
     idx_right_blocks.clear();
     idx_left_blocks.clear();
 
-    // Identify which blocks (nodes) participate in this level
-    for (int64_t i = step - 1; i < n; i += step) {
+    for (int64_t i = step - 1; i < K; i += step) {
       idx_right_blocks.push_back(i);
       idx_left_blocks.push_back(i - left_child_off);
     }
 
     if (idx_right_blocks.empty()) continue;
 
-    // Flatting block indices
-    spu::Index idx_right_elems =
-        flat_indices(idx_right_blocks, total_block_size);
-    spu::Index idx_left_elems = flat_indices(idx_left_blocks, total_block_size);
-    const spu::Index& idx_right_g = idx_right_blocks;
-    const spu::Index& idx_left_g = idx_left_blocks;
+    // 广播到所有 Batch
+    spu::Index batched_right = get_batched_indices(idx_right_blocks);
+    spu::Index batched_left = get_batched_indices(idx_left_blocks);
 
-    // Gather values for participating nodes into temporary compact tensors
+    spu::Index idx_right_elems = flat_indices(batched_right, block_size);
+    spu::Index idx_left_elems = flat_indices(batched_left, block_size);
+
     Value v_right_p(p_flat_ref.linear_gather(idx_right_elems), p.dtype());
     Value v_left_p(p_flat_ref.linear_gather(idx_left_elems), p.dtype());
-    Value v_right_g(g_flat_ref.linear_gather(idx_right_g), g.dtype());
-    Value v_left_g(g_flat_ref.linear_gather(idx_left_g), g.dtype());
+    Value v_right_g(g_flat_ref.linear_gather(batched_right), g.dtype());
+    Value v_left_g(g_flat_ref.linear_gather(batched_left), g.dtype());
 
-    // Restore shapes for vectorized computation
-    int64_t k = idx_right_blocks.size();
-    v_right_p = kernel::hal::reshape(ctx, v_right_p, {k, total_block_size});
-    v_left_p = kernel::hal::reshape(ctx, v_left_p, {k, total_block_size});
-    v_right_g = kernel::hal::reshape(ctx, v_right_g, {k, 1});
-    v_left_g = kernel::hal::reshape(ctx, v_left_g, {k, 1});
+    int64_t num_nodes = batched_right.size();
+    v_right_p = kernel::hal::reshape(ctx, v_right_p, {num_nodes, block_size});
+    v_left_p = kernel::hal::reshape(ctx, v_left_p, {num_nodes, block_size});
+    v_right_g = kernel::hal::reshape(ctx, v_right_g, {num_nodes, 1});
+    v_left_g = kernel::hal::reshape(ctx, v_left_g, {num_nodes, 1});
 
-    // Apply node function in batch
     auto [new_p, new_g] =
         node_func(ctx, v_right_p, v_left_p, v_right_g, v_left_g);
 
-    // Write results back to the main memory buffer
-    auto new_p_data = new_p.data().reshape({new_p.numel()});
-    auto new_g_data = new_g.data().reshape({new_g.numel()});
-    p_flat_ref.linear_scatter(new_p_data, idx_right_elems);
-    g_flat_ref.linear_scatter(new_g_data, idx_right_g);
+    p_flat_ref.linear_scatter(new_p.data().reshape({new_p.numel()}),
+                              idx_right_elems);
+    g_flat_ref.linear_scatter(new_g.data().reshape({new_g.numel()}),
+                              batched_right);
   }
 
   // --- 2. Down-Sweep (Distribute Phase) ---
-  // Traverse back down the tree.
   for (int j = depth - 2; j >= 0; --j) {
     int64_t step = 1LL << (j + 1);
     int64_t dist = 1LL << j;
@@ -198,10 +345,9 @@ std::pair<Value, Value> duplicate_brent_kung(SPUContext* ctx, const Value& x,
     idx_root_blocks.clear();
     idx_child_blocks.clear();
 
-    // Identify nodes: 'Root' pushes its value to 'Child'
-    for (int64_t i = step - 1; i < n; i += step) {
+    for (int64_t i = step - 1; i < K; i += step) {
       int64_t target = i + dist;
-      if (target < n) {
+      if (target < K) {
         idx_root_blocks.push_back(i);
         idx_child_blocks.push_back(target);
       }
@@ -209,32 +355,29 @@ std::pair<Value, Value> duplicate_brent_kung(SPUContext* ctx, const Value& x,
 
     if (idx_child_blocks.empty()) continue;
 
-    spu::Index idx_root_elems = flat_indices(idx_root_blocks, total_block_size);
-    spu::Index idx_child_elems =
-        flat_indices(idx_child_blocks, total_block_size);
-    const spu::Index& idx_child_g = idx_child_blocks;
+    spu::Index batched_root = get_batched_indices(idx_root_blocks);
+    spu::Index batched_child = get_batched_indices(idx_child_blocks);
+
+    spu::Index idx_root_elems = flat_indices(batched_root, block_size);
+    spu::Index idx_child_elems = flat_indices(batched_child, block_size);
 
     Value v_root_p(p_flat_ref.linear_gather(idx_root_elems), p.dtype());
     Value v_child_p(p_flat_ref.linear_gather(idx_child_elems), p.dtype());
-    Value v_child_g(g_flat_ref.linear_gather(idx_child_g), g.dtype());
+    Value v_child_g(g_flat_ref.linear_gather(batched_child), g.dtype());
 
-    int64_t k = idx_child_blocks.size();
-    v_root_p = kernel::hal::reshape(ctx, v_root_p, {k, total_block_size});
-    v_child_p = kernel::hal::reshape(ctx, v_child_p, {k, total_block_size});
-    v_child_g = kernel::hal::reshape(ctx, v_child_g, {k, 1});
+    int64_t num_nodes = batched_child.size();
+    v_root_p = kernel::hal::reshape(ctx, v_root_p, {num_nodes, block_size});
+    v_child_p = kernel::hal::reshape(ctx, v_child_p, {num_nodes, block_size});
+    v_child_g = kernel::hal::reshape(ctx, v_child_g, {num_nodes, 1});
 
     auto new_p_child = node_func(ctx, v_child_p, v_root_p, v_child_g);
 
-    auto new_p_data = new_p_child.data().reshape({new_p_child.numel()});
-    p_flat_ref.linear_scatter(new_p_data, idx_child_elems);
+    p_flat_ref.linear_scatter(new_p_child.data().reshape({new_p_child.numel()}),
+                              idx_child_elems);
   }
 
-  // Slice the concatenated 'p' back into outputs
-  auto x_out = kernel::hal::slice(ctx, p, {0, 0}, {n, block_size}, {});
-  auto valids_out =
-      kernel::hal::slice(ctx, p, {0, block_size}, {n, 2 * block_size}, {});
-
-  return {x_out, valids_out};
+  // 恢复原始形状
+  return kernel::hal::reshape(ctx, p, {batch_size, K, m, n_attr});
 }
 
 /**
@@ -354,143 +497,6 @@ std::pair<std::vector<spu::Value>, int64_t> extract_ordered(
 
   return {y, valid_count};
 }
-
-// spu::Value ComputeMedians(SPUContext* ctx, const spu::Value& arr, const int
-// k,
-//                           const int m) {
-//   // a. b := im (隐含在 reshape 中)
-//   auto reshaped = hal::reshape(ctx, arr, {k, m, arr.shape()[1]});
-
-//   // 分离 key 和 valid (假设最后一列是 valid bit)
-//   auto key = hal::slice(ctx, reshaped, {0, 0, 0}, {k, m, 1}, {});
-//   auto valid = hal::slice(ctx, reshaped, {0, 0, 1}, {k, m, 2}, {});
-
-//   // 计算 f[i, j]
-//   // f[i, 0] = valid[i, 0]
-//   // f[i, j] = valid[i, j] && !valid[i, j-1]
-//   // 我们可以通过在 m 维度上将 valid 向右移位来实现
-
-//   // shift right: [0, v0, v1, ..., vm-2]
-//   auto v_prev_slice =
-//       hal::slice(ctx, valid, {0, 0, 0}, {k, m - 1, 1}, {});  // 前 m-1 个
-//   auto zeros = hal::constant(ctx, 0, valid.dtype(), {k, 1, 1});
-//   zeros = hal::seal(ctx, zeros);
-//   auto valid_prev = hal::concatenate(ctx, {zeros, v_prev_slice}, 1);
-
-//   // !valid_prev = 1 - valid_prev
-//   auto ones = hal::constant(ctx, 1.0, valid.dtype(), valid.shape());
-//   ones = hal::seal(ctx, ones);
-//   auto not_valid_prev = hal::sub(ctx, ones, valid_prev);
-
-//   // f = valid * (1 - valid_prev)
-//   auto f = hal::mul(ctx, valid, not_valid_prev);
-
-//   // e. Z[i] = sum(X[b+j] * f[i, j])
-//   // 广播 f 到数据维度
-//   // auto f_bcast = hal::broadcast_to(ctx, f, {k, m, width});
-//   auto term = hal::mul(ctx, key, f);
-
-//   // 在维度 1 (m) 上求和。由于 m 通常较小 (logN)，直接用循环累加即可，
-//   // 或者使用 reduce_sum 如果 HAL 支持。这里使用切片累加确保兼容性。
-//   auto z = hal::slice(ctx, term, {0, 0, 0}, {k, 1, 1}, {});
-//   z = hal::reshape(ctx, z, {k});
-
-//   for (int64_t j = 1; j < m; ++j) {
-//     auto slice_j = hal::slice(ctx, term, {0, j, 0}, {k, j + 1, 1}, {});
-//     slice_j = hal::reshape(ctx, slice_j, {k});
-//     z = hal::add(ctx, z, slice_j);
-//   }
-//   return z;
-// }
-
-// spu::Value LogstarRecursive(SPUContext* ctx, const spu::Value& x,
-//                             const spu::Value& y) {
-//   const int64_t nx = x.shape()[0];
-//   const int64_t ny = y.shape()[0];
-//   auto list_id_x = hal::seal(ctx, hal::constant(ctx, 0, DT_I1, {nx, 1}));
-//   auto list_id_y = hal::seal(ctx, hal::constant(ctx, 1, DT_I1, {ny, 1}));
-
-//   // block parameters
-//   int64_t basic_size = 1;
-//   auto m = Log2Floor(std::max(nx, ny));
-//   if (m == 0) m = 1;
-//   // k_x = ceil(nx / m)
-//   const int k_x = (nx + m - 1) / m;
-//   const int k_y = (ny + m - 1) / m;
-
-//   // pad x and y to make its length a multiple of m
-//   spu::Value x_pad = x;
-//   spu::Value y_pad = y;
-//   if (nx % m != 0) {
-//     int64_t padding_len = k_x * m - nx;
-//     spu::Value padding =
-//         hal::constant(ctx, 0, x.dtype(), {padding_len, x.shape()[1]});
-//     padding = hal::seal(ctx, padding);
-//     x_pad = hal::concatenate(ctx, {x, padding}, 0);
-//   }
-//   if (ny % m != 0) {
-//     int64_t padding_len = k_y * m - ny;
-//     spu::Value padding =
-//         hal::constant(ctx, 0, y.dtype(), {padding_len, y.shape()[1]});
-//     padding = hal::seal(ctx, padding);
-//     y_pad = hal::concatenate(ctx, {y, padding}, 0);
-//   }
-
-//   auto revealed1 = hal::dump_public_as<float>(ctx, hal::reveal(ctx, x_pad));
-//   auto revealed2 = hal::dump_public_as<float>(ctx, hal::reveal(ctx, y_pad));
-//   if (ctx->lctx()->Rank() == 0) {
-//     std::cout << "x_pad: " << revealed1 << std::endl;
-//     std::cout << "y_pad: " << revealed2 << std::endl;
-//   }
-
-//   if (nx <= basic_size) {
-//     // TODO
-//   } else {
-//     auto median_x = ComputeMedians(ctx, x_pad, k_x, m);
-//     auto median_y = ComputeMedians(ctx, y_pad, k_y, m);
-//     auto revealed1 =
-//         hal::dump_public_as<float>(ctx, hal::reveal(ctx, median_x));
-//     auto revealed2 =
-//         hal::dump_public_as<float>(ctx, hal::reveal(ctx, median_y));
-//     if (ctx->lctx()->Rank() == 0) {
-//       std::cout << "median_x: " << revealed1 << std::endl;
-//       std::cout << "median_y: " << revealed2 << std::endl;
-//     }
-
-//     //
-//     TODO：对每个块并行调用LogstarRecursive。解法1：直接串行，解法2：把块拼起来做向量计算。
-//   }
-
-//   return x;
-// }
-
-// spu::Value logstar(SPUContext* ctx, const spu::Value& key_x,
-//                    const spu::Value& key_y) {
-//   const int64_t nx = key_x.shape()[0];
-//   const int64_t ny = key_y.shape()[0];
-//   auto dtayp = key_x.dtype();
-//   auto valid_x = hal::seal(ctx, hal::constant(ctx, 1.0, dtayp, {nx, 1}));
-//   auto valid_y = hal::seal(ctx, hal::constant(ctx, 1.0, dtayp, {ny, 1}));
-//   // xt::xarray<int64_t> x_iota = xt::arange<int64_t>(nx);
-//   // auto idx_x = hal::seal(ctx, hal::constant(ctx, x_iota, dtayp, {nx, 1}));
-//   // xt::xarray<int64_t> y_iota = xt::arange<int64_t>(nx, nx + ny);
-//   // auto idx_y = hal::seal(ctx, hal::constant(ctx, y_iota, dtayp, {ny, 1}));
-
-//   auto x = hal::concatenate(ctx, {reshape(ctx, key_x, {nx, 1}), valid_x}, 1);
-//   auto y = hal::concatenate(ctx, {reshape(ctx, key_y, {ny, 1}), valid_y}, 1);
-
-//   if (ctx->lctx()->Rank() == 0) {
-//     std::cout << "x.shape(): " << x.shape() << std::endl;
-//   }
-
-//   return LogstarRecursive(ctx, x, y);
-
-//   // hal::dump_public_as<float>(ctx, hal::reveal(ctx, list_id_x));
-//   // auto c_idx_x = hal::dump_public_as<float>(ctx, hal::reveal(ctx, idx_y));
-//   // if (ctx->lctx()->Rank() == 0) {
-//   //   std::cout << "c_idx_x: " << c_idx_x << std::endl;
-//   // }
-// }
 
 spu::Value ComputeMedians(SPUContext* ctx, const spu::Value& arr, const int k,
                           const int m) {
@@ -737,7 +743,143 @@ spu::Value LogstarRecursive(SPUContext* ctx, const spu::Value& x,
       std::cout << "merged_results: " << revealed5 << std::endl;
     }
 
-    // TODO：对每个块并行调用LogstarRecursive。解法1：直接串行，解法2：把块拼起来做向量计算。
+    // 2.f. Compute transition points
+    auto merged_blocks = merged_results[1];
+    const int64_t K = k_x + k_y;
+
+    // 提取每个块的 ListId (取块内第一个元素的 ListId 即可)
+    // merged_blocks shape: [batch_size, K, m, n_attr]
+    auto list_ids =
+        hal::slice(ctx, merged_blocks, {0, 0, 0, 2}, {batch_size, K, 1, 3}, {});
+    list_ids = hal::reshape(ctx, list_ids, {batch_size, K});
+
+    // 提取 B_i 和 B_{i-1}
+    auto b_curr = hal::slice(ctx, list_ids, {0, 1}, {batch_size, K}, {});
+    auto b_prev = hal::slice(ctx, list_ids, {0, 0}, {batch_size, K - 1}, {});
+
+    // 计算 B_i.ListId ⊕ B_{i-1}.ListId
+    // 由于 ListId 只有 0 和 1，XOR 可以用 (A - B)^2 高效计算
+    auto diff = hal::sub(ctx, b_curr, b_prev);
+    auto xor_val = hal::mul(ctx, diff, diff);
+
+    // c_i = ¬(XOR) = 1 - XOR
+    auto ones = hal::seal(
+        ctx, hal::constant(ctx, 1.0F, list_ids.dtype(), {batch_size, K - 1}));
+    auto c_rest = hal::sub(ctx, ones, xor_val);
+
+    // c_0 = 0
+    auto c_0 = hal::seal(
+        ctx, hal::constant(ctx, 0.0F, list_ids.dtype(), {batch_size, 1}));
+
+    // 拼接得到完整的 c: [batch_size, K]
+    auto c = hal::concatenate(ctx, {c_0, c_rest}, 1);
+
+    // 打印 c 验证
+    auto revealed_c = hal::dump_public_as<float>(ctx, hal::reveal(ctx, c));
+    if (ctx->lctx()->Rank() == 0) {
+      std::cout << "transition flag c: " << revealed_c << std::endl;
+    }
+
+    // 2.g. Duplicate blocks using Brent-Kung network
+    // S 的形状与 merged_blocks 相同: [batch_size, K, m, n_attr]
+    auto S = duplicate_brent_kung(ctx, merged_blocks, c);
+
+    // 打印 S 验证
+    auto revealed_S = hal::dump_public_as<float>(ctx, hal::reveal(ctx, S));
+    if (ctx->lctx()->Rank() == 0) {
+      std::cout << "duplicated blocks S: " << revealed_S << std::endl;
+    }
+
+    // 2.h. Update IsReal (Valid bits) for B (merged_blocks) and S
+    // 提取 B 和 S 的 Key (属性 0) 和 Valid (属性 1)
+    auto B_key = hal::reshape(
+        ctx,
+        hal::slice(ctx, merged_blocks, {0, 0, 0, 0}, {batch_size, K, m, 1}, {}),
+        {batch_size, K, m});
+    auto B_valid = hal::reshape(
+        ctx,
+        hal::slice(ctx, merged_blocks, {0, 0, 0, 1}, {batch_size, K, m, 2}, {}),
+        {batch_size, K, m});
+
+    auto S_key = hal::reshape(
+        ctx, hal::slice(ctx, S, {0, 0, 0, 0}, {batch_size, K, m, 1}, {}),
+        {batch_size, K, m});
+    auto S_valid = hal::reshape(
+        ctx, hal::slice(ctx, S, {0, 0, 0, 1}, {batch_size, K, m, 2}, {}),
+        {batch_size, K, m});
+
+    // 提取 B_{i, 0} (每个块的第一个元素的 Key): [batch_size, K, 1]
+    auto B_curr_first =
+        hal::slice(ctx, B_key, {0, 0, 0}, {batch_size, K, 1}, {});
+
+    // 构造 B_{i+1, 0} (下一个块的第一个元素的 Key)
+    auto B_first_shifted =
+        hal::slice(ctx, B_curr_first, {0, 1, 0}, {batch_size, K, 1},
+                   {});  // [batch_size, K-1, 1]
+    auto inf_pad =
+        hal::constant(ctx, 1e9F, B_key.dtype(),
+                      {batch_size, 1, 1});  // 最后一个块的 next 设为无穷大
+    if (B_key.isSecret()) inf_pad = hal::seal(ctx, inf_pad);
+    auto B_next_first = hal::concatenate(ctx, {B_first_shifted, inf_pad},
+                                         1);  // [batch_size, K, 1]
+
+    // 广播到 [batch_size, K, m] 以便进行逐元素比较
+    auto B_curr_first_bcast =
+        hal::broadcast_to(ctx, B_curr_first, {batch_size, K, m});
+    auto B_next_first_bcast =
+        hal::broadcast_to(ctx, B_next_first, {batch_size, K, m});
+
+    // i. B_{i,j}.IsReal := B_{i,j}.IsReal ∧ (B_{i,j} < B_{i+1, 0})
+    auto cond_B = hal::less(ctx, B_key, B_next_first_bcast);
+    auto new_B_valid = hal::mul(ctx, B_valid, cond_B);
+
+    // ii. S_{i,j}.IsReal := S_{i,j}.IsReal ∧ (S_{i,j} >= B_{i, 0}) ∧ (S_{i,j}
+    // <= B_{i+1, 0})
+    auto cond_S1 = hal::greater_equal(ctx, S_key, B_curr_first_bcast);
+    auto cond_S2 = hal::less_equal(ctx, S_key, B_next_first_bcast);
+    auto cond_S = hal::mul(ctx, cond_S1, cond_S2);
+    auto new_S_valid = hal::mul(ctx, S_valid, cond_S);
+
+    // 将更新后的 Valid 位重新拼装回 merged_blocks 和 S
+    auto B_attr0 =
+        hal::slice(ctx, merged_blocks, {0, 0, 0, 0}, {batch_size, K, m, 1}, {});
+    auto B_attr2 = hal::slice(ctx, merged_blocks, {0, 0, 0, 2},
+                              {batch_size, K, m, n_attr}, {});
+    auto new_B_valid_reshaped =
+        hal::reshape(ctx, new_B_valid, {batch_size, K, m, 1});
+    merged_blocks =
+        hal::concatenate(ctx, {B_attr0, new_B_valid_reshaped, B_attr2}, 3);
+
+    auto S_attr0 = hal::slice(ctx, S, {0, 0, 0, 0}, {batch_size, K, m, 1}, {});
+    auto S_attr2 =
+        hal::slice(ctx, S, {0, 0, 0, 2}, {batch_size, K, m, n_attr}, {});
+    auto new_S_valid_reshaped =
+        hal::reshape(ctx, new_S_valid, {batch_size, K, m, 1});
+    S = hal::concatenate(ctx, {S_attr0, new_S_valid_reshaped, S_attr2}, 3);
+
+    auto revealed_B =
+        hal::dump_public_as<float>(ctx, hal::reveal(ctx, merged_blocks));
+    revealed_S = hal::dump_public_as<float>(ctx, hal::reveal(ctx, S));
+    if (ctx->lctx()->Rank() == 0) {
+      std::cout << "processed blocks B: " << revealed_B << std::endl;
+      std::cout << "processed blocks S: " << revealed_S << std::endl;
+    }
+
+    // 2.i. parallel-for i \in [2k]: [[I_i]] := LogstarRecursive([[S_i]],
+    // [[B_i]])
+    // 为了实现极致的并行化，我们将 batch_size 和 K 维度合并，作为新的
+    // batch_size 传入递归
+    auto S_flat = hal::reshape(ctx, S, {batch_size * K, m, n_attr});
+    auto B_flat = hal::reshape(ctx, merged_blocks, {batch_size * K, m, n_attr});
+
+    // 仅需一次调用，底层会自动对 batch_size * K 个块进行 SIMD 并行计算
+    auto I_flat = LogstarRecursive(ctx, S_flat, B_flat);
+
+    // 递归返回的结果长度为 m + m = 2m
+    // I_flat 的形状为 [batch_size * K, 2 * m, n_attr]
+    // 将其恢复为 [batch_size, K, 2 * m, n_attr]
+    auto I = hal::reshape(ctx, I_flat, {batch_size, K, 2 * m, n_attr});
+    return I;
   }
 
   return x;
@@ -755,7 +897,7 @@ spu::Value logstar(SPUContext* ctx, const spu::Value& key_x,
   // xt::xarray<int64_t> y_iota = xt::arange<int64_t>(nx, nx + ny);
   // auto idx_y = hal::seal(ctx, hal::constant(ctx, y_iota, dtayp, {ny, 1}));
   auto list_id_x = hal::seal(ctx, hal::constant(ctx, 0, dtayp, {1, nx, 1}));
-  auto list_id_y = hal::seal(ctx, hal::constant(ctx, 1, dtayp, {1, nx, 1}));
+  auto list_id_y = hal::seal(ctx, hal::constant(ctx, 1, dtayp, {1, ny, 1}));
 
   auto x = hal::concatenate(
       ctx, {reshape(ctx, key_x, {1, nx, 1}), valid_x, list_id_x}, 2);
