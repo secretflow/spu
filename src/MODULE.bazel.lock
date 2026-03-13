@@ -18,8 +18,8 @@
     "https://bcr.bazel.build/modules/abseil-cpp/20250512.0/MODULE.bazel": "c4d02dd22cd87458516655a45512060246ee2a4732f1fbe948a5bd9eb614e626",
     "https://bcr.bazel.build/modules/abseil-cpp/20250512.1/MODULE.bazel": "d209fdb6f36ffaf61c509fcc81b19e81b411a999a934a032e10cd009a0226215",
     "https://bcr.bazel.build/modules/abseil-cpp/20250814.0/MODULE.bazel": "c43c16ca2c432566cdb78913964497259903ebe8fb7d9b57b38e9f1425b427b8",
-    "https://bcr.bazel.build/modules/abseil-cpp/20250814.1/MODULE.bazel": "51f2312901470cdab0dbdf3b88c40cd21c62a7ed58a3de45b365ddc5b11bcab2",
-    "https://bcr.bazel.build/modules/abseil-cpp/20250814.1/source.json": "cea3901d7e299da7320700abbaafe57a65d039f10d0d7ea601c4a66938ea4b0c",
+    "https://bcr.bazel.build/modules/abseil-cpp/20250814.2/MODULE.bazel": "17b900597f44dfec6fe502fc3b123a57d86ad7aafe815f9ef4f99d85452a3104",
+    "https://bcr.bazel.build/modules/abseil-cpp/20250814.2/source.json": "453658303fda0a45607840904552f5801657aea7aae29f5e9f3c0d91ffd49214",
     "https://bcr.bazel.build/modules/abseil-py/2.1.0/MODULE.bazel": "5ebe5bf853769c65707e5c28f216798f7a4b1042015e6a36e6d03094d94bec8a",
     "https://bcr.bazel.build/modules/abseil-py/2.1.0/source.json": "0e8fc4f088ce07099c1cd6594c20c7ddbb48b4b3c0849b7d94ba94be88ff042b",
     "https://bcr.bazel.build/modules/apple_rules_lint/0.3.2/MODULE.bazel": "025c849b118da09af75afe0785bade64f082d27bb6aa1e078bfcbd1dc5a5bb26",
@@ -582,7 +582,7 @@
     "https://raw.githubusercontent.com/secretflow/bazel-registry/main/modules/abseil-cpp/20250512.0/MODULE.bazel": "not found",
     "https://raw.githubusercontent.com/secretflow/bazel-registry/main/modules/abseil-cpp/20250512.1/MODULE.bazel": "not found",
     "https://raw.githubusercontent.com/secretflow/bazel-registry/main/modules/abseil-cpp/20250814.0/MODULE.bazel": "not found",
-    "https://raw.githubusercontent.com/secretflow/bazel-registry/main/modules/abseil-cpp/20250814.1/MODULE.bazel": "not found",
+    "https://raw.githubusercontent.com/secretflow/bazel-registry/main/modules/abseil-cpp/20250814.2/MODULE.bazel": "not found",
     "https://raw.githubusercontent.com/secretflow/bazel-registry/main/modules/abseil-py/2.1.0/MODULE.bazel": "not found",
     "https://raw.githubusercontent.com/secretflow/bazel-registry/main/modules/apple_rules_lint/0.3.2/MODULE.bazel": "not found",
     "https://raw.githubusercontent.com/secretflow/bazel-registry/main/modules/apple_support/1.11.1/MODULE.bazel": "not found",
@@ -1076,6 +1076,716 @@
         "recordedRepoMappingEntries": [
           [
             "",
+            "bazel_tools",
+            "bazel_tools"
+          ]
+        ]
+      }
+    },
+    "@@apple_rules_lint~//lint:extensions.bzl%linter": {
+      "general": {
+        "bzlTransitiveDigest": "g7izj5kLCmsajh8IospHh4ZQ35dyM0FIrA8D4HapAsM=",
+        "usagesDigest": "PWm7VipWHt4GsnFM83KPA/491wILBbYFswKoWE/Shnc=",
+        "recordedFileInputs": {},
+        "recordedDirentsInputs": {},
+        "envVariables": {},
+        "generatedRepoSpecs": {
+          "apple_linters": {
+            "bzlFile": "@@apple_rules_lint~//lint/private:register_linters.bzl",
+            "ruleClassName": "register_linters",
+            "attributes": {
+              "linters": {}
+            }
+          }
+        },
+        "recordedRepoMappingEntries": []
+      }
+    },
+    "@@bazel_jar_jar~//internal:non_module_deps.bzl%non_module_deps": {
+      "general": {
+        "bzlTransitiveDigest": "sOwQYGTMEk3f0uqd0rD7a6kzSMSxhtNmLL6heADmnkU=",
+        "usagesDigest": "8wNM47NKIWiz3KyPnwAfhWFk02ekrs6e4eAU8ydsQb4=",
+        "recordedFileInputs": {},
+        "recordedDirentsInputs": {},
+        "envVariables": {},
+        "generatedRepoSpecs": {
+          "jvm__jarjar_abrams_assembly": {
+            "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
+            "ruleClassName": "http_jar",
+            "attributes": {
+              "urls": [
+                "https://repo1.maven.org/maven2/com/eed3si9n/jarjarabrams/jarjar-abrams-assembly_2.12/1.14.0/jarjar-abrams-assembly_2.12-1.14.0.jar"
+              ],
+              "sha256": "75f86f7588136d6ca92d6fed8d58e6666e04c507b71de378527c053fd2a151c2"
+            }
+          },
+          "jvm__com_twitter__scalding_args": {
+            "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
+            "ruleClassName": "http_jar",
+            "attributes": {
+              "urls": [
+                "https://repo1.maven.org/maven2/com/twitter/scalding-args_2.12/0.17.4/scalding-args_2.12-0.17.4.jar"
+              ],
+              "sha256": "e0de2ad8ef344bb11a2854275b5b85a1adb17f0e0ed9740177d940a602cd977b"
+            }
+          }
+        },
+        "recordedRepoMappingEntries": [
+          [
+            "bazel_jar_jar~",
+            "bazel_tools",
+            "bazel_tools"
+          ],
+          [
+            "bazel_tools",
+            "rules_java",
+            "rules_java~"
+          ],
+          [
+            "rules_java~",
+            "compatibility_proxy",
+            "rules_java~~compatibility_proxy~compatibility_proxy"
+          ],
+          [
+            "rules_java~~compatibility_proxy~compatibility_proxy",
+            "bazel_tools",
+            "bazel_tools"
+          ],
+          [
+            "rules_java~~compatibility_proxy~compatibility_proxy",
+            "rules_java",
+            "rules_java~"
+          ]
+        ]
+      }
+    },
+    "@@cel-spec~//:extensions.bzl%non_module_dependencies": {
+      "general": {
+        "bzlTransitiveDigest": "6CkMtlVf0+wa/a1aM27HqEUPlEiiBQjcEvzY3saAhw8=",
+        "usagesDigest": "2f6juplOpWu+UdD1kVgi773xavnFQ+OcH0PRuQduDxY=",
+        "recordedFileInputs": {},
+        "recordedDirentsInputs": {},
+        "envVariables": {},
+        "generatedRepoSpecs": {
+          "com_google_googleapis": {
+            "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
+            "ruleClassName": "http_archive",
+            "attributes": {
+              "sha256": "bd8e735d881fb829751ecb1a77038dda4a8d274c45490cb9fcf004583ee10571",
+              "strip_prefix": "googleapis-07c27163ac591955d736f3057b1619ece66f5b99",
+              "urls": [
+                "https://github.com/googleapis/googleapis/archive/07c27163ac591955d736f3057b1619ece66f5b99.tar.gz"
+              ]
+            }
+          }
+        },
+        "recordedRepoMappingEntries": [
+          [
+            "cel-spec~",
+            "bazel_tools",
+            "bazel_tools"
+          ]
+        ]
+      }
+    },
+    "@@cel-spec~//:googleapis_ext.bzl%googleapis_ext": {
+      "general": {
+        "bzlTransitiveDigest": "yun2jmsomFi3bs5bjQWXApBzqQf66zBJ39JEBYigzdc=",
+        "usagesDigest": "OK8FsLndSl2AbwGM1Npe5NdHR1kDAebcw7Ee+KkekE0=",
+        "recordedFileInputs": {},
+        "recordedDirentsInputs": {},
+        "envVariables": {},
+        "generatedRepoSpecs": {
+          "com_google_googleapis_imports": {
+            "bzlFile": "@@cel-spec~~non_module_dependencies~com_google_googleapis//:repository_rules.bzl",
+            "ruleClassName": "switched_rules",
+            "attributes": {
+              "rules": {
+                "proto_library_with_info": [
+                  "",
+                  ""
+                ],
+                "moved_proto_library": [
+                  "",
+                  ""
+                ],
+                "java_proto_library": [
+                  "",
+                  ""
+                ],
+                "java_grpc_library": [
+                  "",
+                  ""
+                ],
+                "java_gapic_library": [
+                  "",
+                  ""
+                ],
+                "java_gapic_test": [
+                  "",
+                  ""
+                ],
+                "java_gapic_assembly_gradle_pkg": [
+                  "",
+                  ""
+                ],
+                "py_proto_library": [
+                  "",
+                  ""
+                ],
+                "py_grpc_library": [
+                  "",
+                  ""
+                ],
+                "py_gapic_library": [
+                  "",
+                  ""
+                ],
+                "py_test": [
+                  "",
+                  ""
+                ],
+                "py_gapic_assembly_pkg": [
+                  "",
+                  ""
+                ],
+                "py_import": [
+                  "",
+                  ""
+                ],
+                "go_proto_library": [
+                  "",
+                  ""
+                ],
+                "go_library": [
+                  "",
+                  ""
+                ],
+                "go_test": [
+                  "",
+                  ""
+                ],
+                "go_gapic_library": [
+                  "",
+                  ""
+                ],
+                "go_gapic_assembly_pkg": [
+                  "",
+                  ""
+                ],
+                "cc_proto_library": [
+                  "native.cc_proto_library",
+                  ""
+                ],
+                "cc_grpc_library": [
+                  "",
+                  ""
+                ],
+                "cc_gapic_library": [
+                  "",
+                  ""
+                ],
+                "php_proto_library": [
+                  "",
+                  "php_proto_library"
+                ],
+                "php_grpc_library": [
+                  "",
+                  "php_grpc_library"
+                ],
+                "php_gapic_library": [
+                  "",
+                  "php_gapic_library"
+                ],
+                "php_gapic_assembly_pkg": [
+                  "",
+                  "php_gapic_assembly_pkg"
+                ],
+                "nodejs_gapic_library": [
+                  "",
+                  "typescript_gapic_library"
+                ],
+                "nodejs_gapic_assembly_pkg": [
+                  "",
+                  "typescript_gapic_assembly_pkg"
+                ],
+                "ruby_proto_library": [
+                  "",
+                  ""
+                ],
+                "ruby_grpc_library": [
+                  "",
+                  ""
+                ],
+                "ruby_ads_gapic_library": [
+                  "",
+                  ""
+                ],
+                "ruby_cloud_gapic_library": [
+                  "",
+                  ""
+                ],
+                "ruby_gapic_assembly_pkg": [
+                  "",
+                  ""
+                ],
+                "csharp_proto_library": [
+                  "",
+                  ""
+                ],
+                "csharp_grpc_library": [
+                  "",
+                  ""
+                ],
+                "csharp_gapic_library": [
+                  "",
+                  ""
+                ],
+                "csharp_gapic_assembly_pkg": [
+                  "",
+                  ""
+                ]
+              }
+            }
+          }
+        },
+        "recordedRepoMappingEntries": [
+          [
+            "cel-spec~",
+            "com_google_googleapis",
+            "cel-spec~~non_module_dependencies~com_google_googleapis"
+          ]
+        ]
+      }
+    },
+    "@@contrib_rules_jvm~//java/private:non-module-deps.bzl%non_module_deps": {
+      "general": {
+        "bzlTransitiveDigest": "j09AXv6/8Xy957HedW5CG0VqZXy2Ciccy/j1r7/7OuQ=",
+        "usagesDigest": "6S6dYYhBqcXgD3xQKERMW0C3KypLBirjPYfJHcOpAUQ=",
+        "recordedFileInputs": {},
+        "recordedDirentsInputs": {},
+        "envVariables": {},
+        "generatedRepoSpecs": {
+          "io_grpc_grpc_java": {
+            "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
+            "ruleClassName": "http_archive",
+            "attributes": {
+              "sha256": "17dd91014032a147c978ae99582fddd950f5444388eae700cf51eda0326ad2f9",
+              "strip_prefix": "grpc-java-1.56.1",
+              "urls": [
+                "https://github.com/grpc/grpc-java/archive/v1.56.1.tar.gz"
+              ]
+            }
+          }
+        },
+        "recordedRepoMappingEntries": [
+          [
+            "contrib_rules_jvm~",
+            "bazel_tools",
+            "bazel_tools"
+          ]
+        ]
+      }
+    },
+    "@@envoy_api~//bazel:repositories.bzl%non_module_deps": {
+      "general": {
+        "bzlTransitiveDigest": "x5AN+8lrZY4TqPl2+PWCD504BSCQyK3/lMLkQos0KhM=",
+        "usagesDigest": "IivjlawPvqhHPUJ3c6dLiPsH22mn/g/dJtlmv3zdimM=",
+        "recordedFileInputs": {},
+        "recordedDirentsInputs": {},
+        "envVariables": {},
+        "generatedRepoSpecs": {
+          "prometheus_metrics_model": {
+            "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
+            "ruleClassName": "http_archive",
+            "attributes": {
+              "urls": [
+                "https://github.com/prometheus/client_model/archive/v0.6.1.tar.gz"
+              ],
+              "sha256": "b9b690bc35d80061f255faa7df7621eae39fe157179ccd78ff6409c3b004f05e",
+              "strip_prefix": "client_model-0.6.1",
+              "build_file_content": "\nload(\"@envoy_api//bazel:api_build_system.bzl\", \"api_cc_py_proto_library\")\nload(\"@io_bazel_rules_go//proto:def.bzl\", \"go_proto_library\")\n\napi_cc_py_proto_library(\n    name = \"client_model\",\n    srcs = [\n        \"io/prometheus/client/metrics.proto\",\n    ],\n    visibility = [\"//visibility:public\"],\n)\n\ngo_proto_library(\n    name = \"client_model_go_proto\",\n    importpath = \"github.com/prometheus/client_model/go\",\n    proto = \":client_model\",\n    visibility = [\"//visibility:public\"],\n)\n"
+            }
+          },
+          "com_github_bufbuild_buf": {
+            "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
+            "ruleClassName": "http_archive",
+            "attributes": {
+              "urls": [
+                "https://github.com/bufbuild/buf/releases/download/v1.49.0/buf-Linux-x86_64.tar.gz"
+              ],
+              "sha256": "ee8da9748249f7946d79191e36469ce7bc3b8ba80019bff1fa4289a44cbc23bf",
+              "strip_prefix": "buf",
+              "build_file_content": "\npackage(\n    default_visibility = [\"//visibility:public\"],\n)\n\nfilegroup(\n    name = \"buf\",\n    srcs = [\n        \"@com_github_bufbuild_buf//:bin/buf\",\n    ],\n    tags = [\"manual\"], # buf is downloaded as a linux binary; tagged manual to prevent build for non-linux users\n)\n"
+            }
+          },
+          "envoy_toolshed": {
+            "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
+            "ruleClassName": "http_archive",
+            "attributes": {
+              "urls": [
+                "https://github.com/envoyproxy/toolshed/archive/bazel-v0.2.2.tar.gz"
+              ],
+              "sha256": "443fe177aba0cef8c17b7a48905c925c67b09005b10dd70ff12cd9f729a72d51",
+              "strip_prefix": "toolshed-bazel-v0.2.2/bazel"
+            }
+          }
+        },
+        "recordedRepoMappingEntries": [
+          [
+            "envoy_api~",
+            "bazel_tools",
+            "bazel_tools"
+          ],
+          [
+            "envoy_api~",
+            "envoy_api",
+            "envoy_api~"
+          ]
+        ]
+      }
+    },
+    "@@googleapis~//:extensions.bzl%switched_rules": {
+      "general": {
+        "bzlTransitiveDigest": "vG6fuTzXD8MMvHWZEQud0MMH7eoC4GXY0va7VrFFh04=",
+        "usagesDigest": "4t1aupDpoTnYHRhGBq6SYdfvYyJt8VhioIbb1UwcBkI=",
+        "recordedFileInputs": {},
+        "recordedDirentsInputs": {},
+        "envVariables": {},
+        "generatedRepoSpecs": {
+          "com_google_googleapis_imports": {
+            "bzlFile": "@@googleapis~//:repository_rules.bzl",
+            "ruleClassName": "switched_rules",
+            "attributes": {
+              "rules": {
+                "proto_library_with_info": [
+                  "",
+                  ""
+                ],
+                "moved_proto_library": [
+                  "",
+                  ""
+                ],
+                "java_proto_library": [
+                  "",
+                  ""
+                ],
+                "java_grpc_library": [
+                  "",
+                  ""
+                ],
+                "java_gapic_library": [
+                  "",
+                  ""
+                ],
+                "java_gapic_test": [
+                  "",
+                  ""
+                ],
+                "java_gapic_assembly_gradle_pkg": [
+                  "",
+                  ""
+                ],
+                "py_proto_library": [
+                  "",
+                  ""
+                ],
+                "py_grpc_library": [
+                  "",
+                  ""
+                ],
+                "py_gapic_library": [
+                  "",
+                  ""
+                ],
+                "py_test": [
+                  "",
+                  ""
+                ],
+                "py_gapic_assembly_pkg": [
+                  "",
+                  ""
+                ],
+                "py_import": [
+                  "",
+                  ""
+                ],
+                "go_proto_library": [
+                  "",
+                  ""
+                ],
+                "go_grpc_library": [
+                  "",
+                  ""
+                ],
+                "go_library": [
+                  "",
+                  ""
+                ],
+                "go_test": [
+                  "",
+                  ""
+                ],
+                "go_gapic_library": [
+                  "",
+                  ""
+                ],
+                "go_gapic_assembly_pkg": [
+                  "",
+                  ""
+                ],
+                "cc_proto_library": [
+                  "",
+                  ""
+                ],
+                "cc_grpc_library": [
+                  "",
+                  ""
+                ],
+                "cc_gapic_library": [
+                  "",
+                  ""
+                ],
+                "php_proto_library": [
+                  "",
+                  "php_proto_library"
+                ],
+                "php_grpc_library": [
+                  "",
+                  "php_grpc_library"
+                ],
+                "php_gapic_library": [
+                  "",
+                  "php_gapic_library"
+                ],
+                "php_gapic_assembly_pkg": [
+                  "",
+                  "php_gapic_assembly_pkg"
+                ],
+                "nodejs_gapic_library": [
+                  "",
+                  "typescript_gapic_library"
+                ],
+                "nodejs_gapic_assembly_pkg": [
+                  "",
+                  "typescript_gapic_assembly_pkg"
+                ],
+                "ruby_proto_library": [
+                  "",
+                  ""
+                ],
+                "ruby_grpc_library": [
+                  "",
+                  ""
+                ],
+                "ruby_ads_gapic_library": [
+                  "",
+                  ""
+                ],
+                "ruby_cloud_gapic_library": [
+                  "",
+                  ""
+                ],
+                "ruby_gapic_assembly_pkg": [
+                  "",
+                  ""
+                ],
+                "csharp_proto_library": [
+                  "",
+                  ""
+                ],
+                "csharp_grpc_library": [
+                  "",
+                  ""
+                ],
+                "csharp_gapic_library": [
+                  "",
+                  ""
+                ],
+                "csharp_gapic_assembly_pkg": [
+                  "",
+                  ""
+                ]
+              }
+            }
+          }
+        },
+        "recordedRepoMappingEntries": []
+      }
+    },
+    "@@nanobind_bazel~//:internal_configure.bzl%internal_configure_extension": {
+      "general": {
+        "bzlTransitiveDigest": "9iesoKtYlPZaTa8Xl/vVJuOrhRntUNLYOP30hIs5V6E=",
+        "usagesDigest": "pt4qDBH+4jZCXeNZlIWeL5sKn/6Rvqki2EAfRLDY/dw=",
+        "recordedFileInputs": {},
+        "recordedDirentsInputs": {},
+        "envVariables": {},
+        "generatedRepoSpecs": {
+          "robin_map": {
+            "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
+            "ruleClassName": "http_archive",
+            "attributes": {
+              "build_file": "@@nanobind_bazel~//:robin_map.BUILD",
+              "strip_prefix": "robin-map-1.4.0",
+              "integrity": "sha256-eTDb+WNKz8Amhth/YVwPTzMTWUgTC4kiMxwW2QoDJQw=",
+              "urls": [
+                "https://github.com/Tessil/robin-map/archive/refs/tags/v1.4.0.tar.gz"
+              ]
+            }
+          },
+          "nanobind": {
+            "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
+            "ruleClassName": "http_archive",
+            "attributes": {
+              "build_file": "@@nanobind_bazel~//:nanobind.BUILD",
+              "strip_prefix": "nanobind-2.9.2",
+              "integrity": "sha256-jONmfc4+ZPwGv7m3eLb0hzFII2L7iaQ9oVZjImbNWpA=",
+              "urls": [
+                "https://github.com/wjakob/nanobind/archive/refs/tags/v2.9.2.tar.gz"
+              ]
+            }
+          },
+          "pypi__typing_extensions": {
+            "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
+            "ruleClassName": "http_archive",
+            "attributes": {
+              "build_file": "@@nanobind_bazel~//:typing_extensions.BUILD",
+              "strip_prefix": "typing_extensions-4.15.0",
+              "integrity": "sha256-DOpI0XPMEvoo7KvDuDfqPPbzjG0RNvhcuq9ZiYSGFGY=",
+              "urls": [
+                "https://files.pythonhosted.org/packages/72/94/1a15dd82efb362ac84269196e94cf00f187f7ed21c242792a923cdb1c61f/typing_extensions-4.15.0.tar.gz"
+              ]
+            }
+          }
+        },
+        "recordedRepoMappingEntries": [
+          [
+            "nanobind_bazel~",
+            "bazel_tools",
+            "bazel_tools"
+          ]
+        ]
+      }
+    },
+    "@@pybind11_bazel~//:internal_configure.bzl%internal_configure_extension": {
+      "general": {
+        "bzlTransitiveDigest": "V6XOZJoC3qDvZt8hyaFUy787rp8tySCn6+yv5Zwq/dY=",
+        "usagesDigest": "7GUZMUchIwmV+D8pVq4uWRtyG5GIaQv0Od1xpgJ9XTc=",
+        "recordedFileInputs": {},
+        "recordedDirentsInputs": {},
+        "envVariables": {},
+        "generatedRepoSpecs": {
+          "pybind11": {
+            "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
+            "ruleClassName": "http_archive",
+            "attributes": {
+              "build_file": "@@pybind11_bazel~//:pybind11-BUILD.bazel",
+              "strip_prefix": "pybind11-2.13.6",
+              "url": "https://github.com/pybind/pybind11/archive/refs/tags/v2.13.6.tar.gz",
+              "integrity": "sha256-4Iy4f0dz2pf6e18DXeh2OrxlbYfVdz5i9toFh9Hw7CA="
+            }
+          }
+        },
+        "recordedRepoMappingEntries": [
+          [
+            "pybind11_bazel~",
+            "bazel_tools",
+            "bazel_tools"
+          ]
+        ]
+      }
+    },
+    "@@rules_apple~//apple:apple.bzl%provisioning_profile_repository_extension": {
+      "general": {
+        "bzlTransitiveDigest": "mnFtExCaJeiQtg+tEC+hmfzgFiJCKdDl/WOppYYWlmo=",
+        "usagesDigest": "cLx5XGjlbSDOpyA053y/jlr4GcaXFVTeHQic6eyG38E=",
+        "recordedFileInputs": {},
+        "recordedDirentsInputs": {},
+        "envVariables": {},
+        "generatedRepoSpecs": {
+          "local_provisioning_profiles": {
+            "bzlFile": "@@rules_apple~//apple/internal:local_provisioning_profiles.bzl",
+            "ruleClassName": "provisioning_profile_repository",
+            "attributes": {}
+          }
+        },
+        "recordedRepoMappingEntries": [
+          [
+            "apple_support~",
+            "bazel_skylib",
+            "bazel_skylib~"
+          ],
+          [
+            "rules_apple~",
+            "bazel_skylib",
+            "bazel_skylib~"
+          ],
+          [
+            "rules_apple~",
+            "bazel_tools",
+            "bazel_tools"
+          ],
+          [
+            "rules_apple~",
+            "build_bazel_apple_support",
+            "apple_support~"
+          ],
+          [
+            "rules_apple~",
+            "build_bazel_rules_swift",
+            "rules_swift~"
+          ],
+          [
+            "rules_swift~",
+            "bazel_skylib",
+            "bazel_skylib~"
+          ],
+          [
+            "rules_swift~",
+            "bazel_tools",
+            "bazel_tools"
+          ],
+          [
+            "rules_swift~",
+            "build_bazel_apple_support",
+            "apple_support~"
+          ],
+          [
+            "rules_swift~",
+            "build_bazel_rules_swift",
+            "rules_swift~"
+          ],
+          [
+            "rules_swift~",
+            "build_bazel_rules_swift_local_config",
+            "rules_swift~~non_module_deps~build_bazel_rules_swift_local_config"
+          ]
+        ]
+      }
+    },
+    "@@rules_apple~//apple:extensions.bzl%non_module_deps": {
+      "general": {
+        "bzlTransitiveDigest": "Ia8tEfgBgcPGg7pBbN19ry75D46ClFYPRisPOZv5Ex8=",
+        "usagesDigest": "5FfEPy/Z0Y2V9RbdJRDabgADFdvlfIIrps/5XYOnMNI=",
+        "recordedFileInputs": {},
+        "recordedDirentsInputs": {},
+        "envVariables": {},
+        "generatedRepoSpecs": {
+          "xctestrunner": {
+            "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
+            "ruleClassName": "http_archive",
+            "attributes": {
+              "urls": [
+                "https://github.com/google/xctestrunner/archive/b7698df3d435b6491b4b4c0f9fc7a63fbed5e3a6.tar.gz"
+              ],
+              "strip_prefix": "xctestrunner-b7698df3d435b6491b4b4c0f9fc7a63fbed5e3a6",
+              "sha256": "ae3a063c985a8633cb7eb566db21656f8db8eb9a0edb8c182312c7f0db53730d"
+            }
+          }
+        },
+        "recordedRepoMappingEntries": [
+          [
+            "rules_apple~",
             "bazel_tools",
             "bazel_tools"
           ]
@@ -2683,6 +3393,243 @@
         ]
       }
     },
+    "@@rules_ml_toolchain~//third_party/extensions:nccl_configure.bzl%nccl_configure_ext": {
+      "general": {
+        "bzlTransitiveDigest": "BRhajtL/DqaIkpwPiWC7hVU1Jvcla4JJgBAYVm52yP0=",
+        "usagesDigest": "UDX+HM3fCTkz0eYs/Y77b7Wa9jYsnqxQqesMIUNgmcI=",
+        "recordedFileInputs": {},
+        "recordedDirentsInputs": {},
+        "envVariables": {},
+        "generatedRepoSpecs": {
+          "local_config_nccl": {
+            "bzlFile": "@@rules_ml_toolchain~//third_party/nccl/hermetic:nccl_configure.bzl",
+            "ruleClassName": "nccl_configure",
+            "attributes": {}
+          }
+        },
+        "recordedRepoMappingEntries": [
+          [
+            "rules_ml_toolchain~",
+            "cuda_cccl",
+            "rules_ml_toolchain~~cuda_redist_init_ext~cuda_cccl"
+          ],
+          [
+            "rules_ml_toolchain~",
+            "cuda_crt",
+            "rules_ml_toolchain~~cuda_redist_init_ext~cuda_crt"
+          ],
+          [
+            "rules_ml_toolchain~",
+            "cuda_cublas",
+            "rules_ml_toolchain~~cuda_redist_init_ext~cuda_cublas"
+          ],
+          [
+            "rules_ml_toolchain~",
+            "cuda_cudart",
+            "rules_ml_toolchain~~cuda_redist_init_ext~cuda_cudart"
+          ],
+          [
+            "rules_ml_toolchain~",
+            "cuda_cudnn",
+            "rules_ml_toolchain~~cuda_redist_init_ext~cuda_cudnn"
+          ],
+          [
+            "rules_ml_toolchain~",
+            "cuda_cufft",
+            "rules_ml_toolchain~~cuda_redist_init_ext~cuda_cufft"
+          ],
+          [
+            "rules_ml_toolchain~",
+            "cuda_cupti",
+            "rules_ml_toolchain~~cuda_redist_init_ext~cuda_cupti"
+          ],
+          [
+            "rules_ml_toolchain~",
+            "cuda_curand",
+            "rules_ml_toolchain~~cuda_redist_init_ext~cuda_curand"
+          ],
+          [
+            "rules_ml_toolchain~",
+            "cuda_cusolver",
+            "rules_ml_toolchain~~cuda_redist_init_ext~cuda_cusolver"
+          ],
+          [
+            "rules_ml_toolchain~",
+            "cuda_cusparse",
+            "rules_ml_toolchain~~cuda_redist_init_ext~cuda_cusparse"
+          ],
+          [
+            "rules_ml_toolchain~",
+            "cuda_nccl",
+            "rules_ml_toolchain~~nccl_redist_ext~cuda_nccl"
+          ],
+          [
+            "rules_ml_toolchain~",
+            "cuda_nvcc",
+            "rules_ml_toolchain~~cuda_redist_init_ext~cuda_nvcc"
+          ],
+          [
+            "rules_ml_toolchain~",
+            "cuda_nvdisasm",
+            "rules_ml_toolchain~~cuda_redist_init_ext~cuda_nvdisasm"
+          ],
+          [
+            "rules_ml_toolchain~",
+            "cuda_nvjitlink",
+            "rules_ml_toolchain~~cuda_redist_init_ext~cuda_nvjitlink"
+          ],
+          [
+            "rules_ml_toolchain~",
+            "cuda_nvml",
+            "rules_ml_toolchain~~cuda_redist_init_ext~cuda_nvml"
+          ],
+          [
+            "rules_ml_toolchain~",
+            "cuda_nvtx",
+            "rules_ml_toolchain~~cuda_redist_init_ext~cuda_nvtx"
+          ],
+          [
+            "rules_ml_toolchain~",
+            "cuda_nvvm",
+            "rules_ml_toolchain~~cuda_redist_init_ext~cuda_nvvm"
+          ],
+          [
+            "rules_ml_toolchain~",
+            "llvm_linux_aarch64",
+            "rules_ml_toolchain~~toolchain_ext~llvm_linux_aarch64"
+          ],
+          [
+            "rules_ml_toolchain~",
+            "llvm_linux_x86_64",
+            "rules_ml_toolchain~~toolchain_ext~llvm_linux_x86_64"
+          ],
+          [
+            "rules_ml_toolchain~",
+            "rules_ml_toolchain",
+            "rules_ml_toolchain~"
+          ]
+        ]
+      }
+    },
+    "@@rules_ml_toolchain~//third_party/extensions:nccl_redist.bzl%nccl_redist_ext": {
+      "general": {
+        "bzlTransitiveDigest": "8zEaqSPV7f4hy4xk10m+HvnzTDuacjqfb+1k7IfOGhs=",
+        "usagesDigest": "mAe4jLVOhOt7c18z7yZwJtgUfPq3vXRJh5AaqDHg2Dc=",
+        "recordedFileInputs": {},
+        "recordedDirentsInputs": {},
+        "envVariables": {},
+        "generatedRepoSpecs": {
+          "cuda_nccl": {
+            "bzlFile": "@@rules_ml_toolchain~//third_party/nccl/hermetic:nccl_redist_init_repository.bzl",
+            "ruleClassName": "cuda_nccl_repo",
+            "attributes": {
+              "sha256_dict": {
+                "11.8-x86_64-unknown-linux-gnu": "49d8350629c7888701d1fd200934942671cb5c728f49acc5a0b3a768820bed29",
+                "12.1.1-x86_64-unknown-linux-gnu": "de5ba5562f08029a19cb1cd659404b18411ed0d6c90ac5f52f30bf99ad5809aa",
+                "12.1.1-aarch64-unknown-linux-gnu": "4617839f3bb730c3845bf9adf92dbe0e009bc53ca5022ed941f2e23fb76e6f17",
+                "12.2.0-x86_64-unknown-linux-gnu": "de5ba5562f08029a19cb1cd659404b18411ed0d6c90ac5f52f30bf99ad5809aa",
+                "12.2.0-aarch64-unknown-linux-gnu": "4617839f3bb730c3845bf9adf92dbe0e009bc53ca5022ed941f2e23fb76e6f17",
+                "12.3.1-x86_64-unknown-linux-gnu": "de5ba5562f08029a19cb1cd659404b18411ed0d6c90ac5f52f30bf99ad5809aa",
+                "12.3.1-aarch64-unknown-linux-gnu": "4617839f3bb730c3845bf9adf92dbe0e009bc53ca5022ed941f2e23fb76e6f17",
+                "12.3.2-x86_64-unknown-linux-gnu": "de5ba5562f08029a19cb1cd659404b18411ed0d6c90ac5f52f30bf99ad5809aa",
+                "12.3.2-aarch64-unknown-linux-gnu": "4617839f3bb730c3845bf9adf92dbe0e009bc53ca5022ed941f2e23fb76e6f17",
+                "12.4.0-x86_64-unknown-linux-gnu": "de5ba5562f08029a19cb1cd659404b18411ed0d6c90ac5f52f30bf99ad5809aa",
+                "12.4.0-aarch64-unknown-linux-gnu": "4617839f3bb730c3845bf9adf92dbe0e009bc53ca5022ed941f2e23fb76e6f17",
+                "12.4.1-x86_64-unknown-linux-gnu": "de5ba5562f08029a19cb1cd659404b18411ed0d6c90ac5f52f30bf99ad5809aa",
+                "12.4.1-aarch64-unknown-linux-gnu": "4617839f3bb730c3845bf9adf92dbe0e009bc53ca5022ed941f2e23fb76e6f17",
+                "12.5.0-x86_64-unknown-linux-gnu": "de5ba5562f08029a19cb1cd659404b18411ed0d6c90ac5f52f30bf99ad5809aa",
+                "12.5.0-aarch64-unknown-linux-gnu": "4617839f3bb730c3845bf9adf92dbe0e009bc53ca5022ed941f2e23fb76e6f17",
+                "12.5.1-x86_64-unknown-linux-gnu": "de5ba5562f08029a19cb1cd659404b18411ed0d6c90ac5f52f30bf99ad5809aa",
+                "12.5.1-aarch64-unknown-linux-gnu": "4617839f3bb730c3845bf9adf92dbe0e009bc53ca5022ed941f2e23fb76e6f17",
+                "12.6.0-x86_64-unknown-linux-gnu": "de5ba5562f08029a19cb1cd659404b18411ed0d6c90ac5f52f30bf99ad5809aa",
+                "12.6.0-aarch64-unknown-linux-gnu": "4617839f3bb730c3845bf9adf92dbe0e009bc53ca5022ed941f2e23fb76e6f17",
+                "12.6.1-x86_64-unknown-linux-gnu": "de5ba5562f08029a19cb1cd659404b18411ed0d6c90ac5f52f30bf99ad5809aa",
+                "12.6.1-aarch64-unknown-linux-gnu": "4617839f3bb730c3845bf9adf92dbe0e009bc53ca5022ed941f2e23fb76e6f17",
+                "12.6.2-x86_64-unknown-linux-gnu": "de5ba5562f08029a19cb1cd659404b18411ed0d6c90ac5f52f30bf99ad5809aa",
+                "12.6.2-aarch64-unknown-linux-gnu": "4617839f3bb730c3845bf9adf92dbe0e009bc53ca5022ed941f2e23fb76e6f17",
+                "12.6.3-x86_64-unknown-linux-gnu": "de5ba5562f08029a19cb1cd659404b18411ed0d6c90ac5f52f30bf99ad5809aa",
+                "12.6.3-aarch64-unknown-linux-gnu": "4617839f3bb730c3845bf9adf92dbe0e009bc53ca5022ed941f2e23fb76e6f17",
+                "12.8.0-x86_64-unknown-linux-gnu": "de5ba5562f08029a19cb1cd659404b18411ed0d6c90ac5f52f30bf99ad5809aa",
+                "12.8.0-aarch64-unknown-linux-gnu": "4617839f3bb730c3845bf9adf92dbe0e009bc53ca5022ed941f2e23fb76e6f17",
+                "12.8.1-x86_64-unknown-linux-gnu": "de5ba5562f08029a19cb1cd659404b18411ed0d6c90ac5f52f30bf99ad5809aa",
+                "12.8.1-aarch64-unknown-linux-gnu": "4617839f3bb730c3845bf9adf92dbe0e009bc53ca5022ed941f2e23fb76e6f17",
+                "12.9.0-x86_64-unknown-linux-gnu": "de5ba5562f08029a19cb1cd659404b18411ed0d6c90ac5f52f30bf99ad5809aa",
+                "12.9.0-aarch64-unknown-linux-gnu": "4617839f3bb730c3845bf9adf92dbe0e009bc53ca5022ed941f2e23fb76e6f17",
+                "12.9.1-x86_64-unknown-linux-gnu": "de5ba5562f08029a19cb1cd659404b18411ed0d6c90ac5f52f30bf99ad5809aa",
+                "12.9.1-aarch64-unknown-linux-gnu": "4617839f3bb730c3845bf9adf92dbe0e009bc53ca5022ed941f2e23fb76e6f17",
+                "13.0.0-x86_64-unknown-linux-gnu": "b28a524abd8389b76a4a3f133c76a7aaa7005e47fcaa9d9603b90103927a3f93",
+                "13.0.0-aarch64-unknown-linux-gnu": "5e3cc863e52bf9dd1e3ab1941bddb414098f489ae7342f6b3a274602303da123",
+                "13.0.1-x86_64-unknown-linux-gnu": "b28a524abd8389b76a4a3f133c76a7aaa7005e47fcaa9d9603b90103927a3f93",
+                "13.0.1-aarch64-unknown-linux-gnu": "5e3cc863e52bf9dd1e3ab1941bddb414098f489ae7342f6b3a274602303da123"
+              },
+              "url_dict": {
+                "11.8-x86_64-unknown-linux-gnu": "https://files.pythonhosted.org/packages/ac/9a/8b6a28b3b87d5fddab0e92cd835339eb8fbddaa71ae67518c8c1b3d05bae/nvidia_nccl_cu11-2.21.5-py3-none-manylinux2014_x86_64.whl",
+                "12.1.1-x86_64-unknown-linux-gnu": "https://files.pythonhosted.org/packages/c4/cb/2cf5b8e6a669c90ac6410c3a9d86881308492765b6744de5d0ce75089999/nvidia_nccl_cu12-2.27.7-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+                "12.1.1-aarch64-unknown-linux-gnu": "https://files.pythonhosted.org/packages/b3/66/ac1f588af222bf98dfb55ce0efeefeab2a612d6d93ef60bd311d176a8346/nvidia_nccl_cu12-2.27.7-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl",
+                "12.2.0-x86_64-unknown-linux-gnu": "https://files.pythonhosted.org/packages/c4/cb/2cf5b8e6a669c90ac6410c3a9d86881308492765b6744de5d0ce75089999/nvidia_nccl_cu12-2.27.7-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+                "12.2.0-aarch64-unknown-linux-gnu": "https://files.pythonhosted.org/packages/b3/66/ac1f588af222bf98dfb55ce0efeefeab2a612d6d93ef60bd311d176a8346/nvidia_nccl_cu12-2.27.7-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl",
+                "12.3.1-x86_64-unknown-linux-gnu": "https://files.pythonhosted.org/packages/c4/cb/2cf5b8e6a669c90ac6410c3a9d86881308492765b6744de5d0ce75089999/nvidia_nccl_cu12-2.27.7-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+                "12.3.1-aarch64-unknown-linux-gnu": "https://files.pythonhosted.org/packages/b3/66/ac1f588af222bf98dfb55ce0efeefeab2a612d6d93ef60bd311d176a8346/nvidia_nccl_cu12-2.27.7-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl",
+                "12.3.2-x86_64-unknown-linux-gnu": "https://files.pythonhosted.org/packages/c4/cb/2cf5b8e6a669c90ac6410c3a9d86881308492765b6744de5d0ce75089999/nvidia_nccl_cu12-2.27.7-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+                "12.3.2-aarch64-unknown-linux-gnu": "https://files.pythonhosted.org/packages/b3/66/ac1f588af222bf98dfb55ce0efeefeab2a612d6d93ef60bd311d176a8346/nvidia_nccl_cu12-2.27.7-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl",
+                "12.4.0-x86_64-unknown-linux-gnu": "https://files.pythonhosted.org/packages/c4/cb/2cf5b8e6a669c90ac6410c3a9d86881308492765b6744de5d0ce75089999/nvidia_nccl_cu12-2.27.7-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+                "12.4.0-aarch64-unknown-linux-gnu": "https://files.pythonhosted.org/packages/b3/66/ac1f588af222bf98dfb55ce0efeefeab2a612d6d93ef60bd311d176a8346/nvidia_nccl_cu12-2.27.7-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl",
+                "12.4.1-x86_64-unknown-linux-gnu": "https://files.pythonhosted.org/packages/c4/cb/2cf5b8e6a669c90ac6410c3a9d86881308492765b6744de5d0ce75089999/nvidia_nccl_cu12-2.27.7-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+                "12.4.1-aarch64-unknown-linux-gnu": "https://files.pythonhosted.org/packages/b3/66/ac1f588af222bf98dfb55ce0efeefeab2a612d6d93ef60bd311d176a8346/nvidia_nccl_cu12-2.27.7-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl",
+                "12.5.0-x86_64-unknown-linux-gnu": "https://files.pythonhosted.org/packages/c4/cb/2cf5b8e6a669c90ac6410c3a9d86881308492765b6744de5d0ce75089999/nvidia_nccl_cu12-2.27.7-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+                "12.5.0-aarch64-unknown-linux-gnu": "https://files.pythonhosted.org/packages/b3/66/ac1f588af222bf98dfb55ce0efeefeab2a612d6d93ef60bd311d176a8346/nvidia_nccl_cu12-2.27.7-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl",
+                "12.5.1-x86_64-unknown-linux-gnu": "https://files.pythonhosted.org/packages/c4/cb/2cf5b8e6a669c90ac6410c3a9d86881308492765b6744de5d0ce75089999/nvidia_nccl_cu12-2.27.7-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+                "12.5.1-aarch64-unknown-linux-gnu": "https://files.pythonhosted.org/packages/b3/66/ac1f588af222bf98dfb55ce0efeefeab2a612d6d93ef60bd311d176a8346/nvidia_nccl_cu12-2.27.7-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl",
+                "12.6.0-x86_64-unknown-linux-gnu": "https://files.pythonhosted.org/packages/c4/cb/2cf5b8e6a669c90ac6410c3a9d86881308492765b6744de5d0ce75089999/nvidia_nccl_cu12-2.27.7-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+                "12.6.0-aarch64-unknown-linux-gnu": "https://files.pythonhosted.org/packages/b3/66/ac1f588af222bf98dfb55ce0efeefeab2a612d6d93ef60bd311d176a8346/nvidia_nccl_cu12-2.27.7-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl",
+                "12.6.1-x86_64-unknown-linux-gnu": "https://files.pythonhosted.org/packages/c4/cb/2cf5b8e6a669c90ac6410c3a9d86881308492765b6744de5d0ce75089999/nvidia_nccl_cu12-2.27.7-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+                "12.6.1-aarch64-unknown-linux-gnu": "https://files.pythonhosted.org/packages/b3/66/ac1f588af222bf98dfb55ce0efeefeab2a612d6d93ef60bd311d176a8346/nvidia_nccl_cu12-2.27.7-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl",
+                "12.6.2-x86_64-unknown-linux-gnu": "https://files.pythonhosted.org/packages/c4/cb/2cf5b8e6a669c90ac6410c3a9d86881308492765b6744de5d0ce75089999/nvidia_nccl_cu12-2.27.7-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+                "12.6.2-aarch64-unknown-linux-gnu": "https://files.pythonhosted.org/packages/b3/66/ac1f588af222bf98dfb55ce0efeefeab2a612d6d93ef60bd311d176a8346/nvidia_nccl_cu12-2.27.7-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl",
+                "12.6.3-x86_64-unknown-linux-gnu": "https://files.pythonhosted.org/packages/c4/cb/2cf5b8e6a669c90ac6410c3a9d86881308492765b6744de5d0ce75089999/nvidia_nccl_cu12-2.27.7-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+                "12.6.3-aarch64-unknown-linux-gnu": "https://files.pythonhosted.org/packages/b3/66/ac1f588af222bf98dfb55ce0efeefeab2a612d6d93ef60bd311d176a8346/nvidia_nccl_cu12-2.27.7-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl",
+                "12.8.0-x86_64-unknown-linux-gnu": "https://files.pythonhosted.org/packages/c4/cb/2cf5b8e6a669c90ac6410c3a9d86881308492765b6744de5d0ce75089999/nvidia_nccl_cu12-2.27.7-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+                "12.8.0-aarch64-unknown-linux-gnu": "https://files.pythonhosted.org/packages/b3/66/ac1f588af222bf98dfb55ce0efeefeab2a612d6d93ef60bd311d176a8346/nvidia_nccl_cu12-2.27.7-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl",
+                "12.8.1-x86_64-unknown-linux-gnu": "https://files.pythonhosted.org/packages/c4/cb/2cf5b8e6a669c90ac6410c3a9d86881308492765b6744de5d0ce75089999/nvidia_nccl_cu12-2.27.7-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+                "12.8.1-aarch64-unknown-linux-gnu": "https://files.pythonhosted.org/packages/b3/66/ac1f588af222bf98dfb55ce0efeefeab2a612d6d93ef60bd311d176a8346/nvidia_nccl_cu12-2.27.7-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl",
+                "12.9.0-x86_64-unknown-linux-gnu": "https://files.pythonhosted.org/packages/c4/cb/2cf5b8e6a669c90ac6410c3a9d86881308492765b6744de5d0ce75089999/nvidia_nccl_cu12-2.27.7-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+                "12.9.0-aarch64-unknown-linux-gnu": "https://files.pythonhosted.org/packages/b3/66/ac1f588af222bf98dfb55ce0efeefeab2a612d6d93ef60bd311d176a8346/nvidia_nccl_cu12-2.27.7-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl",
+                "12.9.1-x86_64-unknown-linux-gnu": "https://files.pythonhosted.org/packages/c4/cb/2cf5b8e6a669c90ac6410c3a9d86881308492765b6744de5d0ce75089999/nvidia_nccl_cu12-2.27.7-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+                "12.9.1-aarch64-unknown-linux-gnu": "https://files.pythonhosted.org/packages/b3/66/ac1f588af222bf98dfb55ce0efeefeab2a612d6d93ef60bd311d176a8346/nvidia_nccl_cu12-2.27.7-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl",
+                "13.0.0-x86_64-unknown-linux-gnu": "https://pypi.nvidia.com/nvidia-nccl-cu13/nvidia_nccl_cu13-2.27.7-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+                "13.0.0-aarch64-unknown-linux-gnu": "https://pypi.nvidia.com/nvidia-nccl-cu13/nvidia_nccl_cu13-2.27.7-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl",
+                "13.0.1-x86_64-unknown-linux-gnu": "https://pypi.nvidia.com/nvidia-nccl-cu13/nvidia_nccl_cu13-2.27.7-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+                "13.0.1-aarch64-unknown-linux-gnu": "https://pypi.nvidia.com/nvidia-nccl-cu13/nvidia_nccl_cu13-2.27.7-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl"
+              },
+              "versions": [
+                "2"
+              ],
+              "build_templates": [
+                "@@rules_ml_toolchain~//third_party/nccl/hermetic:cuda_nccl.BUILD.tpl"
+              ],
+              "strip_prefix": "nvidia/nccl"
+            }
+          }
+        },
+        "recordedRepoMappingEntries": [
+          [
+            "rules_ml_toolchain~",
+            "rules_ml_toolchain",
+            "rules_ml_toolchain~"
+          ],
+          [
+            "rules_ml_toolchain~",
+            "tar",
+            "rules_ml_toolchain~~toolchain_ext~tar"
+          ],
+          [
+            "rules_ml_toolchain~",
+            "xz",
+            "rules_ml_toolchain~~toolchain_ext~xz"
+          ]
+        ]
+      }
+    },
     "@@rules_ml_toolchain~//third_party/extensions:sycl_configure.bzl%sycl_configure_ext": {
       "general": {
         "bzlTransitiveDigest": "u73gxR/d8H3G8qotsCMcjFbiI/uydrA4EtoBrnZAUw4=",
@@ -3126,6 +4073,178 @@
         ]
       }
     },
+    "@@rules_swift~//swift:extensions.bzl%non_module_deps": {
+      "general": {
+        "bzlTransitiveDigest": "9v7oV8oD+hvRLQU5WxJYafojNgO5Lk1/rVg3aTb5vHk=",
+        "usagesDigest": "/dVEtCLqIAaLXjfRXsJupTS9pTgmYVN/tFdJlGgE5NA=",
+        "recordedFileInputs": {},
+        "recordedDirentsInputs": {},
+        "envVariables": {},
+        "generatedRepoSpecs": {
+          "com_github_apple_swift_protobuf": {
+            "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
+            "ruleClassName": "http_archive",
+            "attributes": {
+              "urls": [
+                "https://github.com/apple/swift-protobuf/archive/1.20.2.tar.gz"
+              ],
+              "sha256": "3fb50bd4d293337f202d917b6ada22f9548a0a0aed9d9a4d791e6fbd8a246ebb",
+              "strip_prefix": "swift-protobuf-1.20.2/",
+              "build_file": "@@rules_swift~//third_party:com_github_apple_swift_protobuf/BUILD.overlay"
+            }
+          },
+          "com_github_grpc_grpc_swift": {
+            "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
+            "ruleClassName": "http_archive",
+            "attributes": {
+              "urls": [
+                "https://github.com/grpc/grpc-swift/archive/1.16.0.tar.gz"
+              ],
+              "sha256": "58b60431d0064969f9679411264b82e40a217ae6bd34e17096d92cc4e47556a5",
+              "strip_prefix": "grpc-swift-1.16.0/",
+              "build_file": "@@rules_swift~//third_party:com_github_grpc_grpc_swift/BUILD.overlay"
+            }
+          },
+          "com_github_apple_swift_docc_symbolkit": {
+            "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
+            "ruleClassName": "http_archive",
+            "attributes": {
+              "urls": [
+                "https://github.com/apple/swift-docc-symbolkit/archive/refs/tags/swift-5.10-RELEASE.tar.gz"
+              ],
+              "sha256": "de1d4b6940468ddb53b89df7aa1a81323b9712775b0e33e8254fa0f6f7469a97",
+              "strip_prefix": "swift-docc-symbolkit-swift-5.10-RELEASE",
+              "build_file": "@@rules_swift~//third_party:com_github_apple_swift_docc_symbolkit/BUILD.overlay"
+            }
+          },
+          "com_github_apple_swift_nio": {
+            "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
+            "ruleClassName": "http_archive",
+            "attributes": {
+              "urls": [
+                "https://github.com/apple/swift-nio/archive/2.42.0.tar.gz"
+              ],
+              "sha256": "e3304bc3fb53aea74a3e54bd005ede11f6dc357117d9b1db642d03aea87194a0",
+              "strip_prefix": "swift-nio-2.42.0/",
+              "build_file": "@@rules_swift~//third_party:com_github_apple_swift_nio/BUILD.overlay"
+            }
+          },
+          "com_github_apple_swift_nio_http2": {
+            "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
+            "ruleClassName": "http_archive",
+            "attributes": {
+              "urls": [
+                "https://github.com/apple/swift-nio-http2/archive/1.26.0.tar.gz"
+              ],
+              "sha256": "f0edfc9d6a7be1d587e5b403f2d04264bdfae59aac1d74f7d974a9022c6d2b25",
+              "strip_prefix": "swift-nio-http2-1.26.0/",
+              "build_file": "@@rules_swift~//third_party:com_github_apple_swift_nio_http2/BUILD.overlay"
+            }
+          },
+          "com_github_apple_swift_nio_transport_services": {
+            "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
+            "ruleClassName": "http_archive",
+            "attributes": {
+              "urls": [
+                "https://github.com/apple/swift-nio-transport-services/archive/1.15.0.tar.gz"
+              ],
+              "sha256": "f3498dafa633751a52b9b7f741f7ac30c42bcbeb3b9edca6d447e0da8e693262",
+              "strip_prefix": "swift-nio-transport-services-1.15.0/",
+              "build_file": "@@rules_swift~//third_party:com_github_apple_swift_nio_transport_services/BUILD.overlay"
+            }
+          },
+          "com_github_apple_swift_nio_extras": {
+            "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
+            "ruleClassName": "http_archive",
+            "attributes": {
+              "urls": [
+                "https://github.com/apple/swift-nio-extras/archive/1.4.0.tar.gz"
+              ],
+              "sha256": "4684b52951d9d9937bb3e8ccd6b5daedd777021ef2519ea2f18c4c922843b52b",
+              "strip_prefix": "swift-nio-extras-1.4.0/",
+              "build_file": "@@rules_swift~//third_party:com_github_apple_swift_nio_extras/BUILD.overlay"
+            }
+          },
+          "com_github_apple_swift_log": {
+            "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
+            "ruleClassName": "http_archive",
+            "attributes": {
+              "urls": [
+                "https://github.com/apple/swift-log/archive/1.4.4.tar.gz"
+              ],
+              "sha256": "48fe66426c784c0c20031f15dc17faf9f4c9037c192bfac2f643f65cb2321ba0",
+              "strip_prefix": "swift-log-1.4.4/",
+              "build_file": "@@rules_swift~//third_party:com_github_apple_swift_log/BUILD.overlay"
+            }
+          },
+          "com_github_apple_swift_nio_ssl": {
+            "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
+            "ruleClassName": "http_archive",
+            "attributes": {
+              "urls": [
+                "https://github.com/apple/swift-nio-ssl/archive/2.23.0.tar.gz"
+              ],
+              "sha256": "4787c63f61dd04d99e498adc3d1a628193387e41efddf8de19b8db04544d016d",
+              "strip_prefix": "swift-nio-ssl-2.23.0/",
+              "build_file": "@@rules_swift~//third_party:com_github_apple_swift_nio_ssl/BUILD.overlay"
+            }
+          },
+          "com_github_apple_swift_collections": {
+            "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
+            "ruleClassName": "http_archive",
+            "attributes": {
+              "urls": [
+                "https://github.com/apple/swift-collections/archive/1.0.4.tar.gz"
+              ],
+              "sha256": "d9e4c8a91c60fb9c92a04caccbb10ded42f4cb47b26a212bc6b39cc390a4b096",
+              "strip_prefix": "swift-collections-1.0.4/",
+              "build_file": "@@rules_swift~//third_party:com_github_apple_swift_collections/BUILD.overlay"
+            }
+          },
+          "com_github_apple_swift_atomics": {
+            "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
+            "ruleClassName": "http_archive",
+            "attributes": {
+              "urls": [
+                "https://github.com/apple/swift-atomics/archive/1.1.0.tar.gz"
+              ],
+              "sha256": "1bee7f469f7e8dc49f11cfa4da07182fbc79eab000ec2c17bfdce468c5d276fb",
+              "strip_prefix": "swift-atomics-1.1.0/",
+              "build_file": "@@rules_swift~//third_party:com_github_apple_swift_atomics/BUILD.overlay"
+            }
+          },
+          "build_bazel_rules_swift_index_import": {
+            "bzlFile": "@@bazel_tools//tools/build_defs/repo:http.bzl",
+            "ruleClassName": "http_archive",
+            "attributes": {
+              "build_file": "@@rules_swift~//third_party:build_bazel_rules_swift_index_import/BUILD.overlay",
+              "canonical_id": "index-import-5.8",
+              "urls": [
+                "https://github.com/MobileNativeFoundation/index-import/releases/download/5.8.0.1/index-import.tar.gz"
+              ],
+              "sha256": "28c1ffa39d99e74ed70623899b207b41f79214c498c603915aef55972a851a15"
+            }
+          },
+          "build_bazel_rules_swift_local_config": {
+            "bzlFile": "@@rules_swift~//swift/internal:swift_autoconfiguration.bzl",
+            "ruleClassName": "swift_autoconfiguration",
+            "attributes": {}
+          }
+        },
+        "recordedRepoMappingEntries": [
+          [
+            "rules_swift~",
+            "bazel_tools",
+            "bazel_tools"
+          ],
+          [
+            "rules_swift~",
+            "build_bazel_rules_swift",
+            "rules_swift~"
+          ]
+        ]
+      }
+    },
     "@@xla~//third_party/extensions:llvm.bzl%llvm_extension": {
       "general": {
         "bzlTransitiveDigest": "6FFscAaE3m115yIY9uP4q7kN2QZwMheFVwR/i15b9gk=",
@@ -3175,6 +4294,450 @@
           }
         },
         "recordedRepoMappingEntries": []
+      }
+    },
+    "@@xla~//third_party/extensions:rbe_config.bzl%rbe_config_ext": {
+      "general": {
+        "bzlTransitiveDigest": "7cwaiaWBi04AcexEdSq4Y+3w5gqt7mN9HP7ksrJ22oI=",
+        "usagesDigest": "U7Wwko1mrDXyIh3TuxyjKFHXUDhMWyD5SRCyP6SYNZk=",
+        "recordedFileInputs": {},
+        "recordedDirentsInputs": {},
+        "envVariables": {},
+        "generatedRepoSpecs": {
+          "local_execution_config_platform": {
+            "bzlFile": "@@xla~//third_party/remote_config:remote_platform_configure.bzl",
+            "ruleClassName": "remote_platform_configure",
+            "attributes": {
+              "platform": "local",
+              "platform_exec_properties": {}
+            }
+          },
+          "local_execution_config_python": {
+            "bzlFile": "@@xla~//third_party/py:python_configure.bzl",
+            "ruleClassName": "local_python_configure",
+            "attributes": {
+              "platform_constraint": "@local_execution_config_platform//:platform_constraint"
+            }
+          },
+          "ubuntu20.04-clang_manylinux2014-cuda12.3-cudnn8.9_config_platform": {
+            "bzlFile": "@@xla~//third_party/remote_config:remote_platform_configure.bzl",
+            "ruleClassName": "remote_platform_configure",
+            "attributes": {
+              "platform": "linux",
+              "platform_exec_properties": {
+                "container-image": "docker://gcr.io/tensorflow-testing/nosla-cuda12.3-cudnn8.9-ubuntu20.04-manylinux2014-multipython@sha256:6f9524a2ed7f75255dc4be3a0c5e3bda581385a1c13e2fa890bc17fa62da95b2",
+                "Pool": "default"
+              }
+            }
+          },
+          "ubuntu20.04-clang_manylinux2014-cuda12.3-cudnn9.1_config_platform": {
+            "bzlFile": "@@xla~//third_party/remote_config:remote_platform_configure.bzl",
+            "ruleClassName": "remote_platform_configure",
+            "attributes": {
+              "platform": "linux",
+              "platform_exec_properties": {
+                "container-image": "docker://gcr.io/tensorflow-testing/nosla-cuda12.3-cudnn9.1-ubuntu20.04-manylinux2014-multipython@sha256:89aa860228092d78dc336545a5ad32e342d656a8258186327c989bd301bb3eb8",
+                "Pool": "default"
+              }
+            }
+          },
+          "ubuntu20.04-gcc9_manylinux2014-cuda12.3-cudnn8.9_config_platform": {
+            "bzlFile": "@@xla~//third_party/remote_config:remote_platform_configure.bzl",
+            "ruleClassName": "remote_platform_configure",
+            "attributes": {
+              "platform": "linux",
+              "platform_exec_properties": {
+                "container-image": "docker://gcr.io/tensorflow-testing/nosla-cuda12.3-cudnn8.9-ubuntu20.04-manylinux2014-multipython@sha256:6f9524a2ed7f75255dc4be3a0c5e3bda581385a1c13e2fa890bc17fa62da95b2",
+                "Pool": "default"
+              }
+            }
+          },
+          "ubuntu22.04-clang_manylinux2014-cuda12.3-cudnn8.9_config_platform": {
+            "bzlFile": "@@xla~//third_party/remote_config:remote_platform_configure.bzl",
+            "ruleClassName": "remote_platform_configure",
+            "attributes": {
+              "platform": "linux",
+              "platform_exec_properties": {
+                "container-image": "docker://gcr.io/tensorflow-testing/nosla-cuda12.3-cudnn8.9-ubuntu22.04-manylinux2014-multipython@sha256:97b219abb22994cf0530771d536f26fe301bacd328f0485c38af3847c2ee6b14",
+                "Pool": "default"
+              }
+            }
+          },
+          "ubuntu22.04-gcc9_manylinux2014-cuda12.3-cudnn8.9_config_platform": {
+            "bzlFile": "@@xla~//third_party/remote_config:remote_platform_configure.bzl",
+            "ruleClassName": "remote_platform_configure",
+            "attributes": {
+              "platform": "linux",
+              "platform_exec_properties": {
+                "container-image": "docker://gcr.io/tensorflow-testing/nosla-cuda12.3-cudnn8.9-ubuntu22.04-manylinux2014-multipython@sha256:97b219abb22994cf0530771d536f26fe301bacd328f0485c38af3847c2ee6b14",
+                "Pool": "default"
+              }
+            }
+          },
+          "windows_py37_config_platform": {
+            "bzlFile": "@@xla~//third_party/remote_config:remote_platform_configure.bzl",
+            "ruleClassName": "remote_platform_configure",
+            "attributes": {
+              "platform": "windows",
+              "platform_exec_properties": {
+                "container-image": "docker://gcr.io/tensorflow-testing/tf-win-rbe@sha256:f109576c7c0c8a1783ff22b666e8923b52dbbe7933f69a1c7a7275202c304a12",
+                "OSFamily": "Windows"
+              }
+            }
+          },
+          "windows_py37_config_python": {
+            "bzlFile": "@@xla~//third_party/py:python_configure.bzl",
+            "ruleClassName": "remote_python_configure",
+            "attributes": {
+              "exec_properties": {
+                "container-image": "docker://gcr.io/tensorflow-testing/tf-win-rbe@sha256:f109576c7c0c8a1783ff22b666e8923b52dbbe7933f69a1c7a7275202c304a12",
+                "OSFamily": "Windows"
+              },
+              "environ": {
+                "PYTHON_BIN_PATH": "C:/Python37/python.exe"
+              },
+              "platform_constraint": "@windows_py37_config_platform//:platform_constraint"
+            }
+          },
+          "ml_build_config_platform": {
+            "bzlFile": "@@xla~//third_party/remote_config:remote_platform_configure.bzl",
+            "ruleClassName": "remote_platform_configure",
+            "attributes": {
+              "platform": "linux",
+              "platform_exec_properties": {
+                "container-image": "docker://us-docker.pkg.dev/ml-oss-artifacts-published/ml-public-container/ml-build@sha256:ea67e8453d8b09c2ba48853da5e79efef4b65804b4a48dfae4b4da89ffd38405",
+                "Pool": "default"
+              }
+            }
+          },
+          "sigbuild-r2.16_config_platform": {
+            "bzlFile": "@@xla~//third_party/remote_config:remote_platform_configure.bzl",
+            "ruleClassName": "remote_platform_configure",
+            "attributes": {
+              "platform": "linux",
+              "platform_exec_properties": {
+                "container-image": "docker://gcr.io/tensorflow-sigs/build@sha256:842a5ba84d3658c5bf1f8a31e16284f7becc35409da0dfd71816afa3cd28d728",
+                "Pool": "default"
+              }
+            }
+          },
+          "sigbuild-r2.16-python3.9_config_platform": {
+            "bzlFile": "@@xla~//third_party/remote_config:remote_platform_configure.bzl",
+            "ruleClassName": "remote_platform_configure",
+            "attributes": {
+              "platform": "linux",
+              "platform_exec_properties": {
+                "container-image": "docker://gcr.io/tensorflow-sigs/build@sha256:22d863e6fe3f98946015b9e1264b2eeb8e56e504535a6c1d5e564cae65ae5d37",
+                "Pool": "default"
+              }
+            }
+          },
+          "sigbuild-r2.16-python3.10_config_platform": {
+            "bzlFile": "@@xla~//third_party/remote_config:remote_platform_configure.bzl",
+            "ruleClassName": "remote_platform_configure",
+            "attributes": {
+              "platform": "linux",
+              "platform_exec_properties": {
+                "container-image": "docker://gcr.io/tensorflow-sigs/build@sha256:da15288c8464153eadd35da720540a544b76aa9d78cceb42a6821b2f3e70a0fa",
+                "Pool": "default"
+              }
+            }
+          },
+          "sigbuild-r2.16-python3.11_config_platform": {
+            "bzlFile": "@@xla~//third_party/remote_config:remote_platform_configure.bzl",
+            "ruleClassName": "remote_platform_configure",
+            "attributes": {
+              "platform": "linux",
+              "platform_exec_properties": {
+                "container-image": "docker://gcr.io/tensorflow-sigs/build@sha256:842a5ba84d3658c5bf1f8a31e16284f7becc35409da0dfd71816afa3cd28d728",
+                "Pool": "default"
+              }
+            }
+          },
+          "sigbuild-r2.16-python3.12_config_platform": {
+            "bzlFile": "@@xla~//third_party/remote_config:remote_platform_configure.bzl",
+            "ruleClassName": "remote_platform_configure",
+            "attributes": {
+              "platform": "linux",
+              "platform_exec_properties": {
+                "container-image": "docker://gcr.io/tensorflow-sigs/build@sha256:40fcd1d05c672672b599d9cb3784dcf379d6aa876f043b46c6ab18237d5d4e10",
+                "Pool": "default"
+              }
+            }
+          },
+          "sigbuild-r2.16-clang_config_platform": {
+            "bzlFile": "@@xla~//third_party/remote_config:remote_platform_configure.bzl",
+            "ruleClassName": "remote_platform_configure",
+            "attributes": {
+              "platform": "linux",
+              "platform_exec_properties": {
+                "container-image": "docker://gcr.io/tensorflow-sigs/build@sha256:842a5ba84d3658c5bf1f8a31e16284f7becc35409da0dfd71816afa3cd28d728",
+                "Pool": "default"
+              }
+            }
+          },
+          "sigbuild-r2.16-clang-python3.9_config_platform": {
+            "bzlFile": "@@xla~//third_party/remote_config:remote_platform_configure.bzl",
+            "ruleClassName": "remote_platform_configure",
+            "attributes": {
+              "platform": "linux",
+              "platform_exec_properties": {
+                "container-image": "docker://gcr.io/tensorflow-sigs/build@sha256:22d863e6fe3f98946015b9e1264b2eeb8e56e504535a6c1d5e564cae65ae5d37",
+                "Pool": "default"
+              }
+            }
+          },
+          "sigbuild-r2.16-clang-python3.10_config_platform": {
+            "bzlFile": "@@xla~//third_party/remote_config:remote_platform_configure.bzl",
+            "ruleClassName": "remote_platform_configure",
+            "attributes": {
+              "platform": "linux",
+              "platform_exec_properties": {
+                "container-image": "docker://gcr.io/tensorflow-sigs/build@sha256:da15288c8464153eadd35da720540a544b76aa9d78cceb42a6821b2f3e70a0fa",
+                "Pool": "default"
+              }
+            }
+          },
+          "sigbuild-r2.16-clang-python3.11_config_platform": {
+            "bzlFile": "@@xla~//third_party/remote_config:remote_platform_configure.bzl",
+            "ruleClassName": "remote_platform_configure",
+            "attributes": {
+              "platform": "linux",
+              "platform_exec_properties": {
+                "container-image": "docker://gcr.io/tensorflow-sigs/build@sha256:842a5ba84d3658c5bf1f8a31e16284f7becc35409da0dfd71816afa3cd28d728",
+                "Pool": "default"
+              }
+            }
+          },
+          "sigbuild-r2.16-clang-python3.12_config_platform": {
+            "bzlFile": "@@xla~//third_party/remote_config:remote_platform_configure.bzl",
+            "ruleClassName": "remote_platform_configure",
+            "attributes": {
+              "platform": "linux",
+              "platform_exec_properties": {
+                "container-image": "docker://gcr.io/tensorflow-sigs/build@sha256:40fcd1d05c672672b599d9cb3784dcf379d6aa876f043b46c6ab18237d5d4e10",
+                "Pool": "default"
+              }
+            }
+          },
+          "sigbuild-r2.17_config_platform": {
+            "bzlFile": "@@xla~//third_party/remote_config:remote_platform_configure.bzl",
+            "ruleClassName": "remote_platform_configure",
+            "attributes": {
+              "platform": "linux",
+              "platform_exec_properties": {
+                "container-image": "docker://gcr.io/tensorflow-sigs/build@sha256:b6f572a897a69fa3311773f949b9aa9e81bc393e4fbe2c0d56d8afb03a6de080",
+                "Pool": "default"
+              }
+            }
+          },
+          "sigbuild-r2.17-python3.9_config_platform": {
+            "bzlFile": "@@xla~//third_party/remote_config:remote_platform_configure.bzl",
+            "ruleClassName": "remote_platform_configure",
+            "attributes": {
+              "platform": "linux",
+              "platform_exec_properties": {
+                "container-image": "docker://gcr.io/tensorflow-sigs/build@sha256:d0f27a4c7b97dbe9d530703dca3449afd464758e56b3ac4e1609c701223a0572",
+                "Pool": "default"
+              }
+            }
+          },
+          "sigbuild-r2.17-python3.10_config_platform": {
+            "bzlFile": "@@xla~//third_party/remote_config:remote_platform_configure.bzl",
+            "ruleClassName": "remote_platform_configure",
+            "attributes": {
+              "platform": "linux",
+              "platform_exec_properties": {
+                "container-image": "docker://gcr.io/tensorflow-sigs/build@sha256:64e68a1d65ac265a2a59c8c2f6eb1f2148a323048a679a08e53239d467fa1478",
+                "Pool": "default"
+              }
+            }
+          },
+          "sigbuild-r2.17-python3.11_config_platform": {
+            "bzlFile": "@@xla~//third_party/remote_config:remote_platform_configure.bzl",
+            "ruleClassName": "remote_platform_configure",
+            "attributes": {
+              "platform": "linux",
+              "platform_exec_properties": {
+                "container-image": "docker://gcr.io/tensorflow-sigs/build@sha256:b6f572a897a69fa3311773f949b9aa9e81bc393e4fbe2c0d56d8afb03a6de080",
+                "Pool": "default"
+              }
+            }
+          },
+          "sigbuild-r2.17-python3.12_config_platform": {
+            "bzlFile": "@@xla~//third_party/remote_config:remote_platform_configure.bzl",
+            "ruleClassName": "remote_platform_configure",
+            "attributes": {
+              "platform": "linux",
+              "platform_exec_properties": {
+                "container-image": "docker://gcr.io/tensorflow-sigs/build@sha256:8b856ad736147bb9c8bc9e1ec2c8e1ab17d36397905da7a5b63dadeff9310f0c",
+                "Pool": "default"
+              }
+            }
+          },
+          "sigbuild-r2.17-clang_config_platform": {
+            "bzlFile": "@@xla~//third_party/remote_config:remote_platform_configure.bzl",
+            "ruleClassName": "remote_platform_configure",
+            "attributes": {
+              "platform": "linux",
+              "platform_exec_properties": {
+                "container-image": "docker://gcr.io/tensorflow-sigs/build@sha256:2d737fc9fe931507a89927eee792b1bb934215e6aaae58b1941586e3400e2645",
+                "Pool": "default"
+              }
+            }
+          },
+          "sigbuild-r2.17-clang-python3.9_config_platform": {
+            "bzlFile": "@@xla~//third_party/remote_config:remote_platform_configure.bzl",
+            "ruleClassName": "remote_platform_configure",
+            "attributes": {
+              "platform": "linux",
+              "platform_exec_properties": {
+                "container-image": "docker://gcr.io/tensorflow-sigs/build@sha256:0e9cd35dafd2b91bc59cea377ad84a6089ba5e5542709c6e80ada3f366fd2338",
+                "Pool": "default"
+              }
+            }
+          },
+          "sigbuild-r2.17-clang-python3.10_config_platform": {
+            "bzlFile": "@@xla~//third_party/remote_config:remote_platform_configure.bzl",
+            "ruleClassName": "remote_platform_configure",
+            "attributes": {
+              "platform": "linux",
+              "platform_exec_properties": {
+                "container-image": "docker://gcr.io/tensorflow-sigs/build@sha256:89730ded5c2268e53238bf8c5fb6d162b105baa31ab0480a94a7d0204203de66",
+                "Pool": "default"
+              }
+            }
+          },
+          "sigbuild-r2.17-clang-python3.11_config_platform": {
+            "bzlFile": "@@xla~//third_party/remote_config:remote_platform_configure.bzl",
+            "ruleClassName": "remote_platform_configure",
+            "attributes": {
+              "platform": "linux",
+              "platform_exec_properties": {
+                "container-image": "docker://gcr.io/tensorflow-sigs/build@sha256:2d737fc9fe931507a89927eee792b1bb934215e6aaae58b1941586e3400e2645",
+                "Pool": "default"
+              }
+            }
+          },
+          "sigbuild-r2.17-clang-python3.12_config_platform": {
+            "bzlFile": "@@xla~//third_party/remote_config:remote_platform_configure.bzl",
+            "ruleClassName": "remote_platform_configure",
+            "attributes": {
+              "platform": "linux",
+              "platform_exec_properties": {
+                "container-image": "docker://gcr.io/tensorflow-sigs/build@sha256:45ea78e79305f91cdae5a26094f80233bba54bbfbc612623381012f097035b9a",
+                "Pool": "default"
+              }
+            }
+          },
+          "sigbuild-r2.17-clang-cudnn9_config_platform": {
+            "bzlFile": "@@xla~//third_party/remote_config:remote_platform_configure.bzl",
+            "ruleClassName": "remote_platform_configure",
+            "attributes": {
+              "platform": "linux",
+              "platform_exec_properties": {
+                "container-image": "docker://gcr.io/tensorflow-sigs/build@sha256:daa5bdd802fe3def188e2200ed707c73d278f6f1930bf26c933d6ba041b0e027",
+                "Pool": "default"
+              }
+            }
+          },
+          "sigbuild-r2.17-clang-cudnn9-python3.9_config_platform": {
+            "bzlFile": "@@xla~//third_party/remote_config:remote_platform_configure.bzl",
+            "ruleClassName": "remote_platform_configure",
+            "attributes": {
+              "platform": "linux",
+              "platform_exec_properties": {
+                "container-image": "docker://gcr.io/tensorflow-sigs/build@sha256:1c4f06b98ab1ad092facf2d6fcac9f7496bd599a67ad998b82d80e98ef7defa8",
+                "Pool": "default"
+              }
+            }
+          },
+          "sigbuild-r2.17-clang-cudnn9-python3.10_config_platform": {
+            "bzlFile": "@@xla~//third_party/remote_config:remote_platform_configure.bzl",
+            "ruleClassName": "remote_platform_configure",
+            "attributes": {
+              "platform": "linux",
+              "platform_exec_properties": {
+                "container-image": "docker://gcr.io/tensorflow-sigs/build@sha256:c3df6982305d70dfb44cbfbedee3465782d6cbf791f7920e6246de0140216da0",
+                "Pool": "default"
+              }
+            }
+          },
+          "sigbuild-r2.17-clang-cudnn9-python3.11_config_platform": {
+            "bzlFile": "@@xla~//third_party/remote_config:remote_platform_configure.bzl",
+            "ruleClassName": "remote_platform_configure",
+            "attributes": {
+              "platform": "linux",
+              "platform_exec_properties": {
+                "container-image": "docker://gcr.io/tensorflow-sigs/build@sha256:daa5bdd802fe3def188e2200ed707c73d278f6f1930bf26c933d6ba041b0e027",
+                "Pool": "default"
+              }
+            }
+          },
+          "sigbuild-r2.17-clang-cudnn9-python3.12_config_platform": {
+            "bzlFile": "@@xla~//third_party/remote_config:remote_platform_configure.bzl",
+            "ruleClassName": "remote_platform_configure",
+            "attributes": {
+              "platform": "linux",
+              "platform_exec_properties": {
+                "container-image": "docker://gcr.io/tensorflow-sigs/build@sha256:23e477895dd02e45df1056d4a0a9c4229dec3a20c23fb2f3fb5832ecbd0a29bc",
+                "Pool": "default"
+              }
+            }
+          }
+        },
+        "recordedRepoMappingEntries": [
+          [
+            "rules_python~~python~pythons_hub",
+            "python_3_10_host",
+            "rules_python~~python~python_3_10_host"
+          ],
+          [
+            "rules_python~~python~pythons_hub",
+            "python_3_11_host",
+            "rules_python~~python~python_3_11_host"
+          ],
+          [
+            "rules_python~~python~pythons_hub",
+            "python_3_12_host",
+            "rules_python~~python~python_3_12_host"
+          ],
+          [
+            "rules_python~~python~pythons_hub",
+            "python_3_13_host",
+            "rules_python~~python~python_3_13_host"
+          ],
+          [
+            "rules_python~~python~pythons_hub",
+            "python_3_8_host",
+            "rules_python~~python~python_3_8_host"
+          ],
+          [
+            "rules_python~~python~pythons_hub",
+            "python_3_9_host",
+            "rules_python~~python~python_3_9_host"
+          ],
+          [
+            "xla~",
+            "",
+            ""
+          ],
+          [
+            "xla~",
+            "python_version_repo",
+            "xla~~python_version_ext~python_version_repo"
+          ],
+          [
+            "xla~",
+            "pythons_hub",
+            "rules_python~~python~pythons_hub"
+          ],
+          [
+            "xla~",
+            "xla",
+            "xla~"
+          ]
+        ]
       }
     },
     "@@xla~//third_party/extensions:remote_execution_configure.bzl%remote_execution_configure_ext": {
