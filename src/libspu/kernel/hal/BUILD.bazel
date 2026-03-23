@@ -336,8 +336,34 @@ spu_cc_library(
 )
 
 spu_cc_test(
-    name = "join_test",
-    srcs = ["join_test.cc"],
+    name = "join_uu_ss_test",
+    srcs = ["join_uu_ss_test.cc"],
+    deps = [
+        "//libspu/kernel:test_util",
+        "//libspu/mpc/utils:simulate",
+        "//libspu/kernel/hal:join",
+        "//libspu/kernel/hlo:casting",
+        "//libspu/kernel/hlo:geometrical",
+        "//libspu/kernel/hlo:const",
+    ],
+)
+
+spu_cc_test(
+    name = "join_uu_vv_test",
+    srcs = ["join_uu_vv_test.cc"],
+    deps = [
+        "//libspu/kernel:test_util",
+        "//libspu/mpc/utils:simulate",
+        "//libspu/kernel/hal:join",
+        "//libspu/kernel/hlo:casting",
+        "//libspu/kernel/hlo:geometrical",
+        "//libspu/kernel/hlo:const",
+    ],
+)
+
+spu_cc_test(
+    name = "join_un_test",
+    srcs = ["join_un_test.cc"],
     deps = [
         "//libspu/kernel:test_util",
         "//libspu/mpc/utils:simulate",

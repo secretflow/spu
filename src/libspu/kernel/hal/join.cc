@@ -28,6 +28,7 @@
 #include "libspu/kernel/hal/shape_ops.h"
 #include "libspu/kernel/hal/soprf.h"
 #include "libspu/kernel/hal/type_cast.h"
+#include "libspu/kernel/hal/utils.h"
 #include "libspu/spu.h"
 
 namespace spu::kernel::hal {
@@ -37,7 +38,7 @@ namespace {
 std::vector<spu::Value> _cuckoo_hash_to_perm(SPUContext* ctx, const Value& e_1,
                                              const Value& e_2, size_t num_hash,
                                              double scale_factor,
-                                             size_t num_join_keys) {
+                                             size_t num_join_keys_for_cuckoo) {
   // Input two private values e_1 and e_2, belonging to P1 and P2 respectively,
   // output num_hash +1 permutations perm_all based on Cuckoo Hash where the
   // first num_hash permutations are belonging to P1 and the last permutation
@@ -48,51 +49,10 @@ std::vector<spu::Value> _cuckoo_hash_to_perm(SPUContext* ctx, const Value& e_1,
     SPU_ENFORCE(e_2.storage_type().as<Private>()->owner() == 1,
                 "e_2 must be owned by P1");
     return _cuckoo_hash_to_perm_v(ctx, e_1, e_2, num_hash, scale_factor,
-                                  num_join_keys);
+                                  num_join_keys_for_cuckoo);
   } else {
     SPU_THROW("e_1 and e_2 must be private values of P0 and P1 respectively");
   }
-}
-
-Value prefix_sum(SPUContext* ctx, const Value& x) {
-  bool input_is_1d = (x.shape().ndim() == 1);
-  int64_t original_n = x.numel();
-
-  Value x_2d;
-  if (input_is_1d) {
-    // reshape 1D -> [1, n]
-    x_2d = hal::reshape(ctx, x, {1, original_n});
-  } else {
-    SPU_ENFORCE(x.shape().ndim() == 2U && x.shape()[0] == 1,
-                "x should be 1-row matrix or 1-d vector");
-    x_2d = x;
-  }
-
-  const int64_t n = x_2d.numel();
-  if (n == 0) {
-    return x;
-  }
-
-  std::vector<Value> parts;
-  parts.reserve(n);
-
-  auto first = hal::slice(ctx, x_2d, {0, 0}, {1, 1});
-  parts.push_back(first);
-
-  for (int64_t i = 1; i < n; ++i) {
-    auto current = hal::slice(ctx, x_2d, {0, i}, {1, i + 1});
-    auto prev_sum = parts.back();
-    auto sum = hal::add(ctx, prev_sum, current);
-    parts.push_back(sum);
-  }
-
-  auto result_2d = hal::concatenate(ctx, parts, 1);
-
-  if (input_is_1d) {
-    return hal::reshape(ctx, result_2d, {original_n});
-  }
-
-  return result_2d;
 }
 
 template <typename Fn>
@@ -154,20 +114,31 @@ spu::Value associative_reduce(Fn&& fn, SPUContext* ctx, const Value& in) {
   return hal::reshape(ctx, current, out_shape);
 }
 
+void hint_nbits(const Value& a, size_t nbits) {
+  if (a.storage_type().isa<BShare>()) {
+    const_cast<Type&>(a.storage_type()).as<BShare>()->setNbits(nbits);
+  }
+}
+
 }  // namespace
 
-// Secure join_uu
-// Ref:
-// https://dl.acm.org/doi/abs/10.1145/3372297.3423358
-std::vector<spu::Value> join_uu(SPUContext* ctx,
-                                absl::Span<const spu::Value> table_1,
-                                absl::Span<const spu::Value> table_2,
-                                size_t num_join_keys, size_t num_hash,
-                                double scale_factor) {
-  // Input: two tables, the number of join keys, the number of hashes for Cuckoo
-  // Hash, scale factor for calculating the number of bins of Cuckoo Hash. The
-  // join keys are placed in front of the table by default. Input with blank
-  // lines is not supported.
+// Secure _join_uu_ss
+// Ref: https://dl.acm.org/doi/10.1145/3372297.3423358 (figure 6)
+std::vector<spu::Value> join_uu_ss(SPUContext* ctx,
+                                   absl::Span<const spu::Value> table_1,
+                                   absl::Span<const spu::Value> table_2,
+                                   size_t num_join_keys, size_t num_hash,
+                                   double scale_factor) {
+  // input:  two secret shared tables to be join, table_1 and table_2,
+  //         the number of join keys,
+  //         the number of hashes for Cuckoo Hash,
+  //         scale factor for calculating the number of bins of Cuckoo Hash.
+  //         The join keys are placed in front of the table by default.
+  //         Input with blank lines is not supported.
+  // output: joined table, where the first column is the valid flag column,
+  //         the next columns are from table_1,
+  //         and the following columns are from table_2.
+
   {
     SPU_TRACE_HAL_DISP(ctx, table_1.size(), table_2.size());
     SPU_ENFORCE(!table_1.empty(), "table_1 is empty");
@@ -210,24 +181,27 @@ std::vector<spu::Value> join_uu(SPUContext* ctx,
                 "at least one of the join keys must be of secret type");
   }
 
-  // Compute table sizes and cmpare them. If table_1 is smaller, swap table_1
+  // Compute table sizes and compare them. If table_1 is smaller, swap table_1
   // and table_2
   //  This is because in the join_uu algorithm, a large number of permutation
   //  operations are performed on table_2, so placing the smaller table in the
   //  table_2 position can reduce the overhead of permutation operations.
-  {
-    const int64_t table_1_size = table_1[0].shape()[0] * table_1.size();
-    const int64_t table_2_size = table_2[0].shape()[0] * table_2.size();
-    if (table_1_size < table_2_size) {
-      return join_uu(ctx, table_2, table_1, num_join_keys, num_hash,
-                     scale_factor);
-    }
-  }
+  // {
+  //   const int64_t table_1_size = table_1[0].shape()[0] * table_1.size();
+  //   const int64_t table_2_size = table_2[0].shape()[0] * table_2.size();
+  //   if (table_1_size < table_2_size) {
+  //     return join_uu(ctx, table_2, table_1, num_join_keys, num_hash,
+  //                    scale_factor);
+  //   }
+  // }
 
   //  Number of rows in table_1
   const int64_t n_1 = table_1[0].shape()[0];
   // Number of rows in table_2
   const int64_t n_2 = table_2[0].shape()[0];
+
+  /* Step1: Calculate the random encoding values e_1 and e_2 of the connection
+   * keys of two tables. */
 
   // Generate SoPrf output of join keys.
   std::vector<spu::Value> join_keys;
@@ -248,6 +222,8 @@ std::vector<spu::Value> join_uu(SPUContext* ctx,
   spu::Value e_2 = hal::reveal_to(
       ctx, hal::slice(ctx, join_keys_soprf, {n_1}, {n_1 + n_2}), 1);
 
+  /* Step2: Constructing cuckoo hash table to get permutations. */
+
   // compute cuckoo hash table size
   yacl::CuckooIndex::Options opts = {static_cast<uint64_t>(n_2), 0, num_hash,
                                      scale_factor};
@@ -257,6 +233,9 @@ std::vector<spu::Value> join_uu(SPUContext* ctx,
   //_cuckoo_hash_to_perm
   std::vector<spu::Value> perm_all = _cuckoo_hash_to_perm(
       ctx, e_1, e_2, num_hash, scale_factor, num_join_keys);
+
+  /* Step3: P_1 permutes the expanded table_2 based on the permutation
+   * calculating from cuckoo hash. */
 
   // Generate permutation pi_2 based on the last row of perm_all.
   const auto& pi_2_v = perm_all.back();
@@ -289,10 +268,11 @@ std::vector<spu::Value> join_uu(SPUContext* ctx,
     tbl2_perm_by_pi2.push_back(table_t_2_i);
   }
 
+  /* Step4: Get each pi_1 corresponding to each hash function, and use it to
+   * permute tbl2_perm_by_pi2 to get tbl2_perm_by_pi1. */
+
   // Get each pi_1 corresponding to each hash function, and use it to permute
-  //  tbl2_perm_by_pi2 to get the table_t_i_i corresponding to the hash
-  //  function, then concatenate all table_t_i_i together to get
-  //  tbl2_perm_by_pi1
+  //  tbl2_perm_by_pi2 to get tbl2_perm_by_pi1.
   std::vector<spu::Value> tbl2_perm_by_pi1;
   tbl2_perm_by_pi1.reserve(num_hash * (table_2.size() + 1));
   for (size_t i = 0; i < num_hash; ++i) {
@@ -308,6 +288,9 @@ std::vector<spu::Value> join_uu(SPUContext* ctx,
                             tbl2_perm_by_pi1_i.end());
   }
 
+  /* Step5: Through comparison, the matching result corresponding to each hash
+   * function identified by num_hash 0/1 strings is obtained. */
+
   // Take out the first num_join_keys column of table_1.
   std::vector<spu::Value> table_1_keys;
   table_1_keys.reserve(num_join_keys);
@@ -321,7 +304,28 @@ std::vector<spu::Value> join_uu(SPUContext* ctx,
   // otherwise output 0.
   std::vector<spu::Value> tbl2_flag_of_hashes;
   tbl2_flag_of_hashes.reserve(num_hash);
+
   size_t begin_id_of_hash_i = 0;
+  std::vector<spu::Value> tbl2_perm_by_pi1_of_hash_i_for_and;
+  tbl2_perm_by_pi1_of_hash_i_for_and.reserve(num_hash);
+  for (size_t i = 0; i < num_hash; ++i) {
+    begin_id_of_hash_i = i * (table_2.size() + 1);
+    tbl2_perm_by_pi1_of_hash_i_for_and.push_back(
+        hal::slice(ctx, tbl2_perm_by_pi1[begin_id_of_hash_i + table_2.size()],
+                   {0}, {n_1}));
+  }
+  auto tbl2_perm_by_pi1_of_hash_i_for_and_concat =
+      hal::concatenate(ctx, tbl2_perm_by_pi1_of_hash_i_for_and, 0);
+  tbl2_perm_by_pi1_of_hash_i_for_and_concat =
+      _prefer_b(ctx, tbl2_perm_by_pi1_of_hash_i_for_and_concat);
+  for (size_t i = 0; i < num_hash; ++i) {
+    tbl2_perm_by_pi1_of_hash_i_for_and[i] =
+        hal::slice(ctx, tbl2_perm_by_pi1_of_hash_i_for_and_concat,
+                   {static_cast<int64_t>(i) * n_1},
+                   {static_cast<int64_t>(i + 1) * n_1}, {});
+  }
+
+  begin_id_of_hash_i = 0;
   for (size_t i = 0; i < num_hash; ++i) {
     begin_id_of_hash_i =
         i * (table_2.size() +
@@ -347,39 +351,48 @@ std::vector<spu::Value> join_uu(SPUContext* ctx,
           hal::slice(ctx, eq_result, {static_cast<int64_t>(j) * n_1},
                      {static_cast<int64_t>(j + 1) * n_1}));
     }
+    hint_nbits(and_result, 1);
     and_result = hal::bitwise_and(
         ctx, and_result,
-        hal::slice(ctx, tbl2_perm_by_pi1[begin_id_of_hash_i + table_2.size()],
-                   {0}, {n_1}));  // And the indicator column.
-
+        tbl2_perm_by_pi1_of_hash_i_for_and[i]);  // And the indicator column.
     tbl2_flag_of_hashes.push_back(and_result);
   }
+
+  /* Step6:  Handling the payload of table_2. */
 
   // Get the join result of table_2, and output the values in table_2 for the
   // matched rows and 0 for the unmatched rows.
   std::vector<spu::Value> table_2_result;
-  table_2_result.reserve(table_2.size());
+  table_2_result.reserve(table_2.size() - num_join_keys);
+
+  // Initialize table_2_result to 0, which will be used to store the
+  // intermediate results for each hash function.
   for (size_t col_idx = num_join_keys; col_idx < table_2.size(); ++col_idx) {
-    spu::Value col_result =
+    spu::Value col_init =
         hal::constant(ctx, 0, table_2[col_idx].dtype(), table_1[0].shape());
-    spu::Value processed_mask = hal::constant(
-        ctx, 0, tbl2_flag_of_hashes[0].dtype(), tbl2_flag_of_hashes[0].shape());
-    for (size_t hash_idx = 0; hash_idx < num_hash; ++hash_idx) {
-      // Get a mask for the first match only.
-      spu::Value control_bit =
-          hal::bitwise_and(ctx, tbl2_flag_of_hashes[hash_idx],
-                           hal::bitwise_not(ctx, processed_mask));
-      // Multiply the corresponding columns in control_bit and tbl2_perm_by_pi1.
+    table_2_result.push_back(col_init);
+  }
+
+  spu::Value processed_mask = hal::constant(
+      ctx, 0, tbl2_flag_of_hashes[0].dtype(), tbl2_flag_of_hashes[0].shape());
+  for (size_t hash_idx = 0; hash_idx < num_hash; ++hash_idx) {
+    spu::Value control_bit =
+        hal::bitwise_and(ctx, tbl2_flag_of_hashes[hash_idx],
+                         hal::bitwise_not(ctx, processed_mask));
+    for (size_t col_idx = num_join_keys; col_idx < table_2.size(); ++col_idx) {
       spu::Value col_temp =
           tbl2_perm_by_pi1[(hash_idx * (table_2.size() + 1)) + col_idx];
       spu::Value mul_result = hal::mul(ctx, col_temp, control_bit);
-      col_result = hal::add(ctx, col_result, mul_result);
-      // Update the processed mask
-      processed_mask =
-          hal::bitwise_or(ctx, processed_mask, tbl2_flag_of_hashes[hash_idx]);
+      col_temp =
+          hal::add(ctx, table_2_result[col_idx - num_join_keys], mul_result);
+      table_2_result[col_idx - num_join_keys] = col_temp;
     }
-    table_2_result.push_back(col_result);
+    // Update the processed mask
+    processed_mask =
+        hal::bitwise_or(ctx, processed_mask, tbl2_flag_of_hashes[hash_idx]);
   }
+
+  /* Step7:  Get the final join result. */
 
   // Bitwise OR the tbl2_flag_of_hashes to get the final join result.
   spu::Value valid_flag = tbl2_flag_of_hashes[0];
@@ -413,18 +426,21 @@ std::vector<spu::Value> join_uu(SPUContext* ctx,
   return join_results;
 }
 
-// Secure join_un
+// Secure _join_un_ss
 // Ref:
 // https://eprint.iacr.org/2024/141.pdf
 std::vector<spu::Value> join_un(SPUContext* ctx,
                                 absl::Span<const spu::Value> table_1,
                                 absl::Span<const spu::Value> table_2,
                                 size_t num_join_keys) {
-  // Input: two tables and the number of join keys.
-  // The join keys are placed in front of the table by default.
-  // Input with blank lines is not supported.
-  // The join keys in table_1 are unique keys, while those in table_2 can be
-  // duplicate.
+  // Input:   two secret shared tables and the number of join keys.
+  //          The join keys are placed in front of the table by default.
+  //          Input with blank lines is not supported.
+  //          The join keys in table_1 are unique keys, while those in table_2
+  //          can be duplicate.
+  // Output:  joined table, where the first column is the valid flag column, the
+  //          next columns are from table_2, and the following columns are from
+  //          table_1's payload columns.
   {
     SPU_TRACE_HAL_DISP(ctx, table_1.size(), table_2.size());
     SPU_ENFORCE(!table_1.empty(), "table_1 is empty");
@@ -542,11 +558,11 @@ std::vector<spu::Value> join_un(SPUContext* ctx,
       hal::apply_inv_permute_1d(ctx, absl::MakeSpan(table_1_payloads_processed),
                                 perm);
 
+  // Compute prefix sum of table_1_payloads_after_perm
   std::vector<spu::Value> table_1_payloads_after_scan;
   table_1_payloads_after_scan.reserve(n_1 - num_join_keys);
-  // Compute prefix sum of table_1_payloads_after_perm
   for (const auto& i : table_1_payloads_after_perm) {
-    auto i_prefix_sum = prefix_sum(ctx, i);
+    auto i_prefix_sum = hal::associative_scan(hal::add, ctx, i);
     table_1_payloads_after_scan.push_back(i_prefix_sum);
   }
 
@@ -575,6 +591,316 @@ std::vector<spu::Value> join_un(SPUContext* ctx,
     join_results.push_back(table_1_payloads_result[i]);
   }
 
+  return join_results;
+}
+
+// Secure _join_uu_vv
+// Ref: https://dl.acm.org/doi/10.1145/3372297.3423358 (figure 6)
+std::vector<spu::Value> join_uu_vv(SPUContext* ctx,
+                                   absl::Span<const spu::Value> table_1,
+                                   absl::Span<const spu::Value> table_2,
+                                   size_t num_join_keys, size_t num_hash,
+                                   double scale_factor) {
+  // input:  two tables to be join, table_1 and table_2, where table_1 is
+  // private to P_0 and table_2 is private to P_1.
+  //         the number of join keys,
+  //         the number of hashes for Cuckoo Hash,
+  //         scale factor for calculating the number of bins of Cuckoo Hash.
+  //         The join keys are placed in front of the table by default.
+  //         Input with blank lines is not supported.
+  // output: joined table, where the first column is the valid flag column,
+  //         the next columns are from table_1,
+  //         and the last columns are the payload columns from table_2.
+  {
+    SPU_TRACE_HAL_DISP(ctx, table_1.size(), table_2.size());
+    SPU_ENFORCE(!table_1.empty(), "table_1 is empty");
+    SPU_ENFORCE(!table_2.empty(), "table_2 is empty");
+    SPU_ENFORCE(num_join_keys > 0, "num_join_keys must be greater than 0");
+    SPU_ENFORCE(num_join_keys <= table_1.size(),
+                "num_join_keys exceeds table_1 size");
+    SPU_ENFORCE(num_join_keys <= table_2.size(),
+                "num_join_keys exceeds table_2 size");
+
+    // Check that each column in both tables is 1-d
+    for (const auto& col : table_1) {
+      SPU_ENFORCE(col.shape().ndim() == 1U,
+                  "each column in table_1 must be 1-d");
+    }
+    for (const auto& col : table_2) {
+      SPU_ENFORCE(col.shape().ndim() == 1U,
+                  "each column in table_2 must be 1-d");
+    }
+
+    // Check that each column in both tables has the same number of rows
+    for (const auto& col : table_1) {
+      SPU_ENFORCE(col.shape()[0] == table_1[0].shape()[0],
+                  "all columns in table_1 must have the same number of rows");
+    }
+    for (const auto& col : table_2) {
+      SPU_ENFORCE(col.shape()[0] == table_2[0].shape()[0],
+                  "all columns in table_2 must have the same number of rows");
+    }
+
+    // Check that all columns in table_1 are of private type
+    for (const auto& col : table_1) {
+      SPU_ENFORCE(col.isPrivate(),
+                  "all columns in table_1 must be of private type");
+    }
+    // Check that table_1 is Private to P_0
+    SPU_ENFORCE(table_1[0].storage_type().as<Private>()->owner() == 0,
+                "table_1 must be private to P_0");
+
+    // Check that all columns in table_2 are of private type
+    for (const auto& col : table_2) {
+      SPU_ENFORCE(col.isPrivate(),
+                  "all columns in table_2 must be of private type");
+    }
+    // Check that table_2 is Private to P_1
+    SPU_ENFORCE(table_2[0].storage_type().as<Private>()->owner() == 1,
+                "table_2 must be private to P_1");
+  }
+
+  //  Number of rows in table_1
+  const int64_t n_1 = table_1[0].shape()[0];
+  // Number of rows in table_2
+  const int64_t n_2 = table_2[0].shape()[0];
+
+  /* Step1: Calculate the random encoding values e_1 and e_2 of the connection
+   * keys of two tables. */
+
+  // Generate num_join_keys random values
+  std::vector<Value> rand_values_1;
+  std::vector<Value> rand_values_2;
+  rand_values_1.reserve(num_join_keys);
+  rand_values_2.reserve(num_join_keys);
+  for (size_t j = 0; j < num_join_keys; j++) {
+    auto rand_scalar = hal::random(ctx, VIS_PUBLIC, DT_I64, {1});
+    rand_values_1.push_back(hal::broadcast_to(ctx, rand_scalar, {n_1}));
+    rand_values_2.push_back(hal::broadcast_to(ctx, rand_scalar, {n_2}));
+  }
+
+  // Map the join keys of table_1 to e_1
+  // Compute e_1 = sum of (table_1_join_keys * rand_values)
+  spu::Value e_1 = hal::mul(ctx, table_1[0], rand_values_1[0]);
+  for (size_t i = 1; i < num_join_keys; i++) {
+    e_1 = hal::add(ctx, e_1, hal::mul(ctx, table_1[i], rand_values_1[i]));
+  }
+
+  // Map the join keys of table_2 to e_2
+  // Compute e_2 = sum of (table_2_join_keys * rand_values)
+  spu::Value e_2 = hal::mul(ctx, table_2[0], rand_values_2[0]);
+  for (size_t i = 1; i < num_join_keys; i++) {
+    e_2 = hal::add(ctx, e_2, hal::mul(ctx, table_2[i], rand_values_2[i]));
+  }
+
+  /* Step2: Constructing cuckoo hash table to get permutations. */
+
+  // compute cuckoo hash table size
+  yacl::CuckooIndex::Options opts = {static_cast<uint64_t>(n_2), 0, num_hash,
+                                     scale_factor};
+  yacl::CuckooIndex cuckoo_index(opts);
+  const int64_t cuckoo_hash_size = cuckoo_index.bins().size();
+
+  //_cuckoo_hash_to_perm
+  //In join_uu_ss, for FM64, if num_join_keys > 1, we need to use Soprf to compute e_1 and e_2, which are 128bit. Therefore, when executing _cuckoo_hash_to_perm, we need to use FM128. However, for join_uu_vv, e_1 and e_2 are 64bit, so we can directly use FM64 to compute cuckoo hash permutation regardless of num_join_keys. Therefore, we need to change the num_join_keys parameter passed in to 1 to indicate that _cuckoo_hash_to_perm should use FM64 to compute cuckoo hash permutation.
+  size_t num_join_keys_for_cuckoo = 1;
+  std::vector<spu::Value> perm_all = _cuckoo_hash_to_perm(
+      ctx, e_1, e_2, num_hash, scale_factor, num_join_keys_for_cuckoo);
+
+  /* Step3: P_1 permutes the expanded table_2 based on the permutation
+   * calculating from cuckoo hash. */
+
+  // Generate permutation pi_2 based on the last row of perm_all.
+  const auto& pi_2_v = perm_all.back();
+
+  // Expand the size of each column of table_2 from n_2 to cuckoo_hash_size.
+  std::vector<spu::Value> table_2_expand;
+  table_2_expand.reserve(table_2.size() + 1);
+  for (const auto& col : table_2) {
+    std::vector<uint64_t> invalid_value(cuckoo_hash_size - n_2, INT64_MAX);
+    auto pad_value =
+        hal::_p2v(ctx, hal::constant(ctx, invalid_value, col.dtype()), 1);
+    pad_value = pad_value.setDtype(col.dtype());
+    auto col_extended = hal::concatenate(ctx, {col, pad_value}, 0);
+    table_2_expand.push_back(col_extended);
+  }
+
+  // Add a column with n_2 as 1 and cuckoo_hash_size-n_2 as 0 to indicate
+  // whether it is a filled row.
+  std::vector<uint8_t> indicator_data(cuckoo_hash_size, 0);
+  for (int64_t i = 0; i < n_2; ++i) {
+    indicator_data[i] = 1;
+  }
+  auto indicator_c = hal::constant(ctx, indicator_data, DT_U8);
+  auto indicator_v =
+      hal::_p2v(ctx, indicator_c, 1).setDtype(indicator_c.dtype());
+  table_2_expand.push_back(indicator_v);
+
+  // Perform permutation pi_2 on table_2_expand.
+  std::vector<spu::Value> tbl2_perm_by_pi2;
+  for (const auto& col : table_2_expand) {
+    auto table_t_2_i = hal::apply_general_permute_1d(ctx, col, pi_2_v);
+    tbl2_perm_by_pi2.push_back(table_t_2_i);
+  }
+
+  /* Step4: Get each pi_1 corresponding to each hash function, and use it to
+   * permute tbl2_perm_by_pi2 to get tbl2_perm_by_pi1. */
+
+  std::vector<spu::Value> tbl2_perm_by_pi1;
+  tbl2_perm_by_pi1.reserve(num_hash * (table_2.size() + 1));
+  for (size_t i = 0; i < num_hash; ++i) {
+    // Generate permutation pi_1 based on the i-th row of perm_all.
+    const spu::Value& pi_1_v = perm_all[i];
+    std::vector<spu::Value> tbl2_perm_by_pi1_i;
+    tbl2_perm_by_pi1_i.reserve(tbl2_perm_by_pi2.size());
+    for (const auto& col : tbl2_perm_by_pi2) {
+      auto col_after_perm = hal::apply_general_permute_1d(ctx, col, pi_1_v);
+
+      col_after_perm = col_after_perm.setDtype(col.dtype());
+      tbl2_perm_by_pi1_i.push_back(col_after_perm);
+    }
+    tbl2_perm_by_pi1.insert(tbl2_perm_by_pi1.end(), tbl2_perm_by_pi1_i.begin(),
+                            tbl2_perm_by_pi1_i.end());
+  }
+
+  /* Step5: Through comparison, the matching result corresponding to each hash
+   * function identified by num_hash 0/1 strings is obtained. */
+
+  // Take out the first num_join_keys column of table_1.
+  std::vector<spu::Value> table_1_keys;
+  table_1_keys.reserve(num_join_keys);
+  for (size_t i = 0; i < num_join_keys; ++i) {
+    table_1_keys.push_back(table_1[i]);
+  }
+  auto table_1_keys_concat = hal::concatenate(ctx, table_1_keys, 0);
+
+  // Compare the first num_join_keys column of tbl2_perm_by_pi1_i in
+  // tbl2_perm_by_pi1 with table_1_keys, and output 1 if they are equal,
+  // otherwise output 0.
+  std::vector<spu::Value> tbl2_flag_of_hashes;
+  tbl2_flag_of_hashes.reserve(num_hash);
+
+  size_t begin_id_of_hash_i = 0;
+  for (size_t i = 0; i < num_hash; ++i) {
+    begin_id_of_hash_i =
+        i * (table_2.size() +
+             1);  //+1 is because there is one more column indicator.
+    std::vector<spu::Value> tbl2_perm_by_pi1_of_hash_i;
+    tbl2_perm_by_pi1_of_hash_i.reserve(num_join_keys);
+    for (size_t j = 0; j < num_join_keys; ++j) {
+      tbl2_perm_by_pi1_of_hash_i.push_back(
+          tbl2_perm_by_pi1[begin_id_of_hash_i + j]);
+    }
+    auto tbl2_perm_by_pi1_of_hash_i_concat =
+        hal::concatenate(ctx, tbl2_perm_by_pi1_of_hash_i, 0);
+
+    spu::Value eq_result =
+        hal::equal(ctx, table_1_keys_concat, tbl2_perm_by_pi1_of_hash_i_concat);
+
+    // The eq_result is divided into n_1 rows, with a total of num_join_keys
+    // columns, and then these columns are AND by rows.
+    spu::Value and_result = hal::slice(ctx, eq_result, {0}, {n_1});
+    for (size_t j = 1; j < num_join_keys; ++j) {
+      and_result = hal::bitwise_and(
+          ctx, and_result,
+          hal::slice(ctx, eq_result, {static_cast<int64_t>(j) * n_1},
+                     {static_cast<int64_t>(j + 1) * n_1}));
+    }
+    hint_nbits(and_result, 1);
+    and_result = hal::bitwise_and(
+        ctx, and_result,
+        hal::slice(ctx, tbl2_perm_by_pi1[begin_id_of_hash_i + table_2.size()],
+                   {0}, {n_1}));  // And the indicator column.
+    tbl2_flag_of_hashes.push_back(and_result);
+  }
+
+  /* Step6:  Handling the payload of table_2. */
+
+  // Get the join result of table_2, and output the values in table_2 for the
+  // matched rows and 0 for the unmatched rows.
+  std::vector<spu::Value> table_2_result;
+  table_2_result.reserve(table_2.size() - num_join_keys);
+  // for (size_t col_idx = num_join_keys; col_idx < table_2.size(); ++col_idx) {
+  //   spu::Value col_result =
+  //       hal::constant(ctx, 0, table_2[col_idx].dtype(), table_1[0].shape());
+  //   spu::Value processed_mask = hal::constant(
+  //       ctx, 0, tbl2_flag_of_hashes[0].dtype(),
+  //       tbl2_flag_of_hashes[0].shape());
+  //   for (size_t hash_idx = 0; hash_idx < num_hash; ++hash_idx) {
+  //     // Get a mask for the first match only.
+  //     spu::Value control_bit =
+  //         hal::bitwise_and(ctx, tbl2_flag_of_hashes[hash_idx],
+  //                          hal::bitwise_not(ctx, processed_mask));
+  //     spu::Value col_temp =
+  //         tbl2_perm_by_pi1[(hash_idx * (table_2.size() + 1)) + col_idx];
+  //     spu::Value mul_result = hal::mul(ctx, col_temp, control_bit);
+  //     col_result = hal::add(ctx, col_result, mul_result);
+  //     // Update the processed mask
+  //     processed_mask =
+  //         hal::bitwise_or(ctx, processed_mask,
+  //         tbl2_flag_of_hashes[hash_idx]);
+  //   }
+  //   table_2_result.push_back(col_result);
+  // }
+
+  // Initialize table_2_result to 0, which will be used to store the
+  // intermediate results for each hash function.
+  for (size_t col_idx = num_join_keys; col_idx < table_2.size(); ++col_idx) {
+    spu::Value col_init =
+        hal::constant(ctx, 0, table_2[col_idx].dtype(), table_1[0].shape());
+    table_2_result.push_back(col_init);
+  }
+
+  spu::Value processed_mask = hal::constant(
+      ctx, 0, tbl2_flag_of_hashes[0].dtype(), tbl2_flag_of_hashes[0].shape());
+  for (size_t hash_idx = 0; hash_idx < num_hash; ++hash_idx) {
+    spu::Value control_bit =
+        hal::bitwise_and(ctx, tbl2_flag_of_hashes[hash_idx],
+                         hal::bitwise_not(ctx, processed_mask));
+    for (size_t col_idx = num_join_keys; col_idx < table_2.size(); ++col_idx) {
+      spu::Value col_temp =
+          tbl2_perm_by_pi1[(hash_idx * (table_2.size() + 1)) + col_idx];
+      spu::Value mul_result = hal::mul(ctx, col_temp, control_bit);
+      col_temp =
+          hal::add(ctx, table_2_result[col_idx - num_join_keys], mul_result);
+      table_2_result[col_idx - num_join_keys] = col_temp;
+    }
+    // Update the processed mask
+    processed_mask =
+        hal::bitwise_or(ctx, processed_mask, tbl2_flag_of_hashes[hash_idx]);
+  }
+
+  /* Step7:  Get the final join result. */
+
+  // Bitwise OR the tbl2_flag_of_hashes to get the final join result.
+  spu::Value valid_flag = tbl2_flag_of_hashes[0];
+  auto bitwise_or_reducer = [](SPUContext* ctx, const Value& a,
+                               const Value& b) {
+    return hal::bitwise_or(ctx, a, b);
+  };
+
+  std::vector<Value> tbl2_flag_of_hashes_2d;
+  tbl2_flag_of_hashes_2d.reserve(tbl2_flag_of_hashes.size());
+  for (const auto& col : tbl2_flag_of_hashes) {
+    auto col_2d = hal::reshape(ctx, col, {1, col.numel()});
+    tbl2_flag_of_hashes_2d.push_back(col_2d);
+  }
+
+  auto tbl2_flag_of_hashes_2d_concat =
+      hal::concatenate(ctx, tbl2_flag_of_hashes_2d, 0);
+  auto transposed = hal::transpose(ctx, tbl2_flag_of_hashes_2d_concat);
+  valid_flag = associative_reduce(bitwise_or_reducer, ctx, transposed);
+
+  // Combined output result
+  std::vector<spu::Value> join_results;
+  join_results.reserve(table_1.size() + table_2.size() + 1);
+  join_results.push_back(valid_flag);
+  for (const auto& col : table_1) {
+    join_results.push_back(col);
+  }
+  for (const auto& col : table_2_result) {
+    join_results.push_back(col);
+  }
   return join_results;
 }
 
