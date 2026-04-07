@@ -47,181 +47,175 @@ SPUContext makeSPUContextWithProfile(
 }
 }  // namespace
 
-// class JoinunTest
-//     : public ::testing::TestWithParam<std::tuple<FieldType, ProtocolKind>>
-//     {};
+class JoinunTest
+    : public ::testing::TestWithParam<std::tuple<FieldType, ProtocolKind>> {};
 
-// INSTANTIATE_TEST_SUITE_P(
-//     JoinunTestInstances, JoinunTest,
-//     testing::Combine(testing::Values(FieldType::FM64),
-//                      testing::Values(ProtocolKind::SEMI2K)),
-//     [](const testing::TestParamInfo<JoinunTest::ParamType>& p) {
-//       return fmt::format("{}x{}", std::get<0>(p.param),
-//       std::get<1>(p.param));
-//     });
+INSTANTIATE_TEST_SUITE_P(
+    JoinunTestInstances, JoinunTest,
+    testing::Combine(testing::Values(FieldType::FM64),
+                     testing::Values(ProtocolKind::SEMI2K)),
+    [](const testing::TestParamInfo<JoinunTest::ParamType>& p) {
+      return fmt::format("{}x{}", std::get<0>(p.param), std::get<1>(p.param));
+    });
 
-// TEST_P(JoinunTest, Join_un_work) {
-//   FieldType field = std::get<0>(GetParam());
-//   ProtocolKind prot = std::get<1>(GetParam());
-//   size_t num_join_keys = 1;
+TEST_P(JoinunTest, Join_un_work) {
+  FieldType field = std::get<0>(GetParam());
+  ProtocolKind prot = std::get<1>(GetParam());
+  size_t num_join_keys = 1;
 
-//   const Shape shape_1 = {2, 9};
-//   const Shape shape_2 = {2, 12};
+  const Shape shape_1 = {2, 9};
+  const Shape shape_2 = {2, 12};
 
-//   xt::xarray<uint64_t> data_1 = {{1, 4, 8, 5, 2, 6, 7, 0, 10},
-//                                  {11, 14, 18, 15, 12, 16, 17, 10, 110}};
-//   xt::xarray<uint64_t> data_2 = {
-//       {7, 5, 7, 9, 1, 4, 0, 4, 7, 6, 13, 14},
-//       {17, 15, 16, 19, 11, 14, 10, 14, 17, 16, 113, 114}};
+  xt::xarray<uint64_t> data_1 = {{1, 4, 8, 5, 2, 6, 7, 0, 10},
+                                 {11, 14, 18, 15, 12, 16, 17, 10, 110}};
+  xt::xarray<uint64_t> data_2 = {
+      {7, 5, 7, 9, 1, 4, 0, 4, 7, 6, 13, 14},
+      {17, 15, 16, 19, 11, 14, 10, 14, 17, 16, 113, 114}};
 
-//   xt::xarray<uint64_t> data_out_expected = {
-//       {7, 5, 7, 1, 4, 0, 4, 7, 6},
-//       {17, 15, 16, 11, 14, 10, 14, 17, 16},
-//       {17, 15, 17, 11, 14, 10, 14, 17, 16}};
+  xt::xarray<uint64_t> data_out_expected = {
+      {7, 5, 7, 1, 4, 0, 4, 7, 6},
+      {17, 15, 16, 11, 14, 10, 14, 17, 16},
+      {17, 15, 17, 11, 14, 10, 14, 17, 16}};
 
-//   mpc::utils::simulate(
-//       2, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
-//         SPUContext sctx = makeSPUContextWithProfile(prot, field, lctx);
+  mpc::utils::simulate(
+      2, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+        SPUContext sctx = makeSPUContextWithProfile(prot, field, lctx);
 
-//         std::vector<Value> table1_columns;
-//         for (int64_t i = 0; i < shape_1[0]; ++i) {
-//           xt::xarray<uint64_t> col_data = xt::row(data_1, i);
-//           Value col = test::makeValue(&sctx, col_data, VIS_SECRET);
-//           table1_columns.push_back(col);
-//         }
+        std::vector<Value> table1_columns;
+        for (int64_t i = 0; i < shape_1[0]; ++i) {
+          xt::xarray<uint64_t> col_data = xt::row(data_1, i);
+          Value col = test::makeValue(&sctx, col_data, VIS_SECRET);
+          table1_columns.push_back(col);
+        }
 
-//         std::vector<Value> table2_columns;
-//         for (int64_t i = 0; i < shape_2[0]; ++i) {
-//           xt::xarray<uint64_t> col_data = xt::row(data_2, i);
-//           Value col = test::makeValue(&sctx, col_data, VIS_SECRET);
-//           table2_columns.push_back(col);
-//         }
+        std::vector<Value> table2_columns;
+        for (int64_t i = 0; i < shape_2[0]; ++i) {
+          xt::xarray<uint64_t> col_data = xt::row(data_2, i);
+          Value col = test::makeValue(&sctx, col_data, VIS_SECRET);
+          table2_columns.push_back(col);
+        }
 
-//         // setupTrace(&sctx, sctx.config());
+        // setupTrace(&sctx, sctx.config());
 
-//         auto ret =
-//             join_un(&sctx, table1_columns, table2_columns, num_join_keys);
+        auto ret =
+            join_un(&sctx, table1_columns, table2_columns, num_join_keys);
 
-//         // test::printProfileData(&sctx);
+        // test::printProfileData(&sctx);
 
-//         EXPECT_EQ(ret.size(), 1 + shape_2[0] + shape_1[0] - num_join_keys);
+        EXPECT_EQ(ret.size(), 1 + shape_2[0] + shape_1[0] - num_join_keys);
 
-//         auto valid_flag =
-//             hal::dump_public_as<uint64_t>(&sctx, hal::reveal(&sctx, ret[0]));
-//         if (lctx->Rank() == 0) {
-//           std::cout << "Valid flag: " << valid_flag << std::endl;
-//         }
-//         xt::xarray<uint64_t> valid_ret;
-//         for (size_t i = 1; i < ret.size(); ++i) {
-//           auto ret_hat =
-//               hal::dump_public_as<uint64_t>(&sctx, hal::reveal(&sctx,
-//               ret[i]));
-//           if (lctx->Rank() == 0) {
-//             std::cout << "Output column " << i - 1 << ": " << ret_hat
-//                       << std::endl;
-//           }
-//           valid_ret = xt::filter(ret_hat, xt::equal(valid_flag, 1));
-//           EXPECT_EQ(valid_ret, xt::row(data_out_expected, i - 1))
-//               << "Mismatch in output column " << i - 1 << std::endl;
-//         }
-//       });
-// }
+        auto valid_flag =
+            hal::dump_public_as<uint64_t>(&sctx, hal::reveal(&sctx, ret[0]));
+        if (lctx->Rank() == 0) {
+          std::cout << "Valid flag: " << valid_flag << std::endl;
+        }
+        xt::xarray<uint64_t> valid_ret;
+        for (size_t i = 1; i < ret.size(); ++i) {
+          auto ret_hat =
+              hal::dump_public_as<uint64_t>(&sctx, hal::reveal(&sctx, ret[i]));
+          if (lctx->Rank() == 0) {
+            std::cout << "Output column " << i - 1 << ": " << ret_hat
+                      << std::endl;
+          }
+          valid_ret = xt::filter(ret_hat, xt::equal(valid_flag, 1));
+          EXPECT_EQ(valid_ret, xt::row(data_out_expected, i - 1))
+              << "Mismatch in output column " << i - 1 << std::endl;
+        }
+      });
+}
 
-// class MultiKeyJoinunTest : public ::testing::TestWithParam<
-//                                std::tuple<FieldType, ProtocolKind, size_t>>
-//                                {};
+class MultiKeyJoinunTest : public ::testing::TestWithParam<
+                               std::tuple<FieldType, ProtocolKind, size_t>> {};
 
-// INSTANTIATE_TEST_SUITE_P(
-//     MultiKeyJoinunTestInstances, MultiKeyJoinunTest,
-//     testing::Combine(testing::Values(FieldType::FM64),
-//                      testing::Values(ProtocolKind::SEMI2K),
-//                      testing::Values(2, 3)),
-//     [](const testing::TestParamInfo<MultiKeyJoinunTest::ParamType>& p) {
-//       return fmt::format("{}x{}x{}", std::get<0>(p.param),
-//       std::get<1>(p.param),
-//                          std::get<2>(p.param));
-//     });
+INSTANTIATE_TEST_SUITE_P(
+    MultiKeyJoinunTestInstances, MultiKeyJoinunTest,
+    testing::Combine(testing::Values(FieldType::FM64),
+                     testing::Values(ProtocolKind::SEMI2K),
+                     testing::Values(2, 3)),
+    [](const testing::TestParamInfo<MultiKeyJoinunTest::ParamType>& p) {
+      return fmt::format("{}x{}x{}", std::get<0>(p.param), std::get<1>(p.param),
+                         std::get<2>(p.param));
+    });
 
-// TEST_P(MultiKeyJoinunTest, Join_un_work) {
-//   FieldType field = std::get<0>(GetParam());
-//   ProtocolKind prot = std::get<1>(GetParam());
-//   size_t num_join_keys = std::get<2>(GetParam());
+TEST_P(MultiKeyJoinunTest, Join_un_work) {
+  FieldType field = std::get<0>(GetParam());
+  ProtocolKind prot = std::get<1>(GetParam());
+  size_t num_join_keys = std::get<2>(GetParam());
 
-//   const Shape shape_1 = {4, 9};
-//   const Shape shape_2 = {5, 12};
+  const Shape shape_1 = {4, 9};
+  const Shape shape_2 = {5, 12};
 
-//   xt::xarray<uint64_t> data_1 = {{1, 4, 8, 5, 2, 6, 7, 0, 10},
-//                                  {11, 14, 18, 15, 12, 16, 17, 10, 110},
-//                                  {21, 24, 28, 25, 22, 26, 27, 20, 210},
-//                                  {31, 34, 38, 35, 32, 36, 37, 30, 310}};
-//   xt::xarray<uint64_t> data_2 = {
-//       {7, 5, 7, 9, 1, 4, 0, 4, 7, 6, 13, 14},
-//       {17, 15, 16, 19, 11, 14, 10, 14, 17, 16, 113, 114},
-//       {27, 25, 26, 29, 21, 24, 20, 24, 27, 26, 213, 214},
-//       {37, 35, 37, 39, 31, 34, 30, 34, 37, 36, 313, 314},
-//       {47, 45, 47, 49, 41, 44, 40, 44, 47, 46, 413, 414}};
+  xt::xarray<uint64_t> data_1 = {{1, 4, 8, 5, 2, 6, 7, 0, 10},
+                                 {11, 14, 18, 15, 12, 16, 17, 10, 110},
+                                 {21, 24, 28, 25, 22, 26, 27, 20, 210},
+                                 {31, 34, 38, 35, 32, 36, 37, 30, 310}};
+  xt::xarray<uint64_t> data_2 = {
+      {7, 5, 7, 9, 1, 4, 0, 4, 7, 6, 13, 14},
+      {17, 15, 16, 19, 11, 14, 10, 14, 17, 16, 113, 114},
+      {27, 25, 26, 29, 21, 24, 20, 24, 27, 26, 213, 214},
+      {37, 35, 37, 39, 31, 34, 30, 34, 37, 36, 313, 314},
+      {47, 45, 47, 49, 41, 44, 40, 44, 47, 46, 413, 414}};
 
-//   xt::xarray<uint64_t> data_out_expected_for_2_keys = {
-//       {7, 5, 1, 4, 0, 4, 7, 6},         {17, 15, 11, 14, 10, 14, 17, 16},
-//       {27, 25, 21, 24, 20, 24, 27, 26}, {37, 35, 31, 34, 30, 34, 37, 36},
-//       {47, 45, 41, 44, 40, 44, 47, 46}, {27, 25, 21, 24, 20, 24, 27, 26},
-//       {37, 35, 31, 34, 30, 34, 37, 36}};
+  xt::xarray<uint64_t> data_out_expected_for_2_keys = {
+      {7, 5, 1, 4, 0, 4, 7, 6},         {17, 15, 11, 14, 10, 14, 17, 16},
+      {27, 25, 21, 24, 20, 24, 27, 26}, {37, 35, 31, 34, 30, 34, 37, 36},
+      {47, 45, 41, 44, 40, 44, 47, 46}, {27, 25, 21, 24, 20, 24, 27, 26},
+      {37, 35, 31, 34, 30, 34, 37, 36}};
 
-//   xt::xarray<uint64_t> data_out_expected_for_3_keys = {
-//       {7, 5, 1, 4, 0, 4, 7, 6},         {17, 15, 11, 14, 10, 14, 17, 16},
-//       {27, 25, 21, 24, 20, 24, 27, 26}, {37, 35, 31, 34, 30, 34, 37, 36},
-//       {47, 45, 41, 44, 40, 44, 47, 46}, {37, 35, 31, 34, 30, 34, 37, 36}};
+  xt::xarray<uint64_t> data_out_expected_for_3_keys = {
+      {7, 5, 1, 4, 0, 4, 7, 6},         {17, 15, 11, 14, 10, 14, 17, 16},
+      {27, 25, 21, 24, 20, 24, 27, 26}, {37, 35, 31, 34, 30, 34, 37, 36},
+      {47, 45, 41, 44, 40, 44, 47, 46}, {37, 35, 31, 34, 30, 34, 37, 36}};
 
-//   mpc::utils::simulate(
-//       2, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
-//         SPUContext sctx = makeSPUContextWithProfile(prot, field, lctx);
+  mpc::utils::simulate(
+      2, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+        SPUContext sctx = makeSPUContextWithProfile(prot, field, lctx);
 
-//         std::vector<Value> table1_columns;
-//         for (int64_t i = 0; i < shape_1[0]; ++i) {
-//           xt::xarray<uint64_t> col_data = xt::row(data_1, i);
-//           Value col = test::makeValue(&sctx, col_data, VIS_SECRET);
-//           table1_columns.push_back(col);
-//         }
+        std::vector<Value> table1_columns;
+        for (int64_t i = 0; i < shape_1[0]; ++i) {
+          xt::xarray<uint64_t> col_data = xt::row(data_1, i);
+          Value col = test::makeValue(&sctx, col_data, VIS_SECRET);
+          table1_columns.push_back(col);
+        }
 
-//         std::vector<Value> table2_columns;
-//         for (int64_t i = 0; i < shape_2[0]; ++i) {
-//           xt::xarray<uint64_t> col_data = xt::row(data_2, i);
-//           Value col = test::makeValue(&sctx, col_data, VIS_SECRET);
-//           table2_columns.push_back(col);
-//         }
+        std::vector<Value> table2_columns;
+        for (int64_t i = 0; i < shape_2[0]; ++i) {
+          xt::xarray<uint64_t> col_data = xt::row(data_2, i);
+          Value col = test::makeValue(&sctx, col_data, VIS_SECRET);
+          table2_columns.push_back(col);
+        }
 
-//         // setupTrace(&sctx, sctx.config());
+        // setupTrace(&sctx, sctx.config());
 
-//         auto ret =
-//             join_un(&sctx, table1_columns, table2_columns, num_join_keys);
+        auto ret =
+            join_un(&sctx, table1_columns, table2_columns, num_join_keys);
 
-//         // test::printProfileData(&sctx);
+        // test::printProfileData(&sctx);
 
-//         EXPECT_EQ(ret.size(), 1 + shape_2[0] + shape_1[0] - num_join_keys);
+        EXPECT_EQ(ret.size(), 1 + shape_2[0] + shape_1[0] - num_join_keys);
 
-//         auto valid_flag =
-//             hal::dump_public_as<uint64_t>(&sctx, hal::reveal(&sctx, ret[0]));
-//         if (lctx->Rank() == 0) {
-//           std::cout << "Valid flag: " << valid_flag << std::endl;
-//         }
-//         xt::xarray<uint64_t> valid_ret;
-//         xt::xarray<uint64_t> data_out_expected =
-//             (num_join_keys == 2) ? data_out_expected_for_2_keys
-//                                  : data_out_expected_for_3_keys;
-//         for (size_t i = 1; i < ret.size(); ++i) {
-//           auto ret_hat =
-//               hal::dump_public_as<uint64_t>(&sctx, hal::reveal(&sctx,
-//               ret[i]));
-//           if (lctx->Rank() == 0) {
-//             std::cout << "Output column " << i - 1 << ": " << ret_hat
-//                       << std::endl;
-//           }
-//           valid_ret = xt::filter(ret_hat, xt::equal(valid_flag, 1));
-//           EXPECT_EQ(valid_ret, xt::row(data_out_expected, i - 1))
-//               << "Mismatch in output column " << i - 1 << std::endl;
-//         }
-//       });
-// }
+        auto valid_flag =
+            hal::dump_public_as<uint64_t>(&sctx, hal::reveal(&sctx, ret[0]));
+        if (lctx->Rank() == 0) {
+          std::cout << "Valid flag: " << valid_flag << std::endl;
+        }
+        xt::xarray<uint64_t> valid_ret;
+        xt::xarray<uint64_t> data_out_expected =
+            (num_join_keys == 2) ? data_out_expected_for_2_keys
+                                 : data_out_expected_for_3_keys;
+        for (size_t i = 1; i < ret.size(); ++i) {
+          auto ret_hat =
+              hal::dump_public_as<uint64_t>(&sctx, hal::reveal(&sctx, ret[i]));
+          if (lctx->Rank() == 0) {
+            std::cout << "Output column " << i - 1 << ": " << ret_hat
+                      << std::endl;
+          }
+          valid_ret = xt::filter(ret_hat, xt::equal(valid_flag, 1));
+          EXPECT_EQ(valid_ret, xt::row(data_out_expected, i - 1))
+              << "Mismatch in output column " << i - 1 << std::endl;
+        }
+      });
+}
 
 TEST(BigDataJoinunTest, Join_un_work) {
   FieldType field = FieldType::FM64;
@@ -231,18 +225,18 @@ TEST(BigDataJoinunTest, Join_un_work) {
   int64_t n_1 = 10000;
   int64_t n_2 = 5000;
   const Shape shape_1 = {3, n_1};
-  const Shape shape_2 = {101, n_2};
+  const Shape shape_2 = {4, n_2};
   xt::xarray<uint64_t> data_1 = xt::random::randint<uint64_t>(shape_1, 0);
   xt::xarray<uint64_t> data_2 = xt::random::randint<uint64_t>(shape_2, 0);
   for (auto i = 0; i < shape_1[1]; ++i) {
     data_1(0, i) = i;
-    for(auto j = 1; j < shape_1[0]; ++j) {
+    for (auto j = 1; j < shape_1[0]; ++j) {
       data_1(j, i) = data_1(j - 1, i) + 100;
     }
   }
   for (auto i = shape_2[1] - 1; i >= 0; --i) {
     data_2(0, i) = i % 1000;
-    for(auto j = 1; j < shape_2[0]; ++j) {
+    for (auto j = 1; j < shape_2[0]; ++j) {
       data_2(j, i) = data_2(j - 1, i) + 100;
     }
   }

@@ -1058,10 +1058,6 @@ class CuckooHashToPermV : public CuckooHashToPermKernel {
     SPU_ENFORCE(getOwner(e_1) == 0);
     SPU_ENFORCE(getOwner(e_2) == 1);
 
-    yacl::crypto::Blake3Hash blake3;
-    std::vector<uint8_t> hash_output;
-    // uint128_t element;
-    // uint128_t result_tmp;
     std::vector<uint128_t> result;
     const int64_t n_1 = e_1.numel();
     const int64_t n_2 = e_2.numel();

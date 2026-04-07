@@ -181,20 +181,6 @@ std::vector<spu::Value> join_uu_ss(SPUContext* ctx,
                 "at least one of the join keys must be of secret type");
   }
 
-  // Compute table sizes and compare them. If table_1 is smaller, swap table_1
-  // and table_2
-  //  This is because in the join_uu algorithm, a large number of permutation
-  //  operations are performed on table_2, so placing the smaller table in the
-  //  table_2 position can reduce the overhead of permutation operations.
-  // {
-  //   const int64_t table_1_size = table_1[0].shape()[0] * table_1.size();
-  //   const int64_t table_2_size = table_2[0].shape()[0] * table_2.size();
-  //   if (table_1_size < table_2_size) {
-  //     return join_uu(ctx, table_2, table_1, num_join_keys, num_hash,
-  //                    scale_factor);
-  //   }
-  // }
-
   //  Number of rows in table_1
   const int64_t n_1 = table_1[0].shape()[0];
   // Number of rows in table_2
@@ -831,28 +817,6 @@ std::vector<spu::Value> join_uu_vv(SPUContext* ctx,
   // matched rows and 0 for the unmatched rows.
   std::vector<spu::Value> table_2_result;
   table_2_result.reserve(table_2.size() - num_join_keys);
-  // for (size_t col_idx = num_join_keys; col_idx < table_2.size(); ++col_idx) {
-  //   spu::Value col_result =
-  //       hal::constant(ctx, 0, table_2[col_idx].dtype(), table_1[0].shape());
-  //   spu::Value processed_mask = hal::constant(
-  //       ctx, 0, tbl2_flag_of_hashes[0].dtype(),
-  //       tbl2_flag_of_hashes[0].shape());
-  //   for (size_t hash_idx = 0; hash_idx < num_hash; ++hash_idx) {
-  //     // Get a mask for the first match only.
-  //     spu::Value control_bit =
-  //         hal::bitwise_and(ctx, tbl2_flag_of_hashes[hash_idx],
-  //                          hal::bitwise_not(ctx, processed_mask));
-  //     spu::Value col_temp =
-  //         tbl2_perm_by_pi1[(hash_idx * (table_2.size() + 1)) + col_idx];
-  //     spu::Value mul_result = hal::mul(ctx, col_temp, control_bit);
-  //     col_result = hal::add(ctx, col_result, mul_result);
-  //     // Update the processed mask
-  //     processed_mask =
-  //         hal::bitwise_or(ctx, processed_mask,
-  //         tbl2_flag_of_hashes[hash_idx]);
-  //   }
-  //   table_2_result.push_back(col_result);
-  // }
 
   // Initialize table_2_result to 0, which will be used to store the
   // intermediate results for each hash function.
