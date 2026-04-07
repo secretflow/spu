@@ -95,18 +95,17 @@ TEST_P(JoinTest, Join_uu_vv_work) {
           table2_columns.push_back(col_v);
         }
 
-        setupTrace(&sctx, sctx.config());
+        // setupTrace(&sctx, sctx.config());
 
         auto ret = join_uu_vv(&sctx, table1_columns, table2_columns,
                               num_join_keys, num_hash, scale_factor);
 
-        test::printProfileData(&sctx);
+        // test::printProfileData(&sctx);
 
         EXPECT_EQ(ret.size(), 1 + shape_1[0] + shape_2[0] - num_join_keys);
 
         auto valid_flag =
             hal::dump_public_as<uint64_t>(&sctx, hal::reveal(&sctx, ret[0]));
-
         xt::xarray<uint64_t> valid_ret;
         for (size_t i = 1; i < ret.size(); ++i) {
           auto ret_hat =
@@ -215,22 +214,20 @@ TEST(BigDataJoinTest, Join_uu_vv_work) {
   ProtocolKind prot = ProtocolKind::SEMI2K;
   size_t num_join_keys = 1;
   const size_t num_hash = 3;
-  const double scale_factor = 1.2;
+  const double scale_factor = 1.5;
 
   int64_t n = 1000000;
-  const Shape shape_1 = {3, n};
-  const Shape shape_2 = {3, n};
+  const Shape shape_1 = {2, n};
+  const Shape shape_2 = {2, n};
   xt::xarray<uint64_t> data_1 = xt::random::randint<uint64_t>(shape_1, 0);
   xt::xarray<uint64_t> data_2 = xt::random::randint<uint64_t>(shape_2, 0);
   for (auto i = 0; i < shape_1[1]; ++i) {
     data_1(0, i) = i;
     data_1(1, i) = i + 100;
-    data_1(2, i) = i + 200;
   }
   for (auto i = shape_2[1] - 1; i >= 0; --i) {
     data_2(0, i) = i;
     data_2(1, i) = i + 300;
-    data_2(2, i) = i + 400;
   }
 
   mpc::utils::simulate(

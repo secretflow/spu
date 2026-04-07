@@ -490,9 +490,14 @@ std::vector<spu::Value> join_un(SPUContext* ctx,
 
   // Generate num_join_keys random values
   std::vector<Value> rand_values;
+  Value rand_scalar;
   rand_values.reserve(num_join_keys);
   for (size_t j = 0; j < num_join_keys; j++) {
-    auto rand_scalar = hal::random(ctx, VIS_PUBLIC, DT_I64, {1});
+    if (ctx->config().field == FieldType::FM32) {
+      rand_scalar = hal::random(ctx, VIS_PUBLIC, DT_I32, {1});
+    } else {
+      rand_scalar = hal::random(ctx, VIS_PUBLIC, DT_I64, {1});
+    }
     rand_values.push_back(hal::broadcast_to(ctx, rand_scalar, {n_1 + n_2}));
   }
 
@@ -702,7 +707,13 @@ std::vector<spu::Value> join_uu_vv(SPUContext* ctx,
   const int64_t cuckoo_hash_size = cuckoo_index.bins().size();
 
   //_cuckoo_hash_to_perm
-  //In join_uu_ss, for FM64, if num_join_keys > 1, we need to use Soprf to compute e_1 and e_2, which are 128bit. Therefore, when executing _cuckoo_hash_to_perm, we need to use FM128. However, for join_uu_vv, e_1 and e_2 are 64bit, so we can directly use FM64 to compute cuckoo hash permutation regardless of num_join_keys. Therefore, we need to change the num_join_keys parameter passed in to 1 to indicate that _cuckoo_hash_to_perm should use FM64 to compute cuckoo hash permutation.
+  // In join_uu_ss, for FM64, if num_join_keys > 1, we need to use Soprf to
+  // compute e_1 and e_2, which are 128bit. Therefore, when executing
+  // _cuckoo_hash_to_perm, we need to use FM128. However, for join_uu_vv, e_1
+  // and e_2 are 64bit, so we can directly use FM64 to compute cuckoo hash
+  // permutation regardless of num_join_keys. Therefore, we need to change the
+  // num_join_keys parameter passed in to 1 to indicate that
+  // _cuckoo_hash_to_perm should use FM64 to compute cuckoo hash permutation.
   size_t num_join_keys_for_cuckoo = 1;
   std::vector<spu::Value> perm_all = _cuckoo_hash_to_perm(
       ctx, e_1, e_2, num_hash, scale_factor, num_join_keys_for_cuckoo);

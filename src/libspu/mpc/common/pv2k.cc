@@ -1165,7 +1165,6 @@ class CuckooHashToPermV : public CuckooHashToPermKernel {
         // Perform cuckoo hash on e_2 and output permutation pi_1.
         absl::Span<uint128_t> span_e_2_view(result);
         cuckoo_index.Insert(span_e_2_view);
-
         // The definition of permutation pi_1 satisfies pi_2(j)=i, where
         // e_2[i]=t[j]
         int64_t tmp = n_2;

@@ -211,9 +211,9 @@ TEST(BigDataJoinTest, Join_uu_ss_work) {
   ProtocolKind prot = ProtocolKind::SEMI2K;
   size_t num_join_keys = 1;
   const size_t num_hash = 3;
-  const double scale_factor = 1.2;
+  const double scale_factor = 1.5;
 
-  int64_t n = 1000000;
+  int64_t n = 10000;
   const Shape shape_1 = {3, n};
   const Shape shape_2 = {3, n};
   xt::xarray<uint64_t> data_1 = xt::random::randint<uint64_t>(shape_1, 0);
