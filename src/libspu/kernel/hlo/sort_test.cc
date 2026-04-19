@@ -758,4 +758,65 @@ INSTANTIATE_TEST_SUITE_P(
                          std::get<3>(p.param));
     });
 
+namespace {
+SPUContext makeSPUContextWithProfile(
+    ProtocolKind prot_kind, FieldType field,
+    const std::shared_ptr<yacl::link::Context> &lctx) {
+  RuntimeConfig cfg;
+  cfg.protocol = prot_kind;
+  cfg.field = field;
+  cfg.enable_action_trace = false;
+
+  if (lctx->Rank() == 0) {
+    cfg.enable_hal_profile = true;
+    cfg.enable_pphlo_profile = true;
+  }
+  return test::makeSPUContext(cfg, lctx);
+}
+}  // namespace
+
+TEST(SimpleSortTest, RandomSingleKey) {
+  const size_t npc = 2;
+  const auto protocol = ProtocolKind::SEMI2K;
+  const auto field = FieldType::FM64;
+  mpc::utils::simulate(
+      npc, [&](const std::shared_ptr<yacl::link::Context> &lctx) {
+        SPUContext ctx = makeSPUContextWithProfile(protocol, field, lctx);
+
+        const int n = 1048576;
+
+        std::mt19937 rng(12345);
+        std::uniform_real_distribution<float> dist(0.0F, 100.0F);
+
+        std::vector<float> data(n);
+        for (auto &v : data) {
+          v = dist(rng);
+        }
+
+        auto expected = data;
+        std::sort(expected.begin(), expected.end());
+
+        xt::xarray<float> x = xt::adapt(data, std::vector<std::size_t>{n});
+        xt::xarray<float> sorted_x =
+            xt::adapt(expected, std::vector<std::size_t>{n});
+
+        Value x_v = test::makeValue(&ctx, x, VIS_SECRET);
+
+        setupTrace(&ctx, ctx.config());
+        std::vector<spu::Value> rets =
+            SimpleSort(&ctx, {x_v}, 0, hal::SortDirection::Ascending, 1);
+        test::printProfileData(&ctx);
+
+        ASSERT_EQ(rets.size(), 1);
+
+        auto sorted_x_hat =
+            hal::dump_public_as<float>(&ctx, hal::reveal(&ctx, rets[0]));
+
+        EXPECT_TRUE(xt::allclose(sorted_x, sorted_x_hat, 0.01, 0.001))
+            << "n = " << n << std::endl
+            << sorted_x << std::endl
+            << sorted_x_hat << std::endl;
+      });
+}
+
 }  // namespace spu::kernel::hlo

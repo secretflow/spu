@@ -352,6 +352,7 @@ spu_cc_library(
         "//libspu/core:context",
         "//libspu/kernel/hlo:shuffle",
         "//libspu/kernel/hlo:permute",
+        "//libspu/kernel:test_util",
     ],
 )
 

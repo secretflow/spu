@@ -28,209 +28,133 @@ SPUContext makeSPUContextWithProfile(
 }
 }  // namespace
 
-// TEST_F(BrentKungTest, BasicCorrectness) {
-//   const size_t npc = 2;
-//   const auto protocol = ProtocolKind::SEMI2K;
-//   const auto field = FieldType::FM64;
+TEST_F(BrentKungTest, BasicCorrectness) {
+  const size_t npc = 2;
+  const auto protocol = ProtocolKind::SEMI2K;
+  const auto field = FieldType::FM64;
 
-//   mpc::utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>&
-//                                     lctx) {
-//     SPUContext ctx = makeSPUContextWithProfile(protocol, field, lctx);
-//     int64_t n = 8;
-//     int64_t block_size = 2;
-//     xt::xarray<float> x = {5, 6, 2, 2, 10, 10, 4, 3, 1, 1, 2, 2, 5, 5, 3, 2};
-//     xt::xarray<float> valids = {1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1,
-//     1}; xt::xarray<float> g = {0, 1, 1, 0, 1, 1, 1, 0}; xt::xarray<float>
-//     x_out_expected = {{5, 6}, {5, 6}, {5, 6}, {4, 3},
-//                                         {4, 3}, {4, 3}, {4, 3}, {3, 2}};
-//     xt::xarray<float> valid_out_expected = {{1, 1}, {1, 1}, {1, 1}, {0, 1},
-//                                             {0, 1}, {0, 1}, {0, 1}, {1, 1}};
+  mpc::utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>&
+                                    lctx) {
+    SPUContext ctx = makeSPUContextWithProfile(protocol, field, lctx);
+    const int64_t batch_size = 2;
+    const int64_t n = 8;
+    const int64_t block_size = 2;
 
-//     x.reshape({static_cast<size_t>(n), static_cast<size_t>(block_size)});
-//     auto x_s = test::makeValue(&ctx, x, VIS_SECRET);
-//     valids.reshape({static_cast<size_t>(n),
-//     static_cast<size_t>(block_size)}); auto v_s = test::makeValue(&ctx,
-//     valids, VIS_SECRET); g.reshape({static_cast<size_t>(n), 1}); auto g_s =
-//     test::makeValue(&ctx, g, VIS_SECRET); setupTrace(&ctx, ctx.config());
+    xt::xarray<float> x = {{5, 6, 2, 2, 10, 10, 4, 3, 1, 1, 2, 2, 5, 5, 3, 2},
+                           {1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 1}};
+    xt::xarray<float> g = {{0, 1, 1, 0, 1, 1, 1, 0}, {0, 1, 1, 0, 1, 1, 1, 0}};
 
-//     auto [x_out_s, valid_out_s] = duplicate_brent_kung(&ctx, x_s, v_s, g_s);
+    xt::xarray<float> x_out_expected = {
+        {5, 6, 5, 6, 5, 6, 4, 3, 4, 3, 4, 3, 4, 3, 3, 2},
+        {1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1}};
 
-//     test::printProfileData(&ctx);
-//     auto x_out_opened =
-//         hal::dump_public_as<float>(&ctx, hal::reveal(&ctx, x_out_s));
-//     auto valid_out_opened =
-//         hal::dump_public_as<float>(&ctx, hal::reveal(&ctx, valid_out_s));
-//     if (lctx->Rank() == 0) {
-//       std::cout << "x:\n" << x << std::endl;
-//       std::cout << "valid:\n" << valids << std::endl;
-//       std::cout << "g:\n" << g << std::endl;
-//       std::cout << "x_out:\n" << x_out_opened << std::endl;
-//       std::cout << "valid_out:\n" << valid_out_opened << std::endl;
-//     }
-//     EXPECT_TRUE(xt::allclose(x_out_opened, x_out_expected));
-//     EXPECT_EQ(valid_out_opened.shape()[0], n);
-//     EXPECT_EQ(valid_out_opened.shape()[1], block_size);
-//     EXPECT_TRUE(xt::allclose(valid_out_opened, valid_out_expected));
-//   });
-// }
+    x.reshape({static_cast<size_t>(batch_size), static_cast<size_t>(n),
+               static_cast<size_t>(block_size), 1});
+    auto x_s = test::makeValue(&ctx, x, VIS_SECRET);
 
-// TEST_F(BrentKungTest, LargeScaleRealNumbers) {
-//   const size_t npc = 2;
-//   const auto protocol = ProtocolKind::SEMI2K;
-//   const auto field = FieldType::FM64;
+    g.reshape({static_cast<size_t>(batch_size), static_cast<size_t>(n)});
+    auto g_s = test::makeValue(&ctx, g, VIS_SECRET);
 
-//   mpc::utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>&
-//                                     lctx) {
-//     SPUContext ctx = makeSPUContextWithProfile(protocol, field, lctx);
-//     const int64_t n = 1000000;
-//     const int64_t block_size = 2;
-//     std::mt19937 rng(std::random_device{}());
-//     std::uniform_real_distribution<float> dist_x(0, 1000);
-//     std::uniform_int_distribution<int> dist_binary(0, 1);  // 改为 int 类型
+    setupTrace(&ctx, ctx.config());
 
-//     xt::xarray<float> x = xt::zeros<float>({n * block_size});
-//     xt::xarray<float> valids = xt::zeros<float>({n * block_size});
-//     xt::xarray<float> g = xt::zeros<float>({n});
+    auto x_out_s = duplicate_brent_kung(&ctx, x_s, g_s);
 
-//     for (auto& v : x) v = dist_x(rng);
-//     for (auto& v : valids) v = static_cast<float>(dist_binary(rng));
-//     g[0] = 0.0F;
-//     for (int64_t i = 1; i < n; ++i) {
-//       g[i] = static_cast<float>(dist_binary(rng));
-//     }
+    test::printProfileData(&ctx);
+    auto x_out_opened =
+        hal::dump_public_as<float>(&ctx, hal::reveal(&ctx, x_out_s));
 
-//     x.reshape({static_cast<size_t>(n), static_cast<size_t>(block_size)});
-//     auto x_s = test::makeValue(&ctx, x, VIS_SECRET);
-//     valids.reshape({static_cast<size_t>(n),
-//     static_cast<size_t>(block_size)}); auto v_s = test::makeValue(&ctx,
-//     valids, VIS_SECRET); g.reshape({static_cast<size_t>(n), 1}); auto g_s =
-//     test::makeValue(&ctx, g, VIS_SECRET); setupTrace(&ctx, ctx.config());
+    x.reshape(
+        {static_cast<size_t>(batch_size), static_cast<size_t>(n * block_size)});
+    x_out_opened.reshape(
+        {static_cast<size_t>(batch_size), static_cast<size_t>(n * block_size)});
+    x_out_expected.reshape(
+        {static_cast<size_t>(batch_size), static_cast<size_t>(n * block_size)});
+    if (lctx->Rank() == 0) {
+      std::cout << "x:\n" << x << std::endl;
+      std::cout << "g:\n" << g << std::endl;
+      std::cout << "x_out:\n" << x_out_opened << std::endl;
+    }
+    if (lctx->Rank() == 0) {
+      EXPECT_TRUE(xt::allclose(x_out_opened, x_out_expected));
+    }
+  });
+}
 
-//     auto [x_out_s, valid_out_s] = duplicate_brent_kung(&ctx, x_s, v_s, g_s);
+TEST_F(BrentKungTest, LargeScaleInputs) {
+  const size_t npc = 2;
+  const auto protocol = ProtocolKind::SEMI2K;
+  const auto field = FieldType::FM64;
 
-//     test::printProfileData(&ctx);
-//     if (lctx->Rank() == 0) {
-//       std::cout << "\n========================================" << std::endl;
-//       std::cout << "duplicate_brent_kung Large Scale Test (Real numbers):"
-//                 << std::endl;
-//       std::cout << "  - Input Shape : " << n << " blocks of size " <<
-//       block_size
-//                 << std::endl;
-//       std::cout << "  - Protocol    : " << protocol << std::endl;
-//       std::cout << "========================================\n" << std::endl;
-//     }
+  mpc::utils::simulate(
+      npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
+        SPUContext ctx = makeSPUContextWithProfile(protocol, field, lctx);
+        const int64_t batch_size = 1;
+        const int64_t n = 100000;
+        const int64_t block_size = 2;
+        std::mt19937 rng(std::random_device{}());
+        std::uniform_real_distribution<float> dist_x(0, 1000);
+        std::uniform_int_distribution<int> dist_binary(0, 1);
 
-//     auto x_out_opened =
-//         hal::dump_public_as<float>(&ctx, hal::reveal(&ctx, x_out_s));
-//     auto valid_out_opened =
-//         hal::dump_public_as<float>(&ctx, hal::reveal(&ctx, valid_out_s));
+        xt::xarray<float> x = xt::zeros<float>({batch_size * n * block_size});
+        xt::xarray<float> g = xt::zeros<float>({batch_size * n});
 
-//     // verifiy correctness
-//     if (lctx->Rank() == 0) {
-//       const float atol = 0.01;
-//       for (int64_t i = 0; i < n; ++i) {
-//         if (g(i, 0) == 0) {
-//           for (int64_t b = 0; b < block_size; ++b) {
-//             EXPECT_NEAR(x_out_opened(i, b), x(i, b), atol)
-//                 << "x reset failed at i=" << i << ", b=" << b
-//                 << ", diff=" << std::abs(x_out_opened(i, b) - x(i, b));
-//             EXPECT_NEAR(valid_out_opened(i, b), valids(i, b), atol)
-//                 << "valids reset failed at i=" << i << ", b=" << b;
-//           }
-//         } else {
-//           for (int64_t b = 0; b < block_size; ++b) {
-//             EXPECT_NEAR(x_out_opened(i, b), x_out_opened(i - 1, b), atol)
-//                 << "x propagation failed at i=" << i << ", b=" << b
-//                 << ", diff = "
-//                 << std::abs(x_out_opened(i, b) - x_out_opened(i - 1, b));
-//             EXPECT_NEAR(valid_out_opened(i, b), valid_out_opened(i - 1, b),
-//                         atol)
-//                 << "valids propagation failed at i=" << i << ", b=" << b;
-//           }
-//         }
-//       }
-//     }
-//   });
-// }
+        for (auto& v : x) v = dist_x(rng);
+        g[0] = 0.0F;
+        for (int64_t i = 1; i < n; ++i) {
+          g[i] = static_cast<float>(dist_binary(rng));
+        }
 
-// TEST_F(BrentKungTest, LargeScaleIntergers) {
-//   const size_t npc = 2;
-//   const auto protocol = ProtocolKind::SEMI2K;
-//   const auto field = FieldType::FM64;
+        x.reshape({static_cast<size_t>(batch_size), static_cast<size_t>(n),
+                   static_cast<size_t>(block_size), 1});
+        auto x_s = test::makeValue(&ctx, x, VIS_SECRET);
+        g.reshape({static_cast<size_t>(batch_size), static_cast<size_t>(n)});
+        auto g_s = test::makeValue(&ctx, g, VIS_SECRET);
 
-//   mpc::utils::simulate(npc, [&](const std::shared_ptr<yacl::link::Context>&
-//                                     lctx) {
-//     SPUContext ctx = makeSPUContextWithProfile(protocol, field, lctx);
-//     const int64_t n = 1000000;
-//     const int64_t block_size = 2;
-//     std::mt19937 rng(std::random_device{}());
-//     std::uniform_int_distribution<int> dist_x(0, 1000);
-//     std::uniform_int_distribution<int> dist_binary(0, 1);
+        setupTrace(&ctx, ctx.config());
+        auto x_out_s = duplicate_brent_kung(&ctx, x_s, g_s);
 
-//     xt::xarray<int> x = xt::zeros<int>({n * block_size});
-//     xt::xarray<int> valids = xt::zeros<int>({n * block_size});
-//     xt::xarray<int> g = xt::zeros<int>({n});
+        test::printProfileData(&ctx);
+        if (lctx->Rank() == 0) {
+          std::cout << "\n========================================"
+                    << std::endl;
+          std::cout << "duplicate_brent_kung Large Scale Test (Real numbers):"
+                    << std::endl;
+          std::cout << "  - Input Shape : " << n << " blocks of size "
+                    << block_size << std::endl;
+          std::cout << "  - Protocol    : " << protocol << std::endl;
+          std::cout << "========================================\n"
+                    << std::endl;
+        }
 
-//     for (auto& v : x) v = dist_x(rng);
-//     for (auto& v : valids) v = dist_binary(rng);
-//     g[0] = 0;
-//     for (int64_t i = 1; i < n; ++i) {
-//       g[i] = dist_binary(rng);
-//     }
+        auto x_out_opened =
+            hal::dump_public_as<float>(&ctx, hal::reveal(&ctx, x_out_s));
 
-//     x.reshape({static_cast<size_t>(n), static_cast<size_t>(block_size)});
-//     auto x_s = test::makeValue(&ctx, x, VIS_SECRET);
-//     valids.reshape({static_cast<size_t>(n),
-//     static_cast<size_t>(block_size)}); auto v_s = test::makeValue(&ctx,
-//     valids, VIS_SECRET); g.reshape({static_cast<size_t>(n), 1}); auto g_s =
-//     test::makeValue(&ctx, g, VIS_SECRET); setupTrace(&ctx, ctx.config());
+        x_out_opened.reshape(
+            {static_cast<size_t>(n), static_cast<size_t>(block_size)});
+        x.reshape({static_cast<size_t>(n), static_cast<size_t>(block_size)});
+        g.reshape({static_cast<size_t>(n), 1});
 
-//     auto [x_out_s, valid_out_s] = duplicate_brent_kung(&ctx, x_s, v_s, g_s);
-
-//     test::printProfileData(&ctx);
-//     if (lctx->Rank() == 0) {
-//       std::cout << "\n========================================" << std::endl;
-//       std::cout << "duplicate_brent_kung Large Scale Test (Intergers):"
-//                 << std::endl;
-//       std::cout << "  - Input Shape : " << n << " blocks of size " <<
-//       block_size
-//                 << std::endl;
-//       std::cout << "  - Protocol    : " << protocol << std::endl;
-//       std::cout << "========================================\n" << std::endl;
-//     }
-
-//     auto x_out_opened =
-//         hal::dump_public_as<int>(&ctx, hal::reveal(&ctx, x_out_s));
-//     auto valid_out_opened =
-//         hal::dump_public_as<int>(&ctx, hal::reveal(&ctx, valid_out_s));
-
-//     // verifiy correctness
-//     if (lctx->Rank() == 0) {
-//       const float atol = 0.01;
-//       for (int64_t i = 0; i < n; ++i) {
-//         if (g(i, 0) == 0) {
-//           for (int64_t b = 0; b < block_size; ++b) {
-//             EXPECT_NEAR(x_out_opened(i, b), x(i, b), atol)
-//                 << "x reset failed at i=" << i << ", b=" << b
-//                 << ", diff=" << std::abs(x_out_opened(i, b) - x(i, b));
-//             EXPECT_NEAR(valid_out_opened(i, b), valids(i, b), atol)
-//                 << "valids reset failed at i=" << i << ", b=" << b;
-//           }
-//         } else {
-//           for (int64_t b = 0; b < block_size; ++b) {
-//             EXPECT_NEAR(x_out_opened(i, b), x_out_opened(i - 1, b), atol)
-//                 << "x propagation failed at i=" << i << ", b=" << b
-//                 << ", diff = "
-//                 << std::abs(x_out_opened(i, b) - x_out_opened(i - 1, b));
-//             EXPECT_NEAR(valid_out_opened(i, b), valid_out_opened(i - 1, b),
-//                         atol)
-//                 << "valids propagation failed at i=" << i << ", b=" << b;
-//           }
-//         }
-//       }
-//     }
-//   });
-// }
+        if (lctx->Rank() == 0) {
+          const float atol = 0.01;
+          for (int64_t i = 0; i < n; ++i) {
+            if (g(i, 0) == 0) {
+              for (int64_t b = 0; b < block_size; ++b) {
+                EXPECT_NEAR(x_out_opened(i, b), x(i, b), atol)
+                    << "x reset failed at i=" << i << ", b=" << b
+                    << ", diff=" << std::abs(x_out_opened(i, b) - x(i, b));
+              }
+            } else {
+              for (int64_t b = 0; b < block_size; ++b) {
+                EXPECT_NEAR(x_out_opened(i, b), x_out_opened(i - 1, b), atol)
+                    << "x propagation failed at i=" << i << ", b=" << b
+                    << ", diff = "
+                    << std::abs(x_out_opened(i, b) - x_out_opened(i - 1, b));
+              }
+            }
+          }
+        }
+      });
+}
 
 TEST_F(ExtractOrderedTest, BasicCorrectness) {
   const size_t npc = 2;
@@ -281,7 +205,7 @@ TEST_F(ExtractOrderedTest, BasicCorrectness) {
       });
 }
 
-TEST_F(ExtractOrderedTest, LargeScale) {
+TEST_F(ExtractOrderedTest, LargeScaleInputs) {
   const size_t npc = 2;
   const auto protocol = ProtocolKind::SEMI2K;
   const auto field = FieldType::FM64;
@@ -299,7 +223,6 @@ TEST_F(ExtractOrderedTest, LargeScale) {
       }
     }
 
-    // valid bits
     std::vector<int64_t> valids(n);
     for (int64_t i = 0; i < n; ++i) {
       valids[i] = (i % 5 == 0) ? 1 : 0;
@@ -371,8 +294,8 @@ TEST(LogstarTest, BasicCorrectness) {
   mpc::utils::simulate(
       npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
         SPUContext ctx = makeSPUContextWithProfile(protocol, field, lctx);
-        xt::xarray<float> x = {1, 3, 20, 40, 55};
-        xt::xarray<float> y = {2, 50, 60, 70, 80};
+        xt::xarray<float> x = {1, 3, 20, 20, 55};
+        xt::xarray<float> y = {2, 20, 20, 70, 80};
         if (lctx->Rank() == 0) {
           std::cout << "x = \n" << x << std::endl;
           std::cout << "y = \n" << y << std::endl;
@@ -382,38 +305,108 @@ TEST(LogstarTest, BasicCorrectness) {
         setupTrace(&ctx, ctx.config());
 
         // Merge
-        logstar(&ctx, x_s, y_s);
+        auto merged = logstar(&ctx, hal::SortDirection::Ascending, x_s, y_s);
+
+        auto revealed =
+            hal::dump_public_as<float>(&ctx, hal::reveal(&ctx, merged));
+        if (ctx.lctx()->Rank() == 0) {
+          std::cout << "merged: " << revealed << std::endl;
+        }
 
         // test::printProfileData(&ctx);
       });
 }
 
-TEST(LogstarRecursiveTest, BasicCorrectness) {
+TEST(LogstarTest, LargeScaleInputs) {
   const size_t npc = 2;
   const auto protocol = ProtocolKind::SEMI2K;
   const auto field = FieldType::FM64;
 
+  const int n = 515;
+  std::mt19937 gen(1139316);
+  // std::mt19937 gen(6486);
+  // auto seed = std::random_device{}();
+  // std::cout << "seed:" << seed << std::endl;
+  // std::mt19937 gen(seed);
+  std::uniform_int_distribution<int> dist(0, 100);
+  // std::uniform_real_distribution<float> dist(0.0F, 10.0F);
+
+  std::vector<float> x_vec(n);
+  std::vector<float> y_vec(n);
+
+  for (int i = 0; i < n; ++i) {
+    x_vec[i] = static_cast<float>(dist(gen));
+    y_vec[i] = static_cast<float>(dist(gen));
+  }
+
+  std::sort(x_vec.begin(), x_vec.end());
+  std::sort(y_vec.begin(), y_vec.end());
+
+  std::vector<float> expected_vec;
+  expected_vec.reserve(2 * n);
+  expected_vec.insert(expected_vec.end(), x_vec.begin(), x_vec.end());
+  expected_vec.insert(expected_vec.end(), y_vec.begin(), y_vec.end());
+  std::sort(expected_vec.begin(), expected_vec.end());
+  xt::xarray<float> expected = xt::adapt(expected_vec);
+
   mpc::utils::simulate(
       npc, [&](const std::shared_ptr<yacl::link::Context>& lctx) {
         SPUContext ctx = makeSPUContextWithProfile(protocol, field, lctx);
-        xt::xarray<float> x = {
-            {{1, 0, 0}, {3, 1, 0}, {20, 1, 0}, {40, 1, 0}, {55, 1, 0}},
-            {{2, 1, 0}, {3, 1, 0}, {4, 1, 0}, {5, 1, 0}, {55, 1, 0}}};
-        xt::xarray<float> y = {
-            {{2, 1, 1}, {50, 1, 1}, {60, 1, 1}, {70, 1, 1}, {80, 1, 1}},
-            {{3, 1, 1}, {4, 1, 1}, {5, 1, 1}, {6, 1, 1}, {88, 1, 1}}};
+
+        xt::xarray<float> x = xt::adapt(x_vec);
+        xt::xarray<float> y = xt::adapt(y_vec);
+
         if (lctx->Rank() == 0) {
-          std::cout << "x = \n" << x << std::endl;
-          std::cout << "y = \n" << y << std::endl;
+          std::cout << "=========================================="
+                    << std::endl;
+          std::cout << "Testing Large Scale Random Merge..." << std::endl;
+          std::cout << "Input sizes: nx = " << n << ", ny = " << n << std::endl;
+          std::cout << "Total elements to merge: " << 2 * n << std::endl;
         }
+
         auto x_s = test::makeValue(&ctx, x, VIS_SECRET);
         auto y_s = test::makeValue(&ctx, y, VIS_SECRET);
+
         setupTrace(&ctx, ctx.config());
+        auto merged = logstar(&ctx, hal::SortDirection::Ascending, x_s, y_s);
+        test::printProfileData(&ctx);
 
-        // Merge
-        LogstarRecursive(&ctx, x_s, y_s);
+        auto revealed =
+            hal::dump_public_as<float>(&ctx, hal::reveal(&ctx, merged));
 
-        // test::printProfileData(&ctx);
+        if (lctx->Rank() == 0) {
+          std::cout << "Verifying correctness..." << std::endl;
+
+          bool is_match = true;
+          int error_count = 0;
+
+          for (size_t i = 0; i < 2 * n; ++i) {
+            if (std::abs(revealed(i) - expected(i)) > 1e-2) {
+              if (error_count == 0) {
+                std::cout << "\n❌ [ERROR] First mismatch found at index " << i
+                          << "!" << std::endl;
+                std::cout << "SPU returned: " << revealed(i)
+                          << " | Expected: " << expected(i) << std::endl;
+
+                int start = std::max(0, static_cast<int>(i) - 5);
+                int end = std::min(2 * n, static_cast<int>(i) + 5);
+
+                std::cout << "--- Context SPU --- : ";
+                for (int j = start; j < end; ++j)
+                  std::cout << revealed(j) << ", ";
+                std::cout << "\n--- Context Exp --- : ";
+                for (int j = start; j < end; ++j)
+                  std::cout << expected(j) << ", ";
+                std::cout << std::endl;
+              }
+              is_match = false;
+              error_count++;
+              if (error_count >= 1) break;
+            }
+          }
+
+          EXPECT_TRUE(is_match);
+        }
       });
 }
 
