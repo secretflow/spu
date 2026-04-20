@@ -473,9 +473,18 @@ NdArrayRef TruncA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
 
   // TODO: add truncation method to options.
   if (comm->getWorldSize() == 2) {
-    // SecureML, local truncation.
+    // Asymmetric local truncation:
+    //   rank 0:  x0 >> k                (round toward -inf)
+    //   rank 1: -((-x1) >> k)           (round toward +inf)
+    // Combined rounding is centered around 0, balancing the per-share bias
+    // of the original symmetric SecureML scheme.
     // Ref: Theorem 1. https://eprint.iacr.org/2017/396.pdf
-    return ring_arshift(x, {static_cast<int64_t>(bits)}).as(x.eltype());
+    const Sizes shift = {static_cast<int64_t>(bits)};
+    if (comm->getRank() == 0) {
+      return ring_arshift(x, shift).as(x.eltype());
+    } else {
+      return ring_neg(ring_arshift(ring_neg(x), shift)).as(x.eltype());
+    }
   } else {
     // ABY3, truncation pair method.
     // Ref: Section 5.1.2 https://eprint.iacr.org/2018/403.pdf
