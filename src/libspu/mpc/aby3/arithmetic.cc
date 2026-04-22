@@ -724,8 +724,7 @@ NdArrayRef TruncA::proc(KernelEvalContext* ctx, const NdArrayRef& in,
       // -arshift(-(b+c))  rounds toward +inf, balancing parties 0/2's
       // arshift(a) which rounds toward -inf.
       const auto sum = ring_add(x1, x2);
-      const auto trunc_asym =
-          ring_neg(ring_arshift(ring_neg(sum), shift_bit));
+      const auto trunc_asym = ring_neg(ring_arshift(ring_neg(sum), shift_bit));
       const auto z1 = ring_sub(trunc_asym, r1);
       comm->sendAsync(0, z1, kBindName());
       return makeAShare(z1, r1, field);
