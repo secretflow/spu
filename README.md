@@ -94,3 +94,86 @@ If you think SPU is helpful for your research or development, please consider ci
 ## Acknowledgement
 
 We thank the significant contributions made by [Alibaba Gemini Lab](https://alibaba-gemini-lab.github.io) and security advisories made by [VUL337@NISL@THU](https://netsec.ccert.edu.cn/vul337).
+
+## HOPTA Setup
+
+### Prerequisite
+
+Setup with docker is recommended.
+#### Docker
+
+```sh
+## start container
+docker run -d -it --name spu-dev-$(whoami) \
+         --mount type=bind,source="$(pwd)",target=/home/admin/dev/ \
+         -w /home/admin/dev \
+         --cap-add=SYS_PTRACE --security-opt seccomp=unconfined \
+         --cap-add=NET_ADMIN \
+         --privileged=true \
+         --entrypoint="bash" \
+         secretflow/ubuntu-base-ci:latest
+
+# attach to build container
+docker exec -it spu-dev-$(whoami) bash
+
+pip install -r requirements.txt
+pip install -r requirements-dev.txt
+```
+
+#### Linux
+
+```sh
+Install gcc>=11.2, cmake>=3.26, ninja, nasm>=2.15, python>=3.9, bazelisk, xxd, lld
+```
+
+About the commands used to install the above dependencies, you can follow [Ubuntu docker file](https://github.com/secretflow/devtools/blob/main/dockerfiles/ubuntu-base-ci.DockerFile).
+
+```sh
+python3 -m pip install -r requirements.txt
+python3 -m pip install -r requirements-dev.txt
+```
+
+#### macOS
+
+```sh
+# macOS >= 13.0, Xcode >= 15.0
+
+# Install Xcode
+https://apps.apple.com/us/app/xcode/id497799835?mt=12
+
+# Select Xcode toolchain version
+sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+
+# Install homebrew
+https://brew.sh/
+
+# Install dependencies
+# Be aware, brew may install a newer version of bazel, when that happens bazel will give an error message during build.
+# Please follow instructions in the error message to install the required version
+brew install bazelisk cmake ninja libomp wget
+
+# For Intel mac only
+brew install nasm
+
+# Install python dependencies
+pip install -r requirements.txt
+pip install -r requirements-dev.txt
+```
+
+### Build & UnitTest
+
+``` sh
+# build as debug
+bazel build //... -c dbg
+
+# build as release
+bazel build //... -c opt
+
+# test
+bazel test //...
+```
+
+### Bazel build options
+
+- `--define gperf=on` enable gperf
+- `--define tracelog=on` enable link trace log.
