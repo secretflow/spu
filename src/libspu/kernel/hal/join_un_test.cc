@@ -95,28 +95,22 @@ TEST_P(JoinunTest, Join_un_work) {
           table2_columns.push_back(col);
         }
 
-        // setupTrace(&sctx, sctx.config());
+        setupTrace(&sctx, sctx.config());
 
         auto ret =
             join_un(&sctx, table1_columns, table2_columns, num_join_keys);
 
-        // test::printProfileData(&sctx);
+        test::printProfileData(&sctx);
 
         EXPECT_EQ(ret.size(), 1 + shape_2[0] + shape_1[0] - num_join_keys);
 
         auto valid_flag =
             hal::dump_public_as<uint64_t>(&sctx, hal::reveal(&sctx, ret[0]));
-        if (lctx->Rank() == 0) {
-          std::cout << "Valid flag: " << valid_flag << std::endl;
-        }
+
         xt::xarray<uint64_t> valid_ret;
         for (size_t i = 1; i < ret.size(); ++i) {
           auto ret_hat =
               hal::dump_public_as<uint64_t>(&sctx, hal::reveal(&sctx, ret[i]));
-          if (lctx->Rank() == 0) {
-            std::cout << "Output column " << i - 1 << ": " << ret_hat
-                      << std::endl;
-          }
           valid_ret = xt::filter(ret_hat, xt::equal(valid_flag, 1));
           EXPECT_EQ(valid_ret, xt::row(data_out_expected, i - 1))
               << "Mismatch in output column " << i - 1 << std::endl;
@@ -185,20 +179,18 @@ TEST_P(MultiKeyJoinunTest, Join_un_work) {
           table2_columns.push_back(col);
         }
 
-        // setupTrace(&sctx, sctx.config());
+        setupTrace(&sctx, sctx.config());
 
         auto ret =
             join_un(&sctx, table1_columns, table2_columns, num_join_keys);
 
-        // test::printProfileData(&sctx);
+        test::printProfileData(&sctx);
 
         EXPECT_EQ(ret.size(), 1 + shape_2[0] + shape_1[0] - num_join_keys);
 
         auto valid_flag =
             hal::dump_public_as<uint64_t>(&sctx, hal::reveal(&sctx, ret[0]));
-        if (lctx->Rank() == 0) {
-          std::cout << "Valid flag: " << valid_flag << std::endl;
-        }
+
         xt::xarray<uint64_t> valid_ret;
         xt::xarray<uint64_t> data_out_expected =
             (num_join_keys == 2) ? data_out_expected_for_2_keys
@@ -206,10 +198,6 @@ TEST_P(MultiKeyJoinunTest, Join_un_work) {
         for (size_t i = 1; i < ret.size(); ++i) {
           auto ret_hat =
               hal::dump_public_as<uint64_t>(&sctx, hal::reveal(&sctx, ret[i]));
-          if (lctx->Rank() == 0) {
-            std::cout << "Output column " << i - 1 << ": " << ret_hat
-                      << std::endl;
-          }
           valid_ret = xt::filter(ret_hat, xt::equal(valid_flag, 1));
           EXPECT_EQ(valid_ret, xt::row(data_out_expected, i - 1))
               << "Mismatch in output column " << i - 1 << std::endl;
@@ -222,10 +210,10 @@ TEST(BigDataJoinunTest, Join_un_work) {
   ProtocolKind prot = ProtocolKind::ABY3;
   size_t num_join_keys = 1;
 
-  int64_t n_1 = 10000;
-  int64_t n_2 = 5000;
-  const Shape shape_1 = {3, n_1};
-  const Shape shape_2 = {4, n_2};
+  int64_t n_1 = 100000;
+  int64_t n_2 = 100000;
+  const Shape shape_1 = {2, n_1};
+  const Shape shape_2 = {2, n_2};
   xt::xarray<uint64_t> data_1 = xt::random::randint<uint64_t>(shape_1, 0);
   xt::xarray<uint64_t> data_2 = xt::random::randint<uint64_t>(shape_2, 0);
   for (auto i = 0; i < shape_1[1]; ++i) {
@@ -277,10 +265,12 @@ TEST(BigDataJoinunTest, Join_un_work) {
         auto recv_actions_end_ = lctx->GetStats()->recv_actions.load();
 
         if (lctx->Rank() == 0) {
-          std::cout << "Join send bytes: "
-                    << send_bytes_end_ - send_bytes_start_ << std::endl;
-          std::cout << "Join recv bytes: "
-                    << recv_bytes_end_ - recv_bytes_start_ << std::endl;
+          std::cout << "Join send bytes: " << std::fixed << std::setprecision(3)
+                    << (send_bytes_end_ - send_bytes_start_) / 1024.0 / 1024.0
+                    << std::endl;
+          std::cout << "Join recv bytes: " << std::fixed << std::setprecision(3)
+                    << (recv_bytes_end_ - recv_bytes_start_) / 1024.0 / 1024.0
+                    << std::endl;
           std::cout << "Join send actions: "
                     << send_actions_end_ - send_actions_start_ << std::endl;
           std::cout << "Join recv actions: "

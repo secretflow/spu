@@ -770,6 +770,9 @@ std::vector<spu::Value> join_uu_vv(SPUContext* ctx,
     table_1_keys.push_back(table_1[i]);
   }
   auto table_1_keys_concat = hal::concatenate(ctx, table_1_keys, 0);
+  auto table_1_keys_concat_s = hal::_v2s(ctx, table_1_keys_concat);
+  table_1_keys_concat_s =
+      table_1_keys_concat_s.setDtype(table_1_keys_concat.dtype());
 
   // Compare the first num_join_keys column of tbl2_perm_by_pi1_i in
   // tbl2_perm_by_pi1 with table_1_keys, and output 1 if they are equal,
@@ -778,6 +781,26 @@ std::vector<spu::Value> join_uu_vv(SPUContext* ctx,
   tbl2_flag_of_hashes.reserve(num_hash);
 
   size_t begin_id_of_hash_i = 0;
+  std::vector<spu::Value> tbl2_perm_by_pi1_of_hash_i_for_and;
+  tbl2_perm_by_pi1_of_hash_i_for_and.reserve(num_hash);
+  for (size_t i = 0; i < num_hash; ++i) {
+    begin_id_of_hash_i = i * (table_2.size() + 1);
+    tbl2_perm_by_pi1_of_hash_i_for_and.push_back(
+        hal::slice(ctx, tbl2_perm_by_pi1[begin_id_of_hash_i + table_2.size()],
+                   {0}, {n_1}));
+  }
+  auto tbl2_perm_by_pi1_of_hash_i_for_and_concat =
+      hal::concatenate(ctx, tbl2_perm_by_pi1_of_hash_i_for_and, 0);
+  tbl2_perm_by_pi1_of_hash_i_for_and_concat =
+      _prefer_b(ctx, tbl2_perm_by_pi1_of_hash_i_for_and_concat);
+  for (size_t i = 0; i < num_hash; ++i) {
+    tbl2_perm_by_pi1_of_hash_i_for_and[i] =
+        hal::slice(ctx, tbl2_perm_by_pi1_of_hash_i_for_and_concat,
+                   {static_cast<int64_t>(i) * n_1},
+                   {static_cast<int64_t>(i + 1) * n_1}, {});
+  }
+
+  begin_id_of_hash_i = 0;
   for (size_t i = 0; i < num_hash; ++i) {
     begin_id_of_hash_i =
         i * (table_2.size() +
@@ -791,8 +814,8 @@ std::vector<spu::Value> join_uu_vv(SPUContext* ctx,
     auto tbl2_perm_by_pi1_of_hash_i_concat =
         hal::concatenate(ctx, tbl2_perm_by_pi1_of_hash_i, 0);
 
-    spu::Value eq_result =
-        hal::equal(ctx, table_1_keys_concat, tbl2_perm_by_pi1_of_hash_i_concat);
+    spu::Value eq_result = hal::equal(ctx, table_1_keys_concat_s,
+                                      tbl2_perm_by_pi1_of_hash_i_concat);
 
     // The eq_result is divided into n_1 rows, with a total of num_join_keys
     // columns, and then these columns are AND by rows.
@@ -806,8 +829,7 @@ std::vector<spu::Value> join_uu_vv(SPUContext* ctx,
     hint_nbits(and_result, 1);
     and_result = hal::bitwise_and(
         ctx, and_result,
-        hal::slice(ctx, tbl2_perm_by_pi1[begin_id_of_hash_i + table_2.size()],
-                   {0}, {n_1}));  // And the indicator column.
+        tbl2_perm_by_pi1_of_hash_i_for_and[i]);  // And the indicator column.
     tbl2_flag_of_hashes.push_back(and_result);
   }
 
