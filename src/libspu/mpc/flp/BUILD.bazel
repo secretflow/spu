@@ -1,0 +1,265 @@
+load("//bazel:spu.bzl", "spu_cc_library", "spu_cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+# === Libraries (sorted alphabetically) ===
+
+
+spu_cc_library(
+    name = "float_type",
+    hdrs = ["float_type.h"],
+    deps = [
+        "//libspu/core:value",
+    ],
+)
+
+spu_cc_library(
+    name = "fp_check",
+    srcs = ["fp_check.cc"],
+    hdrs = ["fp_check.h"],
+    deps = [
+        ":float_type",
+        "//libspu/mpc:api",
+        "//libspu/mpc:ab_api",
+    ],
+)
+
+spu_cc_library(
+    name = "round_and_check_fp_api",
+    srcs = ["round_and_check_fp_api.cc"],
+    hdrs = ["round_and_check_fp_api.h"],
+    deps = [
+        ":float_type",
+        "//libspu/mpc:api",
+        "//libspu/mpc:ab_api",
+    ],
+)
+
+spu_cc_library(
+    name = "fp_add",
+    srcs = ["fp_add.cc"],
+    hdrs = ["fp_add.h"],
+    deps = [
+        ":float_type",
+        ":fp_check",
+        ":round_and_check_fp_api",
+        "//libspu/core:type",
+        "//libspu/core:value",
+        "//libspu/mpc:api",
+        "//libspu/mpc:ab_api",
+        "//libspu/mpc/utils:ring_ops",
+    ],
+)
+
+spu_cc_library(
+    name = "fp_mul",
+    srcs = ["fp_mul.cc"],
+    hdrs = ["fp_mul.h"],
+    deps = [
+        ":float_type",
+        ":fp_check",
+        "//libspu/core:type",
+        "//libspu/core:value",
+        "//libspu/mpc:api",
+        "//libspu/mpc:ab_api",
+        "//libspu/mpc/utils:ring_ops",
+    ],
+)
+
+spu_cc_library(
+    name = "fp_div",
+    srcs = ["fp_div.cc"],
+    hdrs = ["fp_div.h"],
+    deps = [
+        ":float_type",
+        ":div_recip_lut_api",
+        ":fp_check",
+        "//libspu/mpc:api",
+        "//libspu/mpc:ab_api",
+        "//libspu/mpc/cheetah:state",
+        "//libspu/mpc/cheetah/nonlinear:cheetah_nonlinear",
+        "//libspu/mpc/common:communicator",
+        "//libspu/mpc/utils:ring_ops",
+    ],
+)
+
+# === Tests  ===
+
+
+spu_cc_test(
+    name = "fp_add_perf_test",
+    size = "large",
+    timeout = "long",
+    srcs = ["fp_add_perf_test.cc"],
+    deps = [
+        ":fp_add",
+        ":float_type",
+        "//libspu/core:type",
+        "//libspu/core:value",
+        "//libspu/mpc:api",
+        "//libspu/mpc/cheetah:protocol",
+        "//libspu/mpc/common:communicator",
+        "//libspu/mpc/utils:ring_ops",
+        "//libspu/mpc/utils:simulate",
+        "@yacl//yacl/utils:elapsed_timer",
+    ],
+)
+
+spu_cc_test(
+    name = "fp_add_test",
+    size = "small",
+    timeout = "moderate",
+    srcs = ["fp_add_test.cc"],
+    deps = [
+        ":fp_add",
+        ":float_type",
+        "//libspu/core:type",
+        "//libspu/core:value",
+        "//libspu/mpc:api",
+        "//libspu/mpc/cheetah:protocol",
+        "//libspu/mpc/utils:ring_ops",
+        "//libspu/mpc/utils:simulate",
+    ],
+)
+
+spu_cc_test(
+    name = "fp_add_ulp_test",
+    size = "large",
+    timeout = "long",
+    srcs = ["fp_add_ulp_test.cc"],
+    deps = [
+        ":fp_add",
+        ":float_type",
+        "//libspu/core:type",
+        "//libspu/core:value",
+        "//libspu/mpc:api",
+        "//libspu/mpc/cheetah:protocol",
+        "//libspu/mpc/utils:ring_ops",
+        "//libspu/mpc/utils:simulate",
+    ],
+)
+
+spu_cc_test(
+    name = "fp_check_perf_test",
+    size = "large",
+    timeout = "long",
+    srcs = ["fp_check_perf_test.cc"],
+    deps = [
+        ":fp_check",
+        ":float_type",
+        "//libspu/core:type",
+        "//libspu/core:value",
+        "//libspu/mpc:api",
+        "//libspu/mpc/cheetah:protocol",
+        "//libspu/mpc/common:communicator",
+        "//libspu/mpc/utils:ring_ops",
+        "//libspu/mpc/utils:simulate",
+        "@yacl//yacl/utils:elapsed_timer",
+    ],
+)
+
+spu_cc_test(
+    name = "fp_check_test",
+    size = "small",
+    timeout = "moderate",
+    srcs = ["fp_check_test.cc"],
+    deps = [
+        ":fp_check",
+        ":float_type",
+        "//libspu/core:type",
+        "//libspu/core:value",
+        "//libspu/mpc:api",
+        "//libspu/mpc:ab_api",
+        "//libspu/mpc/cheetah:protocol",
+        "//libspu/mpc/utils:ring_ops",
+        "//libspu/mpc/utils:simulate",
+    ],
+)
+
+spu_cc_test(
+    name = "fp_mul_perf_test",
+    size = "medium",
+    timeout = "long",
+    srcs = ["fp_mul_perf_test.cc"],
+    deps = [
+        ":fp_mul",
+        ":float_type",
+        "//libspu/core:type",
+        "//libspu/core:value",
+        "//libspu/mpc:api",
+        "//libspu/mpc/cheetah:protocol",
+        "//libspu/mpc/common:communicator",
+        "//libspu/mpc/utils:simulate",
+        "@yacl//yacl/utils:elapsed_timer",
+    ],
+)
+
+spu_cc_test(
+    name = "fp_mul_test",
+    size = "small",
+    timeout = "moderate",
+    srcs = ["fp_mul_test.cc"],
+    deps = [
+        ":fp_mul",
+        ":float_type",
+        "//libspu/core:type",
+        "//libspu/core:value",
+        "//libspu/mpc:api",
+        "//libspu/mpc/cheetah:protocol",
+        "//libspu/mpc/utils:ring_ops",
+        "//libspu/mpc/utils:simulate",
+    ],
+)
+
+spu_cc_test(
+    name = "fp_mul_ulp_test",
+    size = "medium",
+    timeout = "long",
+    srcs = ["fp_mul_ulp_test.cc"],
+    deps = [
+        ":fp_mul",
+        ":float_type",
+        "//libspu/core:type",
+        "//libspu/core:value",
+        "//libspu/mpc:api",
+        "//libspu/mpc/cheetah:protocol",
+        "//libspu/mpc/utils:ring_ops",
+        "//libspu/mpc/utils:simulate",
+    ],
+)
+
+spu_cc_test(
+    name = "round_and_check_fp_api_test",
+    size = "small",
+    timeout = "moderate",
+    srcs = ["round_and_check_fp_api_test.cc"],
+    deps = [
+        ":round_and_check_fp_api",
+        ":float_type",
+        "//libspu/core:type",
+        "//libspu/core:value",
+        "//libspu/mpc:api",
+        "//libspu/mpc:ab_api",
+        "//libspu/mpc/cheetah:protocol",
+        "//libspu/mpc/cheetah:io",
+        "//libspu/mpc/utils:ring_ops",
+        "//libspu/mpc/utils:simulate",
+    ],
+)
+
+spu_cc_test(
+    name = "fp_div_test",
+    size = "small",
+    timeout = "short",
+    srcs = ["fp_div_test.cc"],
+    deps = [
+        ":fp_div",
+        ":float_type",
+        "//libspu/mpc:api",
+        "//libspu/mpc/cheetah:io",
+        "//libspu/mpc/cheetah:protocol",
+        "//libspu/mpc/utils:simulate",
+        "//libspu/mpc/utils:ring_ops",
+        "@googletest//:gtest",
+    ],
+)

@@ -716,7 +716,7 @@ Value trunc2_s(SPUContext* ctx, const Value& x, size_t bits, SignType sign,
   SPU_ENFORCE(IsA(x));
 
   if (exact) {
-    trunc_ae(ctx, x, bits, sign, signed_arith);
+    return trunc_ae(ctx, x, bits, sign, signed_arith);
   }
 
   return trunc_a2(ctx, x, bits, sign, signed_arith);
