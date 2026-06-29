@@ -72,7 +72,6 @@ spu_cc_library(
     hdrs = ["fp_div.h"],
     deps = [
         ":float_type",
-        ":div_recip_lut_api",
         ":fp_check",
         "//libspu/mpc:api",
         "//libspu/mpc:ab_api",

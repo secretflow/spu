@@ -53,6 +53,7 @@ SharedFloat FPDiv(SPUContext* ctx, const SharedFloat& num,
   const int p = num.p, q = num.q;
   const Shape& sh = num.m.shape();
   const FieldType fd = num.m.storage_type().as<Ring2k>()->field();
+  SPU_ENFORCE(fd == FM64, "FPDiv currently only supports FM64 mantissa to prevent intermediate Newton-Raphson overflow");
   const int man_bits = q + 1;
 
   auto one = Pub(ctx, 1, sh, fd);
@@ -102,17 +103,19 @@ SharedFloat FPDiv(SPUContext* ctx, const SharedFloat& num,
   SPU_ENFORCE(tbl_sz <= 256, "2^g=%zu > 256", tbl_sz);
 
   NdArrayRef tbl_buf(makeType<RingTy>(fd), {static_cast<int64_t>(tbl_sz)});
-  auto tv = NdArrayView<uint64_t>(tbl_buf);
   const size_t r0_bits = static_cast<size_t>(k0 + 2);
   const uint64_t max_r0 = (r0_bits < 64)
       ? ((uint64_t{1} << r0_bits) - 1) : UINT64_MAX;
   const double scale = std::ldexp(1.0, g + 2);
-
-  for (size_t i = 0; i < tbl_sz; ++i) {
-    double d = 1.0 + static_cast<double>(i) / static_cast<double>(tbl_sz);
-    tv[static_cast<int64_t>(i)] = std::min(
-        static_cast<uint64_t>(std::llround(scale / d)), max_r0);
-  }
+  DISPATCH_ALL_FIELDS(fd, [&]() {
+    using T = ring2k_t;
+    auto tv = NdArrayView<T>(tbl_buf);
+    for (size_t i = 0; i < tbl_sz; ++i) {
+      double d = 1.0 + static_cast<double>(i) / static_cast<double>(tbl_sz);
+      tv[static_cast<int64_t>(i)] = static_cast<T>(std::min(
+          static_cast<uint64_t>(std::llround(scale / d)), max_r0));
+    }
+  });
   auto tbl_pub = tbl_buf.as(makeType<Pub2kTy>(fd));
   Value table_val(std::move(tbl_pub), DT_INVALID);
 
@@ -184,13 +187,8 @@ SharedFloat FPDiv(SPUContext* ctx, const SharedFloat& num,
   SPU_ENFORCE(eq_opt.has_value(), "equal_sp not available");
   auto eq_y = eq_opt.value();
 
-  auto m0_half = trunc2_s(ctx, m0, 1, SignType::Unknown, true, true);
-  auto m0_halved_dbl = add_ss(ctx, m0_half, m0_half);
-  auto parity = add_ss(ctx, m0, negate_s(ctx, m0_halved_dbl));
-  auto parity_zero_opt = equal_sp(ctx, parity, p2s(ctx, Pub(ctx, 0, sh, fd)));
-  SPU_ENFORCE(parity_zero_opt.has_value(), "equal_sp for parity");
-  auto is_even = parity_zero_opt.value();
-  auto is_odd  = xor_bp(ctx, is_even, one);
+  auto m0_b = a2b(ctx, m0);
+  auto is_odd = and_bp(ctx, m0_b, Pub(ctx, 1, sh, fd));
 
   auto eq_and_odd = and_bb(ctx, eq_y, is_odd);
   auto not_lt     = xor_bp(ctx, lt_y, one);

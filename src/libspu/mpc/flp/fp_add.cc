@@ -147,7 +147,14 @@ SharedFloat FPAdd(SPUContext* ctx, const SharedFloat& lhs,
   auto cond_skip = msb_s(ctx, diff_d);                   // 1 if d > q+1
 
   // Main path: Steps 8-16
-  const int d_bits = q + 2;  // d <= q+1, so d needs ceil(log2(q+1)) + 1 bits
+  const int d_bits = [](int val) {
+    int bits = 0;
+    while (val > 0) {
+      bits++;
+      val >>= 1;
+    }
+    return bits;
+  }(q + 1);
 
   // Step 8: m_large_shifted = large.m << d
   auto m_large_shifted = BarrelShiftLeft(ctx, large_m, d, d_bits);
