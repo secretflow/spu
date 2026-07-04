@@ -103,13 +103,17 @@ class SVM:
         neg_y_grad = -p * y
         for _ in range(self.max_iter):
             i = smo.working_set_select_i(alpha, y, neg_y_grad)
+            # return Q[i][i] + Q.diagonal() - 2 * Q[i]
+            # Qi = Q[i]
             j = smo.working_set_select_j(i, alpha, y, neg_y_grad, Q)
+            # return j
             neg_y_grad, alpha = smo.update(i, j, Q, y, alpha, neg_y_grad)
 
         self.b = smo.cal_b(alpha, neg_y_grad, y)
         self.alpha_y = alpha * y
 
         self.X = X
+        # return Qi
 
     def predict(self, x):
         """Result estimates.

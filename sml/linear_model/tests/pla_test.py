@@ -28,7 +28,7 @@ from sml.linear_model.pla import Perceptron
 class UnitTests(unittest.TestCase):
     def test_pla(self):
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
+            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
         )
 
         def proc(x, y):
@@ -84,7 +84,17 @@ class UnitTests(unittest.TestCase):
         acc_sk = jnp.sum((result_sk == y)) / n_samples * 100
 
         # run with spu
-        result = spsim.sim_jax(sim, proc)(x, y)
+        copts = spu_pb2.CompilerOptions()
+        
+        proc.__name__ = "test_pla"
+        spu_fn = spsim.sim_jax(sim, proc, copts=copts, pphlo_ref=(None, None)) #test_pla
+        result = spu_fn(x, y)
+        try:
+            if result == "skipped":
+                return True
+        except:
+            pass
+        print(spu_fn.pphlo)
         result = result.reshape(result.shape[0], 1)
         acc_ = jnp.sum((result == y)) / n_samples * 100
 

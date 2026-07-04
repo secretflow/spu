@@ -63,6 +63,7 @@ class HalfSquaredLoss(BaseLoss):
             Average half squared loss value.
 
         """
+        # return self.sample_weight
         return jnp.sum(((y_true - y_pred) ** 2 / 2) * self.sample_weight)
 
 

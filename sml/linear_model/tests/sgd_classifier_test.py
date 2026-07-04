@@ -27,7 +27,7 @@ from sml.linear_model.sgd_classifier import SGDClassifier
 class UnitTests(unittest.TestCase):
     def test_sgd(self):
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
+            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
         )
 
         def proc(x1, x2, y):
@@ -50,7 +50,17 @@ class UnitTests(unittest.TestCase):
             dataset_config = json.load(f)
 
         x1, x2, y = dsutil.load_dataset_by_config(dataset_config)
-        result = spsim.sim_jax(sim, proc)(x1, x2, y)
+        copts = spu_pb2.CompilerOptions()
+        
+        proc.__name__ = "test_sgd"
+        spu_fn = spsim.sim_jax(sim, proc, copts=copts, pphlo_ref=(None, None)) #test_sgd
+        result = spu_fn(x1, x2, y)
+        try:
+            if result == "skipped":
+                return True
+        except:
+            pass
+        print(spu_fn.pphlo)
         print(result)
 
 

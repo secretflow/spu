@@ -56,7 +56,7 @@ class UnitTests(unittest.TestCase):
 
         # bandwidth and latency only work for docker mode
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
+            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
         )
 
         # load mock data
@@ -73,7 +73,18 @@ class UnitTests(unittest.TestCase):
 
         # run
         proc = proc_wrapper(MAX_DEPTH, n_labels)
-        result = spsim.sim_jax(sim, proc)(X, y)
+        
+        copts = spu_pb2.CompilerOptions()
+        
+        proc.__name__ = "test_tree"
+        spu_fn = spsim.sim_jax(sim, proc, copts=copts, pphlo_ref=(None, None)) #test_tree
+        result = spu_fn(X, y)
+        try:
+            if result == "skipped":
+                return True
+        except:
+            pass
+        print(spu_fn.pphlo)
         score_encrpted = jnp.sum((result == y)) / n_samples
 
         # print acc

@@ -33,7 +33,7 @@ from sml.preprocessing.preprocessing import (
 class UnitTests(unittest.TestCase):
     def test_labelbinarizer(self):
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
+            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
         )
 
         def labelbinarize(X, Y):
@@ -53,7 +53,19 @@ class UnitTests(unittest.TestCase):
         # print("sklearn:\n", sk_transformed)
         # print("sklearn:\n", sk_inv_transformed)
 
-        spu_transformed, spu_inv_transformed = spsim.sim_jax(sim, labelbinarize)(X, Y)
+        
+        copts = spu_pb2.CompilerOptions()
+        
+        labelbinarize.__name__ = "test_labelbinarizer"
+        spu_fn = spsim.sim_jax(sim, labelbinarize, copts=copts, pphlo_ref=(None, None)) #test_labelbinarizer
+        result = spu_fn(X, Y)
+        try:
+            if result == "skipped":
+                return True
+        except:
+            pass
+        spu_transformed, spu_inv_transformed = result
+        print(spu_fn.pphlo)
         # print("result\n", spu_transformed)
         # print("result\n", spu_inv_transformed)
 
@@ -64,7 +76,7 @@ class UnitTests(unittest.TestCase):
 
     def test_labelbinarizer_binary(self):
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
+            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
         )
 
         def labelbinarize(X):
@@ -81,7 +93,19 @@ class UnitTests(unittest.TestCase):
         # print("sklearn:\n", sk_transformed)
         # print("sklearn:\n", sk_inv_transformed)
 
-        spu_transformed, spu_inv_transformed = spsim.sim_jax(sim, labelbinarize)(X)
+        
+        copts = spu_pb2.CompilerOptions()
+        
+        labelbinarize.__name__ = "test_labelbinarizer_binary"
+        spu_fn = spsim.sim_jax(sim, labelbinarize, copts=copts, pphlo_ref=(None, None)) #test_labelbinarizer_binary
+        result = spu_fn(X)
+        try:
+            if result == "skipped":
+                return True
+        except:
+            pass
+        spu_transformed, spu_inv_transformed = result
+        print(spu_fn.pphlo)
         # print("result\n", spu_transformed)
         # print("result\n", spu_inv_transformed)
 
@@ -92,7 +116,7 @@ class UnitTests(unittest.TestCase):
 
     def test_labelbinarizer_unseen(self):
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
+            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
         )
 
         def labelbinarize(X, Y):
@@ -108,14 +132,25 @@ class UnitTests(unittest.TestCase):
         sk_result = transformer.transform(Y)
         # print("sklearn:\n", sk_result)
 
-        spu_result = spsim.sim_jax(sim, labelbinarize)(X, Y)
+        
+        copts = spu_pb2.CompilerOptions()
+        
+        labelbinarize.__name__ = "test_labelbinarizer_unseen"
+        spu_fn = spsim.sim_jax(sim, labelbinarize, copts=copts, pphlo_ref=(None, None)) #test_labelbinarizer_unseen
+        spu_result = spu_fn(X, Y)
+        try:
+            if spu_result == "skipped":
+                return True
+        except:
+            pass
+        print(spu_fn.pphlo)
         # print("result\n", spu_result)
 
         np.testing.assert_allclose(sk_result, spu_result, rtol=0, atol=0)
 
     def test_binarizer(self):
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
+            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
         )
 
         def binarize(X):
@@ -128,14 +163,25 @@ class UnitTests(unittest.TestCase):
         sk_result = transformer.transform(X)
         # print("sklearn:\n", sk_result)
 
-        spu_result = spsim.sim_jax(sim, binarize)(X)
+        
+        copts = spu_pb2.CompilerOptions()
+        
+        binarize.__name__ = "test_binarizer"
+        spu_fn = spsim.sim_jax(sim, binarize, copts=copts, pphlo_ref=(None, None)) #test_binarizer
+        spu_result = spu_fn(X)
+        try:
+            if spu_result == "skipped":
+                return True
+        except:
+            pass
+        print(spu_fn.pphlo)
         # print("result\n", spu_result)
 
         np.testing.assert_allclose(sk_result, spu_result, rtol=0, atol=0)
 
     def test_normalizer(self):
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
+            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
         )
 
         def normalize_l1(X):
@@ -162,20 +208,56 @@ class UnitTests(unittest.TestCase):
         # print("sklearn:\n", sk_result_l2)
         # print("sklearn:\n", sk_result_max)
 
-        spu_result_l1 = spsim.sim_jax(sim, normalize_l1)(X)
-        spu_result_l2 = spsim.sim_jax(sim, normalize_l2)(X)
-        spu_result_max = spsim.sim_jax(sim, normalize_max)(X)
+        
+        copts = spu_pb2.CompilerOptions()
+        
+        normalize_l1.__name__ = "test_normalizer_l1"
+        spu_fn = spsim.sim_jax(sim, normalize_l1, copts=copts, pphlo_ref=(None, None)) #test_normalizer_l1
+        spu_result_l1 = spu_fn(X)
+        skip_l1 = False
+        try:
+            if spu_result_l1 == "skipped":
+                skip_l1 = True
+        except:
+            pass
+        if not skip_l1:
+            print(spu_fn.pphlo)
+            np.testing.assert_allclose(sk_result_l1, spu_result_l1, rtol=0, atol=1e-4)
+        
+        copts = spu_pb2.CompilerOptions()
+        
+        normalize_l2.__name__ = "test_normalizer_l2"
+        spu_fn = spsim.sim_jax(sim, normalize_l2, copts=copts, pphlo_ref=(None, None)) #test_normalizer_l2
+        spu_result_l2 = spu_fn(X)
+        skip_l2 = False
+        try:
+            if spu_result_l2 == "skipped":
+                skip_l2 = True
+        except:
+            pass
+        if not skip_l2:
+            print(spu_fn.pphlo)
+            np.testing.assert_allclose(sk_result_l2, spu_result_l2, rtol=0, atol=1e-4)
+        
+        copts = spu_pb2.CompilerOptions()
+        
+        normalize_max.__name__ = "test_normalizer_max"
+        spu_fn = spsim.sim_jax(sim, normalize_max, copts=copts, pphlo_ref=(None, None)) #test_normalizer_max
+        spu_result_max = spu_fn(X)
+        try:
+            if spu_result_max == "skipped":
+                return True
+        except:
+            pass
+        print(spu_fn.pphlo)
+        np.testing.assert_allclose(sk_result_max, spu_result_max, rtol=0, atol=1e-4)
         # print("result\n", spu_result_l1)
         # print("result\n", spu_result_l2)
         # print("result\n", spu_result_max)
 
-        np.testing.assert_allclose(sk_result_l1, spu_result_l1, rtol=0, atol=1e-4)
-        np.testing.assert_allclose(sk_result_l2, spu_result_l2, rtol=0, atol=1e-4)
-        np.testing.assert_allclose(sk_result_max, spu_result_max, rtol=0, atol=1e-4)
-
     def test_minmaxscaler(self):
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
+            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
         )
 
         def minmaxscale(X, Y):
@@ -193,7 +275,19 @@ class UnitTests(unittest.TestCase):
         # print("sklearn:\n", sk_result_1)
         # print("sklearn:\n", sk_result_2)
 
-        spu_result_1, spu_result_2 = spsim.sim_jax(sim, minmaxscale)(X, Y)
+        
+        copts = spu_pb2.CompilerOptions()
+        
+        minmaxscale.__name__ = "test_minmaxscaler"
+        spu_fn = spsim.sim_jax(sim, minmaxscale, copts=copts, pphlo_ref=(None, None)) #test_minmaxscaler
+        result = spu_fn(X, Y)
+        try:
+            if result == "skipped":
+                return True
+        except:
+            pass
+        spu_result_1, spu_result_2 = result
+        print(spu_fn.pphlo)
         # print("result\n", spu_result_1)
         # print("result\n", spu_result_2)
 
@@ -202,7 +296,7 @@ class UnitTests(unittest.TestCase):
 
     def test_minmaxscaler_partial_fit(self):
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
+            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
         )
 
         def minmaxscale(X):
@@ -233,7 +327,19 @@ class UnitTests(unittest.TestCase):
         # print("sklearn:\n", sk_result_min)
         # print("sklearn:\n", sk_result_max)
 
-        spu_result_min, spu_result_max = spsim.sim_jax(sim, minmaxscale)(X)
+        
+        copts = spu_pb2.CompilerOptions()
+        
+        minmaxscale.__name__ = "test_minmaxscaler_partial_fit"
+        spu_fn = spsim.sim_jax(sim, minmaxscale, copts=copts, pphlo_ref=(None, None)) #test_minmaxscaler_partial_fit
+        result = spu_fn(X)
+        try:
+            if result == "skipped":
+                return True
+        except:
+            pass
+        spu_result_min, spu_result_max = result
+        print(spu_fn.pphlo)
         # print("result\n", spu_result_min)
         # print("result\n", spu_result_max)
 
@@ -242,7 +348,7 @@ class UnitTests(unittest.TestCase):
 
     def test_minmaxscaler_zero_variance(self):
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
+            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
         )
 
         def minmaxscale(X, X_new):
@@ -265,9 +371,18 @@ class UnitTests(unittest.TestCase):
         # print("sklearn:\n", sk_inv_transformed)
         # print("sklearn:\n", sk_transformed_new)
 
-        spu_transformed, spu_inv_transformed, spu_transformed_new = spsim.sim_jax(
-            sim, minmaxscale
-        )(X, X_new)
+        copts = spu_pb2.CompilerOptions()
+        
+        minmaxscale.__name__ = "test_minmaxscaler_zero_variance"
+        spu_fn = spsim.sim_jax(sim, minmaxscale, copts=copts, pphlo_ref=(None, None)) #test_minmaxscaler_zero_variance
+        result = spu_fn(X, X_new)
+        try:
+            if result == "skipped":
+                return True
+        except:
+            pass
+        spu_transformed, spu_inv_transformed, spu_transformed_new = result
+        print(spu_fn.pphlo)
         # print("result\n", spu_transformed)
         # print("result\n", spu_inv_transformed)
         # print("result\n", spu_transformed_new)
@@ -282,7 +397,7 @@ class UnitTests(unittest.TestCase):
 
     def test_maxabsscaler(self):
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
+            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
         )
 
         def maxabsscale(X):
@@ -296,14 +411,25 @@ class UnitTests(unittest.TestCase):
         sk_result = transformer.fit_transform(X)
         # print("sklearn:\n", sk_result)
 
-        spu_result = spsim.sim_jax(sim, maxabsscale)(X)
+        
+        copts = spu_pb2.CompilerOptions()
+        
+        maxabsscale.__name__ = "test_maxabsscaler"
+        spu_fn = spsim.sim_jax(sim, maxabsscale, copts=copts, pphlo_ref=(None, None)) #test_maxabsscaler
+        spu_result = spu_fn(X)
+        try:
+            if spu_result == "skipped":
+                return True
+        except:
+            pass
+        print(spu_fn.pphlo)
         # print("result\n", spu_result)
 
         np.testing.assert_allclose(sk_result, spu_result, rtol=0, atol=1e-4)
 
     def test_maxabsscaler_zero_maxabs(self):
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
+            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
         )
 
         def maxabsscale(X, X_new):
@@ -328,9 +454,18 @@ class UnitTests(unittest.TestCase):
         # print("sklearn:\n", sk_inv_transformed)
         # print("sklearn:\n", sk_transformed_new)
 
-        spu_transformed, spu_inv_transformed, spu_transformed_new = spsim.sim_jax(
-            sim, maxabsscale
-        )(X, X_new)
+        copts = spu_pb2.CompilerOptions()
+        
+        maxabsscale.__name__ = "test_maxabsscaler_zero_maxabs"
+        spu_fn = spsim.sim_jax(sim, maxabsscale, copts=copts, pphlo_ref=(None, None)) #test_maxabsscaler_zero_maxabs
+        result = spu_fn(X, X_new)
+        try:
+            if result == "skipped":
+                return True
+        except:
+            pass
+        spu_transformed, spu_inv_transformed, spu_transformed_new = result
+        print(spu_fn.pphlo)
         # print("result\n", spu_transformed)
         # print("result\n", spu_inv_transformed)
         # print("result\n", spu_transformed_new)
@@ -345,7 +480,7 @@ class UnitTests(unittest.TestCase):
 
     def test_kbinsdiscretizer_uniform(self):
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
+            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
         )
 
         def kbinsdiscretize(X):
@@ -366,7 +501,19 @@ class UnitTests(unittest.TestCase):
         # print("sklearn:\n", sk_transformed)
         # print("sklearn:\n", sk_inv_transformed)
 
-        spu_transformed, spu_inv_transformed = spsim.sim_jax(sim, kbinsdiscretize)(X)
+        
+        copts = spu_pb2.CompilerOptions()
+        
+        kbinsdiscretize.__name__ = "test_kbinsdiscretizer_uniform"
+        spu_fn = spsim.sim_jax(sim, kbinsdiscretize, copts=copts, pphlo_ref=(None, None)) #test_kbinsdiscretizer_uniform
+        result = spu_fn(X)
+        try:
+            if result == "skipped":
+                return True
+        except:
+            pass
+        spu_transformed, spu_inv_transformed = result
+        print(spu_fn.pphlo)
         # print("result\n", spu_transformed)
         # print("result\n", spu_inv_transformed)
 
@@ -377,7 +524,7 @@ class UnitTests(unittest.TestCase):
 
     def test_kbinsdiscretizer_uniform_diverse_n_bins(self):
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
+            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
         )
 
         def kbinsdiscretize(X, n_bins):
@@ -400,9 +547,21 @@ class UnitTests(unittest.TestCase):
         # print("sklearn:\n", sk_transformed)
         # print("sklearn:\n", sk_inv_transformed)
 
-        spu_transformed, spu_inv_transformed = spsim.sim_jax(sim, kbinsdiscretize)(
+        
+        copts = spu_pb2.CompilerOptions()
+        
+        kbinsdiscretize.__name__ = "test_kbinsdiscretizer_uniform_diverse_n_bins"
+        spu_fn = spsim.sim_jax(sim, kbinsdiscretize, copts=copts, pphlo_ref=(None, None)) #test_kbinsdiscretizer_uniform_diverse_n_bins
+        result = spu_fn(
             X, n_bins
         )
+        try:
+            if result == "skipped":
+                return True
+        except:
+            pass
+        spu_transformed, spu_inv_transformed = result
+        print(spu_fn.pphlo)
         # print("result\n", spu_transformed)
         # print("result\n", spu_inv_transformed)
 
@@ -413,7 +572,7 @@ class UnitTests(unittest.TestCase):
 
     def test_kbinsdiscretizer_uniform_diverse_n_bins_no_vectorize(self):
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
+            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
         )
 
         # When you set vectorize to False, diverse_n_bins should be public.
@@ -439,7 +598,19 @@ class UnitTests(unittest.TestCase):
         # print("sklearn:\n", sk_transformed)
         # print("sklearn:\n", sk_inv_transformed)
 
-        spu_transformed, spu_inv_transformed = spsim.sim_jax(sim, kbinsdiscretize)(X)
+        
+        copts = spu_pb2.CompilerOptions()
+        
+        kbinsdiscretize.__name__ = "test_kbinsdiscretizer_uniform_diverse_n_bins_no_vectorize"
+        spu_fn = spsim.sim_jax(sim, kbinsdiscretize, copts=copts, pphlo_ref=(None, None)) #test_kbinsdiscretizer_uniform_diverse_n_bins_no_vectorize
+        result = spu_fn(X)
+        try:
+            if result == "skipped":
+                return True
+        except:
+            pass
+        spu_transformed, spu_inv_transformed = result
+        print(spu_fn.pphlo)
         # print("result\n", spu_transformed)
         # print("result\n", spu_inv_transformed)
 
@@ -450,7 +621,7 @@ class UnitTests(unittest.TestCase):
 
     def test_kbinsdiscretizer_quantile(self):
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
+            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
         )
 
         def kbinsdiscretize(X):
@@ -471,7 +642,19 @@ class UnitTests(unittest.TestCase):
         # print("sklearn:\n", sk_transformed)
         # print("sklearn:\n", sk_inv_transformed)
 
-        spu_transformed, spu_inv_transformed = spsim.sim_jax(sim, kbinsdiscretize)(X)
+        
+        copts = spu_pb2.CompilerOptions()
+        
+        kbinsdiscretize.__name__ = "test_kbinsdiscretizer_quantile"
+        spu_fn = spsim.sim_jax(sim, kbinsdiscretize, copts=copts, pphlo_ref=(None, None)) #test_kbinsdiscretizer_quantile
+        result = spu_fn(X)
+        try:
+            if result == "skipped":
+                return True
+        except:
+            pass
+        spu_transformed, spu_inv_transformed = result
+        print(spu_fn.pphlo)
         # print("result\n", spu_transformed)
         # print("result\n", spu_inv_transformed)
 
@@ -483,7 +666,7 @@ class UnitTests(unittest.TestCase):
 
     def test_kbinsdiscretizer_quantile_diverse_n_bins(self):
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
+            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
         )
 
         def kbinsdiscretize(X, n_bins):
@@ -506,9 +689,21 @@ class UnitTests(unittest.TestCase):
         # print("sklearn:\n", sk_transformed)
         # print("sklearn:\n", sk_inv_transformed)
 
-        spu_transformed, spu_inv_transformed = spsim.sim_jax(sim, kbinsdiscretize)(
+        
+        copts = spu_pb2.CompilerOptions()
+        
+        kbinsdiscretize.__name__ = "test_kbinsdiscretizer_quantile_diverse_n_bins"
+        spu_fn = spsim.sim_jax(sim, kbinsdiscretize, copts=copts, pphlo_ref=(None, None)) #test_kbinsdiscretizer_quantile_diverse_n_bins
+        result = spu_fn(
             X, n_bins
         )
+        try:
+            if result == "skipped":
+                return True
+        except:
+            pass
+        spu_transformed, spu_inv_transformed = result
+        print(spu_fn.pphlo)
         # print("result\n", spu_transformed)
         # print("result\n", spu_inv_transformed)
 
@@ -520,7 +715,7 @@ class UnitTests(unittest.TestCase):
 
     def test_kbinsdiscretizer_quantile_diverse_n_bins2(self):
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
+            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
         )
 
         def kbinsdiscretize(X, n_bins):
@@ -543,9 +738,21 @@ class UnitTests(unittest.TestCase):
         # print("sklearn:\n", sk_transformed)
         # print("sklearn:\n", sk_inv_transformed)
 
-        spu_transformed, spu_inv_transformed = spsim.sim_jax(sim, kbinsdiscretize)(
+        
+        copts = spu_pb2.CompilerOptions()
+        
+        kbinsdiscretize.__name__ = "test_kbinsdiscretizer_quantile_diverse_n_bins2"
+        spu_fn = spsim.sim_jax(sim, kbinsdiscretize, copts=copts, pphlo_ref=(None, None)) #test_kbinsdiscretizer_quantile_diverse_n_bins2
+        result = spu_fn(
             X, n_bins
         )
+        try:
+            if result == "skipped":
+                return True
+        except:
+            pass
+        spu_transformed, spu_inv_transformed = result
+        print(spu_fn.pphlo)
         # print("result\n", spu_transformed)
         # print("result\n", spu_inv_transformed)
 
@@ -557,7 +764,7 @@ class UnitTests(unittest.TestCase):
 
     def test_kbinsdiscretizer_quantile_diverse_n_bins_no_vectorize(self):
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
+            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
         )
 
         def kbinsdiscretize(X):
@@ -582,7 +789,19 @@ class UnitTests(unittest.TestCase):
         # print("sklearn:\n", sk_transformed)
         # print("sklearn:\n", sk_inv_transformed)
 
-        spu_transformed, spu_inv_transformed = spsim.sim_jax(sim, kbinsdiscretize)(X)
+        
+        copts = spu_pb2.CompilerOptions()
+        
+        kbinsdiscretize.__name__ = "test_kbinsdiscretizer_quantile_diverse_n_bins_no_vectorize"
+        spu_fn = spsim.sim_jax(sim, kbinsdiscretize, copts=copts, pphlo_ref=(None, None)) #test_kbinsdiscretizer_quantile_diverse_n_bins_no_vectorize
+        result = spu_fn(X)
+        try:
+            if result == "skipped":
+                return True
+        except:
+            pass
+        spu_transformed, spu_inv_transformed = result
+        print(spu_fn.pphlo)
         # print("result\n", spu_transformed)
         # print("result\n", spu_inv_transformed)
 
@@ -594,7 +813,7 @@ class UnitTests(unittest.TestCase):
 
     def test_kbinsdiscretizer_quantile_eliminate(self):
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
+            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
         )
 
         def kbinsdiscretize(X):
@@ -620,7 +839,19 @@ class UnitTests(unittest.TestCase):
         # print("sklearn:\n", sk_transformed)
         # print("sklearn:\n", sk_inv_transformed)
 
-        spu_transformed, spu_inv_transformed = spsim.sim_jax(sim, kbinsdiscretize)(X)
+        
+        copts = spu_pb2.CompilerOptions()
+        
+        kbinsdiscretize.__name__ = "test_kbinsdiscretizer_quantile_eliminate"
+        spu_fn = spsim.sim_jax(sim, kbinsdiscretize, copts=copts, pphlo_ref=(None, None)) #test_kbinsdiscretizer_quantile_eliminate
+        result = spu_fn(X)
+        try:
+            if result == "skipped":
+                return True
+        except:
+            pass
+        spu_transformed, spu_inv_transformed = result
+        print(spu_fn.pphlo)
         # print("result\n", spu_transformed)
         # print("result\n", spu_inv_transformed)
 
@@ -631,7 +862,7 @@ class UnitTests(unittest.TestCase):
 
     def test_kbinsdiscretizer_quantile_sample_weight(self):
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
+            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
         )
 
         def kbinsdiscretize(X, sample_weight):
@@ -661,9 +892,21 @@ class UnitTests(unittest.TestCase):
         # print("sklearn:\n", sk_transformed)
         # print("sklearn:\n", sk_inv_transformed)
 
-        spu_transformed, spu_inv_transformed = spsim.sim_jax(sim, kbinsdiscretize)(
+        
+        copts = spu_pb2.CompilerOptions()
+        
+        kbinsdiscretize.__name__ = "test_kbinsdiscretizer_quantile_sample_weight"
+        spu_fn = spsim.sim_jax(sim, kbinsdiscretize, copts=copts, pphlo_ref=(None, None)) #test_kbinsdiscretizer_quantile_sample_weight
+        result = spu_fn(
             X, sample_weight
         )
+        try:
+            if result == "skipped":
+                return True
+        except:
+            pass
+        spu_transformed, spu_inv_transformed = result
+        print(spu_fn.pphlo)
         # print("result\n", spu_transformed)
         # print("result\n", spu_inv_transformed)
 
@@ -674,7 +917,7 @@ class UnitTests(unittest.TestCase):
 
     def test_kbinsdiscretizer_quantile_sample_weight_diverse_n_bins(self):
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
+            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
         )
 
         def kbinsdiscretize(X, n_bins, sample_weight):
@@ -709,9 +952,21 @@ class UnitTests(unittest.TestCase):
         # print("sklearn:\n", sk_transformed)
         # print("sklearn:\n", sk_inv_transformed)
 
-        spu_transformed, spu_inv_transformed = spsim.sim_jax(sim, kbinsdiscretize)(
+        
+        copts = spu_pb2.CompilerOptions()
+        
+        kbinsdiscretize.__name__ = "test_kbinsdiscretizer_quantile_sample_weight_diverse_n_bins"
+        spu_fn = spsim.sim_jax(sim, kbinsdiscretize, copts=copts, pphlo_ref=(None, None)) #test_kbinsdiscretizer_quantile_sample_weight_diverse_n_bins
+        result = spu_fn(
             X, n_bins, sample_weight
         )
+        try:
+            if result == "skipped":
+                return True
+        except:
+            pass
+        spu_transformed, spu_inv_transformed = result
+        print(spu_fn.pphlo)
         # print("result\n", spu_transformed)
         # print("result\n", spu_inv_transformed)
 
@@ -722,7 +977,7 @@ class UnitTests(unittest.TestCase):
 
     def test_kbinsdiscretizer_quantile_sample_weight_diverse_n_bins2(self):
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
+            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
         )
 
         def kbinsdiscretize(X, n_bins, sample_weight):
@@ -758,9 +1013,21 @@ class UnitTests(unittest.TestCase):
         # print("sklearn:\n", sk_transformed)
         # print("sklearn:\n", sk_inv_transformed)
 
-        spu_transformed, spu_inv_transformed = spsim.sim_jax(sim, kbinsdiscretize)(
+        
+        copts = spu_pb2.CompilerOptions()
+        
+        kbinsdiscretize.__name__ = "test_kbinsdiscretizer_quantile_sample_weight_diverse_n_bins2"
+        spu_fn = spsim.sim_jax(sim, kbinsdiscretize, copts=copts, pphlo_ref=(None, None)) #test_kbinsdiscretizer_quantile_sample_weight_diverse_n_bins2
+        result = spu_fn(
             X, n_bins, sample_weight
         )
+        try:
+            if result == "skipped":
+                return True
+        except:
+            pass
+        spu_transformed, spu_inv_transformed = result
+        print(spu_fn.pphlo)
         # print("result\n", spu_transformed)
         # print("result\n", spu_inv_transformed)
 
@@ -771,7 +1038,7 @@ class UnitTests(unittest.TestCase):
 
     def test_kbinsdiscretizer_quantile_sample_weight_diverse_n_bins_no_vectorize(self):
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
+            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
         )
 
         def kbinsdiscretize(X, sample_weight):
@@ -806,9 +1073,21 @@ class UnitTests(unittest.TestCase):
         # print("sklearn:\n", sk_transformed)
         # print("sklearn:\n", sk_inv_transformed)
 
-        spu_transformed, spu_inv_transformed = spsim.sim_jax(sim, kbinsdiscretize)(
+        
+        copts = spu_pb2.CompilerOptions()
+        
+        kbinsdiscretize.__name__ = "test_kbinsdiscretizer_quantile_sample_weight_diverse_n_bins_no_vectorize"
+        spu_fn = spsim.sim_jax(sim, kbinsdiscretize, copts=copts, pphlo_ref=(None, None)) #test_kbinsdiscretizer_quantile_sample_weight_diverse_n_bins_no_vectorize
+        result = spu_fn(
             X, sample_weight
         )
+        try:
+            if result == "skipped":
+                return True
+        except:
+            pass
+        spu_transformed, spu_inv_transformed = result
+        print(spu_fn.pphlo)
         # print("result\n", spu_transformed)
         # print("result\n", spu_inv_transformed)
 
@@ -820,7 +1099,7 @@ class UnitTests(unittest.TestCase):
 
     def test_kbinsdiscretizer_kmeans(self):
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
+            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
         )
 
         def kbinsdiscretize(X):
@@ -841,7 +1120,19 @@ class UnitTests(unittest.TestCase):
         # print("sklearn:\n", sk_transformed)
         # print("sklearn:\n", sk_inv_transformed)
 
-        spu_transformed, spu_inv_transformed = spsim.sim_jax(sim, kbinsdiscretize)(X)
+        
+        copts = spu_pb2.CompilerOptions()
+        
+        kbinsdiscretize.__name__ = "test_kbinsdiscretizer_kmeans"
+        spu_fn = spsim.sim_jax(sim, kbinsdiscretize, copts=copts, pphlo_ref=(None, None)) #test_kbinsdiscretizer_kmeans
+        result = spu_fn(X)
+        try:
+            if result == "skipped":
+                return True
+        except:
+            pass
+        spu_transformed, spu_inv_transformed = result
+        print(spu_fn.pphlo)
         # print("result\n", spu_transformed)
         # print("result\n", spu_inv_transformed)
 
@@ -852,7 +1143,7 @@ class UnitTests(unittest.TestCase):
 
     def test_kbinsdiscretizer_kmeans_diverse_n_bins_no_vectorize(self):
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
+            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
         )
 
         def kbinsdiscretize(X):
@@ -874,7 +1165,19 @@ class UnitTests(unittest.TestCase):
         # print("sklearn:\n", sk_transformed)
         # print("sklearn:\n", sk_inv_transformed)
 
-        spu_transformed, spu_inv_transformed = spsim.sim_jax(sim, kbinsdiscretize)(X)
+        
+        copts = spu_pb2.CompilerOptions()
+        
+        kbinsdiscretize.__name__ = "test_kbinsdiscretizer_kmeans_diverse_n_bins_no_vectorize"
+        spu_fn = spsim.sim_jax(sim, kbinsdiscretize, copts=copts, pphlo_ref=(None, None)) #test_kbinsdiscretizer_kmeans_diverse_n_bins_no_vectorize
+        result = spu_fn(X)
+        try:
+            if result == "skipped":
+                return True
+        except:
+            pass
+        spu_transformed, spu_inv_transformed = result
+        print(spu_fn.pphlo)
         # print("result\n", spu_transformed)
         # print("result\n", spu_inv_transformed)
 

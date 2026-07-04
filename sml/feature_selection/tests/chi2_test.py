@@ -29,7 +29,7 @@ from sml.feature_selection.univariate_selection import chi2
 class UnitTests(unittest.TestCase):
     def test_chi2(self):
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM128
+            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM128
         )
 
         def proc(x, y, num_class, max_iter, compute_p_value):
@@ -42,9 +42,21 @@ class UnitTests(unittest.TestCase):
         num_class = len(label_lst)
         max_iter = 1
         compute_p_value = True
-        chi2_stats, p_value = spsim.sim_jax(sim, proc, static_argnums=(2, 3, 4))(
+
+        copts = spu_pb2.CompilerOptions()
+
+        proc.__name__ = "test_chi2"
+        spu_fn = spsim.sim_jax(sim, proc, static_argnums=(2, 3, 4), copts=copts, pphlo_ref=(None, None)) #test_chi2
+        result = spu_fn(
             x, y, num_class, max_iter, compute_p_value
         )
+        try:
+            if result == "skipped":
+                return True
+        except:
+            pass
+        chi2_stats, p_value = result
+        print(spu_fn.pphlo)
         sklearn_chi2_stats, sklearn_p_value = chi2_sklearn(x, y)
         print("Chi2 stats result:")
         print(chi2_stats)

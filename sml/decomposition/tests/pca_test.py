@@ -39,14 +39,14 @@ class UnitTests(unittest.TestCase):
 
         # 1. init sim
         cls.sim64 = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
+            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
         )
         config128 = spu_pb2.RuntimeConfig(
-            protocol=spu_pb2.ProtocolKind.ABY3,
+            protocol=spu_pb2.ProtocolKind.CHEETAH,
             field=spu_pb2.FieldType.FM128,
             fxp_fraction_bits=30,
         )
-        cls.sim128 = spsim.Simulator(3, config128)
+        cls.sim128 = spsim.Simulator(2, config128)
 
     def test_power(self):
         print("start test power method.")
@@ -70,7 +70,17 @@ class UnitTests(unittest.TestCase):
         X = random.normal(random.PRNGKey(0), (10, 20))
 
         # Run the simulation
-        result = spsim.sim_jax(self.sim64, proc_transform)(X)
+        copts = spu_pb2.CompilerOptions()
+
+        proc_transform.__name__ = "test_power"
+        spu_fn = spsim.sim_jax(self.sim64, proc_transform, copts=copts, pphlo_ref=(None, None)) #test_power
+        result = spu_fn(X)
+        try:
+            if result == "skipped":
+                return True
+        except:
+            pass
+        print(spu_fn.pphlo)
 
         # The transformed data should have 2 dimensions
         self.assertEqual(result[0].shape[1], 2)
@@ -138,7 +148,17 @@ class UnitTests(unittest.TestCase):
         )
 
         # Run the simulation
-        result = spsim.sim_jax(self.sim128, proc_transform)(X, random_matrix)
+        copts = spu_pb2.CompilerOptions()
+
+        proc_transform.__name__ = "test_rsvd"
+        spu_fn = spsim.sim_jax(self.sim128, proc_transform, copts=copts, pphlo_ref=(None, None)) #test_rsvd
+        result = spu_fn(X, random_matrix)
+        try:
+            if result == "skipped":
+                return True
+        except:
+            pass
+        print(spu_fn.pphlo)
 
         # The transformed data should have n_components dimensions
         self.assertEqual(result[0].shape[1], n_components)

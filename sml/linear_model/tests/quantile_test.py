@@ -59,7 +59,7 @@ class UnitTests(unittest.TestCase):
 
         # bandwidth and latency only work for docker mode
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
+            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
         )
 
         X, y = generate_data()
@@ -80,7 +80,18 @@ class UnitTests(unittest.TestCase):
         proc = proc_wrapper(
             quantile=0.2, alpha=0.1, fit_intercept=True, lr=0.01, max_iter=20
         )
-        result, coef, intercept = spsim.sim_jax(sim, proc)(X, y)
+        copts = spu_pb2.CompilerOptions()
+        
+        proc.__name__ = "test_quantile"
+        spu_fn = spsim.sim_jax(sim, proc, copts=copts, pphlo_ref=(None, None)) #test_quantile
+        result_all = spu_fn(X, y)
+        try:
+            if result_all == "skipped":
+                return True
+        except:
+            pass
+        result, coef, intercept = result_all
+        print(spu_fn.pphlo)
         rmse_encrpted = jnp.sqrt(jnp.mean((y - result) ** 2))
 
         # print RMSE

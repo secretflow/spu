@@ -65,9 +65,13 @@ class SMO:
         m = neg_y_grad[i]
 
         Zlow_m = Zlow & (neg_y_grad < m)
+        # return Zlow_m
         Qi = Q[i]
+        # return Qi
         Qj = Q.diagonal()
+        # return Qj
         quad_coef = Qi[i] + Qj - 2 * Q[i]
+        # return quad_coef
         quad_coef = (quad_coef > 0) * quad_coef + (1 - (quad_coef > 0)) * self.tau
         Ft = -((m - neg_y_grad) ** 2) / (quad_coef)
         Mlow_m = (1 - Zlow_m) * jnp.max(Ft)

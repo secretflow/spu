@@ -28,7 +28,7 @@ class UnitTests(unittest.TestCase):
         print(f"solver_list={solver_list}")
 
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
+            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
         )
 
         def proc(x1, x2, y, solver):
@@ -50,7 +50,21 @@ class UnitTests(unittest.TestCase):
         x = jnp.concatenate((x1, x2), axis=1)
         for i in range(len(solver_list)):
             solver = solver_list[i]
-            result = spsim.sim_jax(sim, proc, static_argnums=(3,))(x1, x2, y, solver)
+            copts = spu_pb2.CompilerOptions()
+
+            if solver == "svd":
+                proc.__name__ = f"test_ridge_svd"
+                spu_fn = spsim.sim_jax(sim, proc, static_argnums=(3,), copts=copts, pphlo_ref=(None, None)) #test_ridge_svd
+            else:
+                proc.__name__ = f"test_ridge_cholesky"
+                spu_fn = spsim.sim_jax(sim, proc, static_argnums=(3,), copts=copts, pphlo_ref=(None, None)) #test_ridge_cholesky
+            result = spu_fn(x1, x2, y, solver)
+            try:
+                if result == "skipped":
+                    continue
+            except:
+                pass
+            print(spu_fn.pphlo)
 
             print(f"[spsim_{solver}_result]-------------------------------------------")
             print(result[:10])

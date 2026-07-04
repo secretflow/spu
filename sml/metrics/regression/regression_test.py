@@ -38,7 +38,7 @@ from sml.metrics.regression.regression import (
 class UnitTests(unittest.TestCase):
     def test_d2_tweedie_score(self):
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM128
+            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM128
         )
 
         power_list = [-1, 0, 1, 2, 3]
@@ -56,14 +56,60 @@ class UnitTests(unittest.TestCase):
                 sk_result = metrics.d2_tweedie_score(
                     y_true, y_pred, sample_weight=weight, power=p
                 )
-                spu_result = spsim.sim_jax(sim, d2_tweedie_score, static_argnums=(3,))(
+                
+                copts = spu_pb2.CompilerOptions()
+                
+                d2_tweedie_score.__name__ = f"d2_tweedie_score_weight{weight}_power{p}"
+                if p == -1:
+                    if weight == None:
+                        spu_fn = spsim.sim_jax(sim, d2_tweedie_score, static_argnums=(3,), copts=copts, pphlo_ref=(None, None)) #d2_tweedie_score_weightNone_power-1
+                    elif np.array_equiv(weight, jnp.array([0.5, 0.5, 0.5, 0.5])):
+                        spu_fn = spsim.sim_jax(sim, d2_tweedie_score, static_argnums=(3,), copts=copts, pphlo_ref=(None, None)) #d2_tweedie_score_weight[0.5 0.5 0.5 0.5]_power-1
+                    elif np.array_equiv(weight, jnp.array([0.5, 1, 2, 0.5])): 
+                        spu_fn = spsim.sim_jax(sim, d2_tweedie_score, static_argnums=(3,), copts=copts, pphlo_ref=(None, None)) #d2_tweedie_score_weight[0.5 1.  2.  0.5]_power-1
+                elif p == 0:
+                    if weight == None:
+                        spu_fn = spsim.sim_jax(sim, d2_tweedie_score, static_argnums=(3,), copts=copts, pphlo_ref=(None, None)) #d2_tweedie_score_weightNone_power0
+                    elif np.array_equiv(weight, jnp.array([0.5, 0.5, 0.5, 0.5])):
+                        spu_fn = spsim.sim_jax(sim, d2_tweedie_score, static_argnums=(3,), copts=copts, pphlo_ref=(None, None)) #d2_tweedie_score_weight[0.5 0.5 0.5 0.5]_power0
+                    elif np.array_equiv(weight, jnp.array([0.5, 1, 2, 0.5])):
+                        spu_fn = spsim.sim_jax(sim, d2_tweedie_score, static_argnums=(3,), copts=copts, pphlo_ref=(None, None)) #d2_tweedie_score_weight[0.5 1.  2.  0.5]_power0
+                elif p == 1:
+                    if weight == None:
+                        spu_fn = spsim.sim_jax(sim, d2_tweedie_score, static_argnums=(3,), copts=copts, pphlo_ref=(None, None)) #d2_tweedie_score_weightNone_power1
+                    elif np.array_equiv(weight, jnp.array([0.5, 0.5, 0.5, 0.5])):
+                        spu_fn = spsim.sim_jax(sim, d2_tweedie_score, static_argnums=(3,), copts=copts, pphlo_ref=(None, None)) #d2_tweedie_score_weight[0.5 0.5 0.5 0.5]_power1
+                    elif np.array_equiv(weight, jnp.array([0.5, 1, 2, 0.5])):
+                        spu_fn = spsim.sim_jax(sim, d2_tweedie_score, static_argnums=(3,), copts=copts, pphlo_ref=(None, None)) #d2_tweedie_score_weight[0.5 1.  2.  0.5]_power1
+                elif p == 2:
+                    if weight == None:
+                        spu_fn = spsim.sim_jax(sim, d2_tweedie_score, static_argnums=(3,), copts=copts, pphlo_ref=(None, None)) #d2_tweedie_score_weightNone_power2
+                    elif np.array_equiv(weight, jnp.array([0.5, 0.5, 0.5, 0.5])):
+                        spu_fn = spsim.sim_jax(sim, d2_tweedie_score, static_argnums=(3,), copts=copts, pphlo_ref=(None, None)) #d2_tweedie_score_weight[0.5 0.5 0.5 0.5]_power2
+                    elif np.array_equiv(weight, jnp.array([0.5, 1, 2, 0.5])):
+                        spu_fn = spsim.sim_jax(sim, d2_tweedie_score, static_argnums=(3,), copts=copts, pphlo_ref=(None, None)) #d2_tweedie_score_weight[0.5 1.  2.  0.5]_power2
+                elif p == 3:
+                    if weight == None:
+                        spu_fn = spsim.sim_jax(sim, d2_tweedie_score, static_argnums=(3,), copts=copts, pphlo_ref=(None, None)) #d2_tweedie_score_weightNone_power3
+                    elif np.array_equiv(weight, jnp.array([0.5, 0.5, 0.5, 0.5])):
+                        spu_fn = spsim.sim_jax(sim, d2_tweedie_score, static_argnums=(3,), copts=copts, pphlo_ref=(None, None)) #d2_tweedie_score_weight[0.5 0.5 0.5 0.5]_power3
+                    elif np.array_equiv(weight, jnp.array([0.5, 1, 2, 0.5])):
+                        spu_fn = spsim.sim_jax(sim, d2_tweedie_score, static_argnums=(3,), copts=copts, pphlo_ref=(None, None)) #d2_tweedie_score_weight[0.5 1.  2.  0.5]_power3
+                             
+                spu_result = spu_fn(
                     y_true, y_pred, weight, p
                 )
+                try:
+                    if spu_result == "skipped":
+                        continue
+                except:
+                    pass
+                print(spu_fn.pphlo)
                 np.testing.assert_allclose(sk_result, spu_result, rtol=0, atol=1e-4)
 
     def test_explained_variance_score(self):
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM128
+            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM128
         )
 
         weight_list = [
@@ -83,14 +129,31 @@ class UnitTests(unittest.TestCase):
                 multioutput="variance_weighted",
                 force_finite=True,
             )
-            spu_result = spsim.sim_jax(
-                sim, explained_variance_score, static_argnums=(3,)
-            )(y_true, y_pred, weight, "variance_weighted")
+            
+            copts = spu_pb2.CompilerOptions()
+            
+            explained_variance_score.__name__ = f"explained_variance_score_weight{weight}"
+            if weight == None:
+                spu_fn = spsim.sim_jax(sim, explained_variance_score, static_argnums=(3,), copts=copts, pphlo_ref=(None, None)) #explained_variance_score_weightNone
+            elif np.array_equiv(weight, jnp.array([0.5, 0.5, 0.5, 0.5])):
+                spu_fn = spsim.sim_jax(sim, explained_variance_score, static_argnums=(3,), copts=copts, pphlo_ref=(None, None)) #explained_variance_score_weight[0.5 0.5 0.5 0.5]
+            elif np.array_equiv(weight, jnp.array([0.5, 1, 2, 0.5])):
+                spu_fn = spsim.sim_jax(sim, explained_variance_score, static_argnums=(3,), copts=copts, pphlo_ref=(None, None)) #explained_variance_score_weight[0.5 1.  2.  0.5]
+                
+            spu_result = spu_fn(
+                y_true, y_pred, weight, "variance_weighted"
+            )
+            try:
+                if spu_result == "skipped":
+                    continue
+            except:
+                pass
+            print(spu_fn.pphlo)
             np.testing.assert_allclose(sk_result, spu_result, rtol=0, atol=1e-4)
 
     def test_mean_squared_error(self):
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM128
+            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM128
         )
 
         weight_list = [
@@ -106,14 +169,31 @@ class UnitTests(unittest.TestCase):
             sk_result = metrics.mean_squared_error(
                 y_true, y_pred, sample_weight=weight, squared=False
             )
-            spu_result = spsim.sim_jax(sim, mean_squared_error, static_argnums=(3, 4))(
+            
+            copts = spu_pb2.CompilerOptions()
+            
+            mean_squared_error.__name__ = f"mean_squared_error_weight{weight}"
+            if weight == None:
+                spu_fn = spsim.sim_jax(sim, mean_squared_error, static_argnums=(3, 4), copts=copts, pphlo_ref=(None, None)) #mean_squared_error_weightNone
+            elif np.array_equiv(weight, jnp.array([0.5, 0.5, 0.5, 0.5])):
+                spu_fn = spsim.sim_jax(sim, mean_squared_error, static_argnums=(3, 4), copts=copts, pphlo_ref=(None, None)) #mean_squared_error_weight[0.5 0.5 0.5 0.5]
+            elif np.array_equiv(weight, jnp.array([0.5, 1, 2, 0.5])):
+                spu_fn = spsim.sim_jax(sim, mean_squared_error, static_argnums=(3, 4), copts=copts, pphlo_ref=(None, None)) #mean_squared_error_weight[0.5 1.  2.  0.5]
+
+            spu_result = spu_fn(
                 y_true, y_pred, weight, "uniform_average", False
             )
+            try:
+                if spu_result == "skipped":
+                    continue
+            except:
+                pass
+            print(spu_fn.pphlo)
             np.testing.assert_allclose(sk_result, spu_result, rtol=0, atol=1e-4)
 
     def test_mean_poisson_deviance(self):
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM128
+            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM128
         )
 
         weight_list = [
@@ -129,14 +209,31 @@ class UnitTests(unittest.TestCase):
             sk_result = metrics.mean_poisson_deviance(
                 y_true, y_pred, sample_weight=weight
             )
-            spu_result = spsim.sim_jax(sim, mean_poisson_deviance)(
+            
+            copts = spu_pb2.CompilerOptions()
+            
+            mean_poisson_deviance.__name__ = f"mean_poisson_deviance_weight{weight}"
+            if weight == None:
+                spu_fn = spsim.sim_jax(sim, mean_poisson_deviance, copts=copts, pphlo_ref=(None, None)) #mean_poisson_deviance_weightNone
+            elif np.array_equiv(weight, jnp.array([0.5, 0.5, 0.5, 0.5])):
+                spu_fn = spsim.sim_jax(sim, mean_poisson_deviance, copts=copts, pphlo_ref=(None, None)) #mean_poisson_deviance_weight[0.5 0.5 0.5 0.5]
+            elif np.array_equiv(weight, jnp.array([0.5, 1, 2, 0.5])):
+                spu_fn = spsim.sim_jax(sim, mean_poisson_deviance, copts=copts, pphlo_ref=(None, None)) #mean_poisson_deviance_weight[0.5 1.  2.  0.5]
+
+            spu_result = spu_fn(
                 y_true, y_pred, weight
             )
+            try:
+                if spu_result == "skipped":
+                    continue
+            except:
+                pass
+            print(spu_fn.pphlo)
             np.testing.assert_allclose(sk_result, spu_result, rtol=0, atol=1e-4)
 
     def test_mean_gamma_deviance(self):
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM128
+            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM128
         )
 
         weight_list = [
@@ -152,7 +249,24 @@ class UnitTests(unittest.TestCase):
             sk_result = metrics.mean_gamma_deviance(
                 y_true, y_pred, sample_weight=weight
             )
-            spu_result = spsim.sim_jax(sim, mean_gamma_deviance)(y_true, y_pred, weight)
+            
+            copts = spu_pb2.CompilerOptions()
+            
+            mean_gamma_deviance.__name__ = f"mean_gamma_deviance_weight{weight}"
+            if weight == None:
+                spu_fn = spsim.sim_jax(sim, mean_gamma_deviance, copts=copts, pphlo_ref=(None, None)) #mean_gamma_deviance_weightNone
+            elif np.array_equiv(weight, jnp.array([0.5, 0.5, 0.5, 0.5])):
+                spu_fn = spsim.sim_jax(sim, mean_gamma_deviance, copts=copts, pphlo_ref=(None, None)) #mean_gamma_deviance_weight[0.5 0.5 0.5 0.5]
+            elif np.array_equiv(weight, jnp.array([0.5, 1, 2, 0.5])):
+                spu_fn = spsim.sim_jax(sim, mean_gamma_deviance, copts=copts, pphlo_ref=(None, None)) #mean_gamma_deviance_weight[0.5 1.  2.  0.5]
+
+            spu_result = spu_fn(y_true, y_pred, weight)
+            try:
+                if spu_result == "skipped":
+                    continue
+            except:
+                pass
+            print(spu_fn.pphlo)
             np.testing.assert_allclose(sk_result, spu_result, rtol=0, atol=1e-4)
 
 

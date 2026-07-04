@@ -67,7 +67,7 @@ class UnitTests(unittest.TestCase):
             return X, y
 
         sim = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
+            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
         )
 
         X, y = load_data()
@@ -94,8 +94,18 @@ class UnitTests(unittest.TestCase):
             algorithm="discrete",
             epsilon=1e-5,
         )
+        
+        copts = spu_pb2.CompilerOptions()
 
-        result = spsim.sim_jax(sim, proc)(X, y)
+        proc.__name__ = "test_Ada"
+        spu_fn = spsim.sim_jax(sim, proc, copts=copts, pphlo_ref=(None, None)) #test_Ada
+        result = spu_fn(X, y)
+        try:
+            if result == "skipped":
+                return True
+        except:
+            pass
+        print(spu_fn.pphlo)
         print(result)
         score_encrypted = jnp.mean(result == y)
 

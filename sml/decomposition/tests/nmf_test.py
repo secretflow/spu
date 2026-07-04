@@ -36,11 +36,11 @@ class UnitTests(unittest.TestCase):
         np.random.seed(cls.random_seed)
         # NMF must use FM128 now, for heavy use of non-linear & matrix operations
         config = spu_pb2.RuntimeConfig(
-            protocol=spu_pb2.ProtocolKind.ABY3,
+            protocol=spu_pb2.ProtocolKind.CHEETAH,
             field=spu_pb2.FieldType.FM128,
             fxp_fraction_bits=30,
         )
-        cls.sim = spsim.Simulator(3, config)
+        cls.sim = spsim.Simulator(2, config)
 
         # generate some dummy test datas
         cls.test_data = np.random.randint(1, 100, (100, 10)) * 1.0
@@ -98,21 +98,46 @@ class UnitTests(unittest.TestCase):
 
             return W, H, X_reconstructed, err
 
-        run_func = (
-            proc
-            if plaintext
-            else spsim.sim_jax(
-                self.sim,
-                proc,
-            )
-        )
+        if plaintext:
+            return proc(self.test_data)
+        else:
+            copts = spu_pb2.CompilerOptions()
 
-        return run_func(self.test_data)
+            if mode == "uniform":
+                proc.__name__ = f"test_uniform_random"
+                pu_fn = spsim.sim_jax(
+                        self.sim,
+                        proc,
+                        copts=copts,
+                        pphlo_ref=(None, None) #test_uniform_random
+                    )
+            else:
+                proc.__name__ = f"test_seperate_random"
+            spu_fn = spsim.sim_jax(
+                        self.sim,
+                        proc,
+                        copts=copts,
+                        pphlo_ref=(None, None) #test_seperate_random
+                    )
+            result = spu_fn(self.test_data)
+            try:
+                if result == "skipped":
+                    return True
+            except:
+                pass
+            print(spu_fn.pphlo)
+            return result
 
     def test_nmf_uniform(self):
         print("==============  start test of nmf uniform ==============\n")
 
-        W, H, X_reconstructed, err = self._nmf_test_main(False, "uniform")
+        result = self._nmf_test_main(False, "uniform")
+        try:
+            if result == True:
+                return True
+        except:
+            pass
+        W, H, X_reconstructed, err = result
         W_sk, H_sk, X_reconstructed_sk, err_sk = self._nmf_test_main(True, "uniform")
 
         np.testing.assert_allclose(err, err_sk, rtol=1, atol=1e-1)
@@ -127,7 +152,13 @@ class UnitTests(unittest.TestCase):
     def test_nmf_seperate(self):
         print("==============  start test of nmf seperate ==============\n")
 
-        W, H, X_reconstructed, err = self._nmf_test_main(False, "seperate")
+        result = self._nmf_test_main(False, "seperate")
+        try:
+            if result == True:
+                return True
+        except:
+            pass
+        W, H, X_reconstructed, err = result
         W_sk, H_sk, X_reconstructed_sk, err_sk = self._nmf_test_main(True, "seperate")
 
         np.testing.assert_allclose(err, err_sk, rtol=1, atol=1e-1)

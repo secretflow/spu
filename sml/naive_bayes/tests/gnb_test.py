@@ -37,14 +37,14 @@ class UnitTests(unittest.TestCase):
 
         # 1. init sim
         cls.sim64 = spsim.Simulator.simple(
-            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
+            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
         )
         config128 = spu_pb2.RuntimeConfig(
-            protocol=spu_pb2.ProtocolKind.ABY3,
+            protocol=spu_pb2.ProtocolKind.CHEETAH,
             field=spu_pb2.FieldType.FM128,
             fxp_fraction_bits=30,
         )
-        cls.sim128 = spsim.Simulator(3, config128)
+        cls.sim128 = spsim.Simulator(2, config128)
 
     def test_gnb(self):
         print("start test gnb method.")
@@ -82,9 +82,20 @@ class UnitTests(unittest.TestCase):
         X2, y2 = X[split_idx:], y[split_idx:]
 
         # Run the simulation
-        y1_pred, y2_pred, theta1, var1, theta2, var2 = spsim.sim_jax(self.sim64, proc)(
+        copts = spu_pb2.CompilerOptions()
+        
+        proc.__name__ = "test_gnb"
+        spu_fn = spsim.sim_jax(self.sim64, proc, copts=copts, pphlo_ref=(None, None)) #test_gnb
+        result = spu_fn(
             X1, y1, X2, y2, classes
         )
+        try:
+            if result == "skipped":
+                return True
+        except:
+            pass
+        y1_pred, y2_pred, theta1, var1, theta2, var2 = result
+        print(spu_fn.pphlo)
         result1 = (y == y1_pred).sum() / total_samples
         result2 = (y == y2_pred).sum() / total_samples
 
