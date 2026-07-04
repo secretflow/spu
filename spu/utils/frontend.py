@@ -129,6 +129,17 @@ def _jax_compilation(
             .trace(*args, **kwargs)
             .lower(lowering_platforms=('interpreter',))
         )
+        # traced = (
+        #     jax.jit(
+        #         fn,
+        #         static_argnums=static_argnums,
+        #         static_argnames=static_argnames,
+        #         keep_unused=True,
+        #     )
+        #     .trace(*args, **kwargs)
+        # )
+        # print(traced.jaxpr)
+        # lowered = traced.lower(lowering_platforms=('interpreter',))
         return (
             lowered.compiler_ir('hlo').as_serialized_hlo_module_proto(),
             lowered.out_info,
@@ -226,6 +237,7 @@ def compile(
     static_argnums=(),
     static_argnames=None,
     copts=spu_pb2.CompilerOptions(),
+    hlo_log=False,
 ):
     if kind == Kind.JAX:
         import jax
@@ -264,6 +276,15 @@ def compile(
 
     source = spu_pb2.CompilationSource()
     source.ir_txt = ir_text
+
+    if hlo_log:
+        from jax._src.lib import xla_extension as xla
+        print(f"HLO_IR|Start printing HLO IR for {fn.__name__}")
+        module_test = xla.HloModule.from_serialized_hlo_module_proto(ir_text)
+        ir_hlo  = module_test.to_string(xla.HloPrintOptions.short_parsable()).split("\n")
+        print(("\n").join(["HLO_IR|" + ir for ir in ir_hlo]) + "\n")
+        print(f"HLO_IR|End of printing HLO IR for {fn.__name__}")
+
     source.ir_type = spu_pb2.SourceIRType.XLA
     source.input_visibility.extend(input_vis)
     name = fn.func.__name__ if isinstance(fn, functools.partial) else fn.__name__
@@ -275,6 +296,27 @@ def compile(
         code=mlir,
     )
     return executable, output
+
+def compile_hlo(
+    ir_text: bytes,
+    input_vis: List,
+    input_names: List[str],
+    output_names: List[str],
+    copts=spu_pb2.CompilerOptions(),
+):
+    source = spu_pb2.CompilationSource()
+    source.ir_txt = ir_text
+    source.ir_type = spu_pb2.SourceIRType.XLA
+    source.input_visibility.extend(input_vis)
+    name = "test"
+    mlir = spu_api.compile(source, copts)
+    executable = spu_pb2.ExecutableProto(
+        name=name,
+        input_names=input_names,
+        output_names=output_names,
+        code=mlir,
+    )
+    return executable
 
 
 def torch_compile(

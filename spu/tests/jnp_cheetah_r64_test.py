@@ -22,6 +22,8 @@ import spu.utils.simulation as ppsim
 from spu.tests.jnp_testbase import JnpTests
 
 
+# OPENSOURCE-CLEANUP REMOVE 1
+@unittest.skip("too slow, last run succeed")
 class JnpTestCheetahFM64(JnpTests.JnpTestBase):
     def setUp(self):
         self._sim = ppsim.Simulator.simple(

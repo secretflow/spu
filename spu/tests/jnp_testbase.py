@@ -27,6 +27,7 @@ from absl.testing import parameterized
 from jax._src import test_util as jtu
 
 from spu.utils.simulation import sim_jax
+import spu.spu_pb2 as spu_pb2
 
 if getenv("ENABLE_X64_TEST"):
     from jax import config
@@ -47,6 +48,7 @@ bool_dtypes = [np.bool_]
 number_dtypes = float_dtypes + int_dtypes
 all_dtypes = number_dtypes + bool_dtypes
 
+copts = spu_pb2.CompilerOptions()
 
 class Status(Enum):
     Pass = 1
@@ -413,12 +415,14 @@ class JnpTests:
             if status != Status.Pass:
                 return
             jnp_op = getattr(jnp, name)
-            spu_op = sim_jax(self._sim, jnp_op)
+            jnp_fn = lambda *x: jnp_op(*x)
+            jnp_fn.__name__ = f"""{name}_{dtype}_{shape}""".replace(" ", "")
+            spu_fn = sim_jax(self._sim, jnp_fn)
             rnd = rnd_factory(self._rng)
             args = [rnd(shape, dtype) for _ in range(nargs)]
-            jnp_out = jnp_op(*args)
-            spu_out = spu_op(*args)
-
+            jnp_out = jnp_fn(*args)
+            spu_out = spu_fn(*args)
+            print(spu_fn.pphlo)
             # print("inputs: ", args)
             # print(spu_op.pphlo)
             npt.assert_almost_equal(
@@ -426,7 +430,7 @@ class JnpTests:
                 jnp_out,
                 decimal=1,
                 err_msg="{} failed, spu = {}, jnp = {}, args = {}, pphlo = {}".format(
-                    name, spu_out, jnp_out, args, spu_op.pphlo
+                    name, spu_out, jnp_out, args, spu_fn.pphlo
                 ),
             )
 
@@ -450,11 +454,13 @@ class JnpTests:
                 return
             jnp_op = getattr(jnp, name)
             jnp_fn = lambda x: jnp_op(x, axis=axis, keepdims=keepdims)
-            spu_fn = sim_jax(self._sim, jnp_fn)
+            jnp_fn.__name__ = f"""{name}_{dtype}_{shape}""".replace(" ", "")
+            spu_fn = sim_jax(self._sim, jnp_fn, copts=copts)
             rnd = rnd_factory(self._rng)
             args = [rnd(shape, dtype)]
             jnp_out = jnp_fn(*args)
             spu_out = spu_fn(*args)
+            print(spu_fn.pphlo)
             npt.assert_almost_equal(
                 spu_out,
                 jnp_out,
@@ -480,11 +486,13 @@ class JnpTests:
                 return
             jnp_op = getattr(jnp, name)
             jnp_fn = lambda x: jnp_op(x, axis=len(shape) - 1)
-            spu_fn = sim_jax(self._sim, jnp_fn)
+            jnp_fn.__name__ = f"""{name}_{dtype}_{shape}""".replace(" ", "")
+            spu_fn = sim_jax(self._sim, jnp_fn, copts=copts)
             rnd = rnd_factory(self._rng)
             args = [rnd(shape, dtype)]
             jnp_out = jnp_fn(*args)
             spu_out = spu_fn(*args)
+            print(spu_fn.pphlo)
             npt.assert_equal(
                 spu_out,
                 jnp_out,
@@ -511,11 +519,13 @@ class JnpTests:
             rhs_rnd = jtu.rand_int(self._rng, low=0, high=32)
             rhs = rhs_rnd(shape, dtype)
             jnp_fn = lambda x: jnp_op(x, rhs)
-            spu_fn = sim_jax(self._sim, jnp_fn)
+            jnp_fn.__name__ = f"""{name}_{dtype}_{shape}""".replace(" ", "")
+            spu_fn = sim_jax(self._sim, jnp_fn, copts=copts)
             rnd = rnd_factory(self._rng)
             args = [rnd(shape, dtype)]
             jnp_out = jnp_fn(*args)
             spu_out = spu_fn(*args)
+            print(spu_fn.pphlo)
             npt.assert_equal(
                 spu_out,
                 jnp_out,
@@ -526,12 +536,14 @@ class JnpTests:
 
         def test_gather(self):
             jnp_fn = lambda x, indices: jnp.take(x, indices)
-            spu_fn = sim_jax(self._sim, jnp_fn)
+            jnp_fn.__name__ = "gather"
+            spu_fn = sim_jax(self._sim, jnp_fn, copts=copts)
             x_rng = jtu.rand_int(self._rng, low=0, high=32)
             indices_rng = jtu.rand_int(self._rng, low=0, high=9)
             args = [x_rng((10,), np.int32), indices_rng((3,), np.int32)]
             jnp_out = jnp_fn(*args)
             spu_out = spu_fn(*args)
+            print(spu_fn.pphlo)
             npt.assert_equal(
                 spu_out,
                 jnp_out,
@@ -554,11 +566,13 @@ class JnpTests:
         def test_topk(self, name, status, dtype, shape, rnd_factory):
             lax_op = getattr(lax, name)
             jnp_fn = lambda x: lax_op(x, k=2)
-            spu_fn = sim_jax(self._sim, jnp_fn)
+            jnp_fn.__name__ = f"""{name}_{dtype}_{shape}""".replace(" ", "")
+            spu_fn = sim_jax(self._sim, jnp_fn, copts=copts)
             rnd = rnd_factory(self._rng)
             args = [rnd(shape, dtype)]
             jnp_out = jnp_fn(*args)
             spu_out = spu_fn(*args)
+            print(spu_fn.pphlo)
             # Tie break is not well defined in document, so index might be different between CPU/SPU
             npt.assert_almost_equal(
                 spu_out[0],
