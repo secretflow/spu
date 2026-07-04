@@ -177,3 +177,15 @@ bazel test //...
 
 - `--define gperf=on` enable gperf
 - `--define tracelog=on` enable link trace log.
+
+### 安装stablehlo
+pip install stablehlo -f https://github.com/openxla/stablehlo/releases/expanded_assets/v1.0.0
+
+### 在bazel test //...的时候如果出现ImportError: /root/miniconda3/bin/../lib/libstdc++.so.6: version `GLIBCXX_3.4.30' not found
+到python环境的lib目录下，比如用镜像的话到/root/miniconda3/lib
+cd /root/miniconda3/lib
+mv libstdc++.so.6 libstdc++.so.6.old
+ln -s /usr/lib/x86_64-linux-gnu/libstdc++.so.6 libstdc++.so.6
+
+### tips
+如果编译阶段出错，可以加上--jobs=4这个参数。
