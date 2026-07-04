@@ -1,0 +1,13 @@
+diff --git a/include/config.h b/include/config.h
+index 67b9f932..8275214f 100644
+--- a/include/config.h
++++ b/include/config.h
+@@ -439,7 +439,7 @@
+    problems with complex programs). You need to recompile the target binary
+    after changing this - otherwise, SEGVs may ensue. */
+ 
+-#define MAP_SIZE_POW2 16
++#define MAP_SIZE_POW2 18
+ #define MAP_SIZE (1U << MAP_SIZE_POW2)
+ 
+ /* Maximum allocator request size (keep well under INT_MAX): */

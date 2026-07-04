@@ -110,7 +110,6 @@ spu_cc_test(
         ":casting",
         ":const",
         "//libspu/kernel:test_util",
-        "//libspu/mpc/utils:simulate",
     ],
 )
 

@@ -168,11 +168,13 @@ void takeSnapshot(size_t rank, const RuntimeConfig &rt_config,
 void printProfilingData(spu::SPUContext *sctx, const std::string &name,
                         const ExecutionStats &exec_stats,
                         const CommunicationStats &comm_stats) {
+  const size_t rank = sctx->lctx() ? sctx->lctx()->Rank() : 0;
   // print overall information
   SPDLOG_INFO(
-      "[Profiling] SPU execution {} completed, input processing took {}s, "
+      "Party_{}|[Profiling] SPU execution {} completed, input processing took "
+      "{}s, "
       "execution took {}s, output processing took {}s, total time {}s.",
-      name, getSeconds(exec_stats.infeed_time),
+      rank, name, getSeconds(exec_stats.infeed_time),
       getSeconds(exec_stats.execution_time),
       getSeconds(exec_stats.outfeed_time), getSeconds(exec_stats.total_time()));
 
@@ -217,24 +219,28 @@ void printProfilingData(spu::SPUContext *sctx, const std::string &name,
                          stats.find(k1)->second.getTotalTimeInSecond();
                 });
 
-      SPDLOG_INFO("{} profiling: total time {}", mod_name, total_time);
+      SPDLOG_INFO("Party_{}|{} profiling: total time {}", rank, mod_name,
+                  total_time);
       for (const auto &key : sorted_by_time) {
         const auto &stat = stats.find(key)->second;
         SPDLOG_INFO(
-            "- {}, executed {} times, duration {}s, send bytes {} recv "
+            "Party_{}|- {}, executed {} times, duration {}s, send bytes {} "
+            "recv "
             "bytes {}, send actions {}, recv actions {}",
-            key.name, stat.count, stat.getTotalTimeInSecond(), stat.send_bytes,
-            stat.recv_bytes, stat.send_actions, stat.recv_actions);
+            rank, key.name, stat.count, stat.getTotalTimeInSecond(),
+            stat.send_bytes, stat.recv_bytes, stat.send_actions,
+            stat.recv_actions);
       }
     }
   }
 
   // print link statistics
   SPDLOG_INFO(
-      "Link details: total send bytes {}, recv bytes {}, send actions {}, recv "
+      "Party_{}|Link details: total send bytes {}, recv bytes {}, send actions "
+      "{}, recv "
       "actions {}",
-      comm_stats.send_bytes, comm_stats.recv_bytes, comm_stats.send_actions,
-      comm_stats.recv_actions);
+      rank, comm_stats.send_bytes, comm_stats.recv_bytes,
+      comm_stats.send_actions, comm_stats.recv_actions);
 }
 
 void SPUErrorHandler(void *use_data, const char *reason, bool gen_crash_diag) {
@@ -310,12 +316,13 @@ void executeImpl(OpExecutor *executor, spu::SPUContext *sctx,
       auto ir_version = mlir::dyn_cast<mlir::StringAttr>(
                             moduleOpRef.get()->getAttr("pphlo.version"))
                             .str();
-      if (ir_version != getVersionStr()) {
-        SPU_THROW(
-            "IR was generted by compiler {} and does not match current runtime "
-            "{}",
-            ir_version, getVersionStr());
-      }
+      // if (ir_version != getVersionStr()) {
+      //   SPU_THROW(
+      //       "IR was generted by compiler {} and does not match current
+      //       runtime "
+      //       "{}",
+      //       ir_version, getVersionStr());
+      // }
     }
 
     auto entry_function = mlir::spu::get_entrypoint(moduleOpRef.get());

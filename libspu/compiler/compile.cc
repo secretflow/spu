@@ -29,10 +29,11 @@ std::string compile(const CompilationSource &source,
   FE fe(&ctx);
   auto mlir_module = fe.doit(source);
 
-  // Run core passes
-  Core core(&ctx);
-  core.doit(mlir_module.get());
-
+  if (!ctx.getCompilerOptions().testplaintext()) {
+    // Run core passes
+    Core core(&ctx);
+    core.doit(mlir_module.get());
+  }
   // Run codegen
   return spu::compiler::CodeGen::doit(mlir_module.get());
 }
