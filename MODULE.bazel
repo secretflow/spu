@@ -51,7 +51,7 @@ single_version_override(
 
 bazel_dep(name = "pybind11_bazel", version = "3.0.0")
 bazel_dep(name = "protobuf", version = "32.1")
-bazel_dep(name = "rules_cuda", version = "0.2.5")
+bazel_dep(name = "rules_cuda", version = "0.3.0")
 bazel_dep(name = "rules_python", version = "1.2.0")
 bazel_dep(name = "openssl", version = "3.3.2.bcr.1")
 single_version_override(
