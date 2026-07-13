@@ -36,11 +36,11 @@ class UnitTests(unittest.TestCase):
         np.random.seed(cls.random_seed)
         # NMF must use FM128 now, for heavy use of non-linear & matrix operations
         config = spu_pb2.RuntimeConfig(
-            protocol=spu_pb2.ProtocolKind.CHEETAH,
+            protocol=spu_pb2.ProtocolKind.ABY3,
             field=spu_pb2.FieldType.FM128,
             fxp_fraction_bits=30,
         )
-        cls.sim = spsim.Simulator(2, config)
+        cls.sim = spsim.Simulator(3, config)
 
         # generate some dummy test datas
         cls.test_data = np.random.randint(1, 100, (100, 10)) * 1.0

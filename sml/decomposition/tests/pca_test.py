@@ -39,14 +39,14 @@ class UnitTests(unittest.TestCase):
 
         # 1. init sim
         cls.sim64 = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
         config128 = spu_pb2.RuntimeConfig(
-            protocol=spu_pb2.ProtocolKind.CHEETAH,
+            protocol=spu_pb2.ProtocolKind.ABY3,
             field=spu_pb2.FieldType.FM128,
             fxp_fraction_bits=30,
         )
-        cls.sim128 = spsim.Simulator(2, config128)
+        cls.sim128 = spsim.Simulator(3, config128)
 
     def test_power(self):
         print("start test power method.")

@@ -31,7 +31,7 @@ from sml.gaussian_process._gpc import GaussianProcessClassifier
 class UnitTests(unittest.TestCase):
     def test_gpc(self):
         sim = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM128
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM128
         )
 
         # Test GaussianProcessClassifier

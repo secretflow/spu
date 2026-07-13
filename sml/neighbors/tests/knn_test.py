@@ -32,7 +32,7 @@ from sml.neighbors.knn import KNNClassifer
 class UnitTests(unittest.TestCase):
     def test_knn(self):
         sim = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
 
         # Test fit_predict

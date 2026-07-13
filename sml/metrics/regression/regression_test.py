@@ -38,7 +38,7 @@ from sml.metrics.regression.regression import (
 class UnitTests(unittest.TestCase):
     def test_d2_tweedie_score(self):
         sim = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM128
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM128
         )
 
         power_list = [-1, 0, 1, 2, 3]
@@ -109,7 +109,7 @@ class UnitTests(unittest.TestCase):
 
     def test_explained_variance_score(self):
         sim = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM128
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM128
         )
 
         weight_list = [
@@ -153,7 +153,7 @@ class UnitTests(unittest.TestCase):
 
     def test_mean_squared_error(self):
         sim = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM128
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM128
         )
 
         weight_list = [
@@ -193,7 +193,7 @@ class UnitTests(unittest.TestCase):
 
     def test_mean_poisson_deviance(self):
         sim = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM128
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM128
         )
 
         weight_list = [
@@ -233,7 +233,7 @@ class UnitTests(unittest.TestCase):
 
     def test_mean_gamma_deviance(self):
         sim = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM128
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM128
         )
 
         weight_list = [

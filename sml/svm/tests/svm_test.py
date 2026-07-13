@@ -32,7 +32,7 @@ data_extend = 1
 class UnitTests(unittest.TestCase):
     def test_svm(self):
         sim = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
 
         def proc(x0, x1, y0):

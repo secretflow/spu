@@ -28,7 +28,7 @@ class UnitTests(unittest.TestCase):
         print(f"solver_list={solver_list}")
 
         sim = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
 
         def proc(x1, x2, y, solver):

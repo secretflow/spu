@@ -45,7 +45,7 @@ from sml.metrics.classification.classification import (
 class UnitTests(unittest.TestCase):
     def test_auc(self):
         sim = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
 
         def bin_count(y_true, y_pred, bin_size):
@@ -118,7 +118,7 @@ class UnitTests(unittest.TestCase):
 
     def test_classification(self):
         sim = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM128
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM128
         )
 
         def proc(

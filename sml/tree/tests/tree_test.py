@@ -56,7 +56,7 @@ class UnitTests(unittest.TestCase):
 
         # bandwidth and latency only work for docker mode
         sim = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
 
         # load mock data

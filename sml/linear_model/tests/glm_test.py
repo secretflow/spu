@@ -63,7 +63,7 @@ def generate_data():
 X, y, coef, sample_weight = generate_data()
 exp_y = jnp.exp(y)
 round_exp_y = jnp.round(exp_y)
-sim = spsim.Simulator.simple(2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM128)
+sim = spsim.Simulator.simple(3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM128)
 
 
 def accuracy_test(model, std_model, y, coef, num=5):

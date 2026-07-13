@@ -28,7 +28,7 @@ from sml.linear_model.pla import Perceptron
 class UnitTests(unittest.TestCase):
     def test_pla(self):
         sim = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
 
         def proc(x, y):

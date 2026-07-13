@@ -26,7 +26,7 @@ from sml.cluster.kmeans import KMEANS
 class UnitTests(unittest.TestCase):
     def test_kmeans(self):
         sim = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
 
         def proc(x1, x2):
@@ -67,7 +67,7 @@ class UnitTests(unittest.TestCase):
 
     def test_kmeans_kmeans_plus_plus(self):
         sim = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
 
         X = jnp.array([[-4, -3, -2, -1], [-4, -3, -2, -1]]).T
@@ -116,7 +116,7 @@ class UnitTests(unittest.TestCase):
 
     def test_kmeans_init_array(self):
         sim = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
 
         def proc(x, init):
@@ -154,7 +154,7 @@ class UnitTests(unittest.TestCase):
 
     def test_kmeans_random(self):
         sim = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
 
         X = jnp.array([[-4, -3, -2, -1], [-4, -3, -2, -1]]).T

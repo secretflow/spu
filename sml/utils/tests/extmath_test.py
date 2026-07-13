@@ -56,17 +56,17 @@ class ExtMathTests(unittest.TestCase):
 
         # 2. init simulator
         config64 = spu_pb2.RuntimeConfig(
-            protocol=spu_pb2.ProtocolKind.CHEETAH,
+            protocol=spu_pb2.ProtocolKind.ABY3,
             field=spu_pb2.FieldType.FM64,
             fxp_fraction_bits=18,
         )
         config128 = spu_pb2.RuntimeConfig(
-            protocol=spu_pb2.ProtocolKind.CHEETAH,
+            protocol=spu_pb2.ProtocolKind.ABY3,
             field=spu_pb2.FieldType.FM128,
             fxp_fraction_bits=30,
         )
-        sim64 = spsim.Simulator(2, config64)
-        sim128 = spsim.Simulator(2, config128)
+        sim64 = spsim.Simulator(3, config64)
+        sim128 = spsim.Simulator(3, config128)
         cls.sim_dict = {"FM64": sim64, "FM128": sim128}
 
         # 3. generate sample data

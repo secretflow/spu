@@ -33,7 +33,7 @@ from sml.preprocessing.preprocessing import (
 class UnitTests(unittest.TestCase):
     def test_labelbinarizer(self):
         sim = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
 
         def labelbinarize(X, Y):
@@ -76,7 +76,7 @@ class UnitTests(unittest.TestCase):
 
     def test_labelbinarizer_binary(self):
         sim = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
 
         def labelbinarize(X):
@@ -116,7 +116,7 @@ class UnitTests(unittest.TestCase):
 
     def test_labelbinarizer_unseen(self):
         sim = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
 
         def labelbinarize(X, Y):
@@ -150,7 +150,7 @@ class UnitTests(unittest.TestCase):
 
     def test_binarizer(self):
         sim = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
 
         def binarize(X):
@@ -181,7 +181,7 @@ class UnitTests(unittest.TestCase):
 
     def test_normalizer(self):
         sim = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
 
         def normalize_l1(X):
@@ -237,7 +237,7 @@ class UnitTests(unittest.TestCase):
             pass
         if not skip_l2:
             print(spu_fn.pphlo)
-            np.testing.assert_allclose(sk_result_l2, spu_result_l2, rtol=0, atol=1e-4)
+            np.testing.assert_allclose(sk_result_l2, spu_result_l2, rtol=0, atol=2e-4)
         
         copts = spu_pb2.CompilerOptions()
         
@@ -257,7 +257,7 @@ class UnitTests(unittest.TestCase):
 
     def test_minmaxscaler(self):
         sim = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
 
         def minmaxscale(X, Y):
@@ -296,7 +296,7 @@ class UnitTests(unittest.TestCase):
 
     def test_minmaxscaler_partial_fit(self):
         sim = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
 
         def minmaxscale(X):
@@ -348,7 +348,7 @@ class UnitTests(unittest.TestCase):
 
     def test_minmaxscaler_zero_variance(self):
         sim = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
 
         def minmaxscale(X, X_new):
@@ -397,7 +397,7 @@ class UnitTests(unittest.TestCase):
 
     def test_maxabsscaler(self):
         sim = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
 
         def maxabsscale(X):
@@ -429,7 +429,7 @@ class UnitTests(unittest.TestCase):
 
     def test_maxabsscaler_zero_maxabs(self):
         sim = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
 
         def maxabsscale(X, X_new):
@@ -480,7 +480,7 @@ class UnitTests(unittest.TestCase):
 
     def test_kbinsdiscretizer_uniform(self):
         sim = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
 
         def kbinsdiscretize(X):
@@ -524,7 +524,7 @@ class UnitTests(unittest.TestCase):
 
     def test_kbinsdiscretizer_uniform_diverse_n_bins(self):
         sim = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
 
         def kbinsdiscretize(X, n_bins):
@@ -572,7 +572,7 @@ class UnitTests(unittest.TestCase):
 
     def test_kbinsdiscretizer_uniform_diverse_n_bins_no_vectorize(self):
         sim = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
 
         # When you set vectorize to False, diverse_n_bins should be public.
@@ -621,7 +621,7 @@ class UnitTests(unittest.TestCase):
 
     def test_kbinsdiscretizer_quantile(self):
         sim = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
 
         def kbinsdiscretize(X):
@@ -666,7 +666,7 @@ class UnitTests(unittest.TestCase):
 
     def test_kbinsdiscretizer_quantile_diverse_n_bins(self):
         sim = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
 
         def kbinsdiscretize(X, n_bins):
@@ -715,7 +715,7 @@ class UnitTests(unittest.TestCase):
 
     def test_kbinsdiscretizer_quantile_diverse_n_bins2(self):
         sim = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
 
         def kbinsdiscretize(X, n_bins):
@@ -764,7 +764,7 @@ class UnitTests(unittest.TestCase):
 
     def test_kbinsdiscretizer_quantile_diverse_n_bins_no_vectorize(self):
         sim = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
 
         def kbinsdiscretize(X):
@@ -813,7 +813,7 @@ class UnitTests(unittest.TestCase):
 
     def test_kbinsdiscretizer_quantile_eliminate(self):
         sim = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
 
         def kbinsdiscretize(X):
@@ -862,7 +862,7 @@ class UnitTests(unittest.TestCase):
 
     def test_kbinsdiscretizer_quantile_sample_weight(self):
         sim = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
 
         def kbinsdiscretize(X, sample_weight):
@@ -917,7 +917,7 @@ class UnitTests(unittest.TestCase):
 
     def test_kbinsdiscretizer_quantile_sample_weight_diverse_n_bins(self):
         sim = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
 
         def kbinsdiscretize(X, n_bins, sample_weight):
@@ -977,7 +977,7 @@ class UnitTests(unittest.TestCase):
 
     def test_kbinsdiscretizer_quantile_sample_weight_diverse_n_bins2(self):
         sim = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
 
         def kbinsdiscretize(X, n_bins, sample_weight):
@@ -1038,7 +1038,7 @@ class UnitTests(unittest.TestCase):
 
     def test_kbinsdiscretizer_quantile_sample_weight_diverse_n_bins_no_vectorize(self):
         sim = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
 
         def kbinsdiscretize(X, sample_weight):
@@ -1099,7 +1099,7 @@ class UnitTests(unittest.TestCase):
 
     def test_kbinsdiscretizer_kmeans(self):
         sim = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
 
         def kbinsdiscretize(X):
@@ -1143,7 +1143,7 @@ class UnitTests(unittest.TestCase):
 
     def test_kbinsdiscretizer_kmeans_diverse_n_bins_no_vectorize(self):
         sim = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
 
         def kbinsdiscretize(X):

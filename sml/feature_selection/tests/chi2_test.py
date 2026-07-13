@@ -29,7 +29,7 @@ from sml.feature_selection.univariate_selection import chi2
 class UnitTests(unittest.TestCase):
     def test_chi2(self):
         sim = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM128
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM128
         )
 
         def proc(x, y, num_class, max_iter, compute_p_value):

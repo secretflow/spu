@@ -33,7 +33,7 @@ class UnitTests(unittest.TestCase):
     @staticmethod
     def load_data(multi_class="binary"):
         sim = spsim.Simulator.simple(
-            2, spu_pb2.ProtocolKind.CHEETAH, spu_pb2.FieldType.FM64
+            3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
         # Create dataset
         if multi_class == "binary":
