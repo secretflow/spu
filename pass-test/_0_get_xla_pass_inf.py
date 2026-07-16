@@ -55,7 +55,7 @@ def get_xla_pass():
     print(len(pass_record["HloModulePass_consturctor"]))
     print(len(pass_record["OpExpanderPass"]))
     print(len(pass_record["OpExpanderPass_consturctor"]))
-    with open("extract_XLAPass.json", 'w') as file:
+    with open("pass_inf/extract_XLAPass.json", 'w') as file:
         json.dump(pass_record, file)
 
     # """ CPU passes """
@@ -175,11 +175,11 @@ def get_algebraic_simplifier_options():
                 option_name = "_".join(option_inf[:-1])
                 option_default_value = option_inf[-1][1:-2]
                 options_dict[option_name] = (option_default_value, value_type)
-    with open("extract_AlgebraOption.json", 'w') as file:
+    with open("pass_inf/extract_AlgebraOption.json", 'w') as file:
         json.dump(options_dict, file)
 
 
 if __name__ == "__main__":
-    # get_xla_pass()
+    get_xla_pass()
     get_algebraic_simplifier_options()
 

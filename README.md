@@ -194,8 +194,8 @@ ln -s /usr/lib/x86_64-linux-gnu/libstdc++.so.6 libstdc++.so.6
 
 git clone https://github.com/openxla/xla.git
 cd xla
+git checkout 64bdcc53a1b24abf19b1fe598e6f9b0fe6454470
 
 ### Todo
-没有适配
-get_xla_pass_inf.py
+
 
