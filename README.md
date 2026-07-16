@@ -189,3 +189,13 @@ ln -s /usr/lib/x86_64-linux-gnu/libstdc++.so.6 libstdc++.so.6
 
 ### tips
 如果编译阶段出错，可以加上--jobs=4这个参数。
+
+### step 0: 获取xla pass (optional)
+
+git clone https://github.com/openxla/xla.git
+cd xla
+
+### Todo
+没有适配
+get_xla_pass_inf.py
+
