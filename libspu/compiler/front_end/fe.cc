@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "libspu/compiler/front_end/fe.h"
+
 #include "fmt/ranges.h"
 #include "mlir/Dialect/Func/Extensions/InlinerExtension.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
@@ -26,7 +28,6 @@
 #include "xla/translate/mhlo_to_hlo/translate.h"
 
 #include "libspu/compiler/common/compilation_context.h"
-#include "libspu/compiler/front_end/fe.h"
 #include "libspu/compiler/front_end/hlo_importer.h"
 #include "libspu/compiler/utils/utils.h"
 #include "libspu/core/prelude.h"
@@ -159,5 +160,5 @@ void FE::buildFrontEndPipeline(mlir::PassManager *pm, const std::string &args) {
   }
 }
 
-}  // namespace spu::compiler
+} // namespace spu::compiler
 

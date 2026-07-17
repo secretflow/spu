@@ -114,16 +114,6 @@ spu_cc_test(
 )
 
 spu_cc_test(
-    name = "bin_matvec_prot_test",
-    srcs = ["bin_matvec_prot_test.cc"],
-    deps = [
-        ":bin_matvec_prot",
-        "//libspu/mpc:factory",
-        "//libspu/mpc/utils:simulate",
-    ],
-)
-
-spu_cc_test(
     name = "binning_test",
     srcs = ["binning_test.cc"],
     deps = [":binning"],

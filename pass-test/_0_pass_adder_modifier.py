@@ -39,7 +39,7 @@ def pass_adder_modifier(passfile_path_input, passfile_path_output, optionsfile_p
     
     # Load the algebraic simplifier options from the json file
     if algebra_modify:
-        with open('extract_AlgebraOption.json', 'r') as file:
+        with open('pass_inf/extract_AlgebraOption.json', 'r') as file:
             algebraic_simplifier_options_dict = json.load(file)
 
     # Extract the section between the start and end comments
@@ -250,14 +250,16 @@ if __name__ == '__main__':
     optionsfile_path_input = 'file-to-be-modified/spu_ori.proto'
     optionsfile_path_tmp = 'file-to-be-modified/spu_tmp.proto'
     # pass neeed to be added from XLA
-    passadd_list_path = "extract_XLAPass.json"
+    passadd_list_path = "pass_inf/extract_XLAPass.json"
 
     shutil.copyfile(optionsfile_path_input, optionsfile_path_tmp)
     passfile_path_input = 'file-to-be-modified/hlo_importer_ori.cc'
     passfile_path_output = '../libspu/compiler/front_end/hlo_importer.cc'
     optionsfile_path_output = '../libspu/spu.proto'
-    passoption_list_path = 'pass_options_HLO.txt'
-    pass_adder_modifier(passfile_path_input, passfile_path_output, optionsfile_path_tmp, optionsfile_path_output, passoption_list_path, passadd_list_path, algebra_modify=True)
+    passoption_list_path = 'pass_inf/pass_options_HLO.txt'
+    
+    # turn algebra_modify on to add algebraic simplifier options
+    pass_adder_modifier(passfile_path_input, passfile_path_output, optionsfile_path_tmp, optionsfile_path_output, passoption_list_path, passadd_list_path, algebra_modify=False)
     shutil.copyfile(optionsfile_path_output, optionsfile_path_tmp)
 
     delete_list = []
@@ -271,19 +273,19 @@ if __name__ == '__main__':
                 add_list.append(line.strip())
             else:
                 algebra_list.append(line.strip())
-    with open('pass_options_HLO_add.txt', 'w') as file:
+    with open('pass_inf/pass_options_HLO_add.txt', 'w') as file:
         for line in add_list:
             file.write(line + '\n')
     
-    with open('pass_options_HLO_delete.txt', 'w') as file:
+    with open('pass_inf/pass_options_HLO_delete.txt', 'w') as file:
         for line in delete_list:
             file.write(line + '\n')
 
-    with open('pass_options_HLO_algebra.txt', 'w') as file:
+    with open('pass_inf/pass_options_HLO_algebra.txt', 'w') as file:
         for line in algebra_list:
             file.write(line + '\n')
 
     passfile_path_input = 'file-to-be-modified/fe_ori.cc'
     passfile_path_output = '../libspu/compiler/front_end/fe.cc'
-    passoption_list_path = 'pass_options_fe.txt'
+    passoption_list_path = 'pass_inf/pass_options_fe.txt'
     pass_adder_modifier(passfile_path_input, passfile_path_output, optionsfile_path_tmp, optionsfile_path_output, passoption_list_path)

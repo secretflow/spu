@@ -15,23 +15,14 @@
 #include "libspu/compiler/front_end/hlo_importer.h"
 
 #include "xla/service/algebraic_simplifier.h"
-#include "xla/service/batch_dot_simplification.h"
 #include "xla/service/batchnorm_expander.h"
-#include "xla/service/bitcast_dtypes_expander.h"
 #include "xla/service/call_inliner.h"
-#include "xla/service/cholesky_expander.h"
-#include "xla/service/conditional_simplifier.h"
 #include "xla/service/conditional_to_select.h"
-#include "xla/service/convolution_4d_expander.h"
 #include "xla/service/convolution_group_converter.h"
-#include "xla/service/dot_decomposer.h"
-#include "xla/service/eigh_expander.h"
 #include "xla/service/float_normalization.h"
 #include "xla/service/float_support.h"
 #include "xla/service/gather_expander.h"
-#include "xla/service/gather_simplifier.h"
 #include "xla/service/gpu/transforms/dot_dimension_sorter.h"
-#include "xla/service/hlo_constant_folding.h"
 #include "xla/service/hlo_cse.h"
 #include "xla/service/hlo_dce.h"
 #include "xla/service/hlo_module_config.h"
@@ -40,18 +31,13 @@
 #include "xla/service/hlo_verifier.h"
 #include "xla/service/map_inliner.h"
 #include "xla/service/operand_upcaster.h"
-#include "xla/service/qr_expander.h"
-#include "xla/service/real_imag_expander.h"
 #include "xla/service/reshape_mover.h"
 #include "xla/service/result_caster.h"
 #include "xla/service/scatter_expander.h"
-#include "xla/service/slice_sinker.h"
-#include "xla/service/sort_simplifier.h"
 #include "xla/service/triangular_solve_expander.h"
 #include "xla/service/tuple_simplifier.h"
 #include "xla/service/while_loop_constant_sinking.h"
 #include "xla/service/while_loop_simplifier.h"
-#include "xla/service/zero_sized_hlo_elimination.h"
 #include "xla/translate/hlo_to_mhlo/hlo_module_importer.h"
 
 #include "libspu/compiler/common/compilation_context.h"
@@ -60,8 +46,8 @@
 #include "xla/service/hlo.pb.h"
 
 namespace xla {
-void runHloPasses(xla::HloModule *module) {
-
+void runHloPasses(xla::HloModule *module,
+                  const spu::CompilerOptions &compiler_options) {
   // Simplifier options
   AlgebraicSimplifierOptions options;
   // For MPC, dot is way faster than reduce
@@ -70,11 +56,13 @@ void runHloPasses(xla::HloModule *module) {
   options.set_minmax_propagate_nan(false);
   // Transpose and reshape is cheep for us
   options.set_unconditionally_simplify_reduce_of_transpose_or_reshape(true);
+  // End of simplifier options
 
   HloPassPipeline pipeline("optimization");
   pipeline.AddInvariantChecker<HloVerifier>(/*layout_sensitive=*/false,
                                             /*allow_mixed_precision=*/false);
 
+  // Start to modify Flags to enable/disable passes
   pipeline.AddPass<OperandUpcaster>();
   pipeline.AddPass<ResultCaster>();
 
@@ -146,6 +134,7 @@ void runHloPasses(xla::HloModule *module) {
     pipeline.AddPass<HloCSE>(/*is_layout_sensitive=*/false);
     pipeline.AddPass<HloDCE>();
   }();
+  // End of modifying Flags to enable/disable passes
 
   auto status = pipeline.Run(module).status();
 
@@ -204,7 +193,7 @@ HloImporter::parseXlaModuleFromString(const std::string &content) {
     SPU_THROW("{}", module.status().message());
   }
 
-  xla::runHloPasses((*module).get());
+  xla::runHloPasses((*module).get(), context_->getCompilerOptions());
 
   // Stage 2: Ask mlir hlo to convert xla module into mlir
   // Create importer

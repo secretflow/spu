@@ -88,17 +88,6 @@ spu_cc_test(
 )
 
 spu_cc_test(
-    name = "cheetah_mul_test",
-    srcs = ["cheetah_mul_test.cc"],
-    deps = [
-        ":cheetah_mul",
-        "//libspu/mpc/utils:ring_ops",
-        "//libspu/mpc/utils:simulate",
-        "@com_github_xtensor_xtensor//:xtensor",
-    ],
-)
-
-spu_cc_test(
     name = "cheetah_dot_test",
     size = "large",
     srcs = ["cheetah_dot_test.cc"],

@@ -1810,17 +1810,6 @@ message CompilerOptions {
   bool disable_realimagexpander = 1393;
   bool disable_hlocse = 1394;
   bool disable_hlodce = 1395;
-
-  // Modified Options for Compilation Options
-  bool disable_mlir_createinlinerpass = 1396;
-  bool disable_mlir_mhlo_createexpandhlotuplespass = 1397;
-  bool disable_mlir_mhlo_createlowercomplexpass = 1398;
-  bool disable_mlir_mhlo_createlegalizeeinsumtodotgeneralpass = 1399;
-  bool disable_mlir_mhlo_createlegalizegeneraldotpass = 1400;
-  bool disable_mlir_mhlo_createsinkconstantstocontrolflowpass = 1401;
-  bool disable_mlir_mhlo_createlowercomplexpass_1 = 1402;
-  bool disable_mlir_mhlo_createflattentuplepass = 1403;
-  bool disable_mlir_mhlo_createbroadcastpropagationpass = 1404;
 }
 
 // The executable format accepted by SPU runtime.
@@ -1852,5 +1841,4 @@ message ExecutableProto {
   // The bytecode of the program, with format IR_MLIR_SPU.
   bytes code = 6;
 }
-
 
