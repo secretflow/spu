@@ -275,7 +275,7 @@ if __name__ == "__main__":
     # Currently, even if the number of parties exceeds the correct number, the code can still work
     party_nums = 2
     # define the path of the log files
-    log_directory = 'test-log-new/SEMI2K-ds-reshape-exp'
+    log_directory = 'test-log/SEMI2K-all'
     for log_sub_directory in glob.glob(os.path.join(log_directory, '*/')):
         # if log_sub_directory.find("preprocessing_test") != -1:
         #     print("preprocessing_test is skipped!!!!!!!!!!!!!!!!!!!!")

@@ -7,7 +7,7 @@ import numpy as np
 
 """Define the parameters"""
 # define the path of the log files
-# log_directory = 'test-log-new/new-auto-test-all-SEMI2K'
+# log_directory = 'test-log/auto-test-all-SEMI2K'
 # optimize_only=False
 
 def analysis_json(log_json):
@@ -354,12 +354,12 @@ def get_figure(actions_list, bytes_list, protocal, filter):
     
 if __name__ == "__main__":
     optimize_only = False
-    # actions_aby3, bytes_aby3 = communication_costs_analysis('test-log-new/new-auto-test-all', optimize_only=optimize_only)
-    # actions_semi2k, bytes_semi2k = communication_costs_analysis('test-log-new/new-auto-test-all-SEMI2K', optimize_only=optimize_only)
-    # actions_cheetah, bytes_cheetah = communication_costs_analysis('test-log-new/new-auto-test-all-CHEETAH', optimize_only=optimize_only)
-    # actions_aby3_algebra, bytes_aby3_algebra = communication_costs_analysis('test-log-new/new-auto-test-algebra', optimize_only=optimize_only)
-    # actions_cheetah_algebra, bytes_cheetah_algebra = communication_costs_analysis('test-log-new/new-auto-test-algebra-CHEETAH', optimize_only=optimize_only)
-    # actions_semi2k_algebra, bytes_semi2k_algebra = communication_costs_analysis('test-log-new/new-auto-test-algebra-SEMI2K', optimize_only=optimize_only)
+    # actions_aby3, bytes_aby3 = communication_costs_analysis('test-log/auto-test-all', optimize_only=optimize_only)
+    # actions_semi2k, bytes_semi2k = communication_costs_analysis('test-log/auto-test-all-SEMI2K', optimize_only=optimize_only)
+    # actions_cheetah, bytes_cheetah = communication_costs_analysis('test-log/auto-test-all-CHEETAH', optimize_only=optimize_only)
+    # actions_aby3_algebra, bytes_aby3_algebra = communication_costs_analysis('test-log/auto-test-algebra', optimize_only=optimize_only)
+    # actions_cheetah_algebra, bytes_cheetah_algebra = communication_costs_analysis('test-log/auto-test-algebra-CHEETAH', optimize_only=optimize_only)
+    # actions_semi2k_algebra, bytes_semi2k_algebra = communication_costs_analysis('test-log/auto-test-algebra-SEMI2K', optimize_only=optimize_only)
 
     # get_figure(actions_aby3, bytes_aby3, "ABY3", "disable")
     # get_figure(actions_semi2k, bytes_semi2k, "SEMI2K", "disable")
@@ -394,16 +394,16 @@ if __name__ == "__main__":
     # print(actions_aby3_algebra)
     # print(bytes_aby3_algebra)
 
-        # output = communication_costs_analysis('test-log-new/new-auto-test-all-CHEETAH-r1', optimize_only=optimize_only)
+        # output = communication_costs_analysis('test-log/auto-test-all-CHEETAH-r1', optimize_only=optimize_only)
 
-    # actions_semi2k_algebra_more, bytes_semi2k_algebra_more = communication_costs_analysis('test-log-new/SEMI2K-algebra-more', optimize_only=optimize_only)
+    # actions_semi2k_algebra_more, bytes_semi2k_algebra_more = communication_costs_analysis('test-log/SEMI2K-algebra-more', optimize_only=optimize_only)
     # print(actions_semi2k_algebra_more)
     # print(bytes_semi2k_algebra_more)
 
-    # actions_cheetah_algebra_more, bytes_cheetah_algebra_more = communication_costs_analysis('test-log-new/CHEETAH-pow-exp', optimize_only=optimize_only)
+    # actions_cheetah_algebra_more, bytes_cheetah_algebra_more = communication_costs_analysis('test-log/CHEETAH-pow-exp', optimize_only=optimize_only)
     # print(actions_cheetah_algebra_more)
     # print(bytes_cheetah_algebra_more)
 
-    # actions_semi2k_algebra_more, bytes_semi2k_algebra_more = communication_costs_analysis('test-log-new/SEMI2K-ds-reshape-exp', optimize_only=optimize_only)
+    # actions_semi2k_algebra_more, bytes_semi2k_algebra_more = communication_costs_analysis('test-log/SEMI2K-ds-reshape-exp', optimize_only=optimize_only)
     # print(actions_semi2k_algebra_more)
     # print(bytes_semi2k_algebra_more)

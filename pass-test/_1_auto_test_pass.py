@@ -18,17 +18,26 @@ class mod(Enum):
 
 """Define the parameters"""
 test_mod = mod.sml                                      # test on sml or example
-repeat_time = 1                                         # repeat time for each test, usually 1 for only testing communication cost
-output_folder = "test-log-new/new-auto-test-all-SEMI2K-second"            # specify the output folder
-pass_ref_folder = "test-log-new/new-auto-test-all-SEMI2K"            # specify the folder for the reference on the first passoption_choice
-thread_num = 6                                         # number of threads
+repeat_time = 1                                       # repeat time for each test, usually 1 for only testing communication cost
+output_folder = "test-log/SEMI2K-all"            # specify the output folder
+thread_num = 8                                       # number of threads
 protocal = "SEMI2K"                                    # SEMI2K/ABY3/CHEETAH/SECURENN
-passoptions_path = '/home1/leiyu.lyc/ppu/pass-test/pass_options.txt' # path to pass options
+passoptions_path = 'pass_inf/pass_options_HLO_delete.txt' # path to pass options
 # number of parties
 if protocal == "ABY3":
     partynum = 3
 else:
     partynum = 2
+hlo_log = False
+
+# refer to the complete test for the IR deduplication
+refer_to_complete_test = False
+refer_folder = "test-log-model/new-auto-test-all-CHEETAH"
+if refer_to_complete_test:
+    assert output_folder != refer_folder, "The refer_folder should not be the same as the output_folder"
+
+if repeat_time > 1:
+    assert thread_num == 1, "The repeat time is larger than 1 for benchmarking time, so the thread_num should be 1"
 
 hashseed = os.getenv('PYTHONHASHSEED')
 if not hashseed:
@@ -72,7 +81,10 @@ def run_test_single(test_command, output_passoption_folder_path, pass_option="ba
                 nodectl_process.communicate("down")
 
 def run_with_queues(sml_copy, config_queue):
-    for pass_option, test_file, pass_baseline, (test_command, output_folder_path, not_skip_list) in config_queue:
+    for pass_option, test_file, test_file_inf in config_queue:
+        test_command = test_file_inf.test_file_command
+        output_folder_path = test_file_inf.test_file_log_path
+        not_skip_list = test_file_inf.not_skip_list
         output_passoption_folder_path = os.path.join(output_folder_path, pass_option)
         test_command = test_command.replace("sml", sml_copy)
         if pass_option == "baseline":
@@ -85,16 +97,19 @@ def run_with_queues(sml_copy, config_queue):
                 line = line.replace('{partynum}', str(partynum)).replace('{protocalchosen}', protocal)
                 # do not execute the pphlo test
                 line = line.replace('{pphlo_dict}', "(None, None)")
-                # only test with functions specified
-                line = line.replace('{skip_control}', f", not_skip_list={not_skip_list}")
+                if not_skip_list == None:
+                    # default to set skip_control to blank
+                    sim_args = f""
+                else:
+                    # only test with functions specified
+                    sim_args = f", not_skip_list={not_skip_list}"
+                if hlo_log:
+                    sim_args += ", hlo_log=True"
+                line = line.replace('{skip_control}', sim_args)
                 # change the import of sml to the sml_copy
                 if sml_copy != "sml":
                     line = line.replace('import sml.', f'import {sml_copy}.').replace('from sml.', f'from {sml_copy}.')
                 modified_code.append(line)
-                if 'copts = spu_pb2.CompilerOptions()' in line:
-                    modified_code.append(line)
-                    indent = len(line) - len(line.lstrip())
-                    modified_code.append(indent * " " + f'copts.{pass_baseline} = True\n')
             with open(test_file.replace("sml", sml_copy), 'w') as dst_file:
                 dst_file.writelines(modified_code)
             run_test_single(test_command, output_passoption_folder_path, pass_option=pass_option, sml_copy=sml_copy)
@@ -110,20 +125,30 @@ def run_with_queues(sml_copy, config_queue):
                 line = line.replace('{partynum}', str(partynum)).replace('{protocalchosen}', protocal).replace('{protocalchosen}', protocal)
                 # specify the PPHLO to be compared
                 line = line.replace('{pphlo_dict}', f'("{IR_record_folder_path}", "{pass_option}")')
-                # only test with functions specified
-                line = line.replace('{skip_control}', f", not_skip_list={not_skip_list}")
+                if not_skip_list == None:
+                    # default to set skip_control to blank
+                    sim_args = ""
+                else:
+                    # only test with functions specified
+                    sim_args = f", not_skip_list={not_skip_list}"
+                line = line.replace('{skip_control}', sim_args)
                 # change the import of sml to the sml_copy
                 if sml_copy != "sml":
                     line = line.replace('import sml.', f'import {sml_copy}.').replace('from sml.', f'from {sml_copy}.')
                 modified_code.append(line)
                 if 'copts = spu_pb2.CompilerOptions()' in line:
                     indent = len(line) - len(line.lstrip())
-                    modified_code.append(indent * " " + f'copts.{pass_baseline} = True\n')
                     modified_code.append(indent * " " + f'copts.{pass_option} = True\n')
 
             with open(test_file.replace("sml", sml_copy), 'w') as dst_file:
                 dst_file.writelines(modified_code)
             run_test_single(test_command, output_passoption_folder_path, pass_option=pass_option, sml_copy=sml_copy)
+
+class TestFileInf():
+    def __init__(self, test_file_command=None, test_file_log_path=None, not_skip_list=None):
+        self.test_file_command = test_file_command
+        self.test_file_log_path = test_file_log_path
+        self.not_skip_list = not_skip_list
 
 if __name__ == "__main__":
     """include datetime in every print"""
@@ -146,8 +171,6 @@ if __name__ == "__main__":
     """get all possible pass options"""
     with open(passoptions_path, 'r') as file:
         pass_options_list = [line.strip() for line in file if line.strip()]
-        # disable_hlocse_index = pass_options_list.index("disable_hlocse")
-        # pass_options_list = pass_options_list[disable_hlocse_index + 1:]
         # pass_options_list = [pass_option for pass_option in pass_options_list if pass_option.split("_")[-1] == "0"]
 
     """Change the working directory"""
@@ -161,7 +184,7 @@ if __name__ == "__main__":
         os.makedirs(output_folder_path)
 
     """print the output to the log file"""
-    sys.stdout = open(os.path.join(output_folder_path, 'test-log2.txt'), 'w')
+    sys.stdout = open(os.path.join(output_folder_path, 'test-log.txt'), 'w')
 
     # copies of sml for mutlithreading
     sml_copies = ["sml"] + [f"sml{i}" for i in range(1, thread_num)]
@@ -170,7 +193,6 @@ if __name__ == "__main__":
     if test_mod == mod.sml:
         test_file_dir = "sml"
         test_file_list = glob.glob(os.path.join(test_file_dir, "*", "*", "*_test*"))
-        # test_file_list = ["sml/ensemble/tests/adaboost_test.py"]
         # test_file_list = ["sml/preprocessing/tests/preprocessing_test.py"]
         # test_file_delet_list = ["sml/linear_model/tests/quantile_test.py",
         #                   "sml/ensemble/tests/forest_test.py",
@@ -196,61 +218,87 @@ if __name__ == "__main__":
             test_file_command = "/".join(["bazel-bin", "sml", file_inf[-3], f"{file_inf[-2]}", f"{test_file_name}"])
         else:
             test_file_command = "/".join(["bazel-bin", "examples", file_inf[-4], file_inf[-3], file_inf[-2], f"{test_file_name}"])
-        pass_ref_dict = {}
-        # for IR_dict_path in glob.glob(os.path.join(original_work_dir, pass_ref_folder, test_file_name, "IR_record", f"pphlo_*.json")):
-        #     with open(IR_dict_path, 'r') as file:
-        #         IR_dict = json.load(file)
-        #     for pass_option in IR_dict.keys():
-        #         if pass_option != "baseline" and pass_option not in pass_ref_list:
-        #             pass_ref_list.append(pass_option)
-        with open(os.path.join(os.path.join(original_work_dir, pass_ref_folder, test_file_name, "extract_result.json")), "r") as file:
-            extract_result = json.load(file)
-        for function_name in extract_result.keys():
-            for pass_option in extract_result[function_name].keys():
-                if pass_option != "baseline":
-                    if pass_option not in pass_ref_dict:
-                        pass_ref_dict[pass_option] = [function_name]
-                    else:
-                        pass_ref_dict[pass_option].append(function_name)
-        test_file_dict[test_file] = {}
-        for pass_baseline in pass_ref_dict.keys():
-            test_file_log_path = os.path.join(output_folder_path, "|".join([test_file_name, pass_baseline]))
-            if not os.path.exists(test_file_log_path):
-                os.makedirs(test_file_log_path)
-            test_file_dict[test_file][pass_baseline] = (test_file_command, test_file_log_path, pass_ref_dict[pass_baseline])
-    # Baseline is run seperately to for the IR deduplication
-    # If the baseline join the mutlithread with other passes, it is possible the test with passoption runs before the baseline
-    # Queues for threads of baseline tests running in different sml copies
-    queues = {path: [] for path in sml_copies}
-    i = 0
-    for test_file in test_file_dict.keys():
-        for pass_baseline in test_file_dict[test_file].keys():
-            queues[sml_copies[i % len(sml_copies)]].append(("baseline", test_file, pass_baseline, test_file_dict[test_file][pass_baseline]))
-            i += 1
+        test_file_log_path = os.path.join(output_folder_path, test_file_name)
+        if not os.path.exists(test_file_log_path):
+            os.makedirs(test_file_log_path)
+        test_file_dict[test_file] = TestFileInf(test_file_command=test_file_command, test_file_log_path=test_file_log_path)
     
-    # Run the baseline test in multithreading
-    threads = []
-    for sml_copy in sml_copies:
-        t = threading.Thread(target=run_with_queues, args=(sml_copy, queues[sml_copy]), name=f"Worker-{sml_copy}")
-        t.start()
-        threads.append(t)
-    # Wait for all threads to complete
-    for t in threads:
-        t.join()
-    print("Baseline tests finished")
+    if refer_to_complete_test == False:
+        # Baseline is run seperately to for the IR deduplication
+        # If the baseline join the mutlithread with other passes, it is possible the test with passoption runs before the baseline
+        # Queues for threads of baseline tests running in different sml copies
+        queues = {path: [] for path in sml_copies}
+        for i, test_file in enumerate(test_file_dict.keys()):
+            queues[sml_copies[i % len(sml_copies)]].append(("baseline", test_file, test_file_dict[test_file]))
+        
+        # Run the baseline test in multithreading
+        threads = []
+        for sml_copy in sml_copies:
+            t = threading.Thread(target=run_with_queues, args=(sml_copy, queues[sml_copy]), name=f"Worker-{sml_copy}")
+            t.start()
+            threads.append(t)
+        # Wait for all threads to complete
+        for t in threads:
+            t.join()
+        print("Baseline tests finished")
 
-    # Queues for threads running in different sml copies
-    queues = {path: [] for path in sml_copies}
-    i = 0
-    for pass_option in pass_options_list:
+        # Queues for threads running in different sml copies
+        queues = {path: [] for path in sml_copies}
+        for i, (pass_option, test_file) in enumerate(itertools.product(pass_options_list, test_file_dict.keys())):
+            queues[sml_copies[i % len(sml_copies)]].append((pass_option, test_file, test_file_dict[test_file]))
+        
+        # Run the test in multithreading
+        threads = []
+        for sml_copy in sml_copies:
+            t = threading.Thread(target=run_with_queues, args=(sml_copy, queues[sml_copy]), name=f"Worker-{sml_copy}")
+            t.start()
+            threads.append(t)
+    else:
+        # Just to keep the same order of the test files for the IR deduplication
+        # Though IR deduplication should not have effect in the refer_to_complete_test mod, it is used to double check the correctness of the IR deduplication
+        # Queues for threads of baseline tests running in different sml copies
+        queues = {path: [] for path in sml_copies}
+        for i, test_file in enumerate(test_file_dict.keys()):
+            queues[sml_copies[i % len(sml_copies)]].append(("baseline", test_file, test_file_dict[test_file]))
+
+        # Run the baseline test in multithreading
+        threads = []
+        for sml_copy in sml_copies:
+            t = threading.Thread(target=run_with_queues, args=(sml_copy, queues[sml_copy]), name=f"Worker-{sml_copy}")
+            t.start()
+            threads.append(t)
+        # Wait for all threads to complete
+        for t in threads:
+            t.join()
+        print("Baseline tests finished")
+
+        # Queues for threads of baseline tests running in different sml copies
+        queues = {path: [] for path in sml_copies}
+        queues_i = 0
         for test_file in test_file_dict.keys():
-            for pass_baseline in test_file_dict[test_file].keys():
-                queues[sml_copies[i % len(sml_copies)]].append((pass_option, test_file, pass_baseline, test_file_dict[test_file][pass_baseline]))
-                i += 1
-    
-    # Run the test in multithreading
-    threads = []
-    for sml_copy in sml_copies:
-        t = threading.Thread(target=run_with_queues, args=(sml_copy, queues[sml_copy]), name=f"Worker-{sml_copy}")
-        t.start()
-        threads.append(t)
+            test_file_inf = test_file_dict[test_file]
+            ref_extract_result_path = os.path.join(test_file_inf.test_file_log_path, "extract_result.json").replace(output_folder, refer_folder)
+            with open(ref_extract_result_path, 'r') as file:
+                ref_extract_result = json.load(file)
+            # get the functions that should be tested for the pass options
+            pass_ref_dict = {}
+            for function_name in ref_extract_result.keys():
+                for pass_option in ref_extract_result[function_name].keys():
+                    if pass_option != "baseline":
+                        if pass_option not in pass_ref_dict:
+                            pass_ref_dict[pass_option] = [function_name]
+                        else:
+                            pass_ref_dict[pass_option].append(function_name)
+                
+            for pass_option in pass_ref_dict.keys():
+                test_file_inf_pass = TestFileInf(test_file_command = test_file_inf.test_file_command, test_file_log_path = test_file_inf.test_file_log_path, not_skip_list = pass_ref_dict[pass_option])
+                queues[sml_copies[queues_i % len(sml_copies)]].append((pass_option, test_file, test_file_inf_pass))
+                queues_i += 1
+        
+        # Run the test in multithreading
+        threads = []
+        for sml_copy in sml_copies:
+            t = threading.Thread(target=run_with_queues, args=(sml_copy, queues[sml_copy]), name=f"Worker-{sml_copy}")
+            t.start()
+            threads.append(t)
+            

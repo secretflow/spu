@@ -190,11 +190,27 @@ ln -s /usr/lib/x86_64-linux-gnu/libstdc++.so.6 libstdc++.so.6
 ### tips
 如果编译阶段出错，可以加上--jobs=4这个参数。
 
-### step 0: 获取xla pass (optional)
+### step 0-1: 获取xla pass (已经有跑完的结果，可以直接跳过)
 
 git clone https://github.com/openxla/xla.git
 cd xla
 git checkout 64bdcc53a1b24abf19b1fe598e6f9b0fe6454470
+cd ../pass-test
+python _0_get_xla_pass_inf.py
+
+### step 0-2: 将获取的xla pass和在spu中已使用的xla pass转化为编译选项 (已经有跑完的结果，可以直接跳过)
+cd pass-test
+python _0_pass_adder_modifier.py
+# 生成完成后，要重新编译
+cd ..
+bazel build //... -c opt
+
+### step 0-3: 复制多份sml，用于并行测试 (如果不需要并行测试，可以直接跳过；推荐再生成七个)
+cd pass-test
+python _0_extend_testcase.py
+# 生成完成后，要重新编译
+cd ..
+bazel build //... -c opt
 
 ### Todo
 

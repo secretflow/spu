@@ -1,6 +1,6 @@
 import shutil
 import os
-extend_number = 8
+extend_number = 7
 ori_testcase = '../sml'
 bazel_list = []
 for root, dirs, files in os.walk(ori_testcase):
