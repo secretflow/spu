@@ -190,6 +190,8 @@ ln -s /usr/lib/x86_64-linux-gnu/libstdc++.so.6 libstdc++.so.6
 ### tips
 如果编译阶段出错，可以加上--jobs=4这个参数。
 
+## 正式流程
+### 准备阶段
 ### step 0-1: 获取xla pass (已经有跑完的结果，可以直接跳过)
 
 git clone https://github.com/openxla/xla.git
@@ -212,6 +214,163 @@ python _0_extend_testcase.py
 cd ..
 bazel build //... -c opt
 
-### Todo
+### PassTester
 
+### PatternExtractor
+
+#### 获取用于 HLO 约简的 HLO IR
+`pass-test/code_reduce_case_gen.py` 和 `pass-test/code_reducer.py` 使用的是
+XLA HLO 文本，格式类似：
+
+```text
+HloModule jit_test_kmeans_random, ...
+
+region_0.1 {
+  Arg_0.2 = ...
+  ROOT add.3 = ...
+}
+
+ENTRY main.4 {
+  ...
+}
+```
+
+它不是 `module @jit_...` 开头的 PPHLO/MLIR。默认的 Pass 测试只打印
+PPHLO，因此现有 `pass-test/test-log/SEMI2K-all` 中如果没有
+`HLO_IR|`、`Start printing HLO IR` 或 `HloModule`，就不能直接从该批日志
+取得约简器所需的 HLO。
+
+#### 1. 开启 HLO 日志
+
+在 `pass-test/_1_auto_test_pass.py` 中将：
+
+```python
+hlo_log = False
+```
+
+改为：
+
+```python
+hlo_log = True
+```
+
+测试模板中的 `{skip_control}` 随后会被实例化为 `hlo_log=True`。SPU 前端会在
+原始测试日志中输出：
+
+```text
+HLO_IR|Start printing HLO IR for test_kmeans_random
+HLO_IR|HloModule jit_test_kmeans_random, ...
+HLO_IR|...
+HLO_IR|End of printing HLO IR for test_kmeans_random
+```
+
+建议只运行需要约简的测试文件，并使用独立输出目录，避免覆盖已有的
+`test-log/SEMI2K-all`。例如在 `_1_auto_test_pass.py` 中临时设置：
+
+```python
+output_folder = "test-log/HLO-capture"
+test_file_list = ["sml/cluster/tests/kmeans_test.py"]
+```
+
+如果只需要 HLO，可以让 `passoptions_path` 指向一个空文件，使脚本只运行
+baseline。HLO 在 SPU Pass 流水线执行前由 JAX/XLA 前端生成，因此通常使用
+baseline HLO 即可；之后在 `code_reduce_case_gen.py` 中分别设置 `ori` 和
+`mut` Pass 配置。
+
+脚本应从 `pass-test` 目录运行：
+
+```sh
+cd pass-test
+python _1_auto_test_pass.py
+```
+
+#### 2. 从原始日志复制 HLO
+
+在目标 baseline 日志中找到：
+
+```text
+HLO_IR|Start printing HLO IR for <function_name>
+```
+
+复制它后面的 `HLO_IR|HloModule ...` 至该函数 HLO 的最后一个
+`HLO_IR|}`。不要复制 `Start printing` 和 `End of printing` 两行。
+
+将复制结果放入 `pass-test/code_reduce_case_gen.py`：
+
+```python
+test_case_full = """HLO_IR|HloModule ...
+HLO_IR|...
+HLO_IR|}"""
+```
+
+脚本中的下列代码会删除每行的 `HLO_IR|` 前缀：
+
+```python
+input_test_case = [
+    line.split("HLO_IR|")[1]
+    for line in test_case_full.split("\n")
+]
+```
+
+#### 3. 使用 `_2_extract_inf.py` 提取 HLO
+
+对于已经包含 HLO 的 baseline 原始日志，也可以在 `pass-test` 目录执行：
+
+```sh
+python - <<'PY'
+from _2_extract_inf import split_log_party, extract_log
+
+path = "test-log/HLO-capture/kmeans_test/baseline"
+
+split_log_party(
+    path,
+    party_nums=2,
+    pphlo_log=True,
+    hlo_log=True,
+)
+extract_log(
+    path,
+    pphlo_log=True,
+    hlo_log=True,
+)
+PY
+```
+
+提取后会生成：
+
+```text
+test-log/HLO-capture/kmeans_test/baseline/extracted_inf/hlo.txt
+```
+
+相应函数在 `extract_result.json` 中也会包含 `hlo` 字段。`hlo.txt` 和 JSON
+中的内容已经去掉 `HLO_IR|` 前缀；如果从这里复制，可以直接构造
+`input_test_case`，或者在粘贴到现有 `test_case_full` 格式前重新加上前缀。
+
+#### 4. 配置并生成约简案例
+
+在 `pass-test/code_reduce_case_gen.py` 中设置：
+
+```python
+case_name = "your-case-name"
+pass_option_mut = {
+    "ori": [],
+    "mut": ["disable_or_enable_some_pass"],
+}
+protocalchosen = "SEMI2K"  # 也可以是 ABY3 或 CHEETAH
+matrix = "send_bytes"      # 也可以是 send_actions
+```
+
+然后运行：
+
+```sh
+cd pass-test
+python code_reduce_case_gen.py
+python code_reducer.py
+```
+
+前者生成 `reduce_case/<case_name>.json`，后者反复缩减 HLO，并将过程和结果
+写入 `reduce_log/<case_name>/`。运行 `code_reducer.py` 前应检查文件末尾的
+`case_name_list` 和 `ddmethod_list`；它还会删除同名的旧约简日志目录。
+
+### Todo
 
