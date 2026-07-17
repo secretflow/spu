@@ -6,7 +6,7 @@ from enum import Enum
 import time
 import sys
 import threading
-from extract_inf import split_and_extract
+from _2_extract_inf import split_and_extract
 import builtins
 from datetime import datetime
 from zoneinfo import ZoneInfo

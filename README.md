@@ -191,71 +191,227 @@ ln -s /usr/lib/x86_64-linux-gnu/libstdc++.so.6 libstdc++.so.6
 如果编译阶段出错，可以加上--jobs=4这个参数。
 
 ## 正式流程
-### 准备阶段
-### step 0-1: 获取xla pass (已经有跑完的结果，可以直接跳过)
 
+完整流程分为三个阶段：
+
+1. **准备阶段**：提取 XLA Pass、为 SPU 增加可控制的编译选项，并准备并行测试副本。
+2. **PassTester**：批量执行 baseline 和不同 Pass 配置，随后提取通信量、运行时间和 IR 等信息。
+3. **PatternExtractor**：从有效的性能差异中选定案例，获取 XLA HLO，并通过差分约简得到最小触发 Pattern。
+
+以下命令默认从仓库主目录开始执行。除特别说明外，Python 脚本都应在
+`pass-test` 目录运行，因为脚本中使用了相对路径。
+
+### 阶段一：准备阶段
+
+准备阶段通常只需在首次搭建环境、XLA 版本发生变化或重新生成测试副本时执行。
+仓库中已有相应生成结果时，可以跳过对应步骤。
+
+#### 1. 获取 XLA Pass 信息
+
+将 XLA 克隆到仓库主目录，并切换到与当前实验匹配的版本：
+
+```sh
 git clone https://github.com/openxla/xla.git
 cd xla
 git checkout 64bdcc53a1b24abf19b1fe598e6f9b0fe6454470
 cd ../pass-test
 python _0_get_xla_pass_inf.py
+```
 
-### step 0-2: 将获取的xla pass和在spu中已使用的xla pass转化为编译选项 (已经有跑完的结果，可以直接跳过)
+`_0_get_xla_pass_inf.py` 扫描 `../xla/xla/service`，主要生成：
+
+- `pass_inf/extract_XLAPass.json`：发现的 XLA Pass 信息；
+- `pass_inf/extract_AlgebraOption.json`：代数化简相关选项信息。
+
+#### 2. 为 SPU 增加 Pass 编译选项
+
+```sh
 cd pass-test
 python _0_pass_adder_modifier.py
-# 生成完成后，要重新编译
 cd ..
 bazel build //... -c opt
+```
 
-### step 0-3: 复制多份sml，用于并行测试 (如果不需要并行测试，可以直接跳过；推荐再生成七个)
+`_0_pass_adder_modifier.py` 将 Pass 开关加入 SPU 的编译选项和 HLO importer，
+并生成后续批量测试使用的 Pass 列表，例如
+`pass_inf/pass_options_HLO_delete.txt`。脚本会修改 SPU 源码和 BUILD 文件，
+因此执行后必须重新编译。
+
+#### 3. 生成并行测试副本
+
+如果只使用一个测试进程，可以跳过此步。如果需要并行测试，当前推荐额外生成
+7 份 SML 副本：
+
+```sh
 cd pass-test
 python _0_extend_testcase.py
-# 生成完成后，要重新编译
 cd ..
 bazel build //... -c opt
+```
 
-### PassTester
+`_0_extend_testcase.py` 根据 `extend_number` 将 `sml` 复制为 `sml1` 至
+`sml7`，并同步修改 import 和 Bazel target。脚本会覆盖同名的既有副本，生成后
+也必须重新编译。默认的 `sml` 加 7 份副本对应 PassTester 中的
+`thread_num = 8`。
 
-### PatternExtractor
-
-#### 获取用于 HLO 约简的 HLO IR
-`pass-test/code_reduce_case_gen.py` 和 `pass-test/code_reducer.py` 使用的是
-XLA HLO 文本，格式类似：
+准备完成后，至少应确认以下内容存在：
 
 ```text
-HloModule jit_test_kmeans_random, ...
-
-region_0.1 {
-  Arg_0.2 = ...
-  ROOT add.3 = ...
-}
-
-ENTRY main.4 {
-  ...
-}
+bazel-bin/sml/...
+pass-test/file-to-be-modified/sml/...
+pass-test/pass_inf/pass_options_HLO_delete.txt
 ```
 
-它不是 `module @jit_...` 开头的 PPHLO/MLIR。默认的 Pass 测试只打印
-PPHLO，因此现有 `pass-test/test-log/SEMI2K-all` 中如果没有
-`HLO_IR|`、`Start printing HLO IR` 或 `HloModule`，就不能直接从该批日志
-取得约简器所需的 HLO。
+并行运行时还应存在 `bazel-bin/sml1` 至 `bazel-bin/sml7`。
 
-#### 1. 开启 HLO 日志
+### 阶段二：PassTester
 
-在 `pass-test/_1_auto_test_pass.py` 中将：
+PassTester 由 `_1_auto_test_pass.py` 和 `_2_extract_inf.py` 两步组成。第一步
+运行实验并保存原始日志，第二步把日志整理成可分析的 JSON。
+
+#### 1. 配置并运行 `_1_auto_test_pass.py`
+
+首先检查脚本主函数中的配置：
 
 ```python
+test_mod = mod.sml
+repeat_time = 1
+output_folder = "test-log/SEMI2K-all"
+thread_num = 8
+protocal = "SEMI2K"
+passoptions_path = "pass_inf/pass_options_HLO_delete.txt"
 hlo_log = False
+refer_to_complete_test = False
 ```
 
-改为：
+各选项含义如下：
+
+| 选项 | 作用 |
+| --- | --- |
+| `test_mod` | 选择测试集合，通常为 `mod.sml`。 |
+| `repeat_time` | 每个配置的重复次数；大于 1 时应设置 `thread_num = 1`。 |
+| `output_folder` | 本轮实验的独立输出目录，避免覆盖已有结果。 |
+| `thread_num` | 并行 worker 数，不能超过已准备的 SML 副本数。 |
+| `protocal` | MPC 协议，可按测试需求设为 `SEMI2K`、`ABY3` 或 `CHEETAH`。变量名沿用脚本中的拼写。 |
+| `passoptions_path` | 本轮测试使用的 Pass 配置列表。 |
+| `hlo_log` | 是否额外打印 XLA HLO；普通 Pass 测试可关闭，PatternExtractor 捕获案例时需开启。 |
+| `refer_to_complete_test` | 是否参考已有完整测试结果筛选任务。 |
+
+如只测试部分文件，可同时缩小脚本中的 `test_file_list`。随后运行：
+
+```sh
+cd pass-test
+python _1_auto_test_pass.py
+```
+
+脚本会完成以下工作：
+
+1. 从 `file-to-be-modified/sml` 读取带占位符的测试模板；
+2. 替换 `{partynum}`、`{protocalchosen}`、`{pphlo_dict}` 和
+   `{skip_control}`，并插入当前 Pass 编译选项；
+3. 将实例化后的文件写入当前 worker 对应的 `sml`、`sml1` 等目录；
+4. 先运行 baseline，再逐个运行 Pass 配置；
+5. 记录 PPHLO，并跳过与 baseline IR 相同的冗余结果。
+
+典型输出结构为：
+
+```text
+pass-test/test-log/SEMI2K-all/
+├── test-log.txt
+└── <test_name>/
+    ├── baseline/
+    │   ├── test_*.txt
+    │   └── extract_result.json
+    ├── IR_record/
+    │   └── pphlo_<function_name>.json
+    └── <pass_option>/
+        └── test_*.txt
+```
+
+其中 `test-log.txt` 是整体调度日志，`test_*.txt` 是各实验的原始输出，
+`IR_record` 记录哪些 Pass 确实改变了函数的 PPHLO。
+
+#### 2. 提取实验信息
+
+检查 `_2_extract_inf.py` 主函数中的配置：
+
+```python
+party_nums = 2
+log_directory = "test-log/SEMI2K-all"
+```
+
+`SEMI2K` 和 `CHEETAH` 通常使用 `party_nums = 2`，`ABY3` 使用
+`party_nums = 3`。配置完成后运行：
+
+```sh
+cd pass-test
+python _2_extract_inf.py
+```
+
+脚本按参与方拆分原始日志，提取每个函数的运行时间、发送字节数、发送次数、
+PPHLO 等信息，并在每个测试目录生成合并结果：
+
+```text
+test-log/SEMI2K-all/<test_name>/extract_result.json
+```
+
+该文件以函数和 Pass 配置为索引，是后续筛选性能差异的主要输入。
+
+如果终端出现：
+
+```text
+Function <function_name> in <pass_directory> does not have log file
+```
+
+表示该配置虽然改变了 IR，但没有产出完整的函数 profile。常见原因是测试失败、
+编译失败、进程崩溃或日志未完整写入；这类配置不会被合并到最终 JSON。少量此类
+提示在批量禁用 Pass 的实验中是可能出现的，但不能仅凭提示认定测试正常。
+
+PassTester 阶段的最终有效产物是：正确性通过的 baseline/Pass 原始日志，以及
+对应测试目录中的合并 `extract_result.json`。
+
+### 阶段三：PatternExtractor
+
+PatternExtractor 使用 `_3_code_reduce_case_gen.py` 生成约简案例，再由
+`_4_code_reducer.py` 反复删除 HLO 指令，寻找仍能保留目标通信差异的最小 Pattern。
+
+#### 1. 选择待约简案例
+
+从 PassTester 的 `extract_result.json` 中选择满足以下条件的函数和 Pass：
+
+- baseline 与目标 Pass 的测试均正确完成；
+- 目标 Pass 确实改变了 PPHLO；
+- `send_bytes` 或 `send_actions` 存在稳定、可复现的差异；
+- 明确记录原始配置 `ori`、变异配置 `mut`、协议和目标指标。
+
+不要把仅有崩溃、编译失败或错误计算结果的配置作为性能 Pattern。
+
+#### 2. 获取用于约简的 XLA HLO
+
+约简器需要的是以 `HloModule` 开头的 **XLA HLO 文本**，不是以
+`module @jit_...` 开头的 PPHLO/MLIR。默认 Pass 测试只记录 PPHLO；如果现有
+`test-log/SEMI2K-all` 中没有 `HLO_IR|`、`Start printing HLO IR` 或
+`HloModule`，就不能直接从该批日志获取约简输入。
+
+建议针对候选测试单独捕获 HLO，避免覆盖正式实验结果。在
+`_1_auto_test_pass.py` 中临时设置：
 
 ```python
 hlo_log = True
+output_folder = "test-log/HLO-capture"
+test_file_list = ["sml/cluster/tests/kmeans_test.py"]
 ```
 
-测试模板中的 `{skip_control}` 随后会被实例化为 `hlo_log=True`。SPU 前端会在
-原始测试日志中输出：
+如果只需要 baseline HLO，可让 `passoptions_path` 指向一个空文件。XLA HLO
+在 SPU Pass 流水线之前产生，通常同一份 baseline HLO 就可用于比较后续的
+`ori` 与 `mut` 配置。运行：
+
+```sh
+cd pass-test
+python _1_auto_test_pass.py
+```
+
+原始日志中的目标内容形如：
 
 ```text
 HLO_IR|Start printing HLO IR for test_kmeans_random
@@ -264,91 +420,32 @@ HLO_IR|...
 HLO_IR|End of printing HLO IR for test_kmeans_random
 ```
 
-建议只运行需要约简的测试文件，并使用独立输出目录，避免覆盖已有的
-`test-log/SEMI2K-all`。例如在 `_1_auto_test_pass.py` 中临时设置：
-
-```python
-output_folder = "test-log/HLO-capture"
-test_file_list = ["sml/cluster/tests/kmeans_test.py"]
-```
-
-如果只需要 HLO，可以让 `passoptions_path` 指向一个空文件，使脚本只运行
-baseline。HLO 在 SPU Pass 流水线执行前由 JAX/XLA 前端生成，因此通常使用
-baseline HLO 即可；之后在 `code_reduce_case_gen.py` 中分别设置 `ori` 和
-`mut` Pass 配置。
-
-脚本应从 `pass-test` 目录运行：
+复制 `HLO_IR|HloModule ...` 到该函数最后一个 `HLO_IR|}`，不要包含 Start 和
+End 标记。也可以从含有 HLO 的 baseline 日志自动提取：
 
 ```sh
 cd pass-test
-python _1_auto_test_pass.py
-```
-
-#### 2. 从原始日志复制 HLO
-
-在目标 baseline 日志中找到：
-
-```text
-HLO_IR|Start printing HLO IR for <function_name>
-```
-
-复制它后面的 `HLO_IR|HloModule ...` 至该函数 HLO 的最后一个
-`HLO_IR|}`。不要复制 `Start printing` 和 `End of printing` 两行。
-
-将复制结果放入 `pass-test/code_reduce_case_gen.py`：
-
-```python
-test_case_full = """HLO_IR|HloModule ...
-HLO_IR|...
-HLO_IR|}"""
-```
-
-脚本中的下列代码会删除每行的 `HLO_IR|` 前缀：
-
-```python
-input_test_case = [
-    line.split("HLO_IR|")[1]
-    for line in test_case_full.split("\n")
-]
-```
-
-#### 3. 使用 `_2_extract_inf.py` 提取 HLO
-
-对于已经包含 HLO 的 baseline 原始日志，也可以在 `pass-test` 目录执行：
-
-```sh
 python - <<'PY'
 from _2_extract_inf import split_log_party, extract_log
 
 path = "test-log/HLO-capture/kmeans_test/baseline"
-
-split_log_party(
-    path,
-    party_nums=2,
-    pphlo_log=True,
-    hlo_log=True,
-)
-extract_log(
-    path,
-    pphlo_log=True,
-    hlo_log=True,
-)
+split_log_party(path, party_nums=2, pphlo_log=True, hlo_log=True)
+extract_log(path, pphlo_log=True, hlo_log=True)
 PY
 ```
 
-提取后会生成：
+提取结果位于：
 
 ```text
 test-log/HLO-capture/kmeans_test/baseline/extracted_inf/hlo.txt
 ```
 
-相应函数在 `extract_result.json` 中也会包含 `hlo` 字段。`hlo.txt` 和 JSON
-中的内容已经去掉 `HLO_IR|` 前缀；如果从这里复制，可以直接构造
-`input_test_case`，或者在粘贴到现有 `test_case_full` 格式前重新加上前缀。
+相应 `extract_result.json` 中也会包含 `hlo` 字段。提取后的内容已经去掉
+`HLO_IR|` 前缀。
 
-#### 4. 配置并生成约简案例
+#### 3. 生成约简案例
 
-在 `pass-test/code_reduce_case_gen.py` 中设置：
+在 `_3_code_reduce_case_gen.py` 中放入目标函数的完整 HLO，并配置：
 
 ```python
 case_name = "your-case-name"
@@ -360,17 +457,72 @@ protocalchosen = "SEMI2K"  # 也可以是 ABY3 或 CHEETAH
 matrix = "send_bytes"      # 也可以是 send_actions
 ```
 
-然后运行：
+如果粘贴的是带前缀的原始日志，可沿用脚本中的 `test_case_full` 格式：
+
+```python
+test_case_full = """HLO_IR|HloModule ...
+HLO_IR|...
+HLO_IR|}"""
+```
+
+脚本会去掉每行的 `HLO_IR|`。如果使用 `hlo.txt` 中已经清理过的内容，则应直接
+构造 `input_test_case`，不要再次按 `HLO_IR|` 分割。随后运行：
 
 ```sh
 cd pass-test
-python code_reduce_case_gen.py
-python code_reducer.py
+python _3_code_reduce_case_gen.py
 ```
 
-前者生成 `reduce_case/<case_name>.json`，后者反复缩减 HLO，并将过程和结果
-写入 `reduce_log/<case_name>/`。运行 `code_reducer.py` 前应检查文件末尾的
-`case_name_list` 和 `ddmethod_list`；它还会删除同名的旧约简日志目录。
+生成结果为：
 
-### Todo
+```text
+pass-test/reduce_case/<case_name>.json
+```
 
+#### 4. 运行 HLO 约简
+
+运行前检查 `_4_code_reducer.py` 文件末尾的配置，确保案例名与上一步一致：
+
+```python
+case_name_list = ["your-case-name"]
+ddmethod_list = ["ddmin"]
+```
+
+`ddmethod_list` 只支持 `ddmin`、`onlycomplement`、`CDD` 和 `ProfDD`，
+列表中可以填写其中一种或多种方法。
+
+同样检查文件开头的提取模块导入。当前只保留 `_2_extract_inf.py` 时，应使用：
+
+```python
+from _2_extract_inf import split_log_party, extract_log
+```
+
+同时确认 `bazel-bin/spu/tests/hlo_debug` 已经编译。然后执行：
+
+```sh
+cd pass-test
+python _4_code_reducer.py
+```
+
+约简器会将候选 HLO 写入 `spu/tests/hlo_debug.py` 对应的测试模板，分别运行
+`ori` 和 `mut` 配置，并依据 `matrix` 判断通信差异是否仍然存在。主要输出位于：
+
+```text
+pass-test/reduce_log/<case_name>/<case_name>-<ddmethod>/
+```
+
+其中包含约简过程、触发记录和最终候选 Pattern。`_4_code_reducer.py` 会删除同名的
+旧约简日志目录，因此重新运行前应先备份需要保留的结果，并再次核对
+`case_name_list`。
+
+#### 5. 验证最终 Pattern
+
+约简结束后，应使用最终 HLO 至少重新运行一次 `ori` 和 `mut`，确认：
+
+- 两种配置都能成功编译和执行；
+- 输出结果正确；
+- 目标 `send_bytes` 或 `send_actions` 差异仍然稳定存在；
+- 最终 HLO 足够小，并且删除任一关键部分会使目标差异消失。
+
+通过以上检查后，`reduce_case/<case_name>.json`、`reduce_log/<case_name>/`
+以及对应的 PassTester 原始日志共同构成一个可复现的 Pattern 案例。
