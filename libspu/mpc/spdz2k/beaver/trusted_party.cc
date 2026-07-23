@@ -248,9 +248,10 @@ std::vector<NdArrayRef> TrustedParty::adjustAuthTrunc(
   ring_add_(r0[0], ring_sub(rs[0], t_rs));
 
   // r0[1] += (rs[0] >> bits) - rs[1];
-  const size_t bit_len = SizeOf(field) * 8;
+  const int64_t bit_len = SizeOf(field) * 8;
   auto tr_rs0 =
-      ring_arshift(ring_lshift(rs[0], bit_len - k), bit_len - k + bits);
+      ring_arshift(ring_lshift(rs[0], {static_cast<int64_t>(bit_len - k)}),
+                   {static_cast<int64_t>(bit_len - k + bits)});
   ring_bitmask_(tr_rs0, 0, k);
   ring_add_(r0[1], ring_sub(tr_rs0, rs[1]));
 

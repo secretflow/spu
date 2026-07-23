@@ -91,10 +91,15 @@ Value make_p(SPUContext* ctx, uint128_t init, const Shape& shape);
 Value rand_p(SPUContext* ctx, const Shape& shape);
 Value rand_s(SPUContext* ctx, const Shape& shape);
 
-// Compute bitwise_not(invert) of a value in ring 2k space.
+// Compute bitwise not of a value.
 Value not_p(SPUContext* ctx, const Value& x);
 Value not_s(SPUContext* ctx, const Value& x);
 Value not_v(SPUContext* ctx, const Value& x);
+
+// Compute negate of a value.
+Value negate_p(SPUContext* ctx, const Value& x);
+Value negate_s(SPUContext* ctx, const Value& x);
+Value negate_v(SPUContext* ctx, const Value& x);
 
 Value msb_p(SPUContext* ctx, const Value& x);
 Value msb_s(SPUContext* ctx, const Value& x);
@@ -118,6 +123,9 @@ Value mul_sp(SPUContext* ctx, const Value& x, const Value& y);
 Value mul_vv(SPUContext* ctx, const Value& x, const Value& y);
 Value mul_vp(SPUContext* ctx, const Value& x, const Value& y);
 Value mul_pp(SPUContext* ctx, const Value& x, const Value& y);
+Value square_s(SPUContext* ctx, const Value& x);
+Value square_v(SPUContext* ctx, const Value& x);
+Value square_p(SPUContext* ctx, const Value& x);
 
 Value mmul_ss(SPUContext* ctx, const Value& x, const Value& y);
 Value mmul_sv(SPUContext* ctx, const Value& x, const Value& y);
@@ -140,17 +148,17 @@ Value xor_vv(SPUContext* ctx, const Value& x, const Value& y);
 Value xor_vp(SPUContext* ctx, const Value& x, const Value& y);
 Value xor_pp(SPUContext* ctx, const Value& x, const Value& y);
 
-Value lshift_s(SPUContext* ctx, const Value& x, size_t nbits);
-Value lshift_v(SPUContext* ctx, const Value& x, size_t nbits);
-Value lshift_p(SPUContext* ctx, const Value& x, size_t nbits);
+Value lshift_s(SPUContext* ctx, const Value& x, const Sizes& nbits);
+Value lshift_v(SPUContext* ctx, const Value& x, const Sizes& nbits);
+Value lshift_p(SPUContext* ctx, const Value& x, const Sizes& nbits);
 
-Value rshift_s(SPUContext* ctx, const Value& x, size_t nbits);
-Value rshift_v(SPUContext* ctx, const Value& x, size_t nbits);
-Value rshift_p(SPUContext* ctx, const Value& x, size_t nbits);
+Value rshift_s(SPUContext* ctx, const Value& x, const Sizes& nbits);
+Value rshift_v(SPUContext* ctx, const Value& x, const Sizes& nbits);
+Value rshift_p(SPUContext* ctx, const Value& x, const Sizes& nbits);
 
-Value arshift_s(SPUContext* ctx, const Value& x, size_t nbits);
-Value arshift_v(SPUContext* ctx, const Value& x, size_t nbits);
-Value arshift_p(SPUContext* ctx, const Value& x, size_t nbits);
+Value arshift_s(SPUContext* ctx, const Value& x, const Sizes& nbits);
+Value arshift_v(SPUContext* ctx, const Value& x, const Sizes& nbits);
+Value arshift_p(SPUContext* ctx, const Value& x, const Sizes& nbits);
 
 Value trunc_s(SPUContext* ctx, const Value& x, size_t nbits, SignType sign);
 Value trunc_v(SPUContext* ctx, const Value& x, size_t nbits, SignType sign);
@@ -160,6 +168,15 @@ Value trunc_p(SPUContext* ctx, const Value& x, size_t nbits, SignType sign);
 Value bitrev_s(SPUContext* ctx, const Value& x, size_t start, size_t end);
 Value bitrev_v(SPUContext* ctx, const Value& x, size_t start, size_t end);
 Value bitrev_p(SPUContext* ctx, const Value& x, size_t start, size_t end);
+
+OptionalAPI<Value> oram_onehot_ss(SPUContext* ctx, const Value& x,
+                                  int64_t db_size);
+OptionalAPI<Value> oram_onehot_sp(SPUContext* ctx, const Value& x,
+                                  int64_t db_size);
+Value oram_read_ss(SPUContext* ctx, const Value& x, const Value& y,
+                   int64_t offset);
+Value oram_read_sp(SPUContext* ctx, const Value& x, const Value& y,
+                   int64_t offset);
 
 //////////////////////////////////////////////////////////////////////////////
 // TODO: Formalize these permutation APIs

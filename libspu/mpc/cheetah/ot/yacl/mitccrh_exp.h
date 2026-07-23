@@ -19,7 +19,7 @@
 #include <stdexcept>
 #include <string>
 
-#include "yacl/crypto/base/aes/aes_opt.h"
+#include "yacl/crypto/aes/aes_opt.h"
 
 #include "libspu/mpc/cheetah/ot/yacl/yacl_util.h"
 

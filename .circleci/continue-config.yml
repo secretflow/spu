@@ -64,7 +64,7 @@ commands:
             ../devtools/bazel_cache_setup.py --in_file=../gcs.data --out_file=../gcs.json --min_download
       - run:
           name: "build"
-          command: bazel build <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning --jobs 20
+          command: bazel build <<parameters.targets>> -c opt --ui_event_filters=-info,-debug,-warning
       - run:
           name: "test"
           command: |
@@ -120,7 +120,7 @@ jobs:
           extra_bazel_test_args: --test_env LD_LIBRARY_PATH=/root/miniconda3/lib/
   macOS_ut:
     macos:
-      xcode: 15.1.0
+      xcode: 16.0.0
     resource_class: macos.m1.large.gen1
     steps:
       - checkout
@@ -130,7 +130,7 @@ jobs:
       - run:
           name: "Install Miniconda"
           command: |
-            wget https://repo.anaconda.com/miniconda/Miniconda3-py310_23.11.0-2-MacOSX-arm64.sh -O ~/miniconda.sh
+            wget https://repo.anaconda.com/miniconda/Miniconda3-py310_24.3.0-0-MacOSX-arm64.sh -O ~/miniconda.sh
             bash ~/miniconda.sh -b -p $HOME/miniconda
             source $HOME/miniconda/bin/activate
             conda init bash zsh

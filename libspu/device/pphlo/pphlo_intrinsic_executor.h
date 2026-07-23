@@ -15,7 +15,7 @@
 #pragma once
 
 #include "libspu/core/value.h"
-#include "libspu/dialect/pphlo/ops.h"
+#include "libspu/dialect/pphlo/IR/ops.h"
 
 namespace spu {
 

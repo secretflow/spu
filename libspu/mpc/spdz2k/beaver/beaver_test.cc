@@ -126,7 +126,7 @@ TEST_P(BeaverTest, AuthAnd) {
   EXPECT_TRUE(ring_all_equal(ring_mul(sum_c, sum_key), sum_c_mac))
       << sum_c << sum_key << sum_c_mac;
 
-  DISPATCH_ALL_FIELDS(kField, "_", [&]() {
+  DISPATCH_ALL_FIELDS(kField, [&]() {
     NdArrayView<ring2k_t> _valid_a(valid_a);
     NdArrayView<ring2k_t> _valid_b(valid_b);
     NdArrayView<ring2k_t> _valid_c(valid_c);
@@ -314,7 +314,8 @@ TEST_P(BeaverTest, AuthTrunc) {
 
   const size_t bit_len = SizeOf(kField) * 8;
   auto trunc_sum_a =
-      ring_arshift(ring_lshift(sum_a, bit_len - k), bit_len - k + kBits);
+      ring_arshift(ring_lshift(sum_a, {static_cast<int64_t>(bit_len - k)}),
+                   {static_cast<int64_t>(bit_len - k + kBits)});
   ring_bitmask_(trunc_sum_a, 0, k);
 
   EXPECT_TRUE(ring_all_equal(trunc_sum_a, ring_bitmask(sum_b, 0, k)))
@@ -386,7 +387,7 @@ TEST_P(BeaverTest, AuthDot) {
       << sum_c << sum_key << sum_c_mac;
 
   auto res = ring_mmul(sum_a, sum_b);
-  DISPATCH_ALL_FIELDS(kField, "_", [&]() {
+  DISPATCH_ALL_FIELDS(kField, [&]() {
     NdArrayView<ring2k_t> _sum_a(sum_a);
     NdArrayView<ring2k_t> _sum_c(sum_c);
     NdArrayView<ring2k_t> _res(res);

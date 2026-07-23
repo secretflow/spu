@@ -117,6 +117,12 @@ Value mul(SPUContext* ctx, const Value& x, const Value& y) {
   return dtypeBinaryDispatch("mul", f_mul_impl, i_mul, ctx, x, y);
 }
 
+Value square(SPUContext* ctx, const Value& x) {
+  SPU_TRACE_HAL_DISP(ctx, x);
+
+  return dtypeUnaryDispatch("square", f_square, i_square, ctx, x);
+}
+
 Value matmul(SPUContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_DISP(ctx, x, y);
   // fast dispatch, avoid truncation cost
@@ -330,11 +336,61 @@ Value min(SPUContext* ctx, const Value& x, const Value& y) {
 Value power(SPUContext* ctx, const Value& x, const Value& y) {
   SPU_TRACE_HAL_DISP(ctx, x, y);
 
-  if (x.isInt() || y.isInt()) {
-    auto x_f = dtype_cast(ctx, x, DT_F32);
-    auto y_f = dtype_cast(ctx, y, DT_F32);
-    auto ret = power(ctx, x_f, y_f);
-    return ret;
+  if (x.isInt()) {
+    // ref:
+    // https://github.com/openxla/stablehlo/blob/main/stablehlo/reference/Element.cpp#L912
+    // Although there are some "strange" semantics in stablehlo, we still follow
+    // them yet:
+    //   1. when x is int, then the return value must be int type.
+    //   2. if x is int, then y must be int
+    //   3. if x is int and y<0, then
+    //      a. when |x|!=1, then always return 0;
+    //      b. when |x|=1, then y=|y|;
+    //
+    // However, for jax.numpy.power, it behaves differently:
+    //   1. if any x or y is float, then both x and y will be upcast to float.
+    //   2. if both x and y are int, then y must be non-negative.
+    SPU_ENFORCE(y.isInt(), "when base is int, then y must be int.");
+    auto k0 = _constant(ctx, 0, x.shape());
+    auto k1 = _constant(ctx, 1, x.shape());
+    const auto bit_width = SizeOf(ctx->getField()) * 8;
+
+    auto y_b = _prefer_b(ctx, y);
+    auto msb_y = _rshift(ctx, y_b, {static_cast<int64_t>(bit_width - 1)});
+    auto x_abs1 = _equal(ctx, abs(ctx, x), k1);
+
+    auto ret = _constant(ctx, 1, x.shape());
+    // To compute ret = x^y,
+    // although y has `bit_width` bits, we only consider `y_bits` bits here.
+    // The reason are two folds (recall that both x and y are int):
+    //   1. if |x|>1, then `ret` will OVERFLOW/UNDERFLOW if y>63 (e.g. FM64),
+    //   which means the valid bits of y can't exceed `log(bit_width - 1)` .
+    //   2. if |x|=1:
+    //      a). x=1, then we always get `ret`=1;
+    //      b). x=-1, then the sign of `ret` is decided on the LSB of y;
+    // So we can "truncate" y to `y_bits` bits safely.
+    const size_t y_bits = Log2Ceil(bit_width - 1);
+
+    auto base = x;
+    // TODO: do this in parallel
+    // To compute x^y, it is necessary to compute all x^(2^idx), we use base
+    // (init as `x`) to store it, update base to base*base till last
+    // iteration, and multiply all these numbers according to y_{idx}.
+    // e.g. y=0101, then ret = (x) * (1) * (x^(2^2)) * (1) = x^5
+    for (size_t idx = 0; idx < y_bits; idx++) {
+      // x^(2^idx) * y_{idx}
+      auto cur_pow = _mux(
+          ctx, _and(ctx, _rshift(ctx, y_b, {static_cast<int64_t>(idx)}), k1),
+          base, k1);
+      ret = _mul(ctx, cur_pow, ret);
+      if (idx < y_bits - 1) {
+        base = _mul(ctx, base, base);
+      }
+    }
+
+    // when x=-1 and y<0, we can still get a correct result
+    return _mux(ctx, _and(ctx, msb_y, _not(ctx, x_abs1)), k0, ret)
+        .setDtype(x.dtype());
   }
   if (x.isPublic() && y.isPublic()) {
     return f_pow_p(ctx, x, y);
@@ -355,8 +411,9 @@ Value power(SPUContext* ctx, const Value& x, const Value& y) {
 
   // the final sign is decided on both sign of x and the parity of y
   // when x<0 and y is odd, e.g. (-2)^3 = -8
-  auto odd = _and(ctx, _rshift(ctx, y, ctx->getFxpBits()),
-                  _constant(ctx, 1, y.shape()));
+  auto odd =
+      _and(ctx, _rshift(ctx, y, {static_cast<int64_t>(ctx->getFxpBits())}),
+           _constant(ctx, 1, y.shape()));
   auto sign = _and(ctx, msb, odd);
 
   return _mux(ctx, sign, _negate(ctx, val), val).setDtype(x.dtype());
@@ -434,19 +491,20 @@ Value bitcast(SPUContext* ctx, const Value& x, DataType dtype) {
   return Value(x.data().clone(), dtype);
 }
 
-Value left_shift(SPUContext* ctx, const Value& x, size_t bits) {
+Value left_shift(SPUContext* ctx, const Value& x, const Sizes& bits) {
   SPU_TRACE_HAL_DISP(ctx, x, bits);
 
   return _lshift(ctx, x, bits).setDtype(x.dtype());
 }
 
-Value right_shift_logical(SPUContext* ctx, const Value& x, size_t bits) {
+Value right_shift_logical(SPUContext* ctx, const Value& x, const Sizes& bits) {
   SPU_TRACE_HAL_DISP(ctx, x, bits);
 
   return _rshift(ctx, x, bits).setDtype(x.dtype());
 }
 
-Value right_shift_arithmetic(SPUContext* ctx, const Value& x, size_t bits) {
+Value right_shift_arithmetic(SPUContext* ctx, const Value& x,
+                             const Sizes& bits) {
   SPU_TRACE_HAL_DISP(ctx, x, bits);
 
   return _arshift(ctx, x, bits).setDtype(x.dtype());
@@ -492,6 +550,30 @@ Value cosine(SPUContext* ctx, const Value& x) {
   return f_cosine(ctx, x);
 }
 
+Value atan2(SPUContext* ctx, const Value& y, const Value& x) {
+  SPU_TRACE_HAL_DISP(ctx, y, x);
+
+  SPU_ENFORCE(x.isFxp() && y.isFxp());
+
+  return f_atan2(ctx, y, x);
+}
+
+Value acos(SPUContext* ctx, const Value& x) {
+  SPU_TRACE_HAL_DISP(ctx, x);
+
+  SPU_ENFORCE(x.isFxp());
+
+  return f_acos(ctx, x);
+}
+
+Value asin(SPUContext* ctx, const Value& x) {
+  SPU_TRACE_HAL_DISP(ctx, x);
+
+  SPU_ENFORCE(x.isFxp());
+
+  return f_asin(ctx, x);
+}
+
 Value rsqrt(SPUContext* ctx, const Value& x) {
   SPU_TRACE_HAL_DISP(ctx, x);
 
@@ -514,4 +596,23 @@ Value sign(SPUContext* ctx, const Value& x) {
   return _sign(ctx, x).setDtype(DT_I8);
 }
 
+std::optional<Value> oramonehot(SPUContext* ctx, const Value& x,
+                                int64_t db_size, bool db_is_secret) {
+  SPU_ENFORCE(x.isInt(), "onehot_point should be int");
+
+  auto ret = _oramonehot(ctx, x, db_size, db_is_secret);
+  if (!ret.has_value()) {
+    return std::nullopt;
+  }
+  ret->setDtype(x.dtype());
+  return ret;
+}
+
+Value oramread(SPUContext* ctx, const Value& x, const Value& y,
+               int64_t offset) {
+  SPU_ENFORCE(x.isInt(), "onehot_point should be int");
+
+  Value ret = _oramread(ctx, x, y, offset).setDtype(y.dtype());
+  return ret;
+}
 }  // namespace spu::kernel::hal

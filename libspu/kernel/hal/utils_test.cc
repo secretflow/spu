@@ -24,7 +24,7 @@
 namespace spu::kernel::hal {
 namespace {
 
-TEST(UtilsTest, associative_scan) {
+TEST(UtilsTest, associative_scan_1d) {
   SPUContext ctx = test::makeSPUContext();
 
   {
@@ -72,6 +72,62 @@ TEST(UtilsTest, associative_scan) {
     const xt::xarray<bool> prefix_or = {
         true, true, true, true, true, true,
     };
+
+    Value a = test::makeValue(&ctx, x, VIS_SECRET);
+    Value b = associative_scan(hal::bitwise_or, &ctx, a);
+    auto ret = dump_public_as<bool>(&ctx, hal::reveal(&ctx, b));
+    EXPECT_TRUE(prefix_or == ret) << x << std::endl
+                                  << prefix_or << std::endl
+                                  << ret;
+  }
+}
+
+TEST(UtilsTest, associative_scan_2d) {
+  SPUContext ctx = test::makeSPUContext();
+
+  {
+    const xt::xarray<int32_t> x = {{1, 1, 1, 1, 1}, {1, 1, 1, 1, 1}};
+    const xt::xarray<int32_t> prefix_sum = {{1, 2, 3, 4, 5}, {1, 2, 3, 4, 5}};
+    Value a = test::makeValue(&ctx, x, VIS_SECRET);
+    Value b = associative_scan(hal::add, &ctx, a);
+    auto ret = dump_public_as<int32_t>(&ctx, hal::reveal(&ctx, b));
+    EXPECT_TRUE(prefix_sum == ret) << x << std::endl
+                                   << prefix_sum << std::endl
+                                   << ret;
+  }
+
+  {
+    const xt::xarray<int32_t> x = {{1, 2, 3, 4, 5}, {1, 2, 3, 4, 5}};
+    const xt::xarray<int32_t> prefix_prod = {{1, 2, 6, 24, 120},
+                                             {1, 2, 6, 24, 120}};
+    Value a = test::makeValue(&ctx, x, VIS_SECRET);
+    Value b = associative_scan(hal::mul, &ctx, a);
+    auto ret = dump_public_as<int32_t>(&ctx, hal::reveal(&ctx, b));
+    EXPECT_TRUE(prefix_prod == ret) << x << std::endl
+                                    << prefix_prod << std::endl
+                                    << ret;
+  }
+
+  {
+    const xt::xarray<bool> x = {{true, true, true, false, true, false},
+                                {true, true, true, false, true, false}};
+    const xt::xarray<bool> prefix_and = {
+        {true, true, true, false, false, false},
+        {true, true, true, false, false, false}};
+
+    Value a = test::makeValue(&ctx, x, VIS_SECRET);
+    Value b = associative_scan(hal::bitwise_and, &ctx, a);
+    auto ret = dump_public_as<bool>(&ctx, hal::reveal(&ctx, b));
+    EXPECT_TRUE(prefix_and == ret) << x << std::endl
+                                   << prefix_and << std::endl
+                                   << ret;
+  }
+
+  {
+    const xt::xarray<bool> x = {{true, true, true, false, true, false},
+                                {true, true, true, false, true, false}};
+    const xt::xarray<bool> prefix_or = {{true, true, true, true, true, true},
+                                        {true, true, true, true, true, true}};
 
     Value a = test::makeValue(&ctx, x, VIS_SECRET);
     Value b = associative_scan(hal::bitwise_or, &ctx, a);

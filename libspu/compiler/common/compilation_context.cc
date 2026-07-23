@@ -23,7 +23,7 @@ namespace {
 
 void SPUErrorHandler(void * /*use_data*/, const char *reason,
                      bool /*gen_crash_diag*/) {
-  SPU_THROW(reason);
+  SPU_THROW("{}", reason);
 }
 
 } // namespace

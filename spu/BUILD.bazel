@@ -13,9 +13,9 @@
 # limitations under the License.
 
 load("@pybind11_bazel//:build_defs.bzl", "pybind_extension")
+load("@rules_proto_grpc//python:defs.bzl", "python_proto_compile")
 load("@rules_python//python:defs.bzl", "py_library")
 load("@rules_python//python:packaging.bzl", "py_package")
-load("@rules_proto_grpc//python:defs.bzl", "python_proto_compile")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -41,6 +41,7 @@ pybind_extension(
     deps = [
         ":exported_symbols.lds",
         ":version_script.lds",
+        "//libspu:version",
         "//libspu/compiler:compile",
         "//libspu/compiler/common:compilation_context",
         "//libspu/core:logging",
@@ -137,6 +138,7 @@ py_library(
         "version.py",
         ":api",
         ":psi",
+        "//spu/experimental:experimentals",
         "//spu/intrinsic:all_intrinsics",
         "//spu/utils:simulation",
     ],

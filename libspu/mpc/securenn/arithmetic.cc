@@ -18,9 +18,9 @@
 #include <functional>
 #include <random>
 
+#include "yacl/crypto/rand/rand.h"
+
 #include "libspu/core/type_util.h"
-#include "libspu/core/vectorize.h"
-#include "libspu/mpc/ab_api.h"
 #include "libspu/mpc/common/communicator.h"
 #include "libspu/mpc/common/prg_state.h"
 #include "libspu/mpc/common/pv2k.h"
@@ -37,7 +37,7 @@ NdArrayRef A2V::proc(KernelEvalContext* ctx, const NdArrayRef& in,
 
   auto numel = in.numel();
 
-  return DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  return DISPATCH_ALL_FIELDS(field, [&]() {
     std::vector<ring2k_t> share(numel);
     NdArrayView<ring2k_t> _in(in);
     pforeach(0, numel, [&](int64_t idx) { share[idx] = _in[idx]; });
@@ -109,7 +109,7 @@ NdArrayRef RandA::proc(KernelEvalContext* ctx, const Shape& shape) const {
   // - https://eprint.iacr.org/2019/599.pdf
   // It's safer to keep the number within [-2**(k-2), 2**(k-2)) for comparison
   // operations.
-  return ring_rshift(prg_state->genPriv(field, shape), 2)
+  return ring_rshift(prg_state->genPriv(field, shape), {2})
       .as(makeType<AShrTy>(field));
 }
 
@@ -130,34 +130,12 @@ NdArrayRef P2A::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
 NdArrayRef A2P::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const auto field = in.eltype().as<Ring2k>()->field();
   auto* comm = ctx->getState<Communicator>();
-  auto out = comm->allReduce(ReduceOp::ADD, in, kBindName);
+  auto out = comm->allReduce(ReduceOp::ADD, in, kBindName());
   return out.as(makeType<Pub2kTy>(field));
 }
 
-NdArrayRef NotA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
-  auto* comm = ctx->getState<Communicator>();
-
-  // First, let's show negate could be locally processed.
-  //   let X = sum(Xi)     % M
-  //   let Yi = neg(Xi) = M-Xi
-  //
-  // we get
-  //   Y = sum(Yi)         % M
-  //     = n*M - sum(Xi)   % M
-  //     = -sum(Xi)        % M
-  //     = -X              % M
-  //
-  // 'not' could be processed accordingly.
-  //   not(X)
-  //     = M-1-X           # by definition, not is the complement of 2^k
-  //     = neg(X) + M-1
-  //
+NdArrayRef NegateA::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   auto res = ring_neg(in);
-  if (comm->getRank() == 0) {
-    const auto field = in.eltype().as<Ring2k>()->field();
-    ring_add_(res, ring_not(ring_zeros(field, in.shape())));
-  }
-
   return res.as(in.eltype());
 }
 
@@ -200,10 +178,7 @@ NdArrayRef MatMulAP::proc(KernelEvalContext* ctx, const NdArrayRef& x,
 }
 
 NdArrayRef LShiftA::proc(KernelEvalContext* ctx, const NdArrayRef& in,
-                         size_t bits) const {
-  const auto field = in.eltype().as<Ring2k>()->field();
-  bits %= SizeOf(field) * 8;
-
+                         const Sizes& bits) const {
   return ring_lshift(in, bits).as(in.eltype());
 }
 
@@ -216,10 +191,10 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in,
   auto rank = comm->getRank();
   const auto numel = in.numel();
   const auto field = in.eltype().as<Ring2k>()->field();
-  const size_t k = SizeOf(field) * 8;
+  const int k = SizeOf(field) * 8;
 
   NdArrayRef out(in.eltype(), in.shape());
-  DISPATCH_ALL_FIELDS(field, "securenn.truncpr", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using U = ring2k_t;
 
     auto r = prg_state->genPriv(field, in.shape());
@@ -232,9 +207,11 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in,
     auto rb_recon = comm->reduce(ReduceOp::ADD, rb, 2, "rb");
 
     if (rank == 2) {
-      auto adjust1 =
-          ring_sub(ring_rshift(ring_lshift(r_recon, 1), bits + 1), rc_recon);
-      auto adjust2 = ring_sub(ring_rshift(r_recon, k - 1), rb_recon);
+      auto adjust1 = ring_sub(ring_rshift(ring_lshift(r_recon, {1}),
+                                          {static_cast<int64_t>(bits + 1)}),
+                              rc_recon);
+      auto adjust2 = ring_sub(
+          ring_rshift(r_recon, {static_cast<int64_t>(k - 1)}), rb_recon);
       comm->sendAsync(0, adjust1, "adjust1");
       comm->sendAsync(0, adjust2, "adjust2");
     }
@@ -272,7 +249,7 @@ NdArrayRef TruncAPr::proc(KernelEvalContext* ctx, const NdArrayRef& in,
         x_plus_r[idx] = x + _r[idx];
       });
       // open <x> + <r> = c
-      c = comm->allReduce<U, std::plus>(x_plus_r, kBindName);
+      c = comm->allReduce<U, std::plus>(x_plus_r, kBindName());
     }
 
     pforeach(0, numel, [&](int64_t idx) {
@@ -362,7 +339,6 @@ NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
       b = prg_state
               ->genPrssPair(field, x.shape(), PrgState::GenPrssCtrl::Second)
               .second;
-      prg_state->genPrssPair(field, x.shape(), PrgState::GenPrssCtrl::None);
       c = comm->recv(2, ty, "c");
       c = c.reshape(x.shape());
     }
@@ -527,7 +503,6 @@ NdArrayRef MatMulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
               .second;
       b = prg_state->genPrssPair(field, shape2, PrgState::GenPrssCtrl::Second)
               .second;
-      prg_state->genPrssPair(field, shape3, PrgState::GenPrssCtrl::None);
 
       c = comm->recv(2, ty, "c");
       c = c.reshape(shape3);
@@ -594,7 +569,7 @@ NdArrayRef ShareConvert::proc(KernelEvalContext* ctx,
   const auto kComm = a.elsize() * size;
   comm->addCommStatsManually(4, 4 * log_p * kComm + 6 * kComm);
 
-  DISPATCH_ALL_FIELDS(field, "securenn.sc", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using U = ring2k_t;
     const U L_1 = (U)(~0);  // 2^k - 1
     // P0 and P1 add the share of zero
@@ -785,10 +760,6 @@ NdArrayRef ShareConvert::proc(KernelEvalContext* ctx,
     }  // P0 and P1 end execute
 
     if (rank == 2) {
-      std::random_device rd;
-      std::mt19937 gen(rd());
-      std::uniform_int_distribution<U> dis(0, L_1 - 1);
-
       auto a_0 = comm->recv(0, ty, "a_");
       auto a_1 = comm->recv(1, ty, "a_");
       a_0 = a_0.reshape(a.shape());
@@ -811,7 +782,8 @@ NdArrayRef ShareConvert::proc(KernelEvalContext* ctx,
       NdArrayView<U> _dp_x_p0(dp_x_p0);
       NdArrayView<U> _dp_x_p1(dp_x_p1);
 
-      NdArrayRef delta_p0(ty, a.shape());
+      NdArrayRef delta_p0 =
+          ring_rand_range(field, a.shape(), 0, L_1 - 1);  // (ty, a.shape());
       NdArrayRef delta_p1(ty, a.shape());
       NdArrayView<U> _delta_p0(delta_p0);
       NdArrayView<U> _delta_p1(delta_p1);
@@ -830,7 +802,6 @@ NdArrayRef ShareConvert::proc(KernelEvalContext* ctx,
         }
 
         // split delta in Z_(L_1)
-        _delta_p0[idx] = dis(gen);
         _delta_p1[idx] = _delta[idx] - _delta_p0[idx];
         if (_delta[idx] < _delta_p0[idx])
           _delta_p1[idx] -= (U)1;  // when overflow
@@ -843,7 +814,7 @@ NdArrayRef ShareConvert::proc(KernelEvalContext* ctx,
       comm->sendAsync(1, delta_p1, "delta");
 
       // split eta_ in Z_(L_1)
-      NdArrayRef eta_p0(ty, a.shape());
+      NdArrayRef eta_p0 = ring_rand_range(field, a.shape(), 0, L_1 - 1);
       NdArrayRef eta_p1(ty, a.shape());
       NdArrayView<U> _eta_p0(eta_p0);
       NdArrayView<U> _eta_p1(eta_p1);
@@ -870,7 +841,6 @@ NdArrayRef ShareConvert::proc(KernelEvalContext* ctx,
         }
 
         // split eta_ in Z_(L_1)
-        _eta_p0[idx] = dis(gen);
         _eta_p1[idx] = _eta_[idx] - _eta_p0[idx];
         if (_eta_[idx] < _eta_p0[idx]) _eta_p1[idx] -= (U)1;  // when overflow
       });                                                     // end pforeach
@@ -902,7 +872,7 @@ NdArrayRef Msb::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const auto kComm = in.elsize() * size;
   comm->addCommStatsManually(5, 13 * kComm + 4 * kComm * log_p);
 
-  DISPATCH_ALL_FIELDS(field, "securenn.msb", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using U = ring2k_t;
     const U L_1 = (U)(~0);
 
@@ -916,10 +886,6 @@ NdArrayRef Msb::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
     auto [u_r0, u_r1] =
         prg_state->genPrssPair(field, {size * k}, PrgState::GenPrssCtrl::Both);
     if (rank == 2) {
-      std::random_device rd;
-      std::mt19937 gen(rd());
-      std::uniform_int_distribution<U> dis(0, L_1 - 1);
-
       // random for beaver
       // P2 generate a0, a1, b0, b1, c0 by PRF
       // and calculate c1
@@ -935,12 +901,12 @@ NdArrayRef Msb::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
       auto c1 = ring_sub(ring_mul(ring_add(a0, a1), ring_add(b0, b1)), c0);
       // end beaver  (c1 will be sent with x to reduce one round latency)
 
-      NdArrayRef x(ty, in.shape());
+      NdArrayRef x = ring_rand_range(field, in.shape(), 0, L_1 - 1);
       NdArrayView<U> _x(x);
 
       // split x into x_p0 and x_p1 in Z_(L-1), (L=2^k)
 
-      NdArrayRef x_p0(ty, in.shape());
+      NdArrayRef x_p0 = ring_rand_range(field, in.shape(), 0, L_1 - 1);
       NdArrayRef x_p1(ty, in.shape());
       NdArrayView<U> _x_p0(x_p0);
       NdArrayView<U> _x_p1(x_p1);
@@ -959,11 +925,9 @@ NdArrayRef Msb::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
       NdArrayRef lsb_x(ty, in.shape());
       NdArrayView<U> _lsb_x(lsb_x);
       pforeach(0, size, [&](int64_t idx) {
-        _x[idx] = dis(gen);
         auto dp_x = bitDecompose(_x[idx], k);  // vector<uint8_t>
 
         // split x
-        _x_p0[idx] = dis(gen);
         _x_p1[idx] = _x[idx] - _x_p0[idx];
         if (_x[idx] < _x_p0[idx]) _x_p1[idx] -= (U)1;  // when overflow
 
@@ -1050,7 +1014,6 @@ NdArrayRef Msb::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
             prg_state
                 ->genPrssPair(field, in.shape(), PrgState::GenPrssCtrl::Second)
                 .second;
-        prg_state->genPrssPair(field, in.shape(), PrgState::GenPrssCtrl::None);
         beaver_c = comm->recv(2, ty, "beaver_c");
         beaver_c = beaver_c.reshape(in.shape());
       }
@@ -1241,7 +1204,7 @@ NdArrayRef Msb_opt::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
   const auto kComm = in.elsize() * size;
   comm->addCommStatsManually(5, 9 * kComm + 3 * kComm * log_p);
 
-  DISPATCH_ALL_FIELDS(field, "securenn.msb", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using U = ring2k_t;
     const U L_1 = (U)(~0);
 
@@ -1265,10 +1228,6 @@ NdArrayRef Msb_opt::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
     auto [beta_0, beta_1] =
         prg_state->genPrssPair(field, in.shape(), PrgState::GenPrssCtrl::Both);
     if (rank == 2) {
-      std::random_device rd;
-      std::mt19937 gen(rd());
-      std::uniform_int_distribution<U> dis(0, L_1 - 1);
-
       // random for beaver
       // P2 generate a0, a1, b0, b1, c0 by PRF
       // and calculate c1
@@ -1395,7 +1354,6 @@ NdArrayRef Msb_opt::proc(KernelEvalContext* ctx, const NdArrayRef& in) const {
             prg_state
                 ->genPrssPair(field, in.shape(), PrgState::GenPrssCtrl::Second)
                 .second;
-        prg_state->genPrssPair(field, in.shape(), PrgState::GenPrssCtrl::None);
         beaver_c = comm->recv(2, ty, "beaver_c");
         beaver_c = beaver_c.reshape(in.shape());
       }

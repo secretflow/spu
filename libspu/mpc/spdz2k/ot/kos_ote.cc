@@ -18,7 +18,7 @@
 
 #include "emp-tool/utils/block.h"
 #include "emp-tool/utils/f2k.h"
-#include "yacl/crypto/base/hash/hash_utils.h"
+#include "yacl/crypto/hash/hash_utils.h"
 #include "yacl/crypto/tools/crhash.h"
 #include "yacl/crypto/tools/prg.h"
 #include "yacl/crypto/tools/ro.h"

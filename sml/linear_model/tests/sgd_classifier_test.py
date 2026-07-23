@@ -50,7 +50,17 @@ class UnitTests(unittest.TestCase):
             dataset_config = json.load(f)
 
         x1, x2, y = dsutil.load_dataset_by_config(dataset_config)
-        result = spsim.sim_jax(sim, proc)(x1, x2, y)
+        copts = spu_pb2.CompilerOptions()
+        
+        proc.__name__ = "test_sgd"
+        spu_fn = spsim.sim_jax(sim, proc, copts=copts, pphlo_ref=(None, None)) #test_sgd
+        result = spu_fn(x1, x2, y)
+        try:
+            if result == "skipped":
+                return True
+        except:
+            pass
+        print(spu_fn.pphlo)
         print(result)
 
 

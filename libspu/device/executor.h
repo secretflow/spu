@@ -66,6 +66,9 @@ class OpExecutor {
  public:
   virtual ~OpExecutor() = default;
 
+  using handler_t = std::function<bool(SPUContext *sctx, mlir::Operation *op,
+                                       absl::Span<const Value> inputs)>;
+
   //
   virtual void checkType(mlir::Type mlir_type, const spu::Value &v) const = 0;
 
@@ -81,6 +84,17 @@ class OpExecutor {
                  const ExecutionOptions &opts = {}) {
     return runKernelImpl(sctx, sscope, op, opts);
   }
+
+  void setExtraIntrinsicHandler(handler_t handler) {
+    extra_handler_ = std::move(handler);
+  }
+
+  const std::optional<handler_t> &getExtraIntrinsicHandler() const {
+    return extra_handler_;
+  }
+
+ private:
+  std::optional<handler_t> extra_handler_;
 };
 
 std::vector<spu::Value> runRegion(OpExecutor *executor, SPUContext *sctx,

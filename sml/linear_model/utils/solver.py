@@ -134,12 +134,16 @@ class NewtonCholeskySolver(Solver):
         def cho_solve_wrapper(a, b):
             return cho_solve(cho_factor(a), b)
 
+        return X
+        # return self.loss_model(y, self.link.inverse(X @ self.coef))
         # Perform Newton-Raphson steps
         for _ in range(self.max_iter):
-            grad_value = self.objective_grad(self.coef)
-            hessian_val = self.hessian_fn(self.coef)
-            step = cho_solve_wrapper(hessian_val, grad_value)
-            self.coef = self.coef - step.flatten()
+            grad_value = jit(jax.grad(lambda coef: self.loss_model(y, self.link.inverse(X @ coef)) + jnp.linalg.norm(coef) * self.l2_reg_strength / 2))(self.coef)
+            # grad_value = self.objective_grad(self.coef)
+            # hessian_val = self.hessian_fn(self.coef)
+            # step = cho_solve_wrapper(hessian_val, grad_value)
+            # self.coef = self.coef - step.flatten()
+        return grad_value
 
         return self.coef
 

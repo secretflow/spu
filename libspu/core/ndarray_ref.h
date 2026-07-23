@@ -14,11 +14,13 @@
 
 #pragma once
 
+#include <functional>
 #include <memory>
 #include <vector>
 
 #include "absl/types/span.h"
 #include "fmt/ostream.h"
+#include "fmt/ranges.h"
 #include "yacl/base/buffer.h"
 
 #include "libspu/core/bit_utils.h"
@@ -124,7 +126,12 @@ class NdArrayRef {
   // create a compact clone.
   NdArrayRef clone() const;
 
-  bool isCompact() const { return strides_ == makeCompactStrides(shape_); }
+  bool isCompact() const {
+    if (numel() < 2) {
+      return true;
+    }
+    return strides_ == makeCompactStrides(shape_);
+  }
 
   // Test only
   bool canUseFastIndexing() const { return use_fast_indexing_; }
@@ -311,6 +318,10 @@ class NdArrayRef {
   /// Guarantee no copy
   NdArrayRef transpose(const Axes& permutation) const;
 
+  /// the transpose function with reverse order.
+  /// Guarantee no copy
+  NdArrayRef transpose() const;
+
   /// the reverse function
   /// Guarantee no copy
   NdArrayRef reverse(const Axes& dimensions) const;
@@ -399,7 +410,6 @@ struct SimdTrait<NdArrayRef> {
 NdArrayRef makeConstantArrayRef(const Type& eltype, const Shape& shape);
 
 std::ostream& operator<<(std::ostream& out, const NdArrayRef& v);
-inline auto format_as(const spu::NdArrayRef& f) { return fmt::streamed(f); }
 
 template <typename T>
 class NdArrayView {
@@ -474,3 +484,17 @@ size_t maxBitWidth(const NdArrayRef& in) {
 #define UnwrapValue(x) x.data()
 
 }  // namespace spu
+
+template <>
+struct std::hash<spu::NdArrayRef> {
+  std::size_t operator()(const spu::NdArrayRef& r) const noexcept {
+    return std::hash<const void*>{}(r.data());
+  }
+};
+
+namespace fmt {
+
+template <>
+struct formatter<spu::NdArrayRef> : ostream_formatter {};
+
+}  // namespace fmt

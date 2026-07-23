@@ -95,17 +95,48 @@ class ExtMathTests(unittest.TestCase):
         if skip_square:
             data_pack = data_pack[:-1]
 
-        for mat in data_pack:
-            self._svd_test_main(
-                mat / scale,
-                max_power_iter=max_power_iter,
-                is_plain=is_plain,
-                field=field,
-                sin_atol=sin_atol,
-                sin_rtol=sin_rtol,
-                vec_atol=vec_atol,
-                vec_rtol=vec_rtol,
-            )
+        for test_i, mat in enumerate(data_pack):
+            if test_i == 0:
+                self._svd_test_main(
+                    mat / scale,
+                    max_power_iter=max_power_iter,
+                    is_plain=is_plain,
+                    field=field,
+                    sin_atol=sin_atol,
+                    sin_rtol=sin_rtol,
+                    vec_atol=vec_atol,
+                    vec_rtol=vec_rtol,
+                    test_i=test_i,
+                    pphlo_list = (None, None) #test_svd_0
+                )
+                
+            elif test_i == 1:
+                self._svd_test_main(
+                    mat / scale,
+                    max_power_iter=max_power_iter,
+                    is_plain=is_plain,
+                    field=field,
+                    sin_atol=sin_atol,
+                    sin_rtol=sin_rtol,
+                    vec_atol=vec_atol,
+                    vec_rtol=vec_rtol,
+                    test_i=test_i,
+                    pphlo_list = (None, None) #test_svd_1
+                )
+            elif test_i == 2:
+                self._svd_test_main(
+                    mat / scale,
+                    max_power_iter=max_power_iter,
+                    is_plain=is_plain,
+                    field=field,
+                    sin_atol=sin_atol,
+                    sin_rtol=sin_rtol,
+                    vec_atol=vec_atol,
+                    vec_rtol=vec_rtol,
+                    test_i=test_i,
+                    pphlo_list = (None, None) #test_svd_2
+                )
+            
 
     def _svd_test_main(
         self,
@@ -117,16 +148,34 @@ class ExtMathTests(unittest.TestCase):
         sin_rtol=1e-2,
         vec_atol=1e-1,
         vec_rtol=1e-1,
+        test_i=-1,
+        pphlo_list=[], 
+        skip = False, 
+        skip_list = None, 
+        not_skip_list = None,
+        hlo_log = False
     ):
         print("test matrix shape: ", x.shape)
+
+        copts = spu_pb2.CompilerOptions()
+
+        svd.__name__ = f"test_svd_{test_i}"
         run_func = (
             svd
             if is_plain
-            else spsim.sim_jax(self.sim_dict[field], svd, static_argnums=(1,))
+            else spsim.sim_jax(self.sim_dict[field], svd, static_argnums=(1,), copts=copts, pphlo_ref=pphlo_list, skip = skip, skip_list = skip_list, not_skip_list = not_skip_list, hlo_log = hlo_log)
         )
 
         jax_u, jax_s, jax_vt = jnp.linalg.svd(x, full_matrices=False)
-        u, s, vt = run_func(x, max_power_iter)
+        result = run_func(x, max_power_iter)
+        try:
+            if result == "skipped":
+                return True
+        except:
+            pass
+        u, s, vt = result
+        if not is_plain:
+            print(run_func.pphlo)
 
         # 1. check svd shape matching(full_matrices=False)
         self.assertTupleEqual(jax_u.shape, u.shape)

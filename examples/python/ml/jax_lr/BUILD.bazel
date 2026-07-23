@@ -24,6 +24,7 @@ py_binary(
     ],
     deps = [
         "//examples/python/utils:dataset_utils",
+        "//spu:init",
         "//spu/utils:distributed",
     ],
 )

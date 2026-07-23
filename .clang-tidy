@@ -9,7 +9,7 @@ Checks: "abseil-cleanup-ctad,
   bugprone-*,
   -bugprone-easily-swappable-parameters,
   -bugprone-implicit-widening-of-multiplication-result,
-  -bugprone-narrowing-conversions, # too many false positives around `std::size_t`  vs. `*::difference_type`.
+  -bugprone-narrowing-conversions,
   google-build-using-namespace,
   google-explicit-constructor,
   google-global-names-in-headers,
@@ -20,7 +20,7 @@ Checks: "abseil-cleanup-ctad,
   modernize-*,
   -modernize-use-trailing-return-type,
   -modernize-avoid-c-arrays,
-  -modernize-return-braced-init-list, # can hurt readability
+  -modernize-return-braced-init-list,
   -modernize-use-nodiscard,
   performance-*,
   readability-*,
@@ -28,7 +28,8 @@ Checks: "abseil-cleanup-ctad,
   -readability-identifier-length,
   -readability-function-cognitive-complexity,
   -readability-magic-numbers,
-  -readability-named-parameter"
+  -readability-named-parameter,
+  -readability-convert-member-functions-to-static"
 
 CheckOptions:
   - key: bugprone-argument-comment.StrictMode

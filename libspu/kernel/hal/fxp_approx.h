@@ -38,6 +38,8 @@ Value exp2_pade(SPUContext* ctx, const Value& x);
 // Works for range [-12.0, 18.0]
 Value exp_pade(SPUContext* ctx, const Value& x);
 
+Value exp_prime(SPUContext* ctx, const Value& x);
+
 Value tanh_chebyshev(SPUContext* ctx, const Value& x);
 
 }  // namespace detail
@@ -65,5 +67,11 @@ Value f_sqrt(SPUContext* ctx, const Value& x);
 Value f_sigmoid(SPUContext* ctx, const Value& x);
 
 Value f_erf(SPUContext* ctx, const Value& x);
+
+Value f_atan2(SPUContext* ctx, const Value& y, const Value& x);
+
+Value f_acos(SPUContext* ctx, const Value& x);
+
+Value f_asin(SPUContext* ctx, const Value& x);
 
 }  // namespace spu::kernel::hal

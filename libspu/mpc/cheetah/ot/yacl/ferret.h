@@ -101,6 +101,33 @@ class YaclFerretOt : public spu::mpc::cheetah::FerretOtInterface {
   void RecvCAMCC(absl::Span<const uint8_t> binary_choices,
                  absl::Span<uint128_t> output, int bit_width = 0) override;
 
+  // Run `num_level` of CAMCC concurrently while in the k-th the bit_width is
+  // bit_width_begin - k
+  void SendCAMCC_Collapse(absl::Span<const uint8_t> corr,
+                          absl::Span<uint8_t> output, int bit_width_begin,
+                          int num_level) override;
+  void SendCAMCC_Collapse(absl::Span<const uint32_t> corr,
+                          absl::Span<uint32_t> output, int bit_width_begin,
+                          int num_level) override;
+  void SendCAMCC_Collapse(absl::Span<const uint64_t> corr,
+                          absl::Span<uint64_t> output, int bit_width_begin,
+                          int num_level) override;
+  void SendCAMCC_Collapse(absl::Span<const uint128_t> corr,
+                          absl::Span<uint128_t> output, int bit_width_begin,
+                          int num_level) override;
+  void RecvCAMCC_Collapse(absl::Span<const uint8_t> binary_choices,
+                          absl::Span<uint8_t> output, int bit_width_begin,
+                          int num_level) override;
+  void RecvCAMCC_Collapse(absl::Span<const uint8_t> binary_choices,
+                          absl::Span<uint32_t> output, int bit_width_begin,
+                          int num_level) override;
+  void RecvCAMCC_Collapse(absl::Span<const uint8_t> binary_choices,
+                          absl::Span<uint64_t> output, int bit_width_begin,
+                          int num_level) override;
+  void RecvCAMCC_Collapse(absl::Span<const uint8_t> binary_choices,
+                          absl::Span<uint128_t> output, int bit_width_begin,
+                          int num_level) override;
+
   // Random Message Chosen Choice
   void SendRMCC(absl::Span<uint8_t> output0, absl::Span<uint8_t> output1,
                 size_t bit_width = 0) override;

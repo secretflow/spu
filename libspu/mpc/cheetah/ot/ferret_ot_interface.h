@@ -84,6 +84,33 @@ class FerretOtInterface {
   virtual void RecvCAMCC(absl::Span<const uint8_t> binary_choices,
                          absl::Span<uint128_t> output, int bit_width = 0) = 0;
 
+  // Run `num_level` of CAMCC concurrently while in the k-th the bit_width is
+  // bit_width_begin - k
+  virtual void SendCAMCC_Collapse(absl::Span<const uint8_t> corr,
+                                  absl::Span<uint8_t> output,
+                                  int bit_width_begin, int num_level) = 0;
+  virtual void SendCAMCC_Collapse(absl::Span<const uint32_t> corr,
+                                  absl::Span<uint32_t> output,
+                                  int bit_width_begin, int num_level) = 0;
+  virtual void SendCAMCC_Collapse(absl::Span<const uint64_t> corr,
+                                  absl::Span<uint64_t> output,
+                                  int bit_width_begin, int num_level) = 0;
+  virtual void SendCAMCC_Collapse(absl::Span<const uint128_t> corr,
+                                  absl::Span<uint128_t> output,
+                                  int bit_width_begin, int num_level) = 0;
+  virtual void RecvCAMCC_Collapse(absl::Span<const uint8_t> binary_choices,
+                                  absl::Span<uint8_t> output,
+                                  int bit_width_begin, int num_level) = 0;
+  virtual void RecvCAMCC_Collapse(absl::Span<const uint8_t> binary_choices,
+                                  absl::Span<uint32_t> output,
+                                  int bit_width_begin, int num_level) = 0;
+  virtual void RecvCAMCC_Collapse(absl::Span<const uint8_t> binary_choices,
+                                  absl::Span<uint64_t> output,
+                                  int bit_width_begin, int num_level) = 0;
+  virtual void RecvCAMCC_Collapse(absl::Span<const uint8_t> binary_choices,
+                                  absl::Span<uint128_t> output,
+                                  int bit_width_begin, int num_level) = 0;
+
   // Random Message Chosen Choice
   virtual void SendRMCC(absl::Span<uint8_t> output0,
                         absl::Span<uint8_t> output1, size_t bit_width = 0) = 0;

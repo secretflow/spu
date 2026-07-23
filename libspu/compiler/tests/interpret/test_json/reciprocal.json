@@ -1,0 +1,24 @@
+{
+    "name": "reciprocal",
+    "template": "basic_unary",
+    "testcases": [
+        {
+            "inputs": [
+                {
+                    "data": "[[1.0, -200.0], [100.0, 286991.875]]",
+                    "shape": "2x2",
+                    "dtype": "f64"
+                }
+            ],
+            "expected": [
+                {
+                    "data": "[[1.0, -0.005], [0.01, 0.0]]",
+                    "shape": "2x2",
+                    "dtype": "f64"
+                }
+            ],
+            "checker": "expect_almost_eq",
+            "tol": 0.01
+        }
+    ]
+}

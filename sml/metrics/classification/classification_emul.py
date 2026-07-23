@@ -18,6 +18,7 @@ import sys
 import jax.numpy as jnp
 import numpy as np
 from sklearn import metrics
+from sklearn.metrics import average_precision_score as sk_average_precision_score
 
 # add ops dir to the path
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../'))
@@ -25,6 +26,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../../'))
 import sml.utils.emulation as emulation
 from sml.metrics.classification.classification import (
     accuracy_score,
+    average_precision_score,
     f1_score,
     precision_score,
     recall_score,
@@ -42,7 +44,7 @@ def emul_auc(mode: emulation.Mode.MULTIPROCESS):
 
     # Run
     result = emulator.run(roc_auc_score)(
-        y_true, y_pred
+        *emulator.seal(y_true, y_pred)
     )  # X, y should be two-dimension array
     print(result)
 
@@ -97,7 +99,7 @@ def emul_Classification(mode: emulation.Mode.MULTIPROCESS):
     y_true = jnp.array([0, 1, 1, 0, 1, 1])
     y_pred = jnp.array([0, 0, 1, 0, 1, 1])
     spu_result = emulator.run(proc, static_argnums=(2, 5))(
-        y_true, y_pred, 'binary', None, 1, False
+        *emulator.seal(y_true, y_pred), 'binary', None, 1, False
     )
     sk_result = sklearn_proc(y_true, y_pred)
     check(spu_result, sk_result)
@@ -106,10 +108,81 @@ def emul_Classification(mode: emulation.Mode.MULTIPROCESS):
     y_true = jnp.array([0, 1, 1, 0, 2, 1])
     y_pred = jnp.array([0, 0, 1, 0, 2, 1])
     spu_result = emulator.run(proc, static_argnums=(2, 5))(
-        y_true, y_pred, None, [0, 1, 2], 1, True
+        *emulator.seal(y_true, y_pred), None, [0, 1, 2], 1, True
     )
     sk_result = sklearn_proc(y_true, y_pred, average=None, labels=[0, 1, 2])
     check(spu_result, sk_result)
+
+
+def emul_average_precision_score(mode: emulation.Mode.MULTIPROCESS):
+    def procBinary(y_true, y_score, **kwargs):
+        sk_res = sk_average_precision_score(y_true, y_score, **kwargs)
+        spu_res = emulator.run(average_precision_score)(
+            *emulator.seal(y_true, y_score), **kwargs
+        )
+        return sk_res, spu_res
+
+    def check(res1, res2):
+        return np.testing.assert_allclose(res1, res2, rtol=1e-3, atol=1e-3)
+
+    # --- Test binary classification ---
+    # 0-1 labels, no tied value
+    y_true = jnp.array([0, 0, 1, 1], dtype=jnp.int32)
+    y_score = jnp.array([0.1, 0.4, 0.35, 0.8], dtype=jnp.float32)
+    check(*procBinary(y_true, y_score))
+    # 0-1 labels, with tied value, even length
+    y_true = jnp.array([0, 0, 1, 1], dtype=jnp.int32)
+    y_score = jnp.array([0.4, 0.4, 0.4, 0.25], dtype=jnp.float32)
+    check(*procBinary(y_true, y_score))
+    # 0-1 labels, with tied value, odd length
+    y_true = jnp.array([0, 0, 1, 1, 1], dtype=jnp.int32)
+    y_score = jnp.array([0.4, 0.4, 0.4, 0.25, 0.25], dtype=jnp.float32)
+    check(*procBinary(y_true, y_score))
+    # customized labels
+    y_true = jnp.array([2, 2, 3, 3], dtype=jnp.int32)
+    y_score = jnp.array([0.1, 0.2, 0.3, 0.4], dtype=jnp.float32)
+    check(*procBinary(y_true, y_score, pos_label=3))
+    # larger random dataset
+    y_true = jnp.array(np.random.randint(0, 2, 100), dtype=jnp.int32)
+    y_score = jnp.array(np.hstack((0, 1, np.random.random(98))), dtype=jnp.float32)
+    check(*procBinary(y_true, y_score))
+    # single label edge case
+    y_true = jnp.array([0, 0, 0, 0], dtype=jnp.int32)
+    y_score = jnp.array([0.4, 0.25, 0.4, 0.25], dtype=jnp.float32)
+    check(*procBinary(y_true, y_score))
+    y_true = jnp.array([1, 1, 1, 1], dtype=jnp.int32)
+    y_score = jnp.array([0.4, 0.25, 0.4, 0.25], dtype=jnp.float32)
+    check(*procBinary(y_true, y_score))
+    # zero score edge case
+    y_true = jnp.array([0, 0, 1, 1, 1], dtype=jnp.int32)
+    y_score = jnp.array([0, 0, 0, 0.25, 0.25], dtype=jnp.float32)
+    check(*procBinary(y_true, y_score))
+    # score > 1 edge case
+    y_true = jnp.array([0, 0, 1, 1, 1], dtype=jnp.int32)
+    y_score = jnp.array([1.5, 1.5, 1.5, 0.25, 0.25], dtype=jnp.float32)
+    check(*procBinary(y_true, y_score))
+
+    # --- Test multiclass classification ---
+    y_true = np.array([0, 0, 1, 1, 2, 2], dtype=jnp.int32)
+    y_score = np.array(
+        [
+            [0.7, 0.2, 0.1],
+            [0.4, 0.3, 0.3],
+            [0.1, 0.8, 0.1],
+            [0.2, 0.3, 0.5],
+            [0.4, 0.4, 0.2],
+            [0.1, 0.2, 0.7],
+        ],
+        dtype=jnp.float32,
+    )
+    classes = jnp.unique(y_true)
+    # test over three supported average options
+    for average in ["macro", "micro", None]:
+        sk_res = sk_average_precision_score(y_true, y_score, average=average)
+        spu_res = emulator.run(average_precision_score, static_argnums=(3,))(
+            *emulator.seal(y_true, y_score), classes, average
+        )
+        check(sk_res, spu_res)
 
 
 if __name__ == "__main__":
@@ -124,5 +197,6 @@ if __name__ == "__main__":
         emulator.up()
         emul_auc(emulation.Mode.MULTIPROCESS)
         emul_Classification(emulation.Mode.MULTIPROCESS)
+        emul_average_precision_score(emulation.Mode.MULTIPROCESS)
     finally:
         emulator.down()

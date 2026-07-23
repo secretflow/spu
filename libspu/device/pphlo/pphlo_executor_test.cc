@@ -22,7 +22,7 @@
 #include "gtest/gtest.h"
 #include "xtensor/xarray.hpp"
 
-#include "libspu/device/pphlo/pphlo_executor_test_runner.h"
+#include "libspu/device/utils/pphlo_executor_test_runner.h"
 
 namespace spu::device::pphlo::test {
 
@@ -870,6 +870,124 @@ func.func @main(%arg0: tensor<f32>) -> (tensor<i32>) {
 })");
 
   r.verifyOutput(reinterpret_cast<int32_t *>(&in));
+}
+
+void testGatherImpl(size_t world_size, FieldType field, ProtocolKind protocol,
+                    const xt::xarray<int> &operand,
+                    const xt::xarray<int> &indices,
+                    const xt::xarray<int> &expected, const std::string &mhlo) {
+  // Public index
+  {
+    Runner r(world_size, field, protocol);
+
+    r.addInput(operand);
+    // Start indices
+    r.addInput(indices);
+
+    auto compiled = r.compileMHlo(mhlo, {VIS_PUBLIC, VIS_PUBLIC});
+
+    EXPECT_THAT(compiled, testing::HasSubstr("spu.gather"));
+
+    r.run(compiled);
+
+    r.verifyOutput(expected.data());
+  }
+
+  // Secret index
+  {
+    Runner r(world_size, field, protocol);
+
+    r.addInput(operand);
+    // Start indices
+    r.addInput(indices, VIS_SECRET);
+
+    auto compiled = r.compileMHlo(mhlo, {VIS_PUBLIC, VIS_SECRET});
+
+    EXPECT_THAT(compiled, testing::Not(testing::HasSubstr("spu.gather")));
+
+    r.run(compiled);
+
+    r.verifyOutput(expected.data());
+  }
+}
+
+TEST_P(ExecutorTest, Gather1) {
+  std::string mhlo = R"(
+func.func @main(%arg0: tensor<3x3xi32>, %arg1: tensor<2xi32>) -> (tensor<2x3xi32>) {
+    %0 = "stablehlo.gather"(%arg0, %arg1) {dimension_numbers = #stablehlo.gather<offset_dims = [1], collapsed_slice_dims = [0], start_index_map = [0], index_vector_dim = 1>, indices_are_sorted = false, slice_sizes = array<i64: 1, 3>} : (tensor<3x3xi32>, tensor<2xi32>) -> tensor<2x3xi32>
+    return %0 : tensor<2x3xi32>
+})";
+
+  auto operand = xt::xarray<int>{{1, 2, 3}, {4, 5, 6}, {7, 8, 9}};
+  auto indices = xt::xarray<int>{0, 2};
+  xt::xarray<int> expected = {{1, 2, 3}, {7, 8, 9}};
+
+  testGatherImpl(std::get<0>(GetParam()), std::get<1>(GetParam()),
+                 std::get<2>(GetParam()), operand, indices, expected, mhlo);
+}
+
+TEST_P(ExecutorTest, Gather2) {
+  std::string mhlo = R"(
+func.func @main(%arg0: tensor<3x3xi32>, %arg1: tensor<2xi32>) -> (tensor<3x2xi32>) {
+    %0 = "stablehlo.gather"(%arg0, %arg1) {dimension_numbers = #stablehlo.gather<offset_dims = [0], collapsed_slice_dims = [1], start_index_map = [1], index_vector_dim = 1>, indices_are_sorted = false, slice_sizes = array<i64: 3, 1>} : (tensor<3x3xi32>, tensor<2xi32>) -> tensor<3x2xi32>
+    return %0 : tensor<3x2xi32>
+})";
+
+  auto operand = xt::xarray<int>{{1, 2, 3}, {4, 5, 6}, {7, 8, 9}};
+  auto indices = xt::xarray<int>{0, 2};
+  xt::xarray<int> expected = {{1, 3}, {4, 6}, {7, 9}};
+
+  testGatherImpl(std::get<0>(GetParam()), std::get<1>(GetParam()),
+                 std::get<2>(GetParam()), operand, indices, expected, mhlo);
+}
+
+TEST_P(ExecutorTest, GatherBatch) {
+  std::string mhlo = R"(
+func.func @main(%arg0: tensor<3x3xi32>, %arg1: tensor<2x2xi32>) -> (tensor<2x3x2xi32>) {
+    %0 = "stablehlo.gather"(%arg0, %arg1) {dimension_numbers = #stablehlo.gather<offset_dims = [1], collapsed_slice_dims = [1], start_index_map = [1], index_vector_dim = 2>, indices_are_sorted = false, slice_sizes = array<i64: 3, 1>} : (tensor<3x3xi32>, tensor<2x2xi32>) -> tensor<2x3x2xi32>
+    return %0 : tensor<2x3x2xi32>
+})";
+
+  auto operand = xt::xarray<int>{{1, 2, 3}, {4, 5, 6}, {7, 8, 9}};
+  auto indices = xt::xarray<int>{{0, 2}, {2, 1}};
+
+  xt::xarray<int> expected = {{{1, 3}, {4, 6}, {7, 9}},
+                              {{3, 2}, {6, 5}, {9, 8}}};
+
+  testGatherImpl(std::get<0>(GetParam()), std::get<1>(GetParam()),
+                 std::get<2>(GetParam()), operand, indices, expected, mhlo);
+}
+
+TEST_P(ExecutorTest, GatherNd) {
+  std::string mhlo = R"(
+func.func @main(%arg0: tensor<3x3x2xi32>, %arg1: tensor<2x2xi32>) -> (tensor<2x2xi32>) {
+    %0 = "stablehlo.gather"(%arg0, %arg1) {dimension_numbers = #stablehlo.gather<offset_dims = [1], collapsed_slice_dims = [0,1], start_index_map = [0,1], index_vector_dim = 1>, indices_are_sorted = false, slice_sizes = array<i64: 1, 1, 2>} : (tensor<3x3x2xi32>, tensor<2x2xi32>) -> tensor<2x2xi32>
+    return %0 : tensor<2x2xi32>
+})";
+  const xt::xarray<int> operand = {{{-1, 1}, {-2, 2}, {-3, 3}},
+                                   {{-4, 4}, {-5, 5}, {-6, 6}},
+                                   {{-7, 7}, {-8, 8}, {-9, 9}}};
+  auto indices = xt::xarray<int>{{0, 0}, {1, 0}};
+  xt::xarray<int> expected = {{-1, 1}, {-4, 4}};
+
+  testGatherImpl(std::get<0>(GetParam()), std::get<1>(GetParam()),
+                 std::get<2>(GetParam()), operand, indices, expected, mhlo);
+}
+
+TEST_P(ExecutorTest, GatherNdNonDefaultIndexVectorDim) {
+  std::string mhlo = R"(
+func.func @main(%arg0: tensor<3x3x2xi32>, %arg1: tensor<2x2xi32>) -> (tensor<2x2xi32>) {
+    %0 = "stablehlo.gather"(%arg0, %arg1) {dimension_numbers = #stablehlo.gather<offset_dims = [1], collapsed_slice_dims = [0,1], start_index_map = [0,1], index_vector_dim = 0>, indices_are_sorted = false, slice_sizes = array<i64: 1,1,2>} : (tensor<3x3x2xi32>, tensor<2x2xi32>) -> tensor<2x2xi32>
+    return %0 : tensor<2x2xi32>
+})";
+  xt::xarray<int> operand = {{{-1, 1}, {-2, 2}, {-3, 3}},
+                             {{-4, 4}, {-5, 5}, {-6, 6}},
+                             {{-7, 7}, {-8, 8}, {-9, 9}}};
+  auto indices = xt::xarray<int>{{0, 0}, {1, 0}};
+  xt::xarray<int> expected = {{-2, 2}, {-1, 1}};
+
+  testGatherImpl(std::get<0>(GetParam()), std::get<1>(GetParam()),
+                 std::get<2>(GetParam()), operand, indices, expected, mhlo);
 }
 
 TEST_P(ExecutorTest, Simple4x4Conv2DWith2x2Kernel) {
@@ -2604,130 +2722,6 @@ func.func @main() -> (tensor<i32>, tensor<i1>) {
   {
     bool expected = true;
     r.verifyOutput(&expected, 1);
-  }
-}
-
-TEST_P(ExecutorTest, Case) {
-  const auto *prog = R"(
- func.func @main(%arg0: tensor<i32>) -> (tensor<i32>,tensor<i32>) {
-  %0:2 = "pphlo.case"(%arg0) ({
-    %1 = pphlo.constant dense<1> : tensor<i32>
-    %2 = pphlo.constant dense<11> : tensor<i32>
-    pphlo.return %1, %2 : tensor<i32>, tensor<i32>
-  }, {
-    %1 = pphlo.constant dense<2> : tensor<i32>
-    %2 = pphlo.constant dense<12> : tensor<i32>
-    pphlo.return %1, %2 : tensor<i32>, tensor<i32>
-  }, {
-    %1 = pphlo.constant dense<3> : tensor<i32>
-    %2 = pphlo.constant dense<13> : tensor<i32>
-    pphlo.return %1, %2 : tensor<i32>, tensor<i32>
-  }) : (tensor<i32>) -> (tensor<i32>, tensor<i32>)
-  return %0#0, %0#1: tensor<i32>, tensor<i32>
-})";
-
-  {
-    // case 0
-    Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
-             std::get<2>(GetParam()));
-
-    r.addInput(static_cast<int32_t>(0));
-
-    r.run(prog, 2);
-
-    r.verifyScalarOutput(static_cast<int32_t>(1), 0);
-    r.verifyScalarOutput(static_cast<int32_t>(11), 1);
-  }
-
-  {
-    // case 1
-    Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
-             std::get<2>(GetParam()));
-
-    r.addInput(static_cast<int32_t>(1));
-
-    r.run(prog, 2);
-
-    r.verifyScalarOutput(static_cast<int32_t>(2), 0);
-    r.verifyScalarOutput(static_cast<int32_t>(12), 1);
-  }
-
-  {
-    // case 2
-    Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
-             std::get<2>(GetParam()));
-
-    r.addInput(static_cast<int32_t>(2));
-
-    r.run(prog, 2);
-
-    r.verifyScalarOutput(static_cast<int32_t>(3), 0);
-    r.verifyScalarOutput(static_cast<int32_t>(13), 1);
-  }
-}
-
-TEST_P(ExecutorTest, CasePrivate) {
-  const auto *prog = R"(
- func.func @main(%arg0: tensor<!pphlo.secret<i32>>) -> (tensor<!pphlo.secret<i32>>, tensor<!pphlo.secret<i32>>) {
-  %0:2 = "pphlo.case"(%arg0) ({
-    %1 = pphlo.constant dense<1> : tensor<i32>
-    %2 = pphlo.convert %1 : (tensor<i32>) -> tensor<!pphlo.secret<i32>>
-    %3 = pphlo.constant dense<11> : tensor<i32>
-    %4 = pphlo.convert %3 : (tensor<i32>) -> tensor<!pphlo.secret<i32>>
-    pphlo.return %2, %4 : tensor<!pphlo.secret<i32>>, tensor<!pphlo.secret<i32>>
-  }, {
-    %1 = pphlo.constant dense<2> : tensor<i32>
-    %2 = pphlo.convert %1 : (tensor<i32>) -> tensor<!pphlo.secret<i32>>
-    %3 = pphlo.constant dense<12> : tensor<i32>
-    %4 = pphlo.convert %3 : (tensor<i32>) -> tensor<!pphlo.secret<i32>>
-    pphlo.return %2, %4 : tensor<!pphlo.secret<i32>>, tensor<!pphlo.secret<i32>>
-  }, {
-    %1 = pphlo.constant dense<3> : tensor<i32>
-    %2 = pphlo.convert %1 : (tensor<i32>) -> tensor<!pphlo.secret<i32>>
-    %3 = pphlo.constant dense<13> : tensor<i32>
-    %4 = pphlo.convert %3 : (tensor<i32>) -> tensor<!pphlo.secret<i32>>
-    pphlo.return %2, %4 : tensor<!pphlo.secret<i32>>, tensor<!pphlo.secret<i32>>
-  }) : (tensor<!pphlo.secret<i32>>) -> (tensor<!pphlo.secret<i32>>, tensor<!pphlo.secret<i32>>)
-  return %0#0, %0#1: tensor<!pphlo.secret<i32>>, tensor<!pphlo.secret<i32>>
-})";
-
-  {
-    // case 0
-    Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
-             std::get<2>(GetParam()));
-
-    r.addInput(static_cast<int32_t>(0), VIS_SECRET);
-
-    r.run(prog, 2);
-
-    r.verifyScalarOutput(static_cast<int32_t>(1), 0);
-    r.verifyScalarOutput(static_cast<int32_t>(11), 1);
-  }
-
-  {
-    // case 1
-    Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
-             std::get<2>(GetParam()));
-
-    r.addInput(static_cast<int32_t>(1), VIS_SECRET);
-
-    r.run(prog, 2);
-
-    r.verifyScalarOutput(static_cast<int32_t>(2), 0);
-    r.verifyScalarOutput(static_cast<int32_t>(12), 1);
-  }
-
-  {
-    // case 2
-    Runner r(std::get<0>(GetParam()), std::get<1>(GetParam()),
-             std::get<2>(GetParam()));
-
-    r.addInput(static_cast<int32_t>(2), VIS_SECRET);
-
-    r.run(prog, 2);
-
-    r.verifyScalarOutput(static_cast<int32_t>(3), 0);
-    r.verifyScalarOutput(static_cast<int32_t>(13), 1);
   }
 }
 

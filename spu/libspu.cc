@@ -37,6 +37,7 @@
 #include "libspu/device/pphlo/pphlo_executor.h"
 #include "libspu/device/symbol_table.h"
 #include "libspu/mpc/factory.h"
+#include "libspu/version.h"
 
 #ifdef CHECK_AVX
 #include "cpu_features/cpuinfo_x86.h"
@@ -688,20 +689,19 @@ PYBIND11_MODULE(libspu, m) {
   BindLogging(logging_m);
 
   // bind check cpu features
-  m.def(
-      "check_cpu_features",
-      []() {
+  m.def("_check_cpu_features", []() {
 #ifdef CHECK_AVX
-        static const auto cpu_features = cpu_features::GetX86Info().features;
-        if (!cpu_features.avx) {
-          throw std::runtime_error(FormatMissingCpuFeatureMsg("AVX"));
-        }
-        if (!cpu_features.aes) {
-          throw std::runtime_error(FormatMissingCpuFeatureMsg("AES"));
-        }
+    static const auto cpu_features = cpu_features::GetX86Info().features;
+    if (!cpu_features.avx) {
+      throw std::runtime_error(FormatMissingCpuFeatureMsg("AVX"));
+    }
+    if (!cpu_features.aes) {
+      throw std::runtime_error(FormatMissingCpuFeatureMsg("AES"));
+    }
 #endif
-      },
-      "check cpu features");
+  });
+
+  m.def("_get_version", []() { return spu::getVersionStr(); });
 }
 
 }  // namespace spu

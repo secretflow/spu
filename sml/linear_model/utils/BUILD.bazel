@@ -31,3 +31,8 @@ py_library(
     name = "solver",
     srcs = ["solver.py"],
 )
+
+py_library(
+    name = "_linprog_simplex",
+    srcs = ["_linprog_simplex.py"],
+)

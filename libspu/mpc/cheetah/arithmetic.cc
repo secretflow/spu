@@ -74,7 +74,7 @@ NdArrayRef MsbA2B::proc(KernelEvalContext* ctx, const NdArrayRef& x) const {
 
   const int rank = ctx->getState<Communicator>()->getRank();
 
-  return DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  return DISPATCH_ALL_FIELDS(field, [&]() {
     using u2k = std::make_unsigned<ring2k_t>::type;
     const u2k mask = (static_cast<u2k>(1) << shft) - 1;
     NdArrayRef adjusted = ring_zeros(field, x.shape());
@@ -170,6 +170,74 @@ NdArrayRef MulA1B::proc(KernelEvalContext* ctx, const NdArrayRef& ashr,
       .as(ashr.eltype());
 }
 
+NdArrayRef MulA1BV::proc(KernelEvalContext* ctx, const NdArrayRef& ashr,
+                         const NdArrayRef& bshr) const {
+  auto* comm = ctx->getState<Communicator>();
+  const int rank = comm->getRank();
+  SPU_ENFORCE_EQ(ashr.shape(), bshr.shape());
+  const int64_t numel = ashr.numel();
+  const auto* ptype = bshr.eltype().as<Priv2kTy>();
+  SPU_ENFORCE(ptype != nullptr, "rhs should be a private type");
+
+  const int owner = ptype->owner();
+
+  NdArrayRef out(ashr.eltype(), ashr.shape());
+  if (numel == 0) {
+    return out;
+  }
+
+  if (rank != owner) {
+    return TiledDispatchOTFunc(
+               ctx, ashr,
+               [&](const NdArrayRef& input,
+                   const std::shared_ptr<BasicOTProtocols>& base_ot) {
+                 return base_ot->PrivateMulxSend(input);
+               })
+        .as(ashr.eltype());
+  }
+
+  return TiledDispatchOTFunc(
+             ctx, ashr, bshr,
+             [&](const NdArrayRef& input0, const NdArrayRef& input1,
+                 const std::shared_ptr<BasicOTProtocols>& base_ot) {
+               return base_ot->PrivateMulxRecv(input0, input1);
+             })
+      .as(ashr.eltype());
+}
+
+NdArrayRef MulAV::proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                       const NdArrayRef& y) const {
+  SPU_ENFORCE_EQ(x.shape(), y.shape());
+  const int64_t numel = x.numel();
+  if (numel == 0) {
+    return NdArrayRef(x.eltype(), x.shape());
+  }
+  auto* comm = ctx->getState<Communicator>();
+  const int rank = comm->getRank();
+  const auto* ptype = y.eltype().as<Priv2kTy>();
+  SPU_ENFORCE(ptype != nullptr, "rhs should be a private type");
+  const int owner = ptype->owner();
+
+  auto* mul_prot = ctx->getState<CheetahMulState>()->get();
+  mul_prot->LazyInitKeys(x.eltype().as<Ring2k>()->field());
+
+  // (x0 * x1) * y
+  // <x0 * y> + x1 * y
+  auto fx = x.reshape({numel});
+  NdArrayRef out;
+
+  // compute <x0 * y>
+  if (rank != owner) {
+    out = mul_prot->MulOLE(fx, /*eval*/ true);
+  } else {
+    auto fy = y.reshape({numel});
+    out = mul_prot->MulOLE(fy, /*eval*/ false);
+    ring_add_(out, ring_mul(fx, fy));
+  }
+
+  return out.reshape(x.shape()).as(x.eltype());
+}
+
 NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
                        const NdArrayRef& y) const {
   SPU_ENFORCE_EQ(x.shape(), y.shape());
@@ -177,10 +245,49 @@ NdArrayRef MulAA::proc(KernelEvalContext* ctx, const NdArrayRef& x,
   int64_t batch_sze = ctx->getState<CheetahMulState>()->get()->OLEBatchSize();
   int64_t numel = x.numel();
 
-  if (numel >= batch_sze) {
+  if (numel >= 2 * batch_sze) {
     return mulDirectly(ctx, x, y);
   }
   return mulWithBeaver(ctx, x, y);
+}
+
+NdArrayRef SquareA::proc(KernelEvalContext* ctx, const NdArrayRef& x) const {
+  const int64_t numel = x.numel();
+  if (numel == 0) {
+    return NdArrayRef(x.eltype(), x.shape());
+  }
+
+  //   (x0 + x1) * (x0 + x1)
+  // = x0^2 + 2*<x0*x1> + x1^2
+  auto* comm = ctx->getState<Communicator>();
+  const int rank = comm->getRank();
+  auto* mul_prot = ctx->getState<CheetahMulState>()->get();
+  mul_prot->LazyInitKeys(x.eltype().as<Ring2k>()->field());
+
+  auto fx = x.reshape({numel});
+  int64_t nhalf = numel <= 8192 ? numel : numel / 2;
+
+  auto subtask = std::async([&]() -> spu::NdArrayRef {
+    return mul_prot->MulOLE(fx.slice({0}, {nhalf}, {1}), rank == 0);
+  });
+
+  NdArrayRef mul1;
+  if (nhalf < numel) {
+    auto dupx = ctx->getState<CheetahMulState>()->duplx();
+    mul1 = mul_prot->MulOLE(fx.slice({nhalf}, {numel}, {1}), dupx.get(),
+                            rank == 1);
+  }
+  auto mul0 = subtask.get();
+
+  NdArrayRef x0x1(x.eltype(), {numel});
+  std::memcpy(&x0x1.at(0), &mul0.at(0), mul0.elsize() * nhalf);
+  if (nhalf < numel) {
+    std::memcpy(&x0x1.at(nhalf), &mul1.at(0), mul1.elsize() * mul1.numel());
+  }
+  ring_add_(x0x1, x0x1);
+  x0x1 = x0x1.reshape(x.shape());
+
+  return ring_add(x0x1, ring_mul(x, x)).as(x.eltype());
 }
 
 NdArrayRef MulAA::mulWithBeaver(KernelEvalContext* ctx, const NdArrayRef& x,
@@ -202,7 +309,7 @@ NdArrayRef MulAA::mulWithBeaver(KernelEvalContext* ctx, const NdArrayRef& x,
   auto* comm = ctx->getState<Communicator>();
   // Open x - a & y - b
   auto res = vmap({ring_sub(x, a), ring_sub(y, b)}, [&](const NdArrayRef& s) {
-    return comm->allReduce(ReduceOp::ADD, s, kBindName);
+    return comm->allReduce(ReduceOp::ADD, s, kBindName());
   });
   auto x_a = std::move(res[0]);
   auto y_b = std::move(res[1]);
@@ -219,6 +326,46 @@ NdArrayRef MulAA::mulWithBeaver(KernelEvalContext* ctx, const NdArrayRef& x,
   return z.as(x.eltype());
 }
 
+#if 1
+NdArrayRef MulAA::mulDirectly(KernelEvalContext* ctx, const NdArrayRef& x,
+                              const NdArrayRef& y) const {
+  // Compute (x0 + x1) * (y0+ y1)
+  auto* comm = ctx->getState<Communicator>();
+  auto* mul_prot = ctx->getState<CheetahMulState>()->get();
+  mul_prot->LazyInitKeys(x.eltype().as<Ring2k>()->field());
+
+  auto fx = x.reshape({x.numel()});
+  auto fy = y.reshape({y.numel()});
+  const int64_t n = fx.numel();
+  const int64_t nhalf = n / 2;
+  const int rank = comm->getRank();
+
+  // For long vectors, split into two subtasks.
+  auto dupx = ctx->getState<CheetahMulState>()->duplx();
+  std::future<NdArrayRef> task = std::async(std::launch::async, [&] {
+    return mul_prot->MulShare(fx.slice({nhalf}, {n}, {1}),
+                              fy.slice({nhalf}, {n}, {1}), dupx.get(),
+                              /*evaluator*/ rank == 0);
+  });
+
+  std::vector<NdArrayRef> out_slices(2);
+  out_slices[0] =
+      mul_prot->MulShare(fx.slice({0}, {nhalf}, {1}),
+                         fy.slice({0}, {nhalf}, {1}), /*evaluato*/ rank != 0);
+  out_slices[1] = task.get();
+
+  NdArrayRef out(x.eltype(), x.shape());
+  int64_t offset = 0;
+  for (auto& out_slice : out_slices) {
+    std::memcpy(out.data<std::byte>() + offset, out_slice.data(),
+                out_slice.numel() * out.elsize());
+    offset += out_slice.numel() * out.elsize();
+  }
+  return out;
+}
+#else
+// Old code for MulAA using two OLEs which commnuicate about 30% more than the
+// above version.
 NdArrayRef MulAA::mulDirectly(KernelEvalContext* ctx, const NdArrayRef& x,
                               const NdArrayRef& y) const {
   // (x0 + x1) * (y0+ y1)
@@ -228,7 +375,6 @@ NdArrayRef MulAA::mulDirectly(KernelEvalContext* ctx, const NdArrayRef& x,
   mul_prot->LazyInitKeys(x.eltype().as<Ring2k>()->field());
 
   const int rank = comm->getRank();
-  // auto fy = y.reshape({y.numel()});
 
   auto dupx = ctx->getState<CheetahMulState>()->duplx();
   std::future<NdArrayRef> task = std::async(std::launch::async, [&] {
@@ -247,6 +393,27 @@ NdArrayRef MulAA::mulDirectly(KernelEvalContext* ctx, const NdArrayRef& x,
 
   NdArrayRef x0y1 = task.get();
   return ring_add(x0y1, ring_add(x1y0, ring_mul(x, y))).as(x.eltype());
+}
+#endif
+
+NdArrayRef MatMulVVS::proc(KernelEvalContext* ctx, const NdArrayRef& x,
+                           const NdArrayRef& y) const {
+  auto out_type = makeType<cheetah::AShrTy>(ctx->sctx()->getField());
+  if (0 == x.numel() || 0 == y.numel()) {
+    return NdArrayRef(out_type, {x.shape()[0], y.shape()[1]});
+  }
+  auto* comm = ctx->getState<Communicator>();
+  auto* dot_prot = ctx->getState<CheetahDotState>()->get();
+
+  const int self_rank = comm->getRank();
+  auto lhs_owner = x.eltype().as<Priv2kTy>()->owner();
+
+  const Shape3D dim3 = {x.shape()[0], x.shape()[1], y.shape()[1]};
+  if (self_rank == lhs_owner) {
+    return dot_prot->DotOLE(x, dim3, /*is_lhs*/ true).as(out_type);
+  } else {
+    return dot_prot->DotOLE(y, dim3, /*is_lhs*/ false).as(out_type);
+  }
 }
 
 // A is (M, K); B is (K, N)

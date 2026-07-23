@@ -54,3 +54,8 @@ idir/
 
 spu_wheel.name
 *.whl
+
+/pass-test/reduce_case
+/pass-test/reduce_log
+/pass-test/test-log
+/xla

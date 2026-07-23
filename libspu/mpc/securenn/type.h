@@ -54,6 +54,12 @@ class BShrTy : public TypeImpl<BShrTy, RingTy, Secret, BShare> {
   std::string toString() const override {
     return fmt::format("{},{}", FieldType_Name(field()), nbits_);
   }
+
+  bool equals(TypeObject const* other) const override {
+    auto const* derived_other = dynamic_cast<BShrTy const*>(other);
+    SPU_ENFORCE(derived_other);
+    return field_ == derived_other->field_ && nbits_ == derived_other->nbits();
+  }
 };
 
 void registerTypes();

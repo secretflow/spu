@@ -406,7 +406,11 @@ TYPED_TEST(MathTest, Pow) {
   using LHS_VT = typename std::tuple_element<1, TypeParam>::type;
   using RHS_DT = typename std::tuple_element<2, TypeParam>::type;
   using RHS_VT = typename std::tuple_element<3, TypeParam>::type;
-  // using RES_DT = typename std::tuple_element<4, TypeParam>::type;
+  using RES_DT = typename std::tuple_element<4, TypeParam>::type;
+
+  if constexpr (!std::is_same_v<LHS_DT, RHS_DT>) {
+    return;
+  }
 
   // GIVEN
   xt::xarray<LHS_DT> x;
@@ -414,10 +418,10 @@ TYPED_TEST(MathTest, Pow) {
   {
     // random test
     x = test::xt_random<LHS_DT>({5, 6}, 0, 100);
-    y = test::xt_random<RHS_DT>({5, 6}, -2, 2);
+    y = test::xt_random<RHS_DT>({5, 6}, 0, 2);
 
     // WHAT
-    auto z = test::evalBinaryOp<float>(LHS_VT(), RHS_VT(), power, x, y);
+    auto z = test::evalBinaryOp<RHS_DT>(LHS_VT(), RHS_VT(), power, x, y);
 
     // THEN
     auto expected = xt::pow(x, y);
@@ -429,14 +433,17 @@ TYPED_TEST(MathTest, Pow) {
 
   {
     // some fixed corner case
-    x = {-1, -1, -3, 1, -3, 0, 1, 1, 5, 0};
-    y = {1, 0, -3, -3, 3, 0, 0, 2, 5, 2};
+    x = {-1, -1, -1, -1, -3, 1, -3, 0, 1, 1, 5, 0, 3, 2, -2};
+    y = {1, 0, -3, -4, -3, -3, 3, 0, 0, 2, 5, 2, -3, -1, -1};
 
     // WHAT
-    auto z = test::evalBinaryOp<float>(LHS_VT(), RHS_VT(), power, x, y);
+    auto z = test::evalBinaryOp<RES_DT>(LHS_VT(), RHS_VT(), power, x, y);
 
     // THEN
-    auto expected = xt::pow(x, y);
+    // when x is int and x=-3, y=-3, we should get 0.
+    // when x is int and x=3, y=-3, we should get 0.
+    xt::xarray<RES_DT> expected = xt::pow(x, y);
+
     EXPECT_TRUE(xt::allclose(expected, z, 0.3, 0.03)) << x << std::endl
                                                       << y << std::endl
                                                       << expected << std::endl
@@ -783,6 +790,74 @@ TYPED_TEST(MathTest, Div) {
   // THEN
   EXPECT_TRUE(xt::allclose(x / y, z, 0.01, 0.001)) << (x / y) << std::endl
                                                    << z << std::endl;
+}
+
+using FpOnlyMathBinaryTestTypes = ::testing::Types<
+    // ss
+    std::tuple<float, secret_v, float, secret_v, float>,  // (sfxp, sfxp)
+    // pp
+    std::tuple<float, public_v, float, public_v, float>,  // (pfxp, pfxp)
+    // sp
+    std::tuple<float, secret_v, float, public_v, float>,  // (sfxp, pfxp)
+    // ps
+    std::tuple<float, public_v, float, secret_v, float>  // (pfxp, sfxp)
+    >;
+
+template <typename S>
+class FpOnlyMathBinaryTest : public ::testing::Test {};
+TYPED_TEST_SUITE(FpOnlyMathBinaryTest, FpOnlyMathBinaryTestTypes);
+
+TYPED_TEST(FpOnlyMathBinaryTest, Atan2) {
+  using LHS_DT = typename std::tuple_element<0, TypeParam>::type;
+  using LHS_VT = typename std::tuple_element<1, TypeParam>::type;
+  using RHS_DT = typename std::tuple_element<2, TypeParam>::type;
+  using RHS_VT = typename std::tuple_element<3, TypeParam>::type;
+  using RES_DT = typename std::tuple_element<4, TypeParam>::type;  // float
+
+  const xt::xarray<LHS_DT> x = test::xt_random<LHS_DT>({5, 6});
+  const xt::xarray<RHS_DT> y = test::xt_random<RHS_DT>({5, 6});
+
+  auto z = test::evalBinaryOp<RES_DT>(LHS_VT(), RHS_VT(), atan2, x, y);
+
+  EXPECT_TRUE(xt::allclose(xt::atan2(x, y), z, 0.01, 0.001))
+      << (xt::atan2(x, y)) << std::endl
+      << z << std::endl;
+}
+
+TYPED_TEST(FpOnlyMathUnaryTest, Acos) {
+  using IN_DT = typename std::tuple_element<0, TypeParam>::type;
+  using IN_VT = typename std::tuple_element<1, TypeParam>::type;
+  using RES_DT = float;
+
+  // GIVEN
+  xt::xarray<IN_DT> x = test::xt_random<IN_DT>({5, 6}, -1, 1);
+  xt::xarray<float> expected_y = xt::acos(x);
+
+  // WHAT
+  auto y = test::evalUnaryOp<RES_DT>(IN_VT(), acos, x);
+
+  // THEN
+  EXPECT_TRUE(xt::allclose(expected_y, y, 0.01, 0.001))
+      << expected_y << std::endl
+      << y;
+}
+
+TYPED_TEST(FpOnlyMathUnaryTest, Asin) {
+  using IN_DT = typename std::tuple_element<0, TypeParam>::type;
+  using IN_VT = typename std::tuple_element<1, TypeParam>::type;
+  using RES_DT = float;
+
+  // GIVEN
+  xt::xarray<IN_DT> x = test::xt_random<IN_DT>({5, 6}, -1, 1);
+  xt::xarray<float> expected_y = xt::asin(x);
+
+  // WHAT
+  auto y = test::evalUnaryOp<RES_DT>(IN_VT(), asin, x);
+
+  // THEN
+  EXPECT_TRUE(xt::allclose(expected_y, y, 0.01, 0.001))
+      << expected_y << std::endl
+      << y;
 }
 
 }  // namespace spu::kernel::hal

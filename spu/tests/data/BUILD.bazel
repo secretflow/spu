@@ -20,5 +20,12 @@ filegroup(
         "alice.csv",
         "bob.csv",
         "carol.csv",
+        "db.csv",
+        "ground_truth.csv",
+        "pir/100K-1-16.json",
+        "pir/db.csv",
+        "pir/ground_truth.csv",
+        "pir/query.csv",
+        "query.csv",
     ],
 )

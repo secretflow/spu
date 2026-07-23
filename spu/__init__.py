@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-from . import psi
+from . import experimental, psi
 from .api import Io, Runtime, check_cpu_feature, compile
 from .intrinsic import *
 from .spu_pb2 import (  # type: ignore
@@ -28,7 +28,7 @@ from .spu_pb2 import (  # type: ignore
     Visibility,
 )
 from .utils import simulation
-from .version import __version__  # type: ignore
+from .version import __version__  # type: ignor
 
 __all__ = [
     "__version__",

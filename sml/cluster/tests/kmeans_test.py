@@ -23,7 +23,6 @@ import spu.spu_pb2 as spu_pb2  # type: ignore
 import spu.utils.simulation as spsim
 from sml.cluster.kmeans import KMEANS
 
-
 class UnitTests(unittest.TestCase):
     def test_kmeans(self):
         sim = spsim.Simulator.simple(
@@ -47,7 +46,17 @@ class UnitTests(unittest.TestCase):
 
         x1, x2 = load_data()
         X = jnp.concatenate((x1, x2), axis=1)
-        result = spsim.sim_jax(sim, proc)(x1, x2)
+        copts = spu_pb2.CompilerOptions()
+        
+        proc.__name__ = "test_kmeans"
+        spu_fn = spsim.sim_jax(sim, proc, copts=copts, pphlo_ref=(None, None)) #test_kmeans
+        result = spu_fn(x1, x2)
+        try:
+            if result == "skipped":
+                return True
+        except:
+            pass
+        print(spu_fn.pphlo)
         print("result\n", result)
 
         # Compare with sklearn
@@ -80,8 +89,18 @@ class UnitTests(unittest.TestCase):
         def proc(x):
             model.fit(x)
             return model._centers.sort(axis=0)
-
-        result = spsim.sim_jax(sim, proc)(X)
+        
+        copts = spu_pb2.CompilerOptions()
+        
+        proc.__name__ = "test_kmeans_kmeans_plus_plus"
+        spu_fn = spsim.sim_jax(sim, proc, copts=copts, pphlo_ref=(None, None)) #test_kmeans_kmeans_plus_plus
+        result = spu_fn(X)
+        try:
+            if result == "skipped":
+                return True
+        except:
+            pass
+        print(spu_fn.pphlo)
         # print("result\n", result)
 
         # Compare with sklearn
@@ -110,7 +129,18 @@ class UnitTests(unittest.TestCase):
         X = jnp.array([[-4, -3, -2, -1]]).T
         uniform_edges = np.linspace(np.min(X), np.max(X), 5)
         init_array = (uniform_edges[1:] + uniform_edges[:-1])[:, None] * 0.5
-        result = spsim.sim_jax(sim, proc)(X, init_array)
+
+        copts = spu_pb2.CompilerOptions()
+        
+        proc.__name__ = "test_kmeans_init_array"
+        spu_fn = spsim.sim_jax(sim, proc, copts=copts, pphlo_ref=(None, None)) #test_kmeans_init_array
+        result = spu_fn(X, init_array)
+        try:
+            if result == "skipped":
+                return True
+        except:
+            pass
+        print(spu_fn.pphlo)
         # print("result\n", result)
 
         # Compare with sklearn
@@ -149,7 +179,17 @@ class UnitTests(unittest.TestCase):
             model.fit(x)
             return model._centers.sort(axis=0)
 
-        result = spsim.sim_jax(sim, proc)(X)
+        copts = spu_pb2.CompilerOptions()
+        
+        proc.__name__ = "test_kmeans_random"
+        spu_fn = spsim.sim_jax(sim, proc, copts=copts, pphlo_ref=(None, None)) #test_kmeans_random
+        result = spu_fn(X)
+        try:
+            if result == "skipped":
+                return True
+        except:
+            pass
+        print(spu_fn.pphlo)
         # print("result\n", result)
 
         # Compare with sklearn

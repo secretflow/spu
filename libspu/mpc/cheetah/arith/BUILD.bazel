@@ -40,7 +40,7 @@ spu_cc_library(
     name = "cheetah_mul",
     srcs = ["cheetah_mul.cc"],
     hdrs = ["cheetah_mul.h"],
-    deps = [":arith_comm"],
+    deps = [":simd_mul_prot"],
 )
 
 spu_cc_library(
@@ -49,7 +49,15 @@ spu_cc_library(
     hdrs = ["matmat_prot.h"],
     deps = [
         ":arith_comm",
+        "//libspu/mpc/cheetah/rlwe:lwe",
     ],
+)
+
+spu_cc_library(
+    name = "simd_mul_prot",
+    srcs = ["simd_mul_prot.cc"],
+    hdrs = ["simd_mul_prot.h"],
+    deps = [":arith_comm"],
 )
 
 spu_cc_library(
@@ -80,17 +88,6 @@ spu_cc_test(
 )
 
 spu_cc_test(
-    name = "cheetah_mul_test",
-    srcs = ["cheetah_mul_test.cc"],
-    deps = [
-        ":cheetah_mul",
-        "//libspu/mpc/utils:ring_ops",
-        "//libspu/mpc/utils:simulate",
-        "@com_github_xtensor_xtensor//:xtensor",
-    ],
-)
-
-spu_cc_test(
     name = "cheetah_dot_test",
     size = "large",
     srcs = ["cheetah_dot_test.cc"],
@@ -100,4 +97,20 @@ spu_cc_test(
         "//libspu/mpc/utils:simulate",
         "@com_github_xtensor_xtensor//:xtensor",
     ],
+)
+
+spu_cc_test(
+    name = "simd_mul_test",
+    srcs = ["simd_mul_prot_test.cc"],
+    deps = [
+        ":simd_mul_prot",
+        "//libspu/mpc/utils:ring_ops",
+        "//libspu/mpc/utils:simulate",
+    ],
+)
+
+spu_cc_test(
+    name = "vector_encoder_test",
+    srcs = ["vector_encoder_test.cc"],
+    deps = [":arith_comm"],
 )

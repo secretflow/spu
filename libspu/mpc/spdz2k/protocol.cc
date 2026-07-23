@@ -50,7 +50,7 @@ void regSpdz2kProtocol(SPUContext* ctx,
   ctx->prot()->addState<Spdz2kState>(ctx->config(), lctx);
   ctx->prot()
       ->regKernel<spdz2k::P2A, spdz2k::A2P, spdz2k::A2V, spdz2k::V2A,
-                  spdz2k::NotA, spdz2k::AddAP, spdz2k::AddAA, spdz2k::MulAP,
+                  spdz2k::NegateA, spdz2k::AddAP, spdz2k::AddAA, spdz2k::MulAP,
                   spdz2k::MulAA, spdz2k::MatMulAP, spdz2k::MatMulAA,
                   spdz2k::LShiftA, spdz2k::TruncA, spdz2k::RandA>();
 

@@ -27,7 +27,7 @@ class JnpTestAby3FM64(JnpTests.JnpTestBase):
         self._sim = ppsim.Simulator.simple(
             3, spu_pb2.ProtocolKind.ABY3, spu_pb2.FieldType.FM64
         )
-        self._rng = np.random.RandomState()
+        self._rng = np.random.RandomState(seed=0)
 
 
 if __name__ == "__main__":

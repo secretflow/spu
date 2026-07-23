@@ -60,9 +60,9 @@ std::vector<NdArrayRef> Spdz2kIo::toShares(const NdArrayRef& raw,
     const auto runtime_field = getRuntimeField(field);
     NdArrayRef x(makeType<Pub2kTy>(runtime_field), raw.shape());
 
-    DISPATCH_ALL_FIELDS(field, "_", [&]() {
+    DISPATCH_ALL_FIELDS(field, [&]() {
       NdArrayView<ring2k_t> _raw(raw);
-      DISPATCH_ALL_FIELDS(runtime_field, "_", [&]() {
+      DISPATCH_ALL_FIELDS(runtime_field, [&]() {
         NdArrayView<ring2k_t> _x(x);
         pforeach(0, raw.numel(), [&](int64_t idx) {
           _x[idx] = static_cast<ring2k_t>(_raw[idx]);
@@ -113,9 +113,9 @@ NdArrayRef Spdz2kIo::fromShares(const std::vector<NdArrayRef>& shares) const {
     {
       NdArrayRef x(makeType<Pub2kTy>(field_), res.shape());
 
-      DISPATCH_ALL_FIELDS(field, "_", [&]() {
+      DISPATCH_ALL_FIELDS(field, [&]() {
         NdArrayView<ring2k_t> _res(res);
-        DISPATCH_ALL_FIELDS(field_, "_", [&]() {
+        DISPATCH_ALL_FIELDS(field_, [&]() {
           NdArrayView<ring2k_t> _x(x);
           pforeach(0, x.numel(), [&](int64_t idx) {
             _x[idx] = static_cast<ring2k_t>(_res[idx]);

@@ -24,6 +24,13 @@ class SPUContext;
 
 namespace spu::kernel::hal {
 
+struct TopKConfig {
+  bool value_only;  // only return values
+  bool confusion;   // add random noise to hide the data-dependant pattern
+  int64_t k_lo;     // the `k_lo`-th largest element order is guaranteed
+  int64_t k_hi;     // returning the largest `k_hi` values (or with indices)
+};
+
 using SimpleCompFn = std::function<spu::Value(SPUContext *, const spu::Value &,
                                               const spu::Value &)>;
 
@@ -66,14 +73,10 @@ std::vector<spu::Value> permute(SPUContext *ctx,
 // general topk1d
 // Inputs:
 //  -inputs: an 1-D operand to search top k elements
-//  -ks: {k_lo, k_hi} now, which means returning the largest `k_hi` values
-//  (maybe with indices), among which the `k_lo`-th element
-// is exactly the `k_lo`-th largest element
 //  -scalar_cmp: comparison function for single value
-//  -value_only: if true, then only top k values will be returned
-std::vector<Value> topk_1d(SPUContext *ctx, const spu::Value &inputs,
-                           const std::vector<int64_t> &ks,
+//  -config: topk config
+std::vector<Value> topk_1d(SPUContext *ctx, const spu::Value &input,
                            const SimpleCompFn &scalar_cmp,
-                           bool value_only = false);
+                           const TopKConfig &config);
 
 }  // namespace spu::kernel::hal

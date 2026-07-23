@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "yacl/crypto/base/hash/hash_interface.h"
+#include "yacl/crypto/hash/hash_interface.h"
 #include "yacl/link/link.h"
 
 // TODO: move commitment scheme to yacl

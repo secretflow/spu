@@ -1,0 +1,28 @@
+{
+    "name": "atan2",
+    "template": "basic_binary",
+    "testcases": [
+        {
+            "inputs": [
+                {
+                    "data": "[0.0, 1.0, -1.0]",
+                    "shape": "3",
+                    "dtype": "f64"
+                },
+                {
+                    "data": "[0.0, 0.0, 0.0]",
+                    "shape": "3",
+                    "dtype": "f64"
+                }
+            ],
+            "expected": [
+                {
+                    "data": "[0.0, 1.5707963267948966, -1.5707963267948966]",
+                    "shape": "3",
+                    "dtype": "f64"
+                }
+            ],
+            "checker": "expect_almost_eq"
+        }
+    ]
+}

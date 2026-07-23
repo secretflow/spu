@@ -30,5 +30,19 @@ class JnpTestSemi2kFM128(JnpTests.JnpTestBase):
         self._rng = np.random.RandomState()
 
 
+class JnpTestSemi2kFM128TwoParty(JnpTests.JnpTestBase):
+    def setUp(self):
+        config = spu_pb2.RuntimeConfig(
+            protocol=spu_pb2.ProtocolKind.SEMI2K, field=spu_pb2.FieldType.FM128
+        )
+        config.experimental_enable_exp_prime = True
+        config.experimental_exp_prime_enable_upper_bound = True
+        config.experimental_exp_prime_offset = 13
+        config.experimental_exp_prime_disable_lower_bound = False
+        config.fxp_exp_mode = spu_pb2.RuntimeConfig.ExpMode.EXP_PRIME
+        self._sim = ppsim.Simulator(2, config)
+        self._rng = np.random.RandomState()
+
+
 if __name__ == "__main__":
     unittest.main()

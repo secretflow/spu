@@ -34,6 +34,11 @@ public:
 private:
   CompilationContext *ctx_;
 
+#ifdef EXPOSE_PIPELINE_BUILDER
+public:
+#else
+private: // NOLINT:
+#endif
   void buildPipeline(mlir::PassManager *pm);
 };
 

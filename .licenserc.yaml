@@ -40,6 +40,7 @@ header: # <1>
     - '**/*.mlir'
     - '**/*.csv'
     - '**/*.tmpl'
+    - 'libspu/compiler/tests/interpret/template/**.template'
     - 'LICENSE'
     - 'NOTICE'
     - '.bazelversion'

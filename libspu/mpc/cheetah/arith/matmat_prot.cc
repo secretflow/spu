@@ -25,6 +25,7 @@
 #include "yacl/utils/platform_utils.h"
 
 #include "libspu/mpc/cheetah/arith/vector_encoder.h"
+#include "libspu/mpc/cheetah/rlwe/lwe_ct.h"
 #include "libspu/mpc/cheetah/rlwe/utils.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
@@ -112,7 +113,7 @@ NdArrayRef ConcatSubMatrix(const NdArrayRef& mat, const Shape2D& mat_shape,
   // NOTE: zero padding via initialization
   NdArrayRef flatten = ring_zeros(field, {num_coeff});
 
-  DISPATCH_ALL_FIELDS(field, "ConcatSubMat", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using uT = std::make_unsigned<ring2k_t>::type;
 
     for (int64_t r = 0, rr = starts[0]; r < extents[0]; ++r, ++rr) {
@@ -182,7 +183,7 @@ Shape3D MatMatProtocol::GetSubMatShape(const Meta& meta, int64_t poly_deg,
   const double cpu_price = 1.0;
   const double bandwidth_price = 1000.0;
 
-  Shape3D subshape;
+  Shape3D subshape = {0, 0, 0};
   Shape3D blk;
 
   const int64_t n = poly_deg;
@@ -422,7 +423,7 @@ NdArrayRef MatMatProtocol::ParseResult(FieldType field, const Meta& meta,
       for (int64_t r = 0; r < row_ext; ++r) {
         for (int64_t c = 0; c < col_ext; ++c) {
           int64_t dst_idx = (r + row_start) * meta.dims[2] + col_start + c;
-          DISPATCH_ALL_FIELDS(field, "ParseResult", [&]() {
+          DISPATCH_ALL_FIELDS(field, [&]() {
             matmat.at<ring2k_t>(dst_idx) =
                 result_poly.at<ring2k_t>(r * subdims[2] + c);
           });
@@ -519,6 +520,87 @@ NdArrayRef MatMatProtocol::ParseResult(
     FieldType field, const Meta& meta,
     absl::Span<const RLWEPt> ans_poly) const {
   return ParseResult(field, meta, ans_poly, msh_);
+}
+
+NdArrayRef MatMatProtocol::ParsePackLWEsResult(
+    FieldType field, const Meta& meta, absl::Span<const RLWEPt> ans_poly,
+    const ModulusSwitchHelper& msh) const {
+  const size_t packing_width = poly_deg_;
+  const size_t num_total_vals = meta.dims[0] * meta.dims[2];
+  SPU_ENFORCE_EQ(ans_poly.size(), CeilDiv(num_total_vals, packing_width));
+
+  std::vector<NdArrayRef> decoded_vectors(ans_poly.size());
+  for (size_t i = 0; i < ans_poly.size(); ++i) {
+    decoded_vectors[i] =
+        msh.ModulusDownRNS(field, {static_cast<int64_t>(packing_width)},
+                           {ans_poly[i].data(), ans_poly[i].coeff_count()});
+  }
+
+  NdArrayRef matmat = ring_zeros(field, {meta.dims[0] * meta.dims[2]});
+
+  DISPATCH_ALL_FIELDS(field, [&]() {
+    NdArrayView<ring2k_t> xmatmat(matmat);
+
+    for (size_t i = 0; i < ans_poly.size(); ++i) {
+      NdArrayView<const ring2k_t> decoded_vec(decoded_vectors[i]);
+      auto coeff_bgn = std::min<size_t>(i * poly_deg_, num_total_vals);
+      auto coeff_end = std::min<size_t>(coeff_bgn + poly_deg_, num_total_vals);
+
+      size_t num_coeff = coeff_end - coeff_bgn;
+      size_t aligned_num_coeff = absl::bit_ceil(num_coeff);
+      size_t packed_gap = packing_width / aligned_num_coeff;
+
+      for (size_t j = coeff_bgn; j < coeff_end; ++j) {
+        size_t row = j / meta.dims[2];
+        size_t col = j % meta.dims[2];
+        xmatmat[row * meta.dims[2] + col] =
+            decoded_vec[(j - coeff_bgn) * packed_gap];
+      }
+    }
+  });
+
+  return matmat.reshape({meta.dims[0], meta.dims[2]});
+}
+
+void MatMatProtocol::WrapPhantomLWEs(const Meta& meta,
+                                     absl::Span<const RLWECt> rlwes,
+                                     absl::Span<PhantomLWECt> lwes) const {
+  auto subdims = GetSubMatShape(meta);
+  size_t num_rlwes = GetOutSize(meta, subdims);
+  size_t num_lwes = meta.dims[0] * meta.dims[2];
+  SPU_ENFORCE_EQ(rlwes.size(), num_rlwes, "expected {} got {}", num_rlwes,
+                 rlwes.size());
+  SPU_ENFORCE_EQ(lwes.size(), num_lwes, "expected {} got {}", num_lwes,
+                 lwes.size());
+
+  ResultIndexer ans_indexer(subdims);
+  Shape2D out_blks = {CeilDiv(meta.dims[0], subdims[0]),
+                      CeilDiv(meta.dims[2], subdims[2])};
+
+  for (int64_t rblk = 0; rblk < out_blks[0]; ++rblk) {
+    for (int64_t cblk = 0; cblk < out_blks[1]; ++cblk) {
+      const int64_t row_start = rblk * subdims[0];
+      const int64_t row_end = std::min(row_start + subdims[0], meta.dims[0]);
+      const int64_t row_ext = row_end - row_start;
+
+      const int64_t col_start = cblk * subdims[2];
+      const int64_t col_end = std::min(col_start + subdims[2], meta.dims[2]);
+      const int64_t col_ext = col_end - col_start;
+
+      const int64_t rlwe_idx = rblk * out_blks[1] + cblk;
+      const RLWECt& this_rlwe = rlwes.at(rlwe_idx);
+      SPU_ENFORCE(not this_rlwe.is_ntt_form());
+
+      for (int64_t r = 0; r < row_ext; ++r) {
+        int64_t lwes_row = row_start + r;
+        for (int64_t c = 0; c < col_ext; ++c) {
+          int64_t lwes_col = col_start + c;
+          int64_t lwe_idx = lwes_row * meta.dims[2] + lwes_col;
+          lwes[lwe_idx].WrapIt(this_rlwe, ans_indexer.get(r, c));
+        }
+      }
+    }
+  }
 }
 
 void MatMatProtocol::ExtractLWEsInplace(const Meta& meta,

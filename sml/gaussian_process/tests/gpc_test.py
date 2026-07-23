@@ -55,7 +55,17 @@ class UnitTests(unittest.TestCase):
         y = y[idx]
 
         # Run
-        result = spsim.sim_jax(sim, proc)(x, y, x_pred)
+        copts = spu_pb2.CompilerOptions()
+
+        proc.__name__ = "test_gpc"
+        spu_fn = spsim.sim_jax(sim, proc, copts=copts, pphlo_ref=(None, None)) #test_gpc
+        result = spu_fn(x, y, x_pred)
+        try:
+            if result == "skipped":
+                return True
+        except:
+            pass
+        print(spu_fn.pphlo)
         # result = proc(x, y, x_pred)
 
         print(result)

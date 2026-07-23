@@ -67,19 +67,21 @@ class _GeneralizedLinearRegressor:
         self.loss_model = self._get_loss()
         self.link_model = self._get_link()
         self.loss_model.set_sample_weight(sample_weight)
+        print(self.warm_start)
 
         if not self.warm_start or not hasattr(self, "coef_"):
             self.coef_ = None
-        if self.solver == "lbfgs":
-            warnings.warn(
-                "LBFGS algorithm will be very costly, because of the dummy early stop schema",
-                UserWarning,
-            )
-            self._fit_lbfgs(X, y)
-        elif self.solver == "newton-cholesky":
-            self._fit_newton_cholesky(X, y)
-        else:
-            raise ValueError(f"Invalid solver={self.solver}.")
+        self._fit_newton_cholesky(X, y)
+        # if self.solver == "lbfgs":
+        #     warnings.warn(
+        #         "LBFGS algorithm will be very costly, because of the dummy early stop schema",
+        #         UserWarning,
+        #     )
+        #     self._fit_lbfgs(X, y)
+        # elif self.solver == "newton-cholesky":
+        #     self._fit_newton_cholesky(X, y)
+        # else:
+        #     raise ValueError(f"Invalid solver={self.solver}.")
 
     def _get_loss(self):
         return HalfSquaredLoss()  # Choose the loss function as needed

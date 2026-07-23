@@ -14,6 +14,7 @@
 
 #include "libspu/compiler/front_end/fe.h"
 
+#include "fmt/ranges.h"
 #include "mlir/Dialect/Func/Extensions/InlinerExtension.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/IR/BuiltinOps.h"
@@ -28,9 +29,10 @@
 
 #include "libspu/compiler/common/compilation_context.h"
 #include "libspu/compiler/front_end/hlo_importer.h"
-#include "libspu/compiler/passes/passes.h"
+#include "libspu/compiler/utils/utils.h"
 #include "libspu/core/prelude.h"
-#include "libspu/dialect/pphlo/dialect.h"
+#include "libspu/dialect/pphlo/IR/dialect.h"
+#include "libspu/dialect/pphlo/transforms/passes.h"
 
 namespace spu::compiler {
 
@@ -51,6 +53,8 @@ mlir::OwningOpRef<mlir::ModuleOp> FE::doit(const CompilationSource &source) {
   if (source.ir_type() == spu::SourceIRType::STABLEHLO) {
     module = mlir::parseSourceString<mlir::ModuleOp>(source.ir_txt(),
                                                      ctx_->getMLIRContext());
+
+    SPU_ENFORCE(module, "MLIR parser failure");
 
     // Convert stablehlo to mhlo first
     mlir::PassManager pm(ctx_->getMLIRContext());
@@ -99,36 +103,62 @@ mlir::OwningOpRef<mlir::ModuleOp> FE::doit(const CompilationSource &source) {
 }
 
 void FE::buildFrontEndPipeline(mlir::PassManager *pm, const std::string &args) {
-
+  const auto &compiler_options = ctx_->getCompilerOptions();
   // mhlo side
   {
-    pm->addPass(mlir::createInlinerPass());
-    pm->addPass(mlir::mhlo::createExpandHloTuplesPass());
+    const auto &compiler_options = ctx_->getCompilerOptions();
+    // Start to modify Flags to enable/disable passes
+    if (!compiler_options.disable_mlir_createinlinerpass()) {
+      pm->addPass(mlir::createInlinerPass());
+    }
+    if (!compiler_options.disable_mlir_mhlo_createexpandhlotuplespass()) {
+      pm->addPass(mlir::mhlo::createExpandHloTuplesPass());
+    }
 
     auto &optPM = pm->nest<mlir::func::FuncOp>();
-    optPM.addPass(mlir::mhlo::createLowerComplexPass());
-    optPM.addPass(mlir::mhlo::createLegalizeEinsumToDotGeneralPass());
-    optPM.addPass(mlir::mhlo::createLegalizeGeneralDotPass());
-    optPM.addPass(mlir::mhlo::createSinkConstantsToControlFlowPass());
-    optPM.addPass(mlir::mhlo::createLowerComplexPass());
-    optPM.addPass(mlir::mhlo::createFlattenTuplePass());
-    optPM.addPass(mlir::mhlo::createBroadcastPropagationPass());
+    if (!compiler_options.disable_mlir_mhlo_createlowercomplexpass()) {
+      optPM.addPass(mlir::mhlo::createLowerComplexPass());
+    }
+    if (!compiler_options.disable_mlir_mhlo_createlegalizeeinsumtodotgeneralpass()) {
+      optPM.addPass(mlir::mhlo::createLegalizeEinsumToDotGeneralPass());
+    }
+    if (!compiler_options.disable_mlir_mhlo_createlegalizegeneraldotpass()) {
+      optPM.addPass(mlir::mhlo::createLegalizeGeneralDotPass());
+    }
+    if (!compiler_options.disable_mlir_mhlo_createsinkconstantstocontrolflowpass()) {
+      optPM.addPass(mlir::mhlo::createSinkConstantsToControlFlowPass());
+    }
+    if (!compiler_options.disable_mlir_mhlo_createlowercomplexpass_1()) {
+      optPM.addPass(mlir::mhlo::createLowerComplexPass());
+    }
+    if (!compiler_options.disable_mlir_mhlo_createflattentuplepass()) {
+      optPM.addPass(mlir::mhlo::createFlattenTuplePass());
+    }
+    if (!compiler_options.disable_mlir_mhlo_createbroadcastpropagationpass()) {
+      optPM.addPass(mlir::mhlo::createBroadcastPropagationPass());
+    }
+    // End of modifying Flags to enable/disable passes
 
     // Convert to stablehlo
     pm->addPass(mlir::mhlo::createHloLegalizeToStablehloPass());
   }
 
-  // stablehlo now
-  // Dialect conversion
-  {
-    auto l = mlir::spu::pphlo::createLegalizeToPPHloPass();
-    if (!args.empty()) {
-      SPU_ENFORCE(l->initializeOptions(args).succeeded());
+  if (!compiler_options.testplaintext()) {
+    // stablehlo now
+    // Dialect conversion
+    {
+      auto l = mlir::spu::pphlo::createLegalizeToPPHloPass();
+      if (!args.empty()) {
+        SPU_ENFORCE(
+            l->initializeOptions(args, mlir::spu::argparser_error_handler)
+                .succeeded());
+      }
+      pm->addPass(std::move(l));
     }
-    pm->addPass(std::move(l));
+    auto &optPM = pm->nest<mlir::func::FuncOp>();
+    optPM.addPass(mlir::spu::pphlo::createLowerConversionCastPass());
   }
-  auto &optPM = pm->nest<mlir::func::FuncOp>();
-  optPM.addPass(mlir::spu::pphlo::createLowerConversionCastPass());
 }
 
 } // namespace spu::compiler
+

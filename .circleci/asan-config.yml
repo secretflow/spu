@@ -19,7 +19,7 @@ version: 2.1
 parameters:
   run-asan:
     type: boolean
-    default: false
+    default: true
 
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
@@ -55,7 +55,7 @@ jobs:
           command: |
             set +e
             declare -i test_status
-            bazel test //libspu/... --features=asan --ui_event_filters=-info,-debug,-warning --test_output=errors | tee test_result.log; test_status=${PIPESTATUS[0]}
+            bazel test //libspu/... --features=asan --test_timeout=500 --ui_event_filters=-info,-debug,-warning --test_output=errors | tee test_result.log; test_status=${PIPESTATUS[0]}
 
             sh ../devtools/rename-junit-xml.sh
             find bazel-testlogs/ -type f -name "test.log"  -print0 | xargs -0 tar -cvzf test_logs.tar.gz

@@ -56,7 +56,7 @@ NdArrayRef makeBShare(const NdArrayRef& s1, const NdArrayRef& s2,
   NdArrayRef res(ty, new_shape);
   int64_t res_numel = res.numel();
 
-  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<std::array<ring2k_t, 2>> _res(res);
 
     pforeach(0, res_numel * k, [&](int64_t i) {
@@ -108,7 +108,7 @@ NdArrayRef getShare(const NdArrayRef& in, int64_t share_idx) {
     } else {
       NdArrayRef ret(ty, new_shape);
 
-      DISPATCH_ALL_FIELDS(field, "_", [&]() {
+      DISPATCH_ALL_FIELDS(field, [&]() {
         size_t numel = in.numel();
         NdArrayView<ring2k_t> _ret(ret);
         NdArrayView<std::array<ring2k_t, 2>> _in(in);
@@ -141,7 +141,7 @@ size_t maxNumBits(const NdArrayRef& lhs, const NdArrayRef& rhs) {
   }
   const auto* rhs_ty = rhs.eltype().as<Pub2kTy>();
   const auto rhs_field = rhs_ty->field();
-  return DISPATCH_ALL_FIELDS(rhs_field, "_", [&]() {
+  return DISPATCH_ALL_FIELDS(rhs_field, [&]() {
     using PShrT = ring2k_t;
     return std::max(lhs.eltype().as<BShare>()->nbits(),
                     maxBitWidth<PShrT>(rhs));
@@ -158,7 +158,7 @@ size_t minNumBits(const NdArrayRef& lhs, const NdArrayRef& rhs) {
   }
   const auto* rhs_ty = rhs.eltype().as<Pub2kTy>();
   const auto rhs_field = rhs_ty->field();
-  return DISPATCH_ALL_FIELDS(rhs_field, "_", [&]() {
+  return DISPATCH_ALL_FIELDS(rhs_field, [&]() {
     using PShrT = ring2k_t;
     return std::min(lhs.eltype().as<BShare>()->nbits(),
                     maxBitWidth<PShrT>(rhs));

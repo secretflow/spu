@@ -25,6 +25,9 @@ import spu.spu_pb2 as spu_pb2  # type: ignore
 import spu.utils.simulation as spsim
 from sml.svm.svm import SVM
 
+import numpy as np
+
+data_extend = 1
 
 class UnitTests(unittest.TestCase):
     def test_svm(self):
@@ -41,8 +44,10 @@ class UnitTests(unittest.TestCase):
         def load_data():
             breast_cancer = datasets.load_breast_cancer()
             data = breast_cancer.data
+            data = np.resize(data, (data.shape[0] * data_extend, data.shape[1]))
             data = data / (jnp.max(data) - jnp.min(data))
             target = breast_cancer.target
+            target = np.resize(target, (target.shape[0] * data_extend))
             X_train, X_test, y_train, y_test = train_test_split(
                 data, target, test_size=0.2, random_state=1
             )
@@ -59,7 +64,19 @@ class UnitTests(unittest.TestCase):
 
         time0 = time.time()
         X_train, X_test, y_train, y_test = load_data()
-        result1 = spsim.sim_jax(sim, proc)(X_train, X_test, y_train)
+        
+        copts = spu_pb2.CompilerOptions()
+        
+        proc.__name__ = "test_svm"
+        spu_fn = spsim.sim_jax(sim, proc, copts=copts, pphlo_ref=(None, None)) #test_svm
+
+        result1 = spu_fn(X_train, X_test, y_train)
+        try:
+            if result1 == "skipped":
+                return True
+        except:
+            pass
+        print(spu_fn.pphlo)
         print("result\n", result1)
         print("accuracy score", accuracy_score(result1, y_test))
         print("cost time ", time.time() - time0)

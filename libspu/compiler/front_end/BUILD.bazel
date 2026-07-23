@@ -4,7 +4,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#   http://www.apache.org/licenses/LICENSE-2.0
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@yacl//bazel:yacl.bzl", "OMP_DEPS")
 load("//bazel:spu.bzl", "spu_cc_library")
 
 spu_cc_library(
@@ -27,40 +28,62 @@ spu_cc_library(
         "//libspu/compiler/common:compilation_context",
         "//libspu/core:prelude",
         "@xla//xla/service:algebraic_simplifier",
-        "@xla//xla/service:batch_dot_simplification",
         "@xla//xla/service:batchnorm_expander",
-        "@xla//xla/service:bitcast_dtypes_expander",
         "@xla//xla/service:call_inliner",
-        "@xla//xla/service:cholesky_expander",
-        "@xla//xla/service:conditional_simplifier",
         "@xla//xla/service:conditional_to_select",
-        "@xla//xla/service:convolution_4d_expander",
         "@xla//xla/service:convolution_group_converter",
-        "@xla//xla/service:dot_decomposer",
-        "@xla//xla/service:eigh_expander",
         "@xla//xla/service:float_normalization",
         "@xla//xla/service:gather_expander",
-        "@xla//xla/service:gather_simplifier",
-        "@xla//xla/service:hlo_constant_folding",
         "@xla//xla/service:hlo_cse",
         "@xla//xla/service:hlo_dce",
         "@xla//xla/service:hlo_pass_pipeline",
         "@xla//xla/service:map_inliner",
         "@xla//xla/service:operand_upcaster",
-        "@xla//xla/service:qr_expander",
-        "@xla//xla/service:real_imag_expander",
         "@xla//xla/service:reshape_mover",
         "@xla//xla/service:result_caster",
         "@xla//xla/service:scatter_expander",
-        "@xla//xla/service:slice_sinker",
-        "@xla//xla/service:sort_simplifier",
         "@xla//xla/service:triangular_solve_expander",
         "@xla//xla/service:while_loop_constant_sinking",
         "@xla//xla/service:while_loop_simplifier",
-        "@xla//xla/service:zero_sized_hlo_elimination",
-        "@xla//xla/service/gpu:dot_dimension_sorter",
+        "@xla//xla/service/gpu/transforms:dot_dimension_sorter",
         "@xla//xla/translate/hlo_to_mhlo:hlo_module_importer",
-    ],
+        "@xla//xla/service:indexed_array_analysis",
+        "@xla//xla/service:all_reduce_contiguous",
+        "@xla//xla/service:dynamic_dimension_simplifier",
+        "@xla//xla/service:stable_sort_expander",
+        "@xla//xla/service:dot_decomposer",
+        "@xla//xla/service:hlo_constant_folding",
+        "@xla//xla/service:all_reduce_folder",
+        "@xla//xla/service:conditional_canonicalizer",
+        "@xla//xla/service:reshape_decomposer",
+        "@xla//xla/service:convolution_4d_expander",
+        "@xla//xla/service:add_original_value",
+        "@xla//xla/service:fusion_constant_sinking",
+        "@xla//xla/service:all_gather_broadcast_reorder",
+        "@xla//xla/service:conditional_simplifier",
+        "@xla//xla/service:p2p_schedule_preparation",
+        "@xla//xla/service:gather_simplifier",
+        "@xla//xla/service:rng_expander",
+        "@xla//xla/service:select_and_scatter_expander",
+        "@xla//xla/service:real_imag_expander",
+        "@xla//xla/service:eigh_expander",
+        "@xla//xla/service:zero_sized_hlo_elimination",
+        "@xla//xla/service:convolution_pred_expander",
+        "@xla//xla/service:flatten_call_graph",
+        "@xla//xla/service:cholesky_expander",
+        "@xla//xla/service:stochastic_convert_decomposer",
+        "@xla//xla/service:sharding_remover",
+        "@xla//xla/service:qr_expander",
+        "@xla//xla/service:slice_sinker",
+        "@xla//xla/service:batch_dot_simplification",
+        "@xla//xla/service:convert_operand_folding",
+        "@xla//xla/service:sort_simplifier",
+        "@xla//xla/service:scatter_simplifier",
+        "@xla//xla/service:collective_quantizer",
+        "@xla//xla/service:dot_dimension_merger",
+        "@xla//xla/service:bitcast_dtypes_expander",
+        "@xla//xla/service:reduce_scatter_reassociate",
+    ] + OMP_DEPS,
 )
 
 spu_cc_library(
@@ -71,8 +94,8 @@ spu_cc_library(
     deps = [
         ":hlo_importer",
         "//libspu/compiler/common:compilation_context",
-        "//libspu/compiler/passes:hlo_legalize_to_pphlo",
-        "//libspu/compiler/passes:lower_conversion_cast",
+        "//libspu/compiler/utils",
+        "//libspu/dialect/pphlo/transforms:all_passes",
         "@llvm-project//mlir:FuncExtensions",
         "@llvm-project//mlir:Parser",
         "@xla//xla/mlir_hlo:mhlo_passes",

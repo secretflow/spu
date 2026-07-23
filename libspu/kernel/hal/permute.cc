@@ -19,6 +19,7 @@
 #include "libspu/core/bit_utils.h"
 #include "libspu/core/context.h"
 #include "libspu/core/trace.h"
+#include "libspu/core/vectorize.h"
 #include "libspu/kernel/hal/constants.h"
 #include "libspu/kernel/hal/polymorphic.h"
 #include "libspu/kernel/hal/prot_wrapper.h"
@@ -41,6 +42,12 @@ inline int64_t _get_owner(const Value &x) {
 
 inline bool _has_same_owner(const Value &x, const Value &y) {
   return _get_owner(x) == _get_owner(y);
+}
+
+void _hint_nbits(const Value &a, size_t nbits) {
+  if (a.storage_type().isa<BShare>()) {
+    const_cast<Type &>(a.storage_type()).as<BShare>()->setNbits(nbits);
+  }
 }
 
 // generate inverse permutation
@@ -113,12 +120,16 @@ std::vector<spu::Value> odd_even_merge_sort(
   // make a copy for inplace sort
   std::vector<spu::Value> ret;
   for (auto const &input : inputs) {
+    spu::Value casted;
     if (!input.isSecret()) {
       // we can not linear_scatter a secret value to a public operand
-      ret.emplace_back(_2s(ctx, input.clone()).setDtype(input.dtype()));
+      casted = _2s(ctx, input.clone()).setDtype(input.dtype());
     } else {
-      ret.emplace_back(input.clone());
+      casted = input.clone();
     }
+    // we can not linear_scatter an ashare value to a bshare operand
+    casted = _prefer_a(ctx, casted);
+    ret.emplace_back(std::move(casted));
   }
 
   // sort by per network layer for memory optimizations, sorting N elements
@@ -167,31 +178,28 @@ void Swap(absl::Span<spu::Value> arr, const Index &lhs_indices,
   const auto num_operands = arr.size();
 
   for (size_t i = 0; i < num_operands; ++i) {
-    // when confusion is set to false or only return value, then some operands
-    // will get DT_INVALID.
-    if (arr[i].dtype() != DT_INVALID) {
-      auto lhs_arr = arr[i].data().linear_gather(lhs_indices);
-      auto rhs_arr = arr[i].data().linear_gather(rhs_indices);
+    auto lhs_arr = arr[i].data().linear_gather(lhs_indices);
+    auto rhs_arr = arr[i].data().linear_gather(rhs_indices);
 
-      arr[i].data().linear_scatter(lhs_arr, rhs_indices);
-      arr[i].data().linear_scatter(rhs_arr, lhs_indices);
-    }
+    arr[i].data().linear_scatter(lhs_arr, rhs_indices);
+    arr[i].data().linear_scatter(rhs_arr, lhs_indices);
   }
 }
 
 void CompSwapSingle(SPUContext *ctx, const CompFn &comparator_body,
-                    absl::Span<spu::Value> arr, int64_t lo, int64_t hi) {
+                    absl::Span<spu::Value> arr, int64_t lo, int64_t hi,
+                    const TopKConfig &config) {
   if (lo == hi) {
     return;
   }
   // const auto num_operands = arr.size();
   std::vector<Value> values;
-  values.reserve(4);
-  for (size_t i = 0; i < 2; ++i) {
-    if (arr[i].dtype() != DT_INVALID) {
-      values.emplace_back(slice_scalar_at(ctx, arr[i], {lo}));
-      values.emplace_back(slice_scalar_at(ctx, arr[i], {hi}));
-    }
+
+  values.emplace_back(slice_scalar_at(ctx, arr[0], {lo}));
+  values.emplace_back(slice_scalar_at(ctx, arr[0], {hi}));
+  if (config.confusion) {
+    values.emplace_back(slice_scalar_at(ctx, arr[1], {lo}));
+    values.emplace_back(slice_scalar_at(ctx, arr[1], {hi}));
   }
 
   auto predicate = comparator_body(values);
@@ -203,15 +211,16 @@ void CompSwapSingle(SPUContext *ctx, const CompFn &comparator_body,
 }
 
 void HandleSmallArray(SPUContext *ctx, const CompFn &comparator_body,
-                      absl::Span<spu::Value> arr, int64_t lo, int64_t hi) {
+                      absl::Span<spu::Value> arr, int64_t lo, int64_t hi,
+                      const TopKConfig &config) {
   if (hi == lo + 1) {
-    CompSwapSingle(ctx, comparator_body, arr, lo, hi);
+    CompSwapSingle(ctx, comparator_body, arr, lo, hi, config);
   }
 }
 
 void TwoWayPartition(SPUContext *ctx, const CompFn &comparator_body,
                      absl::Span<spu::Value> arr, int64_t lo, int64_t hi,
-                     const std::vector<int64_t> &ks,
+                     const TopKConfig &config,
                      std::vector<std::pair<int64_t, int64_t>> &intervals) {
   // Just use first element as pivot, so left=lo+1
   auto left = lo + 1;
@@ -222,16 +231,15 @@ void TwoWayPartition(SPUContext *ctx, const CompFn &comparator_body,
   std::vector<Value> values;
   // arr contains: value, random_value, index
   // values: pivot_value, rest_value, pivot_rand, rest_rand
-  values.reserve(4);
-  for (size_t i = 0; i < 2; ++i) {
-    // when confusion is set to false, then gets DT_INVALID value.
-    if (arr[i].dtype() != DT_INVALID) {
-      // avoid memory copy
-      values.push_back(broadcast_to(ctx, slice_scalar_at(ctx, arr[i], {lo}),
-                                    {right - left + 1}));
-      values.push_back(slice(ctx, arr[i], {left}, {right + 1}));
-    }
+  values.push_back(broadcast_to(ctx, slice_scalar_at(ctx, arr[0], {lo}),
+                                {right - left + 1}));
+  values.push_back(slice(ctx, arr[0], {left}, {right + 1}));
+  if (config.confusion) {
+    values.push_back(broadcast_to(ctx, slice_scalar_at(ctx, arr[1], {lo}),
+                                  {right - left + 1}));
+    values.push_back(slice(ctx, arr[1], {left}, {right + 1}));
   }
+
   auto predicate = comparator_body(values);
   auto _predicate = dump_public_as<bool>(ctx, hal::reveal(ctx, predicate));
 
@@ -262,37 +270,35 @@ void TwoWayPartition(SPUContext *ctx, const CompFn &comparator_body,
   // swap the pivot
   Swap(arr, {lo}, {right});
 
-  if (ks[0] - 1 < right && right < ks[1] - 1) {
+  if (config.k_lo - 1 < right && right < config.k_hi - 1) {
     intervals.emplace_back(lo, right - 1);
     intervals.emplace_back(left, hi);
     return;
   }
 
-  if (right >= ks[1] - 1) hi = right - 1;
-  if (right <= ks[0] - 1) lo = left;
+  if (right >= config.k_hi - 1) {
+    hi = right - 1;
+  }
+  if (right <= config.k_lo - 1) {
+    lo = left;
+  }
   intervals.emplace_back(lo, hi);
 }
 
 std::vector<spu::Value> QuickSelectTopk(SPUContext *ctx,
                                         const CompFn &comparator_body,
                                         absl::Span<spu::Value> input,
-                                        const std::vector<int64_t> &ks) {
-  SPU_ENFORCE(input.size() == 3,
-              "input should have 3 arrays, but actually has {}.", input.size());
-  SPU_ENFORCE(input.front().dtype() != DT_INVALID, "Value is not valid.");
-  const bool value_only = input[2].dtype() == DT_INVALID;
-
+                                        const TopKConfig &config) {
   const auto n = input.front().numel();
   int64_t lo;
   int64_t hi;
 
   // save value and index
   std::vector<Value> out;
-  out.reserve(2);
 
   // to support multiple ks, maintain all intervals to search
   std::vector<std::pair<int64_t, int64_t>> intervals;
-  intervals.reserve(2);
+
   // first seach the whole interval
   intervals.emplace_back(0, n - 1);
 
@@ -302,29 +308,27 @@ std::vector<spu::Value> QuickSelectTopk(SPUContext *ctx,
 
     if (hi <= lo + 1) {
       // exit loop when interval<=2
-      HandleSmallArray(ctx, comparator_body, input, lo, hi);
+      HandleSmallArray(ctx, comparator_body, input, lo, hi, config);
     } else {
-      TwoWayPartition(ctx, comparator_body, input, lo, hi, ks, intervals);
+      TwoWayPartition(ctx, comparator_body, input, lo, hi, config, intervals);
     }
   }
 
-  out.emplace_back(input[0].data().slice({0}, {ks[1]}, {}), input[0].dtype());
-  if (!value_only) {
-    out.emplace_back(input[2].data().slice({0}, {ks[1]}, {}), input[2].dtype());
+  out.push_back(slice(ctx, input.front(), {0}, {config.k_hi}));
+  if (!config.value_only) {
+    out.push_back(slice(ctx, input.back(), {0}, {config.k_hi}));
   }
   return out;
 }
 
 std::vector<spu::Value> PrepareInput(SPUContext *ctx, const Value &input,
-                                     bool confusion, bool value_only) {
+                                     const TopKConfig &config) {
   std::vector<spu::Value> inp;
-  inp.reserve(3);
 
   // shuffle with random permutation to break link of values
   auto rand_perm = _rand_perm_s(ctx, input.shape());
   inp.push_back(_perm_ss(ctx, input, rand_perm).setDtype(input.dtype()));
 
-  // TODO: add config for random value padding.
   // we concate random value to hide the data-dependant running pattern
   // for quick select;
   // consider an extreme case where all values are identical, two-way partition
@@ -333,22 +337,18 @@ std::vector<spu::Value> PrepareInput(SPUContext *ctx, const Value &input,
   // a significant amount of duplicate data in the original dataset. However,
   // with the addition of randomness, we can essentially assume that all data
   // points are unique, which would lead to a more stable runtime.
-  if (confusion) {
+  if (config.confusion) {
     inp.push_back(hal::random(ctx, Visibility::VIS_SECRET, DataType::DT_F64,
                               input.shape()));
-  } else {
-    inp.emplace_back();
   }
 
-  if (!value_only) {
+  if (!config.value_only) {
     auto dt =
         ctx->config().field() == FieldType::FM32 ? spu::DT_I32 : spu::DT_I64;
     // shuffle index with the same permutation as values
     inp.push_back(
         _perm_ss(ctx, _p2s(ctx, hal::iota(ctx, dt, input.numel())), rand_perm)
             .setDtype(dt));
-  } else {
-    inp.emplace_back();
   }
 
   return inp;
@@ -363,8 +363,8 @@ std::vector<spu::Value> PrepareInput(SPUContext *ctx, const Value &input,
 //   3) reveal securely shuffled <sp> as m
 //   4) inverse permute <sx> by m and return
 std::pair<std::vector<spu::Value>, spu::Value> _opt_apply_inv_perm_ss(
-    SPUContext *ctx, absl::Span<spu::Value const> x, spu::Value perm,
-    spu::Value random_perm) {
+    SPUContext *ctx, absl::Span<spu::Value const> x, const spu::Value &perm,
+    const spu::Value &random_perm) {
   // 1. <SP> = secure shuffle <perm>
   auto sp = hal::_perm_ss(ctx, perm, random_perm);
 
@@ -538,20 +538,30 @@ spu::Value _opt_apply_perm_ss(SPUContext *ctx, const spu::Value &perm,
 std::vector<spu::Value> _bit_decompose(SPUContext *ctx, const spu::Value &x,
                                        int64_t valid_bits) {
   auto x_bshare = _prefer_b(ctx, x);
-  const auto k1 = _constant(ctx, 1U, x.shape());
-  std::vector<spu::Value> rets;
   size_t nbits = valid_bits != -1
                      ? static_cast<size_t>(valid_bits)
                      : x_bshare.storage_type().as<BShare>()->nbits();
-  rets.reserve(nbits);
-
-  for (size_t bit = 0; bit < nbits; ++bit) {
-    auto x_bshare_shift = right_shift_logical(ctx, x_bshare, bit);
-    auto lowest_bit = _and(ctx, x_bshare_shift, k1);
-    rets.emplace_back(_prefer_a(ctx, lowest_bit));
+  _hint_nbits(x_bshare, nbits);
+  if (ctx->hasKernel("b2a_disassemble")) {
+    auto ret =
+        dynDispatch<std::vector<spu::Value>>(ctx, "b2a_disassemble", x_bshare);
+    return ret;
   }
 
-  return rets;
+  const auto k1 = _constant(ctx, 1U, x.shape());
+  std::vector<spu::Value> rets_b;
+  rets_b.reserve(nbits);
+
+  for (size_t bit = 0; bit < nbits; ++bit) {
+    auto x_bshare_shift =
+        right_shift_logical(ctx, x_bshare, {static_cast<int64_t>(bit)});
+    rets_b.push_back(_and(ctx, x_bshare_shift, k1));
+  }
+
+  std::vector<spu::Value> rets_a;
+  vmap(rets_b.begin(), rets_b.end(), std::back_inserter(rets_a),
+       [&](const Value &x) { return _prefer_a(ctx, x); });
+  return rets_a;
 }
 
 // Generate vector of bit decomposition of sorting keys
@@ -694,10 +704,10 @@ spu::Value _apply_perm_ss(SPUContext *ctx, const Value &x, const Value &perm) {
 
 // Find mergeable keys from keys. Consecutive public/private(belong to one
 // owner) keys can be merged. Assume there are six keys, i.e., public_key0,
-// bob_key0, bob_key1, alice_key0, alice_key1, secret_key0. We can merge the six
-// keys into bob_new_key, alice_new_key, secret_key0 for the following sorting.
-// This function will return a vector of indices [3,5,6] which means key[0,3),
-// key[3,5), and key[5,6) can be merged.
+// bob_key0, bob_key1, alice_key0, alice_key1, secret_key0. We can merge the
+// six keys into bob_new_key, alice_new_key, secret_key0 for the following
+// sorting. This function will return a vector of indices [3,5,6] which means
+// key[0,3), key[3,5), and key[5,6) can be merged.
 std::vector<size_t> _find_mergeable_keys(SPUContext *ctx,
                                          absl::Span<spu::Value const> keys) {
   std::vector<size_t> split_indices;
@@ -1149,7 +1159,7 @@ std::vector<spu::Value> permute(SPUContext *ctx,
   for (auto const &input : inputs) {
     auto transposed = hal::transpose(ctx, input, perm);
     auto reshaped = hal::reshape(ctx, transposed, {N, W});
-    inputs2d.push_back(reshaped);
+    inputs2d.push_back(std::move(reshaped));
   }
 
   // Call permute1d for each dim to permute.
@@ -1185,15 +1195,15 @@ std::vector<spu::Value> permute(SPUContext *ctx,
 }
 
 std::vector<Value> topk_1d(SPUContext *ctx, const spu::Value &input,
-                           const std::vector<int64_t> &ks,
-                           const SimpleCompFn &scalar_cmp, bool value_only) {
+                           const SimpleCompFn &scalar_cmp,
+                           const TopKConfig &config) {
   SPU_ENFORCE(input.shape().ndim() == 1,
               "Inputs should be 1-d but actually have {} dimensions",
               input.shape().ndim());
-  SPU_ENFORCE(input.numel() >= ks[1],
-              "k={} is larger than the last dimension={}", ks[1],
+  SPU_ENFORCE(input.numel() >= config.k_hi,
+              "k={} is larger than the last dimension={}", config.k_hi,
               input.numel());
-  SPU_ENFORCE(ks.size() == 2 && ks[0] <= ks[1]);
+  SPU_ENFORCE(config.k_lo <= config.k_hi);
 
   if (input.isPublic()) {
     Index indices_to_sort(input.numel());
@@ -1206,21 +1216,20 @@ std::vector<Value> topk_1d(SPUContext *ctx, const spu::Value &input,
     };
 
     std::nth_element(indices_to_sort.begin(),
-                     indices_to_sort.begin() + ks[0] - 1, indices_to_sort.end(),
-                     comparator);
-    if (ks[0] < ks[1]) {
-      std::nth_element(indices_to_sort.begin() + ks[0],
-                       indices_to_sort.begin() + (ks[1] - 1),
+                     indices_to_sort.begin() + config.k_lo - 1,
+                     indices_to_sort.end(), comparator);
+    if (config.k_lo < config.k_hi) {
+      std::nth_element(indices_to_sort.begin() + config.k_lo,
+                       indices_to_sort.begin() + (config.k_hi - 1),
                        indices_to_sort.end(), comparator);
     }
 
     std::vector<spu::Value> ret;
-    ret.reserve(2);
 
     auto topk_indices =
-        Index(indices_to_sort.begin(), indices_to_sort.begin() + ks[1]);
+        Index(indices_to_sort.begin(), indices_to_sort.begin() + config.k_hi);
     ret.push_back(internal::_permute_1d(ctx, input, topk_indices));
-    if (!value_only) {
+    if (!config.value_only) {
       auto dt =
           ctx->config().field() == FieldType::FM32 ? spu::DT_I32 : spu::DT_I64;
       ret.push_back(constant(ctx, topk_indices, dt,
@@ -1230,17 +1239,8 @@ std::vector<Value> topk_1d(SPUContext *ctx, const spu::Value &input,
     return ret;
   }
 
-  bool confusion = true;
-  bool fallback = false;
-  if (!(ctx->hasKernel("rand_perm_m") && ctx->hasKernel("perm_am"))) {
-    fallback = true;
-    SPDLOG_WARN(
-        "Fallback to generic topk (using sort) because permutation-related "
-        "kernels are not supported");
-  }
-
-  if (!fallback) {
-    auto inp = internal::PrepareInput(ctx, input, confusion, value_only);
+  if (ctx->hasKernel("rand_perm_m") && ctx->hasKernel("perm_am")) {
+    auto inp = internal::PrepareInput(ctx, input, config);
 
     hal::CompFn comp_fn =
         [ctx, &scalar_cmp](absl::Span<const spu::Value> values) -> spu::Value {
@@ -1259,17 +1259,20 @@ std::vector<Value> topk_1d(SPUContext *ctx, const spu::Value &input,
       return result;
     };
 
-    return internal::QuickSelectTopk(ctx, comp_fn, absl::MakeSpan(inp), ks);
+    return internal::QuickSelectTopk(ctx, comp_fn, absl::MakeSpan(inp), config);
 
   } else {
     // fall back to general sort
+    SPDLOG_WARN(
+        "Fallback to generic topk (using sort) because permutation-related "
+        "kernels are not supported");
+
     auto dt =
         ctx->config().field() == FieldType::FM32 ? spu::DT_I32 : spu::DT_I64;
     std::vector<spu::Value> inp;
-    inp.reserve(2);
 
     inp.push_back(input);
-    if (!value_only) {
+    if (!config.value_only) {
       inp.push_back(_p2s(ctx, hal::iota(ctx, dt, input.numel())).setDtype(dt));
     }
 
@@ -1282,7 +1285,7 @@ std::vector<Value> topk_1d(SPUContext *ctx, const spu::Value &input,
         hal::sort1d(ctx, absl::MakeSpan(inp), comp_fn, VIS_SECRET, false);
 
     for (auto &item : sorted) {
-      item = slice(ctx, item, {0}, {ks[1]});
+      item = slice(ctx, item, {0}, {config.k_hi});
     }
 
     return sorted;

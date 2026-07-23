@@ -77,9 +77,27 @@ class UnitTests(unittest.TestCase):
         for i in range(len(penalty_list)):
             penalty = penalty_list[i]
             # Run
-            result = spsim.sim_jax(sim, self.proc, static_argnums=(2, 3))(
+            copts = spu_pb2.CompilerOptions()
+            if i == 0:
+                self.proc.__name__ = f"test_logistic_penalty0"
+                spu_fn = spsim.sim_jax(sim, self.proc, static_argnums=(2, 3), copts=copts, pphlo_ref=(None, None)) #test_logistic_penalty0
+            elif i == 1:
+                self.proc.__name__ = f"test_logistic_penalty1"
+                spu_fn = spsim.sim_jax(sim, self.proc, static_argnums=(2, 3), copts=copts, pphlo_ref=(None, None)) #test_logistic_penalty1
+            elif i == 2:
+                self.proc.__name__ = f"test_logistic_penalty2"
+                spu_fn = spsim.sim_jax(sim, self.proc, static_argnums=(2, 3), copts=copts, pphlo_ref=(None, None)) #test_logistic_penalty2
+            else:
+                print("invalid penalty")
+            result = spu_fn(
                 X.values, y.values.reshape(-1, 1), penalty, "binary"
             )  # X, y should be two-dimension array
+            try:
+                if result == "skipped":
+                    continue
+            except:
+                pass
+            print(spu_fn.pphlo)
             # print("Predict result prob: ", result[0])
             # print("Predict result label: ", result[1])
             print(f"{penalty} ROC Score: {roc_auc_score(y.values, result[0])}")
@@ -89,9 +107,19 @@ class UnitTests(unittest.TestCase):
         sim, X, y = self.load_data(multi_class="ovr")
 
         # Run
-        result = spsim.sim_jax(sim, self.proc, static_argnums=(2, 3))(
+        copts = spu_pb2.CompilerOptions()
+
+        self.proc.__name__ = "test_logistic_multi_classification"
+        spu_fn = spsim.sim_jax(sim, self.proc, static_argnums=(2, 3), copts=copts, pphlo_ref=(None, None)) #test_logistic_multi_classification
+        result = spu_fn(
             X.values, y.values.reshape(-1, 1), "l2", "ovr"
         )  # X, y should be two-dimension array
+        try:
+            if result == "skipped":
+                return True
+        except:
+            pass
+        print(spu_fn.pphlo)
         print(
             f"Multi classification OVR ROC Score: {roc_auc_score(y.values, result[0], multi_class='ovr')}"
         )

@@ -20,7 +20,7 @@ namespace spu::mpc::standard_shape {
 
 class Broadcast : public BroadcastKernel {
  public:
-  static constexpr char kBindName[] = "broadcast";
+  static constexpr const char* kBindName() { return "broadcast"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -32,7 +32,7 @@ class Broadcast : public BroadcastKernel {
 
 class Reshape : public ShapeBasedKernel {
  public:
-  static constexpr char kBindName[] = "reshape";
+  static constexpr const char* kBindName() { return "reshape"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -44,7 +44,7 @@ class Reshape : public ShapeBasedKernel {
 
 class ExtractSlice : public ExtractSliceKernel {
  public:
-  static constexpr char kBindName[] = "extract_slice";
+  static constexpr const char* kBindName() { return "extract_slice"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -57,7 +57,7 @@ class ExtractSlice : public ExtractSliceKernel {
 
 class UpdateSlice : public UpdateSliceKernel {
  public:
-  static constexpr char kBindName[] = "update_slice";
+  static constexpr const char* kBindName() { return "update_slice"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -69,7 +69,7 @@ class UpdateSlice : public UpdateSliceKernel {
 
 class Transpose : public DimsBasedKernel {
  public:
-  static constexpr char kBindName[] = "transpose";
+  static constexpr const char* kBindName() { return "transpose"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -81,7 +81,7 @@ class Transpose : public DimsBasedKernel {
 
 class Reverse : public DimsBasedKernel {
  public:
-  static constexpr char kBindName[] = "reverse";
+  static constexpr const char* kBindName() { return "reverse"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -93,7 +93,7 @@ class Reverse : public DimsBasedKernel {
 
 class Fill : public ShapeBasedKernel {
  public:
-  static constexpr char kBindName[] = "fill";
+  static constexpr const char* kBindName() { return "fill"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -105,7 +105,7 @@ class Fill : public ShapeBasedKernel {
 
 class Pad : public PadKernel {
  public:
-  static constexpr char kBindName[] = "pad";
+  static constexpr const char* kBindName() { return "pad"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 
@@ -119,7 +119,7 @@ class Pad : public PadKernel {
 
 class Concate : public ConcateKernel {
  public:
-  static constexpr char kBindName[] = "concatenate";
+  static constexpr const char* kBindName() { return "concatenate"; }
 
   ce::CExpr latency() const override { return ce::Const(0); }
 

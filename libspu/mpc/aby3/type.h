@@ -30,6 +30,32 @@ class AShrTy : public TypeImpl<AShrTy, RingTy, Secret, AShare> {
   size_t size() const override { return SizeOf(GetStorageType(field_)) * 2; }
 };
 
+class OShrTy : public TypeImpl<OShrTy, RingTy, Secret, OShare> {
+  using Base = TypeImpl<OShrTy, RingTy, Secret, OShare>;
+
+ public:
+  using Base::Base;
+  static std::string_view getStaticId() { return "aby3.OShr"; }
+
+  explicit OShrTy(FieldType field) { field_ = field; }
+
+  // two shares in oram rep share of two different values
+  size_t size() const override { return SizeOf(GetStorageType(field_)) * 2; }
+};
+
+class OPShrTy : public TypeImpl<OPShrTy, RingTy, Secret, OPShare> {
+  using Base = TypeImpl<OPShrTy, RingTy, Secret, OPShare>;
+
+ public:
+  using Base::Base;
+  static std::string_view getStaticId() { return "aby3.OShr"; }
+
+  explicit OPShrTy(FieldType field) { field_ = field; }
+
+  // two shares in oram rep share of two different values
+  size_t size() const override { return SizeOf(GetStorageType(field_)); }
+};
+
 // class Z2k {
 //   int64_t k_;
 

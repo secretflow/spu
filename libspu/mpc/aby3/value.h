@@ -58,7 +58,7 @@ std::vector<T> getShareAs(const NdArrayRef& in, size_t share_idx) {
   auto numel = in.numel();
 
   std::vector<T> res(numel);
-  DISPATCH_UINT_PT_TYPES(share.eltype().as<PtTy>()->pt_type(), "_", [&]() {
+  DISPATCH_UINT_PT_TYPES(share.eltype().as<PtTy>()->pt_type(), [&]() {
     NdArrayView<ScalarT> _share(share);
     for (auto idx = 0; idx < numel; ++idx) {
       res[idx] = _share[idx];

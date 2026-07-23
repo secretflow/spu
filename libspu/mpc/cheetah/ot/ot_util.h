@@ -135,4 +135,9 @@ uint8_t BoolToU8(absl::Span<const uint8_t> bits);
 
 void U8ToBool(absl::Span<uint8_t> bits, uint8_t u8);
 
+// Taken from emp-tool
+// https://github.com/emp-toolkit/emp-tool/blob/master/emp-tool/utils/block.h#L113
+void SseTranspose(uint8_t *out, uint8_t const *inp, uint64_t nrows,
+                  uint64_t ncols);
+
 }  // namespace spu::mpc::cheetah

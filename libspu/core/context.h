@@ -113,7 +113,7 @@ class KernelEvalContext final {
   SPUContext* sctx_;
 
   std::vector<ParamType> params_;
-  ParamType output_;
+  std::vector<ParamType> outputs_;
 
  public:
   explicit KernelEvalContext(SPUContext* sctx) : sctx_(sctx) {}
@@ -139,20 +139,24 @@ class KernelEvalContext final {
   }
 
   size_t numParams() const { return params_.size(); }
+  size_t numOutputs() const { return outputs_.size(); }
 
   // Steal the output from this evaluation context.
   //
   // * usually called by kernel caller.
   template <typename T = Value>
-  T&& stealOutput() {
-    return std::move(std::get<T>(output_));
+  T&& consumeOutput(size_t pos) {
+    SPU_DEBUG_ONLY_ENFORCE(pos < outputs_.size(),
+                           "pos={} exceed num of outputs={}", pos,
+                           outputs_.size());
+    return std::move(std::get<T>(outputs_[pos]));
   }
 
   // Bind an input to this evaluation context.
   //
   // * usually called by kernel caller.
   template <typename T>
-  void bindParam(const T& in) {
+  void pushParam(const T& in) {
     params_.emplace_back(in);
   }
 
@@ -161,8 +165,9 @@ class KernelEvalContext final {
   // * usually called by kernel callee.
   template <typename T>
   const T& getParam(size_t pos) const {
-    SPU_ENFORCE(pos < params_.size(), "pos={} exceed num of inputs={}", pos,
-                params_.size());
+    SPU_DEBUG_ONLY_ENFORCE(pos < params_.size(),
+                           "pos={} exceed num of inputs={}", pos,
+                           params_.size());
     return std::get<T>(params_[pos]);
   }
 
@@ -170,8 +175,8 @@ class KernelEvalContext final {
   //
   // * usually called by kernel callee.
   template <typename T = Value>
-  void setOutput(T&& out) {
-    output_ = std::forward<T>(out);
+  void pushOutput(T&& out) {
+    outputs_.emplace_back(std::forward<T>(out));
   }
 };
 
@@ -179,9 +184,9 @@ namespace detail {
 
 template <typename First, typename... Args>
 void bindParams(KernelEvalContext* ectx, First&& head, Args&&... tail) {
-  ectx->bindParam(std::forward<First>(head));
+  ectx->pushParam(std::forward<First>(head));
   if constexpr (sizeof...(Args) > 0) {
-    return bindParams(ectx, std::forward<Args>(tail)...);
+    bindParams(ectx, std::forward<Args>(tail)...);
   }
 }
 
@@ -203,7 +208,10 @@ Ret dynDispatch(SPUContext* sctx, const std::string& name, Args&&... args) {
   kernel->evaluate(&ectx);
 
   // 4. steal the result and return it.
-  return ectx.stealOutput<Ret>();
+  if (ectx.numOutputs() > 0) {
+    return ectx.consumeOutput<Ret>(0);
+  }
+  return Ret();
 }
 
 // helper class

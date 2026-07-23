@@ -26,31 +26,8 @@ namespace spu::kernel::hlo {
 template <typename Fn>
 spu::Value shift_impl_p(SPUContext *ctx, const spu::Value &lhs,
                         const spu::Value &rhs, const Fn &f) {
-  auto shift_bits = hal::dump_public_as<int8_t>(ctx, rhs);
-  if (std::all_of(rhs.strides().begin(), rhs.strides().end(),
-                  [](int64_t s) { return s == 0; })) {
-    // rhs is a splat
-    return f(ctx, lhs, shift_bits[0]);
-  }
-
-  // Not a splat...
-  spu::Value ret =
-      hal::constant(ctx, static_cast<uint8_t>(0), lhs.dtype(), lhs.shape());
-  auto dtype_size = getWidth(lhs.dtype());
-  for (size_t bits = 0; bits < dtype_size; ++bits) {
-    if (std::none_of(shift_bits.begin(), shift_bits.end(), [&bits](int8_t b) {
-          return b == static_cast<int8_t>(bits);
-        })) {
-      continue;
-    }
-    auto current_bits = hal::constant(ctx, static_cast<uint8_t>(bits),
-                                      rhs.dtype(), rhs.shape());
-    auto mask = hal::equal(ctx, rhs, current_bits);
-    auto shifted = f(ctx, lhs, bits);
-    ret = hal::add(ctx, ret, hal::mul(ctx, mask, shifted));
-  }
-
-  return ret;
+  auto shift_bits = hal::dump_public_as<int64_t>(ctx, rhs);
+  return f(ctx, lhs, {shift_bits.begin(), shift_bits.end()});
 }
 
 template <typename Fn>
@@ -63,7 +40,7 @@ spu::Value shift_impl_s(SPUContext *ctx, const spu::Value &lhs,
     auto current_bits = hal::constant(ctx, static_cast<uint8_t>(bits),
                                       rhs.dtype(), rhs.shape());
     auto mask = hal::equal(ctx, rhs, current_bits);
-    auto shifted = f(ctx, lhs, bits);
+    auto shifted = f(ctx, lhs, {static_cast<int64_t>(bits)});
     ret = hal::add(ctx, ret, hal::mul(ctx, mask, shifted));
   }
 

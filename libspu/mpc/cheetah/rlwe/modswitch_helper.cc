@@ -436,7 +436,7 @@ void ModulusSwitchHelper::ModulusUpAt(const NdArrayRef &src, size_t mod_idx,
   SPU_ENFORCE(eltype.isa<Ring2k>(), "source must be ring_type, got={}", eltype);
   const auto field = eltype.as<Ring2k>()->field();
 
-  DISPATCH_ALL_FIELDS(field, "ModulusUpAt", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using ring2u = std::make_unsigned<ring2k_t>::type;
     impl_->ModulusUpAt(NdArrayView<const ring2u>(src), mod_idx, out);
   });
@@ -450,7 +450,7 @@ void ModulusSwitchHelper::CenteralizeAt(const NdArrayRef &src, size_t mod_idx,
   SPU_ENFORCE_EQ(numel, out.size());
   SPU_ENFORCE(eltype.isa<Ring2k>(), "source must be ring_type, got={}", eltype);
   const auto field = eltype.as<Ring2k>()->field();
-  DISPATCH_ALL_FIELDS(field, "CenteralizeAt", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using ring2u = std::make_unsigned<ring2k_t>::type;
     impl_->CenteralizeAt(NdArrayView<const ring2u>(src), mod_idx, out);
   });
@@ -481,7 +481,7 @@ void ModulusSwitchHelper::ModulusDownRNS(absl::Span<const uint64_t> src,
   size_t num_elt = out.numel();
   SPU_ENFORCE_EQ(num_elt * num_modulus, src.size());
 
-  return DISPATCH_ALL_FIELDS(field, "ModulusDownRNS", [&]() {
+  return DISPATCH_ALL_FIELDS(field, [&]() {
     using ring2u = std::make_unsigned<ring2k_t>::type;
     absl::Span<ring2u> out_wrap(reinterpret_cast<ring2u *>(out.data()),
                                 num_elt);

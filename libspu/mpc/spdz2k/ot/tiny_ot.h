@@ -13,7 +13,7 @@
 // limitations under the License.
 #include <vector>
 
-#include "yacl/crypto/primitives/ot/ot_store.h"
+#include "yacl/kernel/type/ot_store.h"
 
 #include "libspu/mpc/common/communicator.h"
 

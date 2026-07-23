@@ -213,6 +213,121 @@ struct YaclFerretOt::Impl {
   }
 
   template <typename T>
+  void SendCorrelatedMsgChosenChoice_Collapse(absl::Span<const T> corr,
+                                              absl::Span<T> output,
+                                              int bit_width, int num_level) {
+    size_t n = corr.size();
+    SPU_ENFORCE_EQ(n, output.size());
+    if (bit_width == 0) {
+      bit_width = 8 * sizeof(T);
+    }
+    SPU_ENFORCE(bit_width > 0 && bit_width <= (int)(8 * sizeof(T)),
+                "bit_width={} out-of-range T={} bits", bit_width,
+                sizeof(T) * 8);
+    SPU_ENFORCE(
+        num_level > 0 && (n % num_level) == 0 && (bit_width >= num_level),
+        "invalid num_level {}", num_level);
+
+    yacl::Buffer buf(n * sizeof(uint128_t));
+    auto rcm_output = MakeSpan_Uint128(buf);
+
+    SendRandCorrelatedMsgChosenChoice(rcm_output.data(), n);
+
+    std::array<uint128_t, 2 * kOTBatchSize> pad;
+    std::vector<T> corr_output(kOTBatchSize);
+
+    const size_t eltsize = 8 * sizeof(T);
+    const size_t collapse_size = n / num_level;
+    std::vector<T> packed_corr_output(kOTBatchSize);
+    for (size_t i = 0; i < n; i += kOTBatchSize) {
+      size_t this_batch = std::min(kOTBatchSize, n - i);
+      // NOTE(lwj) this batch might cross two collapse, but the bit_width should
+      // be fine since we decrease the bit_width along each collapse batch.
+      size_t this_batch_bw = bit_width - i / collapse_size;
+      bool packable = eltsize > this_batch_bw;
+
+      for (size_t j = 0; j < this_batch; ++j) {
+        pad[2 * j] = rcm_output[i + j];
+        pad[2 * j + 1] = rcm_output[i + j] ^ ferret_->GetDelta();
+      }
+
+      yc::ParaCrHashInplace_128(absl::MakeSpan(pad));
+
+      for (size_t j = 0; j < this_batch; ++j) {
+        output[i + j] = (T)(pad[2 * j]);
+        corr_output[j] = (T)(pad[2 * j + 1]);
+        corr_output[j] += corr[i + j] + output[i + j];
+      }
+
+      if (packable) {
+        size_t used =
+            ZipArray<T>({corr_output.data(), this_batch}, this_batch_bw,
+                        absl::MakeSpan(packed_corr_output));
+        SPU_ENFORCE(used == CeilDiv(this_batch * this_batch_bw, eltsize));
+        io_->send_data(packed_corr_output.data(), used * sizeof(T));
+      } else {
+        io_->send_data(corr_output.data(), sizeof(T) * this_batch);
+      }
+    }
+    io_->flush();
+  }
+
+  template <typename T>
+  void RecvCorrelatedMsgChosenChoice_Collapse(absl::Span<const uint8_t> choices,
+                                              absl::Span<T> output,
+                                              int bit_width, int num_level) {
+    size_t n = choices.size();
+    SPU_ENFORCE_EQ(n, output.size());
+    if (bit_width == 0) {
+      bit_width = 8 * sizeof(T);
+    }
+    SPU_ENFORCE(bit_width > 0 && bit_width <= (int)(8 * sizeof(T)),
+                "bit_width={} out-of-range T={} bits", bit_width,
+                sizeof(T) * 8);
+    SPU_ENFORCE(
+        num_level > 0 && (n % num_level) == 0 && (bit_width >= num_level),
+        "invalid num_level {}", num_level);
+
+    yacl::Buffer buf(n * sizeof(uint128_t));
+    auto rcm_output = MakeSpan_Uint128(buf);
+
+    RecvRandCorrelatedMsgChosenChoice(choices, rcm_output);
+
+    std::array<uint128_t, kOTBatchSize> pad;
+    std::vector<T> corr_output(kOTBatchSize);
+
+    const size_t eltsize = 8 * sizeof(T);
+    const size_t collapse_size = n / num_level;
+    std::vector<T> packed_corr_output(kOTBatchSize);
+    for (size_t i = 0; i < n; i += kOTBatchSize) {
+      size_t this_batch = std::min(kOTBatchSize, n - i);
+      size_t this_batch_bw = bit_width - i / collapse_size;
+      bool packable = eltsize > this_batch_bw;
+
+      std::memcpy(pad.data(), rcm_output.data() + i,
+                  this_batch * sizeof(uint128_t));
+      // Use CrHash
+      yc::ParaCrHashInplace_128(absl::MakeSpan(pad));
+
+      if (packable) {
+        size_t used = CeilDiv(this_batch * this_batch_bw, eltsize);
+        io_->recv_data(packed_corr_output.data(), sizeof(T) * used);
+        UnzipArray<T>({packed_corr_output.data(), used}, this_batch_bw,
+                      {corr_output.data(), this_batch});
+      } else {
+        io_->recv_data(corr_output.data(), sizeof(T) * this_batch);
+      }
+
+      for (size_t j = 0; j < this_batch; ++j) {
+        output[i + j] = (T)(pad[j]);
+        if (choices[i + j]) {
+          output[i + j] = corr_output[j] - output[i + j];
+        }
+      }
+    }
+  }
+
+  template <typename T>
   void SendCorrelatedMsgChosenChoice(absl::Span<const T> corr,
                                      absl::Span<T> output, int bit_width) {
     size_t n = corr.size();
@@ -768,6 +883,17 @@ size_t CheckBitWidth(size_t bw) {
   void YaclFerretOt::RecvCAMCC(absl::Span<const uint8_t> choices,              \
                                absl::Span<T> output, int bw) {                 \
     impl_->RecvCorrelatedMsgChosenChoice<T>(choices, output, bw);              \
+  }                                                                            \
+  void YaclFerretOt::SendCAMCC_Collapse(                                       \
+      absl::Span<const T> corr, absl::Span<T> output, int bw, int num_level) { \
+    impl_->SendCorrelatedMsgChosenChoice_Collapse<T>(corr, output, bw,         \
+                                                     num_level);               \
+  }                                                                            \
+  void YaclFerretOt::RecvCAMCC_Collapse(absl::Span<const uint8_t> choices,     \
+                                        absl::Span<T> output, int bw,          \
+                                        int num_level) {                       \
+    impl_->RecvCorrelatedMsgChosenChoice_Collapse<T>(choices, output, bw,      \
+                                                     num_level);               \
   }                                                                            \
   void YaclFerretOt::SendRMRC(absl::Span<T> output0, absl::Span<T> output1,    \
                               size_t bit_width) {                              \

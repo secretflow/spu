@@ -71,8 +71,6 @@ std::pair<NdArrayRef, NdArrayRef> Ot3::genMasks() {
     }
   } else {
     SPU_ENFORCE(comm_->getRank() == roles_.receiver);
-    prg_state_->genPrssPair(field_, shape_, PrgState::GenPrssCtrl::None);
-    prg_state_->genPrssPair(field_, shape_, PrgState::GenPrssCtrl::None);
   }
 
   return {w0, w1};

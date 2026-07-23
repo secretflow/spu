@@ -17,9 +17,9 @@
 #include <random>
 #include <utility>
 
-#include "yacl/crypto/base/block_cipher/symmetric_crypto.h"
+#include "yacl/crypto/block_cipher/symmetric_crypto.h"
+#include "yacl/crypto/rand/rand.h"
 #include "yacl/crypto/tools/prg.h"
-#include "yacl/crypto/utils/rand.h"
 #include "yacl/utils/serialize.h"
 
 #include "libspu/mpc/common/prg_tensor.h"
@@ -49,7 +49,7 @@ uint128_t BeaverTfpUnsafe::InitSpdzKey(FieldType field, size_t s) {
   const int64_t size = 1;
   auto a = prgCreateArray(field, {size}, seed_, &counter_, &desc);
 
-  return DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  return DISPATCH_ALL_FIELDS(field, [&]() {
     NdArrayView<ring2k_t> _a(a);
     if (comm_->getRank() == 0) {
       auto t = tp_.adjustSpdzKey(desc);
@@ -260,8 +260,10 @@ std::pair<NdArrayRef, NdArrayRef> BeaverTfpUnsafe::BatchOpen(
   // Open the low k_bits only
   // value = value + r_val * 2^k
   // mac = mac + r_mac * 2^k
-  auto masked_val = ring_add(value, ring_lshift(r_val, k));
-  auto masked_mac = ring_add(mac, ring_lshift(r_mac, k));
+  auto masked_val =
+      ring_add(value, ring_lshift(r_val, {static_cast<int64_t>(k)}));
+  auto masked_mac =
+      ring_add(mac, ring_lshift(r_mac, {static_cast<int64_t>(k)}));
 
   auto open_val = comm_->allReduce(ReduceOp::ADD, masked_val, kBindName);
   return {open_val, masked_mac};

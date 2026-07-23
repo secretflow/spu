@@ -442,4 +442,94 @@ void SymmetricRLWEEncrypt(const RLWESecretKey& sk,
     }
   }
 }
+
+// sample r <- [0, 2^{nbits})
+void SampleLimbs(absl::Span<uint64_t> dest,
+                 const seal::EncryptionParameters& parms, size_t nbits,
+                 std::shared_ptr<seal::UniformRandomGenerator> prng) {
+  const auto& coeff_modulus = parms.coeff_modulus();
+  size_t num_modulus = coeff_modulus.size();
+  size_t logQ = 0;
+  for (const auto& p : coeff_modulus) {
+    logQ += p.bit_count();
+  }
+  size_t coeff_count = dest.size() / num_modulus;
+  size_t numelt = seal::util::mul_safe(coeff_count, num_modulus);
+  SPU_ENFORCE(dest.size() == numelt, "expect={} got={}", numelt, dest.size());
+  SPU_ENFORCE(nbits > 0 && logQ > nbits, "logQ={} but nbits={}", logQ, nbits);
+
+  const size_t num_limbs = (nbits + 63) / 64UL;
+  const uint64_t msb_mask =
+      (static_cast<uint64_t>(1) << (nbits - 64 * (num_limbs - 1))) - 1;
+  size_t rnd_byte_count = seal::util::mul_safe(num_limbs, sizeof(uint64_t));
+
+  if (!prng) {
+    prng = parms.random_generator()->create();
+  }
+
+  auto* dest_ptr = dest.data();
+  for (size_t i = 0; i < coeff_count; ++i) {
+    prng->generate(rnd_byte_count,
+                   reinterpret_cast<seal::seal_byte*>(dest_ptr));
+    dest_ptr[num_limbs - 1] &= msb_mask;
+    std::fill_n(dest_ptr + num_limbs, num_modulus - num_limbs, 0);
+    dest_ptr += num_modulus;
+  }
+}
+
+void SampleRanomRNS(absl::Span<uint64_t> dest,
+                    const seal::SEALContext::ContextData& context, size_t nbits,
+                    bool is_ntt,
+                    std::shared_ptr<seal::UniformRandomGenerator> prng) {
+  const auto& modulus = context.parms().coeff_modulus();
+  const auto* bigQ = context.total_coeff_modulus();
+  size_t num_modulus = modulus.size();
+  size_t n = dest.size() / num_modulus;
+  size_t N = context.parms().poly_modulus_degree();
+  SPU_ENFORCE(n > 0 && n <= N);
+  if (is_ntt) {
+    SPU_ENFORCE_EQ(n, N);
+  }
+
+  nbits = nbits + 1;
+  // sample [0, 2^nbits)
+  SampleLimbs(dest, context.parms(), nbits, prng);
+
+  std::vector<uint64_t> neg_threshold(num_modulus, 0);  // 2^{nbits-1}
+  std::vector<uint64_t> neg_shift(num_modulus, 0);      // Q - 2^{nbits}
+  {
+    const size_t num_limbs = (nbits + 63) / 64UL;
+    std::vector<uint64_t> upper(num_modulus, 0);
+    upper[num_limbs - 1] = 1UL << (nbits - 64 * (num_limbs - 1));
+    neg_threshold[num_limbs - 1] = upper[num_limbs - 1] >> 1;
+    seal::util::sub_uint(bigQ, upper.data(), num_modulus, neg_shift.data());
+  }
+
+  auto* limb_ptr = dest.data();
+  for (size_t i = 0; i < n; ++i) {
+    if (seal::util::is_greater_than_or_equal_uint(
+            limb_ptr, neg_threshold.data(), num_modulus)) {
+      // x >= 2^{nbits-1} is converted as Q - 2^{nbits} + x
+      seal::util::add_uint(neg_shift.data(), limb_ptr, num_modulus, limb_ptr);
+    }
+    limb_ptr += num_modulus;
+  }
+
+  const auto* rns_tool = context.rns_tool();
+  SPU_ENFORCE(rns_tool != nullptr);
+  SPU_ENFORCE(rns_tool->base_q() != nullptr);
+  // limbs form to rns form
+  rns_tool->base_q()->decompose_array(dest.data(), n,
+                                      seal::MemoryManager::GetPool());
+
+  if (is_ntt) {
+    const auto* ntt_tables = context.small_ntt_tables();
+    auto* dest_ptr = dest.data();
+    for (size_t j = 0; j < num_modulus; ++j) {
+      seal::util::ntt_negacyclic_harvey(dest_ptr, ntt_tables[j]);
+      dest_ptr += N;
+    }
+  }
+}
+
 }  // namespace spu::mpc::cheetah

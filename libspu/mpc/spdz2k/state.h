@@ -17,7 +17,7 @@
 #include <complex>
 #include <vector>
 
-#include "yacl/crypto/utils/rand.h"
+#include "yacl/crypto/rand/rand.h"
 #include "yacl/link/link.h"
 
 #include "libspu/core/object.h"
@@ -78,7 +78,7 @@ class Spdz2kState : public State {
   }
 
  public:
-  static constexpr char kBindName[] = "Spdz2kState";
+  static constexpr const char* kBindName() { return "Spdz2kState"; }
   static constexpr auto kAesType =
       yacl::crypto::SymmetricCrypto::CryptoType::AES128_CTR;
 

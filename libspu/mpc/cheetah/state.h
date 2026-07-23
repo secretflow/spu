@@ -36,11 +36,26 @@ using OTBinaryFunc =
     std::function<NdArrayRef(const NdArrayRef& op0, const NdArrayRef& op1,
                              const std::shared_ptr<BasicOTProtocols>& ot)>;
 
+using OTUnaryFuncWithU8 = std::function<NdArrayRef(
+    absl::Span<const uint8_t> op, const std::shared_ptr<BasicOTProtocols>& ot)>;
+
+using OTBinaryFuncWithU8 = std::function<NdArrayRef(
+    const NdArrayRef& op0, absl::Span<const uint8_t> op1,
+    const std::shared_ptr<BasicOTProtocols>& ot)>;
+
 NdArrayRef TiledDispatchOTFunc(KernelEvalContext* ctx, const NdArrayRef& x,
                                OTUnaryFunc func);
 
 NdArrayRef TiledDispatchOTFunc(KernelEvalContext* ctx, const NdArrayRef& x,
                                const NdArrayRef& y, OTBinaryFunc func);
+
+NdArrayRef TiledDispatchOTFunc(KernelEvalContext* ctx,
+                               absl::Span<const uint8_t> x,
+                               OTUnaryFuncWithU8 func);
+
+NdArrayRef TiledDispatchOTFunc(KernelEvalContext* ctx, const NdArrayRef& x,
+                               absl::Span<const uint8_t> y,
+                               OTBinaryFuncWithU8 func);
 
 class CheetahMulState : public State {
  private:
@@ -60,7 +75,7 @@ class CheetahMulState : public State {
       : mul_prot_(std::move(mul_prot)) {}
 
  public:
-  static constexpr char kBindName[] = "CheetahMul";
+  static constexpr const char* kBindName() { return "CheetahMul"; }
 
   explicit CheetahMulState(const std::shared_ptr<yacl::link::Context>& lctx,
                            bool enable_mul_lsb_error = false) {
@@ -85,7 +100,7 @@ class CheetahDotState : public State {
       : dot_prot_(std::move(dot_prot)) {}
 
  public:
-  static constexpr char kBindName[] = "CheetahDot";
+  static constexpr const char* kBindName() { return "CheetahDot"; }
 
   explicit CheetahDotState(const std::shared_ptr<yacl::link::Context>& lctx,
                            bool disable_matmul_pack = false) {
@@ -110,7 +125,7 @@ class CheetahOTState : public State {
   CheetahOtKind ot_kind_;
 
  public:
-  static constexpr char kBindName[] = "CheetahOT";
+  static constexpr const char* kBindName() { return "CheetahOT"; }
 
   explicit CheetahOTState(size_t maximum_instances, CheetahOtKind ot_kind)
       : maximum_instances_(std::min(kMaxOTParallel, maximum_instances)),

@@ -1,0 +1,23 @@
+{
+    "name": "exponential_minus_one",
+    "template": "basic_unary",
+    "testcases": [
+        {
+            "inputs": [
+                {
+                    "data": "[0.0, 1.0]",
+                    "shape": "2",
+                    "dtype": "f64"
+                }
+            ],
+            "expected": [
+                {
+                    "data": "[0.0, 1.7182818284590451]",
+                    "shape": "2",
+                    "dtype": "f64"
+                }
+            ],
+            "checker": "expect_almost_eq"
+        }
+    ]
+}

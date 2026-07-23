@@ -1,0 +1,1844 @@
+// Copyright 2021 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
+// This file defines data structures that used to access and control SPU.
+// - IO access (data infeed & outfeed).
+// - Runtime control (runtime config and setup)
+//
+// It does NOT define how to program on SPU, programming part is defined by
+// [pphlo](spu/dialect/pphlo.td)
+
+syntax = "proto3";
+
+package spu;
+
+option java_package = "org.secretflow.spu";
+
+// The SPU datatype
+enum DataType {
+  DT_INVALID = 0;
+
+  DT_I1 = 1;    // 1bit integer (bool).
+  DT_I8 = 2;    // int8
+  DT_U8 = 3;    // uint8
+  DT_I16 = 4;   // int16
+  DT_U16 = 5;   // uint16
+  DT_I32 = 6;   // int32
+  DT_U32 = 7;   // uint32
+  DT_I64 = 8;   // int64
+  DT_U64 = 9;   // uint64
+  DT_F16 = 10;  // half
+  DT_F32 = 11;  // float
+  DT_F64 = 12;  // double
+}
+
+// The visibility type.
+//
+// SPU is a secure evaluation runtime, but not all data are secret, some of them
+// are publicly known to all parties, marking them as public will improve
+// performance significantly.
+enum Visibility {
+  VIS_INVALID = 0;
+  VIS_SECRET = 1;   // Invisible(unknown) for all or some of the parties.
+  VIS_PUBLIC = 2;   // Visible(public) for all parties.
+  VIS_PRIVATE = 3;  // Visible for only one party
+}
+
+// @exclude
+// The shape information.
+message ShapeProto {
+  repeated int64 dims = 1;
+}
+
+// Plaintext type
+//
+// SPU runtime does not process with plaintext directly, plaintext type is
+// mainly used for IO purposes, when converting a plaintext buffer to an SPU
+// buffer, we have to let spu know which type the plaintext buffer is.
+enum PtType {
+  PT_INVALID = 0;  //
+  PT_I8 = 1;       // int8_t
+  PT_U8 = 2;       // uint8_t
+  PT_I16 = 3;      // int16_t
+  PT_U16 = 4;      // uint16_t
+  PT_I32 = 5;      // int32_t
+  PT_U32 = 6;      // uint32_t
+  PT_I64 = 7;      // int64_t
+  PT_U64 = 8;      // uint64_t
+  PT_I128 = 9;     // int128_t
+  PT_U128 = 10;    // uint128_t
+  PT_I1 = 11;      // bool
+                   //
+  PT_F16 = 30;     // half
+  PT_F32 = 31;     // float
+  PT_F64 = 32;     // double
+                   //
+  PT_CF32 = 50;    // complex float
+  PT_CF64 = 51;    // complex double
+}
+
+// A security parameter type.
+//
+// The secure evaluation is based on some algebraic structure (ring or field),
+enum FieldType {
+  FT_INVALID = 0;
+  FM32 = 1;   // Ring 2^32
+  FM64 = 2;   // Ring 2^64
+  FM128 = 3;  // Ring 2^128
+}
+
+// The protocol kind.
+enum ProtocolKind {
+  // Invalid protocol.
+  PROT_INVALID = 0;
+
+  // The reference implementation in `ring^2k`, note: this 'protocol' only
+  // behave-like a fixed point secure protocol without any security guarantee.
+  // Hence, it should only be selected for debugging purposes.
+  REF2K = 1;
+
+  // A semi-honest multi-party protocol. This protocol requires a trusted third
+  // party to generate the offline correlated randoms. Currently, SecretFlow by
+  // default ships this protocol with a trusted first party. Hence, it should
+  // only be used for debugging purposes.
+  SEMI2K = 2;
+
+  // A honest majority 3PC-protocol. SecretFlow provides the semi-honest
+  // implementation without Yao.
+  ABY3 = 3;
+
+  // The famous [Cheetah](https://eprint.iacr.org/2022/207) protocol, a very
+  // fast 2PC protocol.
+  CHEETAH = 4;
+
+  // A semi-honest 3PC-protocol for Neural Network, P2 as the helper,
+  // (https://eprint.iacr.org/2018/442)
+  SECURENN = 5;
+}
+
+message ValueMetaProto {
+  // The data type.
+  DataType data_type = 1;
+  bool is_complex = 2;
+
+  // The data visibility.
+  Visibility visibility = 3;
+
+  // The shape of the value.
+  ShapeProto shape = 4;
+
+  // The storage type, defined by the underline evaluation engine.
+  // i.e. `aby3.AShr<FM64>` means an aby3 arithmetic share in FM64.
+  // usually, the application does not care about this attribute.
+  string storage_type = 5;
+}
+
+// The spu Value proto, used for spu value serialization.
+message ValueChunkProto {
+  // chunk info
+  uint64 total_bytes = 1;
+  uint64 chunk_offset = 2;
+  // chunk bytes
+  bytes content = 3;
+}
+
+//////////////////////////////////////////////////////////////////////////
+// Runtime configuration
+//////////////////////////////////////////////////////////////////////////
+
+// The SPU runtime configuration.
+message RuntimeConfig {
+  //
+
+  ///////////////////////////////////////
+  // Basic
+  ///////////////////////////////////////
+
+  // The protocol kind.
+  ProtocolKind protocol = 1;
+
+  // The field type.
+  FieldType field = 2;
+
+  // Number of fraction bits of fixed-point number.
+  // 0(default) indicates implementation defined.
+  int64 fxp_fraction_bits = 3;
+
+  // Max number of cores
+  int32 max_concurrency = 4;
+
+  ///////////////////////////////////////
+  // Advanced
+  ///////////////////////////////////////
+
+  // @exclude
+  // Runtime related, reserved for [10, 50)
+
+  // When enabled, runtime prints verbose info of the call stack, debug purpose
+  // only.
+  bool enable_action_trace = 10;
+
+  // When enabled, runtime checks runtime type infos against the
+  // compile-time ones, exceptions are raised if mismatches happen. Note:
+  // Runtime outputs prefer runtime type infos even when flag is on.
+  bool enable_type_checker = 11;
+
+  // When enabled, runtime prints executed pphlo list, debug purpose only.
+  bool enable_pphlo_trace = 12;
+
+  // When enabled, runtime dumps executed executables in the dump_dir, debug
+  // purpose only.
+  bool enable_runtime_snapshot = 13;
+  string snapshot_dump_dir = 14;
+
+  // When enabled, runtime records detailed pphlo timing data, debug purpose
+  // only.
+  // WARNING: the `send bytes` information is only accurate when
+  // `experimental_enable_inter_op_par` and `experimental_enable_intra_op_par`
+  // options are disabled.
+  bool enable_pphlo_profile = 15;
+
+  // When enabled, runtime records detailed hal timing data, debug purpose only.
+  // WARNING: the `send bytes` information is only accurate when
+  // `experimental_enable_inter_op_par` and `experimental_enable_intra_op_par`
+  // options are disabled.
+  bool enable_hal_profile = 16;
+
+  reserved 17, 18;
+
+  // The public random variable generated by the runtime, the concrete prg
+  // function is implementation defined.
+  // Note: this seed only applies to `public variable` only, it has nothing
+  // to do with security.
+  uint64 public_random_seed = 19;
+
+  // max chunk size for Value::toProto
+  // default: 128 * 1024 * 1024
+  uint64 share_max_chunk_size = 20;
+
+  // @exclude
+  // Fixed-point arithmetic related, reserved for [50, 100)
+
+  // The iterations use in f_div with Goldschmidt method.
+  // 0(default) indicates implementation defined.
+  int64 fxp_div_goldschmidt_iters = 50;
+
+  // The exponential approximation method.
+  enum ExpMode {
+    EXP_DEFAULT = 0;  // Implementation defined.
+    EXP_PADE = 1;     // The pade approximation.
+    EXP_TAYLOR = 2;   // Taylor series approximation.
+    EXP_PRIME = 3;    // exp prime only available for some implementations
+  }
+
+  // The exponent approximation method.
+  ExpMode fxp_exp_mode = 51;
+
+  // Number of iterations of `exp` approximation, 0(default) indicates impl
+  // defined.
+  int64 fxp_exp_iters = 52;
+
+  // The logarithm approximation method.
+  enum LogMode {
+    LOG_DEFAULT = 0;  // Implementation defined.
+    LOG_PADE = 1;     // The pade approximation.
+    LOG_NEWTON = 2;   // The newton approximation.
+    LOG_MINMAX = 3;   // The minmax approximation.
+  }
+
+  // The logarithm approximation method.
+  LogMode fxp_log_mode = 53;
+
+  // Number of iterations of `log` approximation, 0(default) indicates
+  // impl-defined.
+  int64 fxp_log_iters = 54;
+
+  // Number of orders of `log` approximation, 0(default) indicates impl defined.
+  int64 fxp_log_orders = 55;
+
+  // The sigmoid approximation method.
+  enum SigmoidMode {
+    // Implementation defined.
+    SIGMOID_DEFAULT = 0;
+    // Minmax approximation one order.
+    // f(x) = 0.5 + 0.125 * x
+    SIGMOID_MM1 = 1;
+    // Piece-wise simulation.
+    // f(x) = 0.5 + 0.125x if -4 <= x <= 4
+    //        1            if       x > 4
+    //        0            if  -4 > x
+    SIGMOID_SEG3 = 2;
+    // The real definition, which depends on exp's accuracy.
+    // f(x) = 1 / (1 + exp(-x))
+    SIGMOID_REAL = 3;
+  }
+
+  // The sigmoid function approximation model.
+  SigmoidMode sigmoid_mode = 56;
+
+  // Enable a simpler rsqrt approximation
+  bool enable_lower_accuracy_rsqrt = 57;
+
+  // Sine/Cosine approximation iterations
+  int64 sine_cosine_iters = 58;
+
+  /// - MPC protocol related definitions.
+
+  enum BeaverType {
+    // Assume first party (rank0) as trusted party to generate beaver triple.
+    // WARNING: It is NOT SAFE and SHOULD NOT BE used in production.
+    TrustedFirstParty = 0;
+    // Generate beaver triple through an additional trusted third party.
+    TrustedThirdParty = 1;
+    // Generate beaver triple through multi-party.
+    MultiParty = 2;
+  }
+  // beaver config, works for semi2k and spdz2k for now.
+  BeaverType beaver_type = 70;
+
+  // TrustedThirdParty configs.
+  TTPBeaverConfig ttp_beaver_config = 71;
+
+  // Cheetah 2PC configs.
+  CheetahConfig cheetah_2pc_config = 72;
+
+  // For protocol like SecureML, the most significant bit may have error with
+  // low probability, which lead to huge calculation error.
+  bool trunc_allow_msb_error = 73;
+
+  /// System related configurations start.
+
+  // Experimental: DO NOT USE
+  bool experimental_disable_mmul_split = 100;
+  // Inter op parallel, aka, DAG level parallel.
+  bool experimental_enable_inter_op_par = 101;
+  // Intra op parallel, aka, hal/mpc level parallel.
+  bool experimental_enable_intra_op_par = 102;
+  // Disable kernel level vectorization.
+  bool experimental_disable_vectorization = 103;
+  // Inter op concurrency.
+  uint64 experimental_inter_op_concurrency = 104;
+  // Enable use of private type
+  bool experimental_enable_colocated_optimization = 105;
+
+  // enable experimental exp prime method
+  bool experimental_enable_exp_prime = 106;
+
+  // The offset parameter for exp prime methods.
+  // control the valid range of exp prime method.
+  // valid range is:
+  // ((47 - offset - 2fxp)/log_2(e), (125 - 2fxp - offset)/log_2(e))
+  // clamp to value would be
+  //                lower bound: (48 - offset - 2fxp)/log_2(e)
+  //                higher bound: (124 - 2fxp - offset)/log_2(e)
+  // default offset is 13, 0 offset is not supported.
+  uint32 experimental_exp_prime_offset = 107;
+  // whether to apply the clamping lower bound
+  // default to enable it
+  bool experimental_exp_prime_disable_lower_bound = 108;
+  // whether to apply the clamping upper bound
+  // default to disable it
+  bool experimental_exp_prime_enable_upper_bound = 109;
+}
+
+message TTPBeaverConfig {
+  // TrustedThirdParty beaver server's remote ip:port or load-balance uri.
+  string server_host = 1;
+  // which rank do adjust rpc call, usually choose the rank closer to the
+  // server.
+  int32 adjust_rank = 2;
+
+  // asym_crypto_schema: support ["SM2"]
+  // Will support 25519 in the future, after yacl supported it.
+  string asym_crypto_schema = 3;
+  // server's public key
+  bytes server_public_key = 4;
+
+  // TODO: TLS & brpc options.
+}
+
+enum CheetahOtKind {
+  YACL_Ferret = 0;
+  YACL_Softspoken = 1;
+  EMP_Ferret = 2;
+}
+
+message CheetahConfig {
+  // disable the ciphertext packing for matmul
+  bool disable_matmul_pack = 1;
+  // allow least significant bits error for point-wise mul
+  bool enable_mul_lsb_error = 2;
+  // Setup for cheetah ot
+  CheetahOtKind ot_kind = 3;
+}
+//////////////////////////////////////////////////////////////////////////
+// Compiler relate definition
+//////////////////////////////////////////////////////////////////////////
+enum SourceIRType {
+  XLA = 0;
+  STABLEHLO = 1;
+}
+
+message CompilationSource {
+  // Input IR type
+  SourceIRType ir_type = 1;
+
+  // IR
+  bytes ir_txt = 2;
+
+  // Input visibilities
+  repeated Visibility input_visibility = 3;
+}
+
+enum XLAPrettyPrintKind {
+  TEXT = 0;
+  DOT = 1;
+  HTML = 2;
+}
+
+message CompilerOptions {
+  // Pretty print
+  bool enable_pretty_print = 1;
+  string pretty_print_dump_dir = 2;
+  XLAPrettyPrintKind xla_pp_kind = 3;
+  bool testplaintext = 4;
+
+  // Disable sqrt(x) + eps to sqrt(x+eps) rewrite
+  bool disable_sqrt_plus_epsilon_rewrite = 10;
+
+  // Disable x/sqrt(y) to x*rsqrt(y) rewrite
+  bool disable_div_sqrt_rewrite = 11;
+
+  // Disable reduce truncation optimization
+  bool disable_reduce_truncation_optimization = 12;
+
+  // Disable maxpooling optimization
+  bool disable_maxpooling_optimization = 13;
+
+  // Disallow mix type operations
+  bool disallow_mix_types_opts = 14;
+
+  // Disable SelectOp optimization
+  bool disable_select_optimization = 15;
+
+  // Enable optimize x/bcast(y) -> x * bcast(1/y)
+  bool enable_optimize_denominator_with_broadcast = 16;
+
+  // Disable deallocation insertion pass
+  bool disable_deallocation_insertion = 17;
+
+  // Disable sort->topk rewrite when only partial sort is required
+  bool disable_partial_sort_optimization = 28;
+
+  // Modified Options for Compilation Options
+  bool able_allreducefolder_0 = 29;
+  bool able_indexedarrayanalysisprinterpass_0 = 30;
+  bool able_collectivequantizer_0 = 31;
+  bool able_sortsimplifier_0 = 32;
+  bool able_fusionconstantsinking_0 = 33;
+  bool able_dotdimensionmerger_0 = 34;
+  bool able_p2pschedulepreparation_0 = 35;
+  bool able_batchdotsimplification_0 = 36;
+  bool able_shardingremover_0 = 37;
+  bool able_flattencallgraph_0 = 38;
+  bool able_slicesinker_0 = 39;
+  bool able_allgatherbroadcastreorder_0 = 40;
+  bool able_allreducecontiguous_0 = 41;
+  bool able_conditionalsimplifier_0 = 42;
+  bool able_stochasticconvertdecomposer_0 = 43;
+  bool able_reducescatterreassociate_0 = 44;
+  bool able_conditionalcanonicalizer_0 = 45;
+  bool able_zerosizedhloelimination_0 = 46;
+  bool able_reshapedecomposer_0 = 47;
+  bool able_addoriginalvalue_0 = 48;
+  bool able_dynamicdimensionsimplifier_0 = 49;
+  bool able_dotdecomposer_0 = 50;
+  bool able_hloconstantfolding_0 = 51;
+  bool able_rngexpander_0 = 52;
+  bool able_convolutionpredexpander_0 = 53;
+  bool able_convertoperandfolding_0 = 54;
+  bool able_choleskyexpander_0 = 55;
+  bool able_bitcastdtypesexpander_0 = 56;
+  bool able_realimagexpander_0 = 57;
+  bool able_convolution4dexpander_0 = 58;
+  bool able_qrexpander_0 = 59;
+  bool able_eighexpander_0 = 60;
+  bool able_selectandscatterexpander_0 = 61;
+  bool able_scattersimplifier_0 = 62;
+  bool able_gathersimplifier_0 = 63;
+  bool able_stablesortexpander_0 = 64;
+  bool able_allreducefolder_1 = 65;
+  bool able_indexedarrayanalysisprinterpass_1 = 66;
+  bool able_collectivequantizer_1 = 67;
+  bool able_sortsimplifier_1 = 68;
+  bool able_fusionconstantsinking_1 = 69;
+  bool able_dotdimensionmerger_1 = 70;
+  bool able_p2pschedulepreparation_1 = 71;
+  bool able_batchdotsimplification_1 = 72;
+  bool able_shardingremover_1 = 73;
+  bool able_flattencallgraph_1 = 74;
+  bool able_slicesinker_1 = 75;
+  bool able_allgatherbroadcastreorder_1 = 76;
+  bool able_allreducecontiguous_1 = 77;
+  bool able_conditionalsimplifier_1 = 78;
+  bool able_stochasticconvertdecomposer_1 = 79;
+  bool able_reducescatterreassociate_1 = 80;
+  bool able_conditionalcanonicalizer_1 = 81;
+  bool able_zerosizedhloelimination_1 = 82;
+  bool able_reshapedecomposer_1 = 83;
+  bool able_addoriginalvalue_1 = 84;
+  bool able_dynamicdimensionsimplifier_1 = 85;
+  bool able_dotdecomposer_1 = 86;
+  bool able_hloconstantfolding_1 = 87;
+  bool able_rngexpander_1 = 88;
+  bool able_convolutionpredexpander_1 = 89;
+  bool able_convertoperandfolding_1 = 90;
+  bool able_choleskyexpander_1 = 91;
+  bool able_bitcastdtypesexpander_1 = 92;
+  bool able_realimagexpander_1 = 93;
+  bool able_convolution4dexpander_1 = 94;
+  bool able_qrexpander_1 = 95;
+  bool able_eighexpander_1 = 96;
+  bool able_selectandscatterexpander_1 = 97;
+  bool able_scattersimplifier_1 = 98;
+  bool able_gathersimplifier_1 = 99;
+  bool able_stablesortexpander_1 = 100;
+  bool able_allreducefolder_2 = 101;
+  bool able_indexedarrayanalysisprinterpass_2 = 102;
+  bool able_collectivequantizer_2 = 103;
+  bool able_sortsimplifier_2 = 104;
+  bool able_fusionconstantsinking_2 = 105;
+  bool able_dotdimensionmerger_2 = 106;
+  bool able_p2pschedulepreparation_2 = 107;
+  bool able_batchdotsimplification_2 = 108;
+  bool able_shardingremover_2 = 109;
+  bool able_flattencallgraph_2 = 110;
+  bool able_slicesinker_2 = 111;
+  bool able_allgatherbroadcastreorder_2 = 112;
+  bool able_allreducecontiguous_2 = 113;
+  bool able_conditionalsimplifier_2 = 114;
+  bool able_stochasticconvertdecomposer_2 = 115;
+  bool able_reducescatterreassociate_2 = 116;
+  bool able_conditionalcanonicalizer_2 = 117;
+  bool able_zerosizedhloelimination_2 = 118;
+  bool able_reshapedecomposer_2 = 119;
+  bool able_addoriginalvalue_2 = 120;
+  bool able_dynamicdimensionsimplifier_2 = 121;
+  bool able_dotdecomposer_2 = 122;
+  bool able_hloconstantfolding_2 = 123;
+  bool able_rngexpander_2 = 124;
+  bool able_convolutionpredexpander_2 = 125;
+  bool able_convertoperandfolding_2 = 126;
+  bool able_choleskyexpander_2 = 127;
+  bool able_bitcastdtypesexpander_2 = 128;
+  bool able_realimagexpander_2 = 129;
+  bool able_convolution4dexpander_2 = 130;
+  bool able_qrexpander_2 = 131;
+  bool able_eighexpander_2 = 132;
+  bool able_selectandscatterexpander_2 = 133;
+  bool able_scattersimplifier_2 = 134;
+  bool able_gathersimplifier_2 = 135;
+  bool able_stablesortexpander_2 = 136;
+  bool able_allreducefolder_3 = 137;
+  bool able_indexedarrayanalysisprinterpass_3 = 138;
+  bool able_collectivequantizer_3 = 139;
+  bool able_sortsimplifier_3 = 140;
+  bool able_fusionconstantsinking_3 = 141;
+  bool able_dotdimensionmerger_3 = 142;
+  bool able_p2pschedulepreparation_3 = 143;
+  bool able_batchdotsimplification_3 = 144;
+  bool able_shardingremover_3 = 145;
+  bool able_flattencallgraph_3 = 146;
+  bool able_slicesinker_3 = 147;
+  bool able_allgatherbroadcastreorder_3 = 148;
+  bool able_allreducecontiguous_3 = 149;
+  bool able_conditionalsimplifier_3 = 150;
+  bool able_stochasticconvertdecomposer_3 = 151;
+  bool able_reducescatterreassociate_3 = 152;
+  bool able_conditionalcanonicalizer_3 = 153;
+  bool able_zerosizedhloelimination_3 = 154;
+  bool able_reshapedecomposer_3 = 155;
+  bool able_addoriginalvalue_3 = 156;
+  bool able_dynamicdimensionsimplifier_3 = 157;
+  bool able_dotdecomposer_3 = 158;
+  bool able_hloconstantfolding_3 = 159;
+  bool able_rngexpander_3 = 160;
+  bool able_convolutionpredexpander_3 = 161;
+  bool able_convertoperandfolding_3 = 162;
+  bool able_choleskyexpander_3 = 163;
+  bool able_bitcastdtypesexpander_3 = 164;
+  bool able_realimagexpander_3 = 165;
+  bool able_convolution4dexpander_3 = 166;
+  bool able_qrexpander_3 = 167;
+  bool able_eighexpander_3 = 168;
+  bool able_selectandscatterexpander_3 = 169;
+  bool able_scattersimplifier_3 = 170;
+  bool able_gathersimplifier_3 = 171;
+  bool able_stablesortexpander_3 = 172;
+  bool able_allreducefolder_4 = 173;
+  bool able_indexedarrayanalysisprinterpass_4 = 174;
+  bool able_collectivequantizer_4 = 175;
+  bool able_sortsimplifier_4 = 176;
+  bool able_fusionconstantsinking_4 = 177;
+  bool able_dotdimensionmerger_4 = 178;
+  bool able_p2pschedulepreparation_4 = 179;
+  bool able_batchdotsimplification_4 = 180;
+  bool able_shardingremover_4 = 181;
+  bool able_flattencallgraph_4 = 182;
+  bool able_slicesinker_4 = 183;
+  bool able_allgatherbroadcastreorder_4 = 184;
+  bool able_allreducecontiguous_4 = 185;
+  bool able_conditionalsimplifier_4 = 186;
+  bool able_stochasticconvertdecomposer_4 = 187;
+  bool able_reducescatterreassociate_4 = 188;
+  bool able_conditionalcanonicalizer_4 = 189;
+  bool able_zerosizedhloelimination_4 = 190;
+  bool able_reshapedecomposer_4 = 191;
+  bool able_addoriginalvalue_4 = 192;
+  bool able_dynamicdimensionsimplifier_4 = 193;
+  bool able_dotdecomposer_4 = 194;
+  bool able_hloconstantfolding_4 = 195;
+  bool able_rngexpander_4 = 196;
+  bool able_convolutionpredexpander_4 = 197;
+  bool able_convertoperandfolding_4 = 198;
+  bool able_choleskyexpander_4 = 199;
+  bool able_bitcastdtypesexpander_4 = 200;
+  bool able_realimagexpander_4 = 201;
+  bool able_convolution4dexpander_4 = 202;
+  bool able_qrexpander_4 = 203;
+  bool able_eighexpander_4 = 204;
+  bool able_selectandscatterexpander_4 = 205;
+  bool able_scattersimplifier_4 = 206;
+  bool able_gathersimplifier_4 = 207;
+  bool able_stablesortexpander_4 = 208;
+  bool able_allreducefolder_5 = 209;
+  bool able_indexedarrayanalysisprinterpass_5 = 210;
+  bool able_collectivequantizer_5 = 211;
+  bool able_sortsimplifier_5 = 212;
+  bool able_fusionconstantsinking_5 = 213;
+  bool able_dotdimensionmerger_5 = 214;
+  bool able_p2pschedulepreparation_5 = 215;
+  bool able_batchdotsimplification_5 = 216;
+  bool able_shardingremover_5 = 217;
+  bool able_flattencallgraph_5 = 218;
+  bool able_slicesinker_5 = 219;
+  bool able_allgatherbroadcastreorder_5 = 220;
+  bool able_allreducecontiguous_5 = 221;
+  bool able_conditionalsimplifier_5 = 222;
+  bool able_stochasticconvertdecomposer_5 = 223;
+  bool able_reducescatterreassociate_5 = 224;
+  bool able_conditionalcanonicalizer_5 = 225;
+  bool able_zerosizedhloelimination_5 = 226;
+  bool able_reshapedecomposer_5 = 227;
+  bool able_addoriginalvalue_5 = 228;
+  bool able_dynamicdimensionsimplifier_5 = 229;
+  bool able_dotdecomposer_5 = 230;
+  bool able_hloconstantfolding_5 = 231;
+  bool able_rngexpander_5 = 232;
+  bool able_convolutionpredexpander_5 = 233;
+  bool able_convertoperandfolding_5 = 234;
+  bool able_choleskyexpander_5 = 235;
+  bool able_bitcastdtypesexpander_5 = 236;
+  bool able_realimagexpander_5 = 237;
+  bool able_convolution4dexpander_5 = 238;
+  bool able_qrexpander_5 = 239;
+  bool able_eighexpander_5 = 240;
+  bool able_selectandscatterexpander_5 = 241;
+  bool able_scattersimplifier_5 = 242;
+  bool able_gathersimplifier_5 = 243;
+  bool able_stablesortexpander_5 = 244;
+  bool able_allreducefolder_6 = 245;
+  bool able_indexedarrayanalysisprinterpass_6 = 246;
+  bool able_collectivequantizer_6 = 247;
+  bool able_sortsimplifier_6 = 248;
+  bool able_fusionconstantsinking_6 = 249;
+  bool able_dotdimensionmerger_6 = 250;
+  bool able_p2pschedulepreparation_6 = 251;
+  bool able_batchdotsimplification_6 = 252;
+  bool able_shardingremover_6 = 253;
+  bool able_flattencallgraph_6 = 254;
+  bool able_slicesinker_6 = 255;
+  bool able_allgatherbroadcastreorder_6 = 256;
+  bool able_allreducecontiguous_6 = 257;
+  bool able_conditionalsimplifier_6 = 258;
+  bool able_stochasticconvertdecomposer_6 = 259;
+  bool able_reducescatterreassociate_6 = 260;
+  bool able_conditionalcanonicalizer_6 = 261;
+  bool able_zerosizedhloelimination_6 = 262;
+  bool able_reshapedecomposer_6 = 263;
+  bool able_addoriginalvalue_6 = 264;
+  bool able_dynamicdimensionsimplifier_6 = 265;
+  bool able_dotdecomposer_6 = 266;
+  bool able_hloconstantfolding_6 = 267;
+  bool able_rngexpander_6 = 268;
+  bool able_convolutionpredexpander_6 = 269;
+  bool able_convertoperandfolding_6 = 270;
+  bool able_choleskyexpander_6 = 271;
+  bool able_bitcastdtypesexpander_6 = 272;
+  bool able_realimagexpander_6 = 273;
+  bool able_convolution4dexpander_6 = 274;
+  bool able_qrexpander_6 = 275;
+  bool able_eighexpander_6 = 276;
+  bool able_selectandscatterexpander_6 = 277;
+  bool able_scattersimplifier_6 = 278;
+  bool able_gathersimplifier_6 = 279;
+  bool able_stablesortexpander_6 = 280;
+  bool able_allreducefolder_7 = 281;
+  bool able_indexedarrayanalysisprinterpass_7 = 282;
+  bool able_collectivequantizer_7 = 283;
+  bool able_sortsimplifier_7 = 284;
+  bool able_fusionconstantsinking_7 = 285;
+  bool able_dotdimensionmerger_7 = 286;
+  bool able_p2pschedulepreparation_7 = 287;
+  bool able_batchdotsimplification_7 = 288;
+  bool able_shardingremover_7 = 289;
+  bool able_flattencallgraph_7 = 290;
+  bool able_slicesinker_7 = 291;
+  bool able_allgatherbroadcastreorder_7 = 292;
+  bool able_allreducecontiguous_7 = 293;
+  bool able_conditionalsimplifier_7 = 294;
+  bool able_stochasticconvertdecomposer_7 = 295;
+  bool able_reducescatterreassociate_7 = 296;
+  bool able_conditionalcanonicalizer_7 = 297;
+  bool able_zerosizedhloelimination_7 = 298;
+  bool able_reshapedecomposer_7 = 299;
+  bool able_addoriginalvalue_7 = 300;
+  bool able_dynamicdimensionsimplifier_7 = 301;
+  bool able_dotdecomposer_7 = 302;
+  bool able_hloconstantfolding_7 = 303;
+  bool able_rngexpander_7 = 304;
+  bool able_convolutionpredexpander_7 = 305;
+  bool able_convertoperandfolding_7 = 306;
+  bool able_choleskyexpander_7 = 307;
+  bool able_bitcastdtypesexpander_7 = 308;
+  bool able_realimagexpander_7 = 309;
+  bool able_convolution4dexpander_7 = 310;
+  bool able_qrexpander_7 = 311;
+  bool able_eighexpander_7 = 312;
+  bool able_selectandscatterexpander_7 = 313;
+  bool able_scattersimplifier_7 = 314;
+  bool able_gathersimplifier_7 = 315;
+  bool able_stablesortexpander_7 = 316;
+  bool able_allreducefolder_8 = 317;
+  bool able_indexedarrayanalysisprinterpass_8 = 318;
+  bool able_collectivequantizer_8 = 319;
+  bool able_sortsimplifier_8 = 320;
+  bool able_fusionconstantsinking_8 = 321;
+  bool able_dotdimensionmerger_8 = 322;
+  bool able_p2pschedulepreparation_8 = 323;
+  bool able_batchdotsimplification_8 = 324;
+  bool able_shardingremover_8 = 325;
+  bool able_flattencallgraph_8 = 326;
+  bool able_slicesinker_8 = 327;
+  bool able_allgatherbroadcastreorder_8 = 328;
+  bool able_allreducecontiguous_8 = 329;
+  bool able_conditionalsimplifier_8 = 330;
+  bool able_stochasticconvertdecomposer_8 = 331;
+  bool able_reducescatterreassociate_8 = 332;
+  bool able_conditionalcanonicalizer_8 = 333;
+  bool able_zerosizedhloelimination_8 = 334;
+  bool able_reshapedecomposer_8 = 335;
+  bool able_addoriginalvalue_8 = 336;
+  bool able_dynamicdimensionsimplifier_8 = 337;
+  bool able_dotdecomposer_8 = 338;
+  bool able_hloconstantfolding_8 = 339;
+  bool able_rngexpander_8 = 340;
+  bool able_convolutionpredexpander_8 = 341;
+  bool able_convertoperandfolding_8 = 342;
+  bool able_choleskyexpander_8 = 343;
+  bool able_bitcastdtypesexpander_8 = 344;
+  bool able_realimagexpander_8 = 345;
+  bool able_convolution4dexpander_8 = 346;
+  bool able_qrexpander_8 = 347;
+  bool able_eighexpander_8 = 348;
+  bool able_selectandscatterexpander_8 = 349;
+  bool able_scattersimplifier_8 = 350;
+  bool able_gathersimplifier_8 = 351;
+  bool able_stablesortexpander_8 = 352;
+  bool able_allreducefolder_9 = 353;
+  bool able_indexedarrayanalysisprinterpass_9 = 354;
+  bool able_collectivequantizer_9 = 355;
+  bool able_sortsimplifier_9 = 356;
+  bool able_fusionconstantsinking_9 = 357;
+  bool able_dotdimensionmerger_9 = 358;
+  bool able_p2pschedulepreparation_9 = 359;
+  bool able_batchdotsimplification_9 = 360;
+  bool able_shardingremover_9 = 361;
+  bool able_flattencallgraph_9 = 362;
+  bool able_slicesinker_9 = 363;
+  bool able_allgatherbroadcastreorder_9 = 364;
+  bool able_allreducecontiguous_9 = 365;
+  bool able_conditionalsimplifier_9 = 366;
+  bool able_stochasticconvertdecomposer_9 = 367;
+  bool able_reducescatterreassociate_9 = 368;
+  bool able_conditionalcanonicalizer_9 = 369;
+  bool able_zerosizedhloelimination_9 = 370;
+  bool able_reshapedecomposer_9 = 371;
+  bool able_addoriginalvalue_9 = 372;
+  bool able_dynamicdimensionsimplifier_9 = 373;
+  bool able_dotdecomposer_9 = 374;
+  bool able_hloconstantfolding_9 = 375;
+  bool able_rngexpander_9 = 376;
+  bool able_convolutionpredexpander_9 = 377;
+  bool able_convertoperandfolding_9 = 378;
+  bool able_choleskyexpander_9 = 379;
+  bool able_bitcastdtypesexpander_9 = 380;
+  bool able_realimagexpander_9 = 381;
+  bool able_convolution4dexpander_9 = 382;
+  bool able_qrexpander_9 = 383;
+  bool able_eighexpander_9 = 384;
+  bool able_selectandscatterexpander_9 = 385;
+  bool able_scattersimplifier_9 = 386;
+  bool able_gathersimplifier_9 = 387;
+  bool able_stablesortexpander_9 = 388;
+  bool able_allreducefolder_10 = 389;
+  bool able_indexedarrayanalysisprinterpass_10 = 390;
+  bool able_collectivequantizer_10 = 391;
+  bool able_sortsimplifier_10 = 392;
+  bool able_fusionconstantsinking_10 = 393;
+  bool able_dotdimensionmerger_10 = 394;
+  bool able_p2pschedulepreparation_10 = 395;
+  bool able_batchdotsimplification_10 = 396;
+  bool able_shardingremover_10 = 397;
+  bool able_flattencallgraph_10 = 398;
+  bool able_slicesinker_10 = 399;
+  bool able_allgatherbroadcastreorder_10 = 400;
+  bool able_allreducecontiguous_10 = 401;
+  bool able_conditionalsimplifier_10 = 402;
+  bool able_stochasticconvertdecomposer_10 = 403;
+  bool able_reducescatterreassociate_10 = 404;
+  bool able_conditionalcanonicalizer_10 = 405;
+  bool able_zerosizedhloelimination_10 = 406;
+  bool able_reshapedecomposer_10 = 407;
+  bool able_addoriginalvalue_10 = 408;
+  bool able_dynamicdimensionsimplifier_10 = 409;
+  bool able_dotdecomposer_10 = 410;
+  bool able_hloconstantfolding_10 = 411;
+  bool able_rngexpander_10 = 412;
+  bool able_convolutionpredexpander_10 = 413;
+  bool able_convertoperandfolding_10 = 414;
+  bool able_choleskyexpander_10 = 415;
+  bool able_bitcastdtypesexpander_10 = 416;
+  bool able_realimagexpander_10 = 417;
+  bool able_convolution4dexpander_10 = 418;
+  bool able_qrexpander_10 = 419;
+  bool able_eighexpander_10 = 420;
+  bool able_selectandscatterexpander_10 = 421;
+  bool able_scattersimplifier_10 = 422;
+  bool able_gathersimplifier_10 = 423;
+  bool able_stablesortexpander_10 = 424;
+  bool able_allreducefolder_11 = 425;
+  bool able_indexedarrayanalysisprinterpass_11 = 426;
+  bool able_collectivequantizer_11 = 427;
+  bool able_sortsimplifier_11 = 428;
+  bool able_fusionconstantsinking_11 = 429;
+  bool able_dotdimensionmerger_11 = 430;
+  bool able_p2pschedulepreparation_11 = 431;
+  bool able_batchdotsimplification_11 = 432;
+  bool able_shardingremover_11 = 433;
+  bool able_flattencallgraph_11 = 434;
+  bool able_slicesinker_11 = 435;
+  bool able_allgatherbroadcastreorder_11 = 436;
+  bool able_allreducecontiguous_11 = 437;
+  bool able_conditionalsimplifier_11 = 438;
+  bool able_stochasticconvertdecomposer_11 = 439;
+  bool able_reducescatterreassociate_11 = 440;
+  bool able_conditionalcanonicalizer_11 = 441;
+  bool able_zerosizedhloelimination_11 = 442;
+  bool able_reshapedecomposer_11 = 443;
+  bool able_addoriginalvalue_11 = 444;
+  bool able_dynamicdimensionsimplifier_11 = 445;
+  bool able_dotdecomposer_11 = 446;
+  bool able_hloconstantfolding_11 = 447;
+  bool able_rngexpander_11 = 448;
+  bool able_convolutionpredexpander_11 = 449;
+  bool able_convertoperandfolding_11 = 450;
+  bool able_choleskyexpander_11 = 451;
+  bool able_bitcastdtypesexpander_11 = 452;
+  bool able_realimagexpander_11 = 453;
+  bool able_convolution4dexpander_11 = 454;
+  bool able_qrexpander_11 = 455;
+  bool able_eighexpander_11 = 456;
+  bool able_selectandscatterexpander_11 = 457;
+  bool able_scattersimplifier_11 = 458;
+  bool able_gathersimplifier_11 = 459;
+  bool able_stablesortexpander_11 = 460;
+  bool able_allreducefolder_12 = 461;
+  bool able_indexedarrayanalysisprinterpass_12 = 462;
+  bool able_collectivequantizer_12 = 463;
+  bool able_sortsimplifier_12 = 464;
+  bool able_fusionconstantsinking_12 = 465;
+  bool able_dotdimensionmerger_12 = 466;
+  bool able_p2pschedulepreparation_12 = 467;
+  bool able_batchdotsimplification_12 = 468;
+  bool able_shardingremover_12 = 469;
+  bool able_flattencallgraph_12 = 470;
+  bool able_slicesinker_12 = 471;
+  bool able_allgatherbroadcastreorder_12 = 472;
+  bool able_allreducecontiguous_12 = 473;
+  bool able_conditionalsimplifier_12 = 474;
+  bool able_stochasticconvertdecomposer_12 = 475;
+  bool able_reducescatterreassociate_12 = 476;
+  bool able_conditionalcanonicalizer_12 = 477;
+  bool able_zerosizedhloelimination_12 = 478;
+  bool able_reshapedecomposer_12 = 479;
+  bool able_addoriginalvalue_12 = 480;
+  bool able_dynamicdimensionsimplifier_12 = 481;
+  bool able_dotdecomposer_12 = 482;
+  bool able_hloconstantfolding_12 = 483;
+  bool able_rngexpander_12 = 484;
+  bool able_convolutionpredexpander_12 = 485;
+  bool able_convertoperandfolding_12 = 486;
+  bool able_choleskyexpander_12 = 487;
+  bool able_bitcastdtypesexpander_12 = 488;
+  bool able_realimagexpander_12 = 489;
+  bool able_convolution4dexpander_12 = 490;
+  bool able_qrexpander_12 = 491;
+  bool able_eighexpander_12 = 492;
+  bool able_selectandscatterexpander_12 = 493;
+  bool able_scattersimplifier_12 = 494;
+  bool able_gathersimplifier_12 = 495;
+  bool able_stablesortexpander_12 = 496;
+  bool able_allreducefolder_13 = 497;
+  bool able_indexedarrayanalysisprinterpass_13 = 498;
+  bool able_collectivequantizer_13 = 499;
+  bool able_sortsimplifier_13 = 500;
+  bool able_fusionconstantsinking_13 = 501;
+  bool able_dotdimensionmerger_13 = 502;
+  bool able_p2pschedulepreparation_13 = 503;
+  bool able_batchdotsimplification_13 = 504;
+  bool able_shardingremover_13 = 505;
+  bool able_flattencallgraph_13 = 506;
+  bool able_slicesinker_13 = 507;
+  bool able_allgatherbroadcastreorder_13 = 508;
+  bool able_allreducecontiguous_13 = 509;
+  bool able_conditionalsimplifier_13 = 510;
+  bool able_stochasticconvertdecomposer_13 = 511;
+  bool able_reducescatterreassociate_13 = 512;
+  bool able_conditionalcanonicalizer_13 = 513;
+  bool able_zerosizedhloelimination_13 = 514;
+  bool able_reshapedecomposer_13 = 515;
+  bool able_addoriginalvalue_13 = 516;
+  bool able_dynamicdimensionsimplifier_13 = 517;
+  bool able_dotdecomposer_13 = 518;
+  bool able_hloconstantfolding_13 = 519;
+  bool able_rngexpander_13 = 520;
+  bool able_convolutionpredexpander_13 = 521;
+  bool able_convertoperandfolding_13 = 522;
+  bool able_choleskyexpander_13 = 523;
+  bool able_bitcastdtypesexpander_13 = 524;
+  bool able_realimagexpander_13 = 525;
+  bool able_convolution4dexpander_13 = 526;
+  bool able_qrexpander_13 = 527;
+  bool able_eighexpander_13 = 528;
+  bool able_selectandscatterexpander_13 = 529;
+  bool able_scattersimplifier_13 = 530;
+  bool able_gathersimplifier_13 = 531;
+  bool able_stablesortexpander_13 = 532;
+  bool able_allreducefolder_14 = 533;
+  bool able_indexedarrayanalysisprinterpass_14 = 534;
+  bool able_collectivequantizer_14 = 535;
+  bool able_sortsimplifier_14 = 536;
+  bool able_fusionconstantsinking_14 = 537;
+  bool able_dotdimensionmerger_14 = 538;
+  bool able_p2pschedulepreparation_14 = 539;
+  bool able_batchdotsimplification_14 = 540;
+  bool able_shardingremover_14 = 541;
+  bool able_flattencallgraph_14 = 542;
+  bool able_slicesinker_14 = 543;
+  bool able_allgatherbroadcastreorder_14 = 544;
+  bool able_allreducecontiguous_14 = 545;
+  bool able_conditionalsimplifier_14 = 546;
+  bool able_stochasticconvertdecomposer_14 = 547;
+  bool able_reducescatterreassociate_14 = 548;
+  bool able_conditionalcanonicalizer_14 = 549;
+  bool able_zerosizedhloelimination_14 = 550;
+  bool able_reshapedecomposer_14 = 551;
+  bool able_addoriginalvalue_14 = 552;
+  bool able_dynamicdimensionsimplifier_14 = 553;
+  bool able_dotdecomposer_14 = 554;
+  bool able_hloconstantfolding_14 = 555;
+  bool able_rngexpander_14 = 556;
+  bool able_convolutionpredexpander_14 = 557;
+  bool able_convertoperandfolding_14 = 558;
+  bool able_choleskyexpander_14 = 559;
+  bool able_bitcastdtypesexpander_14 = 560;
+  bool able_realimagexpander_14 = 561;
+  bool able_convolution4dexpander_14 = 562;
+  bool able_qrexpander_14 = 563;
+  bool able_eighexpander_14 = 564;
+  bool able_selectandscatterexpander_14 = 565;
+  bool able_scattersimplifier_14 = 566;
+  bool able_gathersimplifier_14 = 567;
+  bool able_stablesortexpander_14 = 568;
+  bool able_allreducefolder_15 = 569;
+  bool able_indexedarrayanalysisprinterpass_15 = 570;
+  bool able_collectivequantizer_15 = 571;
+  bool able_sortsimplifier_15 = 572;
+  bool able_fusionconstantsinking_15 = 573;
+  bool able_dotdimensionmerger_15 = 574;
+  bool able_p2pschedulepreparation_15 = 575;
+  bool able_batchdotsimplification_15 = 576;
+  bool able_shardingremover_15 = 577;
+  bool able_flattencallgraph_15 = 578;
+  bool able_slicesinker_15 = 579;
+  bool able_allgatherbroadcastreorder_15 = 580;
+  bool able_allreducecontiguous_15 = 581;
+  bool able_conditionalsimplifier_15 = 582;
+  bool able_stochasticconvertdecomposer_15 = 583;
+  bool able_reducescatterreassociate_15 = 584;
+  bool able_conditionalcanonicalizer_15 = 585;
+  bool able_zerosizedhloelimination_15 = 586;
+  bool able_reshapedecomposer_15 = 587;
+  bool able_addoriginalvalue_15 = 588;
+  bool able_dynamicdimensionsimplifier_15 = 589;
+  bool able_dotdecomposer_15 = 590;
+  bool able_hloconstantfolding_15 = 591;
+  bool able_rngexpander_15 = 592;
+  bool able_convolutionpredexpander_15 = 593;
+  bool able_convertoperandfolding_15 = 594;
+  bool able_choleskyexpander_15 = 595;
+  bool able_bitcastdtypesexpander_15 = 596;
+  bool able_realimagexpander_15 = 597;
+  bool able_convolution4dexpander_15 = 598;
+  bool able_qrexpander_15 = 599;
+  bool able_eighexpander_15 = 600;
+  bool able_selectandscatterexpander_15 = 601;
+  bool able_scattersimplifier_15 = 602;
+  bool able_gathersimplifier_15 = 603;
+  bool able_stablesortexpander_15 = 604;
+  bool able_allreducefolder_16 = 605;
+  bool able_indexedarrayanalysisprinterpass_16 = 606;
+  bool able_collectivequantizer_16 = 607;
+  bool able_sortsimplifier_16 = 608;
+  bool able_fusionconstantsinking_16 = 609;
+  bool able_dotdimensionmerger_16 = 610;
+  bool able_p2pschedulepreparation_16 = 611;
+  bool able_batchdotsimplification_16 = 612;
+  bool able_shardingremover_16 = 613;
+  bool able_flattencallgraph_16 = 614;
+  bool able_slicesinker_16 = 615;
+  bool able_allgatherbroadcastreorder_16 = 616;
+  bool able_allreducecontiguous_16 = 617;
+  bool able_conditionalsimplifier_16 = 618;
+  bool able_stochasticconvertdecomposer_16 = 619;
+  bool able_reducescatterreassociate_16 = 620;
+  bool able_conditionalcanonicalizer_16 = 621;
+  bool able_zerosizedhloelimination_16 = 622;
+  bool able_reshapedecomposer_16 = 623;
+  bool able_addoriginalvalue_16 = 624;
+  bool able_dynamicdimensionsimplifier_16 = 625;
+  bool able_dotdecomposer_16 = 626;
+  bool able_hloconstantfolding_16 = 627;
+  bool able_rngexpander_16 = 628;
+  bool able_convolutionpredexpander_16 = 629;
+  bool able_convertoperandfolding_16 = 630;
+  bool able_choleskyexpander_16 = 631;
+  bool able_bitcastdtypesexpander_16 = 632;
+  bool able_realimagexpander_16 = 633;
+  bool able_convolution4dexpander_16 = 634;
+  bool able_qrexpander_16 = 635;
+  bool able_eighexpander_16 = 636;
+  bool able_selectandscatterexpander_16 = 637;
+  bool able_scattersimplifier_16 = 638;
+  bool able_gathersimplifier_16 = 639;
+  bool able_stablesortexpander_16 = 640;
+  bool able_allreducefolder_17 = 641;
+  bool able_indexedarrayanalysisprinterpass_17 = 642;
+  bool able_collectivequantizer_17 = 643;
+  bool able_sortsimplifier_17 = 644;
+  bool able_fusionconstantsinking_17 = 645;
+  bool able_dotdimensionmerger_17 = 646;
+  bool able_p2pschedulepreparation_17 = 647;
+  bool able_batchdotsimplification_17 = 648;
+  bool able_shardingremover_17 = 649;
+  bool able_flattencallgraph_17 = 650;
+  bool able_slicesinker_17 = 651;
+  bool able_allgatherbroadcastreorder_17 = 652;
+  bool able_allreducecontiguous_17 = 653;
+  bool able_conditionalsimplifier_17 = 654;
+  bool able_stochasticconvertdecomposer_17 = 655;
+  bool able_reducescatterreassociate_17 = 656;
+  bool able_conditionalcanonicalizer_17 = 657;
+  bool able_zerosizedhloelimination_17 = 658;
+  bool able_reshapedecomposer_17 = 659;
+  bool able_addoriginalvalue_17 = 660;
+  bool able_dynamicdimensionsimplifier_17 = 661;
+  bool able_dotdecomposer_17 = 662;
+  bool able_hloconstantfolding_17 = 663;
+  bool able_rngexpander_17 = 664;
+  bool able_convolutionpredexpander_17 = 665;
+  bool able_convertoperandfolding_17 = 666;
+  bool able_choleskyexpander_17 = 667;
+  bool able_bitcastdtypesexpander_17 = 668;
+  bool able_realimagexpander_17 = 669;
+  bool able_convolution4dexpander_17 = 670;
+  bool able_qrexpander_17 = 671;
+  bool able_eighexpander_17 = 672;
+  bool able_selectandscatterexpander_17 = 673;
+  bool able_scattersimplifier_17 = 674;
+  bool able_gathersimplifier_17 = 675;
+  bool able_stablesortexpander_17 = 676;
+  bool able_allreducefolder_18 = 677;
+  bool able_indexedarrayanalysisprinterpass_18 = 678;
+  bool able_collectivequantizer_18 = 679;
+  bool able_sortsimplifier_18 = 680;
+  bool able_fusionconstantsinking_18 = 681;
+  bool able_dotdimensionmerger_18 = 682;
+  bool able_p2pschedulepreparation_18 = 683;
+  bool able_batchdotsimplification_18 = 684;
+  bool able_shardingremover_18 = 685;
+  bool able_flattencallgraph_18 = 686;
+  bool able_slicesinker_18 = 687;
+  bool able_allgatherbroadcastreorder_18 = 688;
+  bool able_allreducecontiguous_18 = 689;
+  bool able_conditionalsimplifier_18 = 690;
+  bool able_stochasticconvertdecomposer_18 = 691;
+  bool able_reducescatterreassociate_18 = 692;
+  bool able_conditionalcanonicalizer_18 = 693;
+  bool able_zerosizedhloelimination_18 = 694;
+  bool able_reshapedecomposer_18 = 695;
+  bool able_addoriginalvalue_18 = 696;
+  bool able_dynamicdimensionsimplifier_18 = 697;
+  bool able_dotdecomposer_18 = 698;
+  bool able_hloconstantfolding_18 = 699;
+  bool able_rngexpander_18 = 700;
+  bool able_convolutionpredexpander_18 = 701;
+  bool able_convertoperandfolding_18 = 702;
+  bool able_choleskyexpander_18 = 703;
+  bool able_bitcastdtypesexpander_18 = 704;
+  bool able_realimagexpander_18 = 705;
+  bool able_convolution4dexpander_18 = 706;
+  bool able_qrexpander_18 = 707;
+  bool able_eighexpander_18 = 708;
+  bool able_selectandscatterexpander_18 = 709;
+  bool able_scattersimplifier_18 = 710;
+  bool able_gathersimplifier_18 = 711;
+  bool able_stablesortexpander_18 = 712;
+  bool able_allreducefolder_19 = 713;
+  bool able_indexedarrayanalysisprinterpass_19 = 714;
+  bool able_collectivequantizer_19 = 715;
+  bool able_sortsimplifier_19 = 716;
+  bool able_fusionconstantsinking_19 = 717;
+  bool able_dotdimensionmerger_19 = 718;
+  bool able_p2pschedulepreparation_19 = 719;
+  bool able_batchdotsimplification_19 = 720;
+  bool able_shardingremover_19 = 721;
+  bool able_flattencallgraph_19 = 722;
+  bool able_slicesinker_19 = 723;
+  bool able_allgatherbroadcastreorder_19 = 724;
+  bool able_allreducecontiguous_19 = 725;
+  bool able_conditionalsimplifier_19 = 726;
+  bool able_stochasticconvertdecomposer_19 = 727;
+  bool able_reducescatterreassociate_19 = 728;
+  bool able_conditionalcanonicalizer_19 = 729;
+  bool able_zerosizedhloelimination_19 = 730;
+  bool able_reshapedecomposer_19 = 731;
+  bool able_addoriginalvalue_19 = 732;
+  bool able_dynamicdimensionsimplifier_19 = 733;
+  bool able_dotdecomposer_19 = 734;
+  bool able_hloconstantfolding_19 = 735;
+  bool able_rngexpander_19 = 736;
+  bool able_convolutionpredexpander_19 = 737;
+  bool able_convertoperandfolding_19 = 738;
+  bool able_choleskyexpander_19 = 739;
+  bool able_bitcastdtypesexpander_19 = 740;
+  bool able_realimagexpander_19 = 741;
+  bool able_convolution4dexpander_19 = 742;
+  bool able_qrexpander_19 = 743;
+  bool able_eighexpander_19 = 744;
+  bool able_selectandscatterexpander_19 = 745;
+  bool able_scattersimplifier_19 = 746;
+  bool able_gathersimplifier_19 = 747;
+  bool able_stablesortexpander_19 = 748;
+  bool able_allreducefolder_20 = 749;
+  bool able_indexedarrayanalysisprinterpass_20 = 750;
+  bool able_collectivequantizer_20 = 751;
+  bool able_sortsimplifier_20 = 752;
+  bool able_fusionconstantsinking_20 = 753;
+  bool able_dotdimensionmerger_20 = 754;
+  bool able_p2pschedulepreparation_20 = 755;
+  bool able_batchdotsimplification_20 = 756;
+  bool able_shardingremover_20 = 757;
+  bool able_flattencallgraph_20 = 758;
+  bool able_slicesinker_20 = 759;
+  bool able_allgatherbroadcastreorder_20 = 760;
+  bool able_allreducecontiguous_20 = 761;
+  bool able_conditionalsimplifier_20 = 762;
+  bool able_stochasticconvertdecomposer_20 = 763;
+  bool able_reducescatterreassociate_20 = 764;
+  bool able_conditionalcanonicalizer_20 = 765;
+  bool able_zerosizedhloelimination_20 = 766;
+  bool able_reshapedecomposer_20 = 767;
+  bool able_addoriginalvalue_20 = 768;
+  bool able_dynamicdimensionsimplifier_20 = 769;
+  bool able_dotdecomposer_20 = 770;
+  bool able_hloconstantfolding_20 = 771;
+  bool able_rngexpander_20 = 772;
+  bool able_convolutionpredexpander_20 = 773;
+  bool able_convertoperandfolding_20 = 774;
+  bool able_choleskyexpander_20 = 775;
+  bool able_bitcastdtypesexpander_20 = 776;
+  bool able_realimagexpander_20 = 777;
+  bool able_convolution4dexpander_20 = 778;
+  bool able_qrexpander_20 = 779;
+  bool able_eighexpander_20 = 780;
+  bool able_selectandscatterexpander_20 = 781;
+  bool able_scattersimplifier_20 = 782;
+  bool able_gathersimplifier_20 = 783;
+  bool able_stablesortexpander_20 = 784;
+  bool able_allreducefolder_21 = 785;
+  bool able_indexedarrayanalysisprinterpass_21 = 786;
+  bool able_collectivequantizer_21 = 787;
+  bool able_sortsimplifier_21 = 788;
+  bool able_fusionconstantsinking_21 = 789;
+  bool able_dotdimensionmerger_21 = 790;
+  bool able_p2pschedulepreparation_21 = 791;
+  bool able_batchdotsimplification_21 = 792;
+  bool able_shardingremover_21 = 793;
+  bool able_flattencallgraph_21 = 794;
+  bool able_slicesinker_21 = 795;
+  bool able_allgatherbroadcastreorder_21 = 796;
+  bool able_allreducecontiguous_21 = 797;
+  bool able_conditionalsimplifier_21 = 798;
+  bool able_stochasticconvertdecomposer_21 = 799;
+  bool able_reducescatterreassociate_21 = 800;
+  bool able_conditionalcanonicalizer_21 = 801;
+  bool able_zerosizedhloelimination_21 = 802;
+  bool able_reshapedecomposer_21 = 803;
+  bool able_addoriginalvalue_21 = 804;
+  bool able_dynamicdimensionsimplifier_21 = 805;
+  bool able_dotdecomposer_21 = 806;
+  bool able_hloconstantfolding_21 = 807;
+  bool able_rngexpander_21 = 808;
+  bool able_convolutionpredexpander_21 = 809;
+  bool able_convertoperandfolding_21 = 810;
+  bool able_choleskyexpander_21 = 811;
+  bool able_bitcastdtypesexpander_21 = 812;
+  bool able_realimagexpander_21 = 813;
+  bool able_convolution4dexpander_21 = 814;
+  bool able_qrexpander_21 = 815;
+  bool able_eighexpander_21 = 816;
+  bool able_selectandscatterexpander_21 = 817;
+  bool able_scattersimplifier_21 = 818;
+  bool able_gathersimplifier_21 = 819;
+  bool able_stablesortexpander_21 = 820;
+  bool able_allreducefolder_22 = 821;
+  bool able_indexedarrayanalysisprinterpass_22 = 822;
+  bool able_collectivequantizer_22 = 823;
+  bool able_sortsimplifier_22 = 824;
+  bool able_fusionconstantsinking_22 = 825;
+  bool able_dotdimensionmerger_22 = 826;
+  bool able_p2pschedulepreparation_22 = 827;
+  bool able_batchdotsimplification_22 = 828;
+  bool able_shardingremover_22 = 829;
+  bool able_flattencallgraph_22 = 830;
+  bool able_slicesinker_22 = 831;
+  bool able_allgatherbroadcastreorder_22 = 832;
+  bool able_allreducecontiguous_22 = 833;
+  bool able_conditionalsimplifier_22 = 834;
+  bool able_stochasticconvertdecomposer_22 = 835;
+  bool able_reducescatterreassociate_22 = 836;
+  bool able_conditionalcanonicalizer_22 = 837;
+  bool able_zerosizedhloelimination_22 = 838;
+  bool able_reshapedecomposer_22 = 839;
+  bool able_addoriginalvalue_22 = 840;
+  bool able_dynamicdimensionsimplifier_22 = 841;
+  bool able_dotdecomposer_22 = 842;
+  bool able_hloconstantfolding_22 = 843;
+  bool able_rngexpander_22 = 844;
+  bool able_convolutionpredexpander_22 = 845;
+  bool able_convertoperandfolding_22 = 846;
+  bool able_choleskyexpander_22 = 847;
+  bool able_bitcastdtypesexpander_22 = 848;
+  bool able_realimagexpander_22 = 849;
+  bool able_convolution4dexpander_22 = 850;
+  bool able_qrexpander_22 = 851;
+  bool able_eighexpander_22 = 852;
+  bool able_selectandscatterexpander_22 = 853;
+  bool able_scattersimplifier_22 = 854;
+  bool able_gathersimplifier_22 = 855;
+  bool able_stablesortexpander_22 = 856;
+  bool able_allreducefolder_23 = 857;
+  bool able_indexedarrayanalysisprinterpass_23 = 858;
+  bool able_collectivequantizer_23 = 859;
+  bool able_sortsimplifier_23 = 860;
+  bool able_fusionconstantsinking_23 = 861;
+  bool able_dotdimensionmerger_23 = 862;
+  bool able_p2pschedulepreparation_23 = 863;
+  bool able_batchdotsimplification_23 = 864;
+  bool able_shardingremover_23 = 865;
+  bool able_flattencallgraph_23 = 866;
+  bool able_slicesinker_23 = 867;
+  bool able_allgatherbroadcastreorder_23 = 868;
+  bool able_allreducecontiguous_23 = 869;
+  bool able_conditionalsimplifier_23 = 870;
+  bool able_stochasticconvertdecomposer_23 = 871;
+  bool able_reducescatterreassociate_23 = 872;
+  bool able_conditionalcanonicalizer_23 = 873;
+  bool able_zerosizedhloelimination_23 = 874;
+  bool able_reshapedecomposer_23 = 875;
+  bool able_addoriginalvalue_23 = 876;
+  bool able_dynamicdimensionsimplifier_23 = 877;
+  bool able_dotdecomposer_23 = 878;
+  bool able_hloconstantfolding_23 = 879;
+  bool able_rngexpander_23 = 880;
+  bool able_convolutionpredexpander_23 = 881;
+  bool able_convertoperandfolding_23 = 882;
+  bool able_choleskyexpander_23 = 883;
+  bool able_bitcastdtypesexpander_23 = 884;
+  bool able_realimagexpander_23 = 885;
+  bool able_convolution4dexpander_23 = 886;
+  bool able_qrexpander_23 = 887;
+  bool able_eighexpander_23 = 888;
+  bool able_selectandscatterexpander_23 = 889;
+  bool able_scattersimplifier_23 = 890;
+  bool able_gathersimplifier_23 = 891;
+  bool able_stablesortexpander_23 = 892;
+  bool able_allreducefolder_24 = 893;
+  bool able_indexedarrayanalysisprinterpass_24 = 894;
+  bool able_collectivequantizer_24 = 895;
+  bool able_sortsimplifier_24 = 896;
+  bool able_fusionconstantsinking_24 = 897;
+  bool able_dotdimensionmerger_24 = 898;
+  bool able_p2pschedulepreparation_24 = 899;
+  bool able_batchdotsimplification_24 = 900;
+  bool able_shardingremover_24 = 901;
+  bool able_flattencallgraph_24 = 902;
+  bool able_slicesinker_24 = 903;
+  bool able_allgatherbroadcastreorder_24 = 904;
+  bool able_allreducecontiguous_24 = 905;
+  bool able_conditionalsimplifier_24 = 906;
+  bool able_stochasticconvertdecomposer_24 = 907;
+  bool able_reducescatterreassociate_24 = 908;
+  bool able_conditionalcanonicalizer_24 = 909;
+  bool able_zerosizedhloelimination_24 = 910;
+  bool able_reshapedecomposer_24 = 911;
+  bool able_addoriginalvalue_24 = 912;
+  bool able_dynamicdimensionsimplifier_24 = 913;
+  bool able_dotdecomposer_24 = 914;
+  bool able_hloconstantfolding_24 = 915;
+  bool able_rngexpander_24 = 916;
+  bool able_convolutionpredexpander_24 = 917;
+  bool able_convertoperandfolding_24 = 918;
+  bool able_choleskyexpander_24 = 919;
+  bool able_bitcastdtypesexpander_24 = 920;
+  bool able_realimagexpander_24 = 921;
+  bool able_convolution4dexpander_24 = 922;
+  bool able_qrexpander_24 = 923;
+  bool able_eighexpander_24 = 924;
+  bool able_selectandscatterexpander_24 = 925;
+  bool able_scattersimplifier_24 = 926;
+  bool able_gathersimplifier_24 = 927;
+  bool able_stablesortexpander_24 = 928;
+  bool able_allreducefolder_25 = 929;
+  bool able_indexedarrayanalysisprinterpass_25 = 930;
+  bool able_collectivequantizer_25 = 931;
+  bool able_sortsimplifier_25 = 932;
+  bool able_fusionconstantsinking_25 = 933;
+  bool able_dotdimensionmerger_25 = 934;
+  bool able_p2pschedulepreparation_25 = 935;
+  bool able_batchdotsimplification_25 = 936;
+  bool able_shardingremover_25 = 937;
+  bool able_flattencallgraph_25 = 938;
+  bool able_slicesinker_25 = 939;
+  bool able_allgatherbroadcastreorder_25 = 940;
+  bool able_allreducecontiguous_25 = 941;
+  bool able_conditionalsimplifier_25 = 942;
+  bool able_stochasticconvertdecomposer_25 = 943;
+  bool able_reducescatterreassociate_25 = 944;
+  bool able_conditionalcanonicalizer_25 = 945;
+  bool able_zerosizedhloelimination_25 = 946;
+  bool able_reshapedecomposer_25 = 947;
+  bool able_addoriginalvalue_25 = 948;
+  bool able_dynamicdimensionsimplifier_25 = 949;
+  bool able_dotdecomposer_25 = 950;
+  bool able_hloconstantfolding_25 = 951;
+  bool able_rngexpander_25 = 952;
+  bool able_convolutionpredexpander_25 = 953;
+  bool able_convertoperandfolding_25 = 954;
+  bool able_choleskyexpander_25 = 955;
+  bool able_bitcastdtypesexpander_25 = 956;
+  bool able_realimagexpander_25 = 957;
+  bool able_convolution4dexpander_25 = 958;
+  bool able_qrexpander_25 = 959;
+  bool able_eighexpander_25 = 960;
+  bool able_selectandscatterexpander_25 = 961;
+  bool able_scattersimplifier_25 = 962;
+  bool able_gathersimplifier_25 = 963;
+  bool able_stablesortexpander_25 = 964;
+  bool able_allreducefolder_26 = 965;
+  bool able_indexedarrayanalysisprinterpass_26 = 966;
+  bool able_collectivequantizer_26 = 967;
+  bool able_sortsimplifier_26 = 968;
+  bool able_fusionconstantsinking_26 = 969;
+  bool able_dotdimensionmerger_26 = 970;
+  bool able_p2pschedulepreparation_26 = 971;
+  bool able_batchdotsimplification_26 = 972;
+  bool able_shardingremover_26 = 973;
+  bool able_flattencallgraph_26 = 974;
+  bool able_slicesinker_26 = 975;
+  bool able_allgatherbroadcastreorder_26 = 976;
+  bool able_allreducecontiguous_26 = 977;
+  bool able_conditionalsimplifier_26 = 978;
+  bool able_stochasticconvertdecomposer_26 = 979;
+  bool able_reducescatterreassociate_26 = 980;
+  bool able_conditionalcanonicalizer_26 = 981;
+  bool able_zerosizedhloelimination_26 = 982;
+  bool able_reshapedecomposer_26 = 983;
+  bool able_addoriginalvalue_26 = 984;
+  bool able_dynamicdimensionsimplifier_26 = 985;
+  bool able_dotdecomposer_26 = 986;
+  bool able_hloconstantfolding_26 = 987;
+  bool able_rngexpander_26 = 988;
+  bool able_convolutionpredexpander_26 = 989;
+  bool able_convertoperandfolding_26 = 990;
+  bool able_choleskyexpander_26 = 991;
+  bool able_bitcastdtypesexpander_26 = 992;
+  bool able_realimagexpander_26 = 993;
+  bool able_convolution4dexpander_26 = 994;
+  bool able_qrexpander_26 = 995;
+  bool able_eighexpander_26 = 996;
+  bool able_selectandscatterexpander_26 = 997;
+  bool able_scattersimplifier_26 = 998;
+  bool able_gathersimplifier_26 = 999;
+  bool able_stablesortexpander_26 = 1000;
+  bool able_allreducefolder_27 = 1001;
+  bool able_indexedarrayanalysisprinterpass_27 = 1002;
+  bool able_collectivequantizer_27 = 1003;
+  bool able_sortsimplifier_27 = 1004;
+  bool able_fusionconstantsinking_27 = 1005;
+  bool able_dotdimensionmerger_27 = 1006;
+  bool able_p2pschedulepreparation_27 = 1007;
+  bool able_batchdotsimplification_27 = 1008;
+  bool able_shardingremover_27 = 1009;
+  bool able_flattencallgraph_27 = 1010;
+  bool able_slicesinker_27 = 1011;
+  bool able_allgatherbroadcastreorder_27 = 1012;
+  bool able_allreducecontiguous_27 = 1013;
+  bool able_conditionalsimplifier_27 = 1014;
+  bool able_stochasticconvertdecomposer_27 = 1015;
+  bool able_reducescatterreassociate_27 = 1016;
+  bool able_conditionalcanonicalizer_27 = 1017;
+  bool able_zerosizedhloelimination_27 = 1018;
+  bool able_reshapedecomposer_27 = 1019;
+  bool able_addoriginalvalue_27 = 1020;
+  bool able_dynamicdimensionsimplifier_27 = 1021;
+  bool able_dotdecomposer_27 = 1022;
+  bool able_hloconstantfolding_27 = 1023;
+  bool able_rngexpander_27 = 1024;
+  bool able_convolutionpredexpander_27 = 1025;
+  bool able_convertoperandfolding_27 = 1026;
+  bool able_choleskyexpander_27 = 1027;
+  bool able_bitcastdtypesexpander_27 = 1028;
+  bool able_realimagexpander_27 = 1029;
+  bool able_convolution4dexpander_27 = 1030;
+  bool able_qrexpander_27 = 1031;
+  bool able_eighexpander_27 = 1032;
+  bool able_selectandscatterexpander_27 = 1033;
+  bool able_scattersimplifier_27 = 1034;
+  bool able_gathersimplifier_27 = 1035;
+  bool able_stablesortexpander_27 = 1036;
+  bool able_allreducefolder_28 = 1037;
+  bool able_indexedarrayanalysisprinterpass_28 = 1038;
+  bool able_collectivequantizer_28 = 1039;
+  bool able_sortsimplifier_28 = 1040;
+  bool able_fusionconstantsinking_28 = 1041;
+  bool able_dotdimensionmerger_28 = 1042;
+  bool able_p2pschedulepreparation_28 = 1043;
+  bool able_batchdotsimplification_28 = 1044;
+  bool able_shardingremover_28 = 1045;
+  bool able_flattencallgraph_28 = 1046;
+  bool able_slicesinker_28 = 1047;
+  bool able_allgatherbroadcastreorder_28 = 1048;
+  bool able_allreducecontiguous_28 = 1049;
+  bool able_conditionalsimplifier_28 = 1050;
+  bool able_stochasticconvertdecomposer_28 = 1051;
+  bool able_reducescatterreassociate_28 = 1052;
+  bool able_conditionalcanonicalizer_28 = 1053;
+  bool able_zerosizedhloelimination_28 = 1054;
+  bool able_reshapedecomposer_28 = 1055;
+  bool able_addoriginalvalue_28 = 1056;
+  bool able_dynamicdimensionsimplifier_28 = 1057;
+  bool able_dotdecomposer_28 = 1058;
+  bool able_hloconstantfolding_28 = 1059;
+  bool able_rngexpander_28 = 1060;
+  bool able_convolutionpredexpander_28 = 1061;
+  bool able_convertoperandfolding_28 = 1062;
+  bool able_choleskyexpander_28 = 1063;
+  bool able_bitcastdtypesexpander_28 = 1064;
+  bool able_realimagexpander_28 = 1065;
+  bool able_convolution4dexpander_28 = 1066;
+  bool able_qrexpander_28 = 1067;
+  bool able_eighexpander_28 = 1068;
+  bool able_selectandscatterexpander_28 = 1069;
+  bool able_scattersimplifier_28 = 1070;
+  bool able_gathersimplifier_28 = 1071;
+  bool able_stablesortexpander_28 = 1072;
+  bool able_allreducefolder_29 = 1073;
+  bool able_indexedarrayanalysisprinterpass_29 = 1074;
+  bool able_collectivequantizer_29 = 1075;
+  bool able_sortsimplifier_29 = 1076;
+  bool able_fusionconstantsinking_29 = 1077;
+  bool able_dotdimensionmerger_29 = 1078;
+  bool able_p2pschedulepreparation_29 = 1079;
+  bool able_batchdotsimplification_29 = 1080;
+  bool able_shardingremover_29 = 1081;
+  bool able_flattencallgraph_29 = 1082;
+  bool able_slicesinker_29 = 1083;
+  bool able_allgatherbroadcastreorder_29 = 1084;
+  bool able_allreducecontiguous_29 = 1085;
+  bool able_conditionalsimplifier_29 = 1086;
+  bool able_stochasticconvertdecomposer_29 = 1087;
+  bool able_reducescatterreassociate_29 = 1088;
+  bool able_conditionalcanonicalizer_29 = 1089;
+  bool able_zerosizedhloelimination_29 = 1090;
+  bool able_reshapedecomposer_29 = 1091;
+  bool able_addoriginalvalue_29 = 1092;
+  bool able_dynamicdimensionsimplifier_29 = 1093;
+  bool able_dotdecomposer_29 = 1094;
+  bool able_hloconstantfolding_29 = 1095;
+  bool able_rngexpander_29 = 1096;
+  bool able_convolutionpredexpander_29 = 1097;
+  bool able_convertoperandfolding_29 = 1098;
+  bool able_choleskyexpander_29 = 1099;
+  bool able_bitcastdtypesexpander_29 = 1100;
+  bool able_realimagexpander_29 = 1101;
+  bool able_convolution4dexpander_29 = 1102;
+  bool able_qrexpander_29 = 1103;
+  bool able_eighexpander_29 = 1104;
+  bool able_selectandscatterexpander_29 = 1105;
+  bool able_scattersimplifier_29 = 1106;
+  bool able_gathersimplifier_29 = 1107;
+  bool able_stablesortexpander_29 = 1108;
+  bool able_allreducefolder_30 = 1109;
+  bool able_indexedarrayanalysisprinterpass_30 = 1110;
+  bool able_collectivequantizer_30 = 1111;
+  bool able_sortsimplifier_30 = 1112;
+  bool able_fusionconstantsinking_30 = 1113;
+  bool able_dotdimensionmerger_30 = 1114;
+  bool able_p2pschedulepreparation_30 = 1115;
+  bool able_batchdotsimplification_30 = 1116;
+  bool able_shardingremover_30 = 1117;
+  bool able_flattencallgraph_30 = 1118;
+  bool able_slicesinker_30 = 1119;
+  bool able_allgatherbroadcastreorder_30 = 1120;
+  bool able_allreducecontiguous_30 = 1121;
+  bool able_conditionalsimplifier_30 = 1122;
+  bool able_stochasticconvertdecomposer_30 = 1123;
+  bool able_reducescatterreassociate_30 = 1124;
+  bool able_conditionalcanonicalizer_30 = 1125;
+  bool able_zerosizedhloelimination_30 = 1126;
+  bool able_reshapedecomposer_30 = 1127;
+  bool able_addoriginalvalue_30 = 1128;
+  bool able_dynamicdimensionsimplifier_30 = 1129;
+  bool able_dotdecomposer_30 = 1130;
+  bool able_hloconstantfolding_30 = 1131;
+  bool able_rngexpander_30 = 1132;
+  bool able_convolutionpredexpander_30 = 1133;
+  bool able_convertoperandfolding_30 = 1134;
+  bool able_choleskyexpander_30 = 1135;
+  bool able_bitcastdtypesexpander_30 = 1136;
+  bool able_realimagexpander_30 = 1137;
+  bool able_convolution4dexpander_30 = 1138;
+  bool able_qrexpander_30 = 1139;
+  bool able_eighexpander_30 = 1140;
+  bool able_selectandscatterexpander_30 = 1141;
+  bool able_scattersimplifier_30 = 1142;
+  bool able_gathersimplifier_30 = 1143;
+  bool able_stablesortexpander_30 = 1144;
+  bool able_allreducefolder_31 = 1145;
+  bool able_indexedarrayanalysisprinterpass_31 = 1146;
+  bool able_collectivequantizer_31 = 1147;
+  bool able_sortsimplifier_31 = 1148;
+  bool able_fusionconstantsinking_31 = 1149;
+  bool able_dotdimensionmerger_31 = 1150;
+  bool able_p2pschedulepreparation_31 = 1151;
+  bool able_batchdotsimplification_31 = 1152;
+  bool able_shardingremover_31 = 1153;
+  bool able_flattencallgraph_31 = 1154;
+  bool able_slicesinker_31 = 1155;
+  bool able_allgatherbroadcastreorder_31 = 1156;
+  bool able_allreducecontiguous_31 = 1157;
+  bool able_conditionalsimplifier_31 = 1158;
+  bool able_stochasticconvertdecomposer_31 = 1159;
+  bool able_reducescatterreassociate_31 = 1160;
+  bool able_conditionalcanonicalizer_31 = 1161;
+  bool able_zerosizedhloelimination_31 = 1162;
+  bool able_reshapedecomposer_31 = 1163;
+  bool able_addoriginalvalue_31 = 1164;
+  bool able_dynamicdimensionsimplifier_31 = 1165;
+  bool able_dotdecomposer_31 = 1166;
+  bool able_hloconstantfolding_31 = 1167;
+  bool able_rngexpander_31 = 1168;
+  bool able_convolutionpredexpander_31 = 1169;
+  bool able_convertoperandfolding_31 = 1170;
+  bool able_choleskyexpander_31 = 1171;
+  bool able_bitcastdtypesexpander_31 = 1172;
+  bool able_realimagexpander_31 = 1173;
+  bool able_convolution4dexpander_31 = 1174;
+  bool able_qrexpander_31 = 1175;
+  bool able_eighexpander_31 = 1176;
+  bool able_selectandscatterexpander_31 = 1177;
+  bool able_scattersimplifier_31 = 1178;
+  bool able_gathersimplifier_31 = 1179;
+  bool able_stablesortexpander_31 = 1180;
+  bool able_allreducefolder_32 = 1181;
+  bool able_indexedarrayanalysisprinterpass_32 = 1182;
+  bool able_collectivequantizer_32 = 1183;
+  bool able_sortsimplifier_32 = 1184;
+  bool able_fusionconstantsinking_32 = 1185;
+  bool able_dotdimensionmerger_32 = 1186;
+  bool able_p2pschedulepreparation_32 = 1187;
+  bool able_batchdotsimplification_32 = 1188;
+  bool able_shardingremover_32 = 1189;
+  bool able_flattencallgraph_32 = 1190;
+  bool able_slicesinker_32 = 1191;
+  bool able_allgatherbroadcastreorder_32 = 1192;
+  bool able_allreducecontiguous_32 = 1193;
+  bool able_conditionalsimplifier_32 = 1194;
+  bool able_stochasticconvertdecomposer_32 = 1195;
+  bool able_reducescatterreassociate_32 = 1196;
+  bool able_conditionalcanonicalizer_32 = 1197;
+  bool able_zerosizedhloelimination_32 = 1198;
+  bool able_reshapedecomposer_32 = 1199;
+  bool able_addoriginalvalue_32 = 1200;
+  bool able_dynamicdimensionsimplifier_32 = 1201;
+  bool able_dotdecomposer_32 = 1202;
+  bool able_hloconstantfolding_32 = 1203;
+  bool able_rngexpander_32 = 1204;
+  bool able_convolutionpredexpander_32 = 1205;
+  bool able_convertoperandfolding_32 = 1206;
+  bool able_choleskyexpander_32 = 1207;
+  bool able_bitcastdtypesexpander_32 = 1208;
+  bool able_realimagexpander_32 = 1209;
+  bool able_convolution4dexpander_32 = 1210;
+  bool able_qrexpander_32 = 1211;
+  bool able_eighexpander_32 = 1212;
+  bool able_selectandscatterexpander_32 = 1213;
+  bool able_scattersimplifier_32 = 1214;
+  bool able_gathersimplifier_32 = 1215;
+  bool able_stablesortexpander_32 = 1216;
+  bool able_allreducefolder_33 = 1217;
+  bool able_indexedarrayanalysisprinterpass_33 = 1218;
+  bool able_collectivequantizer_33 = 1219;
+  bool able_sortsimplifier_33 = 1220;
+  bool able_fusionconstantsinking_33 = 1221;
+  bool able_dotdimensionmerger_33 = 1222;
+  bool able_p2pschedulepreparation_33 = 1223;
+  bool able_batchdotsimplification_33 = 1224;
+  bool able_shardingremover_33 = 1225;
+  bool able_flattencallgraph_33 = 1226;
+  bool able_slicesinker_33 = 1227;
+  bool able_allgatherbroadcastreorder_33 = 1228;
+  bool able_allreducecontiguous_33 = 1229;
+  bool able_conditionalsimplifier_33 = 1230;
+  bool able_stochasticconvertdecomposer_33 = 1231;
+  bool able_reducescatterreassociate_33 = 1232;
+  bool able_conditionalcanonicalizer_33 = 1233;
+  bool able_zerosizedhloelimination_33 = 1234;
+  bool able_reshapedecomposer_33 = 1235;
+  bool able_addoriginalvalue_33 = 1236;
+  bool able_dynamicdimensionsimplifier_33 = 1237;
+  bool able_dotdecomposer_33 = 1238;
+  bool able_hloconstantfolding_33 = 1239;
+  bool able_rngexpander_33 = 1240;
+  bool able_convolutionpredexpander_33 = 1241;
+  bool able_convertoperandfolding_33 = 1242;
+  bool able_choleskyexpander_33 = 1243;
+  bool able_bitcastdtypesexpander_33 = 1244;
+  bool able_realimagexpander_33 = 1245;
+  bool able_convolution4dexpander_33 = 1246;
+  bool able_qrexpander_33 = 1247;
+  bool able_eighexpander_33 = 1248;
+  bool able_selectandscatterexpander_33 = 1249;
+  bool able_scattersimplifier_33 = 1250;
+  bool able_gathersimplifier_33 = 1251;
+  bool able_stablesortexpander_33 = 1252;
+  bool able_allreducefolder_34 = 1253;
+  bool able_indexedarrayanalysisprinterpass_34 = 1254;
+  bool able_collectivequantizer_34 = 1255;
+  bool able_sortsimplifier_34 = 1256;
+  bool able_fusionconstantsinking_34 = 1257;
+  bool able_dotdimensionmerger_34 = 1258;
+  bool able_p2pschedulepreparation_34 = 1259;
+  bool able_batchdotsimplification_34 = 1260;
+  bool able_shardingremover_34 = 1261;
+  bool able_flattencallgraph_34 = 1262;
+  bool able_slicesinker_34 = 1263;
+  bool able_allgatherbroadcastreorder_34 = 1264;
+  bool able_allreducecontiguous_34 = 1265;
+  bool able_conditionalsimplifier_34 = 1266;
+  bool able_stochasticconvertdecomposer_34 = 1267;
+  bool able_reducescatterreassociate_34 = 1268;
+  bool able_conditionalcanonicalizer_34 = 1269;
+  bool able_zerosizedhloelimination_34 = 1270;
+  bool able_reshapedecomposer_34 = 1271;
+  bool able_addoriginalvalue_34 = 1272;
+  bool able_dynamicdimensionsimplifier_34 = 1273;
+  bool able_dotdecomposer_34 = 1274;
+  bool able_hloconstantfolding_34 = 1275;
+  bool able_rngexpander_34 = 1276;
+  bool able_convolutionpredexpander_34 = 1277;
+  bool able_convertoperandfolding_34 = 1278;
+  bool able_choleskyexpander_34 = 1279;
+  bool able_bitcastdtypesexpander_34 = 1280;
+  bool able_realimagexpander_34 = 1281;
+  bool able_convolution4dexpander_34 = 1282;
+  bool able_qrexpander_34 = 1283;
+  bool able_eighexpander_34 = 1284;
+  bool able_selectandscatterexpander_34 = 1285;
+  bool able_scattersimplifier_34 = 1286;
+  bool able_gathersimplifier_34 = 1287;
+  bool able_stablesortexpander_34 = 1288;
+  bool able_allreducefolder_35 = 1289;
+  bool able_indexedarrayanalysisprinterpass_35 = 1290;
+  bool able_collectivequantizer_35 = 1291;
+  bool able_sortsimplifier_35 = 1292;
+  bool able_fusionconstantsinking_35 = 1293;
+  bool able_dotdimensionmerger_35 = 1294;
+  bool able_p2pschedulepreparation_35 = 1295;
+  bool able_batchdotsimplification_35 = 1296;
+  bool able_shardingremover_35 = 1297;
+  bool able_flattencallgraph_35 = 1298;
+  bool able_slicesinker_35 = 1299;
+  bool able_allgatherbroadcastreorder_35 = 1300;
+  bool able_allreducecontiguous_35 = 1301;
+  bool able_conditionalsimplifier_35 = 1302;
+  bool able_stochasticconvertdecomposer_35 = 1303;
+  bool able_reducescatterreassociate_35 = 1304;
+  bool able_conditionalcanonicalizer_35 = 1305;
+  bool able_zerosizedhloelimination_35 = 1306;
+  bool able_reshapedecomposer_35 = 1307;
+  bool able_addoriginalvalue_35 = 1308;
+  bool able_dynamicdimensionsimplifier_35 = 1309;
+  bool able_dotdecomposer_35 = 1310;
+  bool able_hloconstantfolding_35 = 1311;
+  bool able_rngexpander_35 = 1312;
+  bool able_convolutionpredexpander_35 = 1313;
+  bool able_convertoperandfolding_35 = 1314;
+  bool able_choleskyexpander_35 = 1315;
+  bool able_bitcastdtypesexpander_35 = 1316;
+  bool able_realimagexpander_35 = 1317;
+  bool able_convolution4dexpander_35 = 1318;
+  bool able_qrexpander_35 = 1319;
+  bool able_eighexpander_35 = 1320;
+  bool able_selectandscatterexpander_35 = 1321;
+  bool able_scattersimplifier_35 = 1322;
+  bool able_gathersimplifier_35 = 1323;
+  bool able_stablesortexpander_35 = 1324;
+  bool able_allreducefolder_36 = 1325;
+  bool able_indexedarrayanalysisprinterpass_36 = 1326;
+  bool able_collectivequantizer_36 = 1327;
+  bool able_sortsimplifier_36 = 1328;
+  bool able_fusionconstantsinking_36 = 1329;
+  bool able_dotdimensionmerger_36 = 1330;
+  bool able_p2pschedulepreparation_36 = 1331;
+  bool able_batchdotsimplification_36 = 1332;
+  bool able_shardingremover_36 = 1333;
+  bool able_flattencallgraph_36 = 1334;
+  bool able_slicesinker_36 = 1335;
+  bool able_allgatherbroadcastreorder_36 = 1336;
+  bool able_allreducecontiguous_36 = 1337;
+  bool able_conditionalsimplifier_36 = 1338;
+  bool able_stochasticconvertdecomposer_36 = 1339;
+  bool able_reducescatterreassociate_36 = 1340;
+  bool able_conditionalcanonicalizer_36 = 1341;
+  bool able_zerosizedhloelimination_36 = 1342;
+  bool able_reshapedecomposer_36 = 1343;
+  bool able_addoriginalvalue_36 = 1344;
+  bool able_dynamicdimensionsimplifier_36 = 1345;
+  bool able_dotdecomposer_36 = 1346;
+  bool able_hloconstantfolding_36 = 1347;
+  bool able_rngexpander_36 = 1348;
+  bool able_convolutionpredexpander_36 = 1349;
+  bool able_convertoperandfolding_36 = 1350;
+  bool able_choleskyexpander_36 = 1351;
+  bool able_bitcastdtypesexpander_36 = 1352;
+  bool able_realimagexpander_36 = 1353;
+  bool able_convolution4dexpander_36 = 1354;
+  bool able_qrexpander_36 = 1355;
+  bool able_eighexpander_36 = 1356;
+  bool able_selectandscatterexpander_36 = 1357;
+  bool able_scattersimplifier_36 = 1358;
+  bool able_gathersimplifier_36 = 1359;
+  bool able_stablesortexpander_36 = 1360;
+  bool disable_operandupcaster = 1361;
+  bool disable_resultcaster = 1362;
+  bool disable_zerosizedhloelimination = 1363;
+  bool disable_conditionaltoselect = 1364;
+  bool disable_mapinliner = 1365;
+  bool disable_choleskyexpander = 1366;
+  bool disable_qrexpander = 1367;
+  bool disable_eighexpander = 1368;
+  bool disable_triangularsolveexpander = 1369;
+  bool disable_floatnormalization = 1370;
+  bool disable_callinliner = 1371;
+  bool disable_gpu_dotdimensionsorter = 1372;
+  bool disable_batchdotsimplification = 1373;
+  bool disable_dotdecomposer = 1374;
+  bool disable_convolution4dexpander = 1375;
+  bool disable_batchdotsimplification_1 = 1376;
+  bool disable_convolutiongroupconverter = 1377;
+  bool disable_batchnormexpander = 1378;
+  bool disable_gathersimplifier = 1379;
+  bool disable_gatherexpander = 1380;
+  bool disable_scatterexpander = 1381;
+  bool disable_algebraicsimplifier = 1382;
+  bool disable_bitcastdtypesexpander = 1383;
+  bool disable_gpu_dotdimensionsorter_1 = 1384;
+  bool disable_dotdecomposer_1 = 1385;
+  bool disable_sortsimplifier = 1386;
+  bool disable_tuplesimplifier = 1387;
+  bool disable_whileloopsimplifier = 1388;
+  bool disable_slicesinker = 1389;
+  bool disable_reshapemover = 1390;
+  bool disable_hloconstantfolding = 1391;
+  bool disable_conditionalsimplifier = 1392;
+  bool disable_realimagexpander = 1393;
+  bool disable_hlocse = 1394;
+  bool disable_hlodce = 1395;
+}
+
+// The executable format accepted by SPU runtime.
+//
+// - Inputs should be prepared before running executable.
+// - Output is maintained after execution, and can be fetched by output name.
+//
+// ```python
+//   rt = spu.Runtime(...)            # create an spu runtime.
+//   rt.set_var('x', ...)             # set variable to the runtime.
+//   exe = spu.ExecutableProto(       # prepare the executable.
+//           name = 'balabala',
+//           input_names = ['x'],
+//           output_names = ['y'],
+//           code = ...)
+//   rt.run(exe)                      # run the executable.
+//   y = rt.get_var('y')              # get the executable from spu runtime.
+// ```
+message ExecutableProto {
+  // The name of the executable.
+  string name = 1;
+
+  // The input names.
+  repeated string input_names = 2;
+
+  // The output names.
+  repeated string output_names = 4;
+
+  // The bytecode of the program, with format IR_MLIR_SPU.
+  bytes code = 6;
+}
+

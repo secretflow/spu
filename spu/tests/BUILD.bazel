@@ -87,7 +87,7 @@ py_test(
 
 py_test(
     name = "jnp_cheetah_r64_test",
-    timeout = "long",
+    size = "enormous",
     srcs = ["jnp_cheetah_r64_test.py"],
     deps = [
         ":jnp_testbase",
@@ -96,7 +96,7 @@ py_test(
 
 py_test(
     name = "jnp_cheetah_r64_test_x64",
-    timeout = "long",
+    size = "enormous",
     srcs = ["jnp_cheetah_r64_test.py"],
     env = {
         "ENABLE_X64_TEST": "1",
@@ -178,7 +178,15 @@ py_binary(
     srcs = ["jnp_debug.py"],
     deps = [
         "//spu:api",
-        "//spu/intrinsic:all_intrinsics",
+        "//spu/utils:simulation",
+    ],
+)
+
+py_binary(
+    name = "hlo_debug",
+    srcs = ["hlo_debug.py"],
+    deps = [
+        "//spu:api",
         "//spu/utils:simulation",
     ],
 )
@@ -225,23 +233,6 @@ py_test(
     deps = [
         ":utils",
         "//spu:api",
-    ],
-)
-
-py_test(
-    name = "legacy_psi_test",
-    srcs = ["legacy_psi_test.py"],
-    data = [
-        "//spu/tests/data",
-    ],
-    flaky = True,
-    tags = [
-        "exclusive-if-local",
-    ],
-    deps = [
-        ":utils",
-        "//spu:psi",
-        "//spu/utils:simulation",
     ],
 )
 

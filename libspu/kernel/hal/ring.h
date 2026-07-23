@@ -46,6 +46,8 @@ Value _sub(SPUContext* ctx, const Value& x, const Value& y);
 
 Value _mul(SPUContext* ctx, const Value& x, const Value& y);
 
+Value _square(SPUContext* ctx, const Value& x);
+
 // Note: there is no div (multiplicative inverse) in ring 2^k.
 // Value _div(SPUContext* ctx, const Value& x, const Value& y);
 
@@ -69,11 +71,11 @@ Value _equal(SPUContext* ctx, const Value& x, const Value& y);
 
 Value _less(SPUContext* ctx, const Value& x, const Value& y);
 
-Value _lshift(SPUContext* ctx, const Value& in, size_t bits);
+Value _lshift(SPUContext* ctx, const Value& in, const Sizes& bits);
 
-Value _rshift(SPUContext* ctx, const Value& in, size_t bits);
+Value _rshift(SPUContext* ctx, const Value& in, const Sizes& bits);
 
-Value _arshift(SPUContext* ctx, const Value& in, size_t bits);
+Value _arshift(SPUContext* ctx, const Value& in, const Sizes& bits);
 
 Value _trunc(SPUContext* ctx, const Value& x, size_t bits = 0,
              SignType sign = SignType::Unknown);
@@ -86,6 +88,11 @@ Value _mux(SPUContext* ctx, const Value& pred, const Value& a, const Value& b);
 // TODO: test me
 Value _clamp(SPUContext* ctx, const Value& x, const Value& minv,
              const Value& maxv);
+
+Value _clamp_lower(SPUContext* ctx, const Value& x, const Value& minv);
+
+Value _clamp_upper(SPUContext* ctx, const Value& x, const Value& maxv);
+
 // Make a public value from uint128_t init value.
 //
 // If the current working field has less than 128bit, the lower sizeof(field)
@@ -119,6 +126,12 @@ Value _prefer_b(SPUContext* ctx, const Value& x);
 // See awesome [tutorial](https://www.tensors.net/tutorial-1) for details.
 Value _tensordot(SPUContext* ctx, const Value& x, const Value& y,
                  const Index& ix, const Index& iy);
+
+std::optional<Value> _oramonehot(SPUContext* ctx, const Value& x,
+                                 int64_t db_size, bool db_is_public);
+
+Value _oramread(SPUContext* ctx, const Value& x, const Value& y,
+                int64_t offset);
 
 // NOLINTEND(readability-identifier-naming)
 

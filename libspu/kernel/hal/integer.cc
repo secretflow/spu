@@ -58,6 +58,13 @@ Value i_less(SPUContext* ctx, const Value& x, const Value& y) {
 
 #undef DEF_BINARY_OP
 
+Value i_square(SPUContext* ctx, const Value& x) {
+  SPU_TRACE_HAL_LEAF(ctx, x);
+
+  SPU_ENFORCE(x.isInt(), "expected int, got {}", x.dtype());
+  return _square(ctx, x).setDtype(x.dtype());
+}
+
 Value i_abs(SPUContext* ctx, const Value& x) {
   SPU_TRACE_HAL_LEAF(ctx, x);
 

@@ -1,0 +1,22 @@
+{
+    "name": "popcnt",
+    "template": "basic_unary",
+    "testcases": [
+        {
+            "inputs": [
+                {
+                    "data": "[0, 1, 2, 127]",
+                    "shape": "4",
+                    "dtype": "i64"
+                }
+            ],
+            "expected": [
+                {
+                    "data": "[0, 1, 1, 7]",
+                    "shape": "4",
+                    "dtype": "i64"
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,70 @@
+{
+    "name": "divide",
+    "template": "basic_binary",
+    "testcases": [
+        {
+            "inputs": [
+                {
+                    "data": "[17, -17, 17, -17]",
+                    "shape": "4",
+                    "dtype": "i64"
+                },
+                {
+                    "data": "[3, 3, -3, -3]",
+                    "shape": "4",
+                    "dtype": "i64"
+                }
+            ],
+            "expected": [
+                {
+                    "data": "[5, -5, -5, 5]",
+                    "shape": "4",
+                    "dtype": "i64"
+                }
+            ]
+        },
+        {
+            "inputs": [
+                {
+                    "data": "[17, 18, 19, 20]",
+                    "shape": "4",
+                    "dtype": "ui64"
+                },
+                {
+                    "data": "[3, 4, 5, 7]",
+                    "shape": "4",
+                    "dtype": "ui64"
+                }
+            ],
+            "expected": [
+                {
+                    "data": "[5, 4, 3, 2]",
+                    "shape": "4",
+                    "dtype": "ui64"
+                }
+            ]
+        },
+        {
+            "inputs": [
+                {
+                    "data": "[17.1, -17.1, 17.1, -17.1]",
+                    "shape": "4",
+                    "dtype": "f64"
+                },
+                {
+                    "data": "[3.0, 3.0, -3.0, -3.0]",
+                    "shape": "4",
+                    "dtype": "f64"
+                }
+            ],
+            "expected": [
+                {
+                    "data": "[5.700000e+00, -5.700000e+00, -5.700000e+00, 5.700000e+00]",
+                    "shape": "4",
+                    "dtype": "f64"
+                }
+            ],
+            "checker": "expect_almost_eq"
+        }
+    ]
+}

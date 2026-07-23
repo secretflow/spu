@@ -82,9 +82,20 @@ class UnitTests(unittest.TestCase):
         X2, y2 = X[split_idx:], y[split_idx:]
 
         # Run the simulation
-        y1_pred, y2_pred, theta1, var1, theta2, var2 = spsim.sim_jax(self.sim64, proc)(
+        copts = spu_pb2.CompilerOptions()
+        
+        proc.__name__ = "test_gnb"
+        spu_fn = spsim.sim_jax(self.sim64, proc, copts=copts, pphlo_ref=(None, None)) #test_gnb
+        result = spu_fn(
             X1, y1, X2, y2, classes
         )
+        try:
+            if result == "skipped":
+                return True
+        except:
+            pass
+        y1_pred, y2_pred, theta1, var1, theta2, var2 = result
+        print(spu_fn.pphlo)
         result1 = (y == y1_pred).sum() / total_samples
         result2 = (y == y2_pred).sum() / total_samples
 

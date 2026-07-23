@@ -4,17 +4,14 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//   http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #include "libspu/mpc/cheetah/rlwe/packlwes.h"
-
-#include <random>
 
 #include "gtest/gtest.h"
 #include "seal/seal.h"
@@ -120,7 +117,8 @@ TEST_P(PackLWEsTest, PackRLWEs) {
     InvNttInplace(rlwes[i], *N_context_);
   }
 
-  PackingHelper ph(num_rlwes, *galois_, *N_context_, *N_context_);
+  PackingHelper ph(num_rlwes, N_ms_helper_->coeff_modulus_size(), *galois_,
+                   *N_context_);
 
   RLWECt packed;
   ph.PackingWithModulusDrop(absl::MakeSpan(rlwes), packed);
@@ -212,6 +210,9 @@ TEST_P(PackLWEsTest, Basic) {
   size_t N_stride = poly_N / num_lwes;
   for (size_t i = 0, j = 0; i < poly_N; i += N_stride, ++j) {
     EXPECT_EQ(expects[j], coefficients[i]);
+    for (size_t k = 1; k < N_stride; ++k) {
+      ASSERT_EQ(coefficients[i + k], 0UL);
+    }
   }
 }
 
@@ -232,7 +233,8 @@ TEST_P(PackLWEsTest, Phantom) {
   N_encoder_->Forward(array, &pt, true);
   NttInplace(pt, *N_context_);
 
-  RLWECt rlwe0, rlwe1;
+  RLWECt rlwe0;
+  RLWECt rlwe1;
   CATCH_SEAL_ERROR(encryptor.encrypt_symmetric(pt, rlwe0));
   CATCH_SEAL_ERROR(encryptor.encrypt_symmetric(pt, rlwe1));
   if (rlwe0.is_ntt_form()) {
@@ -273,6 +275,9 @@ TEST_P(PackLWEsTest, Phantom) {
   size_t N_stride = poly_N / num_lwes;
   for (size_t i = 0, j = 0; i < poly_N; i += N_stride, ++j) {
     ASSERT_EQ(expects[j], coefficients[i]);
+    for (size_t k = 1; k < N_stride; ++k) {
+      ASSERT_EQ(coefficients[i + k], 0UL);
+    }
   }
 }
 
@@ -339,7 +344,7 @@ void VectorEncoder::Backward(const NdArrayRef &vec, RLWEPt *out,
 
   const auto field = eltype.as<Ring2k>()->field();
 
-  DISPATCH_ALL_FIELDS(field, "Backward", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     auto tmp_buff = ring_zeros(field, {(int64_t)poly_deg_});
     auto xvec = NdArrayView<const ring2k_t>(vec);
     auto xtmp = NdArrayView<ring2k_t>(tmp_buff);
@@ -347,7 +352,7 @@ void VectorEncoder::Backward(const NdArrayRef &vec, RLWEPt *out,
     xtmp[0] = xvec[0];
     // reverse and sign flip
     for (size_t i = 1; i < num_coeffs; ++i) {
-      xtmp[num_coeffs - 1 - i] = -xvec[i];
+      xtmp[poly_deg_ - i] = -xvec[i];
     }
 
     uint64_t *dst = out->data();

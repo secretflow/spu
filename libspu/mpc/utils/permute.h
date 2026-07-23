@@ -20,24 +20,23 @@ namespace spu::mpc {
 
 constexpr char kPermModule[] = "Permute";
 
-using PermVector = std::vector<int64_t>;
-
-PermVector genRandomPerm(size_t size, uint64_t seed);
-
-PermVector genInversePerm(absl::Span<const int64_t> pv);
+NdArrayRef genInversePerm(const NdArrayRef& perm);
 
 // generate permutation vector that can make x ordered
-PermVector genPermBySort(const NdArrayRef& x);
+Index genPermBySort(const NdArrayRef& x);
 
 // reorder 1-d tensor element by applying inverse permutation.
 // ret = ApplyInvPerm(x, pv) -> ret[pv[i]] = x[i]
 NdArrayRef applyInvPerm(const NdArrayRef& x, absl::Span<const int64_t> pv);
+NdArrayRef applyInvPerm(const NdArrayRef& x, const NdArrayRef& pv);
 
 // reorder 1-d tensor element by applying permutation.
 // ret = ApplyPerm(x, pv) -> ret[i] = x[pv[i]]
 NdArrayRef applyPerm(const NdArrayRef& x, absl::Span<const int64_t> pv);
+NdArrayRef applyPerm(const NdArrayRef& x, const NdArrayRef& pv);
 
 // get a permutation vector from a ring
-PermVector ring2pv(const NdArrayRef& x);
+Index ring2pv(const NdArrayRef& x);
 
+Index genRandomPerm(size_t numel, uint128_t seed, uint64_t* ctr);
 }  // namespace spu::mpc

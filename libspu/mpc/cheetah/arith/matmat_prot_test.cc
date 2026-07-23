@@ -18,7 +18,7 @@
 #include "seal/seal.h"
 #include "seal/util/ntt.h"
 #include "seal/util/polyarithsmallmod.h"
-#include "yacl/crypto/utils/rand.h"
+#include "yacl/crypto/rand/rand.h"
 
 #include "libspu/mpc/cheetah/rlwe/types.h"
 #include "libspu/mpc/cheetah/rlwe/utils.h"
@@ -153,7 +153,7 @@ TEST_P(MatMatProtTest, Plain) {
 
     EXPECT_EQ(expected.numel(), computed.numel());
 
-    DISPATCH_ALL_FIELDS(field_, "", [&]() {
+    DISPATCH_ALL_FIELDS(field_, [&]() {
       auto xe = NdArrayView<ring2k_t>(expected);
       auto xc = NdArrayView<ring2k_t>(computed);
       for (int64_t i = 0; i < xc.numel(); ++i) {
@@ -215,7 +215,7 @@ TEST_P(MatMatProtTest, EncLHS) {
 
   EXPECT_EQ(expected.numel(), computed.numel());
 
-  DISPATCH_ALL_FIELDS(field_, "", [&]() {
+  DISPATCH_ALL_FIELDS(field_, [&]() {
     auto xe = NdArrayView<ring2k_t>(expected);
     auto xc = NdArrayView<ring2k_t>(computed);
     for (int64_t i = 0; i < xc.numel(); ++i) {
@@ -276,7 +276,7 @@ TEST_P(MatMatProtTest, EncRHS) {
 
   EXPECT_EQ(expected.numel(), computed.numel());
 
-  DISPATCH_ALL_FIELDS(field_, "", [&]() {
+  DISPATCH_ALL_FIELDS(field_, [&]() {
     auto xe = NdArrayView<ring2k_t>(expected);
     auto xc = NdArrayView<ring2k_t>(computed);
     for (int64_t i = 0; i < xc.numel(); ++i) {

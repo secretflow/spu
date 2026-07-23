@@ -84,7 +84,7 @@ TEST_P(CheetahConv2dTest, Basic) {
       flatten(ring_add(toNdArray(result[0]), toNdArray(result[1])));
 
   const int64_t kMaxDiff = 1;
-  DISPATCH_ALL_FIELDS(field, "_", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     ArrayView<ring2k_t> c(computed);
     NdArrayView<ring2k_t> exp(expected);
     for (auto idx = 0; idx < expected.numel(); idx++) {

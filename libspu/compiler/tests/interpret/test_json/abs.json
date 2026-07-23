@@ -1,0 +1,39 @@
+{
+    "name": "abs",
+    "template": "basic_unary",
+    "testcases": [
+        {
+            "inputs": [
+                {
+                    "data": "[-2, 0, 2]",
+                    "shape": "3",
+                    "dtype": "i64"
+                }
+            ],
+            "expected": [
+                {
+                    "data": "[ 2, 0, 2]",
+                    "shape": "3",
+                    "dtype": "i64"
+                }
+            ]
+        },
+        {
+            "inputs": [
+                {
+                    "data": "[23.1, -23.1, 0.0]",
+                    "shape": "3",
+                    "dtype": "f64"
+                }
+            ],
+            "expected": [
+                {
+                    "data": "[23.1,  23.1, 0.0]",
+                    "shape": "3",
+                    "dtype": "f64"
+                }
+            ],
+            "checker": "expect_almost_eq"
+        }
+    ]
+}

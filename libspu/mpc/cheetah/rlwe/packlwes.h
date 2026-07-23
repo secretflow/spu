@@ -26,8 +26,8 @@ void GenerateGaloisKeyForPacking(const seal::SEALContext &context,
                                  GaloisKeys *out);
 class PackingHelper {
  public:
-  PackingHelper(size_t gap, const seal::GaloisKeys &galois_keys,
-                const seal::SEALContext &gk_context,
+  PackingHelper(size_t gap, size_t num_modulus_for_packing,
+                const seal::GaloisKeys &galois_keys,
                 const seal::SEALContext &context);
 
   // require ct_array.size() == gap
@@ -39,8 +39,8 @@ class PackingHelper {
   void doPackingRLWEs(absl::Span<RLWECt> rlwes, RLWECt &out) const;
 
   size_t gap_;
+  size_t num_modulus_for_packing_;
   const seal::GaloisKeys &galois_keys_;
-  const seal::SEALContext &gk_context_;
   const seal::SEALContext &context_;
 
   std::vector<seal::util::MultiplyUIntModOperand> inv_gap_;
@@ -48,6 +48,9 @@ class PackingHelper {
 
 // lwes[0, N) -> RLWE[0], lwe[N, 2N) -> RLWE[1] ....
 // Return the number of output RLWE ciphertexts.
+//
+// NOTE(lwj): when |lwes| < N, we will also clear up the gaps between two
+// near-by LWE wire.
 size_t PackLWEs(absl::Span<const LWECt> lwes, const GaloisKeys &galois,
                 const seal::SEALContext &context, absl::Span<RLWECt> rlwes);
 

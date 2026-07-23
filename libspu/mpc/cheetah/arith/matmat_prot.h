@@ -61,27 +61,41 @@ class MatMatProtocol {
 
   bool IsValidMeta(const Meta& meta) const;
 
+  // Parse the polynomails into matmul result without any packing
   NdArrayRef ParseResult(FieldType field, const Meta& meta,
                          absl::Span<const RLWEPt> ans_poly) const;
 
+  // Parse the polynomails into matmul result without any packing
+  // Use the specified ModulusSwitchHelper.
   NdArrayRef ParseResult(FieldType field, const Meta& meta,
                          absl::Span<const RLWEPt> ans_poly,
                          const ModulusSwitchHelper& msh) const;
 
-  // Coefficients via Packed Batched MatMul
+  // Parse the polynomails into matmul result which are packed using BumbleBee's
+  // interleave packing.
+  // output shape dims[0] x dims[2]
+  NdArrayRef ParsePackedResult(FieldType field, const Meta& meta,
+                               absl::Span<const RLWEPt> ans_poly,
+                               const ModulusSwitchHelper& msh) const;
+
+  // Parse the polynomails into matmul result which are packed using BumbleBee's
+  // interleave packing in a batch mode.
   // output shape batch_size x dims[0] x dims[2]
   NdArrayRef ParseBatchPackedResult(FieldType field, size_t batch_size,
                                     const Meta& meta,
                                     absl::Span<const RLWEPt> polys,
                                     const ModulusSwitchHelper& msh) const;
 
-  // Coefficients via Packed MatMul
-  // output shape dims[0] x dims[2]
-  NdArrayRef ParsePackedResult(FieldType field, const Meta& meta,
-                               absl::Span<const RLWEPt> ans_poly,
-                               const ModulusSwitchHelper& msh) const;
+  // Parse the polynomails into matmul result which are packed using Chen hao's
+  // PackLWEs packing.
+  NdArrayRef ParsePackLWEsResult(FieldType field, const Meta& meta,
+                                 absl::Span<const RLWEPt> ans_poly,
+                                 const ModulusSwitchHelper& msh) const;
 
   void ExtractLWEsInplace(const Meta& meta, absl::Span<RLWECt> rlwe) const;
+
+  void WrapPhantomLWEs(const Meta& meta, absl::Span<const RLWECt> rlwes,
+                       absl::Span<PhantomLWECt> lwes) const;
 
   // LHS_mat * RHS_mat
   // LHS = RLWECt, RHS = RLWEPt (when LHS is smaller)

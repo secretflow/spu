@@ -30,6 +30,14 @@ Value highestOneBit(SPUContext* ctx, const Value& x);
 
 void hintNumberOfBits(const Value& a, size_t nbits);
 
+Value maskNumberOfBits(SPUContext* ctx, const Value& a, size_t nbits);
+
+// we provide this general function to support some special cases (a or b has
+// guarranteed sign) in fxp_approx for better both performance and accuracy.
+Value div_goldschmidt_general(SPUContext* ctx, const Value& a, const Value& b,
+                              SignType a_sign = SignType::Unknown,
+                              SignType b_sign = SignType::Unknown);
+
 Value div_goldschmidt(SPUContext* ctx, const Value& a, const Value& b);
 
 Value reciprocal_goldschmidt_positive(SPUContext* ctx, const Value& b_abs);
@@ -37,10 +45,14 @@ Value reciprocal_goldschmidt_positive(SPUContext* ctx, const Value& b_abs);
 Value reciprocal_goldschmidt(SPUContext* ctx, const Value& b);
 
 Value polynomial(SPUContext* ctx, const Value& x,
-                 absl::Span<Value const> coeffs);
+                 absl::Span<Value const> coeffs,
+                 SignType sign_x = SignType::Unknown,
+                 SignType sign_ret = SignType::Unknown);
 
 Value polynomial(SPUContext* ctx, const Value& x,
-                 absl::Span<float const> coeffs);
+                 absl::Span<float const> coeffs,
+                 SignType sign_x = SignType::Unknown,
+                 SignType sign_ret = SignType::Unknown);
 
 }  // namespace detail
 

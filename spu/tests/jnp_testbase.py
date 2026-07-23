@@ -27,6 +27,7 @@ from absl.testing import parameterized
 from jax._src import test_util as jtu
 
 from spu.utils.simulation import sim_jax
+import spu.spu_pb2 as spu_pb2
 
 if getenv("ENABLE_X64_TEST"):
     from jax import config
@@ -47,6 +48,7 @@ bool_dtypes = [np.bool_]
 number_dtypes = float_dtypes + int_dtypes
 all_dtypes = number_dtypes + bool_dtypes
 
+copts = spu_pb2.CompilerOptions()
 
 class Status(Enum):
     Pass = 1
@@ -88,6 +90,10 @@ def rand_default(rng):
     return partial(_rand_dtype, rng)
 
 
+def rand_extra_large(rng):
+    return partial(jtu._rand_dtype, rng.randn, scale=2**30)
+
+
 def rand_not_small_nonzero(rng):
     def post(x):
         x = np.where(x == 0, np.array(1, dtype=x.dtype), x)
@@ -124,6 +130,7 @@ JAX_ONE_TO_ONE_OP_RECORDS = [
     REC("maximum", 2, all_dtypes, all_shapes, rand_default),
     REC("minimum", 2, all_dtypes, all_shapes, rand_default),
     REC("multiply", 2, all_dtypes, all_shapes, rand_default),
+    REC("square", 1, all_dtypes, all_shapes, rand_default),
     REC("negative", 1, number_dtypes, all_shapes, rand_default),
     REC(
         "nextafter",
@@ -139,7 +146,7 @@ JAX_ONE_TO_ONE_OP_RECORDS = [
     REC("array_equiv", 2, number_dtypes, all_shapes, jtu.rand_some_equal),
     REC("reciprocal", 1, float_dtypes, all_shapes, rand_default),
     REC("subtract", 2, number_dtypes, all_shapes, rand_default),
-    REC("signbit", 1, number_dtypes, all_shapes, rand_default),
+    REC("signbit", 1, number_dtypes, all_shapes, rand_extra_large),
     REC("trunc", 1, number_dtypes, all_shapes, rand_default),
     REC("sin", 1, number_dtypes, all_shapes, rand_default),
     REC("cos", 1, number_dtypes, all_shapes, rand_default),
@@ -155,42 +162,16 @@ JAX_ONE_TO_ONE_OP_RECORDS = [
     REC("sinh", 1, number_dtypes, all_shapes, jtu.rand_small),
     REC("cosh", 1, number_dtypes, all_shapes, jtu.rand_small),
     REC("tanh", 1, number_dtypes, all_shapes, jtu.rand_default),
-    REC(
-        "arcsin",
-        1,
-        number_dtypes,
-        all_shapes,
-        jtu.rand_small,
-        Status.SysError,
-        "stablehlo.atan2",
-    ),  # FIXME: stablehlo.atan2
-    REC(
-        "arccos",
-        1,
-        number_dtypes,
-        all_shapes,
-        jtu.rand_small,
-        Status.SysError,
-        "stablehlo.atan2",
-    ),  # FIXME: stablehlo.atan2
-    REC(
-        "arctan",
-        1,
-        number_dtypes,
-        all_shapes,
-        jtu.rand_small,
-        Status.SysError,
-        "stablehlo.atan2",
-    ),  # FIXME: stablehlo.atan2
+    REC("arcsin", 1, number_dtypes, all_shapes, jtu.rand_small),
+    REC("arccos", 1, number_dtypes, all_shapes, jtu.rand_small),
+    REC("arctan", 1, number_dtypes, all_shapes, jtu.rand_small),
     REC(
         "arctan2",
         2,
         float_dtypes,
         all_shapes,
-        jtu.rand_small,
-        Status.SysError,
-        "stablehlo.atan2",
-    ),  # FIXME: stablehlo.atan2
+        rand_default,
+    ),
     REC("arcsinh", 1, number_dtypes, all_shapes, jtu.rand_small),
     REC(
         "arccosh", 1, number_dtypes, all_shapes, rand_default, Status.SysError, "nan"
@@ -208,25 +189,8 @@ JAX_ONE_TO_ONE_OP_RECORDS = [
 
 
 COMPOUND_OP_RECORDS = [
-    REC(
-        "angle",
-        1,
-        number_dtypes,
-        all_shapes,
-        rand_default,
-        Status.SysError,
-        "stablehlo.atan2",
-    ),  # FIXME: stablehlo.atan2
-    REC(
-        "angle",
-        1,
-        number_dtypes,
-        all_shapes,
-        rand_default,
-        Status.SysError,
-        "stablehlo.atan2",
-        kwargs={'deg': True},
-    ),  # FIXME: stablehlo.atan2
+    REC("angle", 1, number_dtypes, all_shapes, rand_default),
+    REC("angle", 1, number_dtypes, all_shapes, rand_default, kwargs={'deg': True}),
     REC("atleast_1d", 1, number_dtypes, all_shapes, rand_default),
     REC("atleast_2d", 1, number_dtypes, all_shapes, rand_default),
     REC("atleast_3d", 1, number_dtypes, all_shapes, rand_default),
@@ -320,15 +284,7 @@ COMPOUND_OP_RECORDS = [
     REC("remainder", 2, number_dtypes, all_shapes, jtu.rand_small),
     REC("mod", 2, number_dtypes, all_shapes, jtu.rand_nonzero),
     REC("modf", 1, number_dtypes, all_shapes, rand_default),
-    REC(
-        "rint",
-        1,
-        float_dtypes,
-        all_shapes,
-        rand_default,
-        Status.SysError,
-        "stablehlo.round_nearest_even",
-    ),  # FIXME: stablehlo.round_nearest_even
+    REC("rint", 1, float_dtypes, all_shapes, rand_default),
     REC("sign", 1, number_dtypes, all_shapes, jtu.rand_default),
     REC(
         "copysign", 2, number_dtypes, all_shapes, rand_default, Status.SysError, "shift"
@@ -352,6 +308,7 @@ COMPOUND_OP_RECORDS = [
 ]
 
 BITWISE_OP_RECORDS = [
+    REC("bitwise_count", 1, int_dtypes, all_shapes, jtu.rand_default),
     REC("bitwise_and", 2, int_dtypes, all_shapes, jtu.rand_bool),
     REC("bitwise_not", 1, int_dtypes, all_shapes, jtu.rand_bool),
     REC("invert", 1, int_dtypes, all_shapes, jtu.rand_bool),
@@ -458,12 +415,14 @@ class JnpTests:
             if status != Status.Pass:
                 return
             jnp_op = getattr(jnp, name)
-            spu_op = sim_jax(self._sim, jnp_op)
+            jnp_fn = lambda *x: jnp_op(*x)
+            jnp_fn.__name__ = f"""{name}_{dtype}_{shape}""".replace(" ", "")
+            spu_fn = sim_jax(self._sim, jnp_fn)
             rnd = rnd_factory(self._rng)
             args = [rnd(shape, dtype) for _ in range(nargs)]
-            jnp_out = jnp_op(*args)
-            spu_out = spu_op(*args)
-
+            jnp_out = jnp_fn(*args)
+            spu_out = spu_fn(*args)
+            print(spu_fn.pphlo)
             # print("inputs: ", args)
             # print(spu_op.pphlo)
             npt.assert_almost_equal(
@@ -471,7 +430,7 @@ class JnpTests:
                 jnp_out,
                 decimal=1,
                 err_msg="{} failed, spu = {}, jnp = {}, args = {}, pphlo = {}".format(
-                    name, spu_out, jnp_out, args, spu_op.pphlo
+                    name, spu_out, jnp_out, args, spu_fn.pphlo
                 ),
             )
 
@@ -495,11 +454,13 @@ class JnpTests:
                 return
             jnp_op = getattr(jnp, name)
             jnp_fn = lambda x: jnp_op(x, axis=axis, keepdims=keepdims)
-            spu_fn = sim_jax(self._sim, jnp_fn)
+            jnp_fn.__name__ = f"""{name}_{dtype}_{shape}""".replace(" ", "")
+            spu_fn = sim_jax(self._sim, jnp_fn, copts=copts)
             rnd = rnd_factory(self._rng)
             args = [rnd(shape, dtype)]
             jnp_out = jnp_fn(*args)
             spu_out = spu_fn(*args)
+            print(spu_fn.pphlo)
             npt.assert_almost_equal(
                 spu_out,
                 jnp_out,
@@ -525,11 +486,13 @@ class JnpTests:
                 return
             jnp_op = getattr(jnp, name)
             jnp_fn = lambda x: jnp_op(x, axis=len(shape) - 1)
-            spu_fn = sim_jax(self._sim, jnp_fn)
+            jnp_fn.__name__ = f"""{name}_{dtype}_{shape}""".replace(" ", "")
+            spu_fn = sim_jax(self._sim, jnp_fn, copts=copts)
             rnd = rnd_factory(self._rng)
             args = [rnd(shape, dtype)]
             jnp_out = jnp_fn(*args)
             spu_out = spu_fn(*args)
+            print(spu_fn.pphlo)
             npt.assert_equal(
                 spu_out,
                 jnp_out,
@@ -556,11 +519,13 @@ class JnpTests:
             rhs_rnd = jtu.rand_int(self._rng, low=0, high=32)
             rhs = rhs_rnd(shape, dtype)
             jnp_fn = lambda x: jnp_op(x, rhs)
-            spu_fn = sim_jax(self._sim, jnp_fn)
+            jnp_fn.__name__ = f"""{name}_{dtype}_{shape}""".replace(" ", "")
+            spu_fn = sim_jax(self._sim, jnp_fn, copts=copts)
             rnd = rnd_factory(self._rng)
             args = [rnd(shape, dtype)]
             jnp_out = jnp_fn(*args)
             spu_out = spu_fn(*args)
+            print(spu_fn.pphlo)
             npt.assert_equal(
                 spu_out,
                 jnp_out,
@@ -571,12 +536,14 @@ class JnpTests:
 
         def test_gather(self):
             jnp_fn = lambda x, indices: jnp.take(x, indices)
-            spu_fn = sim_jax(self._sim, jnp_fn)
+            jnp_fn.__name__ = "gather"
+            spu_fn = sim_jax(self._sim, jnp_fn, copts=copts)
             x_rng = jtu.rand_int(self._rng, low=0, high=32)
             indices_rng = jtu.rand_int(self._rng, low=0, high=9)
             args = [x_rng((10,), np.int32), indices_rng((3,), np.int32)]
             jnp_out = jnp_fn(*args)
             spu_out = spu_fn(*args)
+            print(spu_fn.pphlo)
             npt.assert_equal(
                 spu_out,
                 jnp_out,
@@ -599,11 +566,13 @@ class JnpTests:
         def test_topk(self, name, status, dtype, shape, rnd_factory):
             lax_op = getattr(lax, name)
             jnp_fn = lambda x: lax_op(x, k=2)
-            spu_fn = sim_jax(self._sim, jnp_fn)
+            jnp_fn.__name__ = f"""{name}_{dtype}_{shape}""".replace(" ", "")
+            spu_fn = sim_jax(self._sim, jnp_fn, copts=copts)
             rnd = rnd_factory(self._rng)
             args = [rnd(shape, dtype)]
             jnp_out = jnp_fn(*args)
             spu_out = spu_fn(*args)
+            print(spu_fn.pphlo)
             # Tie break is not well defined in document, so index might be different between CPU/SPU
             npt.assert_almost_equal(
                 spu_out[0],

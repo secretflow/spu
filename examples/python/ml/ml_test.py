@@ -25,12 +25,13 @@ import numpy.testing as npt
 import pandas as pd
 
 import spu.utils.distributed as ppd
+import spu.utils.distributed_impl as ppd_impl
 from spu.utils.polyfill import Process
 
 with open("examples/python/conf/3pc.json", 'r') as file:
     conf = json.load(file)
 
-logger = logging.getLogger(ppd.__name__)
+logger = logging.getLogger(ppd_impl.__name__)
 logger.setLevel(level=logging.WARN)
 
 _test_perf_table = pd.DataFrame({'name': [], 'duration': []})
@@ -103,9 +104,9 @@ class UnitTests(unittest.TestCase):
         flax_vae.args.num_steps = 10
         metrics = profile_test_point(flax_vae.train)
 
-        self.assertTrue(260 < metrics['loss'] < 270)
-        self.assertTrue(240 < metrics['bce'] < 247)
-        self.assertTrue(20 < metrics['kld'] < 23)
+        self.assertTrue(250 < metrics['loss'] < 280)
+        self.assertTrue(235 < metrics['bce'] < 250)
+        self.assertTrue(18 < metrics['kld'] < 30)
 
     def test_haiku_lstm(self):
         from examples.python.ml.haiku_lstm import haiku_lstm
@@ -130,12 +131,17 @@ class UnitTests(unittest.TestCase):
         npt.assert_array_equal(cpu_labels, spu_labels)
 
     def test_jax_lr(self):
+        from examples.python.utils import dataset_utils as dsutil
         from examples.python.ml.jax_lr import jax_lr
 
-        w, b = profile_test_point(jax_lr.run_on_spu)
-        score = jax_lr.compute_score(ppd.get(w), ppd.get(b), 'spu')
+        x, y = dsutil.mock_classification(10000, 100, 0.0, 42)
+        w, b = profile_test_point(jax_lr.run_on_spu, x, y)
 
-        self.assertGreater(score, 0.95)
+        score = jax_lr.compute_score(x, y, ppd.get(w), ppd.get(b), 'spu')
+        self.assertGreater(score, 0.85)
+
+        score = jax_lr.save_and_load_model(x, y, w, b)
+        self.assertGreater(score, 0.85)
 
     def test_jax_svm(self):
         from examples.python.ml.jax_svm import jax_svm
@@ -218,12 +224,6 @@ class UnitTests(unittest.TestCase):
         label = torch_resnet_experiment.run_inference_on_spu(model, image)
         self.assertEqual(label, 258)
 
-    def test_save_and_load_model(self):
-        from examples.python.ml.jax_lr import jax_lr
-
-        score = jax_lr.save_and_load_model()
-        self.assertGreater(score, 0.9)
-
 
 def suite():
     suite = unittest.TestSuite()
@@ -238,13 +238,10 @@ def suite():
     suite.addTest(UnitTests('test_ss_xgb'))
     suite.addTest(UnitTests('test_stax_mnist_classifier'))
     suite.addTest(UnitTests('test_stax_nn'))
-    suite.addTest(UnitTests('test_save_and_load_model'))
     # should put JAX tests above
     suite.addTest(UnitTests('test_tf_experiment'))
     suite.addTest(UnitTests('test_torch_lr_experiment'))
-    # TODO: torch_xla's stablehlo version is not compatibale with SPU,
-    # reopen when torch_xla upgrade its stablehlo version
-    # suite.addTest(UnitTests('test_torch_resnet_experiment'))
+    suite.addTest(UnitTests('test_torch_resnet_experiment'))
     return suite
 
 

@@ -1,0 +1,237 @@
+{
+    "name": "and",
+    "template": "basic_binary",
+    "testcases": [
+        {
+            "inputs": [
+                {
+                    "data": "[127, -128, -128]",
+                    "shape": "3",
+                    "dtype": "i8"
+                },
+                {
+                    "data": "[0, 127, -128]",
+                    "shape": "3",
+                    "dtype": "i8"
+                }
+            ],
+            "expected": [
+                {
+                    "data": "[0, 0, -128]",
+                    "shape": "3",
+                    "dtype": "i8"
+                }
+            ]
+        },
+        {
+            "inputs": [
+                {
+                    "data": "[0, 127, 255]",
+                    "shape": "3",
+                    "dtype": "ui8"
+                },
+                {
+                    "data": "255",
+                    "shape": "3",
+                    "dtype": "ui8"
+                }
+            ],
+            "expected": [
+                {
+                    "data": "[0, 127, 255]",
+                    "shape": "3",
+                    "dtype": "ui8"
+                }
+            ]
+        },
+        {
+            "inputs": [
+                {
+                    "data": "[32767, -32768, -32768]",
+                    "shape": "3",
+                    "dtype": "i16"
+                },
+                {
+                    "data": "[0, 32767, -32768]",
+                    "shape": "3",
+                    "dtype": "i16"
+                }
+            ],
+            "expected": [
+                {
+                    "data": "[0, 0, -32768]",
+                    "shape": "3",
+                    "dtype": "i16"
+                }
+            ]
+        },
+        {
+            "inputs": [
+                {
+                    "data": "[0, 32767, 65535]",
+                    "shape": "3",
+                    "dtype": "ui16"
+                },
+                {
+                    "data": "65535",
+                    "shape": "3",
+                    "dtype": "ui16"
+                }
+            ],
+            "expected": [
+                {
+                    "data": "[0, 32767, 65535]",
+                    "shape": "3",
+                    "dtype": "ui16"
+                }
+            ]
+        },
+        {
+            "inputs": [
+                {
+                    "data": "[2147483647, -2147483648, -2147483648]",
+                    "shape": "3",
+                    "dtype": "i32"
+                },
+                {
+                    "data": "[0, 2147483647, -2147483648]",
+                    "shape": "3",
+                    "dtype": "i32"
+                }
+            ],
+            "expected": [
+                {
+                    "data": "[0, 0, -2147483648]",
+                    "shape": "3",
+                    "dtype": "i32"
+                }
+            ]
+        },
+        {
+            "inputs": [
+                {
+                    "data": "[0, 2147483647, 4294967295]",
+                    "shape": "3",
+                    "dtype": "ui32"
+                },
+                {
+                    "data": "4294967295",
+                    "shape": "3",
+                    "dtype": "ui32"
+                }
+            ],
+            "expected": [
+                {
+                    "data": "[0, 2147483647, 4294967295]",
+                    "shape": "3",
+                    "dtype": "ui32"
+                }
+            ]
+        },
+        {
+            "inputs": [
+                {
+                    "data": "[9223372036854775807, -9223372036854775808, -9223372036854775808]",
+                    "shape": "3",
+                    "dtype": "i64"
+                },
+                {
+                    "data": "[0, 9223372036854775807, -9223372036854775808]",
+                    "shape": "3",
+                    "dtype": "i64"
+                }
+            ],
+            "expected": [
+                {
+                    "data": "[0, 0, -9223372036854775808]",
+                    "shape": "3",
+                    "dtype": "i64"
+                }
+            ]
+        },
+        {
+            "inputs": [
+                {
+                    "data": "[0, 9223372036854775807, 18446744073709551615]",
+                    "shape": "3",
+                    "dtype": "ui64"
+                },
+                {
+                    "data": "18446744073709551615",
+                    "shape": "3",
+                    "dtype": "ui64"
+                }
+            ],
+            "expected": [
+                {
+                    "data": "[0, 9223372036854775807, 18446744073709551615]",
+                    "shape": "3",
+                    "dtype": "ui64"
+                }
+            ]
+        },
+        {
+            "inputs": [
+                {
+                    "data": "[false, false, true, true]",
+                    "shape": "4",
+                    "dtype": "i1"
+                },
+                {
+                    "data": "[false, true, false, true]",
+                    "shape": "4",
+                    "dtype": "i1"
+                }
+            ],
+            "expected": [
+                {
+                    "data": "[false, false, false, true]",
+                    "shape": "4",
+                    "dtype": "i1"
+                }
+            ]
+        },
+        {
+            "inputs": [
+                {
+                    "data": "false",
+                    "shape": "2",
+                    "dtype": "i1"
+                },
+                {
+                    "data": "[false, true]",
+                    "shape": "2",
+                    "dtype": "i1"
+                }
+            ],
+            "expected": [
+                {
+                    "data": "[false, false]",
+                    "shape": "2",
+                    "dtype": "i1"
+                }
+            ]
+        },
+        {
+            "inputs": [
+                {
+                    "data": "true",
+                    "shape": "2",
+                    "dtype": "i1"
+                },
+                {
+                    "data": "[false, true]",
+                    "shape": "2",
+                    "dtype": "i1"
+                }
+            ],
+            "expected": [
+                {
+                    "data": "[false, true]",
+                    "shape": "2",
+                    "dtype": "i1"
+                }
+            ]
+        }
+    ]
+}

@@ -17,7 +17,7 @@
 #include "gtest/gtest.h"
 #include "seal/seal.h"
 #include "seal/util/polyarithsmallmod.h"
-#include "yacl/crypto/utils/rand.h"
+#include "yacl/crypto/rand/rand.h"
 
 #include "libspu/mpc/cheetah/arith/conv2d_helper.h"
 #include "libspu/mpc/cheetah/rlwe/modswitch_helper.h"

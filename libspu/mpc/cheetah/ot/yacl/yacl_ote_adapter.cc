@@ -36,11 +36,11 @@ void YaclFerretOTeAdapter::OneTimeSetup() {
     auto ss_sender = yc::SoftspokenOtExtSender();
     ss_sender.OneTimeSetup(ctx_);
 
-    auto ss_send_blocks =
-        yacl::AlignedVector<std::array<uint128_t, 2>>(pre_lpn_num_, {0, 0});
+    auto ss_send_blocks = yacl::UninitAlignedVector<std::array<uint128_t, 2>>(
+        pre_lpn_num_, {0, 0});
     ss_sender.Send(ctx_, absl::MakeSpan(ss_send_blocks), true);
 
-    auto ss_send_block0 = yacl::AlignedVector<uint128_t>(pre_lpn_num_, 0);
+    auto ss_send_block0 = yacl::UninitAlignedVector<uint128_t>(pre_lpn_num_, 0);
     std::transform(
         ss_send_blocks.cbegin(), ss_send_blocks.cend(), ss_send_block0.begin(),
         [&one = std::as_const(one)](const std::array<uint128_t, 2>& blocks) {
@@ -63,7 +63,7 @@ void YaclFerretOTeAdapter::OneTimeSetup() {
 
     auto ss_choices =
         yc::RandBits<yacl::dynamic_bitset<uint128_t>>(pre_lpn_num_, true);
-    auto ss_recv_blocks = yacl::AlignedVector<uint128_t>(pre_lpn_num_, 0);
+    auto ss_recv_blocks = yacl::UninitAlignedVector<uint128_t>(pre_lpn_num_, 0);
 
     ss_receiver.Recv(ctx_, ss_choices, absl::MakeSpan(ss_recv_blocks), true);
 
@@ -200,13 +200,13 @@ void YaclFerretOTeAdapter::recv_cot(
 void YaclFerretOTeAdapter::Bootstrap() {
   auto begin = std::chrono::high_resolution_clock::now();
   if (is_sender_) {
-    yacl::AlignedVector<uint128_t> send_ot(
+    yacl::UninitAlignedVector<uint128_t> send_ot(
         ot_buff_.data<uint128_t>(), ot_buff_.data<uint128_t>() + reserve_num_);
     auto send_ot_store = yc::MakeCompactOtSendStore(std::move(send_ot), Delta);
     yc::FerretOtExtSend_cheetah(ctx_, send_ot_store, lpn_param_, lpn_param_.n,
                                 MakeSpan_Uint128(ot_buff_));
   } else {
-    yacl::AlignedVector<uint128_t> recv_ot(
+    yacl::UninitAlignedVector<uint128_t> recv_ot(
         ot_buff_.data<uint128_t>(), ot_buff_.data<uint128_t>() + reserve_num_);
     auto recv_ot_store = yc::MakeCompactOtRecvStore(std::move(recv_ot));
     yc::FerretOtExtRecv_cheetah(ctx_, recv_ot_store, lpn_param_, lpn_param_.n,
@@ -231,7 +231,8 @@ void YaclFerretOTeAdapter::BootstrapInplace(absl::Span<uint128_t> ot,
   YACL_ENFORCE(ot.size() == reserve_num_);
   YACL_ENFORCE(data.size() == lpn_param_.n);
 
-  yacl::AlignedVector<uint128_t> ot_tmp(ot.data(), ot.data() + reserve_num_);
+  yacl::UninitAlignedVector<uint128_t> ot_tmp(ot.data(),
+                                              ot.data() + reserve_num_);
 
   auto begin = std::chrono::high_resolution_clock::now();
   if (is_sender_) {

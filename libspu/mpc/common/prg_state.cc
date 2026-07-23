@@ -14,10 +14,12 @@
 
 #include "libspu/mpc/common/prg_state.h"
 
+#include "yacl/crypto/rand/rand.h"
 #include "yacl/crypto/tools/prg.h"
-#include "yacl/crypto/utils/rand.h"
 #include "yacl/link/algorithm/allgather.h"
 #include "yacl/utils/serialize.h"
+
+#include "libspu/mpc/utils/permute.h"
 
 namespace spu::mpc {
 
@@ -54,7 +56,7 @@ PrgState::PrgState(const std::shared_ptr<yacl::link::Context>& lctx) {
 
     constexpr char kCommTag[] = "Random:PRSS";
 
-    // send seed to next party, receive seed from prev party
+    // send seed to prev party, receive seed from next party
     lctx->SendAsync(lctx->PrevRank(), yacl::SerializeUint128(self_seed_),
                     kCommTag);
     next_seed_ =
@@ -105,6 +107,17 @@ NdArrayRef PrgState::genPubl(FieldType field, const Shape& shape) {
       kAesType, pub_seed_, 0, pub_counter_,
       absl::MakeSpan(res.data<char>(), res.buf()->size()));
 
+  return res;
+}
+
+Index PrgState::genPrivPerm(size_t numel) {
+  return genRandomPerm(numel, priv_seed_, &priv_counter_);
+}
+
+std::pair<Index, Index> PrgState::genPrssPermPair(size_t numel) {
+  std::pair<Index, Index> res;
+  res.first = genRandomPerm(numel, self_seed_, &r0_counter_);
+  res.second = genRandomPerm(numel, next_seed_, &r1_counter_);
   return res;
 }
 

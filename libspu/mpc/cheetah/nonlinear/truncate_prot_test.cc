@@ -14,12 +14,9 @@
 
 #include "libspu/mpc/cheetah/nonlinear/truncate_prot.h"
 
-#include <random>
-
 #include "gtest/gtest.h"
 
 #include "libspu/mpc/cheetah/ot/basic_ot_prot.h"
-#include "libspu/mpc/cheetah/type.h"
 #include "libspu/mpc/utils/ring_ops.h"
 #include "libspu/mpc/utils/simulate.h"
 
@@ -65,7 +62,7 @@ TEST_P(TruncateProtTest, Basic) {
     sign = SignType::Unknown;
   } else {
     auto msg = ring_rand(field, {n});
-    DISPATCH_ALL_FIELDS(field, "", [&]() {
+    DISPATCH_ALL_FIELDS(field, [&]() {
       auto xmsg = NdArrayView<ring2k_t>(msg);
       size_t bw = SizeOf(field) * 8;
       if (msb == "Zero") {
@@ -111,7 +108,7 @@ TEST_P(TruncateProtTest, Basic) {
 
   EXPECT_EQ(oup[0].shape(), oup[1].shape());
 
-  DISPATCH_ALL_FIELDS(field, "", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using signed_t = std::make_signed<ring2k_t>::type;
     using usigned_t = std::make_unsigned<ring2k_t>::type;
 
@@ -163,9 +160,10 @@ TEST_P(TruncateProtTest, Heuristic) {
   NdArrayRef inp[2];
   inp[0] = ring_rand(field, {n});
 
-  DISPATCH_ALL_FIELDS(field, "", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     auto msg = ring_rand(field, {n});
-    ring_rshift_(msg, TruncateProtocol::kHeuristicBound);
+    ring_rshift_(msg,
+                 {static_cast<int64_t>(TruncateProtocol::kHeuristicBound)});
     NdArrayView<ring2k_t> xmsg(msg);
     for (int64_t i = 0; i < n; i += 2) {
       xmsg[i] = -xmsg[i];
@@ -191,7 +189,7 @@ TEST_P(TruncateProtTest, Heuristic) {
   [[maybe_unused]] int count_zero = 0;
   [[maybe_unused]] int count_pos = 0;
   [[maybe_unused]] int count_neg = 0;
-  DISPATCH_ALL_FIELDS(field, "", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     using signed_t = std::make_signed<ring2k_t>::type;
 
     auto xout0 = NdArrayView<signed_t>(oup[0]);

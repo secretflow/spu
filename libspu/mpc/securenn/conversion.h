@@ -13,14 +13,13 @@
 // limitations under the License.
 
 #pragma once
-
 #include "libspu/mpc/kernel.h"
 
 namespace spu::mpc::securenn {
 
 class A2B : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "a2b";
+  static constexpr const char* kBindName() { return "a2b"; }
 
   ce::CExpr latency() const override {
     return (Log(ce::K()) + 1)  // adder-circuit;
@@ -40,7 +39,7 @@ class A2B : public UnaryKernel {
 
 class B2A : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "b2a";
+  static constexpr const char* kBindName() { return "b2a"; }
 
   ce::CExpr latency() const override {
     return (Log(ce::K()) + 1) * Log(ce::N())  // A2B
@@ -61,7 +60,7 @@ class B2A : public UnaryKernel {
 
 class B2A_Randbit : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "b2a";
+  static constexpr const char* kBindName() { return "b2a"; }
 
   ce::CExpr latency() const override { return ce::Const(1); }
 
@@ -75,21 +74,35 @@ class B2A_Randbit : public UnaryKernel {
 
 class Msb_a2b : public UnaryKernel {
  public:
-  static constexpr char kBindName[] = "msb_a2b";
-  // static constexpr char kBindName[] = "msb_a2b_nosc";
+  static constexpr const char* kBindName() { return "msb_a2b"; }
 
   ce::CExpr latency() const override {
+#ifndef OPT_SECURENN_MSB
+    return ce::Const(4)           // share convert
+           + ce::Const(5)         // msb
+           + Log(ce::K() + 1)     // adder-circuit;
+                 * Log(ce::N());  // tree-reduce parties;
+#else
     return ce::Const(5)           // msb_a2a
            + (Log(ce::K()) + 1)   // adder-circuit;
-                 * Log(ce::N());  // tree-reduce parties.;
+                 * Log(ce::N());  // tree-reduce parties;
+#endif
   }
   ce::CExpr comm() const override {
     const auto log_p =
         9;  // in fact, now the element is ring2k_t rather than [0, p-1]
+#ifndef OPT_SECURENN_MSB
+    return (6 * ce::K() + 4 * log_p * ce::K())     // share convert
+           + (13 * ce::K() + 4 * ce::K() * log_p)  // msb
+           + (2 * Log(ce::K()) + 1)                // KS-adder-circuit
+                 * 2 * ce::K() * (ce::N() - 1)     // And gate, for nPC
+                 * (ce::N() - 1);  // (no-matter tree or ring) reduce
+#else
     return (9 * ce::K() + 3 * ce::K() * log_p)  // msb_a2a
            + (2 * Log(ce::K()) + 1)             // KS-adder-circuit
                  * 2 * ce::K() * (ce::N() - 1)  // And gate, for nPC
                  * (ce::N() - 1);  // (no-matter tree or ring) reduce
+#endif
   }
 
   NdArrayRef proc(KernelEvalContext* ctx, const NdArrayRef& in) const override;
@@ -97,7 +110,7 @@ class Msb_a2b : public UnaryKernel {
 
 class CommonTypeV : public Kernel {
  public:
-  static constexpr char kBindName[] = "common_type_v";
+  static constexpr const char* kBindName() { return "common_type_v"; }
 
   Kind kind() const override { return Kind::Dynamic; }
 

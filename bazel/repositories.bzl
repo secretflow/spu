@@ -16,6 +16,7 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 
 def spu_deps():
+    _bazel_skylib()
     _rules_cuda()
     _rules_proto_grpc()
     _bazel_platform()
@@ -28,7 +29,6 @@ def spu_deps():
     _com_github_emptoolkit_emp_tool()
     _com_github_emptoolkit_emp_ot()
     _com_github_facebook_zstd()
-    _com_github_microsoft_seal()
     _com_github_eigenteam_eigen()
     _com_github_nvidia_cutlass()
     _yacl()
@@ -39,10 +39,10 @@ def _yacl():
         http_archive,
         name = "yacl",
         urls = [
-            "https://github.com/secretflow/yacl/archive/refs/tags/0.4.4b1.tar.gz",
+            "https://github.com/secretflow/yacl/archive/refs/tags/0.4.5b8_nightly_20241014.tar.gz",
         ],
-        strip_prefix = "yacl-0.4.4b1",
-        sha256 = "846f40f5e00cfb77427016623b9cb215e5150384a3cc7c663642d995ee7afec9",
+        strip_prefix = "yacl-0.4.5b8_nightly_20241014",
+        sha256 = "9141792f07eba507ffd21c57ec3df2ad5fdf90ce605ffb7bc1b7b4e84a9c34fa",
     )
 
 def _libpsi():
@@ -50,10 +50,10 @@ def _libpsi():
         http_archive,
         name = "psi",
         urls = [
-            "https://github.com/secretflow/psi/archive/refs/tags/v0.3.0.dev240304.tar.gz",
+            "https://github.com/secretflow/psi/archive/refs/tags/v0.5.0.dev241115.tar.gz",
         ],
-        strip_prefix = "psi-0.3.0.dev240304",
-        sha256 = "6e56dceaffbe67f7d17fbb32a5486ec31c6f17156aadb9ac57f47e4c7fe6b384",
+        strip_prefix = "psi-0.5.0.dev241115",
+        sha256 = "4d5ccc61282c4f887cee2c12fe3f414dfd7e916952849e92ffb1f6835d657a35",
     )
 
 def _rules_proto_grpc():
@@ -69,19 +69,19 @@ def _rules_proto_grpc():
 def _rules_cuda():
     http_archive(
         name = "rules_cuda",
-        sha256 = "2f8c8c8c85f727bec4423efecec12d3b751cb0a98bda99f0f9d351608a23b858",
-        strip_prefix = "rules_cuda-v0.2.1",
-        urls = ["https://github.com/bazel-contrib/rules_cuda/releases/download/v0.2.1/rules_cuda-v0.2.1.tar.gz"],
+        sha256 = "c92b334d769a07cd991b7675b2f6076b8b95cd3b28b14268a2f379f8baae58e0",
+        strip_prefix = "rules_cuda-v0.2.3",
+        urls = ["https://github.com/bazel-contrib/rules_cuda/releases/download/v0.2.3/rules_cuda-v0.2.3.tar.gz"],
     )
 
 def _bazel_platform():
     http_archive(
         name = "platforms",
         urls = [
-            "https://mirror.bazel.build/github.com/bazelbuild/platforms/releases/download/0.0.8/platforms-0.0.8.tar.gz",
-            "https://github.com/bazelbuild/platforms/releases/download/0.0.8/platforms-0.0.8.tar.gz",
+            "https://mirror.bazel.build/github.com/bazelbuild/platforms/releases/download/0.0.10/platforms-0.0.10.tar.gz",
+            "https://github.com/bazelbuild/platforms/releases/download/0.0.10/platforms-0.0.10.tar.gz",
         ],
-        sha256 = "8150406605389ececb6da07cbcb509d5637a3ab9a24bc69b1101531367d89d74",
+        sha256 = "218efe8ee736d26a3572663b374a253c012b716d8af0c07e842e82f238a0a7ee",
     )
 
 def _com_github_facebook_zstd():
@@ -89,11 +89,11 @@ def _com_github_facebook_zstd():
         http_archive,
         name = "com_github_facebook_zstd",
         build_file = "@spulib//bazel:zstd.BUILD",
-        strip_prefix = "zstd-1.5.5",
-        sha256 = "98e9c3d949d1b924e28e01eccb7deed865eefebf25c2f21c702e5cd5b63b85e1",
+        strip_prefix = "zstd-1.5.6",
+        sha256 = "30f35f71c1203369dc979ecde0400ffea93c27391bfd2ac5a9715d2173d92ff7",
         type = ".tar.gz",
         urls = [
-            "https://github.com/facebook/zstd/archive/refs/tags/v1.5.5.tar.gz",
+            "https://github.com/facebook/zstd/archive/refs/tags/v1.5.6.tar.gz",
         ],
     )
 
@@ -123,9 +123,20 @@ def _com_github_xtensor_xtl():
         ],
     )
 
+def _bazel_skylib():
+    maybe(
+        http_archive,
+        name = "bazel_skylib",
+        sha256 = "bc283cdfcd526a52c3201279cda4bc298652efa898b10b4db0837dc51652756f",
+        urls = [
+            "https://mirror.bazel.build/github.com/bazelbuild/bazel-skylib/releases/download/1.7.1/bazel-skylib-1.7.1.tar.gz",
+            "https://github.com/bazelbuild/bazel-skylib/releases/download/1.7.1/bazel-skylib-1.7.1.tar.gz",
+        ],
+    )
+
 def _com_github_openxla_xla():
-    OPENXLA_COMMIT = "72831acf1eab39d20e9de1fd5bbc6ad90d6171f6"
-    OPENXLA_SHA256 = "c6ce6b90e6803c9d8481c4e0bc5a72292e9fcb3245114f1dea1bbdc4ef1a238a"
+    OPENXLA_COMMIT = "64bdcc53a1b24abf19b1fe598e6f9b0fe6454470"
+    OPENXLA_SHA256 = "60918b3a0391fe9e0bd506c9b90170b7b5fa64d06de7ec1f4f0e351a303a88fa"
 
     # We need openxla to handle xla/mhlo/stablehlo
     maybe(
@@ -137,6 +148,8 @@ def _com_github_openxla_xla():
         urls = [
             "https://github.com/openxla/xla/archive/{commit}.tar.gz".format(commit = OPENXLA_COMMIT),
         ],
+        patch_args = ["-p1", "-l"],
+        patches = ["@spulib//bazel:patches/xla-non-hermetic-python.patch"],
     )
 
 def _com_github_pybind11_bazel():
@@ -155,10 +168,10 @@ def _com_github_pybind11():
         http_archive,
         name = "pybind11",
         build_file = "@pybind11_bazel//:pybind11.BUILD",
-        sha256 = "d475978da0cdc2d43b73f30910786759d593a9d8ee05b1b6846d1eb16c6d2e0c",
-        strip_prefix = "pybind11-2.11.1",
+        sha256 = "e08cb87f4773da97fa7b5f035de8763abc656d87d5773e62f6da0587d1f0ec20",
+        strip_prefix = "pybind11-2.13.6",
         urls = [
-            "https://github.com/pybind/pybind11/archive/refs/tags/v2.11.1.tar.gz",
+            "https://github.com/pybind/pybind11/archive/refs/tags/v2.13.6.tar.gz",
         ],
     )
 
@@ -173,6 +186,8 @@ def _com_intel_hexl():
         urls = [
             "https://github.com/intel/hexl/archive/refs/tags/v1.2.5.tar.gz",
         ],
+        patch_args = ["-p1"],
+        patches = ["@spulib//bazel:patches/hexl.patch"],
     )
 
 def _com_github_emptoolkit_emp_tool():
@@ -209,27 +224,12 @@ def _com_github_emptoolkit_emp_ot():
         build_file = "@spulib//bazel:emp-ot.BUILD",
     )
 
-def _com_github_microsoft_seal():
-    maybe(
-        http_archive,
-        name = "com_github_microsoft_seal",
-        sha256 = "af9bf0f0daccda2a8b7f344f13a5692e0ee6a45fea88478b2b90c35648bf2672",
-        strip_prefix = "SEAL-4.1.1",
-        type = "tar.gz",
-        patch_args = ["-p1"],
-        patches = ["@spulib//bazel:patches/seal.patch"],
-        urls = [
-            "https://github.com/microsoft/SEAL/archive/refs/tags/v4.1.1.tar.gz",
-        ],
-        build_file = "@spulib//bazel:seal.BUILD",
-    )
-
 def _com_github_eigenteam_eigen():
     EIGEN_COMMIT = "66e8f38891841bf88ee976a316c0c78a52f0cee5"
     EIGEN_SHA256 = "01fcd68409c038bbcfd16394274c2bf71e2bb6dda89a2319e23fc59a2da17210"
     maybe(
         http_archive,
-        name = "com_github_eigenteam_eigen",
+        name = "eigen_archive",
         sha256 = EIGEN_SHA256,
         build_file = "@spulib//bazel:eigen.BUILD",
         strip_prefix = "eigen-{commit}".format(commit = EIGEN_COMMIT),
@@ -241,11 +241,11 @@ def _com_github_eigenteam_eigen():
 def _com_github_nvidia_cutlass():
     maybe(
         http_archive,
-        name = "com_github_nvidia_cutlass",
-        strip_prefix = "cutlass-3.4.1",
+        name = "cutlass_archive",
+        strip_prefix = "cutlass-3.5.1",
         urls = [
-            "https://github.com/NVIDIA/cutlass/archive/refs/tags/v3.4.1.tar.gz",
+            "https://github.com/NVIDIA/cutlass/archive/refs/tags/v3.5.1.tar.gz",
         ],
-        sha256 = "aebd4f9088bdf2fd640d65835de30788a6c7d3615532fcbdbc626ec3754becd4",
+        sha256 = "20b7247cda2d257cbf8ba59ba3ca40a9211c4da61a9c9913e32b33a2c5883a36",
         build_file = "@spulib//bazel:nvidia_cutlass.BUILD",
     )

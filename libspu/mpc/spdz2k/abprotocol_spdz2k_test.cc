@@ -69,6 +69,10 @@ bool verifyCost(Kernel* kernel, std::string_view name, FieldType field,
   return succeed;
 }
 
+Value hack_make_p(SPUContext* ctx, uint128_t init, const Shape& shape) {
+  return dynDispatch(ctx, "make_p", init, shape);
+}
+
 }  // namespace
 
 TEST_P(BooleanTest, NotB) {
@@ -88,7 +92,9 @@ TEST_P(BooleanTest, NotB) {
     auto r_b = dynDispatch(obj.get(), "not_b", b0);
     auto cost = obj->prot()->getState<Communicator>()->getStats() - prev;
     auto r_p = b2p(obj.get(), r_b);
-    auto r_pp = not_p(obj.get(), p0);
+
+    auto ones = hack_make_p(obj.get(), -1, kShape);
+    auto r_pp = xor_pp(obj.get(), p0, ones);
 
     /* THEN */
     EXPECT_VALUE_EQ(r_p, r_pp);
@@ -242,7 +248,7 @@ TEST_P(ConversionTest, BitLT) {
     auto re = b2p(obj.get(), tmp);
 
     const auto field = p0.storage_type().as<Ring2k>()->field();
-    DISPATCH_ALL_FIELDS(field, "_", [&]() {
+    DISPATCH_ALL_FIELDS(field, [&]() {
       using U = std::make_unsigned<ring2k_t>::type;
       size_t numel = kShape.numel();
 
@@ -291,7 +297,7 @@ TEST_P(ConversionTest, BitLE) {
     auto re = b2p(obj.get(), tmp);
 
     const auto field = p0.storage_type().as<Ring2k>()->field();
-    DISPATCH_ALL_FIELDS(field, "_", [&]() {
+    DISPATCH_ALL_FIELDS(field, [&]() {
       using U = std::make_unsigned<ring2k_t>::type;
       size_t numel = kShape.numel();
       NdArrayView<U> p0_data(p0.data());

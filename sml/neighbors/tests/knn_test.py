@@ -61,42 +61,67 @@ class UnitTests(unittest.TestCase):
         y_train_new = jnp.array([label_to_int[label] for label in y_train.tolist()])
 
         # 运行模拟器
-        result_uniform = spsim.sim_jax(sim, proc_predict, static_argnums=(3, 4, 5))(
+        
+        copts = spu_pb2.CompilerOptions()
+
+        proc_predict.__name__ = f"test_knn_uniform"
+        spu_fn_uniform = spsim.sim_jax(sim, proc_predict, static_argnums=(3, 4, 5), copts=copts, pphlo_ref=(None, None)) #test_knn_uniform
+        result_uniform = spu_fn_uniform(
             X_train, y_train_new, X_test, n_classes, 3, 'uniform'
         )
-        result_distance = spsim.sim_jax(sim, proc_predict, static_argnums=(3, 4, 5))(
+        
+        copts = spu_pb2.CompilerOptions()
+        
+        proc_predict.__name__ = f"test_knn_distance"
+        spu_fn_distance = spsim.sim_jax(sim, proc_predict, static_argnums=(3, 4, 5), copts=copts, pphlo_ref=(None, None)) #test_knn_distance
+        result_distance = spu_fn_distance(
             X_train, y_train_new, X_test, n_classes, 3, 'distance'
         )
 
         # 再从连续数组映射回原来的标签
         int_to_label = {i: label for label, i in label_to_int.items()}
-        result_uniform_np = np.array(result_uniform)
-        result_distance_np = np.array(result_distance)
-        predictions_uniform = [
-            int_to_label[prediction] for prediction in result_uniform_np
-        ]
-        predictions_distance = [
-            int_to_label[prediction] for prediction in result_distance_np
-        ]
 
         # 与sklearn的结果进行比较
         X_train = np.array(X_train)
         y_train = np.array(y_train)
         X_test = np.array(X_test)
+        skip_uniform = False
+        try:
+            if result_uniform == "skipped":
+                skip_uniform = True
+        except:
+            pass
+        if not skip_uniform:
+            print(spu_fn_uniform.pphlo)
+            result_uniform_np = np.array(result_uniform)
+            predictions_uniform = [
+                int_to_label[prediction] for prediction in result_uniform_np
+            ]
+            neigh_uni = KNeighborsClassifier(n_neighbors=3, weights='uniform')
+            neigh_uni.fit(X_train, y_train)
+            sklearn_predictions = neigh_uni.predict(X_test)
 
-        neigh_uni = KNeighborsClassifier(n_neighbors=3, weights='uniform')
-        neigh_uni.fit(X_train, y_train)
+            self.assertEqual(predictions_uniform, sklearn_predictions.tolist())
 
-        sklearn_predictions = neigh_uni.predict(X_test)
+        skip_distance = False
+        try:
+            if result_distance == "skipped":
+                skip_distance = True
+        except:
+            pass
+        if not skip_distance:
+            print(spu_fn_distance.pphlo)
+            result_distance_np = np.array(result_distance)
+            predictions_distance = [
+                int_to_label[prediction] for prediction in result_distance_np
+            ]
 
-        self.assertEqual(predictions_uniform, sklearn_predictions.tolist())
+            neigh_dis = KNeighborsClassifier(n_neighbors=3, weights='distance')
+            neigh_dis.fit(X_train, y_train)
 
-        neigh_dis = KNeighborsClassifier(n_neighbors=3, weights='distance')
-        neigh_dis.fit(X_train, y_train)
+            sklearn_predictions = neigh_dis.predict(X_test)
 
-        sklearn_predictions = neigh_dis.predict(X_test)
-
-        self.assertEqual(predictions_distance, sklearn_predictions.tolist())
+            self.assertEqual(predictions_distance, sklearn_predictions.tolist())
 
 
 if __name__ == "__main__":

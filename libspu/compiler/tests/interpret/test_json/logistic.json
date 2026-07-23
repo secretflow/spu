@@ -1,0 +1,23 @@
+{
+    "name": "logistic",
+    "template": "basic_unary",
+    "testcases": [
+        {
+            "inputs": [
+                {
+                    "data": "[[1.0, 2.0], [3.0, 4.0]]",
+                    "shape": "2x2",
+                    "dtype": "f64"
+                }
+            ],
+            "expected": [
+                {
+                    "data": "[[0.73105857863000488, 0.88079707797788244],[0.95257412682243322, 0.98201379003790844]]",
+                    "shape": "2x2",
+                    "dtype": "f64"
+                }
+            ],
+            "checker": "expect_almost_eq"
+        }
+    ]
+}

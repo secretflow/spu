@@ -163,4 +163,16 @@ void SymmetricRLWEEncrypt(const RLWESecretKey &sk,
                           absl::Span<const RLWEPt> msg_non_ntt, bool need_ntt,
                           bool need_seed, absl::Span<RLWECt> out_ct);
 
+// sample x \in [0, 2^{nbits}) uniformly, and store in limbs
+void SampleLimbs(absl::Span<uint64_t> dest,
+                 const seal::EncryptionParameters &parms, size_t nbits,
+                 std::shared_ptr<seal::UniformRandomGenerator> prng = nullptr);
+
+// sample x \in [-2{nbits}, 2^{nbits}) uniformly, and store in the RNS format
+// NOTE: x < 0 is stored as Q - 2^{nbits} + x
+void SampleRanomRNS(
+    absl::Span<uint64_t> dest, const seal::SEALContext::ContextData &context,
+    size_t nbits, bool is_ntt,
+    std::shared_ptr<seal::UniformRandomGenerator> prng = nullptr);
+
 }  // namespace spu::mpc::cheetah

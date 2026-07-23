@@ -16,7 +16,6 @@
 
 #include "libspu/core/prelude.h"
 #include "libspu/core/type_util.h"
-#include "libspu/core/xt_helper.h"
 #include "libspu/mpc/utils/ring_ops.h"
 
 namespace spu::mpc::cheetah {
@@ -84,7 +83,7 @@ void VectorEncoder::Backward(const NdArrayRef &vec, RLWEPt *out,
 
   const auto field = eltype.as<Ring2k>()->field();
 
-  DISPATCH_ALL_FIELDS(field, "Backward", [&]() {
+  DISPATCH_ALL_FIELDS(field, [&]() {
     auto tmp_buff = ring_zeros(field, {(int64_t)poly_deg_});
     auto xvec = NdArrayView<const ring2k_t>(vec);
     auto xtmp = NdArrayView<ring2k_t>(tmp_buff);
@@ -92,7 +91,7 @@ void VectorEncoder::Backward(const NdArrayRef &vec, RLWEPt *out,
     xtmp[0] = xvec[0];
     // reverse and sign flip
     for (size_t i = 1; i < num_coeffs; ++i) {
-      xtmp[num_coeffs - 1 - i] = -xvec[i];
+      xtmp[poly_deg_ - i] = -xvec[i];
     }
 
     uint64_t *dst = out->data();

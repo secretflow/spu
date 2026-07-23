@@ -322,6 +322,13 @@ NdArrayRef NdArrayRef::slice_scalar_at(const Index& indices) const {
                     &at(indices) - buf()->data<std::byte>());
 }
 
+NdArrayRef NdArrayRef::transpose() const {
+  Axes perm;
+  perm.resize(shape().size());
+  std::iota(perm.rbegin(), perm.rend(), 0);
+  return transpose(perm);
+}
+
 NdArrayRef NdArrayRef::transpose(const Axes& perm) const {
   // sanity check.
   SPU_ENFORCE_EQ(perm.size(), shape().size());
