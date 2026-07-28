@@ -2,7 +2,7 @@ linkify-it-py~=2.0
 mdutils~=1.6
 myst-nb~=1.2
 pytablewriter~=1.2
-rstcheck~=6.2
+rstcheck~=6.3
 secretflow-doctools~=0.8.5
 sphinx-autobuild
 sphinx-intl~=2.3
