@@ -37,7 +37,7 @@ dependencies = [
     "cloudpickle>=2.0.0",
     "multiprocess>=0.70.12.2",
     "cachetools>=5.0.0",
-    "jax[cpu]==0.8.0",
+    "jax[cpu]==0.11.1",
     "termcolor>=2.0.0",
 ]
 
