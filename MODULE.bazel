@@ -119,7 +119,7 @@ python = use_extension("@rules_python//python/extensions:python.bzl", "python")
 
 use_repo(python, "python_versions")
 
-bazel_dep(name = "rules_proto_grpc_python", version = "5.0.0")
+bazel_dep(name = "rules_proto_grpc_python", version = "5.8.0")
 
 # test
 bazel_dep(name = "googletest", version = "1.15.2", dev_dependency = True)
