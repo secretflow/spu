@@ -1,4 +1,4 @@
-linkify-it-py~=2.0
+linkify-it-py~=2.1
 mdutils~=1.6
 myst-nb~=1.2
 pytablewriter~=1.2
