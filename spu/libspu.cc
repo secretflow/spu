@@ -114,6 +114,20 @@ py::array_t<T> BufferToTypedArray(yacl::Buffer buffer) {
 
 #define NO_GIL py::call_guard<py::gil_scoped_release>()
 
+// Call tag used by all Python-exposed link operations.
+//
+// NOTE: this must have static storage duration. It was previously a local
+// inside BindLink captured by reference ([&PY_CALL_TAG]) by the bound
+// lambdas; after BindLink returned (module import time) every link call
+// read the tag from BindLink's dead stack frame. The 8 stale bytes usually
+// still spelled "PY_CALL" (so tests passed), but once the main thread's
+// stack at that depth got reused the tag turned into garbage, and the
+// garbage-terminated C-string was copied into yacl message keys -- random
+// heap corruption surfacing later as unrelated crashes (observed as a
+// Fatal Python error: PyEval_SaveThread under weak network, and as SIGSEGV
+// in spdlog sinks in reproduction).
+constexpr char PY_CALL_TAG[] = "PY_CALL";
+
 void BindLink(py::module& m) {
   using yacl::link::CertInfo;
   using yacl::link::Context;
@@ -122,9 +136,6 @@ void BindLink(py::module& m) {
   using yacl::link::SSLOptions;
   using yacl::link::VerifyOptions;
   using yacl::link::transport::IChannel;
-
-  // TODO(jint) expose this tag to python?
-  constexpr char PY_CALL_TAG[] = "PY_CALL";
 
   m.doc() = R"pbdoc(
               SPU Link Library
@@ -250,14 +261,14 @@ void BindLink(py::module& m) {
           NO_GIL, "spawn a sub-link, advanced skill")
       .def(
           "barrier",
-          [&PY_CALL_TAG](const std::shared_ptr<Context>& self) -> void {
+          [](const std::shared_ptr<Context>& self) -> void {
             return yacl::link::Barrier(self, PY_CALL_TAG);
           },
           NO_GIL,
           "Blocks until all parties have reached this routine, aka MPI_Barrier")
       .def(
           "all_gather",
-          [&PY_CALL_TAG](const std::shared_ptr<Context>& self,
+          [](const std::shared_ptr<Context>& self,
                          const std::string& in) -> std::vector<std::string> {
             auto bufs = yacl::link::AllGather(self, in, PY_CALL_TAG);
             std::vector<std::string> ret(bufs.size());
@@ -271,7 +282,7 @@ void BindLink(py::module& m) {
           "all parties, aka MPI_AllGather")
       .def(
           "gather",
-          [&PY_CALL_TAG](const std::shared_ptr<Context>& self,
+          [](const std::shared_ptr<Context>& self,
                          const std::string& in,
                          size_t root) -> std::vector<std::string> {
             auto bufs = yacl::link::Gather(self, in, root, PY_CALL_TAG);
@@ -284,7 +295,7 @@ void BindLink(py::module& m) {
           NO_GIL, "Gathers values from other parties, aka MPI_Gather")
       .def(
           "broadcast",
-          [&PY_CALL_TAG](const std::shared_ptr<Context>& self,
+          [](const std::shared_ptr<Context>& self,
                          const std::string& in, size_t root) -> std::string {
             auto buf = yacl::link::Broadcast(self, in, root, PY_CALL_TAG);
             return {buf.data<char>(), static_cast<size_t>(buf.size())};
@@ -299,8 +310,19 @@ void BindLink(py::module& m) {
           },
           NO_GIL, "Blocks until all link is safely stoped")
       .def(
+          "abort_link",
+          [](const std::shared_ptr<Context>& self) -> void {
+            return self->AbortLink();
+          },
+          NO_GIL,
+          "Abort the link: broadcast the abort flag so all send/recv "
+          "waiters blocked on this link wake up with an error. Safe to "
+          "call from another thread; intended for watchdog-style rescue "
+          "after a background send failure has killed the yacl send "
+          "thread (exit_if_async_error=false)")
+      .def(
           "scatter",
-          [&PY_CALL_TAG](const std::shared_ptr<Context>& self,
+          [](const std::shared_ptr<Context>& self,
                          const std::vector<std::string>& in,
                          size_t root) -> std::string {
             auto buf = yacl::link::Scatter(self, {in.begin(), in.end()}, root,
@@ -311,21 +333,21 @@ void BindLink(py::module& m) {
           "Sends data from one party to all other parties, aka MPI_Scatter")
       .def(
           "send",
-          [&PY_CALL_TAG](const std::shared_ptr<Context>& self, size_t dst_rank,
+          [](const std::shared_ptr<Context>& self, size_t dst_rank,
                          const std::string& in) {
             self->Send(dst_rank, in, PY_CALL_TAG);
           },
           NO_GIL, "Sends data to dst_rank")
       .def(
           "send_async",
-          [&PY_CALL_TAG](const std::shared_ptr<Context>& self, size_t dst_rank,
+          [](const std::shared_ptr<Context>& self, size_t dst_rank,
                          const std::string& in) {
             self->SendAsync(dst_rank, yacl::Buffer(in), PY_CALL_TAG);
           },
           NO_GIL, "Sends data to dst_rank asynchronously")
       .def(
           "recv",
-          [&PY_CALL_TAG](const std::shared_ptr<Context>& self,
+          [](const std::shared_ptr<Context>& self,
                          size_t src_rank) -> py::bytes {
             py::gil_scoped_release release;
             yacl::Buffer buf = self->Recv(src_rank, PY_CALL_TAG);
@@ -342,8 +364,18 @@ void BindLink(py::module& m) {
 
   m.def(
       "create_brpc",
-      [](const ContextDesc& desc, size_t self_rank,
+      [](ContextDesc desc, size_t self_rank,
          bool log_details) -> std::shared_ptr<Context> {
+        // A brpc send failure must surface as an exception on the calling
+        // thread, never exit(-1) from a bthread. yacl's default (true)
+        // makes the async-error path call exit(), whose static-destructor
+        // phase tears down spdlog/CPython state while other threads are
+        // still inside Run with the GIL released -- observed under weak
+        // network as "Fatal Python error: PyEval_SaveThread" and as SIGSEGV
+        // in spdlog sinks. A long-lived Python worker must fail the query,
+        // not die. The field was never exposed to Python, so no caller
+        // could have relied on the old default.
+        desc.exit_if_async_error = false;
         py::gil_scoped_release release;
 
         brpc::FLAGS_max_body_size = std::numeric_limits<uint64_t>::max();
