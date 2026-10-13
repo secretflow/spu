@@ -269,7 +269,7 @@ void BindLink(py::module& m) {
       .def(
           "all_gather",
           [](const std::shared_ptr<Context>& self,
-                         const std::string& in) -> std::vector<std::string> {
+             const std::string& in) -> std::vector<std::string> {
             auto bufs = yacl::link::AllGather(self, in, PY_CALL_TAG);
             std::vector<std::string> ret(bufs.size());
             for (size_t idx = 0; idx < bufs.size(); ++idx) {
@@ -282,9 +282,8 @@ void BindLink(py::module& m) {
           "all parties, aka MPI_AllGather")
       .def(
           "gather",
-          [](const std::shared_ptr<Context>& self,
-                         const std::string& in,
-                         size_t root) -> std::vector<std::string> {
+          [](const std::shared_ptr<Context>& self, const std::string& in,
+             size_t root) -> std::vector<std::string> {
             auto bufs = yacl::link::Gather(self, in, root, PY_CALL_TAG);
             std::vector<std::string> ret(bufs.size());
             for (size_t idx = 0; idx < bufs.size(); ++idx) {
@@ -295,8 +294,8 @@ void BindLink(py::module& m) {
           NO_GIL, "Gathers values from other parties, aka MPI_Gather")
       .def(
           "broadcast",
-          [](const std::shared_ptr<Context>& self,
-                         const std::string& in, size_t root) -> std::string {
+          [](const std::shared_ptr<Context>& self, const std::string& in,
+             size_t root) -> std::string {
             auto buf = yacl::link::Broadcast(self, in, root, PY_CALL_TAG);
             return {buf.data<char>(), static_cast<size_t>(buf.size())};
           },
@@ -323,8 +322,7 @@ void BindLink(py::module& m) {
       .def(
           "scatter",
           [](const std::shared_ptr<Context>& self,
-                         const std::vector<std::string>& in,
-                         size_t root) -> std::string {
+             const std::vector<std::string>& in, size_t root) -> std::string {
             auto buf = yacl::link::Scatter(self, {in.begin(), in.end()}, root,
                                            PY_CALL_TAG);
             return {buf.data<char>(), static_cast<size_t>(buf.size())};
@@ -334,21 +332,19 @@ void BindLink(py::module& m) {
       .def(
           "send",
           [](const std::shared_ptr<Context>& self, size_t dst_rank,
-                         const std::string& in) {
-            self->Send(dst_rank, in, PY_CALL_TAG);
-          },
+             const std::string& in) { self->Send(dst_rank, in, PY_CALL_TAG); },
           NO_GIL, "Sends data to dst_rank")
       .def(
           "send_async",
           [](const std::shared_ptr<Context>& self, size_t dst_rank,
-                         const std::string& in) {
+             const std::string& in) {
             self->SendAsync(dst_rank, yacl::Buffer(in), PY_CALL_TAG);
           },
           NO_GIL, "Sends data to dst_rank asynchronously")
       .def(
           "recv",
           [](const std::shared_ptr<Context>& self,
-                         size_t src_rank) -> py::bytes {
+             size_t src_rank) -> py::bytes {
             py::gil_scoped_release release;
             yacl::Buffer buf = self->Recv(src_rank, PY_CALL_TAG);
             py::gil_scoped_acquire acquire;

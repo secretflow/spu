@@ -58,6 +58,7 @@ header: # <1>
     - '.bazelignore'
     - 'src/libspu/mpc/utils/waksman_net.h' # MIT
     - 'src/libspu/mpc/utils/waksman_net.cc' # MIT
+    - 'uv.lock'
 
   comment: never # <9>
 
