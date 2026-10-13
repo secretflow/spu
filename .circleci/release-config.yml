@@ -125,14 +125,14 @@ workflows:
               executor: ["linux_x64_executor", "linux_aarch64_executor"]
           filters:
             tags:
-              only: /.*(?<!dev\d{8})$/
+              ignore: /.*dev\d{8}$/
       - macOS_publish:
           matrix:
             parameters:
               python_ver: *publish-py-versions
           filters:
             tags:
-              only: /.*(?<!dev\d{8})$/
+              ignore: /.*dev\d{8}$/
       - linux_publish:
           name: linux_dev_publish-<<matrix.executor>>
           matrix:
@@ -141,7 +141,7 @@ workflows:
               executor: ["linux_x64_executor", "linux_aarch64_executor"]
           filters:
             tags:
-              only: /.*(?<=dev\d{8})$/
+              only: /.*dev\d{8}$/
       - macOS_publish:
           name: macOS_dev_publish
           matrix:
@@ -149,4 +149,4 @@ workflows:
               python_ver: *dev-py-version
           filters:
             tags:
-              only: /.*(?<=dev\d{8})$/
+              only: /.*dev\d{8}$/
