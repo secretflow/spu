@@ -36,11 +36,11 @@ def _com_github_xtensor_xtl():
     maybe(
         http_archive,
         name = "xtl",
-        sha256 = "44fb99fbf5e56af5c43619fc8c29aa58e5fad18f3ba6e7d9c55c111b62df1fbb",
-        strip_prefix = "xtl-0.7.7",
+        sha256 = "8fb38d6a5856aab5740d2ccb3d791d289f648d4cc506b94a1338fe5fce100c11",
+        strip_prefix = "xtl-0.8.2",
         build_file = "@spulib//bazel:xtl.BUILD",
         type = "tar.gz",
         urls = [
-            "https://github.com/xtensor-stack/xtl/archive/refs/tags/0.7.7.tar.gz",
+            "https://github.com/xtensor-stack/xtl/archive/refs/tags/0.8.2.tar.gz",
         ],
     )
