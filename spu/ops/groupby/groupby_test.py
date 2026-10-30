@@ -20,6 +20,7 @@ import pandas as pd
 
 import spu.libspu as libspu
 import spu.utils.simulation as spsim
+from spu.ops.groupby import __all__ as groupby_all
 from spu.ops.groupby.aggregation import groupby_count, groupby_count_cleartext
 from spu.ops.groupby.groupby_via_shuffle import (
     groupby_max_via_shuffle,
@@ -217,6 +218,12 @@ class UnitTests(unittest.TestCase):
         assert (
             np.max(abs(correct_keys - keys)) < 0.001
         ), f"value{ max(abs(correct_keys - keys))}, correct_keys, {correct_keys}, keys{keys}"
+
+    def test_all_exports_are_strings(self):
+        self.assertTrue(
+            all(isinstance(name, str) for name in groupby_all),
+            f"__all__ must contain strings, got {groupby_all}",
+        )
 
 
 if __name__ == "__main__":
